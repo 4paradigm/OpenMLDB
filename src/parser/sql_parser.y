@@ -398,15 +398,15 @@ select_expr_list: projection {
 projection:
     expr
     {
-        $$ = ::fedb::sql::MakeNode(::fedb::sql::kResTarget);
-        ((::fedb::sql::ResTarget*)$$)->setName("");
-        ((::fedb::sql::ResTarget*)$$)->setVal($1);
+        $$ = ::fedb::sql::MakeResTargetNode($1, "");
+    }
+    | expr NAME
+    {
+        $$ = ::fedb::sql::MakeResTargetNode($1, $2);
     }
     | expr AS NAME
     {
-        $$ = ::fedb::sql::MakeNode(::fedb::sql::kResTarget);
-        ((::fedb::sql::ResTarget*)$$)->setName($3);
-        ((::fedb::sql::ResTarget*)$$)->setVal($1);
+        $$ = ::fedb::sql::MakeResTargetNode($1, $3);
     }
     ;
 

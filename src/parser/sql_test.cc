@@ -21,54 +21,39 @@
 namespace fedb {
 namespace sql {
 
-class SqlTest : public ::testing::Test {
+struct StringPair {
+    StringPair(const std::string &sqlstr, const std::string &exp) : sqlstr_(sqlstr), exp_(exp) {}
+    std::string sqlstr_;
+    std::string exp_;
+};
+
+class SqlTest : public ::testing::TestWithParam<std::string> {
 
 public:
     SqlTest() {}
 
     ~SqlTest() {}
 };
+INSTANTIATE_TEST_CASE_P(StringReturn, SqlTest, testing::Values(
+    "SELECT COL1 FROM t1;",
+    "SELECT COL1 as c1 FROM t1;",
+    "SELECT COL1 c1 FROM t1;",
+    "SELECT t1.COL1 FROM t1;",
+    "SELECT t1.COL1 as c1 FROM t1;",
+    "SELECT t1.COL1 c1 FROM t1;"
 
-TEST_F(SqlTest, Parser_Simple_Sql) {
+));
 
-    const char *sqlstr = "SELECT t1.COL1 AS c1, t2.COL2 AS c2 FROM t1;";
+TEST_P(SqlTest, Parser_Select_Expr_List) {
+    std::string sqlstr = GetParam();
     SQLNodeList *list = new SQLNodeList();
-    int ret = FeSqlParse(sqlstr, list);
+    int ret = FeSqlParse(sqlstr.c_str(), list);
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1, list->Size());
     std::strstream out;
     list->Print(out);
     std::cout << out.str() << std::endl;
-    ASSERT_STREQ("[\n"
-                     "\tkSelectStmt\n"
-                     "\t\tselect_list: \n"
-                     "\t\t\t[\n"
-                     "\t\t\t\tkResTarget\n"
-                     "\t\t\t\t\tval: \n"
-                     "\t\t\t\t\t\tkColumn\n"
-                     "\t\t\t\t\t\t\tcolumn_ref: {relation_name: t1, column_name: COL1}\n"
-                     "\t\t\t\t\tname: \n"
-                     "\t\t\t\t\t\tc1\n"
-                     "\t\t\t\tkResTarget\n"
-                     "\t\t\t\t\tval: \n"
-                     "\t\t\t\t\t\tkColumn\n"
-                     "\t\t\t\t\t\t\tcolumn_ref: {relation_name: t2, column_name: COL2}\n"
-                     "\t\t\t\t\tname: \n"
-                     "\t\t\t\t\t\tc2\n"
-                     "\t\t\t]\n"
-                     "\t\ttableref_list_: \n"
-                     "\t\t\t[\n"
-                     "\t\t\t\tkTable\n"
-                     "\t\t\t\t\ttable: t1, alias: \n"
-                     "\t\t\t]\n"
-                     "\t\twhere_clause_: NULL\n"
-                     "\t\tgroup_clause_: NULL\n"
-                     "\t\thaving_clause_: NULL\n"
-                     "\t\torder_clause_: NULL\n"
-                     "\n"
-                     "]", out.str());
-
 }
 
 } // namespace of sql

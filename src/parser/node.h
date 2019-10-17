@@ -83,10 +83,6 @@ protected:
     SQLNodeType type_;
 };
 
-class Value : public SQLNode {
-
-};
-
 struct SQLLinkedNode {
     SQLNode *node_;
     SQLLinkedNode *next_;
@@ -283,7 +279,7 @@ public:
         delete indirection_;
     }
 
-    void setName(char *name) {
+    void setName(const std::string &name) {
         name_ = name;
     }
     void setVal(SQLNode *val) {
@@ -436,6 +432,7 @@ SQLNode *MakeConstNode(float value);
 SQLNode *MakeConstNode(double value);
 SQLNode *MakeConstNode(const std::string &value);
 SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name);
+SQLNode *MakeResTargetNode(SQLNode *node, const std::string &name);
 SQLNode *MakeNode(const SQLNodeType &type, ...);
 SQLNodeList *MakeNodeList(fedb::sql::SQLNode *node);
 

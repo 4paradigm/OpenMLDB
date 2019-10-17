@@ -57,6 +57,13 @@ SQLNode *MakeTableNode(const std::string &name, const std::string &alias) {
     return (SQLNode *) node;
 }
 
+////////////////// Make ResTarget Node///////////////////////////////////
+SQLNode *MakeResTargetNode(SQLNode *node, const std::string &name) {
+    ResTarget *pNode = new ResTarget();
+    pNode->setName(name);
+    pNode->setVal(node);
+    return pNode;
+}
 
 ////////////////// Make Column Reference Node///////////////////////////////////
 SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name) {
