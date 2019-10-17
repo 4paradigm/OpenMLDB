@@ -7,7 +7,9 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 
@@ -33,6 +35,7 @@ public class TraverseKvIterator implements KvIterator {
     private String pk;
     private String lastPk;
     private List<ColumnDesc> schema;
+    private NS.CompressType compressType = NS.CompressType.kNoCompress;
 
     private boolean isFinished = false;
 
@@ -49,6 +52,9 @@ public class TraverseKvIterator implements KvIterator {
         this.idxName = idxName;
         this.tsName = tsName;
         this.isFinished = false;
+        if (th != null) {
+            this.compressType = th.getTableInfo().getCompressType();
+        }
     }
 
     private void getData() throws TimeoutException, TabletException {
@@ -111,6 +117,9 @@ public class TraverseKvIterator implements KvIterator {
 
     @Override
     public List<ColumnDesc> getSchema() {
+        if (th != null && th.getSchemaMap().size() > 0) {
+            return th.getSchemaMap().get(th.getSchema().size() + th.getSchemaMap().size());
+        }
         return schema;
     }
 
@@ -137,7 +146,14 @@ public class TraverseKvIterator implements KvIterator {
         if (schema != null && !schema.isEmpty()) {
             throw new UnsupportedOperationException("getValue is not supported");
         }
-        return slice;
+        if (compressType == NS.CompressType.kSnappy) {
+            byte[] data = new byte[slice.remaining()];
+            slice.get(data);
+            byte[] uncompressed = Compress.snappyUnCompress(data);
+            return ByteBuffer.wrap(uncompressed);
+        } else {
+            return slice;
+        }
     }
 
     @Override
@@ -155,7 +171,17 @@ public class TraverseKvIterator implements KvIterator {
         if (schema == null || schema.isEmpty()) {
             throw new UnsupportedOperationException("getDecodedValue is not supported");
         }
-        RowCodec.decode(slice, schema, row, start, length);
+        if (compressType == NS.CompressType.kSnappy) {
+            byte[] data = new byte[slice.remaining()];
+            slice.get(data);
+            byte[] uncompressed = Compress.snappyUnCompress(data);
+            if (uncompressed == null) {
+                throw new TabletException("snappy uncompress error");
+            }
+            RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
+        } else {
+            RowCodec.decode(slice, schema, row, start, length);
+        }
     }
 
     @Override

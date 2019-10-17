@@ -10,5 +10,5 @@ public interface NameServer {
     GeneralResponse changeLeader(ChangeLeaderRequest request);
     GeneralResponse recoverEndpoint(RecoverEndpointRequest request);
 
-    GeneralResponse AddTableField(AddTableFieldRequest request);
+    GeneralResponse addTableField(AddTableFieldRequest request);
 }
