@@ -1,9 +1,7 @@
 image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.7
 stages:
     - build
-#    - ut
-#    - it-tablet
-#    - it-ns
+# rm
     - integration-test
 
 build_rtidb_and_case:
