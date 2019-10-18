@@ -199,7 +199,7 @@ public class TableHandler {
         kReadLeader,
         kReadFollower,
         kReadLocal,
-        KReadRandom
+        kReadRandom
     }
 
     public boolean hasTsCol() {

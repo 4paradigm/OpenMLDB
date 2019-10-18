@@ -855,7 +855,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
                     std::string tmp_pk;
                     uint64_t ts = 0;
                     ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts, cur_ts_idx);
-                    if (has_ts_idx_ && tmp_pk == pk_ && cur_ts_idx < ts_idx_) {
+                    if (tmp_pk == pk_ && cur_ts_idx < ts_idx_) {
                         ts_ = UINT64_MAX;
                     }
                 }
