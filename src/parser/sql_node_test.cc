@@ -94,7 +94,7 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     SQLNodeList * orders= NULL;
     SQLNode* start = NULL;
     SQLNode* end = NULL;
-    SQLNode *node_ptr = MakeWindowDefNode(partitions, orders, start, end);
+    SQLNode *node_ptr = MakeWindowDefNode(partitions, orders, start);
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
     std::strstream out;
     out << *node_ptr;
