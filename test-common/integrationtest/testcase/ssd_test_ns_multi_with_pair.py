@@ -65,6 +65,8 @@ class TestHasTsCol(TestCaseBase):
         self.assertIn('idx name not found', rs10)
         rs11 = self.ns_count_with_pair(self.ns_leader, name, 'mcc1', 'mcc', 'ts3')
         self.assertIn('ts name not found', rs11)
+        self.ns_drop(self.ns_leader,name)
+        time.sleep(1)
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -127,6 +129,8 @@ class TestHasTsCol(TestCaseBase):
         self.assertEqual(len(rs6), 0)
         rs7 = self.ns_scan_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '25', '0', 'ts2', '1')
         self.assertEqual(len(rs7), 1)
+        self.ns_drop(self.ns_leader,name)
+        time.sleep(1)
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -185,6 +189,8 @@ class TestHasTsCol(TestCaseBase):
         self.assertEqual(len(rs6), 0)
         rs7 = self.ns_get_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '0', 'ts2')
         self.assertEqual(len(rs7), 5)
+        self.ns_drop(self.ns_leader,name)
+        time.sleep(1)
 
 
 
