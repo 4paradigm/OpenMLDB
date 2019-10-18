@@ -325,6 +325,16 @@ void MemTable::SchedGc() {
             Segment* segment = segments_[i][j];
             segment->IncrGcVersion();
             segment->GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            if (new_ttl_.load(std::memory_order_relaxed) > 0) {
+                enable_gc_ = true;
+            } else {
+                for (uint32_t i = 0; i < new_ttl_vec_.size(); i++) {
+                    if (new_ttl_vec_[i]->load(std::memory_order_relaxed) > 0) {
+                        enable_gc_ = true;
+                        break;
+                    }
+                }
+            }
             if (!enable_gc_.load(std::memory_order_relaxed)) {
                 continue;
             }
