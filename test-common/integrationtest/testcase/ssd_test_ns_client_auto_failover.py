@@ -18,6 +18,7 @@ class TestAutoFailover(TestCaseBase):
         ('killed','kHDD'),
         ('network_failure','kHDD'),
     )
+    @ddt.unpack
     def test_auto_failover_master_exception(self, failover_reason,storage_mode):
         """
         auto_failover=true：主节点挂掉或断网后，自动切换到新的主节点，原主is_alive为no

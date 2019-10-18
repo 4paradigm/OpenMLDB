@@ -618,7 +618,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         # mf = self.get_manifest(self.leaderpath, tid, 0)
         mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '7')
-        self.assertEqual(mf['count'], '9')
+        self.assertEqual(mf['count'], '8')
     @ddt.data(
         ('ssd_db', 'kSSD'),
         ('hdd_db', 'kHDD'),
@@ -721,7 +721,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         # mf = self.get_manifest(self.leaderpath, tid, 0)
         mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '9')
-        self.assertEqual(mf['count'], '9')
+        self.assertEqual(mf['count'], '10')
 
 if __name__ == "__main__":
     load(TestMakeSnapshotNsClient)
