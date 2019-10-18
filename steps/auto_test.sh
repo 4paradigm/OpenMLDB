@@ -28,8 +28,8 @@ mvn clean install -Dmaven.test.skip=true
 
 
 cd $ROOT_DIR
-source /root/.bashrc && rm -rf rtidb-auto-test; git checkout .; git submodule init; git submodule update
-cd rtidb-auto-test
+source /root/.bashrc && rm -rf auto-test-rtidb; git checkout .; git submodule init; git submodule update
+cd auto-test-rtidb
 git checkout release/1.4.2
 echo "rtidb_version:$rtidb_version"
 git pull
