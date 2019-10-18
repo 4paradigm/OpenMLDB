@@ -721,7 +721,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         # mf = self.get_manifest(self.leaderpath, tid, 0)
         mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '9')
-        self.assertEqual(mf['count'], '10')
+        self.assertEqual(mf['count'], '20')
 
 if __name__ == "__main__":
     load(TestMakeSnapshotNsClient)
