@@ -104,6 +104,7 @@ class TestAutoFailover(TestCaseBase):
         ('killed','kHDD'),
         ('network_failure','kHDD'),
     )
+    @ddt.unpack
     def test_auto_failover_slave_exception(self, failover_reason,storage_mode):
         """
         auto_failover=true：从节点挂掉或断网后，showtable中从节点is_alive为no
