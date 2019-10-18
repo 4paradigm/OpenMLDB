@@ -83,7 +83,12 @@ public class TraverseKvIterator implements KvIterator {
                 totalSize = this.bs.size();
                 offset = 0;
                 if (totalSize == 0) {
-                    pid++;
+                    if (response.hasIsFinish() && !response.getIsFinish()) {
+                        lastPk = response.getPk();
+                        lastTime = response.getTs();
+                    } else {
+                        pid++;
+                    }
                     continue;
                 }
                 lastPid = pid;
