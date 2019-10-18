@@ -762,21 +762,28 @@ bool DiskTableTraverseIterator::Valid() {
 
 void DiskTableTraverseIterator::Next() {
     for (it_->Next(); it_->Valid(); it_->Next()) {
-        std::string tmp_pk;
+        std::string last_pk = pk_;
         uint8_t cur_ts_idx = UINT8_MAX;
-        ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts_, cur_ts_idx);
         traverse_cnt_++;
         if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+            if (has_ts_idx_) {
+                uint64_t ts = 0;
+                std::string tmp_pk;
+                ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts, cur_ts_idx);
+                if (tmp_pk == pk_ && cur_ts_idx < ts_idx_) {
+                    ts_ = UINT64_MAX;
+                }
+            }
             break;
         }
-        if (tmp_pk == pk_) {
+        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+        if (last_pk == pk_) {
             if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                 continue;
             }
             record_idx_++;
         } else {
             record_idx_ = 0;
-            pk_ = tmp_pk;
             if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                 continue;
             }
@@ -807,11 +814,19 @@ void DiskTableTraverseIterator::SeekToFirst() {
     record_idx_ = 1;
     for (; it_->Valid(); it_->Next()) {
         uint8_t cur_ts_idx = UINT8_MAX;
-        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
         traverse_cnt_++;
         if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+            if (has_ts_idx_) {
+                uint64_t ts = 0;
+                std::string tmp_pk;
+                ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts, cur_ts_idx);
+                if (tmp_pk == pk_ && cur_ts_idx < ts_idx_) {
+                    ts_ = UINT64_MAX;
+                }
+            }
             break;
         }
+        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
         if (has_ts_idx_ && cur_ts_idx != ts_idx_) {
             continue;
         }
@@ -834,11 +849,19 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         record_idx_ = 0;
         for (; it_->Valid(); it_->Next()) {
             uint8_t cur_ts_idx = UINT8_MAX;
-            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
             traverse_cnt_++;
             if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+                if (has_ts_idx_) {
+                    std::string tmp_pk;
+                    uint64_t ts = 0;
+                    ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts, cur_ts_idx);
+                    if (has_ts_idx_ && tmp_pk == pk_ && cur_ts_idx < ts_idx_) {
+                        ts_ = UINT64_MAX;
+                    }
+                }
                 break;
             }
+            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
             if (pk_ == pk) {
                 if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                     continue;
@@ -862,11 +885,19 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
     } else {
         for (; it_->Valid(); it_->Next()) {
             uint8_t cur_ts_idx = UINT8_MAX;
-            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
             traverse_cnt_++;
             if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+                if (has_ts_idx_) {
+                    std::string tmp_pk;
+                    uint64_t ts = 0;
+                    ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts, cur_ts_idx);
+                    if (tmp_pk == pk_ && cur_ts_idx < ts_idx_) {
+                        ts_ = UINT64_MAX;
+                    }
+                }
                 break;
             }
+            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
             if (pk_ == pk) {
                 if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                     continue;
@@ -878,6 +909,9 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
                     NextPK();
                 }    
             } else {
+                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                    continue;
+                }
                 if (IsExpired()) {
                     NextPK();
                 }    
@@ -900,26 +934,36 @@ bool DiskTableTraverseIterator::IsExpired() {
 void DiskTableTraverseIterator::NextPK() {
     std::string last_pk = pk_;
     std::string combine;
-    it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0)));
+    if (has_ts_idx_) {
+        it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0, ts_idx_)));
+    } else {
+        it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0)));
+    }
     record_idx_ = 1;
     while (it_->Valid()) {
-        std::string tmp_pk;
         uint8_t cur_ts_idx = UINT8_MAX;
-        ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts_, cur_ts_idx);
         traverse_cnt_++;
         if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+            if (has_ts_idx_) {
+                std::string tmp_pk;
+                uint64_t ts = 0;
+                ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts, cur_ts_idx);
+                if (tmp_pk == pk_ && cur_ts_idx < ts_idx_) {
+                    ts_ = UINT64_MAX;
+                }
+            }
             break;
         }
-        if (tmp_pk != last_pk) {
+        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+        if (pk_ != last_pk) {
             if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                 it_->Next();
                 continue;
             }
             if (!IsExpired()) {
-                pk_ = tmp_pk;
                 return;
             } else {
-                last_pk = tmp_pk;
+                last_pk = pk_;
                 std::string combine;
                 if (has_ts_idx_) {
                     it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0, ts_idx_)));

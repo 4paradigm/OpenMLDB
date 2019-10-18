@@ -1491,12 +1491,21 @@ void TabletImpl::Traverse(RpcController* controller,
         value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
         total_block_size += last_pk.length() + value.size();
         scount ++;
+        if (it->GetCount() >= FLAGS_max_traverse_cnt) {
+            PDLOG(DEBUG, "traverse cnt %lu max %lu, key %s ts %lu", 
+                         it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(), last_time);
+            break;
+        }
     }
     bool is_finish = false;
     if (it->GetCount() >= FLAGS_max_traverse_cnt) {
-        PDLOG(DEBUG, "with ts %lu", last_pk.c_str(), last_time);
+        PDLOG(DEBUG, "traverse cnt %lu is great than max %lu, key %s ts %lu", 
+                      it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(), last_time);
         last_pk = it->GetPK();
         last_time = it->GetKey();
+        if (last_pk.empty()) {
+            is_finish = true;
+        }
     } else if (scount < request->limit()) {
         is_finish = true;
     }

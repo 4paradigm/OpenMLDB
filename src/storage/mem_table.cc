@@ -648,8 +648,7 @@ MemTableTraverseIterator::~MemTableTraverseIterator() {
 }
 
 bool MemTableTraverseIterator::Valid() {
-    if (traverse_cnt_ >= FLAGS_max_traverse_cnt) return false;
-    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid();
+    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid() && !IsExpired();
 }
 
 void MemTableTraverseIterator::Next() {
@@ -700,6 +699,7 @@ void MemTableTraverseIterator::NextPK() {
         }
         if (it_ != NULL) {
             delete it_;
+            it_ = NULL;
         }
         if (segments_[seg_idx_]->GetTsCnt() > 1) {
             KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];
@@ -744,8 +744,8 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
         }
         if (spk.compare(pk_it_->GetKey()) != 0) {
-            traverse_cnt_++;
             it_->SeekToFirst();
+            traverse_cnt_++;
             record_idx_ = 1;
             if (!it_->Valid() || IsExpired()) {
                 NextPK();
@@ -756,9 +756,6 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 record_idx_ = 1;
                 while(it_->Valid() && record_idx_ <= expire_value_) {
                     traverse_cnt_++;
-                    if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-                        return;
-                    }
                     if (it_->GetKey() < ts) {
                         return;
                     }
@@ -767,8 +764,8 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 }
                 NextPK();
             } else {
-                traverse_cnt_++;
                 it_->Seek(ts);
+                traverse_cnt_++;
                 if (it_->Valid() && it_->GetKey() == ts) {
                     it_->Next();
                 }
@@ -794,6 +791,9 @@ uint64_t MemTableTraverseIterator::GetKey() const {
 }
 
 std::string MemTableTraverseIterator::GetPK() const {
+    if (pk_it_ == NULL) {
+        return std::string();
+    }
     return pk_it_->GetKey().ToString();
 }
 
@@ -821,9 +821,6 @@ void MemTableTraverseIterator::SeekToFirst() {
             }
             it_->SeekToFirst();
             traverse_cnt_++;
-            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-                return;
-            }
             if (it_->Valid() && !IsExpired()) {
                 record_idx_ = 1;
                 return;
@@ -832,6 +829,9 @@ void MemTableTraverseIterator::SeekToFirst() {
             it_ = NULL;
             pk_it_->Next();
             ticket_.Pop();
+            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+                return;
+            }
         }
         delete pk_it_;
         pk_it_ = NULL;
