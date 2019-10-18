@@ -10,7 +10,12 @@ import libs.ddt as ddt
 import libs.conf as conf
 @ddt.ddt
 class TestChangeLeader(TestCaseBase):
-    def test_changeleader_master_disconnect(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_changeleader_master_disconnect(self,storage_mode):
         """
         changeleader功能正常，主节点断网后，可以手工故障切换，切换成功后从节点可以同步数据
         :return:
@@ -33,7 +38,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -126,8 +131,12 @@ class TestChangeLeader(TestCaseBase):
         self.assertIn('testvalue0', self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
         self.ns_drop(self.ns_leader, name)
 
-
-    def test_changeleader_master_killed(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_changeleader_master_killed(self,storage_mode):
         """
         changeleader功能正常，主节点挂掉后，可以手工故障切换，切换成功后从节点可以同步数据
         原主节点启动后可以手工recoversnapshot成功
@@ -150,7 +159,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -203,8 +212,12 @@ class TestChangeLeader(TestCaseBase):
         self.assertIn('testvalue0', self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
         self.ns_drop(self.ns_leader, name)
 
-
-    def test_changeleader_master_alive(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_changeleader_master_alive(self,storage_mode):
         """
         changeleader传入有主节点的表，执行失败. 加上auto参数可以执行成功
         :return:
@@ -221,7 +234,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -237,8 +250,12 @@ class TestChangeLeader(TestCaseBase):
         self.assertIn('change leader ok', rs3)
         time.sleep(3)
         self.ns_drop(self.ns_leader, name)
-
-    def test_changeleader_candidate_leader(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_changeleader_candidate_leader(self,storage_mode):
         """
         指定candidate_leader
         :return:
@@ -260,7 +277,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -294,8 +311,12 @@ class TestChangeLeader(TestCaseBase):
         self.multidimension_scan_vk = {'k1': 'testvalue1'}
         self.assertIn('testvalue1', self.scan(self.slave2, tid, 0, 'testkey1', self.now(), 1))
         self.ns_drop(self.ns_leader, name)
-
-    def test_changeleader_tname_notexist(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_changeleader_tname_notexist(self,storage_mode):
         """
         changeleader传入不存在的表名，执行失败
         :return:
@@ -312,7 +333,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -328,11 +349,13 @@ class TestChangeLeader(TestCaseBase):
 
 
     @ddt.data(
-        (0, 'auto', 'no'),
-        (1, 'auto', 'no'),
+        (0, 'auto', 'no','kSSD'),
+        (1, 'auto', 'no','kSSD'),
+        (0, 'auto', 'no','kHDD'),
+        (1, 'auto', 'no','kHDD'),
     )
     @ddt.unpack
-    def test_changeleader_auto_without_offline(self, pid, switch,rsp_msg):
+    def test_changeleader_auto_without_offline(self, pid, switch,rsp_msg,storage_mode):
         """
         不当机更新leader, auto模式（1 leader 2 follower)。在三个副本的情况下，进行changeleader 参数是auto，测试自动切换是否成功
         :return:
@@ -353,7 +376,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -397,15 +420,21 @@ class TestChangeLeader(TestCaseBase):
 
     @multi_dimension(False)
     @ddt.data(
-        (0, conf.tb_endpoints[1], 'no'),
-        (0, conf.tb_endpoints[2], 'no'),
-        (1, conf.tb_endpoints[1], 'no'),
-        (1, conf.tb_endpoints[2], 'no'),
-        (0, '', 'no'),
-        (1, '', 'no')
+        (0, conf.tb_endpoints[1], 'no','kSSD'),
+        (0, conf.tb_endpoints[2], 'no','kSSD'),
+        (1, conf.tb_endpoints[1], 'no','kSSD'),
+        (1, conf.tb_endpoints[2], 'no','kSSD'),
+        (0, '', 'no','kSSD'),
+        (1, '', 'no','kSSD'),
+        (0, conf.tb_endpoints[1], 'no','kHDD'),
+        (0, conf.tb_endpoints[2], 'no','kHDD'),
+        (1, conf.tb_endpoints[1], 'no','kHDD'),
+        (1, conf.tb_endpoints[2], 'no','kHDD'),
+        (0, '', 'no','kHDD'),
+        (1, '', 'no','kHDD'),
     )
     @ddt.unpack
-    def test_changeleader_endpoint_without_offline(self, pid, switch, rsp_msg):
+    def test_changeleader_endpoint_without_offline(self, pid, switch, rsp_msg,storage_mode):
         """
         不当机更新leader,指定endpoint模式,同时测试原leader在put数据的时候，是否会同步到其他节点的问题
         :return:
@@ -427,7 +456,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -499,15 +528,21 @@ class TestChangeLeader(TestCaseBase):
 
 
     @ddt.data(
-        (0, conf.tb_endpoints[1], 'no'),
-        (0, conf.tb_endpoints[2], 'no'),
-        (1, conf.tb_endpoints[1], 'no'),
-        (1, conf.tb_endpoints[2], 'no'),
-        (0, '', 'no'),
-        (1, '', 'no')
+        (0, conf.tb_endpoints[1], 'no','kSSD'),
+        (0, conf.tb_endpoints[2], 'no','kSSD'),
+        (1, conf.tb_endpoints[1], 'no','kSSD'),
+        (1, conf.tb_endpoints[2], 'no','kSSD'),
+        (0, '', 'no','kSSD'),
+        (1, '', 'no','kSSD'),
+        (0, conf.tb_endpoints[1], 'no','kHDD'),
+        (0, conf.tb_endpoints[2], 'no','kHDD'),
+        (1, conf.tb_endpoints[1], 'no','kHDD'),
+        (1, conf.tb_endpoints[2], 'no','kHDD'),
+        (0, '', 'no','kHDD'),
+        (1, '', 'no','kHDD'),
     )
     @ddt.unpack
-    def test_changeleader_with_illegal_parameter(self, pid, switch, rsp_msg):
+    def test_changeleader_with_illegal_parameter(self, pid, switch, rsp_msg,storage_mode):
         """
         不当机更新leader,针对changeleader的函数，测试不合法的参数值
         :return:
@@ -528,7 +563,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -567,11 +602,13 @@ class TestChangeLeader(TestCaseBase):
 
 
     @ddt.data(
-        (0, conf.tb_endpoints[1], conf.tb_endpoints[2], 'no'),
-        (1, conf.tb_endpoints[1], conf.tb_endpoints[2], 'no')
+        (0, conf.tb_endpoints[1], conf.tb_endpoints[2], 'no','kSSD'),
+        (1, conf.tb_endpoints[1], conf.tb_endpoints[2], 'no','kSSD'),
+        (0, conf.tb_endpoints[1], conf.tb_endpoints[2], 'no','kHDD'),
+        (1, conf.tb_endpoints[1], conf.tb_endpoints[2], 'no','kHDD'),
     )
     @ddt.unpack
-    def test_changeleader_with_many_times(self, pid, switch, switch1, rsp_msg):
+    def test_changeleader_with_many_times(self, pid, switch, switch1, rsp_msg,storage_mode):
         """
         不当机更新leader,多次changeleader。有follower情况，change成功，无follow情况，change失败
         :return:
@@ -592,7 +629,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -636,13 +673,17 @@ class TestChangeLeader(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-            (0, conf.tb_endpoints[1], 'no'),
-            (1, conf.tb_endpoints[1], 'no'),
-            (0, '', 'no'),
-            (1, '', 'no')
+            (0, conf.tb_endpoints[1], 'no','kSSD'),
+            (1, conf.tb_endpoints[1], 'no','kSSD'),
+            (0, '', 'no','kSSD'),
+            (1, '', 'no','kSSD'),
+            (0, conf.tb_endpoints[1], 'no','kHDD'),
+            (1, conf.tb_endpoints[1], 'no','kHDD'),
+            (0, '', 'no','kHDD'),
+            (1, '', 'no','kHDD'),
         )
     @ddt.unpack
-    def test_changeleader_endpoint_without_offline_with_one_follower_and_endpoint(self, pid, switch,rsp_msg):
+    def test_changeleader_endpoint_without_offline_with_one_follower_and_endpoint(self, pid, switch,rsp_msg,storage_mode):
         """
         不当机更新leader,指定endpoint模式。一个leader和一个follower，测试changeleader的结果
         :return:
@@ -662,7 +703,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-1","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -698,13 +739,17 @@ class TestChangeLeader(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-        (0, 'auto', 'no'),
-        (1, 'auto', 'no'),
-        (0, '', 'no'),
-        (1, '', 'no')
+        (0, 'auto', 'no','kSSD'),
+        (1, 'auto', 'no','kSSD'),
+        (0, '', 'no','kSSD'),
+        (1, '', 'no','kSSD'),
+        (0, 'auto', 'no','kHDD'),
+        (1, 'auto', 'no','kHDD'),
+        (0, '', 'no','kHDD'),
+        (1, '', 'no','kHDD'),
     )
     @ddt.unpack
-    def test_changeleader_endpoint_without_offline_with_one_follower_and_auto(self, pid, switch,rsp_msg):
+    def test_changeleader_endpoint_without_offline_with_one_follower_and_auto(self, pid, switch,rsp_msg,storage_mode):
         """
         不当机更新leader,auto模式。一个leader和一个follower,测试changeleader的结果
         :return:
@@ -724,7 +769,7 @@ class TestChangeLeader(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-1","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},

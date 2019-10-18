@@ -13,9 +13,12 @@ import collections
 class TestAutoFailover(TestCaseBase):
 
     @ddt.data(
-        'killed','network_failure'
+        ('killed','kSSD'),
+        ('network_failure','kSSD'),
+        ('killed','kHDD'),
+        ('network_failure','kHDD'),
     )
-    def test_auto_failover_master_exception(self, failover_reason):
+    def test_auto_failover_master_exception(self, failover_reason,storage_mode):
         """
         auto_failover=true：主节点挂掉或断网后，自动切换到新的主节点，原主is_alive为no
         :return:
@@ -36,7 +39,7 @@ class TestAutoFailover(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "1-2","is_leader": "false"},
@@ -95,9 +98,12 @@ class TestAutoFailover(TestCaseBase):
 
 
     @ddt.data(
-        'killed','network_failure'
+        ('killed','kSSD'),
+        ('network_failure','kSSD'),
+        ('killed','kHDD'),
+        ('network_failure','kHDD'),
     )
-    def test_auto_failover_slave_exception(self, failover_reason):
+    def test_auto_failover_slave_exception(self, failover_reason,storage_mode):
         """
         auto_failover=true：从节点挂掉或断网后，showtable中从节点is_alive为no
         auto_failover=true：从节点挂掉或断网后，showtablet中从节点为offline状态
@@ -117,7 +123,7 @@ class TestAutoFailover(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -162,8 +168,12 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.get_new_ns_leader()
         self.ns_drop(self.ns_leader, name)
-
-    def test_auto_failover_slave_network_flashbreak(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_auto_failover_slave_network_flashbreak(self,storage_mode):
         """
         auto_failover=true：连续两次主节点闪断，故障切换成功
         :return:
@@ -181,7 +191,7 @@ class TestAutoFailover(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -232,7 +242,12 @@ class TestAutoFailover(TestCaseBase):
 
 
     @multi_dimension(False)
-    def test_select_leader(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_select_leader(self,storage_mode):
         """
         slave1改为leader role，put数据后改回follower role，leader发生故障后，新主会切换到slave1，数据同步正确
         :return:
@@ -254,7 +269,7 @@ class TestAutoFailover(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0","is_leader": "false"},
@@ -322,8 +337,12 @@ class TestAutoFailover(TestCaseBase):
         rs_scan = self.scan(self.leader, tid, pid, 'testkey1', self.now() + 19999, 1)
         self.assertTrue('ccard1' in rs_scan)
         rs = self.ns_drop(self.ns_leader, name)
-
-    def test_enable_auto_failover(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_enable_auto_failover(self,storage_mode):
         """
         auto_failover开启时不能执行手动恢复命令
         :return:
@@ -336,7 +355,7 @@ class TestAutoFailover(TestCaseBase):
             "ttl": 144000,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
@@ -367,8 +386,12 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn(msg, rs)
         self.confset(self.ns_leader, 'auto_failover', 'false')
         rs = self.ns_drop(self.ns_leader, name)
-
-    def test_unable_auto_failover(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_unable_auto_failover(self,storage_mode):
         """
         auto_failover关闭时，可以手动执行恢复相关命名
         :return:
@@ -381,7 +404,7 @@ class TestAutoFailover(TestCaseBase):
             "ttl": 144000,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
@@ -415,8 +438,12 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn('update ok', rs)
         self.get_new_ns_leader()
         rs = self.ns_drop(self.ns_leader, name)
-
-    def test_auto_failover_kill_tablet(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_auto_failover_kill_tablet(self,storage_mode):
         """
         auto_failover打开后，下线一个tablet，自动恢复数据后，follower追平leader的offset
         :return:
@@ -436,7 +463,7 @@ class TestAutoFailover(TestCaseBase):
             "ttl": 144000,
             "partition_num": 1,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
@@ -470,8 +497,12 @@ class TestAutoFailover(TestCaseBase):
         self.confset(self.ns_leader, 'auto_failover', 'false')
         self.get_new_ns_leader()
         self.ns_drop(self.ns_leader, name)
-
-    def test_auto_failover_kill_ns(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_auto_failover_kill_ns(self,storage_mode):
         """
         auto_failover打开后，下线一个tablet和nameserver,在超时时间内，tablet自动恢复，leader和下线的节点的offset保持一致
         :return:
@@ -486,7 +517,7 @@ class TestAutoFailover(TestCaseBase):
             "ttl": 144000,
             "partition_num": 1,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
@@ -539,8 +570,12 @@ class TestAutoFailover(TestCaseBase):
         self.start_client(self.ns_leader, 'nameserver')
         self.get_new_ns_leader()
         self.ns_drop(self.ns_leader, name)
-
-    def test_auto_failover_disconnectzk(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_auto_failover_disconnectzk(self,storage_mode):
         """
         auto_failover打开后，然后put数据，disconnectzk的所有tablet。最后一个节点状态应该不变
         :return:
@@ -555,7 +590,7 @@ class TestAutoFailover(TestCaseBase):
             "ttl": 144000,
             "partition_num": 1,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
@@ -606,8 +641,12 @@ class TestAutoFailover(TestCaseBase):
         self.get_new_ns_leader()
         time.sleep(3)
         self.ns_drop(self.ns_leader, name)
-
-    def test_auto_failover_restart_tablet_twice(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_auto_failover_restart_tablet_twice(self,storage_mode):
         """
         重启两次tablet,kill掉一个tablet,然后重启，数据恢复后，再次重启。
         判断逻辑，通过put数据前后之差是否一致。如果一致，说明主从关系正常
@@ -626,7 +665,7 @@ class TestAutoFailover(TestCaseBase):
             "ttl": ttl,
             "partition_num": pid_number,
             "replica_num": endpoint_number,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
@@ -677,8 +716,12 @@ class TestAutoFailover(TestCaseBase):
 
         self.confset(self.ns_leader, 'auto_failover', 'false')
         self.ns_drop(self.ns_leader, name)
-
-    def test_auto_failover_restart_tablet_twice_continuously(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_auto_failover_restart_tablet_twice_continuously(self,storage_mode):
         """
         重启两次tablet,kill掉一个tablet,然后重启，数据正在恢复中，再次重启
         判断逻辑，通过put数据前后之差是否一致。如果一致，说明主从关系正常
@@ -696,7 +739,7 @@ class TestAutoFailover(TestCaseBase):
             "ttl": ttl,
             "partition_num": pid_number,
             "replica_num": endpoint_number,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)

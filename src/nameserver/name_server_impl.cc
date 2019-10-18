@@ -2121,6 +2121,8 @@ void NameServerImpl::AddTableField(RpcController* controller,
     ::rtidb::base::ColumnDesc column;
     column.name = request->column_desc().name();
     column.type = rtidb::base::SchemaCodec::ConvertType(request->column_desc().type());
+    column.add_ts_idx = false;
+    column.is_ts_col = false;
     columns.push_back(column);
     ::rtidb::base::SchemaCodec codec;
     if (!codec.Encode(columns, schema)) {

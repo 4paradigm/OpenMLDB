@@ -11,8 +11,12 @@ import libs.utils as utils
 
 @ddt.ddt
 class TestCount(TestCaseBase):
-
-    def test_count_kv(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_count_kv(self,storage_mode):
         """
         kv表统计pk下的条数
         :return:
@@ -25,7 +29,7 @@ class TestCount(TestCaseBase):
             "ttl": 0,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
@@ -48,8 +52,12 @@ class TestCount(TestCaseBase):
         self.assertIn('count: 2', rs7)
         rs8 = self.ns_count(self.ns_leader, name, 'testkeyx', '', 'true')
         self.assertIn('count: 0', rs8)
-
-    def test_count_kv_latest(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_count_kv_latest(self,storage_mode):
         """
         kv表统计pk下的条数
         :return:
@@ -63,7 +71,7 @@ class TestCount(TestCaseBase):
             "ttl": 2,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
@@ -82,8 +90,12 @@ class TestCount(TestCaseBase):
         self.assertIn('count: 2', rs5)
         rs6 = self.ns_count(self.ns_leader, name, 'testkey0', '', 'true')
         self.assertIn('count: 2', rs6)
-
-    def test_count_schema(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_count_schema(self,storage_mode):
         """
         schema表统计pk下的条数
         :return:
@@ -105,7 +117,7 @@ class TestCount(TestCaseBase):
             "name": name,
             "ttl": 0,
             "partition_num": 8,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},

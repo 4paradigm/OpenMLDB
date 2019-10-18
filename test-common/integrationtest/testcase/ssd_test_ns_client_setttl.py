@@ -11,8 +11,12 @@ import libs.utils as utils
 
 @ddt.ddt
 class TestSetTTL(TestCaseBase):
-
-    def test_set_ttl_normal(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_set_ttl_normal(self,storage_mode):
         """
         测试setttl函数，正常修改ttl值，查看返回值
         :return:
@@ -25,7 +29,7 @@ class TestSetTTL(TestCaseBase):
             "ttl": 10,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs_absolute1 = self.ns_create(self.ns_leader, metadata_path)
@@ -39,7 +43,7 @@ class TestSetTTL(TestCaseBase):
             "ttl": 10,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs_latest1 = self.ns_create(self.ns_leader, metadata_path)
@@ -59,8 +63,12 @@ class TestSetTTL(TestCaseBase):
         self.assertIn('Set ttl failed! fail to update ttl from tablet', rs_absolute3)
         self.assertIn('Set ttl failed! fail to update ttl from tablet', rs_latest3)
 
-
-    def test_set_ttl_expired(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_set_ttl_expired(self,storage_mode):
         """
         测试修改后的ttl值，scan后的数据被删除。两种类型latest和absolute都要测试
         :return:
@@ -73,7 +81,7 @@ class TestSetTTL(TestCaseBase):
             "ttl": 10,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs_absolute1 = self.ns_create(self.ns_leader, metadata_path)
@@ -87,7 +95,7 @@ class TestSetTTL(TestCaseBase):
             "ttl": 10,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs_latest1 = self.ns_create(self.ns_leader, metadata_path)
@@ -122,14 +130,18 @@ class TestSetTTL(TestCaseBase):
 
         rs_absolute5 = self.ns_scan_kv(self.ns_leader, 't1', 'testkey0', str(rs_time), '0', ' ')
         self.assertEqual(0, len(rs_absolute5))
-
-    def test_set_ttl_ts_name(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_set_ttl_ts_name(self,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
                 "name": name,
                 "ttl": 14400,
-                "storage_mode": "kSSD",
+                "storage_mode": storage_mode,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -158,15 +170,19 @@ class TestSetTTL(TestCaseBase):
         self.assertEqual(column_key[1], ["1", "card", "card", "ts2", "100min"])
         self.assertEqual(column_key[2], ["2", "mcc", "mcc", "ts2", "100min"])
         self.ns_drop(self.ns_leader, name)
-
-    def test_set_ttl_ts_name_latest(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_set_ttl_ts_name_latest(self,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
                 "name": name,
                 "ttl": 100,
                 "ttl_type": "kLatestTime",
-                "storage_mode": "kSSD",
+                "storage_mode": storage_mode,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},

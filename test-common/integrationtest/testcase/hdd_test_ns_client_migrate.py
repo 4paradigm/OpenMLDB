@@ -30,7 +30,7 @@ class TestNameserverMigrate(TestCaseBase):
         table_meta = {
             "name": tname,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": "kHDD",
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-10","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "3-8","is_leader": "false"},
