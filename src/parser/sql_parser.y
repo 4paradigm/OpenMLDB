@@ -108,6 +108,7 @@ typedef void* yyscan_t;
 %token CONVERT
 %token CREATE
 %token CROSS
+%token CURRENT
 %token CURRENT_DATE
 %token CURRENT_TIME
 %token CURRENT_TIMESTAMP
@@ -150,6 +151,7 @@ typedef void* yyscan_t;
 %token FOR
 %token FORCE
 %token FOREIGN
+%token FOLLOWING
 %token FROM
 %token FULLTEXT
 %token GRANT
@@ -215,11 +217,14 @@ typedef void* yyscan_t;
 %token OUT
 %token OUTER
 %token OUTFILE
+%token OVER
+%token PARTITION
 %token PRECISION
 %token PRIMARY
 %token PROCEDURE
 %token PURGE
 %token QUICK
+%token RANGE
 %token READ
 %token READS
 %token REAL
@@ -233,8 +238,11 @@ typedef void* yyscan_t;
 %token RESTRICT
 %token RETURN
 %token REVOKE
+%token PRECEDING
 %token RIGHT
 %token ROLLUP
+%token ROW
+%token ROWS
 %token SCHEMA
 %token SCHEMAS
 %token SECOND_MICROSECOND
@@ -280,6 +288,7 @@ typedef void* yyscan_t;
 %token USAGE
 %token USE
 %token USING
+%token UNBOUNDED
 %token UTC_DATE
 %token UTC_TIME
 %token UTC_TIMESTAMP
@@ -287,6 +296,7 @@ typedef void* yyscan_t;
 %token VARBINARY
 %token VARCHAR
 %token VARYING
+%token WINDOW
 %token WHEN
 %token WHERE
 %token WHILE
@@ -304,20 +314,29 @@ typedef void* yyscan_t;
 %token FCOUNT
 
 %type <node>  sql_stmt stmt select_stmt select_opts select_expr
-              opt_all_clause expr
-              table_factor, table_reference
+              opt_all_clause
+              table_factor table_reference
               column_ref
-              simple_expr
+              expr simple_expr func_expr expr_const
+              sortby opt_frame_clause frame_extent frame_bound
+              window_definition window_specification over_clause
 
 %type <target> projection
 
 %type <list> val_list opt_val_list case_list
-            opt_target_list select_expr_list
+            opt_target_list
+            select_expr_list expr_list
             table_references
+            opt_sort_clause sort_clause sortby_list
+            window_clause window_definition_list opt_partition_clause
+
 
 %type <strval> relation_name relation_factor
                column_name
                function_name
+               opt_existing_window_name
+
+%type <intval> opt_window_exclusion_clause
 %type <node> groupby_list opt_with_rollup opt_asc_desc
 %type <node> opt_inner_cross opt_outer
 %type <node> left_or_right opt_left_or_right_outer column_list
@@ -334,14 +353,7 @@ typedef void* yyscan_t;
 %%
 
 sql_stmt: stmt ';' {
-                            emit("sql_stmt >> ");
-                            if (NULL == $1) {
-                                emit("stmt is NULL");
-                            } else {
-                                emit("stmt is not NULL");
-                            }
                             nodelist->PushFront($1);
-                            emit("node list size %d", nodelist->Size());
                             YYACCEPT;}
     ;
 
@@ -349,17 +361,18 @@ sql_stmt: stmt ';' {
 
 stmt: select_stmt {
                     $$ = $1;
-                    emit("stmt"); }
+                    }
+
    ;
 
 select_stmt:
-    SELECT opt_all_clause opt_target_list FROM table_references
+    SELECT opt_all_clause opt_target_list FROM table_references window_clause
             {
-                emit("select_stmt >>");
                 $$ = ::fedb::sql::MakeNode(::fedb::sql::kSelectStmt);
 
-                ((::fedb::sql::SelectStmt*)$$)->select_list_ = $3;
-                ((::fedb::sql::SelectStmt*)$$)->tableref_list_ = $5;
+                ((::fedb::sql::SelectStmt*)$$)->select_list_ptr_ = $3;
+                ((::fedb::sql::SelectStmt*)$$)->tableref_list_ptr_ = $5;
+                ((::fedb::sql::SelectStmt*)$$)->window_clause_ptr_ = $6;
             }
     ;
 
@@ -381,19 +394,14 @@ opt_target_list: select_expr_list						{ $$ = $1; }
 		;
 select_expr_list: projection {
                             $$ = ::fedb::sql::MakeNodeList($1);
-                            emit("select expr list size: %d", $$->Size());
                        }
     | projection ',' select_expr_list
     {
         ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
         new_list->AppendNodeList($3);
         $$ = new_list;
-        emit("select expr list size: >> %d", NULL == $$ ? 0 : $$->Size());
     }
-    | '*'               { emit("SELECTALL"); }
     ;
-
-
 
 projection:
     expr
@@ -408,7 +416,23 @@ projection:
     {
         $$ = ::fedb::sql::MakeResTargetNode($1, $3);
     }
+    | '*'
+        {
+            ::fedb::sql::SQLNode *pNode = ::fedb::sql::MakeNode(::fedb::sql::kAll);
+            $$ = ::fedb::sql::MakeResTargetNode(pNode, "");
+        }
+      ;
     ;
+
+over_clause: OVER window_specification
+				{ $$ = $2; }
+			| OVER NAME
+				{
+				    $$ = ::fedb::sql::MakeWindowDefNode($2);
+				}
+			| /*EMPTY*/
+				{ $$ = NULL; }
+		;
 
 table_references:    table_reference { $$ = ::fedb::sql::MakeNodeList($1); }
     | table_reference ',' table_references
@@ -474,14 +498,198 @@ opt_as_alias: AS NAME {
 
 
 /**** expressions ****/
+expr_list:
+    expr
+    {
+      $$ = ::fedb::sql::MakeNodeList($1);
+    }
+  | expr ',' expr_list
+    {
+        ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
+        new_list->AppendNodeList($3);
+        $$ = new_list;
+    }
+  ;
 expr:
     simple_expr   { $$ = $1; }
+    |func_expr  { $$ = $1; }
     ;
 
 simple_expr:
     column_ref
         { $$ = $1; }
+    | expr_const
+        { $$ = $1; }
+
     ;
+
+expr_const:
+    STRING
+        { $$ = (::fedb::sql::SQLNode*)(new ::fedb::sql::ConstNode($1)); }
+  | INTNUM
+        { $$ = (::fedb::sql::SQLNode*)(new ::fedb::sql::ConstNode($1)); }
+  | APPROXNUM
+        { $$ = (::fedb::sql::SQLNode*)(new ::fedb::sql::ConstNode($1)); }
+  | BOOL
+        { $$ = (::fedb::sql::SQLNode*)(new ::fedb::sql::ConstNode($1)); }
+  | NULLX
+        { $$ = (::fedb::sql::SQLNode*)(new ::fedb::sql::ConstNode()); }
+  ;
+func_expr:
+    function_name '(' '*' ')' over_clause
+    {
+          if (strcasecmp($1, "count") != 0)
+          {
+            yyerror_msg("Only COUNT function can be with '*' parameter!");
+            YYABORT;
+          }
+          else
+          {
+            $$ = ::fedb::sql::MakeFuncNode($1, NULL, $5);
+          }
+    }
+    | function_name '(' expr_list ')' over_clause
+    {
+        $$ = ::fedb::sql::MakeFuncNode($1, $3, $5);
+    }
+
+/***** Window Definitions */
+window_clause:
+			WINDOW window_definition_list			{ $$ = $2; }
+			| /*EMPTY*/								{ $$ = NULL; }
+		;
+
+window_definition_list:
+    window_definition
+    {
+        $$ = ::fedb::sql::MakeNodeList($1);
+    }
+	| window_definition ',' window_definition_list
+	{
+        ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
+        new_list->AppendNodeList($3);
+        $$ = new_list;
+	}
+	;
+
+window_definition:
+		NAME AS window_specification
+		{
+		    ((::fedb::sql::WindowDefNode*)$3)->SetName($1);
+		    $$ = $3;
+		}
+		;
+
+window_specification: '(' opt_existing_window_name opt_partition_clause
+						opt_sort_clause opt_frame_clause ')'
+				{
+				    $$ = ::fedb::sql::MakeWindowDefNode($3, $4, $5);
+				}
+		;
+
+opt_existing_window_name:
+						NAME { $$ = $1; }
+                        | /*EMPTY*/		%prec Op    { $$ = NULL; }
+                        ;
+opt_partition_clause: PARTITION BY expr_list		{ $$ = $3; }
+			            | /*EMPTY*/					{ $$ = NULL; }
+
+
+/*===========================================================
+ *
+ *	Sort By Clasuse
+ *
+ *===========================================================*/
+
+opt_sort_clause:
+			sort_clause								{ $$ = $1;}
+			| /*EMPTY*/								{ $$ = NULL; }
+		    ;
+
+sort_clause:
+			ORDER BY sortby_list					{ $$ = $3; }
+		    ;
+
+sortby_list:
+			sortby
+			{
+			     $$ = ::fedb::sql::MakeNodeList($1);
+			}
+			|sortby ',' sortby_list
+			{
+			    ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
+                new_list->AppendNodeList($3);
+                $$ = new_list;
+			}
+		    ;
+
+sortby:	column_name
+		{
+		    ::fedb::sql::SQLNode* node_ptr = ::fedb::sql::MakeColumnRefNode($1, "");
+		    $$ = ::fedb::sql::MakeOrderByNode(node_ptr);
+		}
+		;
+
+/*===========================================================
+ *
+ *	Frame Clasuse
+ *
+ *===========================================================*/
+opt_frame_clause:
+	        RANGE frame_extent opt_window_exclusion_clause
+				{
+				    ((::fedb::sql::FramesNode*)$2)->SetFrameType(::fedb::sql::kFrameRange);
+				    $$ = $2;
+
+				}
+			| ROWS frame_extent opt_window_exclusion_clause
+				{
+				    ((::fedb::sql::FramesNode*)$2)->SetFrameType(::fedb::sql::kFrameRows);
+				    $$ = $2;
+				}
+			|
+			/*EMPTY*/
+			{
+			    $$ = NULL;
+		    }
+		    ;
+
+opt_window_exclusion_clause:
+            | /*EMPTY*/				{ $$ = 0; }
+            ;
+frame_extent: frame_bound
+				{
+				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FramesNode(::fedb::sql::kFrameRange, $1, NULL));
+				}
+			| BETWEEN frame_bound AND frame_bound
+				{
+				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FramesNode(::fedb::sql::kFrameRange, $2, $4));
+				}
+		;
+
+
+frame_bound:
+			UNBOUNDED PRECEDING
+				{
+				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FrameBound(fedb::sql::kPreceding));
+				}
+			| UNBOUNDED FOLLOWING
+				{
+				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FrameBound(fedb::sql::kFollowing));
+				}
+			| CURRENT ROW
+				{
+				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FrameBound(fedb::sql::kCurrent));
+				}
+			| expr PRECEDING
+				{
+				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FrameBound(fedb::sql::kPreceding, $1));
+				}
+			| expr FOLLOWING
+				{
+				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FrameBound(fedb::sql::kFollowing, $1));
+				}
+		;
 
 column_ref:
     column_name

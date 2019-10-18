@@ -30,11 +30,11 @@ public:
 
 TEST_F(SqlNodeTest, MakeNode) {
     using namespace std;
-    SQLNode *node = fedb::sql::MakeNode(kConst);
+    SQLNode *node = fedb::sql::MakeNode(kAll);
     cout << *node << endl;
     std::strstream out;
     out << *node;
-    ASSERT_STREQ("+kConst {valtype: unknown, }",
+    ASSERT_STREQ("+kAll",
                  out.str());
 }
 
@@ -87,6 +87,18 @@ TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
     ASSERT_STREQ("+kFloat\n"
                      "+\tvalue: 1.234",
                  out.str());
+}
+
+TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
+    SQLNodeList * partitions = NULL;
+    SQLNodeList * orders= NULL;
+    SQLNode* start = NULL;
+    SQLNode* end = NULL;
+    SQLNode *node_ptr = MakeWindowDefNode(partitions, orders, start, end);
+    ASSERT_EQ(kWindowDef, node_ptr->GetType());
+    std::strstream out;
+    out << *node_ptr;
+    std::cout << out.str() << std::endl;
 }
 
 } // namespace of base

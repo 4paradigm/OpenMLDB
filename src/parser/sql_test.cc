@@ -40,13 +40,32 @@ INSTANTIATE_TEST_CASE_P(StringReturn, SqlTest, testing::Values(
     "SELECT COL1 c1 FROM t1;",
     "SELECT t1.COL1 FROM t1;",
     "SELECT t1.COL1 as c1 FROM t1;",
-    "SELECT t1.COL1 c1 FROM t1;"
+    "SELECT t1.COL1 c1 FROM t1;",
+    "SELECT * FROM t1;",
+    "SELECT COUNT(*) FROM t1;",
+    "SELECT COUNT(COL1) FROM t1;",
+    "SELECT TRIM(COL1) FROM t1;",
+    "SELECT trim(COL1) as trim_col1 FROM t1;",
+    "SELECT MIN(COL1) FROM t1;",
+    "SELECT min(COL1) FROM t1;",
+    "SELECT MAX(COL1) FROM t1;",
+    "SELECT max(COL1) as max_col1 FROM t1;",
+    "SELECT SUM(COL1) FROM t1;",
+    "SELECT sum(COL1) as sum_col1 FROM t1;",
+    "SELECT COL1, COL2, TS, AVG(AMT) OVER w, SUM(AMT) OVER w FROM t \n"
+        "WINDOW w AS (PARTITION BY COL2\n"
+        "              ORDER BY TS ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);",
+
+    "SELECT COL1, trim(COL2), TS, AVG(AMT) OVER w, SUM(AMT) OVER w FROM t \n"
+        "WINDOW w AS (PARTITION BY COL2\n"
+        "              ORDER BY TS ROWS BETWEEN 3 PRECEDING AND 3 FOLLOWING);"
 
 ));
 
 TEST_P(SqlTest, Parser_Select_Expr_List) {
     std::string sqlstr = GetParam();
     SQLNodeList *list = new SQLNodeList();
+    std::cout << sqlstr << std::endl;
     int ret = FeSqlParse(sqlstr.c_str(), list);
 
     ASSERT_EQ(0, ret);

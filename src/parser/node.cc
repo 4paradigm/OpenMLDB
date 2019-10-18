@@ -24,12 +24,22 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kColumn: output = "kColumn";
             break;
-        case kExpr: output = "kExpr";
-            break;
+        case kExpr: output = "kExpr"; break;
+        case kFunc: output = "kFunc"; break;
+        case kWindowDef: output = "kWindowDef"; break;
+        case kFrames: output = "kFrame"; break;
+        case kFrameBound: output = "kBound"; break;
+        case kPreceding: output = "kPreceding"; break;
+        case kFollowing: output = "kFollowing"; break;
+        case kCurrent: output = "kCurrent"; break;
+        case kFrameRange: output = "kFrameRange"; break;
+        case kFrameRows: output = "kFrameRows"; break;
         case kConst: output = "kConst";
             break;
-        case kInt: output = "kInt";
+        case kAll: output = "kAll";
             break;
+        case kNull: output = "kNull"; break;
+        case kInt: output = "kInt"; break;
         case kBigInt: output = "kBigInt";
             break;
         case kFloat: output = "kFloat";
@@ -47,35 +57,66 @@ SQLNode *MakeNode(const SQLNodeType &type, ...) {
     switch (type) {
         case kSelectStmt:return new SelectStmt();
         case kResTarget:return new ResTarget();
+        case kAll:return new SQLNode(type, 0, 0);
         default:return new UnknowSqlNode();
     }
 }
 
+
 ////////////////// Make Table Node///////////////////////////////////
 SQLNode *MakeTableNode(const std::string &name, const std::string &alias) {
-    TableNode *node = new TableNode(name, alias);
-    return (SQLNode *) node;
+    TableNode *node_ptr= new TableNode(name, alias);
+    return (SQLNode *) node_ptr;
 }
+
+
+////////////////// Make Function Node///////////////////////////////////
+SQLNode *MakeFuncNode(const std::string &name, SQLNodeList *pList, SQLNode *over) {
+    FuncNode * node_ptr = new FuncNode(name, pList, (WindowDefNode*)(over));
+    return (SQLNode*) node_ptr;
+}
+
+
+
 
 ////////////////// Make ResTarget Node///////////////////////////////////
 SQLNode *MakeResTargetNode(SQLNode *node, const std::string &name) {
-    ResTarget *pNode = new ResTarget();
-    pNode->setName(name);
-    pNode->setVal(node);
-    return pNode;
+    ResTarget *node_ptr = new ResTarget();
+    node_ptr->setName(name);
+    node_ptr->setVal(node);
+    return node_ptr;
 }
 
 ////////////////// Make Column Reference Node///////////////////////////////////
 SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name) {
-    ColumnRefNode *node = new ColumnRefNode(column_name, relation_name);
-    return (SQLNode *) node;
+    ColumnRefNode *node_ptr = new ColumnRefNode(column_name, relation_name);
+    return (SQLNode *) node_ptr;
 }
 
 ///////////////// Make SQL Node List with single Node/////////////////////////
-SQLNodeList *MakeNodeList(SQLNode *node) {
-    SQLLinkedNode *head = new SQLLinkedNode(node);
-    SQLNodeList *new_list = new SQLNodeList(head, head, 1);
-    return new_list;
+SQLNodeList *MakeNodeList(SQLNode *node_ptr) {
+    SQLLinkedNode *head = new SQLLinkedNode(node_ptr);
+    SQLNodeList *new_list_ptr = new SQLNodeList(head, head, 1);
+    return new_list_ptr;
+}
+
+////////////////// Make Function Node///////////////////////////////////
+SQLNode *MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList* orders, SQLNode *frame) {
+    WindowDefNode *node_ptr = new WindowDefNode();
+    FillWindowSpection(node_ptr, partitions, orders, frame);
+    return (SQLNode*) node_ptr;
+}
+
+SQLNode *MakeWindowDefNode(const std::string &name) {
+    WindowDefNode *node_ptr = new WindowDefNode();
+    node_ptr->SetName(name);
+    return (SQLNode*) node_ptr;
+}
+
+////////////////// Make Function Node///////////////////////////////////
+SQLNode *MakeOrderByNode(SQLNode *order) {
+    OrderByNode *node_ptr = new OrderByNode(order);
+    return (SQLNode*) node_ptr;
 }
 
 // FIXME: this overloading does not work

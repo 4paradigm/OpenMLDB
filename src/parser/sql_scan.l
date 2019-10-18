@@ -94,6 +94,7 @@ EXIT	{ return EXIT; }
 EXPLAIN	{ return EXPLAIN; }
 FETCH	{ return FETCH; }
 FLOAT4?	{ return FLOAT; }
+FOLLOWING   {return FOLLOWING;  }
 FOR	{ return FOR; }
 FORCE	{ return FORCE; }
 FOREIGN	{ return FOREIGN; }
@@ -161,7 +162,13 @@ ORDER	{ return ORDER; }
 OUT	{ return OUT; }
 OUTER	{ return OUTER; }
 OUTFILE	{ return OUTFILE; }
+OVER    { return OVER; }
+RANGE   {return RANGE;  }
+ROW   {return ROW;  }
+ROWS   {return ROWS;  }
+PARTITION   { return PARTITION; }
 PRECISION	{ return PRECISION; }
+PRECEDING   {return PRECEDING;  }
 PRIMARY	{ return PRIMARY; }
 PROCEDURE	{ return PROCEDURE; }
 PURGE	{ return PURGE; }
@@ -221,6 +228,7 @@ UNION	{ return UNION; }
 UNIQUE	{ return UNIQUE; }
 UNLOCK	{ return UNLOCK; }
 UNSIGNED	{ return UNSIGNED; }
+UNBOUNDED   {return UNBOUNDED;  }
 UPDATE	{ return UPDATE; }
 USAGE	{ return USAGE; }
 USE	{ return USE; }
@@ -237,6 +245,7 @@ WHERE	{ return WHERE; }
 WHILE	{ return WHILE; }
 WITH	{ return WITH; }
 WRITE	{ return WRITE; }
+WINDOW  { return WINDOW; }
 XOR	{ return XOR; }
 YEAR	{ return YEAR; }
 YEAR_MONTH	{ return YEAR_MONTH; }
@@ -293,19 +302,7 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 "<<"	{ yylval->subtok = 1; return SHIFT; }
 ">>"	{ yylval->subtok = 2; return SHIFT; }
 
-        /* functions */
 
-SUBSTR(ING)?/"(" { return FSUBSTRING; }
-TRIM/"(" { return FTRIM; }
-DATE_ADD/"(" { return FDATE_ADD; }
-DATE_SUB/"(" { return FDATE_SUB; }
-
-	/*
-         * peek ahead and return function if name(
-         */
-COUNT    {
-           yylval->strval = strdup(yytext);
-           return NAME; }
 
 [A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
                           return NAME; }
