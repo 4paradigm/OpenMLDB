@@ -114,7 +114,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, pid)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])
-        self.assertEqual(mf['count'], '0')
+        self.assertEqual(mf['count'], '1')
         self.assertFalse(mf['term'] == '0')
         last_op_id = max(self.showopstatus(self.ns_leader).keys())
         self.assertFalse(old_last_op_id == last_op_id)
@@ -290,11 +290,11 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.assertEqual(mf['count'], '1')
         self.ns_drop(self.ns_leader, name)
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
-    def test_one_ts(self,storage_mode):
+    def test_one_ts(self,db_path,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
@@ -328,16 +328,17 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
         self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest(self.leaderpath, tid, 0)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
+        # mf = self.get_manifest(self.leaderpath, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '5')
         self.ns_drop(self.ns_leader, name)
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
-    def test_one_ts(self,storage_mode):
+    def test_one_ts(self,db_path,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
@@ -371,15 +372,16 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
         self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest(self.leaderpath, tid, 0)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
+        # mf = self.get_manifest(self.leaderpath, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '5')
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
-    def test_two_ts(self,storage_mode):
+    def test_two_ts(self,db_path,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
@@ -418,15 +420,16 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
         self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest(self.leaderpath, tid, 0)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
+        # mf = self.get_manifest(self.leaderpath, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '4')
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
-    def test_two_ts_1(self,storage_mode):
+    def test_two_ts_1(self,db_path,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
@@ -465,15 +468,16 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
         self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest(self.leaderpath, tid, 0)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
+        # mf = self.get_manifest(self.leaderpath, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '4')
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
-    def test_two_ts_ttl(self,storage_mode):
+    def test_two_ts_ttl(self,db_path,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
@@ -512,15 +516,16 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
         self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest(self.leaderpath, tid, 0)
+        # mf = self.get_manifest(self.leaderpath, tid, 0)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '5')
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
-    def test_one_ts_latest(self,storage_mode):
+    def test_one_ts_latest(self,db_path,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
@@ -560,15 +565,16 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
         self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest(self.leaderpath, tid, 0)
+        # mf = self.get_manifest(self.leaderpath, tid, 0)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '6')
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
-    def test_one_ts_two_index_latest(self,storage_mode):
+    def test_one_ts_two_index_latest(self,db_path,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
@@ -609,15 +615,16 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
         self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest(self.leaderpath, tid, 0)
+        # mf = self.get_manifest(self.leaderpath, tid, 0)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '6')
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
-    def test_two_ts_latest_ttl(self,storage_mode):
+    def test_two_ts_latest_ttl(self,db_path,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
@@ -658,15 +665,16 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
         self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest(self.leaderpath, tid, 0)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
+        # mf = self.get_manifest(self.leaderpath, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '6')
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
-    def test_two_ts_two_index_latest_ttl(self, storage_mode):
+    def test_two_ts_two_index_latest_ttl(self, db_path,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
@@ -710,7 +718,8 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
         self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest(self.leaderpath, tid, 0)
+        # mf = self.get_manifest(self.leaderpath, tid, 0)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '9')
         self.assertEqual(mf['count'], '7')
 
