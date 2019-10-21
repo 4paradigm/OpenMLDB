@@ -20,6 +20,10 @@
 namespace fedb {
 namespace sql {
 
+/**
+ * TODO: add unit test for MakeXXXXXNode
+ * add unit test and check attributions
+ */
 class SqlNodeTest : public ::testing::Test {
 
 public:

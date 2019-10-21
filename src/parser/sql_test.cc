@@ -21,12 +21,7 @@
 namespace fedb {
 namespace sql {
 
-struct StringPair {
-    StringPair(const std::string &sqlstr, const std::string &exp) : sqlstr_(sqlstr), exp_(exp) {}
-    std::string sqlstr_;
-    std::string exp_;
-};
-
+// TODO: add ut: 检查SQL的语法树节点预期 2019.10.23
 class SqlTest : public ::testing::TestWithParam<std::string> {
 
 public:

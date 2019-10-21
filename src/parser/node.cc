@@ -144,7 +144,6 @@ SQLNode *MakeOrderByNode(SQLNode *order) {
     return (SQLNode *) node_ptr;
 }
 
-// FIXME: this overloading does not work
 std::ostream &operator<<(std::ostream &output, const SQLNode &thiz) {
     thiz.Print(output);
     return output;
