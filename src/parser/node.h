@@ -369,11 +369,10 @@ public:
         }
         if (NULL == frame_ptr) {
 
-            output << tab << "frame_ptr: NULL\n";
+            output << tab << "frame_ptr: NULL";
         } else {
             output << tab << "frame_ptr: \n";
             frame_ptr->Print(output, space);
-            output << "\n";
         }
     }
 
@@ -400,7 +399,6 @@ public:
         delete offset_;
     }
 
-
     void Print(std::ostream &output, const std::string &orgTab) const {
         SQLNode::Print(output, orgTab);
         const std::string tab = orgTab + "\t";
@@ -408,24 +406,25 @@ public:
         output << "\n";
         output << tab << "bound: " << NameOfSQLNodeType(bound_type_) << "\n";
         if (NULL == offset_) {
-            output << space << "UNBOUNDED: \n";
+            output << space << "UNBOUNDED";
         } else {
             offset_->Print(output, space);
-            output << "\n";
         }
     }
 };
 
-class FramesNode : public SQLNode {
-
+class FrameNode : public SQLNode {
     SQLNodeType frame_type_;
-    SQLNode *start_;
-    SQLNode *end_;
+    FrameBound *start_;
+    FrameBound *end_;
 public:
-    FramesNode() : SQLNode(kFrames, 0, 0), frame_type_(kFrameRange), start_(NULL), end_(NULL) {};
-    FramesNode(SQLNodeType frame_type, SQLNode *start, SQLNode *end) : SQLNode(kFrames, 0, 0), frame_type_(frame_type), start_(start), end_(end) {};
+    FrameNode() : SQLNode(kFrames, 0, 0), frame_type_(kFrameRange), start_(NULL), end_(NULL) {};
+    FrameNode(SQLNodeType frame_type, FrameBound *start, FrameBound *end) : SQLNode(kFrames, 0, 0),
+                                                                            frame_type_(frame_type),
+                                                                            start_(start),
+                                                                            end_(end) {};
 
-    ~FramesNode() {
+    ~FrameNode() {
         delete start_;
         delete end_;
     }
@@ -449,11 +448,10 @@ public:
         }
 
         if (NULL == end_) {
-            output << tab << "end: UNBOUNDED: \n";
+            output << tab << "end: UNBOUNDED";
         } else {
             output << tab << "end: \n";
             end_->Print(output, space);
-            output << "\n";
         }
     }
 
@@ -570,7 +568,7 @@ public:
             args_->Print(output, space);
         }
         output << "\n";
-        if (NULL == over_ ) {
+        if (NULL == over_) {
             output << tab << "over: NULL\n";
         } else {
             output << tab << "over: \n";
@@ -653,6 +651,9 @@ SQLNode *MakeFuncNode(const std::string &name, SQLNodeList *args, SQLNode *over)
 SQLNode *MakeWindowDefNode(const std::string &name);
 SQLNode *MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList *orders, SQLNode *frame);
 SQLNode *MakeOrderByNode(SQLNode *node_ptr);
+SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);
+SQLNode *MakeRangeFrameNode(SQLNode *node_ptr);
+SQLNode *MakeRowsFrameNode(SQLNode *node_ptr);
 
 SQLNode *MakeConstNode(int value);
 SQLNode *MakeConstNode(long value);

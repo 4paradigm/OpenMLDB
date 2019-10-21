@@ -24,22 +24,34 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kColumn: output = "kColumn";
             break;
-        case kExpr: output = "kExpr"; break;
-        case kFunc: output = "kFunc"; break;
-        case kWindowDef: output = "kWindowDef"; break;
-        case kFrames: output = "kFrame"; break;
-        case kFrameBound: output = "kBound"; break;
-        case kPreceding: output = "kPreceding"; break;
-        case kFollowing: output = "kFollowing"; break;
-        case kCurrent: output = "kCurrent"; break;
-        case kFrameRange: output = "kFrameRange"; break;
-        case kFrameRows: output = "kFrameRows"; break;
+        case kExpr: output = "kExpr";
+            break;
+        case kFunc: output = "kFunc";
+            break;
+        case kWindowDef: output = "kWindowDef";
+            break;
+        case kFrames: output = "kFrame";
+            break;
+        case kFrameBound: output = "kBound";
+            break;
+        case kPreceding: output = "kPreceding";
+            break;
+        case kFollowing: output = "kFollowing";
+            break;
+        case kCurrent: output = "kCurrent";
+            break;
+        case kFrameRange: output = "kFrameRange";
+            break;
+        case kFrameRows: output = "kFrameRows";
+            break;
         case kConst: output = "kConst";
             break;
         case kAll: output = "kAll";
             break;
-        case kNull: output = "kNull"; break;
-        case kInt: output = "kInt"; break;
+        case kNull: output = "kNull";
+            break;
+        case kInt: output = "kInt";
+            break;
         case kBigInt: output = "kBigInt";
             break;
         case kFloat: output = "kFloat";
@@ -62,22 +74,17 @@ SQLNode *MakeNode(const SQLNodeType &type, ...) {
     }
 }
 
-
 ////////////////// Make Table Node///////////////////////////////////
 SQLNode *MakeTableNode(const std::string &name, const std::string &alias) {
-    TableNode *node_ptr= new TableNode(name, alias);
+    TableNode *node_ptr = new TableNode(name, alias);
     return (SQLNode *) node_ptr;
 }
 
-
 ////////////////// Make Function Node///////////////////////////////////
-SQLNode *MakeFuncNode(const std::string &name, SQLNodeList *pList, SQLNode *over) {
-    FuncNode * node_ptr = new FuncNode(name, pList, (WindowDefNode*)(over));
-    return (SQLNode*) node_ptr;
+SQLNode *MakeFuncNode(const std::string &name, SQLNodeList *list_ptr, SQLNode *over) {
+    FuncNode *node_ptr = new FuncNode(name, list_ptr, (WindowDefNode *) (over));
+    return (SQLNode *) node_ptr;
 }
-
-
-
 
 ////////////////// Make ResTarget Node///////////////////////////////////
 SQLNode *MakeResTargetNode(SQLNode *node, const std::string &name) {
@@ -101,22 +108,36 @@ SQLNodeList *MakeNodeList(SQLNode *node_ptr) {
 }
 
 ////////////////// Make Function Node///////////////////////////////////
-SQLNode *MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList* orders, SQLNode *frame) {
+SQLNode *MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList *orders, SQLNode *frame) {
     WindowDefNode *node_ptr = new WindowDefNode();
     FillWindowSpection(node_ptr, partitions, orders, frame);
-    return (SQLNode*) node_ptr;
+    return (SQLNode *) node_ptr;
 }
 
 SQLNode *MakeWindowDefNode(const std::string &name) {
     WindowDefNode *node_ptr = new WindowDefNode();
     node_ptr->SetName(name);
-    return (SQLNode*) node_ptr;
+    return (SQLNode *) node_ptr;
+}
+
+SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end) {
+    FrameNode *node_ptr = new FrameNode(kUnknow, (FrameBound *) (start), (FrameBound *) end);
+    return (SQLNode *) node_ptr;
+}
+SQLNode *MakeRangeFrameNode(SQLNode *node_ptr) {
+    ((FrameNode *) node_ptr)->SetFrameType(kFrameRange);
+    return node_ptr;
+}
+
+SQLNode *MakeRowsFrameNode(SQLNode *node_ptr) {
+    ((FrameNode *) node_ptr)->SetFrameType(kFrameRows);
+    return node_ptr;
 }
 
 ////////////////// Make Function Node///////////////////////////////////
 SQLNode *MakeOrderByNode(SQLNode *order) {
     OrderByNode *node_ptr = new OrderByNode(order);
-    return (SQLNode*) node_ptr;
+    return (SQLNode *) node_ptr;
 }
 
 // FIXME: this overloading does not work

@@ -90,16 +90,47 @@ TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
 }
 
 TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
-    SQLNodeList * partitions = NULL;
-    SQLNodeList * orders= NULL;
-    SQLNode* start = NULL;
-    SQLNode* end = NULL;
-    SQLNode *node_ptr = MakeWindowDefNode(partitions, orders, start);
+    SQLNodeList *partitions = NULL;
+    SQLNodeList *orders = NULL;
+    SQLNode *frame= NULL;
+    SQLNode *node_ptr = MakeWindowDefNode(partitions, orders, frame);
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
     std::strstream out;
     out << *node_ptr;
     std::cout << out.str() << std::endl;
+    ASSERT_STREQ("+kWindowDef\n"
+                     "+\twindow_name: \n"
+                     "+\tpartition_list_ptr_: NULL\n"
+                     "+\torder_list_ptr_: NULL\n"
+                     "+\tframe_ptr: NULL",
+    out.str());
 }
+
+TEST_F(SqlNodeTest, NewFrameNodeTest) {
+    FrameBound *start = new FrameBound(kPreceding, NULL);
+    FrameBound *end = new FrameBound(kPreceding, new ConstNode(86400000L));
+    SQLNode *node_ptr = MakeFrameNode(start, end);
+    MakeRangeFrameNode(node_ptr);
+
+    ASSERT_EQ(kFrames, node_ptr->GetType());
+    std::strstream out;
+    out << *node_ptr;
+    std::cout << out.str() << std::endl;
+    ASSERT_STREQ("+kFrame\n"
+                     "+\tframes_type_ : kFrameRange\n"
+                     "+\tstart: \n"
+                     "+\t\tkBound\n"
+                     "+\t\t\tbound: kPreceding\n"
+                     "+\t\t\t\tUNBOUNDED\n"
+                     "+\tend: \n"
+                     "+\t\tkBound\n"
+                     "+\t\t\tbound: kPreceding\n"
+                     "+\t\t\t\tkBigInt\n"
+                     "+\t\t\t\t\tvalue: 86400000",
+    out.str());
+}
+
+
 
 } // namespace of base
 } // namespace of fedb

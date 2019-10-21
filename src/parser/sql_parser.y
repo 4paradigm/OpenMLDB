@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <utility>
 #include "parser/node.h"
 #include "parser/sql_parser.gen.h"
 
@@ -318,7 +319,7 @@ typedef void* yyscan_t;
               table_factor table_reference
               column_ref
               expr simple_expr func_expr expr_const
-              sortby opt_frame_clause frame_extent frame_bound
+              sortby opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
 
 %type <target> projection
@@ -638,14 +639,12 @@ sortby:	column_name
 opt_frame_clause:
 	        RANGE frame_extent opt_window_exclusion_clause
 				{
-				    ((::fedb::sql::FramesNode*)$2)->SetFrameType(::fedb::sql::kFrameRange);
-				    $$ = $2;
+				    $$ = ::fedb::sql::MakeRangeFrameNode($2);
 
 				}
 			| ROWS frame_extent opt_window_exclusion_clause
 				{
-				    ((::fedb::sql::FramesNode*)$2)->SetFrameType(::fedb::sql::kFrameRows);
-				    $$ = $2;
+				    $$ = ::fedb::sql::MakeRowsFrameNode($2);
 				}
 			|
 			/*EMPTY*/
@@ -659,11 +658,11 @@ opt_window_exclusion_clause:
             ;
 frame_extent: frame_bound
 				{
-				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FramesNode(::fedb::sql::kFrameRange, $1, NULL));
+				    $$ = ::fedb::sql::MakeFrameNode($1, NULL);
 				}
 			| BETWEEN frame_bound AND frame_bound
 				{
-				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FramesNode(::fedb::sql::kFrameRange, $2, $4));
+				    $$ = ::fedb::sql::MakeFrameNode($2, $4);
 				}
 		;
 
