@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FEDB_SQL_NODE_H_
-#define FEDB_SQL_NODE_H_
+#ifndef FESQL_PARSER_NODE_H_
+#define FESQL_PARSER_NODE_H_
 
 #include <string>
 #include <list>
@@ -667,4 +667,4 @@ SQLNodeList *MakeNodeList(fedb::sql::SQLNode *node_ptr);
 
 } // namespace of sql
 } // namespace of fedb
-#endif /* !FEDB_SQL_NODE_H_ */
+#endif /* !FESQL_PARSER_NODE_H_ */

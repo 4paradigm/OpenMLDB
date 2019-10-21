@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef FEDB_SQL_PARSER_H_
-#define FEDB_SQL_PARSER_H_
+#ifndef FESQL_PARSER_PARSER_H_
+#define FESQL_PARSER_PARSER_H_
 
 #include "parser/node.h"
 #include "parser/sql_parser.gen.h"
@@ -38,4 +38,4 @@ extern YY_BUFFER_STATE yy_scan_string ( const char *yy_str , yyscan_t yyscanner 
 extern int yylex_init (yyscan_t* scanner);
 extern int yyparse (yyscan_t scanner, const ::fedb::sql::SQLNodeList *nodelist);
 extern int yylex_destroy ( yyscan_t yyscanner );
-#endif /* !FEDB_SQL_PARSER_H_ */
+#endif /* !FESQL_PARSER_PARSER_H_ */
