@@ -1,27 +1,28 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
 import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.common.Common.ColumnDesc;
+import com._4paradigm.rtidb.common.Common.ColumnKey;
+import com._4paradigm.rtidb.ns.NS;
+import com._4paradigm.rtidb.ns.NS.TableInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com._4paradigm.rtidb.common.Common.ColumnDesc;
-import com._4paradigm.rtidb.common.Common.ColumnKey;
-import com._4paradigm.rtidb.ns.NS.TableInfo;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class CreateTableTest extends TestCaseBase {
 
     private final static Logger logger = LoggerFactory.getLogger(TableSchemaTest.class);
     private static AtomicInteger id = new AtomicInteger(50000);
+    private static String[] nodes = com._4paradigm.rtidb.client.base.Config.NODES;
     @BeforeClass
     public void setUp() {
         super.setUp();
@@ -333,5 +334,93 @@ public class CreateTableTest extends TestCaseBase {
         Assert.assertEquals(tableInfo.get(0).getColumnKey(0).getTsName(0), "col1");
         Assert.assertEquals(tableInfo.get(0).getColumnKey(1).getIndexName(), "mcc");
         nsc.dropTable(name);
+    }
+
+    @Test
+    public void testCreateTableWithIncorrectTtlType() {
+        //1. kv table
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        NS.PartitionMeta pm0_0 = NS.PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
+        NS.PartitionMeta pm0_1 = NS.PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
+        NS.TablePartition tp0 = NS.TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
+        NS.TablePartition tp1 = NS.TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(1).build();
+        TableInfo table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(0).setTtlType("latest").build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertFalse(ok);
+
+        table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(0).build();
+        ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        nsc.dropTable(name);
+
+        table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(0).setTtlType("kLatestTime").build();
+        ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        nsc.dropTable(name);
+
+        table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(0).setTtlType("kAbsoluteTime").build();
+        ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        nsc.dropTable(name);
+
+        //2. schema table
+        name = String.valueOf(id.incrementAndGet());
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        NS.TablePartition tp3 = NS.TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
+        NS.TablePartition tp4 = NS.TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(1).build();
+        table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(10).setTtlType("lastest")
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
+                .build();
+        ok = nsc.createTable(table);
+        Assert.assertFalse(ok);
+
+        table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(10)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
+                .build();
+        ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        nsc.dropTable(name);
+
+        table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(10)
+                .addColumnDescV1(col0).addColumnDescV1(col1).setTtlType("kLatestTime").addColumnDescV1(col2)
+                .build();
+        ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        nsc.dropTable(name);
+
+        table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(10)
+                .addColumnDescV1(col0).addColumnDescV1(col1).setTtlType("kAbsoluteTime").addColumnDescV1(col2)
+                .build();
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        nsc.dropTable(name);
+        //3. columnkey table
+        name = String.valueOf(id.incrementAndGet());
+        ColumnDesc col3 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col4 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col5 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        ColumnDesc col6 = ColumnDesc.newBuilder().setName("col1").setAddTsIdx(false).setType("int64").build();
+        table = TableInfo.newBuilder()
+                .setName(name).setTtl(14400).setTtlType("lastest")
+                .addColumnDescV1(col3).addColumnDescV1(col4).addColumnDescV1(col5).addColumnDescV1(col6)
+                .build();
+        ok = nsc.createTable(table);
+        Assert.assertFalse(ok);
     }
 }
