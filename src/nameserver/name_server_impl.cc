@@ -1332,6 +1332,8 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
     if (table_info->ttl_type() == "kLatestTime") {
         ttl_type = ::rtidb::api::TTLType::kLatestTime;
+    } else if (table_info->ttl_type() != "kAbsoluteTime") {
+        return -1;
     }
     ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
     if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
@@ -2134,7 +2136,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
     std::string msg;
     for (auto it = tablet_client_map.begin(); it != tablet_client_map.end(); it++ ){
         if (!it->second->UpdateTableMetaForAddField(tid, request->column_desc(), schema, msg)) {
-            response->set_code(324);
+            response->set_code(325);
             response->set_msg("fail to update tableMeta for adding field: "+ msg);
             PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field failed!",
                     it->first.c_str());
