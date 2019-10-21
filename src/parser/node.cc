@@ -88,9 +88,7 @@ SQLNode *MakeFuncNode(const std::string &name, SQLNodeList *list_ptr, SQLNode *o
 
 ////////////////// Make ResTarget Node///////////////////////////////////
 SQLNode *MakeResTargetNode(SQLNode *node, const std::string &name) {
-    ResTarget *node_ptr = new ResTarget();
-    node_ptr->setName(name);
-    node_ptr->setVal(node);
+    ResTarget *node_ptr = new ResTarget(name, node);
     return node_ptr;
 }
 
@@ -105,6 +103,12 @@ SQLNodeList *MakeNodeList(SQLNode *node_ptr) {
     SQLLinkedNode *head = new SQLLinkedNode(node_ptr);
     SQLNodeList *new_list_ptr = new SQLNodeList(head, head, 1);
     return new_list_ptr;
+}
+
+SQLNode * MakeSelectStmtNode(SQLNodeList *select_list_ptr_, SQLNodeList *tableref_list_ptr, SQLNodeList *window_clause_ptr) {
+    SelectStmt * node_ptr = new SelectStmt();
+    FillSelectAttributions(node_ptr, select_list_ptr_, tableref_list_ptr, window_clause_ptr);
+    return (SQLNode *) node_ptr;
 }
 
 ////////////////// Make Function Node///////////////////////////////////

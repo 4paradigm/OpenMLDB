@@ -64,8 +64,6 @@ enum SQLNodeType {
 std::string NameOfSQLNodeType(const SQLNodeType &type);
 
 class SQLNode {
-    uint32_t line_num_;
-    uint32_t location_;
 
 public:
     SQLNode(const SQLNodeType &type, uint32_t line_num, uint32_t location)
@@ -98,6 +96,9 @@ public:
 
 protected:
     SQLNodeType type_;
+private:
+    uint32_t line_num_;
+    uint32_t location_;
 };
 
 struct SQLLinkedNode {
@@ -116,15 +117,13 @@ struct SQLLinkedNode {
 };
 
 class SQLNodeList {
-    SQLLinkedNode *head_;
-    SQLLinkedNode *tail_;
-    size_t len_;
+
 public:
-    SQLNodeList() : len_(0), head_(NULL), tail_(NULL) {
+    SQLNodeList() : size_(0), head_(NULL), tail_(NULL) {
     }
 
-    SQLNodeList(SQLLinkedNode *head, SQLLinkedNode *tail, size_t len)
-        : len_(len), head_(head), tail_(tail) {
+    SQLNodeList(SQLLinkedNode *head, SQLLinkedNode *tail, size_t size)
+        : size_(size), head_(head), tail_(tail) {
     }
 
     ~SQLNodeList() {
@@ -142,7 +141,7 @@ public:
     }
 
     const size_t Size() {
-        return len_;
+        return size_;
     }
 
     void Print(std::ostream &output) const {
@@ -168,7 +167,7 @@ public:
         SQLLinkedNode *linked_node_ptr = new SQLLinkedNode(node_ptr);
         linked_node_ptr->next_ = head_;
         head_ = linked_node_ptr;
-        len_ += 1;
+        size_ += 1;
         if (NULL == tail_) {
             tail_ = head_;
         }
@@ -182,16 +181,20 @@ public:
         if (NULL == tail_) {
             head_ = node_list_ptr->head_;
             tail_ = head_;
-            len_ = node_list_ptr->len_;
+            size_ = node_list_ptr->size_;
             return;
         }
 
         tail_->next_ = node_list_ptr->head_;
         tail_ = node_list_ptr->tail_;
-        len_ += node_list_ptr->len_;
+        size_ += node_list_ptr->size_;
     }
 
     friend std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz);
+private:
+    SQLLinkedNode *head_;
+    SQLLinkedNode *tail_;
+    size_t size_;
 };
 
 /**
@@ -199,15 +202,6 @@ public:
  */
 class SelectStmt : public SQLNode {
 public:
-    int distinct_opt_;
-    SQLNode *limit_ptr_;
-    SQLNodeList *select_list_ptr_;
-    SQLNodeList *tableref_list_ptr_;
-    SQLNode *where_clause_ptr_;
-    SQLNode *group_clause_ptr_;
-    SQLNode *having_clause_ptr_;
-    SQLNode *order_clause_ptr_;
-    SQLNodeList *window_clause_ptr_;
 
     SelectStmt() : SQLNode(kSelectStmt, 0, 0), distinct_opt_(0) {
         limit_ptr_ = NULL;
@@ -217,7 +211,7 @@ public:
         group_clause_ptr_ = NULL;
         having_clause_ptr_ = NULL;
         order_clause_ptr_ = NULL;
-        window_clause_ptr_ = NULL;
+        window_list_ptr_ = NULL;
     }
 
     ~SelectStmt() {
@@ -228,7 +222,7 @@ public:
         delete group_clause_ptr_;
         delete having_clause_ptr_;
         delete order_clause_ptr_;
-        delete window_clause_ptr_;
+        delete window_list_ptr_;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -283,34 +277,56 @@ public:
             output << tab << "order_clause_: " << *(order_clause_ptr_) << "\n";
         }
 
-        if (NULL == window_clause_ptr_) {
-            output << tab << "window_clause_ptr_: NULL\n";
+        if (NULL == window_list_ptr_) {
+            output << tab << "window_list_ptr_: NULL\n";
         } else {
-            output << tab << "window_clause_ptr_: \n";
-            window_clause_ptr_->Print(output, space);
+            output << tab << "window_list_ptr_: \n";
+            window_list_ptr_->Print(output, space);
             output << "\n";
         }
     }
+
+    SQLNodeList *GetSelectList() const {
+        return select_list_ptr_;
+    }
+
+    SQLNodeList *GetTableRefList() const {
+        return tableref_list_ptr_;
+    }
+
+    SQLNodeList *GetWindowList() const {
+        return window_list_ptr_;
+    }
+
+    friend void FillSelectAttributions(SelectStmt *node_ptr,
+                                       SQLNodeList *select_list_ptr,
+                                       SQLNodeList *tableref_list_ptr,
+                                       SQLNodeList *window_list_ptr) {
+        node_ptr->select_list_ptr_ = select_list_ptr;
+        node_ptr->tableref_list_ptr_ = tableref_list_ptr;
+        node_ptr->window_list_ptr_ = window_list_ptr;
+    }
+
+private:
+    int distinct_opt_;
+    SQLNode *limit_ptr_;
+    SQLNodeList *select_list_ptr_;
+    SQLNodeList *tableref_list_ptr_;
+    SQLNode *where_clause_ptr_;
+    SQLNode *group_clause_ptr_;
+    SQLNode *having_clause_ptr_;
+    SQLNode *order_clause_ptr_;
+    SQLNodeList *window_list_ptr_;
 };
 
 class ResTarget : public SQLNode {
-    SQLNodeList *indirection_;    /* subscripts, field names, and '*', or NIL */
-    SQLNode *val_;            /* the value expression to compute or assign */
-    std::string name_;            /* column name or NULL */
 public:
     ResTarget() : SQLNode(kResTarget, 0, 0) {}
-    ResTarget(uint32_t line_num, uint32_t location) : SQLNode(kResTarget, line_num, location), indirection_(NULL) {
-    }
+    ResTarget(const std::string &name, SQLNode *val) : SQLNode(kResTarget, 0, 0), name_(name), val_(val) {}
+    ResTarget(uint32_t line_num, uint32_t location) : SQLNode(kResTarget, line_num, location), indirection_(NULL) {}
     ~ResTarget() {
         delete val_;
         delete indirection_;
-    }
-
-    void setName(const std::string &name) {
-        name_ = name;
-    }
-    void setVal(SQLNode *val) {
-        val_ = val;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -324,13 +340,23 @@ public:
         output << tab << "name: \n";
         output << space << name_;
     }
+
+    std::string GetName() const {
+        return name_;
+    }
+
+    SQLNode *GetVal() const {
+        return val_;
+    }
+
+private:
+    SQLNodeList *indirection_;    /* subscripts, field names, and '*', or NIL */
+    SQLNode *val_;            /* the value expression to compute or assign */
+    std::string name_;            /* column name or NULL */
 };
 
 class WindowDefNode : public SQLNode {
-    std::string window_name_;            /* window's own name */
-    SQLNodeList *partition_list_ptr_;    /* PARTITION BY expression list */
-    SQLNodeList *order_list_ptr_;    /* ORDER BY (list of SortBy) */
-    SQLNode *frame_ptr;    /* expression for starting bound, if any */
+
 public:
     WindowDefNode()
         : SQLNode(kWindowDef, 0, 0), window_name_(""), partition_list_ptr_(NULL),
@@ -343,6 +369,22 @@ public:
 
     void SetName(const std::string &name) {
         window_name_ = name;
+    }
+
+    std::string GetName() const {
+        return window_name_;
+    }
+
+    SQLNodeList *GetPartitions() const {
+        return partition_list_ptr_;
+    }
+
+    SQLNodeList *GetOrders() const {
+        return order_list_ptr_;
+    }
+
+    SQLNode *GetFrame() const {
+        return frame_ptr;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -384,11 +426,15 @@ public:
         node_ptr->order_list_ptr_ = orders;
         node_ptr->frame_ptr = frame;
     }
+
+private:
+    std::string window_name_;            /* window's own name */
+    SQLNodeList *partition_list_ptr_;    /* PARTITION BY expression list */
+    SQLNodeList *order_list_ptr_;    /* ORDER BY (list of SortBy) */
+    SQLNode *frame_ptr;    /* expression for starting bound, if any */
 };
 
 class FrameBound : public SQLNode {
-    SQLNodeType bound_type_;
-    SQLNode *offset_;
 public:
     FrameBound() : SQLNode(kFrameBound, 0, 0), bound_type_(kPreceding), offset_(NULL) {};
     FrameBound(SQLNodeType bound_type) :
@@ -411,12 +457,20 @@ public:
             offset_->Print(output, space);
         }
     }
+
+    SQLNodeType GetBoundType() const {
+        return bound_type_;
+    }
+
+    SQLNode *GetOffset() const {
+        return offset_;
+    }
+private:
+    SQLNodeType bound_type_;
+    SQLNode *offset_;
 };
 
 class FrameNode : public SQLNode {
-    SQLNodeType frame_type_;
-    FrameBound *start_;
-    FrameBound *end_;
 public:
     FrameNode() : SQLNode(kFrames, 0, 0), frame_type_(kFrameRange), start_(NULL), end_(NULL) {};
     FrameNode(SQLNodeType frame_type, FrameBound *start, FrameBound *end) : SQLNode(kFrames, 0, 0),
@@ -455,6 +509,21 @@ public:
         }
     }
 
+    SQLNodeType GetFrameType() const {
+        return frame_type_;
+    }
+
+    SQLNode *GetStart() const {
+        return start_;
+    }
+
+    SQLNode *GetEnd() const {
+        return end_;
+    }
+private:
+    SQLNodeType frame_type_;
+    SQLNode *start_;
+    SQLNode *end_;
 };
 class SQLExprNode : public SQLNode {
 public:
@@ -466,11 +535,8 @@ public:
 };
 
 class ColumnRefNode : public SQLNode {
-    std::string column_name_;
-    std::string relation_name_;
 
 public:
-
     ColumnRefNode(const std::string &column_name)
         : SQLNode(kColumn, 0, 0), column_name_(column_name), relation_name_("") {
     }
@@ -495,11 +561,14 @@ public:
                << relation_name_ << "," << " column_name: " << column_name_ << "}";
     }
 
+private:
+    std::string column_name_;
+    std::string relation_name_;
+
 };
 
 class OrderByNode : public SQLNode {
-    SQLNodeType sort_type_;
-    SQLNode *order_by_;
+
 public:
     OrderByNode(SQLNode *order) : SQLNode(kOrderBy, 0, 0), sort_type_(kDesc), order_by_(order) {}
     ~OrderByNode() {
@@ -520,11 +589,20 @@ public:
             output << "\n";
         }
     }
+
+    SQLNodeType GetSortType() const {
+        return sort_type_;
+    }
+    SQLNode *GetOrderBy() const {
+        return order_by_;
+    }
+private:
+    SQLNodeType sort_type_;
+    SQLNode *order_by_;
 };
 
 class TableNode : SQLNode {
-    std::string org_table_name_;
-    std::string alias_table_name_;
+
 public:
     TableNode(const std::string &name, const std::string &alias)
         : SQLNode(kTable, 0, 0), org_table_name_(name), alias_table_name_(alias) {
@@ -537,12 +615,22 @@ public:
         const std::string tab = orgTab + "\t" + SPACE_ED;
         output << tab << "table: " << org_table_name_ << ", alias: " << alias_table_name_;
     }
+
+    std::string GetOrgTableName() const {
+        return org_table_name_;
+    }
+
+    std::string GetAliasTableName() const {
+        return alias_table_name_;
+    }
+
+private:
+    std::string org_table_name_;
+    std::string alias_table_name_;
 };
 
 class FuncNode : SQLNode {
-    std::string function_name_;
-    SQLNodeList *args_;
-    WindowDefNode *over_;
+
 public:
     FuncNode(const std::string &function_name)
         : SQLNode(kFunc, 0, 0), function_name_(function_name), args_(NULL), over_(NULL) {};
@@ -575,16 +663,25 @@ public:
             over_->Print(output, space);
         }
     }
+
+    std::string GetFunctionName() const {
+        return function_name_;
+    }
+
+    SQLNodeList *GetArgs() const {
+        return args_;
+    }
+
+    WindowDefNode *GetOver() const {
+        return over_;
+    }
+private:
+    std::string function_name_;
+    SQLNodeList *args_;
+    WindowDefNode *over_;
 };
 
 class ConstNode : public SQLNode {
-    union {
-        int vint;        /* machine integer */
-        long vlong;        /* machine integer */
-        const char *vstr;        /* string */
-        float vfloat;
-        double vdouble;
-    } val_;
 
 public:
     ConstNode() : SQLNode(kNull, 0, 0) {
@@ -629,6 +726,35 @@ public:
                 break;
         }
     }
+
+    int GetInt() {
+        return val_.vint;
+    }
+
+    long GetLong() {
+        return val_.vfloat;
+    }
+
+    const char *GetStr() {
+        return val_.vstr;
+    }
+
+    float GetFloat() {
+        return val_.vfloat;
+    }
+
+    double GetDouble() {
+        return val_.vdouble;
+    }
+
+private:
+    union {
+        int vint;        /* machine integer */
+        long vlong;        /* machine integer */
+        const char *vstr;        /* string */
+        float vfloat;
+        double vdouble;
+    } val_;
 };
 
 class OtherSqlNode : public SQLNode {
@@ -646,6 +772,9 @@ public:
     void AddChild(SQLNode *node) {};
 };
 
+SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
+                            SQLNodeList *tableref_list_ptr,
+                            SQLNodeList *window_clause_ptr);
 SQLNode *MakeTableNode(const std::string &name, const std::string &alias);
 SQLNode *MakeFuncNode(const std::string &name, SQLNodeList *args, SQLNode *over);
 SQLNode *MakeWindowDefNode(const std::string &name);

@@ -369,11 +369,7 @@ stmt: select_stmt {
 select_stmt:
     SELECT opt_all_clause opt_target_list FROM table_references window_clause
             {
-                $$ = ::fedb::sql::MakeNode(::fedb::sql::kSelectStmt);
-
-                ((::fedb::sql::SelectStmt*)$$)->select_list_ptr_ = $3;
-                ((::fedb::sql::SelectStmt*)$$)->tableref_list_ptr_ = $5;
-                ((::fedb::sql::SelectStmt*)$$)->window_clause_ptr_ = $6;
+                $$ = ::fedb::sql::MakeSelectStmtNode($3, $5, $6);
             }
     ;
 
