@@ -38,8 +38,7 @@ using namespace llvm;
 using namespace llvm::orc;
 
 ExitOnError ExitOnErr;
-float * gf = new float[1];
-int32_t* gi = new int32_t[1];
+float* fg = new float[1];
 ThreadSafeModule createDemoModule() {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test", *ctx);
@@ -115,7 +114,7 @@ public:
 
 private:
 };
-BENCHMARK_F(AccessFixture, DecodeTest)(benchmark::State& st) {
+BENCHMARK_F(AccessFixture, encodeTest)(benchmark::State& st) {
     for (auto _ : st) {
         flatbuffers::FlatBufferBuilder fb_;
         ::flatbuffers::Offset<::flatbuffers::Table> table = Decode(fb_);
@@ -129,11 +128,9 @@ BENCHMARK_F(AccessFixture, AccessInt)(benchmark::State& st) {
     fb_.Finish(table);
     uint8_t* ptr = fb_.GetBufferPointer();
     const ::flatbuffers::Table* t = ::flatbuffers::GetRoot<::flatbuffers::Table>((void*)ptr);
-    int32_t i = 0;
     for (auto _ : st) {
-        i += t->GetField<int32_t>(6, 0);
+        ::benchmark::DoNotOptimize(t->GetField<int32_t>(6, 0));
     }
-    gi[0] = i;
 }
 
 BENCHMARK_F(AccessFixture, AccessFloat)(benchmark::State& st) {
@@ -142,11 +139,9 @@ BENCHMARK_F(AccessFixture, AccessFloat)(benchmark::State& st) {
     fb_.Finish(table);
     uint8_t* ptr = fb_.GetBufferPointer();
     const ::flatbuffers::Table* t = ::flatbuffers::GetRoot<::flatbuffers::Table>((void*)ptr);
-    float f = 0.0;
     for (auto _ : st) {
-        f += t->GetField<float>(4, 0.0f);
+        ::benchmark::DoNotOptimize(t->GetField<float>(4, 0.0f));
     }
-    gf[0] = f;
 }
 
 BENCHMARK_F(AccessFixture, ManualAccessFloat)(benchmark::State& st) {
@@ -161,7 +156,7 @@ BENCHMARK_F(AccessFixture, ManualAccessFloat)(benchmark::State& st) {
         ::flatbuffers::voffset_t float_field_voffset = *((::flatbuffers::voffset_t*)(ptr + vtable_start + 4));
         f += *(float*)(ptr + table_start + float_field_voffset);
     }
-    gf[0] = f;
+    fg[0] = f;
 }
 
 BENCHMARK_F(AccessFixture, JITAccessFloat)(benchmark::State& st) {
@@ -201,12 +196,9 @@ BENCHMARK_F(AccessFixture, JITAccessFloat)(benchmark::State& st) {
     fn_entry entry = reinterpret_cast<float(*)(void*)>(jit_function_to_closure(fn));
     jit_context_build_end(ctx);
     uint8_t* ptr = fb_.GetBufferPointer();
-    float output = 0.0;
-    output = entry((void*)ptr);
     for (auto _ : st) {
-        output += entry((void*)ptr);
+        ::benchmark::DoNotOptimize(entry((void*)ptr));
     }
-    gf[0] = output;
 }
 
 BENCHMARK_F(AccessFixture, LLVM_AccessFloat)(benchmark::State& st) {
@@ -248,9 +240,8 @@ BENCHMARK_F(AccessFixture, LLVM_AccessFloat)(benchmark::State& st) {
     output = decode(ptr);
 
     for (auto _ : st) {
-        output += decode(ptr);
+       ::benchmark::DoNotOptimize(decode(ptr));
     }
-    gf[0] = output;
 }
 
 

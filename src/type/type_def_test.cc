@@ -1,5 +1,5 @@
 /*
- * hash_test.cc
+ * type_def_test.cc
  * Copyright (C) 2019 wangtaize <wangtaize@wangtaizedeMacBook-Pro-2.local>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,34 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "base/hash.h"
+#include "type/type_def.h"
 
 #include "gtest/gtest.h"
 
 namespace fesql {
-namespace base {
+namespace type {
 
-class HashTest : public ::testing::Test {
+class TypeDefTest : public ::testing::Test {
 
 public:
-    HashTest() {}
-    ~HashTest() {}
+    TypeDefTest() {}
+    ~TypeDefTest() {}
 };
 
-TEST_F(HashTest, Int64_Hash) {
+TEST_F(TypeDefTest, Int64_Hash) {
     int32_t i = -1;
     int64_t output = MurmurHash64A(&i, 4, 0xe17a1465);
     ASSERT_EQ(output, -2087233940855511134);
 }
 
-TEST_F(HashTest, CharPtr_Hash) {
+TEST_F(TypeDefTest, CharPtr_Hash) {
     std::string i = "hello";
     int64_t output = MurmurHash64A(i.c_str(), 5, 0xe17a1465);
     ASSERT_EQ(output, -4155090522938856779);
 }
 
-} // namespace of base
-} // namespace of  fesql
+} // namespace of type
+} // namespace of fesql
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

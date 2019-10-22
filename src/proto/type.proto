@@ -1,0 +1,19 @@
+package fesql.type;
+option cc_generic_services = false;
+option java_package = "com._4paradigm.fesql.type";
+option java_outer_classname = "Type";
+
+enum Type {
+    kBool = 0;
+    kInt16 = 1;
+    kUInt16 = 2;
+    kInt32 = 3;
+    kUInt32 = 4;
+    kInt64 = 5;
+    kUInt64 = 6;
+    kFloat = 7;
+    kDouble = 8;
+    kString = 9;
+    kDate = 10;
+    kTimestamp = 11;
+}
