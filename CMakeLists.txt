@@ -3,13 +3,13 @@ cmake_minimum_required (VERSION 3.5)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 
 project(fesql)
+
 set(FESQL_VERSION_MAJOR 0)
 set(FESQL_VERSION_MEDIUM 1)
 set(FESQL_VERSION_MINOR 0)
 set(FESQL_VERSION_BUG 0)
 
-#set(CMAKE_BUILD_TYPE RelWithDebInfo)
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
 
 find_package(LLVM REQUIRED CONFIG)
@@ -20,7 +20,7 @@ configure_file (
       "${PROJECT_SOURCE_DIR}/src/version.h"
 )
 option(TESTING_ENABLE "Enable Test" ON)
-option(COVERAGE_ENABLE "Enable Coverage" OFF) 
+option(COVERAGE_ENABLE "Enable Coverage" ON) 
 if (TESTING_ENABLE)
     enable_testing()
 endif()
