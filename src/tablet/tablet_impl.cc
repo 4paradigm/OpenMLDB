@@ -3606,7 +3606,7 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
 }
 
 std::shared_ptr<Snapshot> TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<SpinMutex> lock(spin_mutex);
     return GetSnapshotUnLock(tid, pid);
 }
 

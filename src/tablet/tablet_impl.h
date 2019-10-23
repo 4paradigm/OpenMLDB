@@ -23,6 +23,7 @@
 #include <list>
 #include <brpc/server.h>
 #include <mutex>
+#include "base/lock.h"
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
@@ -34,6 +35,7 @@ using ::rtidb::storage::Snapshot;
 using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
 using ::rtidb::zk::ZkClient;
+using ::rtidb::base::SpinMutex;
 
 namespace rtidb {
 namespace tablet {
@@ -369,6 +371,7 @@ private:
 private:
     Tables tables_;
     std::mutex mu_;
+    SpinMutex spin_mutex;
     ThreadPool gc_pool_;
     Replicators replicators_;
     Snapshots snapshots_;
