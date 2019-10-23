@@ -53,6 +53,7 @@ bool FlatBufDecodeIRBuilder::BuildGetVTable(::llvm::IRBuilder<>& builder,
         LOG(WARNING) << "output ptr is null";
         return false;
     }
+
     ::llvm::IntegerType* int32_type = ::llvm::Type::getInt32Ty(ctx);
     ::llvm::Value* vtable_offset_relative = NULL;
     bool ok = BuildLoadRelative(builder, ctx, row, table_start_offset, int32_type, &vtable_offset_relative);
@@ -60,7 +61,8 @@ bool FlatBufDecodeIRBuilder::BuildGetVTable(::llvm::IRBuilder<>& builder,
         LOG(WARNING) << "fail to build get vtable offset ins";
         return false;
     }
-    *output = builder.CreateSub(table_start_offset, vtable_offset_relative, "vtable_start_offset");
+    *output = builder.CreateSub(table_start_offset, 
+            vtable_offset_relative, "vtable_start_offset");
     return true;
 }
 
@@ -90,6 +92,7 @@ bool FlatBufDecodeIRBuilder::BuildGetOptionalFieldOffset(::llvm::IRBuilder<>& bu
         LOG(WARNING) << "fail to find column " << column_name << " from table "<< table_->name();
         return false;
     }
+    LOG(INFO) << "build acess field with offset " << offset;
     ::llvm::IntegerType* int16_type = ::llvm::Type::getInt16Ty(ctx);
     ::llvm::Value *offset_value = builder.getInt32(offset);
     ::llvm::Value* add_field_offset = builder.CreateAdd(vtable_offset, offset_value, "vtable_start_add_field_offset");
@@ -114,6 +117,7 @@ bool FlatBufDecodeIRBuilder::BuildGetField(::llvm::IRBuilder<>& builder,
     for (uint32_t i = 0; i < column_size; i++) {
         const ::fesql::type::ColumnDef& column = table_->columns(i);
         if (column_name.compare(column.name()) == 0) {
+            LOG(INFO) << "build access field with type " << ::fesql::type::Type_Name(column.type());
             switch (column.type()) {
                 case ::fesql::type::kBool:
                     {
@@ -150,10 +154,18 @@ bool FlatBufDecodeIRBuilder::BuildGetField(::llvm::IRBuilder<>& builder,
                         LOG(WARNING) << ::fesql::type::Type_Name(column.type()) << " is not supported";
                         return false;
                     }
+
             }
+
         }
     }
-    ::llvm::Value* field_offset_relative = builder.CreateAdd(field_voffset, table_start_offset, "add_float_offset");
+
+    if (field_type == NULL) {
+        LOG(WARNING) << "fail to find column with name " << column_name;
+        return false;
+    }
+    ::llvm::Value* field_voffset_int32 = builder.CreateIntCast(field_voffset, table_start_offset->getType(), true, "cast_to_int32");
+    ::llvm::Value* field_offset_relative = builder.CreateAdd(field_voffset_int32, table_start_offset, "add_field_offset");
     return BuildLoadRelative(builder, ctx, row, field_offset_relative, field_type, output);
 }
 

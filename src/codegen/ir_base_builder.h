@@ -46,10 +46,11 @@ bool BuildLoadRelative(::llvm::IRBuilder<>& builder,
     // cast ptr to int64
     ::llvm::Type* int64_ty = ::llvm::Type::getInt64Ty(ctx);
     ::llvm::Value* ptr_int64_ty = builder.CreatePtrToInt(ptr, int64_ty);
-    ::llvm::Value* ptr_add_offset = builder.CreateAdd(ptr_int64_ty, offset, "ptr_add_offset");
-    ::llvm::PointerType* type_ptr = ::llvm::PointerType::get(type, 0);
+    // TODO no need cast if offset is int64 
+    ::llvm::Value* offset_int64 = builder.CreateIntCast(offset, int64_ty, true, "cast_32_to_64");
+    ::llvm::Value* ptr_add_offset = builder.CreateAdd(ptr_int64_ty, offset_int64, "ptr_add_offset");
     // todo check the type
-    ::llvm::Value* int64_to_ty_ptr = builder.CreateIntToPtr(ptr_add_offset, type_ptr);
+    ::llvm::Value* int64_to_ty_ptr = builder.CreateIntToPtr(ptr_add_offset, type->getPointerTo());
     *output = builder.CreateLoad(type, int64_to_ty_ptr, "load_type_value");
     return true;
 }
