@@ -15,28 +15,45 @@
  * limitations under the License.
  */
 
-#ifndef CODEGEN_IR_BASE_BUILDER_H_
-#define CODEGEN_IR_BASE_BUILDER_H_
+#ifndef IR_BASE_BUILDER_H_
+#define IR_BASE_BUILDER_H_
 
 #include "llvm/IR/IRBuilder.h"
-#include "type/type_def.h"
+#include "glog/logging.h"
+
 
 namespace fesql {
 namespace codegen {
 
-/// the common ins builder in basic block
-class FlatBufDecodeIRBuilder {
-public:
-    // it_builder, the current block 
-    // buf ,the row pointer
-    // table, the schema of row 
-    FlatBufDecodeIRBuilder(::llvm::IRBuilder* ir_builder,
-                           PointerType* buf,
-                           std::share_ptr<::fesql::type::Table>& table);
-    ~FlatBufDecodeIRBuilder();
 
-};
+bool BuildLoadRelative(::llvm::IRBuilder<>& builder,
+        ::llvm::LLVMContext& ctx,
+        ::llvm::Value* ptr, 
+        ::llvm::Value* offset,
+        ::llvm::Type* type,
+        ::llvm::Value** output) {
+
+    if (!ptr->getType()->isPointerTy()) {
+        LOG(WARNING) << "ptr should be pointer but " <<  ptr->getType()->getTypeID();
+        return false;
+    }
+
+    if (!offset->getType()->isIntegerTy()) {
+        LOG(WARNING) << "offset should be integer type but " << ptr->getType()->getTypeID();
+        return false;
+    }
+
+    // cast ptr to int64
+    ::llvm::Type* int64_ty = ::llvm::Type::getInt64Ty(ctx);
+    ::llvm::Value* ptr_int64_ty = builder.CreatePtrToInt(ptr, int64_ty);
+    ::llvm::Value* ptr_add_offset = builder.CreateAdd(ptr_int64_ty, offset, "ptr_add_offset");
+    ::llvm::PointerType* type_ptr = ::llvm::PointerType::get(type, 0);
+    // todo check the type
+    ::llvm::Value* int64_to_ty_ptr = builder.CreateIntToPtr(ptr_add_offset, type_ptr);
+    *output = builder.CreateLoad(type, int64_to_ty_ptr, "load_type_value");
+    return true;
+}
 
 } // namespace of codegen
 } // namespace of fesql
-#endif /* !CODEGEN_IR_BASE_BUILDER_H */
+#endif /* !IR_BASE_BUILDER_H_ */

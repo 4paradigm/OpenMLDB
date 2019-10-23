@@ -18,6 +18,3 @@ target_link_libraries(hash_mk gflags benchmark benchmark_main pthread)
 add_executable(flat_mk flat_mk.cc)
 target_link_libraries(flat_mk gflags ${llvm_libs} flatbuffers benchmark benchmark_main jit pthread)
 
-add_executable(lljit lljit.cc)
-target_link_libraries(lljit ${llvm_libs} flatbuffers)
-

@@ -6,11 +6,8 @@ option java_outer_classname = "Type";
 enum Type {
     kBool = 0;
     kInt16 = 1;
-    kUInt16 = 2;
     kInt32 = 3;
-    kUInt32 = 4;
     kInt64 = 5;
-    kUInt64 = 6;
     kFloat = 7;
     kDouble = 8;
     kString = 9;
@@ -21,7 +18,7 @@ enum Type {
 message ColumnDef {
     optional string name = 1;
     optional Type type = 2;
-    optional uint16 offset = 3;
+    optional uint32 offset = 3;
 }
 
 message User {

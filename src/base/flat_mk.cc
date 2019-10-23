@@ -46,7 +46,7 @@ ThreadSafeModule createDemoModule() {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     Function *decode =
-      Function::Create(FunctionType::get(Type::getFloatTy(*ctx),
+    Function::Create(FunctionType::get(Type::getFloatTy(*ctx),
                                          {Type::getInt8PtrTy(*ctx)}, 
                                          false),
                        Function::ExternalLinkage, "decode", m.get());
