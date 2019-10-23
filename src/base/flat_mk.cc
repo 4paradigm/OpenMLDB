@@ -90,7 +90,6 @@ ThreadSafeModule createDemoModule() {
     Value* float_start_offset_ptr = builder.CreateAdd(arg0_int32, table_start_add_float_offset, "add_offset");
     Value* float_value = builder.CreateLoad(float_type, builder.CreateIntToPtr(float_start_offset_ptr, float_type_ptr), "load_float");
     builder.CreateRet(float_value);
-    m->print(llvm::errs(), NULL);
     // m->dump();
     return ThreadSafeModule(std::move(m), std::move(ctx));
 }
