@@ -27,6 +27,10 @@ parser.add_option("--endpoint",
                   dest="endpoint",
                   help="the endpoint for migrate")
 
+parser.add_option("--showtable_path",
+                  dest="showtable_path",
+                  help="the path of showtable result file")
+
 (options, args) = parser.parse_args()
 common_cmd =  [options.rtidb_bin_path, "--zk_cluster=" + options.zk_cluster, "--zk_root_path=" + options.zk_root_path, "--role=ns_client", "--interactive=false"]
 
@@ -404,6 +408,57 @@ def RecoverData():
             return
         print "confset auto_failover true"
 
+def BalanceLeader():
+    try:
+        # get log
+        with open(options.showtable_path, "r") as f:
+            tables = f.read()
+            partitions = GetTables(tables)
+            ori_leader_partitions = []
+            for endpoint in partitions:
+                for p in partitions[endpoint]:
+                    if p[4] == "leader":
+                        ori_leader_partitions.append(p)
+        if not ori_leader_partitions:
+            print "no leader"
+            return 
+
+        print "start to balance leader"
+        for p in ori_leader_partitions:
+            changeleader = list(common_cmd)
+            changeleader.append("--cmd=changeleader %s %s %s"%(p[0], p[2], p[3]))
+            code, stdout, stderr = RunWithRetuncode(changeleader)
+            if code != 0:
+                print "fail to change leader for %s %s"%(p[0], p[2])
+                print stdout
+                print stderr
+            else:
+                print stdout
+        
+        show_table = list(common_cmd)
+        show_table.append("--cmd=showtable")
+        code, stdout,stderr = RunWithRetuncode(show_table)
+        partitions = GetTables(stdout)
+        not_alive_partitions = []
+        for endpoint in partitions.keys():
+            for p in partitions[endpoint]:
+                if  p[6] == "no":
+                    not_alive_partitions.append(p)
+        for p in not_alive_partitions:
+            print "not alive partition information"
+            print " ".join(p)
+            recover_cmd = list(common_cmd)
+            recover_cmd.append("--cmd=recovertable %s %s %s"%(p[0], p[2], p[3]))
+            code, stdout, stderr = RunWithRetuncode(recover_cmd)
+            if code != 0:
+                print "fail to recover partiton for %s %s on %s"%(p[0], p[2], p[3])
+                print stdout
+                print stderr
+            else:
+                print stdout
+    except Exception,ex:
+        print(ex)
+        return -1
 
 def Main():
     if options.cmd == "analysis":
@@ -414,6 +469,8 @@ def Main():
         RecoverEndpoint()
     elif options.cmd == "recoverdata":
         RecoverData()
+    elif options.cmd == "balanceleader":
+        BalanceLeader()
 
 if __name__ == "__main__":
     Main()
