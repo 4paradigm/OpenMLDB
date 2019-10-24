@@ -22,7 +22,7 @@
 #include <iostream>
 #include <forward_list>
 namespace fedb {
-namespace sql {
+namespace parser {
 
 const std::string SPACE_ST = "+";
 const std::string SPACE_ED = "";
@@ -792,8 +792,8 @@ SQLNode *MakeConstNode(const std::string &value);
 SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name);
 SQLNode *MakeResTargetNode(SQLNode *node_ptr, const std::string &name);
 SQLNode *MakeNode(const SQLNodeType &type, ...);
-SQLNodeList *MakeNodeList(fedb::sql::SQLNode *node_ptr);
+SQLNodeList *MakeNodeList(fedb::parser::SQLNode *node_ptr);
 
-} // namespace of sql
+} // namespace of parser
 } // namespace of fedb
 #endif /* !FESQL_PARSER_NODE_H_ */

@@ -18,7 +18,7 @@
 #include <strstream>
 
 namespace fedb {
-namespace sql {
+namespace parser {
 
 /**
  * TODO: add unit test for MakeXXXXXNode
@@ -34,7 +34,7 @@ public:
 
 TEST_F(SqlNodeTest, MakeNode) {
     using namespace std;
-    SQLNode *node = fedb::sql::MakeNode(kAll);
+    SQLNode *node = fedb::parser::MakeNode(kAll);
     cout << *node << endl;
     std::strstream out;
     out << *node;
@@ -61,13 +61,13 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
 
 TEST_F(SqlNodeTest, MakeConstNodeStringTest) {
 
-    ConstNode *pNode = new ConstNode("sql string test");
+    ConstNode *pNode = new ConstNode("parser string test");
     ASSERT_EQ(kString, pNode->GetType());
     std::strstream out;
     out << *pNode;
     std::cout << out.str() << std::endl;
     ASSERT_STREQ("+kString\n"
-                     "+\tvalue: sql string test",
+                     "+\tvalue: parser string test",
                  out.str());
 }
 

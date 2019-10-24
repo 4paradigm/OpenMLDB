@@ -9,7 +9,7 @@
 %locations
 %lex-param   { yyscan_t scanner }
 %parse-param { yyscan_t scanner }
-%parse-param { ::fedb::sql::SQLNodeList *nodelist}
+%parse-param { ::fedb::parser::SQLNodeList *nodelist}
 
 %{
 #include <stdlib.h>
@@ -25,7 +25,7 @@ extern int yylex(YYSTYPE* yylvalp,
 void emit(char *s, ...);
 
 void yyerror_msg(char *s, ...);
-void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fedb::sql::SQLNodeList* list , const char* msg ) {
+void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fedb::parser::SQLNodeList* list , const char* msg ) {
 printf("error %s", msg);
 }
 %}
@@ -43,9 +43,9 @@ typedef void* yyscan_t;
 	double floatval;
 	char* strval;
 	int subtok;
-	::fedb::sql::SQLNode* node;
-	::fedb::sql::SQLNode* target;
-	::fedb::sql::SQLNodeList* list;
+	::fedb::parser::SQLNode* node;
+	::fedb::parser::SQLNode* target;
+	::fedb::parser::SQLNodeList* list;
 }
 
 /* names and literal values */
@@ -369,7 +369,7 @@ stmt: select_stmt {
 select_stmt:
     SELECT opt_all_clause opt_target_list FROM table_references window_clause
             {
-                $$ = ::fedb::sql::MakeSelectStmtNode($3, $5, $6);
+                $$ = ::fedb::parser::MakeSelectStmtNode($3, $5, $6);
             }
     ;
 
@@ -390,11 +390,11 @@ opt_target_list: select_expr_list						{ $$ = $1; }
 			| /* EMPTY */							{ $$ = NULL; }
 		;
 select_expr_list: projection {
-                            $$ = ::fedb::sql::MakeNodeList($1);
+                            $$ = ::fedb::parser::MakeNodeList($1);
                        }
     | projection ',' select_expr_list
     {
-        ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
+        ::fedb::parser::SQLNodeList *new_list = ::fedb::parser::MakeNodeList($1);
         new_list->AppendNodeList($3);
         $$ = new_list;
     }
@@ -403,20 +403,20 @@ select_expr_list: projection {
 projection:
     expr
     {
-        $$ = ::fedb::sql::MakeResTargetNode($1, "");
+        $$ = ::fedb::parser::MakeResTargetNode($1, "");
     }
     | expr NAME
     {
-        $$ = ::fedb::sql::MakeResTargetNode($1, $2);
+        $$ = ::fedb::parser::MakeResTargetNode($1, $2);
     }
     | expr AS NAME
     {
-        $$ = ::fedb::sql::MakeResTargetNode($1, $3);
+        $$ = ::fedb::parser::MakeResTargetNode($1, $3);
     }
     | '*'
         {
-            ::fedb::sql::SQLNode *pNode = ::fedb::sql::MakeNode(::fedb::sql::kAll);
-            $$ = ::fedb::sql::MakeResTargetNode(pNode, "");
+            ::fedb::parser::SQLNode *pNode = ::fedb::parser::MakeNode(::fedb::parser::kAll);
+            $$ = ::fedb::parser::MakeResTargetNode(pNode, "");
         }
       ;
     ;
@@ -425,16 +425,16 @@ over_clause: OVER window_specification
 				{ $$ = $2; }
 			| OVER NAME
 				{
-				    $$ = ::fedb::sql::MakeWindowDefNode($2);
+				    $$ = ::fedb::parser::MakeWindowDefNode($2);
 				}
 			| /*EMPTY*/
 				{ $$ = NULL; }
 		;
 
-table_references:    table_reference { $$ = ::fedb::sql::MakeNodeList($1); }
+table_references:    table_reference { $$ = ::fedb::parser::MakeNodeList($1); }
     | table_reference ',' table_references
     {
-        ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
+        ::fedb::parser::SQLNodeList *new_list = ::fedb::parser::MakeNodeList($1);
         new_list->AppendNodeList($3);
         $$ = new_list;
     }
@@ -447,15 +447,15 @@ table_reference:  table_factor
 table_factor:
   relation_factor
     {
-        $$ = ::fedb::sql::MakeTableNode($1, "");
+        $$ = ::fedb::parser::MakeTableNode($1, "");
     }
   | relation_factor AS relation_name
     {
-        $$ = ::fedb::sql::MakeTableNode($1, $3);
+        $$ = ::fedb::parser::MakeTableNode($1, $3);
     }
   | relation_factor relation_name
     {
-        $$ = ::fedb::sql::MakeTableNode($1, $2);
+        $$ = ::fedb::parser::MakeTableNode($1, $2);
     }
 
   ;
@@ -498,11 +498,11 @@ opt_as_alias: AS NAME {
 expr_list:
     expr
     {
-      $$ = ::fedb::sql::MakeNodeList($1);
+      $$ = ::fedb::parser::MakeNodeList($1);
     }
   | expr ',' expr_list
     {
-        ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
+        ::fedb::parser::SQLNodeList *new_list = ::fedb::parser::MakeNodeList($1);
         new_list->AppendNodeList($3);
         $$ = new_list;
     }
@@ -522,15 +522,15 @@ simple_expr:
 
 expr_const:
     STRING
-        { $$ = (::fedb::sql::SQLNode*)(new ::fedb::sql::ConstNode($1)); }
+        { $$ = (::fedb::parser::SQLNode*)(new ::fedb::parser::ConstNode($1)); }
   | INTNUM
-        { $$ = (::fedb::sql::SQLNode*)(new ::fedb::sql::ConstNode($1)); }
+        { $$ = (::fedb::parser::SQLNode*)(new ::fedb::parser::ConstNode($1)); }
   | APPROXNUM
-        { $$ = (::fedb::sql::SQLNode*)(new ::fedb::sql::ConstNode($1)); }
+        { $$ = (::fedb::parser::SQLNode*)(new ::fedb::parser::ConstNode($1)); }
   | BOOL
-        { $$ = (::fedb::sql::SQLNode*)(new ::fedb::sql::ConstNode($1)); }
+        { $$ = (::fedb::parser::SQLNode*)(new ::fedb::parser::ConstNode($1)); }
   | NULLX
-        { $$ = (::fedb::sql::SQLNode*)(new ::fedb::sql::ConstNode()); }
+        { $$ = (::fedb::parser::SQLNode*)(new ::fedb::parser::ConstNode()); }
   ;
 func_expr:
     function_name '(' '*' ')' over_clause
@@ -542,12 +542,12 @@ func_expr:
           }
           else
           {
-            $$ = ::fedb::sql::MakeFuncNode($1, NULL, $5);
+            $$ = ::fedb::parser::MakeFuncNode($1, NULL, $5);
           }
     }
     | function_name '(' expr_list ')' over_clause
     {
-        $$ = ::fedb::sql::MakeFuncNode($1, $3, $5);
+        $$ = ::fedb::parser::MakeFuncNode($1, $3, $5);
     }
 
 /***** Window Definitions */
@@ -559,11 +559,11 @@ window_clause:
 window_definition_list:
     window_definition
     {
-        $$ = ::fedb::sql::MakeNodeList($1);
+        $$ = ::fedb::parser::MakeNodeList($1);
     }
 	| window_definition ',' window_definition_list
 	{
-        ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
+        ::fedb::parser::SQLNodeList *new_list = ::fedb::parser::MakeNodeList($1);
         new_list->AppendNodeList($3);
         $$ = new_list;
 	}
@@ -572,7 +572,7 @@ window_definition_list:
 window_definition:
 		NAME AS window_specification
 		{
-		    ((::fedb::sql::WindowDefNode*)$3)->SetName($1);
+		    ((::fedb::parser::WindowDefNode*)$3)->SetName($1);
 		    $$ = $3;
 		}
 		;
@@ -580,7 +580,7 @@ window_definition:
 window_specification: '(' opt_existing_window_name opt_partition_clause
 						opt_sort_clause opt_frame_clause ')'
 				{
-				    $$ = ::fedb::sql::MakeWindowDefNode($3, $4, $5);
+				    $$ = ::fedb::parser::MakeWindowDefNode($3, $4, $5);
 				}
 		;
 
@@ -610,11 +610,11 @@ sort_clause:
 sortby_list:
 			sortby
 			{
-			     $$ = ::fedb::sql::MakeNodeList($1);
+			     $$ = ::fedb::parser::MakeNodeList($1);
 			}
 			|sortby ',' sortby_list
 			{
-			    ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
+			    ::fedb::parser::SQLNodeList *new_list = ::fedb::parser::MakeNodeList($1);
                 new_list->AppendNodeList($3);
                 $$ = new_list;
 			}
@@ -622,8 +622,8 @@ sortby_list:
 
 sortby:	column_name
 		{
-		    ::fedb::sql::SQLNode* node_ptr = ::fedb::sql::MakeColumnRefNode($1, "");
-		    $$ = ::fedb::sql::MakeOrderByNode(node_ptr);
+		    ::fedb::parser::SQLNode* node_ptr = ::fedb::parser::MakeColumnRefNode($1, "");
+		    $$ = ::fedb::parser::MakeOrderByNode(node_ptr);
 		}
 		;
 
@@ -635,12 +635,12 @@ sortby:	column_name
 opt_frame_clause:
 	        RANGE frame_extent opt_window_exclusion_clause
 				{
-				    $$ = ::fedb::sql::MakeRangeFrameNode($2);
+				    $$ = ::fedb::parser::MakeRangeFrameNode($2);
 
 				}
 			| ROWS frame_extent opt_window_exclusion_clause
 				{
-				    $$ = ::fedb::sql::MakeRowsFrameNode($2);
+				    $$ = ::fedb::parser::MakeRowsFrameNode($2);
 				}
 			|
 			/*EMPTY*/
@@ -654,11 +654,11 @@ opt_window_exclusion_clause:
             ;
 frame_extent: frame_bound
 				{
-				    $$ = ::fedb::sql::MakeFrameNode($1, NULL);
+				    $$ = ::fedb::parser::MakeFrameNode($1, NULL);
 				}
 			| BETWEEN frame_bound AND frame_bound
 				{
-				    $$ = ::fedb::sql::MakeFrameNode($2, $4);
+				    $$ = ::fedb::parser::MakeFrameNode($2, $4);
 				}
 		;
 
@@ -666,39 +666,39 @@ frame_extent: frame_bound
 frame_bound:
 			UNBOUNDED PRECEDING
 				{
-				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FrameBound(fedb::sql::kPreceding));
+				    $$ = (fedb::parser::SQLNode*)(new ::fedb::parser::FrameBound(fedb::parser::kPreceding));
 				}
 			| UNBOUNDED FOLLOWING
 				{
-				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FrameBound(fedb::sql::kFollowing));
+				    $$ = (fedb::parser::SQLNode*)(new ::fedb::parser::FrameBound(fedb::parser::kFollowing));
 				}
 			| CURRENT ROW
 				{
-				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FrameBound(fedb::sql::kCurrent));
+				    $$ = (fedb::parser::SQLNode*)(new ::fedb::parser::FrameBound(fedb::parser::kCurrent));
 				}
 			| expr PRECEDING
 				{
-				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FrameBound(fedb::sql::kPreceding, $1));
+				    $$ = (fedb::parser::SQLNode*)(new ::fedb::parser::FrameBound(fedb::parser::kPreceding, $1));
 				}
 			| expr FOLLOWING
 				{
-				    $$ = (fedb::sql::SQLNode*)(new ::fedb::sql::FrameBound(fedb::sql::kFollowing, $1));
+				    $$ = (fedb::parser::SQLNode*)(new ::fedb::parser::FrameBound(fedb::parser::kFollowing, $1));
 				}
 		;
 
 column_ref:
     column_name
     {
-        $$ = ::fedb::sql::MakeColumnRefNode($1, "");
+        $$ = ::fedb::parser::MakeColumnRefNode($1, "");
     }
   | relation_name '.' column_name
     {
-        $$ = ::fedb::sql::MakeColumnRefNode($3, $1);
+        $$ = ::fedb::parser::MakeColumnRefNode($3, $1);
     }
   |
     relation_name '.' '*'
     {
-        $$ = ::fedb::sql::MakeColumnRefNode("*", $1);
+        $$ = ::fedb::parser::MakeColumnRefNode("*", $1);
     }
   ;
 

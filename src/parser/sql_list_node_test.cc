@@ -18,7 +18,7 @@
 #include <strstream>
 
 namespace fedb {
-namespace sql {
+namespace parser {
 
 class SqlListNodeTest : public ::testing::Test {
 

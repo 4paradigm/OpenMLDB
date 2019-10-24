@@ -20,6 +20,7 @@
 
 #include "parser/node.h"
 #include "parser/sql_parser.gen.h"
+#include <iostream>
 
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
@@ -31,11 +32,14 @@ typedef void* yyscan_t;
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
 #endif
 
-
-int FeSqlParse(const char* sqlstr, ::fedb::sql::SQLNodeList* list);
+namespace fedb {
+namespace parser {
+int FeSqlParse(const char* sqlstr, SQLNodeList* list);
+}
+}
 
 extern YY_BUFFER_STATE yy_scan_string ( const char *yy_str , yyscan_t yyscanner );
 extern int yylex_init (yyscan_t* scanner);
-extern int yyparse (yyscan_t scanner, const ::fedb::sql::SQLNodeList *nodelist);
+extern int yyparse (yyscan_t scanner, const ::fedb::parser::SQLNodeList *nodelist);
 extern int yylex_destroy ( yyscan_t yyscanner );
 #endif /* !FESQL_PARSER_PARSER_H_ */

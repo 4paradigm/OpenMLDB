@@ -6,7 +6,7 @@
 #include "parser/node.h"
 
 namespace fedb {
-namespace sql {
+namespace parser {
 
 /**
  * get the node type name

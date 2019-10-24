@@ -19,7 +19,7 @@
 #include <strstream>
 
 namespace fedb {
-namespace sql {
+namespace parser {
 
 // TODO: add ut: 检查SQL的语法树节点预期 2019.10.23
 class SqlTest : public ::testing::TestWithParam<std::string> {
@@ -70,7 +70,7 @@ TEST_P(SqlTest, Parser_Select_Expr_List) {
     std::cout << out.str() << std::endl;
 }
 
-} // namespace of sql
+} // namespace of parser
 } // namespace of fedb
 
 int main(int argc, char **argv) {

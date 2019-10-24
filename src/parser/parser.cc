@@ -21,7 +21,6 @@
 //
 #include "parser/node.h"
 #include "parser/parser.h"
-#include <iostream>
 
 /**
  * FeSQL command parser
@@ -29,13 +28,18 @@
  * @param list
  * @return 1 if success
  */
-int FeSqlParse(const char *sqlstr, ::fedb::sql::SQLNodeList *list) {
+namespace fedb {
+namespace parser {
+int FeSqlParse(const char *sqlstr, SQLNodeList *list) {
     yyscan_t scanner;
     yylex_init(&scanner);
     yy_scan_string(sqlstr, scanner);
     int ret = yyparse(scanner, list);
     std::cout << "ret: " << ret << " list size:" << list->Size() << std::endl;
     return ret;
+}
+
+}
 }
 
 
