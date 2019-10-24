@@ -32,7 +32,7 @@ typedef void* yyscan_t;
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
 #endif
 
-namespace fedb {
+namespace fesql {
 namespace parser {
 int FeSqlParse(const char* sqlstr, SQLNodeList* list);
 }
@@ -40,6 +40,6 @@ int FeSqlParse(const char* sqlstr, SQLNodeList* list);
 
 extern YY_BUFFER_STATE yy_scan_string ( const char *yy_str , yyscan_t yyscanner );
 extern int yylex_init (yyscan_t* scanner);
-extern int yyparse (yyscan_t scanner, const ::fedb::parser::SQLNodeList *nodelist);
+extern int yyparse (yyscan_t scanner, const ::fesql::parser::SQLNodeList *nodelist);
 extern int yylex_destroy ( yyscan_t yyscanner );
 #endif /* !FESQL_PARSER_PARSER_H_ */

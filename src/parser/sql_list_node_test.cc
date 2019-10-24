@@ -17,7 +17,7 @@
 #include "gtest/gtest.h"
 #include <strstream>
 
-namespace fedb {
+namespace fesql {
 namespace parser {
 
 class SqlListNodeTest : public ::testing::Test {
@@ -79,7 +79,7 @@ TEST_F(SqlListNodeTest, AppendNodeListTest) {
 }
 
 } // namespace of base
-} // namespace of fedb
+} // namespace of fesql
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

@@ -5,7 +5,7 @@
 #include "glog/logging.h"
 #include "parser/node.h"
 
-namespace fedb {
+namespace fesql {
 namespace parser {
 
 /**

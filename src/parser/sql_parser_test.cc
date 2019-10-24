@@ -18,18 +18,18 @@
 #include "gtest/gtest.h"
 #include <strstream>
 
-namespace fedb {
+namespace fesql {
 namespace parser {
 
 // TODO: add ut: 检查SQL的语法树节点预期 2019.10.23
-class SqlTest : public ::testing::TestWithParam<std::string> {
+class SqlParserTest : public ::testing::TestWithParam<std::string> {
 
 public:
-    SqlTest() {}
+    SqlParserTest() {}
 
-    ~SqlTest() {}
+    ~SqlParserTest() {}
 };
-INSTANTIATE_TEST_CASE_P(StringReturn, SqlTest, testing::Values(
+INSTANTIATE_TEST_CASE_P(StringReturn, SqlParserTest, testing::Values(
     "SELECT COL1 FROM t1;",
     "SELECT COL1 as c1 FROM t1;",
     "SELECT COL1 c1 FROM t1;",
@@ -57,7 +57,7 @@ INSTANTIATE_TEST_CASE_P(StringReturn, SqlTest, testing::Values(
 
 ));
 
-TEST_P(SqlTest, Parser_Select_Expr_List) {
+TEST_P(SqlParserTest, Parser_Select_Expr_List) {
     std::string sqlstr = GetParam();
     SQLNodeList *list = new SQLNodeList();
     std::cout << sqlstr << std::endl;
@@ -71,7 +71,7 @@ TEST_P(SqlTest, Parser_Select_Expr_List) {
 }
 
 } // namespace of parser
-} // namespace of fedb
+} // namespace of fesql
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

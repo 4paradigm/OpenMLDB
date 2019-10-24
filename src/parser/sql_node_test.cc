@@ -17,7 +17,7 @@
 #include "gtest/gtest.h"
 #include <strstream>
 
-namespace fedb {
+namespace fesql {
 namespace parser {
 
 /**
@@ -34,7 +34,7 @@ public:
 
 TEST_F(SqlNodeTest, MakeNode) {
     using namespace std;
-    SQLNode *node = fedb::parser::MakeNode(kAll);
+    SQLNode *node = fesql::parser::MakeNode(kAll);
     cout << *node << endl;
     std::strstream out;
     out << *node;
@@ -137,7 +137,7 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
 
 
 } // namespace of base
-} // namespace of fedb
+} // namespace of fesql
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
