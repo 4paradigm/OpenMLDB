@@ -1,5 +1,5 @@
 
-#include "plan/planner.h"
+#include "plan/plan_node.h"
 #include "gtest/gtest.h"
 
 namespace fesql {

@@ -2,8 +2,8 @@
 // Created by 陈靓 on 2019/10/24.
 //
 
-#ifndef FESQL_PLANNER_H
-#define FESQL_PLANNER_H
+#ifndef FESQL_PLAN_PLANNODE_H
+#define FESQL_PLAN_PLANNODE_H
 
 #include <glog/logging.h>
 #include <list>
@@ -46,4 +46,4 @@ public:
 }
 }
 
-#endif //FESQL_PLANNER_H
+#endif //FESQL_PLAN_PLANNODE_H
