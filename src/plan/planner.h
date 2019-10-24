@@ -7,7 +7,7 @@
 
 #include <glog/logging.h>
 #include <list>
-namespace fedb {
+namespace fesql {
 namespace plan {
 
 /**

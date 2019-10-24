@@ -4,7 +4,7 @@
 
 #include "planner.h"
 
-namespace fedb {
+namespace fesql {
 namespace plan {
 
 int PlanNode::GetChildrenSize() {

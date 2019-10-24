@@ -2,7 +2,7 @@
 #include "plan/planner.h"
 #include "gtest/gtest.h"
 
-namespace fedb {
+namespace fesql {
 namespace plan {
 
 // TODO: add ut: 检查SQL的语法树节点预期 2019.10.23
