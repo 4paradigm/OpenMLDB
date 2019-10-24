@@ -149,6 +149,10 @@ public:
     }
 
     void Print(std::ostream &output, const std::string &tab) const {
+        if (0 == size_ || NULL == head_) {
+            output << tab << "[]";
+            return;
+        }
         output << tab << "[\n";
         SQLLinkedNode *p = head_;
         const std::string space = tab + "\t";
@@ -732,7 +736,7 @@ public:
     }
 
     long GetLong() {
-        return val_.vfloat;
+        return val_.vlong;
     }
 
     const char *GetStr() {

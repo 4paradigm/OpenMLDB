@@ -65,9 +65,7 @@ TEST_P(SqlParserTest, Parser_Select_Expr_List) {
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1, list->Size());
-    std::strstream out;
-    list->Print(out);
-    std::cout << out.str() << std::endl;
+    std::cout << *list << std::endl;
 }
 
 } // namespace of parser
