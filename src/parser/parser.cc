@@ -28,7 +28,7 @@
  * @param list
  * @return 1 if success
  */
-namespace fedb {
+namespace fesql {
 namespace parser {
 int FeSqlParse(const char *sqlstr, SQLNodeList *list) {
     yyscan_t scanner;

@@ -17,7 +17,7 @@
 #include "gtest/gtest.h"
 #include <strstream>
 
-namespace fedb {
+namespace fesql {
 namespace parser {
 
 /**
@@ -34,110 +34,118 @@ public:
 
 TEST_F(SqlNodeTest, MakeNode) {
     using namespace std;
-    SQLNode *node = fedb::parser::MakeNode(kAll);
+    SQLNode *node = fesql::parser::MakeNode(kAll);
     cout << *node << endl;
-    std::strstream out;
-    out << *node;
-    ASSERT_STREQ("+kAll",
-                 out.str());
+    ASSERT_EQ(kAll, node->GetType());
 }
 
 TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
 
     SQLNode *node = MakeColumnRefNode("col", "t");
     ColumnRefNode *columnnode = (ColumnRefNode *) node;
-
+    std::cout << *node << std::endl;
     ASSERT_EQ(kColumn, columnnode->GetType());
     ASSERT_EQ("t", columnnode->GetRelationName());
     ASSERT_EQ("col", columnnode->GetColumnName());
 
-    std::strstream out;
-    out << *node;
-    ASSERT_STREQ("+kColumn\n"
-                     "+\tcolumn_ref: {relation_name: t, column_name: col}",
-                 out.str());
-    std::cout << out.str() << std::endl;
 }
 
 TEST_F(SqlNodeTest, MakeConstNodeStringTest) {
 
-    ConstNode *pNode = new ConstNode("parser string test");
-    ASSERT_EQ(kString, pNode->GetType());
-    std::strstream out;
-    out << *pNode;
-    std::cout << out.str() << std::endl;
-    ASSERT_STREQ("+kString\n"
-                     "+\tvalue: parser string test",
-                 out.str());
+    ConstNode *node_ptr = new ConstNode("parser string test");
+    std::cout << *node_ptr << std::endl;
+    ASSERT_EQ(kString, node_ptr->GetType());
+    ASSERT_STREQ("parser string test", node_ptr->GetStr());
 }
 
 TEST_F(SqlNodeTest, MakeConstNodeIntTest) {
-    ConstNode *pNode = new ConstNode(1);
-    ASSERT_EQ(kInt, pNode->GetType());
-    std::strstream out;
-    out << *pNode;
-    std::cout << out.str() << std::endl;
-    ASSERT_STREQ("+kInt\n"
-                     "+\tvalue: 1",
-                 out.str());
+    ConstNode *node_ptr = new ConstNode(1);
+    std::cout << *node_ptr << std::endl;
+    ASSERT_EQ(kInt, node_ptr->GetType());
+    ASSERT_EQ(1, node_ptr->GetInt());
+
+}
+
+TEST_F(SqlNodeTest, MakeConstNodeLongTest) {
+    ConstNode *node_ptr = new ConstNode(1L);
+    std::cout << *node_ptr << std::endl;
+    ASSERT_EQ(kBigInt, node_ptr->GetType());
+    ASSERT_EQ(1L, node_ptr->GetLong());
+
+    delete node_ptr;
+
+    node_ptr = new ConstNode(864000000L);
+    std::cout << *node_ptr << std::endl;
+    ASSERT_EQ(kBigInt, node_ptr->GetType());
+    ASSERT_EQ(864000000LL, node_ptr->GetLong());
+}
+
+TEST_F(SqlNodeTest, MakeConstNodeDoubleTest) {
+    ConstNode *node_ptr = new ConstNode(1.989E30);
+    std::cout << *node_ptr << std::endl;
+    ASSERT_EQ(kDouble, node_ptr->GetType());
+    ASSERT_EQ(1.989E30, node_ptr->GetDouble());
 }
 
 TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
-    ConstNode *pNode = new ConstNode(1.234f);
-    ASSERT_EQ(kFloat, pNode->GetType());
-    std::strstream out;
-    out << *pNode;
-    std::cout << out.str() << std::endl;
-    ASSERT_STREQ("+kFloat\n"
-                     "+\tvalue: 1.234",
-                 out.str());
+    ConstNode *node_ptr = new ConstNode(1.234f);
+    std::cout << *node_ptr << std::endl;
+    ASSERT_EQ(kFloat, node_ptr->GetType());
+    ASSERT_EQ(1.234f, node_ptr->GetFloat());
 }
 
 TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
-    SQLNodeList *partitions = NULL;
-    SQLNodeList *orders = NULL;
-    SQLNode *frame= NULL;
-    SQLNode *node_ptr = MakeWindowDefNode(partitions, orders, frame);
+    SQLNodeList *partitions = new SQLNodeList();
+    partitions->PushFront(new ColumnRefNode("keycol"));
+    SQLNodeList *orders = new SQLNodeList();
+    orders->PushFront(new OrderByNode(new ColumnRefNode("col1")));
+    SQLNode *frame = MakeFrameNode(new FrameBound(kPreceding, NULL), new FrameBound(kPreceding, new ConstNode(86400000L)));
+    WindowDefNode *node_ptr = (WindowDefNode *) MakeWindowDefNode(partitions, orders, frame);
+    std::cout << *node_ptr << std::endl;
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
-    std::strstream out;
-    out << *node_ptr;
-    std::cout << out.str() << std::endl;
-    ASSERT_STREQ("+kWindowDef\n"
-                     "+\twindow_name: \n"
-                     "+\tpartition_list_ptr_: NULL\n"
-                     "+\torder_list_ptr_: NULL\n"
-                     "+\tframe_ptr: NULL",
-    out.str());
+    ASSERT_EQ(partitions, node_ptr->GetPartitions());
+    ASSERT_EQ(orders, node_ptr->GetOrders());
+    ASSERT_EQ(frame, node_ptr->GetFrame());
+    ASSERT_EQ("", node_ptr->GetName());
+
+}
+
+TEST_F(SqlNodeTest, MakeWindowDefNodetWithNameTest) {
+    WindowDefNode *node_ptr = (WindowDefNode *) MakeWindowDefNode("w1");
+    std::cout << *node_ptr << std::endl;
+    ASSERT_EQ(kWindowDef, node_ptr->GetType());
+    ASSERT_EQ(NULL, node_ptr->GetPartitions());
+    ASSERT_EQ(NULL, node_ptr->GetOrders());
+    ASSERT_EQ(NULL, node_ptr->GetFrame());
+    ASSERT_EQ("w1", node_ptr->GetName());
+
 }
 
 TEST_F(SqlNodeTest, NewFrameNodeTest) {
-    FrameBound *start = new FrameBound(kPreceding, NULL);
-    FrameBound *end = new FrameBound(kPreceding, new ConstNode(86400000L));
-    SQLNode *node_ptr = MakeFrameNode(start, end);
+    FrameNode *node_ptr = (FrameNode *) MakeFrameNode(new FrameBound(kPreceding, NULL),
+                                                      new FrameBound(kPreceding, new ConstNode(86400000L)));
     MakeRangeFrameNode(node_ptr);
+    std::cout << *node_ptr << std::endl;
 
     ASSERT_EQ(kFrames, node_ptr->GetType());
-    std::strstream out;
-    out << *node_ptr;
-    std::cout << out.str() << std::endl;
-    ASSERT_STREQ("+kFrame\n"
-                     "+\tframes_type_ : kFrameRange\n"
-                     "+\tstart: \n"
-                     "+\t\tkBound\n"
-                     "+\t\t\tbound: kPreceding\n"
-                     "+\t\t\t\tUNBOUNDED\n"
-                     "+\tend: \n"
-                     "+\t\tkBound\n"
-                     "+\t\t\tbound: kPreceding\n"
-                     "+\t\t\t\tkBigInt\n"
-                     "+\t\t\t\t\tvalue: 86400000",
-    out.str());
+    ASSERT_EQ(kFrameRange, node_ptr->GetFrameType());
+
+    // assert frame node start
+    ASSERT_EQ(kFrameBound, node_ptr->GetStart()->GetType());
+    FrameBound *start = (FrameBound *) node_ptr->GetStart();
+    ASSERT_EQ(kPreceding, start->GetBoundType());
+    ASSERT_EQ(NULL, start->GetOffset());
+
+    ASSERT_EQ(kFrameBound, node_ptr->GetEnd()->GetType());
+    FrameBound *end = (FrameBound *) node_ptr->GetEnd();
+    ASSERT_EQ(kPreceding, end->GetBoundType());
+    ASSERT_EQ(kBigInt, end->GetOffset()->GetType());
+    ConstNode *const_ptr = (ConstNode *) end->GetOffset();
+    ASSERT_EQ(86400000, const_ptr->GetLong());
 }
 
-
-
 } // namespace of base
-} // namespace of fedb
+} // namespace of fesql
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

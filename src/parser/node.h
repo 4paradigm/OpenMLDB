@@ -21,7 +21,7 @@
 #include <list>
 #include <iostream>
 #include <forward_list>
-namespace fedb {
+namespace fesql {
 namespace parser {
 
 const std::string SPACE_ST = "+";
@@ -149,6 +149,10 @@ public:
     }
 
     void Print(std::ostream &output, const std::string &tab) const {
+        if (0 == size_ || NULL == head_) {
+            output << tab << "[]";
+            return;
+        }
         output << tab << "[\n";
         SQLLinkedNode *p = head_;
         const std::string space = tab + "\t";
@@ -732,7 +736,7 @@ public:
     }
 
     long GetLong() {
-        return val_.vfloat;
+        return val_.vlong;
     }
 
     const char *GetStr() {
@@ -792,8 +796,8 @@ SQLNode *MakeConstNode(const std::string &value);
 SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name);
 SQLNode *MakeResTargetNode(SQLNode *node_ptr, const std::string &name);
 SQLNode *MakeNode(const SQLNodeType &type, ...);
-SQLNodeList *MakeNodeList(fedb::parser::SQLNode *node_ptr);
+SQLNodeList *MakeNodeList(fesql::parser::SQLNode *node_ptr);
 
 } // namespace of parser
-} // namespace of fedb
+} // namespace of fesql
 #endif /* !FESQL_PARSER_NODE_H_ */
