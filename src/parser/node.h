@@ -758,6 +758,8 @@ public:
                 break;
             case kDouble:output << "value: " << val_.vdouble;
                 break;
+            default:
+                output << "value: unknow";
         }
     }
 
