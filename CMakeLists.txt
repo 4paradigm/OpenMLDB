@@ -20,7 +20,7 @@ configure_file (
       "${PROJECT_SOURCE_DIR}/src/version.h"
 )
 option(TESTING_ENABLE "Enable Test" ON)
-option(COVERAGE_ENABLE "Enable Coverage" OFF) 
+option(COVERAGE_ENABLE "Enable Coverage" ON) 
 if (TESTING_ENABLE)
     enable_testing()
 endif()
@@ -40,4 +40,12 @@ include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib64)
 add_subdirectory(src)
+
+if (COVERAGE_ENABLE)
+    if(CMAKE_COMPILER_IS_GNUCXX)
+        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage  
+            EXECUTABLE ctest -j ${n_cores}
+            DEPENDENCIES ${test_list})
+    endif()
+endif()
 

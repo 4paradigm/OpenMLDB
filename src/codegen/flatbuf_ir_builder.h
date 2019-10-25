@@ -62,6 +62,8 @@ public:
             ::llvm::Value* field_offset,
             const std::string& column,
             ::llvm::Value** output);
+
+    bool BuildGetStrPtr();
 private:
     const ::fesql::type::TableDef* table_;
 };

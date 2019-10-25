@@ -4,12 +4,7 @@ include_directories(${INCLUDE_DIRECTORIES}
 add_executable(hash_test hash_test.cc)
 target_link_libraries(hash_test gflags gtest pthread)
 add_test(hash_test hash_test --gtest_output=xml:${CMAKE_BINARY_DIR}/hash_test.xml)
-
-if (COVERAGE_ENABLE)
-    if(CMAKE_COMPILER_IS_GNUCXX)
-        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME hash_test_coverage  EXECUTABLE hash_test coverage)
-    endif()
-endif()
+list(APPEND test_list hash_test)
 
 llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
 add_executable(hash_mk hash_mk.cc)

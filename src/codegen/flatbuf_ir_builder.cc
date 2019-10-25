@@ -154,9 +154,7 @@ bool FlatBufDecodeIRBuilder::BuildGetField(::llvm::IRBuilder<>& builder,
                         LOG(WARNING) << ::fesql::type::Type_Name(column.type()) << " is not supported";
                         return false;
                     }
-
             }
-
         }
     }
 
@@ -164,6 +162,7 @@ bool FlatBufDecodeIRBuilder::BuildGetField(::llvm::IRBuilder<>& builder,
         LOG(WARNING) << "fail to find column with name " << column_name;
         return false;
     }
+
     ::llvm::Value* field_voffset_int32 = builder.CreateIntCast(field_voffset, table_start_offset->getType(), true, "cast_to_int32");
     ::llvm::Value* field_offset_relative = builder.CreateAdd(field_voffset_int32, table_start_offset, "add_field_offset");
     return BuildLoadRelative(builder, ctx, row, field_offset_relative, field_type, output);

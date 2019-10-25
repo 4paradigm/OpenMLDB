@@ -30,24 +30,20 @@ message User {
 
 message Group {
     optional string name = 1;
-    optional uint64 id = 2;
     optional uint64 ctime = 3;
     optional uint64 owner = 4;
 }
 
 message CataLog {
     optional string name = 1;
-    optional uint64 id = 2;
     optional uint64 ctime = 3;
-    optional uint64 gid = 4;
     optional uint64 utime = 5;
 }
 
 message TableDef {
     repeated ColumnDef columns = 1;
     optional string name = 2;
-    optional uint64 id = 3;
-    optional uint64 catalog_id = 4;
+    optional string catalog = 4;
     optional uint64 ctime = 5;
     optional uint64 utime = 6;
 }

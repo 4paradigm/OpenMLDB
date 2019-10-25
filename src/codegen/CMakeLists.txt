@@ -8,9 +8,9 @@ add_library(fesql_codegen STATIC flatbuf_ir_builder.cc)
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
 target_link_libraries(ir_base_builder_test gflags ${llvm_libs} glog gtest pthread)
 add_test(ir_base_builder_test ir_base_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/ir_base_builder_test.xml)
-
+list(APPEND test_list ir_base_builder_test)
 add_executable(flatbuf_ir_builder_test flatbuf_ir_builder_test.cc)
 target_link_libraries(flatbuf_ir_builder_test gflags fesql_codegen fesql_proto ${llvm_libs} protobuf glog gtest pthread)
 add_test(flatbuf_ir_builder_test flatbuf_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/flatbuf_ir_builder_test.xml)
-
+list(APPEND test_list flatbuf_ir_builder_test)
 
