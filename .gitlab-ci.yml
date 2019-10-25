@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/fesql_build_base:0.3
+image: develop-registry.4pd.io/fesql_build_base:0.4
 variables:
     GIT_SUBMODULE_STRATEGY: normal
 stages:
@@ -13,7 +13,7 @@ build_rtidb_and_case:
         reports:
             junit:
                 - build/*.xml
-                - build/coverage
+        paths: ["build/coverage"]
 
 
 
