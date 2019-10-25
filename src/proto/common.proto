@@ -1,0 +1,15 @@
+package fesql.common;
+option cc_generic_services = false;
+option java_package = "com._4paradigm.fesql.common";
+option java_outer_classname = "Common";
+
+enum StatusCode {
+    kOk = 0;
+    kBadRequest = 11;
+    kNameExists = 12;
+}
+
+message Status {
+    optional StatusCode code = 1;
+    optional string msg = 2;
+}

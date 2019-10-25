@@ -14,13 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CXX_VERSION_H_
-#define CXX_VERSION_H_
+#ifndef FESQL_VERSION_H_
+#define FESQL_VERSION_H_
 
-#define CXX_VERSION_MAJOR @CXX_VERSION_MAJOR@
-#define CXX_VERSION_MINOR @CXX_VERSION_MINOR@
-#define CXX_VERSION_BUG @CXX_VERSION_BUG@
+#define FESQL_VERSION_MAJOR @FESQL_VERSION_MAJOR@
+#define FESQL_VERSION_MEDIUM @FESQL_VERSION_MEDIUM@
+#define FESQL_VERSION_MINOR @FESQL_VERSION_MINOR@
+#define FESQL_VERSION_BUG @FESQL_VERSION_BUG@
 
-#endif /* !CXX_VERSION_H_ */
+#endif /* !FESQL_VERSION_H_ */
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

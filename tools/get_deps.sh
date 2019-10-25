@@ -325,3 +325,17 @@ else
     cd ${DEPS_SOURCE}
     touch benchmark_succ
 fi
+
+
+if [ -f "pegtl_succ"]
+then
+    echo "pegtl_exist"
+else
+    wget --no-check-certificate -O PEGTL-2.8.1.tar.gz https://github.com/taocpp/PEGTL/archive/2.8.1.tar.gz
+    tar xf PEGTL-2.8.1.tar.gz
+    cd PEGTL-2.8.1 && mkdir -p build
+    cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
+    make -j4 && make install
+    cd ${DEPS_SOURCE}
+    touch pegtl_succ
+fi

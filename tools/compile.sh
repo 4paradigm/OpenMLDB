@@ -2,5 +2,5 @@
 #
 # compile.sh
 
-mkdir build && cd build && cmake .. && make -j4 && make test
+mkdir build && cd build && cmake .. && make -j4 
 
