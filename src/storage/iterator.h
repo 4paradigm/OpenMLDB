@@ -27,6 +27,7 @@ public:
     virtual void SeekToLast() {};
     virtual void Seek(const std::string& pk, uint64_t time) {}
     virtual void Seek(uint64_t time) {}
+    virtual uint64_t GetCount() const { return 0; }
 };
 
 }
