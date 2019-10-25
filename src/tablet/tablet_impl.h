@@ -23,7 +23,7 @@
 #include <list>
 #include <brpc/server.h>
 #include <mutex>
-#include "base/lock.h"
+#include "base/spinlock.h"
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
@@ -371,7 +371,7 @@ private:
 private:
     Tables tables_;
     std::mutex mu_;
-    SpinMutex spin_mutex;
+    SpinMutex spin_mutex_;
     ThreadPool gc_pool_;
     Replicators replicators_;
     Snapshots snapshots_;
