@@ -37,6 +37,7 @@ enum SQLNodeType {
     kFrames,
     kColumn,
     kConst,
+    kLimit,
     kAll,
     kList,
     kOrderBy,
@@ -194,6 +195,9 @@ public:
         size_ += node_list_ptr->size_;
     }
 
+    SQLLinkedNode *GetHead() {
+        return head_;
+    }
     friend std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz);
 private:
     SQLLinkedNode *head_;
@@ -288,10 +292,24 @@ public:
             window_list_ptr_->Print(output, space);
             output << "\n";
         }
+
+        if (NULL == limit_ptr_) {
+
+            output << tab << "limit_clause_: NULL\n";
+        } else {
+            output << tab << "limit_clause_: \n";
+            limit_ptr_->Print(output, tab);
+            output << "\n";
+        }
+
     }
 
     SQLNodeList *GetSelectList() const {
         return select_list_ptr_;
+    }
+
+    SQLNode *GetLimit() const {
+        return limit_ptr_;
     }
 
     SQLNodeList *GetTableRefList() const {
@@ -305,10 +323,12 @@ public:
     friend void FillSelectAttributions(SelectStmt *node_ptr,
                                        SQLNodeList *select_list_ptr,
                                        SQLNodeList *tableref_list_ptr,
-                                       SQLNodeList *window_list_ptr) {
+                                       SQLNodeList *window_list_ptr,
+                                       SQLNode *limit_ptr) {
         node_ptr->select_list_ptr_ = select_list_ptr;
         node_ptr->tableref_list_ptr_ = tableref_list_ptr;
         node_ptr->window_list_ptr_ = window_list_ptr;
+        node_ptr->limit_ptr_ = limit_ptr;
     }
 
 private:
@@ -528,6 +548,16 @@ private:
     SQLNodeType frame_type_;
     SQLNode *start_;
     SQLNode *end_;
+};
+
+class LimitNode : public SQLNode {
+public:
+    LimitNode(int cnt) : SQLNode(kLimit, 0, 0), limit_cnt_(cnt) {};
+    int GetLimitCount() const {
+        return limit_cnt_;
+    }
+private:
+    int limit_cnt_;
 };
 class SQLExprNode : public SQLNode {
 public:
@@ -778,7 +808,8 @@ public:
 
 SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
                             SQLNodeList *tableref_list_ptr,
-                            SQLNodeList *window_clause_ptr);
+                            SQLNodeList *window_clause_ptr,
+                            SQLNode *limit_clause_ptr);
 SQLNode *MakeTableNode(const std::string &name, const std::string &alias);
 SQLNode *MakeFuncNode(const std::string &name, SQLNodeList *args, SQLNode *over);
 SQLNode *MakeWindowDefNode(const std::string &name);
@@ -788,6 +819,7 @@ SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);
 SQLNode *MakeRangeFrameNode(SQLNode *node_ptr);
 SQLNode *MakeRowsFrameNode(SQLNode *node_ptr);
 
+SQLNode *MakeLimitNode(int count);
 SQLNode *MakeConstNode(int value);
 SQLNode *MakeConstNode(long value);
 SQLNode *MakeConstNode(float value);

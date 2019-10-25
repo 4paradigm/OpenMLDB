@@ -36,6 +36,7 @@ INSTANTIATE_TEST_CASE_P(StringReturn, SqlParserTest, testing::Values(
     "SELECT t1.COL1 FROM t1;",
     "SELECT t1.COL1 as c1 FROM t1;",
     "SELECT t1.COL1 c1 FROM t1;",
+    "SELECT t1.COL1 c1 FROM t1 limit 10;",
     "SELECT * FROM t1;",
     "SELECT COUNT(*) FROM t1;",
     "SELECT COUNT(COL1) FROM t1;",

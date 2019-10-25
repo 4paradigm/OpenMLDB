@@ -46,6 +46,7 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kConst: output = "kConst";
             break;
+        case kLimit: output = "kLimit";
         case kAll: output = "kAll";
             break;
         case kNull: output = "kNull";
@@ -105,9 +106,12 @@ SQLNodeList *MakeNodeList(SQLNode *node_ptr) {
     return new_list_ptr;
 }
 
-SQLNode * MakeSelectStmtNode(SQLNodeList *select_list_ptr_, SQLNodeList *tableref_list_ptr, SQLNodeList *window_clause_ptr) {
-    SelectStmt * node_ptr = new SelectStmt();
-    FillSelectAttributions(node_ptr, select_list_ptr_, tableref_list_ptr, window_clause_ptr);
+SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
+                            SQLNodeList *tableref_list_ptr,
+                            SQLNodeList *window_clause_ptr,
+                            SQLNode *limit_ptr) {
+    SelectStmt *node_ptr = new SelectStmt();
+    FillSelectAttributions(node_ptr, select_list_ptr_, tableref_list_ptr, window_clause_ptr, limit_ptr);
     return (SQLNode *) node_ptr;
 }
 
@@ -136,6 +140,11 @@ SQLNode *MakeRangeFrameNode(SQLNode *node_ptr) {
 SQLNode *MakeRowsFrameNode(SQLNode *node_ptr) {
     ((FrameNode *) node_ptr)->SetFrameType(kFrameRows);
     return node_ptr;
+}
+
+SQLNode *MakeLimitNode(int count) {
+    LimitNode *node_ptr = new LimitNode(count);
+    return (SQLNode *) node_ptr;
 }
 
 ////////////////// Make Function Node///////////////////////////////////

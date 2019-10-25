@@ -7,9 +7,9 @@
  *--------------------------------------------------------------------------
 **/
 
+#include "parser/parser.h"
 #include "plan/planner.h"
 #include "gtest/gtest.h"
-
 namespace fesql {
 namespace plan {
 
@@ -29,12 +29,15 @@ TEST_F(PlannerTest, SimplePlannerTest) {
 }
 
 TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
-    fesql::parser::SQLNode *root = new ::fesql::parser::SQLNode(::fesql::parser::kSelectStmt, 0, 0);
-    Planner *planner_ptr = new SimplePlanner(root);
-    ASSERT_EQ(true, planner_ptr->CreatePlan());
+    parser::SQLNodeList *list = new parser::SQLNodeList();
+    int ret = parser::FeSqlParse("SELECT t1.COL1 c1 FROM t1 limit 10;", list);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1, list->Size());
+    parser::SQLLinkedNode * ptr = list->GetHead();
+
+//    Planner *planner_ptr = new SimplePlanner(ptr->node_ptr_);
+//    planner_ptr->CreatePlan();
 }
-
-
 
 }
 }

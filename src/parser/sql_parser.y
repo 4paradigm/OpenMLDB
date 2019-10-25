@@ -321,12 +321,13 @@ typedef void* yyscan_t;
               expr simple_expr func_expr expr_const
               sortby opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
+              limit_clause
 
 %type <target> projection
 
 %type <list> val_list opt_val_list case_list
             opt_target_list
-            select_expr_list expr_list
+            select_projection_list expr_list
             table_references
             opt_sort_clause sort_clause sortby_list
             window_clause window_definition_list opt_partition_clause
@@ -367,9 +368,9 @@ stmt: select_stmt {
    ;
 
 select_stmt:
-    SELECT opt_all_clause opt_target_list FROM table_references window_clause
+    SELECT opt_all_clause opt_target_list FROM table_references window_clause limit_clause
             {
-                $$ = ::fesql::parser::MakeSelectStmtNode($3, $5, $6);
+                $$ = ::fesql::parser::MakeSelectStmtNode($3, $5, $6, $7);
             }
     ;
 
@@ -386,13 +387,13 @@ opt_all_clause:
  *
  *****************************************************************************/
 
-opt_target_list: select_expr_list						{ $$ = $1; }
+opt_target_list: select_projection_list						{ $$ = $1; }
 			| /* EMPTY */							{ $$ = NULL; }
 		;
-select_expr_list: projection {
+select_projection_list: projection {
                             $$ = ::fesql::parser::MakeNodeList($1);
                        }
-    | projection ',' select_expr_list
+    | projection ',' select_projection_list
     {
         ::fesql::parser::SQLNodeList *new_list = ::fesql::parser::MakeNodeList($1);
         new_list->AppendNodeList($3);
@@ -592,6 +593,14 @@ opt_partition_clause: PARTITION BY expr_list		{ $$ = $3; }
 			            | /*EMPTY*/					{ $$ = NULL; }
 
 
+
+limit_clause:
+            LIMIT INTNUM
+            {
+                $$ = ::fesql::parser::MakeLimitNode($2);
+            }
+            | /*EMPTY*/ {$$ = NULL;}
+            ;
 /*===========================================================
  *
  *	Sort By Clasuse
