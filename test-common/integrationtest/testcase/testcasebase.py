@@ -67,6 +67,9 @@ class TestCaseBase(unittest.TestCase):
             self, self._testMethodDoc, '\n' + '|' * 50 + ' SETUP STARTED ' + '|' * 50 + '\n'))
         try:
             self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
+            nss = copy.deepcopy(conf.ns_endpoints)
+            nss.remove(self.ns_leader)
+            self.ns_slaver = nss[0]
             self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
             self.tid = random.randint(1, 1000)
             self.pid = random.randint(1, 1000)

@@ -89,13 +89,19 @@ public class TraverseKvIterator implements KvIterator {
                 totalSize = this.bs.size();
                 offset = 0;
                 if (totalSize == 0) {
-                    pid++;
+                    if (response.hasIsFinish() && !response.getIsFinish()) {
+                        lastPk = response.getPk();
+                        lastTime = response.getTs();
+                    } else {
+                        pid++;
+                    }
                     continue;
                 }
                 lastPid = pid;
                 lastPk = response.getPk();
                 lastTime = response.getTs();
-                if (response.getCount() < client.getConfig().getTraverseLimit()) {
+                if ((response.hasIsFinish() && response.getIsFinish()) ||
+                        (!response.hasIsFinish() && response.getCount() < client.getConfig().getTraverseLimit())) {
                     pid++;
                     if (pid >= th.getPartitions().length) {
                         isFinished = true;

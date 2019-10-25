@@ -76,7 +76,7 @@ public class ReadStrategyTest {
     public void testReadRandomForThree() {
         //followers.size() == 0
         partitionHandler.setFollowers(new ArrayList<TabletServer>());
-        TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.KReadRandom);
+        TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadRandom);
         Assert.assertTrue(tabletServer == leader);
         //followers.size() > 0
         partitionHandler.setFollowers(followers);
@@ -84,7 +84,7 @@ public class ReadStrategyTest {
         int follower1_count = 0;
         int follower2_count = 0;
         for (int i = 0; i < 100; i++) {
-            TabletServer tabletServer1 = partitionHandler.getReadHandler(TableHandler.ReadStrategy.KReadRandom);
+            TabletServer tabletServer1 = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadRandom);
             if (tabletServer1 == leader) leader_count++;
             if (tabletServer1 == follower1) follower1_count++;
             if (tabletServer1 == follower2) follower2_count++;
@@ -117,14 +117,14 @@ public class ReadStrategyTest {
     public void testReadRandomForTwo() {
         //followers.size() == 0
         partitionHandler.setFollowers(new ArrayList<TabletServer>());
-        TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.KReadRandom);
+        TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadRandom);
         Assert.assertTrue(tabletServer == leader);
         //followers.size() > 0
         partitionHandler.setFollowers(followers);
         int leader_count = 0;
         int follower1_count = 0;
         for (int i = 0; i < 100; i++) {
-            TabletServer tabletServer1 = partitionHandler.getReadHandler(TableHandler.ReadStrategy.KReadRandom);
+            TabletServer tabletServer1 = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadRandom);
             if (tabletServer1 == leader) leader_count++;
             if (tabletServer1 == follower1) follower1_count++;
         }
@@ -165,7 +165,7 @@ public class ReadStrategyTest {
 
     @Test
     public void testReadRandomForOne() {
-        TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.KReadRandom);
+        TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadRandom);
         Assert.assertTrue(tabletServer == leader);
     }
 

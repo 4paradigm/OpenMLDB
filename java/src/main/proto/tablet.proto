@@ -251,6 +251,7 @@ message TraverseResponse {
 	optional uint32 count = 4;
     optional string pk = 5;
     optional uint64 ts = 6;
+    optional bool is_finish = 7;
 }
 
 message ScanResponse {

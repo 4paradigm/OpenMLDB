@@ -26,6 +26,7 @@ DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(key_entry_max_height);
 DECLARE_uint32(absolute_default_skiplist_height);
 DECLARE_uint32(latest_default_skiplist_height);
+DECLARE_uint32(max_traverse_cnt);
 
 namespace rtidb {
 namespace storage {
@@ -643,7 +644,7 @@ MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t 
             uint32_t ts_index) : segments_(segments),
         seg_cnt_(seg_cnt), seg_idx_(0), pk_it_(NULL), it_(NULL), 
         ttl_type_(ttl_type), record_idx_(0), ts_idx_(0), 
-        expire_value_(expire_value), ticket_() {
+        expire_value_(expire_value), ticket_(), traverse_cnt_(0) {
     uint32_t idx = 0;
     if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
         ts_idx_ = idx;
@@ -657,16 +658,21 @@ MemTableTraverseIterator::~MemTableTraverseIterator() {
 }
 
 bool MemTableTraverseIterator::Valid() {
-    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid();
+    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid() && !IsExpired();
 }
 
 void MemTableTraverseIterator::Next() {
     it_->Next();
     record_idx_++;
+    traverse_cnt_++;
     if (!it_->Valid() || IsExpired()) {
         NextPK();
         return;
     }
+}
+
+uint64_t MemTableTraverseIterator::GetCount() const {
+    return traverse_cnt_;
 }
 
 bool MemTableTraverseIterator::IsExpired() {
@@ -703,6 +709,7 @@ void MemTableTraverseIterator::NextPK() {
         }
         if (it_ != NULL) {
             delete it_;
+            it_ = NULL;
         }
         if (segments_[seg_idx_]->GetTsCnt() > 1) {
             KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];
@@ -714,6 +721,10 @@ void MemTableTraverseIterator::NextPK() {
         }
         it_->SeekToFirst();
         record_idx_ = 1;
+        traverse_cnt_++;
+        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+            break;
+        }
     } while(it_ == NULL || !it_->Valid() || IsExpired());
 }
 
@@ -744,6 +755,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
         }
         if (spk.compare(pk_it_->GetKey()) != 0) {
             it_->SeekToFirst();
+            traverse_cnt_++;
             record_idx_ = 1;
             if (!it_->Valid() || IsExpired()) {
                 NextPK();
@@ -753,6 +765,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 it_->SeekToFirst();
                 record_idx_ = 1;
                 while(it_->Valid() && record_idx_ <= expire_value_) {
+                    traverse_cnt_++;
                     if (it_->GetKey() < ts) {
                         return;
                     }
@@ -762,6 +775,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 NextPK();
             } else {
                 it_->Seek(ts);
+                traverse_cnt_++;
                 if (it_->Valid() && it_->GetKey() == ts) {
                     it_->Next();
                 }
@@ -780,10 +794,16 @@ rtidb::base::Slice MemTableTraverseIterator::GetValue() const {
 }
 
 uint64_t MemTableTraverseIterator::GetKey() const {
-    return it_->GetKey();
+    if (it_ != NULL && it_->Valid()) {
+        return it_->GetKey();
+    }
+    return UINT64_MAX;
 }
 
 std::string MemTableTraverseIterator::GetPK() const {
+    if (pk_it_ == NULL) {
+        return std::string();
+    }
     return pk_it_->GetKey().ToString();
 }
 
@@ -810,6 +830,7 @@ void MemTableTraverseIterator::SeekToFirst() {
                 it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
             }
             it_->SeekToFirst();
+            traverse_cnt_++;
             if (it_->Valid() && !IsExpired()) {
                 record_idx_ = 1;
                 return;
@@ -818,6 +839,9 @@ void MemTableTraverseIterator::SeekToFirst() {
             it_ = NULL;
             pk_it_->Next();
             ticket_.Pop();
+            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+                return;
+            }
         }
         delete pk_it_;
         pk_it_ = NULL;
