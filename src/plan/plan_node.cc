@@ -59,11 +59,11 @@ std::string NameOfPlanNodeType(PlanType &type) {
 }
 
 
-bool SelectPlanNode::AddChild(PlanNode *node) {
+//bool SelectPlanNode::AddChild(PlanNode *node) {
 //    return MultiChildPlanNode::AddChild(node);
-}
-bool ProjectPlanNode::AddChild(PlanNode *node) {
+//}
+//bool ProjectPlanNode::AddChild(PlanNode *node) {
 //    return LeafPlanNode::AddChild(node);
-}
+//}
 }
 }

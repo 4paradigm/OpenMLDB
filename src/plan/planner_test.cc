@@ -30,13 +30,20 @@ TEST_F(PlannerTest, SimplePlannerTest) {
 
 TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
     parser::SQLNodeList *list = new parser::SQLNodeList();
-    int ret = parser::FeSqlParse("SELECT t1.COL1 c1 FROM t1 limit 10;", list);
+    int ret = parser::FeSqlParse("SELECT t1.COL1 c1, COL2, trim(COL3) as trimCol3 FROM t1 limit 10;", list);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1, list->Size());
     parser::SQLLinkedNode * ptr = list->GetHead();
 
-//    Planner *planner_ptr = new SimplePlanner(ptr->node_ptr_);
-//    planner_ptr->CreatePlan();
+    Planner *planner_ptr = new SimplePlanner(ptr->node_ptr_);
+    PlanNode* plan_ptr = planner_ptr->CreatePlan();
+    ASSERT_TRUE(NULL != plan_ptr);
+    ASSERT_EQ(kSelect, plan_ptr->GetType());
+    SelectPlanNode * select_ptr = (SelectPlanNode*)plan_ptr;
+    ASSERT_EQ(10, select_ptr->GetLimitCount());
+    std::list<PlanNode *> plan_list = select_ptr->GetChildren();
+    ASSERT_EQ(1, plan_list.size());
+
 }
 
 }

@@ -28,12 +28,19 @@ enum PlanType {
     kAggWindowFunction,
     kUnknow,
 };
-std::ostream &operator<<(std::ostream &output, const fesql::plan::PlanType &thiz);
 class PlanNode {
 public:
     PlanNode(PlanType type) : type_(type) {};
     int GetChildrenSize();
     virtual bool AddChild(PlanNode *node) = 0;
+
+    virtual PlanType GetType() const {
+        return type_;
+    }
+
+    std::list<PlanNode *> &GetChildren() {
+        return children_;
+    }
 
 protected:
     PlanType type_;
@@ -69,7 +76,7 @@ public:
 class SelectPlanNode : public MultiChildPlanNode {
 public:
     SelectPlanNode() : MultiChildPlanNode(kSelect) {};
-    virtual bool AddChild(PlanNode *node);
+//    virtual bool AddChild(PlanNode *node);
     int GetLimitCount() {
         return limit_cnt_;
     }
@@ -86,18 +93,18 @@ class ProjectPlanNode : public LeafPlanNode {
 public:
     ProjectPlanNode() : LeafPlanNode(kProject) {};
     ProjectPlanNode(parser::SQLNode *expression) : LeafPlanNode(kProject), expression_(expression), name_("") {};
-    ProjectPlanNode(parser::SQLNode *expression, const std::string &name) : LeafPlanNode(kProject), expression_(expression), name_(name) {};
-    virtual bool AddChild(PlanNode *node);
+    ProjectPlanNode(parser::SQLNode *expression, const std::string &name)
+        : LeafPlanNode(kProject), expression_(expression), name_(name) {};
+//    virtual bool AddChild(PlanNode *node);
 private:
     parser::SQLNode *expression_;
     std::string name_;
 };
 
-
 ////// static function or friend function
 std::string NameOfPlanNodeType(PlanType &type);
-}
 
+}
 }
 
 #endif //FESQL_PLAN_PLANNODE_H
