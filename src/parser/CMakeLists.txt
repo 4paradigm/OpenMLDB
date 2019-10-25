@@ -21,19 +21,14 @@ add_library(fesql_parser STATIC ${CMAKE_CURRENT_BINARY_DIR}/sql_scan.gen.cc ${CM
 add_executable(sql_parser_test sql_parser_test.cc)
 target_link_libraries(sql_parser_test fesql_parser gtest pthread)
 add_test(sql_parser_test sql_parser_test --gtest_output=xml:${CMAKE_BINARY_DIR}/sql_parser_test.xml)
-
+list(APPEND test_list sql_parser_test)
 add_executable(sql_node_test sql_node_test.cc)
 target_link_libraries(sql_node_test fesql_parser gtest pthread)
 add_test(sql_node_test sql_node_test --gtest_output=xml:${CMAKE_BINARY_DIR}/sql_node_test.xml)
+list(APPEND test_list sql_node_test)
 
 add_executable(sql_list_node_test sql_list_node_test.cc)
 target_link_libraries(sql_list_node_test fesql_parser gtest pthread)
 add_test(sql_list_node_test sql_list_node_test --gtest_output=xml:${CMAKE_BINARY_DIR}/sql_list_node_test.xml)
+list(APPEND test_list sql_list_node_test)
 
-if (COVERAGE_ENABLE)
-    if(CMAKE_COMPILER_IS_GNUCXX)
-        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME parser_test_coverage EXECUTABLE sql_parser_test coverage)
-        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME parser_test_coverage EXECUTABLE sql_node_test coverage)
-        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME parser_test_coverage EXECUTABLE sql_list_node_test coverage)
-    endif()
-endif()

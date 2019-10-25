@@ -1,6 +1,6 @@
-%option noinput nounput noyywrap 8bit nodefault                                 
+%option noinput nounput noyywrap 8bit nodefault
 %option yylineno
-%option reentrant bison-bridge bison-locations 
+%option reentrant bison-bridge bison-locations
 %option outfile="lexer.gen.cc"
 %{
 #include "ast/parser.gen.h"

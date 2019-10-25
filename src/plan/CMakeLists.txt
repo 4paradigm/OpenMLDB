@@ -11,9 +11,4 @@ add_test(plan_node_test plan_node_test --gtest_output=xml:${CMAKE_BINARY_DIR}/pl
 add_executable(planner_test planner_test.cc) 
 target_link_libraries(planner_test fesql_planer fesql_parser gtest glog pthread)
 add_test(planner_test planner_test --gtest_output=xml:${CMAKE_BINARY_DIR}/planner_test.xml)
-
-if (COVERAGE_ENABLE)
-    if(CMAKE_COMPILER_IS_GNUCXX)
-        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME plan_test_coverage EXECUTABLE plan_node_test coverage)
-    endif()
-endif()
+list(APPEND test_list hash_test)

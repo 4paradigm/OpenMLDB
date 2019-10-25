@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef CXX_BASE_HASH_H_
-#define CXX_BASE_HASH_H_
+#ifndef FESQL_BASE_HASH_H_
+#define FESQL_BASE_HASH_H_
 
 #include <stdint.h>
 
-namespace cxx {
+namespace fesql {
 namespace base {
 
 static uint64_t MurmurHash64A(const void * key, 
@@ -65,5 +65,5 @@ static uint64_t MurmurHash64A(const void * key,
 }
 
 } // namepsace base
-} // namespace cxx
-#endif /* !CXX_BASE_HASH_H_ */
+} // namespace fesql
+#endif /* !FESQL_BASE_HASH_H_ */
