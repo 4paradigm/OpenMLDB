@@ -6,16 +6,16 @@ namespace fesql {
 namespace plan {
 
 // TODO: add ut: 检查SQL的语法树节点预期 2019.10.23
-class PlannerTest : public ::testing::Test {
+class PlanNodeTest : public ::testing::Test {
 
 public:
-    PlannerTest() {}
+    PlanNodeTest() {}
 
-    ~PlannerTest() {}
+    ~PlanNodeTest() {}
 };
 
 
-TEST_F(PlannerTest, LeafPlanNodeTest) {
+TEST_F(PlanNodeTest, LeafPlanNodeTest) {
 
     LeafPlanNode *node_ptr = new LeafPlanNode();
     ASSERT_EQ(0, node_ptr->GetChildrenSize());
@@ -24,7 +24,7 @@ TEST_F(PlannerTest, LeafPlanNodeTest) {
 }
 
 
-TEST_F(PlannerTest, UnaryPlanNodeTest) {
+TEST_F(PlanNodeTest, UnaryPlanNodeTest) {
     LeafPlanNode *node_ptr = new LeafPlanNode();
 
     UnaryPlanNode *unary_node_ptr = new UnaryPlanNode();
@@ -36,7 +36,7 @@ TEST_F(PlannerTest, UnaryPlanNodeTest) {
 
 }
 
-TEST_F(PlannerTest, BinaryPlanNodeTest) {
+TEST_F(PlanNodeTest, BinaryPlanNodeTest) {
     LeafPlanNode *node_ptr = new LeafPlanNode();
     ASSERT_EQ(0, node_ptr->GetChildrenSize());
 
