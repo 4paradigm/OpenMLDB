@@ -409,8 +409,23 @@ def RecoverData():
         print "confset auto_failover true"
 
 def BalanceLeader():
+    auto_failover_flag = -1
     try:
         # get log
+        conget_auto = list(common_cmd)
+        conget_auto.append("--cmd=confget auto_failover")
+        code, stdout,stderr = RunWithRetuncode(conget_auto)
+        auto_failover_flag = stdout.find("true")
+        if auto_failover_flag != -1:
+            # set auto failove is no
+            confset_no = list(common_cmd)
+            confset_no.append("--cmd=confset auto_failover false")
+            code, stdout,stderr = RunWithRetuncode(confset_no)
+            # print stdout
+            if code != 0:
+                print "set auto_failover is failed"
+                return
+            print "confset auto_failover false"
         with open(options.showtable_path, "r") as f:
             tables = f.read()
             partitions = GetTables(tables)
@@ -456,9 +471,19 @@ def BalanceLeader():
                 print stderr
             else:
                 print stdout
+        print "balance leader complete successfully!"
     except Exception,ex:
         print(ex)
         return -1
+    if auto_failover_flag != -1:
+        # recover auto failover
+        confset_no = list(common_cmd)
+        confset_no.append("--cmd=confset auto_failover true")
+        code, stdout,stderr = RunWithRetuncode(confset_no)
+        if code != 0:
+            print "set auto_failover is failed"
+            return
+        print "confset auto_failover true"
 
 def Main():
     if options.cmd == "analysis":
