@@ -2354,7 +2354,7 @@ void TabletImpl::SendSnapshot(RpcController* controller,
         }
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            std::shared_ptr<Table> table = GetTable(tid, pid);
+            std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
                 response->set_code(100);
