@@ -63,7 +63,7 @@ ThreadSafeModule createDemoModule() {
   Type* float_type = Type::getFloatTy(*ctx);
   PointerType* int16_type_ptr = Type::getInt16PtrTy(*ctx);
   // Create the add instruction, inserting it into the end of BB.
-  Value* int32_ptr = builder.CreatePointerCast(arg0, int32_type_ptr, "uint8_to_int32");
+  value* int32_ptr = builder.CreatePointerCast(arg0, int32_type_ptr, "uint8_to_int32");
   LoadInst *table_start = builder.CreateLoad(int32_type, int32_ptr, "table_start");
   //table_start->getType()->dump();
  // arg0->getType()->dump();

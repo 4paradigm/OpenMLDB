@@ -17,7 +17,7 @@
 
 #include "gtest/gtest.h"
 
-namespace cxx {
+namespace fesql {
 namespace base {
 
 class HashTest : public ::testing::Test {
@@ -40,7 +40,7 @@ TEST_F(HashTest, CharPtr_Hash) {
 }
 
 } // namespace of base
-} // namespace of cxx 
+} // namespace of  fesql
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
