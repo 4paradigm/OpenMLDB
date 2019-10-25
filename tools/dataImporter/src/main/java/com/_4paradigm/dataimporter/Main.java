@@ -5,6 +5,7 @@ import com._4paradigm.dataimporter.parseutil.ParseCsvUtil;
 import com._4paradigm.dataimporter.parseutil.ParseOrcUtil;
 import com._4paradigm.dataimporter.parseutil.ParseParquetUtil;
 import com._4paradigm.dataimporter.task.PutTask;
+import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.common.Common.ColumnDesc;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.Path;
@@ -98,7 +99,13 @@ public class Main {
             logger.error("the schemaList is null");
             return false;
         }
-        return InitClient.createSchemaTable(Constant.TABLENAME, schemaList);
+        if (Constant.STORAGEMODE.equals("ssd")) {
+            return InitClient.createSchemaTable(Common.StorageMode.kSSD, Constant.TABLENAME, schemaList);
+        } else if (Constant.STORAGEMODE.equals("hdd")) {
+            return InitClient.createSchemaTable(Common.StorageMode.kHDD, Constant.TABLENAME, schemaList);
+        } else {
+            return InitClient.createSchemaTable(Common.StorageMode.kMemory, Constant.TABLENAME, schemaList);
+        }
     }
 
     private static void put(String filePath) {

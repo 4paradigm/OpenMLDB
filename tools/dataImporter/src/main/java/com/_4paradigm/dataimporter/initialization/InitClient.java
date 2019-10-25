@@ -64,8 +64,9 @@ public class InitClient {
         }
     }
 
-    public static boolean createSchemaTable(String tableName, List<ColumnDesc> schemaList) {
+    public static boolean createSchemaTable(Common.StorageMode mode, String tableName, List<ColumnDesc> schemaList) {
         NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
+                .setStorageMode(mode)
                 .setName(tableName)  // 设置表名
                 .setReplicaNum(REPLICA_NUM)    // 设置副本数. 此设置是可选的, 默认为3
                 .setPartitionNum(PARTITION_NUM)  // 设置分片数. 此设置是可选的, 默认为16

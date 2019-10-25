@@ -72,7 +72,7 @@ public class PartitionHandler {
                 } else {
                     return leader;
                 }
-            case KReadRandom:
+            case kReadRandom:
                 logger.debug("rand choose partition for reading");
                 if (followers.size() == 0) {
                     logger.debug("choose leader partition for reading");

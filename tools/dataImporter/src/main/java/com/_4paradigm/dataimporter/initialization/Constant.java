@@ -4,6 +4,7 @@ import java.util.LinkedList;
 
 public class Constant {
     public static final String FILEPATH = InitProperties.getProperties().getProperty("filePath");
+    public static final String STORAGEMODE = InitProperties.getProperties().getProperty("storageMode");
     public static final String TABLENAME = InitProperties.getProperties().getProperty("tableName");
     public static final String TABLE_EXIST = InitProperties.getProperties().getProperty("tableExist");
     public static final String INDEX = InitProperties.getProperties().getProperty("index");

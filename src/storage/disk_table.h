@@ -240,6 +240,7 @@ public:
     virtual uint64_t GetKey() const override;
     virtual void SeekToFirst() override;
     virtual void Seek(const std::string& pk, uint64_t time) override;
+    virtual uint64_t GetCount() const override;
 
 private:
     void NextPK();
@@ -256,6 +257,7 @@ private:
     uint64_t ts_;
     bool has_ts_idx_;
     uint8_t ts_idx_;
+    uint64_t traverse_cnt_;
 
 };
 

@@ -8,8 +8,11 @@
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
 #include "gtest/gtest.h"
+#include <gflags/gflags.h>
 #include "timer.h"
 #include "logging.h"
+
+DECLARE_uint32(max_traverse_cnt);
 
 namespace rtidb {
 namespace storage {
@@ -624,6 +627,91 @@ TEST_F(TableTest, TableIteratorTS) {
     delete iter;
 }
 
+TEST_F(TableTest, TraverseIteratorCount) {
+    uint32_t old_max_traverse = FLAGS_max_traverse_cnt;
+    FLAGS_max_traverse_cnt = 50;
+    ::rtidb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    table_meta.set_tid(1);
+    table_meta.set_pid(0);
+    table_meta.set_ttl(0);
+    table_meta.set_seg_cnt(8);
+    table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    ::rtidb::common::ColumnDesc* desc = table_meta.add_column_desc();
+    desc->set_name("card");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_meta.add_column_desc();
+    desc->set_name("mcc");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_meta.add_column_desc();
+    desc->set_name("price");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    desc = table_meta.add_column_desc();
+    desc->set_name("ts1");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    desc->set_is_ts_col(true);
+    desc = table_meta.add_column_desc();
+    desc->set_name("ts2");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    desc->set_is_ts_col(true);
+    ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
+    column_key->set_index_name("card");
+    column_key->add_ts_name("ts1");
+    column_key->add_ts_name("ts2");
+    column_key = table_meta.add_column_key();
+    column_key->set_index_name("mcc");
+    column_key->add_ts_name("ts1");
+
+    MemTable table(table_meta);
+    table.Init();
+
+    for (int i = 0; i < 1000; i++) {
+        ::rtidb::api::PutRequest request;
+        ::rtidb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card" + std::to_string(i % 100));
+        dim = request.add_dimensions();
+        dim->set_idx(1);
+        dim->set_key("mcc" + std::to_string(i));
+        ::rtidb::api::TSDimension* ts = request.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(1000 + i);
+        ts = request.add_ts_dimensions();
+        ts->set_idx(1);
+        ts->set_ts(10000 + i);
+        std::string value = "value" + std::to_string(i);
+        table.Put(request.dimensions(), request.ts_dimensions(), value);
+    }
+    TableIterator* it = table.NewTraverseIterator(0, 0);
+    it->SeekToFirst();
+    int count = 0;
+    while(it->Valid()) {
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(1000, count);
+    ASSERT_EQ(1100, it->GetCount());
+    delete it;
+
+    it = table.NewTraverseIterator(0, 1);
+    it->SeekToFirst();
+    count = 0;
+    while(it->Valid()) {
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(1000, count);
+    ASSERT_EQ(1100, it->GetCount());
+    delete it;
+    FLAGS_max_traverse_cnt = old_max_traverse;
+}
+
 TEST_F(TableTest, UpdateTTL) {
     ::rtidb::api::TableMeta table_meta;
     table_meta.set_name("table1");
@@ -680,6 +768,7 @@ TEST_F(TableTest, UpdateTTL) {
 }
 
 int main(int argc, char** argv) {
+    FLAGS_max_traverse_cnt = 200000;
     ::testing::InitGoogleTest(&argc, argv);
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     return RUN_ALL_TESTS();

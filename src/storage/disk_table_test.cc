@@ -15,6 +15,7 @@ using ::baidu::common::INFO;
 
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
+DECLARE_uint32(max_traverse_cnt);
 
 namespace rtidb {
 namespace storage {
@@ -345,6 +346,139 @@ TEST_F(DiskTableTest, TraverseIterator) {
     std::string path = FLAGS_hdd_root_path + "/1_3";
     RemoveData(path);
 }
+
+TEST_F(DiskTableTest, TraverseIteratorCount) {
+    uint32_t old_max_traverse = FLAGS_max_traverse_cnt;
+    FLAGS_max_traverse_cnt = 50;
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 0,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            FLAGS_hdd_root_path);
+    ASSERT_TRUE(table->Init());
+    for (int idx = 0; idx < 100; idx++) {
+        std::string key = "test" + std::to_string(idx);
+        uint64_t ts = 9537;
+        for (int k = 0; k < 10; k++) {
+            ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
+        }
+    }
+    TableIterator* it = table->NewTraverseIterator(0);
+    it->SeekToFirst();
+    int count = 0;
+    while (it->Valid()) {
+        std::string pk = it->GetPK();;
+        count++;
+        it->Next();
+    }
+    ASSERT_FALSE(it->Valid());
+    ASSERT_EQ(49, count);
+    delete it;
+
+    it = table->NewTraverseIterator(0);
+    it->Seek("test90", 9543);
+    count = 0;
+    while (it->Valid()) {
+        if (count == 0) {
+            std::string pk = it->GetPK();
+            ASSERT_EQ("test90", pk);
+            ASSERT_EQ(9542, it->GetKey());
+        }
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(48, count);
+    delete it;
+
+    it = table->NewTraverseIterator(0);
+    it->Seek("test90", 9537);
+    count = 0;
+    while (it->Valid()) {
+        if (count == 0) {
+            std::string pk = it->GetPK();;
+            ASSERT_EQ("test91", pk);
+            ASSERT_EQ(9546, it->GetKey());
+        }
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(48, count);
+    delete it;
+    
+    it = table->NewTraverseIterator(0);
+    it->Seek("test90", 9530);
+    count = 0;
+    while (it->Valid()) {
+        if (count == 0) {
+            std::string pk = it->GetPK();;
+            ASSERT_EQ("test91", pk);
+            ASSERT_EQ(9546, it->GetKey());
+        }
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(49, count);
+
+    delete it;
+    delete table;
+    FLAGS_max_traverse_cnt = old_max_traverse;
+    std::string path = FLAGS_hdd_root_path + "/1_3";
+    RemoveData(path);
+}
+
+TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
+    uint32_t old_max_traverse = FLAGS_max_traverse_cnt;
+    FLAGS_max_traverse_cnt = 50;
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 5,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            FLAGS_hdd_root_path);
+    ASSERT_TRUE(table->Init());
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    for (int idx = 0; idx < 10; idx++) {
+        std::string key = "test" + std::to_string(idx);
+        uint64_t ts = cur_time;
+        for (int k = 0; k < 60; k++) {
+            if (idx == 0) {
+                if (k < 30) {
+                    ASSERT_TRUE(table->Put(key, ts + k - 6 * 1000 * 60, "value", 5));
+                }
+                continue;
+            }
+            if (k < 30) {
+                ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
+            } else {
+                ASSERT_TRUE(table->Put(key, ts + k - 6 * 1000 * 60, "value", 5));
+            }
+        }
+    }
+    TableIterator* it = table->NewTraverseIterator(0);
+    it->SeekToFirst();
+    int count = 0;
+    while (it->Valid()) {
+        count++;
+        it->Next();
+    }
+    ASSERT_FALSE(it->Valid());
+    ASSERT_EQ(47, count);
+    ASSERT_EQ(50, it->GetCount());
+    delete it;
+
+    it = table->NewTraverseIterator(0);
+    it->Seek("test5", cur_time + 10);
+    count = 0;
+    while (it->Valid()) {
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(46, count);
+    ASSERT_EQ(50, it->GetCount());
+    delete table;
+    FLAGS_max_traverse_cnt = old_max_traverse;
+    std::string path = FLAGS_hdd_root_path + "/1_3";
+    RemoveData(path);
+}    
 
 TEST_F(DiskTableTest, TraverseIteratorLatest) {
     std::map<std::string, uint32_t> mapping;
