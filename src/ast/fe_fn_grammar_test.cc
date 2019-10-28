@@ -1,5 +1,5 @@
 /*
- * discrete_test.cc
+ * fe_grammar_test.cc
  * Copyright (C) 2019 wangtaize <wangtaize@wangtaizedeMacBook-Pro-2.local>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,28 @@
  * limitations under the License.
  */
 #include <iostream>
-#include "ast/fe_grammer.h"
+#include "ast/fe_fn_grammar.h"
 #include "gtest/gtest.h"
 #include "tao/pegtl/contrib/parse_tree.hpp"
 #include "tao/pegtl/contrib/parse_tree_to_dot.hpp"
 
-
-
-
 namespace fesql {
 namespace ast {
 
-class FeGrammerTest : public ::testing::Test {
+class FeGrammarTest : public ::testing::Test {
 
 public:
-    FeGrammerTest() {}
-    ~FeGrammerTest() {}
+    FeGrammarTest() {}
+    ~FeGrammarTest() {}
 };
 
 
-TEST_F(FeGrammerTest, test) {
-
-    std::string fn ="def test(a:i32):";
+TEST_F(FeGrammarTest, test) {
+    std::string fn ="def test(a:i32,b:i32):i32\n    a=b+c\n    return a\n";
     ::tao::pegtl::memory_input<> in(fn.c_str(), fn.size(), fn);
-    const auto root = ::tao::pegtl::parse_tree::parse<::fesql::ast::grammer>(in);
+    const auto root = ::tao::pegtl::parse_tree::parse<::fesql::ast::grammar, ::fesql::ast::fe_selector>(in);
     ::tao::pegtl::parse_tree::print_dot( std::cout, *root );
+
 }
 
 } // namespace of ast
@@ -48,6 +45,5 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-
 
 

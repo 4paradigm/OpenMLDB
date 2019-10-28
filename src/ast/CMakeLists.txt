@@ -21,6 +21,6 @@ add_executable(ast_test ast_test.cc)
 target_link_libraries(ast_test ast gtest pthread)
 add_test(ast_test ast_test --gtest_output=xml:${CMAKE_BINARY_DIR}/ast_test.xml)
 
-add_executable(grammer_test fe_grammer_test.cc)
-target_link_libraries(grammer_test gtest pthread)
+add_executable(fe_fn_grammar_test fe_fn_grammar_test.cc)
+target_link_libraries(fe_fn_grammar_test gtest pthread)
 #add_test(ast_test ast_test --gtest_output=xml:${CMAKE_BINARY_DIR}/ast_test.xml)
