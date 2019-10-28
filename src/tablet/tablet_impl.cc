@@ -2176,8 +2176,8 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
                 break;
             }
         }
+        std::lock_guard<std::mutex> lock(mu_);
         if (task_ptr) {
-            std::lock_guard<std::mutex> lock(mu_);
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }    
         snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, task_ptr));
@@ -2374,15 +2374,13 @@ void TabletImpl::SendSnapshot(RpcController* controller,
                 break;
             }
         }
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (task_ptr) {
-                task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-            }    
-            sync_snapshot_set_.insert(sync_snapshot_key);
-            task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
-                        request->endpoint(), tid, pid, task_ptr));
-        }
+        std::lock_guard<std::mutex> lock(mu_);
+        if (task_ptr) {
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+        }    
+        sync_snapshot_set_.insert(sync_snapshot_key);
+        task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
+                    request->endpoint(), tid, pid, task_ptr));
         response->set_code(0);
         response->set_msg("ok");
         return;
