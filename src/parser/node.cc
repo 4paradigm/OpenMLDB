@@ -74,6 +74,15 @@ SQLNode *MakeNode(const SQLNodeType &type, ...) {
         default:return new UnknowSqlNode();
     }
 }
+void ConverSQLNodeList2NodeList(SQLNodeList *node_list_ptr, std::vector<SQLNode *> &node_list) {
+    if (nullptr != node_list_ptr) {
+        SQLLinkedNode *ptr = node_list_ptr->GetHead();
+        while (nullptr != ptr && nullptr != ptr->node_ptr_) {
+            node_list.push_back(ptr->node_ptr_);
+            ptr = ptr->next_;
+        }
+    }
+}
 
 ////////////////// Make Table Node///////////////////////////////////
 SQLNode *MakeTableNode(const std::string &name, const std::string &alias) {
@@ -83,7 +92,11 @@ SQLNode *MakeTableNode(const std::string &name, const std::string &alias) {
 
 ////////////////// Make Function Node///////////////////////////////////
 SQLNode *MakeFuncNode(const std::string &name, SQLNodeList *list_ptr, SQLNode *over) {
-    FuncNode *node_ptr = new FuncNode(name, list_ptr, (WindowDefNode *) (over));
+    std::vector<SQLNode*> list;
+    ConverSQLNodeList2NodeList(list_ptr, list);
+    // 释放SQLNodeList
+    delete list_ptr;
+    FuncNode *node_ptr = new FuncNode(name, list, (WindowDefNode *) (over));
     return (SQLNode *) node_ptr;
 }
 
@@ -106,19 +119,43 @@ SQLNodeList *MakeNodeList(SQLNode *node_ptr) {
     return new_list_ptr;
 }
 
-SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
+
+SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr,
                             SQLNodeList *tableref_list_ptr,
                             SQLNodeList *window_clause_ptr,
                             SQLNode *limit_ptr) {
     SelectStmt *node_ptr = new SelectStmt();
-    FillSelectAttributions(node_ptr, select_list_ptr_, tableref_list_ptr, window_clause_ptr, limit_ptr);
+
+    std::vector<SQLNode*> select_node_list;
+    ConverSQLNodeList2NodeList(select_list_ptr, select_node_list);
+    // 释放SQLNodeList
+    delete select_list_ptr;
+
+    std::vector<SQLNode*> tableref_list;
+    ConverSQLNodeList2NodeList(tableref_list_ptr, tableref_list);
+    // 释放SQLNodeList
+    delete tableref_list_ptr;
+
+
+    std::vector<SQLNode*> window_list;
+    ConverSQLNodeList2NodeList(window_clause_ptr, window_list);
+    // 释放SQLNodeList
+    delete window_clause_ptr;
+    FillSelectAttributions(node_ptr, select_node_list, tableref_list, window_list, limit_ptr);
     return (SQLNode *) node_ptr;
 }
 
 ////////////////// Make Function Node///////////////////////////////////
 SQLNode *MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList *orders, SQLNode *frame) {
     WindowDefNode *node_ptr = new WindowDefNode();
-    FillWindowSpection(node_ptr, partitions, orders, frame);
+    std::vector<SQLNode*> partition_list;
+    ConverSQLNodeList2NodeList(partitions, partition_list);
+    delete partitions;
+
+    std::vector<SQLNode*> order_list;
+    ConverSQLNodeList2NodeList(orders, order_list);
+    delete orders;
+    FillWindowSpection(node_ptr, partition_list, order_list, frame);
     return (SQLNode *) node_ptr;
 }
 
@@ -161,21 +198,20 @@ std::string WindowOfExpression(SQLNode *node_ptr) {
                 return func_node_ptr->GetOver()->GetName();
             }
 
-            if (nullptr == func_node_ptr->GetArgs() || 0 == func_node_ptr->GetArgs()->Size()) {
+            if (func_node_ptr->GetArgs().empty()) {
                 return "";
             }
-            SQLLinkedNode* arg = func_node_ptr->GetArgs()->GetHead();
-            while (nullptr != arg && nullptr != arg->node_ptr_) {
-                std::string arg_w = WindowOfExpression(arg->node_ptr_);
+
+            for(auto arg: func_node_ptr->GetArgs()) {
+                std::string arg_w = WindowOfExpression(arg);
                 if (false == arg_w.empty()) {
                     return arg_w;
                 }
-                arg = arg->next_;
             }
+
             return "";
         }
-        default:
-            return "";
+        default:return "";
     }
 }
 

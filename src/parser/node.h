@@ -18,14 +18,14 @@
 #define FESQL_PARSER_NODE_H_
 
 #include <string>
-#include <list>
+#include <vector>
 #include <iostream>
-#include <forward_list>
 namespace fesql {
 namespace parser {
 
-const std::string SPACE_ST = "+";
+const std::string SPACE_ST = "+-";
 const std::string SPACE_ED = "";
+const std::string INDENT = "|\t";
 enum SQLNodeType {
     kSelectStmt = 0,
     kExpr,
@@ -82,6 +82,19 @@ public:
         output << tab << SPACE_ED << NameOfSQLNodeType(type_);
     }
 
+    virtual void PrintVector(std::ostream &output, const std::string &tab, std::vector<SQLNode *> vec) const {
+        if (0 == vec.size()) {
+            output << tab << "[]";
+            return;
+        }
+        output << tab << "[\n";
+        const std::string space = tab + INDENT;
+        for (auto child : vec) {
+            child->Print(output, space);
+            output << "\n";
+        }
+        output << tab << "]";
+    }
     SQLNodeType GetType() const {
         return type_;
     }
@@ -103,6 +116,7 @@ private:
     uint32_t location_;
 };
 
+typedef std::vector<SQLNode *> NodePointVector;
 struct SQLLinkedNode {
     SQLNode *node_ptr_;
     SQLLinkedNode *next_;
@@ -114,7 +128,6 @@ struct SQLLinkedNode {
      * destruction: tobe optimized
      */
     ~SQLLinkedNode() {
-        delete node_ptr_;
     }
 };
 
@@ -128,6 +141,9 @@ public:
         : size_(size), head_(head), tail_(tail) {
     }
 
+    /**
+     * SQLNodeList 只负责存储指针，不释放指针管理的区域
+     */
     ~SQLNodeList() {
         tail_ = NULL;
         if (NULL != head_) {
@@ -214,24 +230,18 @@ public:
 
     SelectStmt() : SQLNode(kSelectStmt, 0, 0), distinct_opt_(0) {
         limit_ptr_ = NULL;
-        select_list_ptr_ = NULL;
-        tableref_list_ptr_ = NULL;
         where_clause_ptr_ = NULL;
         group_clause_ptr_ = NULL;
         having_clause_ptr_ = NULL;
         order_clause_ptr_ = NULL;
-        window_list_ptr_ = NULL;
     }
 
     ~SelectStmt() {
         delete limit_ptr_;
-        delete tableref_list_ptr_;
-        delete select_list_ptr_;
         delete where_clause_ptr_;
         delete group_clause_ptr_;
         delete having_clause_ptr_;
         delete order_clause_ptr_;
-        delete window_list_ptr_;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -239,19 +249,19 @@ public:
         const std::string tab = orgTab + "\t";
         const std::string space = tab + "\t";
         output << "\n";
-        if (NULL == select_list_ptr_) {
-            output << tab << "select_list_ptr_: NULL\n";
+        if (select_list_ptr_.empty()) {
+            output << tab << "select_list_ptr_: []\n";
         } else {
             output << tab << "select_list: \n";
-            select_list_ptr_->Print(output, space);
+            PrintVector(output, space, select_list_ptr_);
             output << "\n";
         }
 
-        if (NULL == tableref_list_ptr_) {
+        if (tableref_list_ptr_.empty()) {
             output << tab << "tableref_list_ptr_: NULL\n";
         } else {
             output << tab << "tableref_list_ptr_: \n";
-            tableref_list_ptr_->Print(output, space);
+            PrintVector(output, space, tableref_list_ptr_);
             output << "\n";
         }
         if (NULL == where_clause_ptr_) {
@@ -286,11 +296,11 @@ public:
             output << tab << "order_clause_: " << *(order_clause_ptr_) << "\n";
         }
 
-        if (NULL == window_list_ptr_) {
+        if (window_list_ptr_.empty()) {
             output << tab << "window_list_ptr_: NULL\n";
         } else {
             output << tab << "window_list_ptr_: \n";
-            window_list_ptr_->Print(output, space);
+            PrintVector(output, space, window_list_ptr_);
             output << "\n";
         }
 
@@ -305,7 +315,7 @@ public:
 
     }
 
-    SQLNodeList *GetSelectList() const {
+    NodePointVector &GetSelectList() {
         return select_list_ptr_;
     }
 
@@ -313,18 +323,18 @@ public:
         return limit_ptr_;
     }
 
-    SQLNodeList *GetTableRefList() const {
+    NodePointVector &GetTableRefList() {
         return tableref_list_ptr_;
     }
 
-    SQLNodeList *GetWindowList() const {
+    NodePointVector &GetWindowList() {
         return window_list_ptr_;
     }
 
     friend void FillSelectAttributions(SelectStmt *node_ptr,
-                                       SQLNodeList *select_list_ptr,
-                                       SQLNodeList *tableref_list_ptr,
-                                       SQLNodeList *window_list_ptr,
+                                       NodePointVector &select_list_ptr,
+                                       NodePointVector &tableref_list_ptr,
+                                       NodePointVector &window_list_ptr,
                                        SQLNode *limit_ptr) {
         node_ptr->select_list_ptr_ = select_list_ptr;
         node_ptr->tableref_list_ptr_ = tableref_list_ptr;
@@ -335,14 +345,13 @@ public:
 private:
     int distinct_opt_;
     SQLNode *limit_ptr_;
-    SQLNodeList *select_list_ptr_;
-    SQLNodeList *tableref_list_ptr_;
-    std::list<SQLNode*> from_list;
+    NodePointVector select_list_ptr_;
+    NodePointVector tableref_list_ptr_;
     SQLNode *where_clause_ptr_;
     SQLNode *group_clause_ptr_;
     SQLNode *having_clause_ptr_;
     SQLNode *order_clause_ptr_;
-    SQLNodeList *window_list_ptr_;
+    NodePointVector window_list_ptr_;
 };
 
 class ResTarget : public SQLNode {
@@ -352,7 +361,6 @@ public:
     ResTarget(uint32_t line_num, uint32_t location) : SQLNode(kResTarget, line_num, location), indirection_(NULL) {}
     ~ResTarget() {
         delete val_;
-        delete indirection_;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -376,7 +384,7 @@ public:
     }
 
 private:
-    SQLNodeList *indirection_;    /* subscripts, field names, and '*', or NIL */
+    NodePointVector indirection_;    /* subscripts, field names, and '*', or NIL */
     SQLNode *val_;            /* the value expression to compute or assign */
     std::string name_;            /* column name or NULL */
 };
@@ -385,11 +393,8 @@ class WindowDefNode : public SQLNode {
 
 public:
     WindowDefNode()
-        : SQLNode(kWindowDef, 0, 0), window_name_(""), partition_list_ptr_(NULL),
-          order_list_ptr_(NULL), frame_ptr(NULL) {};
+        : SQLNode(kWindowDef, 0, 0), window_name_(""), frame_ptr(NULL) {};
     ~WindowDefNode() {
-        delete partition_list_ptr_;
-        delete order_list_ptr_;
         delete frame_ptr;
     }
 
@@ -401,11 +406,11 @@ public:
         return window_name_;
     }
 
-    SQLNodeList *GetPartitions() const {
+    NodePointVector &GetPartitions() {
         return partition_list_ptr_;
     }
 
-    SQLNodeList *GetOrders() const {
+    NodePointVector &GetOrders() {
         return order_list_ptr_;
     }
 
@@ -420,21 +425,13 @@ public:
         output << "\n";
 
         output << tab << "window_name: " << window_name_ << "\n";
-        if (NULL == partition_list_ptr_) {
-            output << tab << "partition_list_ptr_: NULL\n";
-        } else {
-            output << tab << "partition_list_ptr_: \n";
-            partition_list_ptr_->Print(output, space);
-            output << "\n";
-        }
+        output << tab << "partition_list_ptr_: \n";
+        PrintVector(output, space, partition_list_ptr_);
+        output << "\n";
 
-        if (NULL == order_list_ptr_) {
-            output << tab << "order_list_ptr_: NULL\n";
-        } else {
-            output << tab << "order_list_ptr_: \n";
-            order_list_ptr_->Print(output, space);
-            output << "\n";
-        }
+        output << tab << "order_list_ptr_: \n";
+        PrintVector(output, space, order_list_ptr_);
+        output << "\n";
         if (NULL == frame_ptr) {
             output << tab << "frame_ptr: NULL";
         } else {
@@ -444,8 +441,8 @@ public:
     }
 
     friend void FillWindowSpection(WindowDefNode *node_ptr,
-                                   SQLNodeList *partitions,
-                                   SQLNodeList *orders,
+                                   NodePointVector &partitions,
+                                   NodePointVector &orders,
                                    SQLNode *frame) {
         node_ptr->partition_list_ptr_ = partitions;
         node_ptr->order_list_ptr_ = orders;
@@ -454,8 +451,8 @@ public:
 
 private:
     std::string window_name_;            /* window's own name */
-    SQLNodeList *partition_list_ptr_;    /* PARTITION BY expression list */
-    SQLNodeList *order_list_ptr_;    /* ORDER BY (list of SortBy) */
+    NodePointVector partition_list_ptr_;    /* PARTITION BY expression list */
+    NodePointVector order_list_ptr_;    /* ORDER BY (list of SortBy) */
     SQLNode *frame_ptr;    /* expression for starting bound, if any */
 };
 
@@ -669,11 +666,10 @@ class FuncNode : SQLNode {
 public:
     FuncNode(const std::string &function_name)
         : SQLNode(kFunc, 0, 0), function_name_(function_name), args_(NULL), over_(NULL) {};
-    FuncNode(const std::string &function_name, SQLNodeList *args, WindowDefNode *over)
+    FuncNode(const std::string &function_name, NodePointVector &args, WindowDefNode *over)
         : SQLNode(kFunc, 0, 0), function_name_(function_name), args_(args), over_(over) {};
 
     ~FuncNode() {
-        delete args_;
         delete over_;
     }
 
@@ -685,11 +681,7 @@ public:
         output << tab << "function_name: " << function_name_;
         output << "\n";
         output << tab << "args: \n";
-        if (NULL == args_ || 0 == args_->Size()) {
-            output << space << "[]";
-        } else {
-            args_->Print(output, space);
-        }
+        PrintVector(output, space, args_);
         output << "\n";
         if (NULL == over_) {
             output << tab << "over: NULL";
@@ -703,7 +695,7 @@ public:
         return function_name_;
     }
 
-    SQLNodeList *GetArgs() const {
+    NodePointVector &GetArgs() {
         return args_;
     }
 
@@ -712,7 +704,7 @@ public:
     }
 private:
     std::string function_name_;
-    SQLNodeList *args_;
+    NodePointVector args_;
     WindowDefNode *over_;
 };
 
@@ -759,8 +751,7 @@ public:
                 break;
             case kDouble:output << "value: " << val_.vdouble;
                 break;
-            default:
-                output << "value: unknow";
+            default:output << "value: unknow";
         }
     }
 

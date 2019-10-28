@@ -96,15 +96,25 @@ TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
 
 TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     SQLNodeList *partitions = new SQLNodeList();
-    partitions->PushFront(new ColumnRefNode("keycol"));
+    SQLNode * ptr1 = new ColumnRefNode("keycol");
+    partitions->PushFront(ptr1);
+
+    SQLNode * ptr2 = new ColumnRefNode("col1");
     SQLNodeList *orders = new SQLNodeList();
-    orders->PushFront(new OrderByNode(new ColumnRefNode("col1")));
-    SQLNode *frame = MakeFrameNode(new FrameBound(kPreceding, NULL), new FrameBound(kPreceding, new ConstNode(86400000L)));
+    orders->PushFront(ptr2);
+
+    SQLNode
+        *frame = MakeFrameNode(new FrameBound(kPreceding, NULL), new FrameBound(kPreceding, new ConstNode(86400000L)));
     WindowDefNode *node_ptr = (WindowDefNode *) MakeWindowDefNode(partitions, orders, frame);
     std::cout << *node_ptr << std::endl;
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
-    ASSERT_EQ(partitions, node_ptr->GetPartitions());
-    ASSERT_EQ(orders, node_ptr->GetOrders());
+//
+    NodePointVector vector1;
+    vector1.push_back(ptr1);
+    NodePointVector vector2;
+    vector2.push_back(ptr2);
+    ASSERT_EQ(vector1, node_ptr->GetPartitions());
+    ASSERT_EQ(vector2, node_ptr->GetOrders());
     ASSERT_EQ(frame, node_ptr->GetFrame());
     ASSERT_EQ("", node_ptr->GetName());
 
@@ -114,8 +124,6 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetWithNameTest) {
     WindowDefNode *node_ptr = (WindowDefNode *) MakeWindowDefNode("w1");
     std::cout << *node_ptr << std::endl;
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
-    ASSERT_EQ(NULL, node_ptr->GetPartitions());
-    ASSERT_EQ(NULL, node_ptr->GetOrders());
     ASSERT_EQ(NULL, node_ptr->GetFrame());
     ASSERT_EQ("w1", node_ptr->GetName());
 

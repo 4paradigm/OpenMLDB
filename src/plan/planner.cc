@@ -60,24 +60,19 @@ PlanNode *Planner::CreatePlanRecurse(parser::SQLNode *root) {
  */
 PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
 
-    parser::SQLNodeList *table_ref_list = root->GetTableRefList();
+    parser::NodePointVector table_ref_list = root->GetTableRefList();
 
-    if (nullptr == table_ref_list || 0 == table_ref_list->Size()) {
+    if (table_ref_list.empty()) {
         LOG(ERROR) << "can not create select plan node with empty table references";
         return nullptr;
     }
 
-    if (table_ref_list->Size() > 1) {
+    if (table_ref_list.size() > 1) {
         LOG(ERROR) << "can not create select plan node based on more than 2 tables";
         return nullptr;
     }
 
-    if (nullptr == table_ref_list->GetHead() || nullptr == table_ref_list->GetHead()->node_ptr_
-        || parser::kTable != table_ref_list->GetHead()->node_ptr_->GetType()) {
-        LOG(ERROR) << "can not create select plan node based on null or empty table reference";
-    }
-
-    parser::TableNode *table_node_ptr = (parser::TableNode *) (table_ref_list->GetHead()->node_ptr_);
+    parser::TableNode *table_node_ptr = (parser::TableNode *) table_ref_list.at(0);
     SelectPlanNode *select_plan = new SelectPlanNode();
     std::map<std::string, ProjectListPlanNode *> project_list_map;
     // set limit
@@ -92,16 +87,13 @@ PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
     }
 
     // prepare project list plan node
-    parser::SQLNodeList *select_expr_list = root->GetSelectList();
+    parser::NodePointVector select_expr_list = root->GetSelectList();
 
-    if (nullptr != select_expr_list && 0 != select_expr_list->Size()) {
-
-        parser::SQLLinkedNode *ptr = select_expr_list->GetHead();
-        while (nullptr != ptr) {
-            ProjectPlanNode *project_node_ptr = (ProjectPlanNode *) CreateProjectPlanNode(ptr->node_ptr_);
+    if (false == select_expr_list.empty()) {
+        for(auto expr : select_expr_list) {
+            ProjectPlanNode *project_node_ptr = (ProjectPlanNode *) CreateProjectPlanNode(expr);
             if (nullptr == project_node_ptr) {
                 LOG(WARNING) << "fail to create project plan node";
-                ptr = ptr->next_;
                 continue;
             } else {
                 std::string key =
@@ -111,7 +103,6 @@ PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
                                             new ProjectListPlanNode(key);
                 }
                 project_list_map[key]->AddProject(project_node_ptr);
-                ptr = ptr->next_;
             }
         }
 
