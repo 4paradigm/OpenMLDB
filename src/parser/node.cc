@@ -153,6 +153,32 @@ SQLNode *MakeOrderByNode(SQLNode *order) {
     return (SQLNode *) node_ptr;
 }
 
+std::string WindowOfExpression(SQLNode *node_ptr) {
+    switch (node_ptr->GetType()) {
+        case kFunc: {
+            FuncNode *func_node_ptr = (FuncNode *) node_ptr;
+            if (nullptr != func_node_ptr->GetOver()) {
+                return func_node_ptr->GetOver()->GetName();
+            }
+
+            if (nullptr == func_node_ptr->GetArgs() || 0 == func_node_ptr->GetArgs()->Size()) {
+                return "";
+            }
+            SQLLinkedNode* arg = func_node_ptr->GetArgs()->GetHead();
+            while (nullptr != arg && nullptr != arg->node_ptr_) {
+                std::string arg_w = WindowOfExpression(arg->node_ptr_);
+                if (false == arg_w.empty()) {
+                    return arg_w;
+                }
+                arg = arg->next_;
+            }
+            return "";
+        }
+        default:
+            return "";
+    }
+}
+
 std::ostream &operator<<(std::ostream &output, const SQLNode &thiz) {
     thiz.Print(output);
     return output;

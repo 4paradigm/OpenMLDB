@@ -52,18 +52,21 @@ public:
     virtual void Print(std::ostream &output, const std::string &tab) const {
         output << tab << SPACE_ST << plan::NameOfPlanNodeType(type_);
     }
-    virtual void PrintChildren(std::ostream &output, const std::string &tab) const {
-        if (0 == children_.size()) {
+    virtual void PrintVector(std::ostream &output, const std::string &tab, std::vector<PlanNode *> vec) const {
+        if (0 == vec.size()) {
             output << tab << "[]";
             return;
         }
         output << tab << "[\n";
         const std::string space = tab + INDENT;
-        for (auto child : children_) {
+        for (auto child : vec) {
             child->Print(output, space);
             output << "\n";
         }
         output << tab << "]";
+    }
+    virtual void PrintChildren(std::ostream &output, const std::string &tab) const {
+        PrintVector(output, tab, children_);
     }
 
 protected:
@@ -123,7 +126,7 @@ public:
 
 class SelectPlanNode : public MultiChildPlanNode {
 public:
-    SelectPlanNode() : MultiChildPlanNode(kSelect) {};
+    SelectPlanNode() : MultiChildPlanNode(kSelect), limit_cnt_(-1) {};
     int GetLimitCount() {
         return limit_cnt_;
     }
@@ -133,8 +136,49 @@ public:
     }
 
 private:
-
     int limit_cnt_;
+};
+
+class ProjectPlanNode : public LeafPlanNode {
+public:
+    ProjectPlanNode() : LeafPlanNode(kProject) {};
+    ProjectPlanNode(parser::SQLNode *expression)
+        : LeafPlanNode(kProject), expression_(expression), name_(""), w_("") {};
+    ProjectPlanNode(parser::SQLNode *expression, const std::string &name)
+        : LeafPlanNode(kProject), expression_(expression), name_(name) {};
+
+    ProjectPlanNode(parser::SQLNode *expression, const std::string &name, const std::string &w)
+        : LeafPlanNode(kProject), expression_(expression), name_(name), w_(w) {};
+
+    void Print(std::ostream &output, const std::string &orgTab) const {
+        PlanNode::Print(output, orgTab);
+        const std::string tab = orgTab + INDENT;
+        const std::string space = tab + INDENT;
+        output << "\n";
+        expression_->Print(output, space);
+    }
+
+    std::string GetW() const {
+        return w_;
+    }
+
+    std::string GetName() const {
+        return name_;
+    }
+
+    parser::SQLNode *GetExpression() const {
+        return expression_;
+    }
+
+    bool IsWindowProject() {
+        return !w_.empty();
+    }
+
+private:
+    parser::SQLNode *expression_;
+    std::string name_;
+    std::string w_;
+
 };
 
 class ProjectListPlanNode : public MultiChildPlanNode {
@@ -148,38 +192,23 @@ public:
         output << "\n";
         if (w_.empty()) {
             output << tab << SPACE_ST << "normal projects:\n";
-            PlanNode::PrintChildren(output, space);
+            PlanNode::PrintVector(output, space, projects);
         } else {
-            output << tab << SPACE_ST << "window projects:\n";
-            PlanNode::PrintChildren(output, space);
+            output << tab << SPACE_ST << "window: " << w_ << ", projects:\n";
+            PlanNode::PrintVector(output, space, projects);
         }
     }
 
-private:
-    std::string w_;
-};
-
-class ProjectPlanNode : public LeafPlanNode {
-public:
-    ProjectPlanNode() : LeafPlanNode(kProject) {};
-    ProjectPlanNode(parser::SQLNode *expression) : LeafPlanNode(kProject), expression_(expression), name_("") {};
-    ProjectPlanNode(parser::SQLNode *expression, const std::string &name)
-        : LeafPlanNode(kProject), expression_(expression), name_(name) {};
-
-    ProjectPlanNode(parser::SQLNode *expression, const std::string &name, const std::string &w)
-        : LeafPlanNode(kProject), expression_(expression), name_(name) {};
-
-    void Print(std::ostream &output, const std::string &orgTab) const {
-        PlanNode::Print(output, orgTab);
-        const std::string tab = orgTab + INDENT;
-        const std::string space = tab + INDENT;
-        output << "\n";
-        expression_->Print(output, space);
+    std::vector<PlanNode *> &GetProjects() {
+        return projects;
     }
-private:
-    parser::SQLNode *expression_;
-    std::string name_;
+    void AddProject(ProjectPlanNode *project) {
+        projects.push_back((PlanNode *) project);
+    }
 
+private:
+    std::vector<PlanNode *> projects;
+    std::string w_;
 };
 
 }

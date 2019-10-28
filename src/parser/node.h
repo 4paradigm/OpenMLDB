@@ -32,6 +32,7 @@ enum SQLNodeType {
     kResTarget,
     kTable,
     kFunc,
+    kWindowFunc,
     kWindowDef,
     kFrameBound,
     kFrames,
@@ -831,7 +832,7 @@ SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &re
 SQLNode *MakeResTargetNode(SQLNode *node_ptr, const std::string &name);
 SQLNode *MakeNode(const SQLNodeType &type, ...);
 SQLNodeList *MakeNodeList(fesql::parser::SQLNode *node_ptr);
-
+std::string WindowOfExpression(SQLNode *node_ptr);
 } // namespace of parser
 } // namespace of fesql
 #endif /* !FESQL_PARSER_NODE_H_ */
