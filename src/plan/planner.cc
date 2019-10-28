@@ -90,17 +90,18 @@ PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
     parser::NodePointVector select_expr_list = root->GetSelectList();
 
     if (false == select_expr_list.empty()) {
-        for(auto expr : select_expr_list) {
-            ProjectPlanNode *project_node_ptr = (ProjectPlanNode *) CreateProjectPlanNode(expr);
+        for (auto expr : select_expr_list) {
+            ProjectPlanNode
+                *project_node_ptr = (ProjectPlanNode *) CreateProjectPlanNode(expr, table_node_ptr->GetOrgTableName());
             if (nullptr == project_node_ptr) {
                 LOG(WARNING) << "fail to create project plan node";
                 continue;
             } else {
                 std::string key =
-                    project_node_ptr->GetW().empty() ? table_node_ptr->GetOrgTableName() : project_node_ptr->GetW();
+                    project_node_ptr->GetW().empty() ? project_node_ptr->GetTable() : project_node_ptr->GetW();
                 if (project_list_map.find(key) == project_list_map.end()) {
-                    project_list_map[key] = project_node_ptr->GetW().empty() ? new ProjectListPlanNode() :
-                                            new ProjectListPlanNode(key);
+                    project_list_map[key] = project_node_ptr->GetW().empty() ? new ProjectListPlanNode(key, "") :
+                                            new ProjectListPlanNode(project_node_ptr->GetTable(), key);
                 }
                 project_list_map[key]->AddProject(project_node_ptr);
             }
@@ -114,7 +115,7 @@ PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
     return select_plan;
 }
 
-PlanNode *Planner::CreateProjectPlanNode(parser::SQLNode *root) {
+PlanNode *Planner::CreateProjectPlanNode(parser::SQLNode *root, std::string table_name) {
     if (nullptr == root) {
         return nullptr;
     }
@@ -124,7 +125,7 @@ PlanNode *Planner::CreateProjectPlanNode(parser::SQLNode *root) {
             parser::ResTarget *target_ptr = (parser::ResTarget *) root;
 
             std::string w = parser::WindowOfExpression(target_ptr->GetVal());
-            return new ProjectPlanNode(target_ptr->GetVal(), target_ptr->GetName(), w);
+            return new ProjectPlanNode(target_ptr->GetVal(), target_ptr->GetName(), table_name, w);
         }
         default: {
             LOG(ERROR) << "can not create project plan node with type " << parser::NameOfSQLNodeType(root->GetType());

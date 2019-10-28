@@ -147,8 +147,11 @@ public:
     ProjectPlanNode(parser::SQLNode *expression, const std::string &name)
         : LeafPlanNode(kProject), expression_(expression), name_(name) {};
 
-    ProjectPlanNode(parser::SQLNode *expression, const std::string &name, const std::string &w)
-        : LeafPlanNode(kProject), expression_(expression), name_(name), w_(w) {};
+    ProjectPlanNode(parser::SQLNode *expression,
+                    const std::string &name,
+                    const std::string &table,
+                    const std::string &w)
+        : LeafPlanNode(kProject), expression_(expression), name_(name), table_(table), w_(w) {};
 
     void Print(std::ostream &output, const std::string &orgTab) const {
         PlanNode::Print(output, orgTab);
@@ -162,6 +165,9 @@ public:
         return w_;
     }
 
+    std::string GetTable() const {
+        return table_;
+    }
     std::string GetName() const {
         return name_;
     }
@@ -178,20 +184,21 @@ private:
     parser::SQLNode *expression_;
     std::string name_;
     std::string w_;
+    std::string table_;
 
 };
 
 class ProjectListPlanNode : public MultiChildPlanNode {
 public:
     ProjectListPlanNode() : MultiChildPlanNode(kProjectList) {};
-    ProjectListPlanNode(const std::string &w) : MultiChildPlanNode(kProjectList), w_(w) {};
+    ProjectListPlanNode(const std::string &table, const std::string &w) : MultiChildPlanNode(kProjectList), table_(table), w_(w) {};
     void Print(std::ostream &output, const std::string &org_tab) const {
         PlanNode::Print(output, org_tab);
         const std::string tab = org_tab + INDENT + SPACE_ED;
         const std::string space = org_tab + INDENT + INDENT;
         output << "\n";
         if (w_.empty()) {
-            output << tab << SPACE_ST << "normal projects:\n";
+            output << tab << SPACE_ST << "table: " << table_ << ", projects:\n";
             PlanNode::PrintVector(output, space, projects);
         } else {
             output << tab << SPACE_ST << "window: " << w_ << ", projects:\n";
@@ -209,6 +216,7 @@ public:
 private:
     std::vector<PlanNode *> projects;
     std::string w_;
+    std::string table_;
 };
 
 }

@@ -25,7 +25,7 @@ public:
 protected:
     PlanNode *CreatePlanRecurse(parser::SQLNode *root);
     PlanNode *CreateSelectPlan(parser::SelectStmt *root);
-    PlanNode *CreateProjectPlanNode(parser::SQLNode *root);
+    PlanNode *CreateProjectPlanNode(parser::SQLNode *root, std::string table_name);
     PlanNode *CreateDataProviderPlanNode(parser::SQLNode *root);
     PlanNode *CreateDataCollectorPlanNode(parser::SQLNode *root);
 };
