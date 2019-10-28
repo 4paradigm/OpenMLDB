@@ -44,8 +44,9 @@ bool MultiChildPlanNode::AddChild(PlanNode *node) {
     return true;
 }
 
-std::string NameOfPlanNodeType(PlanType &type) {
+std::string NameOfPlanNodeType(const PlanType &type) {
     switch (type) {
+        case kSelect:return std::string("kSelect");
         case kProjectList:return std::string("kProjectList");
         case kProject:return std::string("kProject");
         case kExpr:return std::string("kExpr");
@@ -59,6 +60,10 @@ std::string NameOfPlanNodeType(PlanType &type) {
 }
 
 
+std::ostream &operator<<(std::ostream &output, const PlanNode &thiz) {
+    thiz.Print(output, "");
+    return output;
+}
 //bool SelectPlanNode::AddChild(PlanNode *node) {
 //    return MultiChildPlanNode::AddChild(node);
 //}

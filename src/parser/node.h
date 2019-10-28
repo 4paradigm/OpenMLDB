@@ -336,6 +336,7 @@ private:
     SQLNode *limit_ptr_;
     SQLNodeList *select_list_ptr_;
     SQLNodeList *tableref_list_ptr_;
+    std::list<SQLNode*> from_list;
     SQLNode *where_clause_ptr_;
     SQLNode *group_clause_ptr_;
     SQLNode *having_clause_ptr_;
@@ -434,7 +435,6 @@ public:
             output << "\n";
         }
         if (NULL == frame_ptr) {
-
             output << tab << "frame_ptr: NULL";
         } else {
             output << tab << "frame_ptr: \n";
@@ -691,7 +691,7 @@ public:
         }
         output << "\n";
         if (NULL == over_) {
-            output << tab << "over: NULL\n";
+            output << tab << "over: NULL";
         } else {
             output << tab << "over: \n";
             over_->Print(output, space);

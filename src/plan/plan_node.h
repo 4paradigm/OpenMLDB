@@ -12,6 +12,10 @@
 namespace fesql {
 namespace plan {
 
+const std::string SPACE_ST = "+- ";
+const std::string SPACE_ED = "";
+const std::string INDENT = "|\t";
+
 /**
  * Planner:
  *  basic class for plan
@@ -28,6 +32,7 @@ enum PlanType {
     kAggWindowFunction,
     kUnknow,
 };
+std::string NameOfPlanNodeType(const PlanType &type);
 class PlanNode {
 public:
     PlanNode(PlanType type) : type_(type) {};
@@ -38,13 +43,32 @@ public:
         return type_;
     }
 
-    std::list<PlanNode *> &GetChildren() {
+    std::vector<PlanNode *> &GetChildren() {
         return children_;
+    }
+
+    friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
+
+    virtual void Print(std::ostream &output, const std::string &tab) const {
+        output << tab << SPACE_ST << plan::NameOfPlanNodeType(type_);
+    }
+    virtual void PrintChildren(std::ostream &output, const std::string &tab) const {
+        if (0 == children_.size()) {
+            output << tab << "[]";
+            return;
+        }
+        output << tab << "[\n";
+        const std::string space = tab + INDENT;
+        for (auto child : children_) {
+            child->Print(output, space);
+            output << "\n";
+        }
+        output << tab << "]";
     }
 
 protected:
     PlanType type_;
-    std::list<PlanNode *> children_;
+    std::vector<PlanNode *> children_;
 };
 
 class LeafPlanNode : public PlanNode {
@@ -58,12 +82,28 @@ class UnaryPlanNode : public PlanNode {
 public:
     UnaryPlanNode(PlanType type) : PlanNode(type) {};
     virtual bool AddChild(PlanNode *node);
+    virtual void Print(std::ostream &output, const std::string &org_tab) const {
+        const std::string tab = org_tab + INDENT + SPACE_ED;
+        const std::string space = org_tab + INDENT + INDENT;
+        output << "\n";
+        PlanNode::Print(output, org_tab);
+        output << tab << SPACE_ST << "children:\n";
+        PlanNode::PrintChildren(output, tab);
+    }
 };
 
 class BinaryPlanNode : public PlanNode {
 public:
     BinaryPlanNode(PlanType type) : PlanNode(type) {};
     virtual bool AddChild(PlanNode *node);
+    virtual void Print(std::ostream &output, const std::string &org_tab) const {
+        const std::string tab = org_tab + INDENT + SPACE_ED;
+        const std::string space = org_tab + INDENT + INDENT;
+        PlanNode::Print(output, org_tab);
+        output << "\n";
+        output << tab << "children:\n";
+        PlanNode::PrintChildren(output, tab);
+    }
 
 };
 
@@ -71,12 +111,19 @@ class MultiChildPlanNode : public PlanNode {
 public:
     MultiChildPlanNode(PlanType type) : PlanNode(type) {};
     virtual bool AddChild(PlanNode *node);
+    virtual void Print(std::ostream &output, const std::string &org_tab) const {
+        const std::string tab = org_tab + INDENT + SPACE_ED;
+        const std::string space = org_tab + INDENT + INDENT;
+        PlanNode::Print(output, org_tab);
+        output << "\n";
+        output << tab << SPACE_ST << "children:\n";
+        PlanNode::PrintChildren(output, tab);
+    }
 };
 
 class SelectPlanNode : public MultiChildPlanNode {
 public:
     SelectPlanNode() : MultiChildPlanNode(kSelect) {};
-//    virtual bool AddChild(PlanNode *node);
     int GetLimitCount() {
         return limit_cnt_;
     }
@@ -86,7 +133,30 @@ public:
     }
 
 private:
+
     int limit_cnt_;
+};
+
+class ProjectListPlanNode : public MultiChildPlanNode {
+public:
+    ProjectListPlanNode() : MultiChildPlanNode(kProjectList) {};
+    ProjectListPlanNode(const std::string &w) : MultiChildPlanNode(kProjectList), w_(w) {};
+    void Print(std::ostream &output, const std::string &org_tab) const {
+        PlanNode::Print(output, org_tab);
+        const std::string tab = org_tab + INDENT + SPACE_ED;
+        const std::string space = org_tab + INDENT + INDENT;
+        output << "\n";
+        if (w_.empty()) {
+            output << tab << SPACE_ST << "normal projects:\n";
+            PlanNode::PrintChildren(output, space);
+        } else {
+            output << tab << SPACE_ST << "window projects:\n";
+            PlanNode::PrintChildren(output, space);
+        }
+    }
+
+private:
+    std::string w_;
 };
 
 class ProjectPlanNode : public LeafPlanNode {
@@ -95,14 +165,22 @@ public:
     ProjectPlanNode(parser::SQLNode *expression) : LeafPlanNode(kProject), expression_(expression), name_("") {};
     ProjectPlanNode(parser::SQLNode *expression, const std::string &name)
         : LeafPlanNode(kProject), expression_(expression), name_(name) {};
-//    virtual bool AddChild(PlanNode *node);
+
+    ProjectPlanNode(parser::SQLNode *expression, const std::string &name, const std::string &w)
+        : LeafPlanNode(kProject), expression_(expression), name_(name) {};
+
+    void Print(std::ostream &output, const std::string &orgTab) const {
+        PlanNode::Print(output, orgTab);
+        const std::string tab = orgTab + INDENT;
+        const std::string space = tab + INDENT;
+        output << "\n";
+        expression_->Print(output, space);
+    }
 private:
     parser::SQLNode *expression_;
     std::string name_;
-};
 
-////// static function or friend function
-std::string NameOfPlanNodeType(PlanType &type);
+};
 
 }
 }

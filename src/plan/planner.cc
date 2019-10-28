@@ -62,6 +62,9 @@ PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
     SelectPlanNode *select_plan = new SelectPlanNode();
 
     if (nullptr != root->GetTableRefList() && root->GetTableRefList()->Size() > 0) {
+        parser::SQLNodeList *table_ref_list = root->GetTableRefList();
+
+
     }
 
     // set limit
@@ -79,7 +82,7 @@ PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
     parser::SQLNodeList *select_expr_list = root->GetSelectList();
     if (nullptr != select_expr_list && 0 != select_expr_list->Size()) {
 
-        PlanNode *project_list_plan = new MultiChildPlanNode(kProjectList);
+        ProjectListPlanNode *project_list_plan = new ProjectListPlanNode();
         parser::SQLLinkedNode *ptr = select_expr_list->GetHead();
         while (nullptr != ptr) {
             PlanNode *project_ndoe_ptr = CreateProjectPlanNode(ptr->node_ptr_);
@@ -103,7 +106,7 @@ PlanNode *Planner::CreateProjectPlanNode(parser::SQLNode *root) {
             return new ProjectPlanNode(target_ptr->GetVal(), target_ptr->GetName());
         }
         default: {
-            LOG(ERROR) << "can not create project plan node with type " <<  parser::NameOfSQLNodeType(root->GetType());
+            LOG(ERROR) << "can not create project plan node with type " << parser::NameOfSQLNodeType(root->GetType());
         }
 
     }
