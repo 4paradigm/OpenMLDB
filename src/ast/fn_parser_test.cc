@@ -1,5 +1,5 @@
 /*
- * fe_grammar_test.cc
+ * discrete_test.cc
  * Copyright (C) 2019 wangtaize <wangtaize@wangtaizedeMacBook-Pro-2.local>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,38 @@
  * limitations under the License.
  */
 #include <iostream>
-#include "ast/fe_fn_grammar.h"
+#include "ast/fn_parser.h"
 #include "gtest/gtest.h"
-#include "tao/pegtl/contrib/parse_tree.hpp"
-#include "tao/pegtl/contrib/parse_tree_to_dot.hpp"
 
 namespace fesql {
 namespace ast {
 
-class FeGrammarTest : public ::testing::Test {
+class FnASTParserTest : public ::testing::Test {
 
 public:
-    FeGrammarTest() {}
-    ~FeGrammarTest() {}
+    FnASTParserTest() {}
+    ~FnASTParserTest() {}
 };
 
+TEST_F(FnASTParserTest, test) {
+    yyscan_t scan;
+    int ret0 = fnlex_init(&scan);
+    const char* test ="def test(a:i32,b:i32):i32\n    c=a+b\n    return c";
+    fn_scan_string(test, scan);
+    ::fesql::ast::FnNode node;
+    int ret = fnparse(scan, &node);
 
-TEST_F(FeGrammarTest, test) {
-    std::string fn ="def test(a:i32,b:i32):i32\n    a=b+c\n    return a\n";
-    ::tao::pegtl::memory_input<> in(fn.c_str(), fn.size(), fn);
-    const auto root = ::tao::pegtl::parse_tree::parse<::fesql::ast::grammar, ::fesql::ast::fe_selector>(in);
-    ::tao::pegtl::parse_tree::print_dot( std::cout, *root );
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(3, node.children.size());
+
+    ASSERT_EQ(::fesql::ast::kFnDef, node.children[0]->type);
+    ASSERT_EQ(0, node.children[0]->indent);
+
+    ASSERT_EQ(::fesql::ast::kFnAssignStmt, node.children[1]->type);
+    ASSERT_EQ(4, node.children[1]->indent);
+
+    ASSERT_EQ(::fesql::ast::kFnReturnStmt, node.children[2]->type);
+    ASSERT_EQ(4, node.children[2]->indent);
 
 }
 
@@ -45,5 +56,6 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+
 
 
