@@ -116,5 +116,162 @@ std::string WindowOfExpression(SQLNode *node_ptr) {
     }
 }
 
+void PrintSQLNode(std::ostream &output,
+                  const std::string &org_tab,
+                  SQLNode *node_ptr,
+                  const std::string &item_name,
+                  bool last_child) {
+    output << org_tab << SPACE_ST << item_name << ":";
+
+    if (nullptr == node_ptr) {
+        output << " null";
+    } else if (last_child) {
+        output << "\n";
+        node_ptr->Print(output, org_tab + INDENT);
+    } else {
+        output << "\n";
+        node_ptr->Print(output, org_tab + OR_INDENT);
+    }
+}
+
+void PrintSQLVector(std::ostream &output,
+                    const std::string &tab,
+                    std::vector<SQLNode *> vec,
+                    const std::string vector_name,
+                    bool last_item) {
+    if (0 == vec.size()) {
+        output << tab << SPACE_ST << vector_name << ": []";
+        return;
+    }
+    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int i = 0;
+    for (i = 0; i < vec.size() - 1; ++i) {
+        PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
+        output << "\n";
+    }
+    PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
+}
+
+void PrintValue(std::ostream &output,
+                const std::string &org_tab,
+                const std::string &value,
+                const std::string &item_name,
+                bool last_child) {
+
+    output << org_tab << SPACE_ST << item_name << ": " << value;
+}
+
+void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    bool last_child = false;
+    PrintSQLNode(output, tab, where_clause_ptr_, "where_clause", last_child);
+    output << "\n";
+    PrintSQLNode(output, tab, group_clause_ptr_, "group_clause", last_child);
+    output << "\n";
+    PrintSQLNode(output, tab, having_clause_ptr_, "haveing_clause", last_child);
+    output << "\n";
+    PrintSQLNode(output, tab, order_clause_ptr_, "order_clause", last_child);
+    output << "\n";
+    PrintSQLNode(output, tab, limit_ptr_, "limit", last_child);
+    output << "\n";
+    PrintSQLVector(output, tab, select_list_ptr_, "select_list", last_child);
+    output << "\n";
+    PrintSQLVector(output, tab, tableref_list_ptr_, "tableref_list", last_child);
+    output << "\n";
+    last_child = true;
+    PrintSQLVector(output, tab, window_list_ptr_, "window_list", last_child);
+}
+void ResTarget::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    output << "\n";
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    PrintSQLNode(output, tab, val_, "val", false);
+    output << "\n";
+    PrintValue(output, tab, name_, "name", true);
+
+}
+void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab;
+    output << "\n";
+    PrintValue(output, tab, window_name_, "window_name", false);
+
+    output << "\n";
+    PrintSQLVector(output, tab, partition_list_ptr_, "partitions", false);
+
+    output << "\n";
+    PrintSQLVector(output, tab, order_list_ptr_, "orders", false);
+
+    output << "\n";
+    PrintSQLNode(output, tab, frame_ptr_, "frame", true);
+}
+void TableNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, org_table_name_, "table", false);
+    output << "\n";
+    PrintValue(output, tab, alias_table_name_, "alias", true);
+}
+void FuncNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    output << "\n";
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << tab << "function_name: " << function_name_;
+    output << "\n";
+    PrintSQLVector(output, tab, args_, "args", false);
+    output << "\n";
+    PrintSQLNode(output, tab, over_, "over", true);
+
+}
+void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+
+    output << "\n";
+    PrintValue(output, tab, NameOfSQLNodeType(frame_type_), "type", false);
+
+    output << "\n";
+    if (NULL == start_) {
+        PrintValue(output, tab, "UNBOUNDED", "start", false);
+    } else {
+        PrintSQLNode(output, tab, start_, "start", false);
+    }
+
+    output << "\n";
+    if (NULL == end_) {
+        PrintValue(output, tab, "UNBOUNDED", "end", true);
+    } else {
+        PrintSQLNode(output, tab, end_, "end", true);
+    }
+}
+void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, std::to_string(limit_cnt_), "limit_cnt", true);
+}
+void ColumnRefNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, relation_name_, "relation_name", false);
+    output << "\n";
+    PrintValue(output, tab, column_name_, "column_name", true);
+}
+void OrderByNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+
+    output << "\n";
+    PrintValue(output, tab, NameOfSQLNodeType(sort_type_), "sort_type", false);
+
+    output << "\n";
+    PrintSQLNode(output, tab, order_by_, "order_by", true);
+}
+
 }
 }

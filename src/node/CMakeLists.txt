@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_node STATIC node_memory.cc sql_node.cc plan_node.cc)
+add_library(fesql_node STATIC node_memory.cc sql_node.cc plan_node.cc )
 
 add_executable(node_memory_test node_memory_test.cc node_memory.cc)
 target_link_libraries(node_memory_test fesql_node glog gtest pthread)

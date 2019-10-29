@@ -74,6 +74,7 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
     ASSERT_EQ(1, list->Size());
     node::SQLLinkedNode *ptr = list->GetHead();
 
+    std::cout << *(ptr->node_ptr_) << std::endl;
     Planner *planner_ptr = new SimplePlanner(ptr->node_ptr_);
     PlanNode *plan_ptr = planner_ptr->CreatePlan();
     ASSERT_TRUE(NULL != plan_ptr);

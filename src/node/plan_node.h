@@ -38,24 +38,11 @@ public:
     friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
 
     virtual void Print(std::ostream &output, const std::string &tab) const {
-        output << tab << SPACE_ST << node::NameOfPlanNodeType(type_);
+        output << tab << SPACE_ST << "plan["<<node::NameOfPlanNodeType(type_)<<"]";
     }
-    virtual void PrintVector(std::ostream &output, const std::string &tab, std::vector<PlanNode *> vec) const {
-        if (0 == vec.size()) {
-            output << tab << "[]";
-            return;
-        }
-        output << tab << "[\n";
-        const std::string space = tab + INDENT;
-        for (auto child : vec) {
-            child->Print(output, space);
-            output << "\n";
-        }
-        output << tab << "]";
-    }
-    virtual void PrintChildren(std::ostream &output, const std::string &tab) const {
-        PrintVector(output, tab, children_);
-    }
+
+
+
 
 protected:
     PlanType type_;
@@ -73,28 +60,14 @@ class UnaryPlanNode : public PlanNode {
 public:
     UnaryPlanNode(PlanType type) : PlanNode(type) {};
     virtual bool AddChild(PlanNode *node);
-    virtual void Print(std::ostream &output, const std::string &org_tab) const {
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        const std::string space = org_tab + INDENT + INDENT;
-        output << "\n";
-        PlanNode::Print(output, org_tab);
-        output << tab << SPACE_ST << "children:\n";
-        PlanNode::PrintChildren(output, tab);
-    }
+    virtual void Print(std::ostream &output, const std::string &org_tab) const;
 };
 
 class BinaryPlanNode : public PlanNode {
 public:
     BinaryPlanNode(PlanType type) : PlanNode(type) {};
     virtual bool AddChild(PlanNode *node);
-    virtual void Print(std::ostream &output, const std::string &org_tab) const {
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        const std::string space = org_tab + INDENT + INDENT;
-        PlanNode::Print(output, org_tab);
-        output << "\n";
-        output << tab << "children:\n";
-        PlanNode::PrintChildren(output, tab);
-    }
+    virtual void Print(std::ostream &output, const std::string &org_tab) const;
 
 };
 
@@ -102,14 +75,7 @@ class MultiChildPlanNode : public PlanNode {
 public:
     MultiChildPlanNode(PlanType type) : PlanNode(type) {};
     virtual bool AddChild(PlanNode *node);
-    virtual void Print(std::ostream &output, const std::string &org_tab) const {
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        const std::string space = org_tab + INDENT + INDENT;
-        PlanNode::Print(output, org_tab);
-        output << "\n";
-        output << tab << SPACE_ST << "children:\n";
-        PlanNode::PrintChildren(output, tab);
-    }
+    virtual void Print(std::ostream &output, const std::string &org_tab) const;
 };
 
 class SelectPlanNode : public MultiChildPlanNode {
@@ -141,14 +107,7 @@ public:
                     const std::string &w)
         : LeafPlanNode(kProject), expression_(expression), name_(name), table_(table), w_(w) {};
 
-    void Print(std::ostream &output, const std::string &orgTab) const {
-        PlanNode::Print(output, orgTab);
-        const std::string tab = orgTab + INDENT;
-        const std::string space = tab + INDENT;
-        output << "\n";
-        expression_->Print(output, space);
-    }
-
+    void Print(std::ostream &output, const std::string &orgTab) const;
     std::string GetW() const {
         return w_;
     }
@@ -180,19 +139,7 @@ class ProjectListPlanNode : public MultiChildPlanNode {
 public:
     ProjectListPlanNode() : MultiChildPlanNode(kProjectList) {};
     ProjectListPlanNode(const std::string &table, const std::string &w) : MultiChildPlanNode(kProjectList), table_(table), w_(w) {};
-    void Print(std::ostream &output, const std::string &org_tab) const {
-        PlanNode::Print(output, org_tab);
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        const std::string space = org_tab + INDENT + INDENT;
-        output << "\n";
-        if (w_.empty()) {
-            output << tab << SPACE_ST << "table: " << table_ << ", projects:\n";
-            PlanNode::PrintVector(output, space, projects);
-        } else {
-            output << tab << SPACE_ST << "window: " << w_ << ", projects:\n";
-            PlanNode::PrintVector(output, space, projects);
-        }
-    }
+    void Print(std::ostream &output, const std::string &org_tab) const;
 
     std::vector<PlanNode *> &GetProjects() {
         return projects;
@@ -206,6 +153,23 @@ private:
     std::string w_;
     std::string table_;
 };
+
+
+void PrintPlanVector(std::ostream &output,
+                     const std::string &tab,
+                     std::vector<PlanNode *> vec,
+                     const std::string vector_name,
+                     bool last_item);
+
+
+
+
+
+void PrintPlanNode(std::ostream &output,
+                   const std::string &org_tab,
+                   PlanNode *node_ptr,
+                   const std::string &item_name,
+                   bool last_child);
 
 }
 }

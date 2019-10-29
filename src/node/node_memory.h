@@ -26,26 +26,22 @@ public:
 
     ~NodeManager() {
 
-        std::list<SQLNode *>::iterator sql_node_ite;
-        for (sql_node_ite = parser_node_list_.begin(); sql_node_ite != parser_node_list_.end(); ++sql_node_ite) {
+        for (auto sql_node_ite = parser_node_list_.begin(); sql_node_ite != parser_node_list_.end(); ++sql_node_ite) {
             delete (*sql_node_ite);
             sql_node_ite = parser_node_list_.erase(sql_node_ite);
         }
 
-        std::list<node::PlanNode *>::iterator plan_node_ite;
-        for (plan_node_ite = plan_node_list_.begin(); plan_node_ite != plan_node_list_.end(); ++plan_node_ite) {
+        for (auto plan_node_ite = plan_node_list_.begin(); plan_node_ite != plan_node_list_.end(); ++plan_node_ite) {
             delete (*plan_node_ite);
             plan_node_ite = plan_node_list_.erase(plan_node_ite);
         }
 
-        std::list<node::SQLLinkedNode *>::iterator linked_node_ite;
-        for (linked_node_ite = linked_node_list_.begin(); linked_node_ite != linked_node_list_.end(); ++linked_node_ite) {
+        for (auto linked_node_ite = linked_node_list_.begin(); linked_node_ite != linked_node_list_.end(); ++linked_node_ite) {
             delete (*linked_node_ite);
             linked_node_ite = linked_node_list_.erase(linked_node_ite);
         }
 
-        std::list<node::SQLNodeList *>::iterator sql_node_list_iter;
-        for (sql_node_list_iter = sql_node_list_list_.begin(); sql_node_list_iter != sql_node_list_list_.end(); ++sql_node_list_iter) {
+        for (auto sql_node_list_iter = sql_node_list_list_.begin(); sql_node_list_iter != sql_node_list_list_.end(); ++sql_node_list_iter) {
             delete (*sql_node_list_iter);
             sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
         }

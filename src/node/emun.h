@@ -9,13 +9,16 @@
 
 #ifndef FESQL_EMUN_H
 #define FESQL_EMUN_H
+
+#include <string>
 namespace fesql {
 namespace node {
 
 
 const std::string SPACE_ST = "+-";
 const std::string SPACE_ED = "";
-const std::string INDENT = "|\t";
+const std::string OR_INDENT = "|\t";
+const std::string INDENT = " \t";
 enum SQLNodeType {
     kSelectStmt = 0,
     kExpr,
