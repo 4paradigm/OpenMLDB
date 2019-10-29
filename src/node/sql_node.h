@@ -25,8 +25,10 @@
 namespace fesql {
 namespace node {
 
+
 // Global methods
 std::string NameOfSQLNodeType(const SQLNodeType &type);
+
 
 class SQLNode {
 
@@ -739,6 +741,7 @@ public:
 };
 
 std::string WindowOfExpression(SQLNode *node_ptr);
+void FillSQLNodeList2NodeVector(SQLNodeList *node_list_ptr, std::vector<SQLNode *> &node_list);
 } // namespace of node
 } // namespace of fesql
 #endif /* !FESQL_NODE_SQL_NODE_H_ */

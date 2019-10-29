@@ -9,6 +9,8 @@
 namespace fesql {
 namespace node {
 
+////////////////// Global ///////////////////////////////////
+
 /**
  * get the node type name
  * @param type
@@ -70,6 +72,24 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
     return output;
 }
 
+std::ostream &operator<<(std::ostream &output, const SQLNode &thiz) {
+    thiz.Print(output);
+    return output;
+}
+
+std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz) {
+    thiz.Print(output, "");
+    return output;
+}
+void FillSQLNodeList2NodeVector(SQLNodeList *node_list_ptr, std::vector<SQLNode *> &node_list) {
+    if (nullptr != node_list_ptr) {
+        SQLLinkedNode *ptr = node_list_ptr->GetHead();
+        while (nullptr != ptr && nullptr != ptr->node_ptr_) {
+            node_list.push_back(ptr->node_ptr_);
+            ptr = ptr->next_;
+        }
+    }
+}
 
 std::string WindowOfExpression(SQLNode *node_ptr) {
     switch (node_ptr->GetType()) {
@@ -94,16 +114,6 @@ std::string WindowOfExpression(SQLNode *node_ptr) {
         }
         default:return "";
     }
-}
-
-std::ostream &operator<<(std::ostream &output, const SQLNode &thiz) {
-    thiz.Print(output);
-    return output;
-}
-
-std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz) {
-    thiz.Print(output, "");
-    return output;
 }
 
 }

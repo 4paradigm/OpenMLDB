@@ -122,6 +122,8 @@ private:
     std::list<SQLLinkedNode *> linked_node_list_;
     std::list<node::PlanNode *> plan_node_list_;
 };
+
+
 }
 }
 #endif //FESQL_NODE_MEMORY_H
