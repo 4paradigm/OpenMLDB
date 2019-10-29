@@ -38,6 +38,8 @@ class Iterator {
 public:    
      Iterator() {}
      virtual ~Iterator() {}
+     Iterator(const Iterator&) = delete;
+     Iterator& operator= (const Iterator&) = delete;
      virtual bool Valid() const = 0;
      virtual void Next() = 0;
      virtual const K& GetKey() const = 0;
@@ -101,31 +103,31 @@ template<class K, class V, class Comparator>
 class LinkList : public BaseList<K, V> {
 public:
     LinkList(Comparator cmp) : compare_(cmp) {
-		head_ = new Node<K, V>();
-	}
+        head_ = new Node<K, V>();
+    }
     ~LinkList() {
-		delete head_;
-	}
+        delete head_;
+    }
 
     void Insert(const K& key, V& value) override {
         Node<K, V>* node = new Node<K, V>(key, value);
-		Node<K, V>* pre = FindLessOrEqual(key);
-		node->SetNextNoBarrier(pre->GetNextNoBarrier());
-		pre->SetNext(node);
+        Node<K, V>* pre = FindLessOrEqual(key);
+        node->SetNextNoBarrier(pre->GetNextNoBarrier());
+        pre->SetNext(node);
     }
 
     ListType GetType() const override { return ListType::kLinkList; }
 
-	bool IsEmpty() override {
+    bool IsEmpty() override {
         if (head_->GetNextNoBarrier() == NULL) {
             return true;
         }
         return false;
     }
 
-	void Clear() {
+    void Clear() {
         Node<K,V>* node = head_->GetNext(0);
-		head_->SetNext(NULL);
+        head_->SetNext(NULL);
         while (node != NULL) {
             Node<K,V>* tmp = node;
             node = node->GetNext(0);
@@ -133,7 +135,7 @@ public:
         }
     }
 
-	uint32_t GetSize() override {
+    uint32_t GetSize() override {
         uint32_t cnt = 0;
         Node<K, V>* node = head_->GetNext();
         while (node != NULL) {
@@ -148,31 +150,31 @@ public:
         return cnt;
     }
 
-	Node<K, V>* FindLessThan(const K& key) {
+    Node<K, V>* FindLessThan(const K& key) {
         Node<K, V>* node = head_;
         while (true) {
             Node<K, V>* next = node->GetNext();
             if (next == NULL || compare_(next->GetKey() , key) > 0) {
-            	return node;
+                return node;
             } else {
                 node = next;
             }
         }
     }
 
-	Node<K, V>* FindLessOrEqual(const K& key) {
+    Node<K, V>* FindLessOrEqual(const K& key) {
         Node<K, V>* node = head_;
         while (node != NULL) {
             Node<K, V>* next = node->GetNext();
-			if (next == NULL) {
-				return node;
-			} else if (IsAfterNode(key, next)) {
+            if (next == NULL) {
+                return node;
+            } else if (IsAfterNode(key, next)) {
                 node = next;
             } else {
-            	return node;
+                return node;
             }
         }
-		return NULL;
+        return NULL;
     }
 
     class LinkListIterator : public Iterator<K, V> {
@@ -202,6 +204,8 @@ public:
              node_ = list_->head_;
              Next();
          }
+         LinkListIterator(const LinkListIterator&) = delete;
+         LinkListIterator& operator= (const LinkListIterator&) = delete;
     private:
          Node<K, V>* node_;
          LinkList<K, V, Comparator>* const list_;
@@ -212,7 +216,7 @@ public:
     }
 
 private:
-	bool IsAfterNode(const K& key, const Node<K, V>* node) const {
+    bool IsAfterNode(const K& key, const Node<K, V>* node) const {
         return compare_(key, node->GetKey()) > 0;
     }
 
@@ -285,7 +289,7 @@ public:
         return ast->length_;
     }
 
-	bool IsEmpty() override {
+    bool IsEmpty() override {
         ArrayListNode<K,V>* array = array_.load(std::memory_order_relaxed);
         if (array == NULL) {
             return true;
@@ -294,7 +298,7 @@ public:
     }
 
     // TODO : use binary search
-	uint32_t FindLessOrEqual(const K& key) {
+    uint32_t FindLessOrEqual(const K& key) {
         ArrayListNode<K, V>* array = array_.load(std::memory_order_relaxed);
         uint32_t length = GetSize();
         for (uint32_t idx = 0; idx < length; idx++) {
@@ -305,7 +309,7 @@ public:
         return length;
     }
 
-	uint32_t FindLessThan(const K& key) {
+    uint32_t FindLessThan(const K& key) {
         ArrayListNode<K, V>* array = array_.load(std::memory_order_relaxed);
         uint32_t length = GetSize();
         for (uint32_t idx = 0; idx < length; idx++) {
@@ -317,7 +321,7 @@ public:
     }
 
     class ArrayListIterator : public Iterator<K, V> {
-        public:
+    public:
         ArrayListIterator(ArrayList<K, V, Comparator>* list) : pos_(-1) {
             if (list != NULL) {
                 array_ = list->array_;
@@ -352,16 +356,18 @@ public:
         virtual void SeekToFirst() override {
             pos_ = 0;
         }
-        private:
-            int32_t pos_;
-            uint32_t length_;
-            ArrayListNode<K, V>* array_;
-            ArrayList<K, V, Comparator>* list_;
-        };
+        ArrayListIterator(const ArrayListIterator&) = delete;
+        ArrayListIterator& operator= (const ArrayListIterator&) = delete;
+    private:
+        int32_t pos_;
+        uint32_t length_;
+        ArrayListNode<K, V>* array_;
+        ArrayList<K, V, Comparator>* list_;
+    };
 
-        virtual Iterator<K, V>* NewIterator() override {
-            return new ArrayListIterator(this);
-        }
+    virtual Iterator<K, V>* NewIterator() override {
+        return new ArrayListIterator(this);
+    }
 
 private:
     Comparator const compare_;
