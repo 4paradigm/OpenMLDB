@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "parser/node.h"
+#include "node/node_memory.h"
+#include "node/sql_node.h"
 #include "parser/parser.h"
 #include "gtest/gtest.h"
 #include <strstream>
@@ -25,9 +26,15 @@ namespace parser {
 class SqlParserTest : public ::testing::TestWithParam<std::string> {
 
 public:
-    SqlParserTest() {}
+    SqlParserTest() {
+        manager_ = new node::NodeManager();
+    }
 
-    ~SqlParserTest() {}
+    ~SqlParserTest() {
+        delete manager_;
+    }
+protected:
+    node::NodeManager * manager_;
 };
 INSTANTIATE_TEST_CASE_P(StringReturn, SqlParserTest, testing::Values(
     "SELECT COL1 FROM t1;",
@@ -50,8 +57,7 @@ INSTANTIATE_TEST_CASE_P(StringReturn, SqlParserTest, testing::Values(
     "SELECT sum(COL1) as sum_col1 FROM t1;",
     "SELECT COL1, COL2, TS, AVG(AMT) OVER w, SUM(AMT) OVER w FROM t \n"
         "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY TS ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);",
-
+        "              ORDER BY TS ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);"
     "SELECT COL1, trim(COL2), TS, AVG(AMT) OVER w, SUM(AMT) OVER w FROM t \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY TS ROWS BETWEEN 3 PRECEDING AND 3 FOLLOWING);"
@@ -60,9 +66,11 @@ INSTANTIATE_TEST_CASE_P(StringReturn, SqlParserTest, testing::Values(
 
 TEST_P(SqlParserTest, Parser_Select_Expr_List) {
     std::string sqlstr = GetParam();
-    SQLNodeList *list = new SQLNodeList();
+    node::SQLNodeList *list = manager_->MakeNodeList();
     std::cout << sqlstr << std::endl;
-    int ret = FeSqlParse(sqlstr.c_str(), list);
+    FeSQLParser *parser = new FeSQLParser();
+
+    int ret = parser->parse(sqlstr.c_str(), list, manager_);
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1, list->Size());

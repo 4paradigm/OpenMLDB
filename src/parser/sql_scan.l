@@ -4,6 +4,7 @@
 %option outfile="sql_scan.gen.cc"
 
 %{
+#include "node/node_memory.h"
 #include "parser/sql_parser.gen.h"
 #include <stdarg.h>
 #include <string.h>

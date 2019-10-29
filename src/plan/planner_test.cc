@@ -1,9 +1,9 @@
 /*-------------------------------------------------------------------------
  * Copyright (C) 2019, 4paradigm
  * planner_test.cc
- *      
+ *
  * Author: chenjing
- * Date: 2019/10/24 
+ * Date: 2019/10/24
  *--------------------------------------------------------------------------
 **/
 
@@ -17,68 +17,78 @@ namespace plan {
 class PlannerTest : public ::testing::Test {
 
 public:
-    PlannerTest() {}
+    PlannerTest() {
+        parser_ = new parser::FeSQLParser();
+        manager_ = new node::NodeManager();
+    }
 
     ~PlannerTest() {}
+protected:
+    parser::FeSQLParser *parser_;
+    node::NodeManager *manager_;
 };
 
 TEST_F(PlannerTest, SimplePlannerTest) {
-    fesql::parser::SQLNode *root = new ::fesql::parser::SQLNode(::fesql::parser::kSelectStmt, 0, 0);
-    SimplePlanner *planner_ptr = new SimplePlanner(root);
-    ASSERT_EQ(root, planner_ptr->GetParserTree());
+    fesql::node::SQLNode *root = manager_->MakeSQLNode(node::kSelectStmt);
+    SimplePlanner planner_ptr(root);
+    ASSERT_EQ(root, planner_ptr.GetParserTree());
 }
 
 TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
-    parser::SQLNodeList *list = new parser::SQLNodeList();
-    int ret = parser::FeSqlParse("SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 FROM t1 limit 10;", list);
+    node::SQLNodeList *list = manager_->MakeNodeList();
+    int ret = parser_->parse("SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 FROM t1 limit 10;", list, manager_);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1, list->Size());
-    parser::SQLLinkedNode *ptr = list->GetHead();
+    node::SQLLinkedNode *ptr = list->GetHead();
 
     Planner *planner_ptr = new SimplePlanner(ptr->node_ptr_);
-    PlanNode *plan_ptr = planner_ptr->CreatePlan();
+    node::PlanNode *plan_ptr = planner_ptr->CreatePlan();
     ASSERT_TRUE(NULL != plan_ptr);
-
     std::cout << *plan_ptr << std::endl;
     // validate select plan
-    ASSERT_EQ(kSelect, plan_ptr->GetType());
-    SelectPlanNode *select_ptr = (SelectPlanNode *) plan_ptr;
+    ASSERT_EQ(node::kSelect, plan_ptr->GetType());
+    node::SelectPlanNode *select_ptr = (node::SelectPlanNode *) plan_ptr;
     // validate limit 10
     ASSERT_EQ(10, select_ptr->GetLimitCount());
 
     // validate project list based on current row
-    std::vector<PlanNode *> plan_vec = select_ptr->GetChildren();
+    std::vector<node::PlanNode *> plan_vec = select_ptr->GetChildren();
     ASSERT_EQ(1, plan_vec.size());
-    ASSERT_EQ(kProjectList, plan_vec.at(0)->GetType());
-    ASSERT_EQ(3, ((ProjectListPlanNode *) plan_vec.at(0))->GetProjects().size());
+    ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
+    ASSERT_EQ(3, ((node::ProjectListPlanNode *) plan_vec.at(0))->GetProjects().size());
+
+    delete planner_ptr;
 
 }
 
 TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
-    parser::SQLNodeList *list = new parser::SQLNodeList();
-    int ret = parser::FeSqlParse("SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 , max(t1.age) over w1 FROM t1 limit 10;", list);
+    node::SQLNodeList *list = manager_->MakeNodeList();
+    int ret = parser_->parse(
+        "SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 , max(t1.age) over w1 FROM t1 limit 10;",
+        list, manager_);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1, list->Size());
-    parser::SQLLinkedNode *ptr = list->GetHead();
+    node::SQLLinkedNode *ptr = list->GetHead();
 
     Planner *planner_ptr = new SimplePlanner(ptr->node_ptr_);
-    PlanNode *plan_ptr = planner_ptr->CreatePlan();
+    node::PlanNode *plan_ptr = planner_ptr->CreatePlan();
     ASSERT_TRUE(NULL != plan_ptr);
 
     std::cout << *plan_ptr << std::endl;
     // validate select plan
-    ASSERT_EQ(kSelect, plan_ptr->GetType());
-    SelectPlanNode *select_ptr = (SelectPlanNode *) plan_ptr;
+    ASSERT_EQ(node::kSelect, plan_ptr->GetType());
+    node::SelectPlanNode *select_ptr = (node::SelectPlanNode *) plan_ptr;
     // validate limit 10
     ASSERT_EQ(10, select_ptr->GetLimitCount());
 
     // validate project list based on current row
-    std::vector<PlanNode *> plan_vec = select_ptr->GetChildren();
+    std::vector<node::PlanNode *> plan_vec = select_ptr->GetChildren();
     ASSERT_EQ(2, plan_vec.size());
-    ASSERT_EQ(kProjectList, plan_vec.at(0)->GetType());
-    ASSERT_EQ(3, ((ProjectListPlanNode *) plan_vec.at(0))->GetProjects().size());
-    ASSERT_EQ(kProjectList, plan_vec.at(1)->GetType());
-    ASSERT_EQ(1, ((ProjectListPlanNode *) plan_vec.at(1))->GetProjects().size());
+    ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
+    ASSERT_EQ(3, ((node::ProjectListPlanNode *) plan_vec.at(0))->GetProjects().size());
+    ASSERT_EQ(node::kProjectList, plan_vec.at(1)->GetType());
+    ASSERT_EQ(1, ((node::ProjectListPlanNode *) plan_vec.at(1))->GetProjects().size());
+    delete planner_ptr;
 
 }
 

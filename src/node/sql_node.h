@@ -14,53 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef FESQL_PARSER_NODE_H_
-#define FESQL_PARSER_NODE_H_
+#ifndef FESQL_NODE_SQL_NODE_H_
+#define FESQL_NODE_SQL_NODE_H_
 
 #include <string>
 #include <vector>
 #include <iostream>
+#include "emun.h"
+#include <glog/logging.h>
 namespace fesql {
-namespace parser {
-
-const std::string SPACE_ST = "+-";
-const std::string SPACE_ED = "";
-const std::string INDENT = "|\t";
-enum SQLNodeType {
-    kSelectStmt = 0,
-    kExpr,
-    kResTarget,
-    kTable,
-    kFunc,
-    kWindowFunc,
-    kWindowDef,
-    kFrameBound,
-    kFrames,
-    kColumn,
-    kConst,
-    kLimit,
-    kAll,
-    kList,
-    kOrderBy,
-
-    kNull,
-    kInt,
-    kBigInt,
-    kFloat,
-    kDouble,
-    kString,
-
-    kDesc,
-    kAsc,
-
-    kFrameRange,
-    kFrameRows,
-
-    kPreceding,
-    kFollowing,
-    kCurrent,
-    kUnknow
-};
+namespace node {
 
 // Global methods
 std::string NameOfSQLNodeType(const SQLNodeType &type);
@@ -72,7 +35,9 @@ public:
         : type_(type), line_num_(line_num), location_(location) {
     }
 
-    virtual ~SQLNode() {}
+    virtual ~SQLNode() {
+//        LOG(INFO) << "sql node: " << NameOfSQLNodeType(type_) << " distruction enter >> \n";
+    }
 
     virtual void Print(std::ostream &output) const {
         Print(output, SPACE_ST);
@@ -145,17 +110,6 @@ public:
      * SQLNodeList 只负责存储指针，不释放指针管理的区域
      */
     ~SQLNodeList() {
-        tail_ = NULL;
-        if (NULL != head_) {
-            SQLLinkedNode *pre = head_;
-            SQLLinkedNode *p = pre->next_;
-            while (NULL != p) {
-                delete pre;
-                pre = p;
-                p = p->next_;
-            }
-            delete pre;
-        }
     }
 
     const size_t Size() {
@@ -185,8 +139,7 @@ public:
         output << tab << "]";
     }
 
-    void PushFront(SQLNode *node_ptr) {
-        SQLLinkedNode *linked_node_ptr = new SQLLinkedNode(node_ptr);
+    void PushFront(SQLLinkedNode *linked_node_ptr) {
         linked_node_ptr->next_ = head_;
         head_ = linked_node_ptr;
         size_ += 1;
@@ -237,11 +190,6 @@ public:
     }
 
     ~SelectStmt() {
-        delete limit_ptr_;
-        delete where_clause_ptr_;
-        delete group_clause_ptr_;
-        delete having_clause_ptr_;
-        delete order_clause_ptr_;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -331,15 +279,8 @@ public:
         return window_list_ptr_;
     }
 
-    friend void FillSelectAttributions(SelectStmt *node_ptr,
-                                       NodePointVector &select_list_ptr,
-                                       NodePointVector &tableref_list_ptr,
-                                       NodePointVector &window_list_ptr,
-                                       SQLNode *limit_ptr) {
-        node_ptr->select_list_ptr_ = select_list_ptr;
-        node_ptr->tableref_list_ptr_ = tableref_list_ptr;
-        node_ptr->window_list_ptr_ = window_list_ptr;
-        node_ptr->limit_ptr_ = limit_ptr;
+    void SetLimit(SQLNode *limit) {
+        limit_ptr_ = limit;
     }
 
 private:
@@ -360,7 +301,6 @@ public:
     ResTarget(const std::string &name, SQLNode *val) : SQLNode(kResTarget, 0, 0), name_(name), val_(val) {}
     ResTarget(uint32_t line_num, uint32_t location) : SQLNode(kResTarget, line_num, location), indirection_(NULL) {}
     ~ResTarget() {
-        delete val_;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -393,9 +333,8 @@ class WindowDefNode : public SQLNode {
 
 public:
     WindowDefNode()
-        : SQLNode(kWindowDef, 0, 0), window_name_(""), frame_ptr(NULL) {};
+        : SQLNode(kWindowDef, 0, 0), window_name_(""), frame_ptr_(NULL) {};
     ~WindowDefNode() {
-        delete frame_ptr;
     }
 
     void SetName(const std::string &name) {
@@ -415,7 +354,7 @@ public:
     }
 
     SQLNode *GetFrame() const {
-        return frame_ptr;
+        return frame_ptr_;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -432,28 +371,23 @@ public:
         output << tab << "order_list_ptr_: \n";
         PrintVector(output, space, order_list_ptr_);
         output << "\n";
-        if (NULL == frame_ptr) {
-            output << tab << "frame_ptr: NULL";
+        if (NULL == frame_ptr_) {
+            output << tab << "frame_ptr_: NULL";
         } else {
-            output << tab << "frame_ptr: \n";
-            frame_ptr->Print(output, space);
+            output << tab << "frame_ptr_: \n";
+            frame_ptr_->Print(output, space);
         }
     }
 
-    friend void FillWindowSpection(WindowDefNode *node_ptr,
-                                   NodePointVector &partitions,
-                                   NodePointVector &orders,
-                                   SQLNode *frame) {
-        node_ptr->partition_list_ptr_ = partitions;
-        node_ptr->order_list_ptr_ = orders;
-        node_ptr->frame_ptr = frame;
+    void SetFrame(SQLNode *frame) {
+        frame_ptr_ = frame;
     }
 
 private:
     std::string window_name_;            /* window's own name */
     NodePointVector partition_list_ptr_;    /* PARTITION BY expression list */
     NodePointVector order_list_ptr_;    /* ORDER BY (list of SortBy) */
-    SQLNode *frame_ptr;    /* expression for starting bound, if any */
+    SQLNode *frame_ptr_;    /* expression for starting bound, if any */
 };
 
 class FrameBound : public SQLNode {
@@ -464,7 +398,6 @@ public:
     FrameBound(SQLNodeType bound_type, SQLNode *offset) :
         SQLNode(kFrameBound, 0, 0), bound_type_(bound_type), offset_(offset) {}
     ~FrameBound() {
-        delete offset_;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -495,14 +428,8 @@ private:
 class FrameNode : public SQLNode {
 public:
     FrameNode() : SQLNode(kFrames, 0, 0), frame_type_(kFrameRange), start_(NULL), end_(NULL) {};
-    FrameNode(SQLNodeType frame_type, FrameBound *start, FrameBound *end) : SQLNode(kFrames, 0, 0),
-                                                                            frame_type_(frame_type),
-                                                                            start_(start),
-                                                                            end_(end) {};
 
     ~FrameNode() {
-        delete start_;
-        delete end_;
     }
 
     void SetFrameType(SQLNodeType frame_type) {
@@ -542,6 +469,13 @@ public:
     SQLNode *GetEnd() const {
         return end_;
     }
+
+    friend void FillFrameNode(FrameNode *thiz, SQLNodeType frame_type, FrameBound *start, FrameBound *end) {
+        thiz->frame_type_ = frame_type;
+        thiz->start_ = start;
+        thiz->end_ = end;
+    };
+
 private:
     SQLNodeType frame_type_;
     SQLNode *start_;
@@ -550,7 +484,7 @@ private:
 
 class LimitNode : public SQLNode {
 public:
-    LimitNode(int cnt) : SQLNode(kLimit, 0, 0), limit_cnt_(cnt) {};
+    LimitNode(int limit_cnt) : SQLNode(kLimit, 0, 0), limit_cnt_(limit_cnt) {};
     int GetLimitCount() const {
         return limit_cnt_;
     }
@@ -604,7 +538,6 @@ class OrderByNode : public SQLNode {
 public:
     OrderByNode(SQLNode *order) : SQLNode(kOrderBy, 0, 0), sort_type_(kDesc), order_by_(order) {}
     ~OrderByNode() {
-        delete order_by_;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -628,6 +561,9 @@ public:
     SQLNode *GetOrderBy() const {
         return order_by_;
     }
+    void SetOrderBy(SQLNode *order_by) {
+        order_by_ = order_by;
+    }
 private:
     SQLNodeType sort_type_;
     SQLNode *order_by_;
@@ -636,6 +572,7 @@ private:
 class TableNode : SQLNode {
 
 public:
+    TableNode() : SQLNode(kTable, 0, 0), org_table_name_(""), alias_table_name_("") {};
     TableNode(const std::string &name, const std::string &alias)
         : SQLNode(kTable, 0, 0), org_table_name_(name), alias_table_name_(alias) {
 
@@ -665,12 +602,9 @@ class FuncNode : SQLNode {
 
 public:
     FuncNode(const std::string &function_name)
-        : SQLNode(kFunc, 0, 0), function_name_(function_name), args_(NULL), over_(NULL) {};
-    FuncNode(const std::string &function_name, NodePointVector &args, WindowDefNode *over)
-        : SQLNode(kFunc, 0, 0), function_name_(function_name), args_(args), over_(over) {};
+        : SQLNode(kFunc, 0, 0), function_name_(function_name), over_(NULL) {};
 
     ~FuncNode() {
-        delete over_;
     }
 
     void Print(std::ostream &output, const std::string &orgTab) const {
@@ -701,6 +635,10 @@ public:
 
     WindowDefNode *GetOver() const {
         return over_;
+    }
+
+    void SetOver(WindowDefNode *over) {
+        over_ = over;
     }
 private:
     std::string function_name_;
@@ -800,30 +738,7 @@ public:
     void AddChild(SQLNode *node) {};
 };
 
-SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
-                            SQLNodeList *tableref_list_ptr,
-                            SQLNodeList *window_clause_ptr,
-                            SQLNode *limit_clause_ptr);
-SQLNode *MakeTableNode(const std::string &name, const std::string &alias);
-SQLNode *MakeFuncNode(const std::string &name, SQLNodeList *args, SQLNode *over);
-SQLNode *MakeWindowDefNode(const std::string &name);
-SQLNode *MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList *orders, SQLNode *frame);
-SQLNode *MakeOrderByNode(SQLNode *node_ptr);
-SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);
-SQLNode *MakeRangeFrameNode(SQLNode *node_ptr);
-SQLNode *MakeRowsFrameNode(SQLNode *node_ptr);
-
-SQLNode *MakeLimitNode(int count);
-SQLNode *MakeConstNode(int value);
-SQLNode *MakeConstNode(long value);
-SQLNode *MakeConstNode(float value);
-SQLNode *MakeConstNode(double value);
-SQLNode *MakeConstNode(const std::string &value);
-SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name);
-SQLNode *MakeResTargetNode(SQLNode *node_ptr, const std::string &name);
-SQLNode *MakeNode(const SQLNodeType &type, ...);
-SQLNodeList *MakeNodeList(fesql::parser::SQLNode *node_ptr);
 std::string WindowOfExpression(SQLNode *node_ptr);
-} // namespace of parser
+} // namespace of node
 } // namespace of fesql
-#endif /* !FESQL_PARSER_NODE_H_ */
+#endif /* !FESQL_NODE_SQL_NODE_H_ */

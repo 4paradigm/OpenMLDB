@@ -9,14 +9,16 @@
 %locations
 %lex-param   { yyscan_t scanner }
 %parse-param { yyscan_t scanner }
-%parse-param { ::fesql::parser::SQLNodeList *nodelist}
+%parse-param { ::fesql::node::SQLNodeList *nodelist}
+%parse-param { ::fesql::node::NodeManager *node_manager}
 
 %{
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <utility>
-#include "parser/node.h"
+#include "node/sql_node.h"
+#include "node/node_memory.h"
 #include "parser/sql_parser.gen.h"
 
 extern int yylex(YYSTYPE* yylvalp, 
@@ -25,13 +27,13 @@ extern int yylex(YYSTYPE* yylvalp,
 void emit(char *s, ...);
 
 void yyerror_msg(char *s, ...);
-void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::parser::SQLNodeList* list , const char* msg ) {
+void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::SQLNodeList* list, ::fesql::node::NodeManager *node_manager, const char* msg ) {
 printf("error %s", msg);
 }
 %}
 
 %code requires {
-#include "parser/node.h"
+#include "node/sql_node.h"
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
 typedef void* yyscan_t;
@@ -43,9 +45,9 @@ typedef void* yyscan_t;
 	double floatval;
 	char* strval;
 	int subtok;
-	::fesql::parser::SQLNode* node;
-	::fesql::parser::SQLNode* target;
-	::fesql::parser::SQLNodeList* list;
+	::fesql::node::SQLNode* node;
+	::fesql::node::SQLNode* target;
+	::fesql::node::SQLNodeList* list;
 }
 
 /* names and literal values */
@@ -355,7 +357,8 @@ typedef void* yyscan_t;
 %%
 
 sql_stmt: stmt ';' {
-                            nodelist->PushFront($1);
+
+                            nodelist->PushFront(node_manager->MakeLinkedNode($1));
                             YYACCEPT;}
     ;
 
@@ -370,7 +373,7 @@ stmt: select_stmt {
 select_stmt:
     SELECT opt_all_clause opt_target_list FROM table_references window_clause limit_clause
             {
-                $$ = ::fesql::parser::MakeSelectStmtNode($3, $5, $6, $7);
+                $$ = node_manager->MakeSelectStmtNode($3, $5, $6, $7);
             }
     ;
 
@@ -391,11 +394,11 @@ opt_target_list: select_projection_list						{ $$ = $1; }
 			| /* EMPTY */							{ $$ = NULL; }
 		;
 select_projection_list: projection {
-                            $$ = ::fesql::parser::MakeNodeList($1);
+                            $$ = node_manager->MakeNodeList($1);
                        }
     | projection ',' select_projection_list
     {
-        ::fesql::parser::SQLNodeList *new_list = ::fesql::parser::MakeNodeList($1);
+        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
         new_list->AppendNodeList($3);
         $$ = new_list;
     }
@@ -404,20 +407,20 @@ select_projection_list: projection {
 projection:
     expr
     {
-        $$ = ::fesql::parser::MakeResTargetNode($1, "");
+        $$ = node_manager->MakeResTargetNode($1, "");
     }
     | expr NAME
     {
-        $$ = ::fesql::parser::MakeResTargetNode($1, $2);
+        $$ = node_manager->MakeResTargetNode($1, $2);
     }
     | expr AS NAME
     {
-        $$ = ::fesql::parser::MakeResTargetNode($1, $3);
+        $$ = node_manager->MakeResTargetNode($1, $3);
     }
     | '*'
         {
-            ::fesql::parser::SQLNode *pNode = ::fesql::parser::MakeNode(::fesql::parser::kAll);
-            $$ = ::fesql::parser::MakeResTargetNode(pNode, "");
+            ::fesql::node::SQLNode *pNode = node_manager->MakeSQLNode(::fesql::node::kAll);
+            $$ = node_manager->MakeResTargetNode(pNode, "");
         }
       ;
     ;
@@ -426,16 +429,16 @@ over_clause: OVER window_specification
 				{ $$ = $2; }
 			| OVER NAME
 				{
-				    $$ = ::fesql::parser::MakeWindowDefNode($2);
+				    $$ = node_manager->MakeWindowDefNode($2);
 				}
 			| /*EMPTY*/
 				{ $$ = NULL; }
 		;
 
-table_references:    table_reference { $$ = ::fesql::parser::MakeNodeList($1); }
+table_references:    table_reference { $$ = node_manager->MakeNodeList($1); }
     | table_reference ',' table_references
     {
-        ::fesql::parser::SQLNodeList *new_list = ::fesql::parser::MakeNodeList($1);
+        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
         new_list->AppendNodeList($3);
         $$ = new_list;
     }
@@ -448,15 +451,15 @@ table_reference:  table_factor
 table_factor:
   relation_factor
     {
-        $$ = ::fesql::parser::MakeTableNode($1, "");
+        $$ = node_manager->MakeTableNode($1, "");
     }
   | relation_factor AS relation_name
     {
-        $$ = ::fesql::parser::MakeTableNode($1, $3);
+        $$ = node_manager->MakeTableNode($1, $3);
     }
   | relation_factor relation_name
     {
-        $$ = ::fesql::parser::MakeTableNode($1, $2);
+        $$ = node_manager->MakeTableNode($1, $2);
     }
 
   ;
@@ -499,11 +502,11 @@ opt_as_alias: AS NAME {
 expr_list:
     expr
     {
-      $$ = ::fesql::parser::MakeNodeList($1);
+      $$ = node_manager->MakeNodeList($1);
     }
   | expr ',' expr_list
     {
-        ::fesql::parser::SQLNodeList *new_list = ::fesql::parser::MakeNodeList($1);
+        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
         new_list->AppendNodeList($3);
         $$ = new_list;
     }
@@ -523,15 +526,15 @@ simple_expr:
 
 expr_const:
     STRING
-        { $$ = (::fesql::parser::SQLNode*)(new ::fesql::parser::ConstNode($1)); }
+        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
   | INTNUM
-        { $$ = (::fesql::parser::SQLNode*)(new ::fesql::parser::ConstNode($1)); }
+        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
   | APPROXNUM
-        { $$ = (::fesql::parser::SQLNode*)(new ::fesql::parser::ConstNode($1)); }
+        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
   | BOOL
-        { $$ = (::fesql::parser::SQLNode*)(new ::fesql::parser::ConstNode($1)); }
+        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
   | NULLX
-        { $$ = (::fesql::parser::SQLNode*)(new ::fesql::parser::ConstNode()); }
+        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode()); }
   ;
 func_expr:
     function_name '(' '*' ')' over_clause
@@ -543,12 +546,12 @@ func_expr:
           }
           else
           {
-            $$ = ::fesql::parser::MakeFuncNode($1, NULL, $5);
+            $$ = node_manager->MakeFuncNode($1, NULL, $5);
           }
     }
     | function_name '(' expr_list ')' over_clause
     {
-        $$ = ::fesql::parser::MakeFuncNode($1, $3, $5);
+        $$ = node_manager->MakeFuncNode($1, $3, $5);
     }
 
 /***** Window Definitions */
@@ -560,11 +563,11 @@ window_clause:
 window_definition_list:
     window_definition
     {
-        $$ = ::fesql::parser::MakeNodeList($1);
+        $$ = node_manager->MakeNodeList($1);
     }
 	| window_definition ',' window_definition_list
 	{
-        ::fesql::parser::SQLNodeList *new_list = ::fesql::parser::MakeNodeList($1);
+        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
         new_list->AppendNodeList($3);
         $$ = new_list;
 	}
@@ -573,7 +576,7 @@ window_definition_list:
 window_definition:
 		NAME AS window_specification
 		{
-		    ((::fesql::parser::WindowDefNode*)$3)->SetName($1);
+		    ((::fesql::node::WindowDefNode*)$3)->SetName($1);
 		    $$ = $3;
 		}
 		;
@@ -581,7 +584,7 @@ window_definition:
 window_specification: '(' opt_existing_window_name opt_partition_clause
 						opt_sort_clause opt_frame_clause ')'
 				{
-				    $$ = ::fesql::parser::MakeWindowDefNode($3, $4, $5);
+				    $$ = node_manager->MakeWindowDefNode($3, $4, $5);
 				}
 		;
 
@@ -597,7 +600,7 @@ opt_partition_clause: PARTITION BY expr_list		{ $$ = $3; }
 limit_clause:
             LIMIT INTNUM
             {
-                $$ = ::fesql::parser::MakeLimitNode($2);
+                $$ = node_manager->MakeLimitNode($2);
             }
             | /*EMPTY*/ {$$ = NULL;}
             ;
@@ -619,11 +622,11 @@ sort_clause:
 sortby_list:
 			sortby
 			{
-			     $$ = ::fesql::parser::MakeNodeList($1);
+			     $$ = node_manager->MakeNodeList($1);
 			}
 			|sortby ',' sortby_list
 			{
-			    ::fesql::parser::SQLNodeList *new_list = ::fesql::parser::MakeNodeList($1);
+			    ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
                 new_list->AppendNodeList($3);
                 $$ = new_list;
 			}
@@ -631,8 +634,8 @@ sortby_list:
 
 sortby:	column_name
 		{
-		    ::fesql::parser::SQLNode* node_ptr = ::fesql::parser::MakeColumnRefNode($1, "");
-		    $$ = ::fesql::parser::MakeOrderByNode(node_ptr);
+		    ::fesql::node::SQLNode* node_ptr = node_manager->MakeColumnRefNode($1, "");
+		    $$ = node_manager->MakeOrderByNode(node_ptr);
 		}
 		;
 
@@ -644,12 +647,12 @@ sortby:	column_name
 opt_frame_clause:
 	        RANGE frame_extent opt_window_exclusion_clause
 				{
-				    $$ = ::fesql::parser::MakeRangeFrameNode($2);
+				    $$ = node_manager->MakeRangeFrameNode($2);
 
 				}
 			| ROWS frame_extent opt_window_exclusion_clause
 				{
-				    $$ = ::fesql::parser::MakeRowsFrameNode($2);
+				    $$ = node_manager->MakeRowsFrameNode($2);
 				}
 			|
 			/*EMPTY*/
@@ -663,11 +666,11 @@ opt_window_exclusion_clause:
             ;
 frame_extent: frame_bound
 				{
-				    $$ = ::fesql::parser::MakeFrameNode($1, NULL);
+				    $$ = node_manager->MakeFrameNode($1, NULL);
 				}
 			| BETWEEN frame_bound AND frame_bound
 				{
-				    $$ = ::fesql::parser::MakeFrameNode($2, $4);
+				    $$ = node_manager->MakeFrameNode($2, $4);
 				}
 		;
 
@@ -675,39 +678,39 @@ frame_extent: frame_bound
 frame_bound:
 			UNBOUNDED PRECEDING
 				{
-				    $$ = (fesql::parser::SQLNode*)(new ::fesql::parser::FrameBound(fesql::parser::kPreceding));
+				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kPreceding));
 				}
 			| UNBOUNDED FOLLOWING
 				{
-				    $$ = (fesql::parser::SQLNode*)(new ::fesql::parser::FrameBound(fesql::parser::kFollowing));
+				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kFollowing));
 				}
 			| CURRENT ROW
 				{
-				    $$ = (fesql::parser::SQLNode*)(new ::fesql::parser::FrameBound(fesql::parser::kCurrent));
+				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kCurrent));
 				}
 			| expr PRECEDING
 				{
-				    $$ = (fesql::parser::SQLNode*)(new ::fesql::parser::FrameBound(fesql::parser::kPreceding, $1));
+				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kPreceding, $1));
 				}
 			| expr FOLLOWING
 				{
-				    $$ = (fesql::parser::SQLNode*)(new ::fesql::parser::FrameBound(fesql::parser::kFollowing, $1));
+				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kFollowing, $1));
 				}
 		;
 
 column_ref:
     column_name
     {
-        $$ = ::fesql::parser::MakeColumnRefNode($1, "");
+        $$ = node_manager->MakeColumnRefNode($1, "");
     }
   | relation_name '.' column_name
     {
-        $$ = ::fesql::parser::MakeColumnRefNode($3, $1);
+        $$ = node_manager->MakeColumnRefNode($3, $1);
     }
   |
     relation_name '.' '*'
     {
-        $$ = ::fesql::parser::MakeColumnRefNode("*", $1);
+        $$ = node_manager->MakeColumnRefNode("*", $1);
     }
   ;
 

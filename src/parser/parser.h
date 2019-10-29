@@ -18,9 +18,11 @@
 #ifndef FESQL_PARSER_PARSER_H_
 #define FESQL_PARSER_PARSER_H_
 
-#include "parser/node.h"
+#include "node/node_memory.h"
+#include "node/sql_node.h"
 #include "parser/sql_parser.gen.h"
 #include <iostream>
+#include <list>
 
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
@@ -29,17 +31,27 @@ typedef void* yyscan_t;
 
 #ifndef YY_TYPEDEF_YY_BUFFER_STATE
 #define YY_TYPEDEF_YY_BUFFER_STATE
-typedef struct yy_buffer_state * YY_BUFFER_STATE;
+typedef struct yy_buffer_state *YY_BUFFER_STATE;
 #endif
 
 namespace fesql {
 namespace parser {
-int FeSqlParse(const char* sqlstr, SQLNodeList* list);
-}
+
+class FeSQLParser {
+public:
+    FeSQLParser() {
+    }
+    int parse(const char *sqlstr, node::SQLNodeList *list, node::NodeManager *manager);
+private:
+    std::list<node::SQLNode *> node_list;
+};
+};
 }
 
-extern YY_BUFFER_STATE yy_scan_string ( const char *yy_str , yyscan_t yyscanner );
-extern int yylex_init (yyscan_t* scanner);
-extern int yyparse (yyscan_t scanner, const ::fesql::parser::SQLNodeList *nodelist);
-extern int yylex_destroy ( yyscan_t yyscanner );
+extern YY_BUFFER_STATE yy_scan_string(const char *yy_str, yyscan_t yyscanner);
+extern int yylex_init(yyscan_t *scanner);
+extern int yyparse(yyscan_t scanner,
+                   const ::fesql::node::SQLNodeList *nodelist,
+                   ::fesql::node::NodeManager *node_manager);
+extern int yylex_destroy(yyscan_t yyscanner);
 #endif /* !FESQL_PARSER_PARSER_H_ */

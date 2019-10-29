@@ -12,7 +12,7 @@ namespace fesql {
 namespace plan {
 
 //Planner implementation
-PlanNode *SimplePlanner::CreatePlan() {
+node::PlanNode *SimplePlanner::CreatePlan() {
 
     if (nullptr == parser_tree_ptr_) {
         LOG(WARNING) << "can not create plan with null parser tree";
@@ -22,14 +22,14 @@ PlanNode *SimplePlanner::CreatePlan() {
     return CreatePlanRecurse(parser_tree_ptr_);
 }
 
-PlanNode *Planner::CreatePlanRecurse(parser::SQLNode *root) {
+node::PlanNode *Planner::CreatePlanRecurse(node::SQLNode *root) {
     if (nullptr == root) {
         LOG(WARNING) << "return null plan node with null parser tree";
         return nullptr;
     }
 
     switch (root->GetType()) {
-        case parser::kSelectStmt:return CreateSelectPlan((parser::SelectStmt *) root);
+        case node::kSelectStmt:return CreateSelectPlan((node::SelectStmt *) root);
         default:return nullptr;
 
     }
@@ -58,9 +58,9 @@ PlanNode *Planner::CreatePlanRecurse(parser::SQLNode *root) {
  * @param root
  * @return select plan node
  */
-PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
+node::PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
 
-    parser::NodePointVector table_ref_list = root->GetTableRefList();
+    node::NodePointVector table_ref_list = root->GetTableRefList();
 
     if (table_ref_list.empty()) {
         LOG(ERROR) << "can not create select plan node with empty table references";
@@ -72,12 +72,12 @@ PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
         return nullptr;
     }
 
-    parser::TableNode *table_node_ptr = (parser::TableNode *) table_ref_list.at(0);
-    SelectPlanNode *select_plan = new SelectPlanNode();
-    std::map<std::string, ProjectListPlanNode *> project_list_map;
+    node::TableNode *table_node_ptr = (node::TableNode *) table_ref_list.at(0);
+    node::SelectPlanNode *select_plan = (node::SelectPlanNode *) node_manager_->MakePlanNode(node::kSelect);
+    std::map<std::string, node::ProjectListPlanNode *> project_list_map;
     // set limit
-    if (nullptr != root->GetLimit() && parser::kLimit == root->GetLimit()->GetType()) {
-        parser::LimitNode *limit_ptr = (parser::LimitNode *) root->GetLimit();
+    if (nullptr != root->GetLimit() && node::kLimit == root->GetLimit()->GetType()) {
+        node::LimitNode *limit_ptr = (node::LimitNode *) root->GetLimit();
         int count = limit_ptr->GetLimitCount();
         if (count <= 0) {
             LOG(WARNING) << "can not create select plan with limit <= 0";
@@ -87,12 +87,12 @@ PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
     }
 
     // prepare project list plan node
-    parser::NodePointVector select_expr_list = root->GetSelectList();
+    node::NodePointVector select_expr_list = root->GetSelectList();
 
     if (false == select_expr_list.empty()) {
         for (auto expr : select_expr_list) {
-            ProjectPlanNode
-                *project_node_ptr = (ProjectPlanNode *) CreateProjectPlanNode(expr, table_node_ptr->GetOrgTableName());
+            node::ProjectPlanNode
+                *project_node_ptr =  CreateProjectPlanNode(expr, table_node_ptr->GetOrgTableName());
             if (nullptr == project_node_ptr) {
                 LOG(WARNING) << "fail to create project plan node";
                 continue;
@@ -100,8 +100,9 @@ PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
                 std::string key =
                     project_node_ptr->GetW().empty() ? project_node_ptr->GetTable() : project_node_ptr->GetW();
                 if (project_list_map.find(key) == project_list_map.end()) {
-                    project_list_map[key] = project_node_ptr->GetW().empty() ? new ProjectListPlanNode(key, "") :
-                                            new ProjectListPlanNode(project_node_ptr->GetTable(), key);
+                    project_list_map[key] =
+                        project_node_ptr->GetW().empty() ? node_manager_->MakeProjectListPlanNode(key, "") :
+                        node_manager_->MakeProjectListPlanNode(project_node_ptr->GetTable(), key);
                 }
                 project_list_map[key]->AddProject(project_node_ptr);
             }
@@ -115,30 +116,29 @@ PlanNode *Planner::CreateSelectPlan(parser::SelectStmt *root) {
     return select_plan;
 }
 
-PlanNode *Planner::CreateProjectPlanNode(parser::SQLNode *root, std::string table_name) {
+node::ProjectPlanNode *Planner::CreateProjectPlanNode(node::SQLNode *root, std::string table_name) {
     if (nullptr == root) {
         return nullptr;
     }
 
     switch (root->GetType()) {
-        case parser::kResTarget: {
-            parser::ResTarget *target_ptr = (parser::ResTarget *) root;
-
-            std::string w = parser::WindowOfExpression(target_ptr->GetVal());
-            return new ProjectPlanNode(target_ptr->GetVal(), target_ptr->GetName(), table_name, w);
+        case node::kResTarget: {
+            node::ResTarget *target_ptr = (node::ResTarget *) root;
+            std::string w = node::WindowOfExpression(target_ptr->GetVal());
+            return  node_manager_->MakeProjectPlanNode(target_ptr->GetVal(), target_ptr->GetName(), table_name, w);
         }
         default: {
-            LOG(ERROR) << "can not create project plan node with type " << parser::NameOfSQLNodeType(root->GetType());
+            LOG(ERROR) << "can not create project plan node with type " << node::NameOfSQLNodeType(root->GetType());
         }
 
     }
 }
 
-PlanNode *Planner::CreateDataProviderPlanNode(parser::SQLNode *root) {
+node::PlanNode *Planner::CreateDataProviderPlanNode(node::SQLNode *root) {
     return nullptr;
 }
 
-PlanNode *Planner::CreateDataCollectorPlanNode(parser::SQLNode *root) {
+node::PlanNode *Planner::CreateDataCollectorPlanNode(node::SQLNode *root) {
     return nullptr;
 }
 

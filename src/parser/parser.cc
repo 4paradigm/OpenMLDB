@@ -19,7 +19,7 @@
 //
 // Desc: Parse FeSQL Command
 //
-#include "parser/node.h"
+#include "node/sql_node.h"
 #include "parser/parser.h"
 
 /**
@@ -30,11 +30,11 @@
  */
 namespace fesql {
 namespace parser {
-int FeSqlParse(const char *sqlstr, SQLNodeList *list) {
+int FeSQLParser::parse(const char *sqlstr, node::SQLNodeList *list, node::NodeManager* manager) {
     yyscan_t scanner;
     yylex_init(&scanner);
     yy_scan_string(sqlstr, scanner);
-    int ret = yyparse(scanner, list);
+    int ret = yyparse(scanner, list, manager);
     std::cout << "ret: " << ret << " list size:" << list->Size() << std::endl;
     return ret;
 }

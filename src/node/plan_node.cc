@@ -10,7 +10,7 @@
 #include "plan_node.h"
 
 namespace fesql {
-namespace plan {
+namespace node {
 
 int PlanNode::GetChildrenSize() {
     return children_.size();
@@ -49,26 +49,19 @@ std::string NameOfPlanNodeType(const PlanType &type) {
         case kSelect:return std::string("kSelect");
         case kProjectList:return std::string("kProjectList");
         case kProject:return std::string("kProject");
-        case kExpr:return std::string("kExpr");
         case kScalarFunction:return std::string("kScalarFunction");
         case kAggFunction:return std::string("kAggFunction");
         case kAggWindowFunction:return std::string("kAggWindowFunction");
         case kOpExpr:return std::string("kOpExpr");
-        case kUnknow: return std::string("kUnknow");
+        case kUnknowPlan: return std::string("kUnknow");
         default: return std::string("unknow");
     }
 }
-
 
 std::ostream &operator<<(std::ostream &output, const PlanNode &thiz) {
     thiz.Print(output, "");
     return output;
 }
-//bool SelectPlanNode::AddChild(PlanNode *node) {
-//    return MultiChildPlanNode::AddChild(node);
-//}
-//bool ProjectPlanNode::AddChild(PlanNode *node) {
-//    return LeafPlanNode::AddChild(node);
-//}
+
 }
 }

@@ -8,36 +8,24 @@
 #include <glog/logging.h>
 #include <list>
 #include <vector>
-#include <parser/node.h>
+#include "emun.h"
+#include <node/sql_node.h>
 namespace fesql {
-namespace plan {
+namespace node {
 
-const std::string SPACE_ST = "+- ";
-const std::string SPACE_ED = "";
-const std::string INDENT = "|\t";
 
-/**
- * Planner:
- *  basic class for plan
- *
- */
-enum PlanType {
-    kSelect,
-    kProjectList,
-    kProject,
-    kExpr,
-    kOpExpr,
-    kScalarFunction,
-    kAggFunction,
-    kAggWindowFunction,
-    kUnknow,
-};
 std::string NameOfPlanNodeType(const PlanType &type);
+
 class PlanNode {
 public:
     PlanNode(PlanType type) : type_(type) {};
+    virtual ~PlanNode() {
+//        LOG(INFO) << "plan node " << NameOfPlanNodeType(type_) << " distruction enter";
+    }
     int GetChildrenSize();
-    virtual bool AddChild(PlanNode *node) = 0;
+    virtual bool AddChild(PlanNode *node) {
+
+    };
 
     virtual PlanType GetType() const {
         return type_;
@@ -50,7 +38,7 @@ public:
     friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
 
     virtual void Print(std::ostream &output, const std::string &tab) const {
-        output << tab << SPACE_ST << plan::NameOfPlanNodeType(type_);
+        output << tab << SPACE_ST << node::NameOfPlanNodeType(type_);
     }
     virtual void PrintVector(std::ostream &output, const std::string &tab, std::vector<PlanNode *> vec) const {
         if (0 == vec.size()) {
@@ -142,12 +130,12 @@ private:
 class ProjectPlanNode : public LeafPlanNode {
 public:
     ProjectPlanNode() : LeafPlanNode(kProject) {};
-    ProjectPlanNode(parser::SQLNode *expression)
+    ProjectPlanNode(node::SQLNode *expression)
         : LeafPlanNode(kProject), expression_(expression), name_(""), w_("") {};
-    ProjectPlanNode(parser::SQLNode *expression, const std::string &name)
+    ProjectPlanNode(node::SQLNode *expression, const std::string &name)
         : LeafPlanNode(kProject), expression_(expression), name_(name) {};
 
-    ProjectPlanNode(parser::SQLNode *expression,
+    ProjectPlanNode(node::SQLNode *expression,
                     const std::string &name,
                     const std::string &table,
                     const std::string &w)
@@ -172,7 +160,7 @@ public:
         return name_;
     }
 
-    parser::SQLNode *GetExpression() const {
+    node::SQLNode *GetExpression() const {
         return expression_;
     }
 
@@ -181,7 +169,7 @@ public:
     }
 
 private:
-    parser::SQLNode *expression_;
+    node::SQLNode *expression_;
     std::string name_;
     std::string w_;
     std::string table_;

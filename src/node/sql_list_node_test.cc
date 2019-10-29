@@ -13,29 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "parser/node.h"
 #include "gtest/gtest.h"
+#include "sql_node.h"
+#include "node_memory.h"
 #include <strstream>
 
 namespace fesql {
-namespace parser {
+namespace node {
 
 class SqlListNodeTest : public ::testing::Test {
 
 public:
-    SqlListNodeTest() {}
+    SqlListNodeTest() {
+        manager_ = new NodeManager();
+    }
 
-    ~SqlListNodeTest() {}
+    ~SqlListNodeTest() {
+        delete manager_;
+    }
+protected:
+    NodeManager * manager_;
 };
 
 TEST_F(SqlListNodeTest, PushFrontTest) {
-    SQLNodeList *pList = new SQLNodeList();
+    SQLNodeList *pList = manager_->MakeNodeList();
 
     ASSERT_EQ(0, pList->Size());
 
-    pList->PushFront(new ConstNode(1));
-    pList->PushFront(new ConstNode(2));
-    pList->PushFront(new ConstNode(3));
+    pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(1)));
+    pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(2)));
+    pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(3)));
 
     ASSERT_EQ(3, pList->Size());
     std::strstream out;
@@ -53,13 +60,13 @@ TEST_F(SqlListNodeTest, PushFrontTest) {
 }
 
 TEST_F(SqlListNodeTest, AppendNodeListTest) {
-    SQLNodeList *pList = new SQLNodeList();
-    pList->PushFront(new ConstNode(1));
+    SQLNodeList *pList = manager_->MakeNodeList();
+    pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(1)));
     ASSERT_EQ(1, pList->Size());
 
-    SQLNodeList *pList2 = new SQLNodeList();
-    pList2->PushFront(new ConstNode(2));
-    pList2->PushFront(new ConstNode(3));
+    SQLNodeList *pList2 = manager_->MakeNodeList();
+    pList2->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(2)));
+    pList2->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(3)));
     ASSERT_EQ(2, pList2->Size());
 
     pList->AppendNodeList(pList2);
