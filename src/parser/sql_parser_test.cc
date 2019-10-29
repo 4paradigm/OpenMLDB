@@ -21,20 +21,22 @@
 
 namespace fesql {
 namespace parser {
-
+using fesql::node::NodeManager;
+using fesql::node::SQLNode;
+using fesql::node::SQLNodeList;
 // TODO: add ut: 检查SQL的语法树节点预期 2019.10.23
 class SqlParserTest : public ::testing::TestWithParam<std::string> {
 
 public:
     SqlParserTest() {
-        manager_ = new node::NodeManager();
+        manager_ = new NodeManager();
     }
 
     ~SqlParserTest() {
         delete manager_;
     }
 protected:
-    node::NodeManager * manager_;
+    NodeManager * manager_;
 };
 INSTANTIATE_TEST_CASE_P(StringReturn, SqlParserTest, testing::Values(
     "SELECT COL1 FROM t1;",
@@ -66,7 +68,7 @@ INSTANTIATE_TEST_CASE_P(StringReturn, SqlParserTest, testing::Values(
 
 TEST_P(SqlParserTest, Parser_Select_Expr_List) {
     std::string sqlstr = GetParam();
-    node::SQLNodeList *list = manager_->MakeNodeList();
+    SQLNodeList *list = manager_->MakeNodeList();
     std::cout << sqlstr << std::endl;
     FeSQLParser *parser = new FeSQLParser();
 

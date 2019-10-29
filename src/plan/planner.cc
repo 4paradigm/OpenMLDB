@@ -11,8 +11,10 @@
 namespace fesql {
 namespace plan {
 
+using fesql::node::PlanNode;
+using fesql::node::SQLNode;
 //Planner implementation
-node::PlanNode *SimplePlanner::CreatePlan() {
+PlanNode *SimplePlanner::CreatePlan() {
 
     if (nullptr == parser_tree_ptr_) {
         LOG(WARNING) << "can not create plan with null parser tree";
@@ -22,7 +24,7 @@ node::PlanNode *SimplePlanner::CreatePlan() {
     return CreatePlanRecurse(parser_tree_ptr_);
 }
 
-node::PlanNode *Planner::CreatePlanRecurse(node::SQLNode *root) {
+PlanNode *Planner::CreatePlanRecurse(SQLNode *root) {
     if (nullptr == root) {
         LOG(WARNING) << "return null plan node with null parser tree";
         return nullptr;
@@ -58,7 +60,7 @@ node::PlanNode *Planner::CreatePlanRecurse(node::SQLNode *root) {
  * @param root
  * @return select plan node
  */
-node::PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
+PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
 
     node::NodePointVector table_ref_list = root->GetTableRefList();
 
@@ -116,7 +118,7 @@ node::PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
     return select_plan;
 }
 
-node::ProjectPlanNode *Planner::CreateProjectPlanNode(node::SQLNode *root, std::string table_name) {
+node::ProjectPlanNode *Planner::CreateProjectPlanNode(SQLNode *root, std::string table_name) {
     if (nullptr == root) {
         return nullptr;
     }
@@ -134,11 +136,11 @@ node::ProjectPlanNode *Planner::CreateProjectPlanNode(node::SQLNode *root, std::
     }
 }
 
-node::PlanNode *Planner::CreateDataProviderPlanNode(node::SQLNode *root) {
+PlanNode *Planner::CreateDataProviderPlanNode(SQLNode *root) {
     return nullptr;
 }
 
-node::PlanNode *Planner::CreateDataCollectorPlanNode(node::SQLNode *root) {
+PlanNode *Planner::CreateDataCollectorPlanNode(SQLNode *root) {
     return nullptr;
 }
 

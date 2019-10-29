@@ -13,36 +13,40 @@
 namespace fesql {
 namespace plan {
 
+using fesql::node::SQLNode;
+using fesql::node::SQLNodeList;
+using fesql::node::PlanNode;
+using fesql::node::NodeManager;
 // TODO: add ut: 检查SQL的语法树节点预期 2019.10.23
 class PlannerTest : public ::testing::Test {
 
 public:
     PlannerTest() {
         parser_ = new parser::FeSQLParser();
-        manager_ = new node::NodeManager();
+        manager_ = new NodeManager();
     }
 
     ~PlannerTest() {}
 protected:
     parser::FeSQLParser *parser_;
-    node::NodeManager *manager_;
+    NodeManager *manager_;
 };
 
 TEST_F(PlannerTest, SimplePlannerTest) {
-    fesql::node::SQLNode *root = manager_->MakeSQLNode(node::kSelectStmt);
+    SQLNode *root = manager_->MakeSQLNode(node::kSelectStmt);
     SimplePlanner planner_ptr(root);
     ASSERT_EQ(root, planner_ptr.GetParserTree());
 }
 
 TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
-    node::SQLNodeList *list = manager_->MakeNodeList();
+    SQLNodeList *list = manager_->MakeNodeList();
     int ret = parser_->parse("SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 FROM t1 limit 10;", list, manager_);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1, list->Size());
     node::SQLLinkedNode *ptr = list->GetHead();
 
     Planner *planner_ptr = new SimplePlanner(ptr->node_ptr_);
-    node::PlanNode *plan_ptr = planner_ptr->CreatePlan();
+    PlanNode *plan_ptr = planner_ptr->CreatePlan();
     ASSERT_TRUE(NULL != plan_ptr);
     std::cout << *plan_ptr << std::endl;
     // validate select plan
@@ -52,7 +56,7 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
     ASSERT_EQ(10, select_ptr->GetLimitCount());
 
     // validate project list based on current row
-    std::vector<node::PlanNode *> plan_vec = select_ptr->GetChildren();
+    std::vector<PlanNode *> plan_vec = select_ptr->GetChildren();
     ASSERT_EQ(1, plan_vec.size());
     ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
     ASSERT_EQ(3, ((node::ProjectListPlanNode *) plan_vec.at(0))->GetProjects().size());
@@ -62,7 +66,7 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
 }
 
 TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
-    node::SQLNodeList *list = manager_->MakeNodeList();
+    SQLNodeList *list = manager_->MakeNodeList();
     int ret = parser_->parse(
         "SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 , max(t1.age) over w1 FROM t1 limit 10;",
         list, manager_);
@@ -71,7 +75,7 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
     node::SQLLinkedNode *ptr = list->GetHead();
 
     Planner *planner_ptr = new SimplePlanner(ptr->node_ptr_);
-    node::PlanNode *plan_ptr = planner_ptr->CreatePlan();
+    PlanNode *plan_ptr = planner_ptr->CreatePlan();
     ASSERT_TRUE(NULL != plan_ptr);
 
     std::cout << *plan_ptr << std::endl;
@@ -82,7 +86,7 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
     ASSERT_EQ(10, select_ptr->GetLimitCount());
 
     // validate project list based on current row
-    std::vector<node::PlanNode *> plan_vec = select_ptr->GetChildren();
+    std::vector<PlanNode *> plan_vec = select_ptr->GetChildren();
     ASSERT_EQ(2, plan_vec.size());
     ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
     ASSERT_EQ(3, ((node::ProjectListPlanNode *) plan_vec.at(0))->GetProjects().size());
