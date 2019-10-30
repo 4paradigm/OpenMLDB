@@ -84,12 +84,12 @@ TEST_F(SqlNodeTest, MakeConstNodeLongTest) {
     ASSERT_EQ(864000000LL, node_ptr->GetLong());
 }
 
-TEST_F(SqlNodeTest, MakeConstNodeDoubleTest) {
-    ConstNode *node_ptr = (ConstNode *) (node_manager_->MakeConstNode(1.989E30));
-    std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(kDouble, node_ptr->GetType());
-    ASSERT_EQ(1.989E30, node_ptr->GetDouble());
-}
+//TEST_F(SqlNodeTest, MakeConstNodeDoubleTest) {
+//    ConstNode *node_ptr = (ConstNode *) (node_manager_->MakeConstNode(1.989E30));
+//    std::cout << *node_ptr << std::endl;
+//    ASSERT_EQ(kDouble, node_ptr->GetType());
+//    ASSERT_EQ(1.989E30, node_ptr->GetDouble());
+//}
 
 TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
     ConstNode *node_ptr = (ConstNode *) (node_manager_->MakeConstNode(1.234f));
