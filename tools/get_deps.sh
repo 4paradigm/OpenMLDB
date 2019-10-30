@@ -1,9 +1,13 @@
 #! /bin/sh
 
+PLATFORM=$1
 set -e -u -E # this script will exit if any sub-command fails
 
 ########################################
 # download & build depend software
+# mac can't support source compile for the followings:
+# 1. zookeeper_client_c
+# 2. rocksdb
 ########################################
 STAGE="DEBUG"
 WORK_DIR=`pwd`
@@ -44,7 +48,12 @@ else
     wget http://pkg.4paradigm.com/rtidb/dev/zlib-1.2.11.tar.gz
     tar zxf zlib-1.2.11.tar.gz 
     cd zlib-1.2.11
-    sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
+    if [ ""$PLATFORM != "mac" ]
+    then
+        gsed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
+    else
+        sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
+    fi
     ./configure --static --prefix=${DEPS_PREFIX} >/dev/null
     make -j2 >/dev/null
     make install
@@ -152,7 +161,12 @@ else
     wget http://pkg.4paradigm.com/rtidb/dev/leveldb.tar.gz
     tar -zxvf leveldb.tar.gz
     cd leveldb
-    sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
+    if [ ""$PLATFORM != "mac" ]
+    then
+        gsed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
+    else
+        sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
+    fi
     make -j8
     cp -rf include/* ${DEPS_PREFIX}/include
     cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
@@ -181,11 +195,22 @@ if [ -f "brpc_succ" ]
 then
     echo "brpc exist"
 else
-    wget http://pkg.4paradigm.com/rtidb/dev/brpc-legacy-1.3.7.tar.gz
-    tar -zxvf brpc-legacy-1.3.7.tar.gz
-    BRPC_DIR=$DEPS_SOURCE/brpc-legacy
-    cd brpc-legacy
-    sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
+    #wget http://pkg.4paradigm.com/rtidb/dev/brpc-legacy-1.3.7.tar.gz
+    #tar -zxvf brpc-legacy-1.3.7.tar.gz
+    if [ -d "incubator-brpc" ]
+    then
+        rm -rf incubator-brpc
+    fi
+    git clone https://github.com/apache/incubator-brpc.git
+
+    BRPC_DIR=$DEPS_SOURCE/incubator-brpc
+    cd incubator-brpc
+    if [ ""$PLATFORM != "mac" ]
+    then
+        sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
+    else
+        sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib --cc=clang --cxx=clang++
+    fi
     make -j5 libbrpc.a
     make output/include
     cp -rf output/include/* ${DEPS_PREFIX}/include
@@ -202,7 +227,7 @@ else
     wget https://mirrors.tuna.tsinghua.edu.cn/apache/zookeeper/zookeeper-3.5.5/apache-zookeeper-3.5.5.tar.gz
     tar -zxvf apache-zookeeper-3.5.5.tar.gz
     cd apache-zookeeper-3.5.5/zookeeper-client/zookeeper-client-c && mkdir -p build
-    cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC ..  && make -j4 && make install
+    cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC ..  && make && make install
     cd ${DEPS_SOURCE}
     touch zk_succ
 fi
@@ -279,7 +304,7 @@ if [ -f "flex_succ" ]
 then
     echo "flex exist"
 else
-    wget --no-check-certificate -O flex-2.6.4.tar.gz https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz 
+    wget --no-check-certificate -O flex-2.6.4.tar.gz https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz
     tar zxf flex-2.6.4.tar.gz
     cd flex-2.6.4
     ./autogen.sh && ./configure --prefix=${DEPS_PREFIX} && make install
@@ -293,8 +318,13 @@ then
 else
     wget --no-check-certificate -O 1.11.0.tar.gz https://github.com/google/flatbuffers/archive/1.11.0.tar.gz
     tar zxf 1.11.0.tar.gz
-    cd flatbuffers-1.11.0 &&  mkdir build
-    cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
+    cd flatbuffers-1.11.0 &&  mkdir cmake-build
+    if [ ""$PLATFORM != "mac" ]
+    then
+        cd cmake-build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
+    else
+        cd cmake-build && cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
+    fi
     make -j4 && make install
     cd ${DEPS_SOURCE}
     touch flatc_succ
@@ -323,7 +353,7 @@ else
     cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
     make -j12 && make install
     cd ${DEPS_SOURCE}
-    touch benchmark_succ
+    touch llvm_succ
 fi
 
 

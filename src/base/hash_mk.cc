@@ -16,7 +16,6 @@
  */
 
 #include "base/hash.h"
-
 #include "benchmark/benchmark.h"
 
 static void BM_HashFunction(benchmark::State& state) {

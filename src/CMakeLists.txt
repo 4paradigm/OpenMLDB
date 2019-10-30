@@ -1,4 +1,8 @@
 add_subdirectory(base)
 add_subdirectory(ast)
+add_subdirectory(node)
+add_subdirectory(parser)
+add_subdirectory(analyser)
+add_subdirectory(plan)
 add_subdirectory(proto)
 add_subdirectory(codegen)
