@@ -39,11 +39,11 @@ protected:
     NodeManager *node_manager_;
 };
 
-TEST_F(SqlNodeTest, MakeNode) {
-    SQLNode *node = node_manager_->MakeSQLNode(kAll);
-    std::cout << *node << std::endl;
-    ASSERT_EQ(kAll, node->GetType());
-}
+//TEST_F(SqlNodeTest, MakeNode) {
+//    SQLNode *node = node_manager_->MakeSQLNode(kAll);
+//    std::cout << *node << std::endl;
+//    ASSERT_EQ(kAll, node->GetType());
+//}
 
 TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
 
