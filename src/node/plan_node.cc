@@ -80,7 +80,7 @@ std::ostream &operator<<(std::ostream &output, const PlanNode &thiz) {
 
 void PrintPlanVector(std::ostream &output,
                      const std::string &tab,
-                     std::vector<PlanNode *> vec,
+                     PlanNodeList vec,
                      const std::string vector_name,
                      bool last_item) {
     if (0 == vec.size()) {

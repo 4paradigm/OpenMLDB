@@ -31,7 +31,7 @@ public:
         return type_;
     }
 
-    std::vector<PlanNode *> &GetChildren() {
+    std::vector<PlanNode*> &GetChildren() {
         return children_;
     }
 
@@ -46,9 +46,10 @@ public:
 
 protected:
     PlanType type_;
-    std::vector<PlanNode *> children_;
+    std::vector<PlanNode*> children_;
 };
 
+typedef std::vector<PlanNode*> PlanNodeList;
 class LeafPlanNode : public PlanNode {
 public:
     LeafPlanNode(PlanType type) : PlanNode(type) {};
@@ -141,7 +142,7 @@ public:
     ProjectListPlanNode(const std::string &table, const std::string &w) : MultiChildPlanNode(kProjectList), table_(table), w_(w) {};
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    std::vector<PlanNode *> &GetProjects() {
+    PlanNodeList &GetProjects() {
         return projects;
     }
     void AddProject(ProjectPlanNode *project) {
@@ -149,7 +150,7 @@ public:
     }
 
 private:
-    std::vector<PlanNode *> projects;
+    PlanNodeList projects;
     std::string w_;
     std::string table_;
 };
@@ -157,7 +158,7 @@ private:
 
 void PrintPlanVector(std::ostream &output,
                      const std::string &tab,
-                     std::vector<PlanNode *> vec,
+                     PlanNodeList vec,
                      const std::string vector_name,
                      bool last_item);
 
