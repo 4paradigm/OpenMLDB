@@ -1,12 +1,12 @@
 # -*-coding:utf-8 -*-
-from prometheus_client import Gauge
-from prometheus_client import start_http_server
 import os
 import time
 import sys
 dir_name = os.path.dirname(os.path.realpath(sys.argv[0]))
 work_dir = os.path.dirname(dir_name)
 sys.path.insert(0, dir_name + "/prometheus_client-0.6.0")
+from prometheus_client import start_http_server
+from prometheus_client import Gauge
 
 method = ["put", "get", "scan"]
 monitor_key = ["count", "error", "qps", "latency", "latency_50",
