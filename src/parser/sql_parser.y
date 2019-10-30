@@ -9,7 +9,7 @@
 %locations
 %lex-param   { yyscan_t scanner }
 %parse-param { yyscan_t scanner }
-%parse-param { ::fesql::node::SQLNodeList *nodelist}
+%parse-param { ::fesql::node::NodePointVector &trees}
 %parse-param { ::fesql::node::NodeManager *node_manager}
 
 %{
@@ -27,7 +27,7 @@ extern int yylex(YYSTYPE* yylvalp,
 void emit(char *s, ...);
 
 void yyerror_msg(char *s, ...);
-void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::SQLNodeList* list, ::fesql::node::NodeManager *node_manager, const char* msg ) {
+void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &trees, ::fesql::node::NodeManager *node_manager, const char* msg ) {
 printf("error %s", msg);
 }
 %}
@@ -357,10 +357,10 @@ typedef void* yyscan_t;
 %%
 
 sql_stmt: stmt ';' {
-
-                            nodelist->PushFront(node_manager->MakeLinkedNode($1));
-                            YYACCEPT;}
-    ;
+                    trees.push_back($1);
+                    YYACCEPT;
+                    }
+                    ;
 
    /* statements: select statement */
 

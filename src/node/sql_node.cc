@@ -136,8 +136,8 @@ void PrintSQLNode(std::ostream &output,
 
 void PrintSQLVector(std::ostream &output,
                     const std::string &tab,
-                    std::vector<SQLNode *> vec,
-                    const std::string vector_name,
+                    NodePointVector vec,
+                    const std::string &vector_name,
                     bool last_item) {
     if (0 == vec.size()) {
         output << tab << SPACE_ST << vector_name << ": []";

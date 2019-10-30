@@ -30,12 +30,12 @@
  */
 namespace fesql {
 namespace parser {
-int FeSQLParser::parse(const char *sqlstr, node::SQLNodeList *list, node::NodeManager* manager) {
+int FeSQLParser::parse(const std::string &sqlstr, node::NodePointVector &trees, node::NodeManager* manager) {
     yyscan_t scanner;
     yylex_init(&scanner);
-    yy_scan_string(sqlstr, scanner);
-    int ret = yyparse(scanner, list, manager);
-    std::cout << "ret: " << ret << " list size:" << list->Size() << std::endl;
+    yy_scan_string(sqlstr.c_str(), scanner);
+    int ret = yyparse(scanner, trees, manager);
+    std::cout << "ret: " << ret << " trees size:" << trees.size() << std::endl;
     return ret;
 }
 

@@ -27,9 +27,25 @@ namespace node {
 ////////////////// Make SQL Parser Node///////////////////////////////////
 
 SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
-    SQLNode *node_ptr = new SQLNode(type, 0, 0);
-    RegisterNode(node_ptr);
-    return node_ptr;
+    switch (type) {
+        case kSelectStmt:return RegisterNode((SQLNode *) new SelectStmt());
+        case kExpr: return RegisterNode((SQLNode *) new SQLExprNode());
+        case kResTarget: return RegisterNode((SQLNode *) new SQLExprNode());
+        case kTable: return RegisterNode((SQLNode *) new TableNode());
+        case kFunc: return RegisterNode((SQLNode *) new FuncNode());
+        case kWindowFunc: return RegisterNode((SQLNode *) new FuncNode());
+        case kWindowDef: return RegisterNode((SQLNode *) new WindowDefNode());
+        case kFrameBound: return RegisterNode((SQLNode *) new FrameBound());
+        case kFrames: return RegisterNode((SQLNode *) new FrameNode());
+        case kColumn: return RegisterNode((SQLNode *) new ColumnRefNode());
+        case kConst: return RegisterNode((SQLNode *) new ConstNode());
+        case kOrderBy: return RegisterNode((SQLNode *) new OrderByNode(nullptr));
+        case kLimit: return RegisterNode((SQLNode *) new LimitNode(0));
+        case kAll: return RegisterNode((SQLNode *) new AllNode());
+        default:
+            LOG(WARNING) << "can not make sql node with type " << NameOfSQLNodeType(type);
+            return nullptr;
+    }
 }
 
 ////////////////// Make Select Node///////////////////////////////////
@@ -90,7 +106,6 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
     return (SQLNode *) node_ptr;
 }
 
-
 ////////////////// Make Function Node///////////////////////////////////
 SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList *orders, SQLNode *frame) {
     WindowDefNode *node_ptr = new WindowDefNode();
@@ -142,7 +157,6 @@ SQLNode *NodeManager::MakeOrderByNode(SQLNode *order) {
     return (SQLNode *) node_ptr;
 }
 
-
 ///////////////// Make Const Node /////////////////////////
 SQLNode *NodeManager::MakeConstNode(int value) {
     SQLNode *node_ptr = new ConstNode(value);
@@ -178,7 +192,6 @@ SQLNode *NodeManager::MakeConstNode() {
     RegisterNode((SQLNode *) node_ptr);
     return (SQLNode *) node_ptr;
 }
-
 
 ///////////////// Make SQL Node List/////////////////////////
 SQLNodeList *NodeManager::MakeNodeList() {
@@ -225,14 +238,17 @@ PlanNode *NodeManager::MakeMultiPlanNode(const PlanType &type) {
     return node_ptr;
 }
 ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(const std::string &table, const std::string &w) {
-    ProjectListPlanNode * node_ptr = new ProjectListPlanNode(table, w);
-    RegisterNode((PlanNode*)node_ptr);
+    ProjectListPlanNode *node_ptr = new ProjectListPlanNode(table, w);
+    RegisterNode((PlanNode *) node_ptr);
     return node_ptr;
 }
 
-ProjectPlanNode *NodeManager::MakeProjectPlanNode(node::SQLNode * expression, const std::string &name, const std::string &table, const std::string &w) {
-    ProjectPlanNode * node_ptr = new ProjectPlanNode(expression, name, table, w);
-    RegisterNode((PlanNode*)node_ptr);
+ProjectPlanNode *NodeManager::MakeProjectPlanNode(node::SQLNode *expression,
+                                                  const std::string &name,
+                                                  const std::string &table,
+                                                  const std::string &w) {
+    ProjectPlanNode *node_ptr = new ProjectPlanNode(expression, name, table, w);
+    RegisterNode((PlanNode *) node_ptr);
 
     return node_ptr;
 }
@@ -251,8 +267,6 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
     RegisterNode(node_ptr);
     return node_ptr;
 }
-
-
 
 }
 }

@@ -28,7 +28,6 @@ namespace node {
 // Global methods
 std::string NameOfSQLNodeType(const SQLNodeType &type);
 
-
 class SQLNode {
 
 public:
@@ -45,7 +44,7 @@ public:
     }
 
     virtual void Print(std::ostream &output, const std::string &tab) const {
-        output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type_)<<"]";
+        output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type_) << "]";
     }
 
     SQLNodeType GetType() const {
@@ -352,6 +351,7 @@ private:
 
 class LimitNode : public SQLNode {
 public:
+    LimitNode() : SQLNode(kLimit, 0, 0), limit_cnt_(0) {};
     LimitNode(int limit_cnt) : SQLNode(kLimit, 0, 0), limit_cnt_(limit_cnt) {};
     int GetLimitCount() const {
         return limit_cnt_;
@@ -370,9 +370,31 @@ public:
     }
 };
 
+class AllNode : public SQLNode {
+public:
+    AllNode() : SQLNode(kAll, 0, 0), relation_name_("") {
+    }
+
+    AllNode(const std::string &relation_name) : SQLNode(kAll, 0, 0), relation_name_(relation_name) {
+    }
+
+    void SetRelationName(const std::string &relation_name) {
+        relation_name_ = relation_name;
+    }
+
+    std::string GetRelationName() const {
+        return relation_name_;
+    }
+
+private:
+    std::string relation_name_;
+};
 class ColumnRefNode : public SQLNode {
 
 public:
+    ColumnRefNode() : SQLNode(kColumn, 0, 0), column_name_(""), relation_name_("") {
+
+    }
     ColumnRefNode(const std::string &column_name)
         : SQLNode(kColumn, 0, 0), column_name_(column_name), relation_name_("") {
     }
@@ -447,8 +469,9 @@ private:
 class FuncNode : SQLNode {
 
 public:
+    FuncNode() : SQLNode(kFunc, 0, 0), function_name_(""), over_(nullptr) {};
     FuncNode(const std::string &function_name)
-        : SQLNode(kFunc, 0, 0), function_name_(function_name), over_(NULL) {};
+        : SQLNode(kFunc, 0, 0), function_name_(function_name), over_(nullptr) {};
 
     ~FuncNode() {
     }
@@ -577,8 +600,8 @@ void PrintSQLNode(std::ostream &output,
                   bool last_child);
 void PrintSQLVector(std::ostream &output,
                     const std::string &tab,
-                    std::vector<SQLNode *> vec,
-                    const std::string vector_name,
+                    NodePointVector vec,
+                    const std::string &vector_name,
                     bool last_item);
 void PrintValue(std::ostream &output,
                 const std::string &org_tab,

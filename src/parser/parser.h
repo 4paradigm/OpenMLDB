@@ -39,11 +39,12 @@ namespace parser {
 
 class FeSQLParser {
 public:
+
     FeSQLParser() {
     }
-    int parse(const char *sqlstr, node::SQLNodeList *list, node::NodeManager *manager);
-private:
-    std::list<node::SQLNode *> node_list;
+
+    int parse(const std::string &sqlstr, node::NodePointVector &trees, node::NodeManager *manager);
+
 };
 };
 }
@@ -51,7 +52,7 @@ private:
 extern YY_BUFFER_STATE yy_scan_string(const char *yy_str, yyscan_t yyscanner);
 extern int yylex_init(yyscan_t *scanner);
 extern int yyparse(yyscan_t scanner,
-                   const ::fesql::node::SQLNodeList *nodelist,
+                   fesql::node::NodePointVector &trees,
                    ::fesql::node::NodeManager *node_manager);
 extern int yylex_destroy(yyscan_t yyscanner);
 #endif /* !FESQL_PARSER_PARSER_H_ */

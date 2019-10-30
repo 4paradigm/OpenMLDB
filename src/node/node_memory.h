@@ -95,21 +95,22 @@ public:
     SQLNodeList *MakeNodeList();
     // Make Linked Node
     SQLLinkedNode *MakeLinkedNode(SQLNode *node_ptr);
+    SQLNode *MakeNode(SQLNodeType type);
 private:
 
-    void RegisterNode(SQLNode *node_ptr) {
+    SQLNode* RegisterNode(SQLNode *node_ptr) {
         parser_node_list_.push_back(node_ptr);
     }
 
-    void RegisterNode(node::PlanNode *node_ptr) {
+    PlanNode* RegisterNode(PlanNode *node_ptr) {
         plan_node_list_.push_back(node_ptr);
     }
 
-    void RegisterNode(SQLNodeList *node_ptr) {
+    SQLNodeList* RegisterNode(SQLNodeList *node_ptr) {
         sql_node_list_list_.push_back(node_ptr);
     }
 
-    void RegisterNode(SQLLinkedNode *node_ptr) {
+    SQLLinkedNode* RegisterNode(SQLLinkedNode *node_ptr) {
         linked_node_list_.push_back(node_ptr);
     }
 

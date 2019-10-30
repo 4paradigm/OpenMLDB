@@ -11,17 +11,15 @@
 namespace fesql {
 namespace plan {
 
-using fesql::node::PlanNode;
-using fesql::node::SQLNode;
 //Planner implementation
-PlanNode *SimplePlanner::CreatePlan() {
+PlanNode *SimplePlanner::CreatePlan(SQLNode *parser_tree_ptr) {
 
-    if (nullptr == parser_tree_ptr_) {
+    if (nullptr == parser_tree_ptr) {
         LOG(WARNING) << "can not create plan with null parser tree";
         return nullptr;
     }
 
-    return CreatePlanRecurse(parser_tree_ptr_);
+    return CreatePlanRecurse(parser_tree_ptr);
 }
 
 PlanNode *Planner::CreatePlanRecurse(SQLNode *root) {
@@ -94,7 +92,7 @@ PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
     if (false == select_expr_list.empty()) {
         for (auto expr : select_expr_list) {
             node::ProjectPlanNode
-                *project_node_ptr =  CreateProjectPlanNode(expr, table_node_ptr->GetOrgTableName());
+                *project_node_ptr = CreateProjectPlanNode(expr, table_node_ptr->GetOrgTableName());
             if (nullptr == project_node_ptr) {
                 LOG(WARNING) << "fail to create project plan node";
                 continue;
@@ -127,7 +125,7 @@ node::ProjectPlanNode *Planner::CreateProjectPlanNode(SQLNode *root, std::string
         case node::kResTarget: {
             node::ResTarget *target_ptr = (node::ResTarget *) root;
             std::string w = node::WindowOfExpression(target_ptr->GetVal());
-            return  node_manager_->MakeProjectPlanNode(target_ptr->GetVal(), target_ptr->GetName(), table_name, w);
+            return node_manager_->MakeProjectPlanNode(target_ptr->GetVal(), target_ptr->GetName(), table_name, w);
         }
         default: {
             LOG(ERROR) << "can not create project plan node with type " << node::NameOfSQLNodeType(root->GetType());

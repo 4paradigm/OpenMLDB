@@ -14,7 +14,6 @@
 namespace fesql {
 namespace node {
 
-
 const std::string SPACE_ST = "+-";
 const std::string SPACE_ED = "";
 const std::string OR_INDENT = "|\t";
@@ -68,6 +67,39 @@ enum PlanType {
     kAggFunction,
     kAggWindowFunction,
     kUnknowPlan,
+};
+}
+}
+
+namespace fesql {
+namespace error {
+enum ErrorType {
+    kSucess= 0,
+
+    kNodeErrorUnknow = 1001,
+    kNodeErrorMakeNodeFail,
+
+    kParserErrorUnknow = 2001,
+    kParserErrorSyntax,
+    kParserErrorAbort,
+
+    kAnalyserErrorUnknow = 3001,
+    kAnalyserErrorUnSupport,
+    kAnalyserErrorInitialize,
+    kAnalyserErrorParserTreeEmpty,
+    kAnalyserErrorFromListEmpty,
+    kAnalyserErrorQueryMultiTable,
+    kAnalyserErrorTableRefIsNull,
+    kAnalyserErrorTableNotExist,
+    kAnalyserErrorColumnNotExist,
+    kAnalyserErrorSQLTypeNotSupport,
+
+    kSystemErrorUnknow = 4001,
+    kSystemErrorMemory,
+
+    kServerErrorUnknow = 5001,
+    kServerErrorConnection,
+    kServerErrorSend
 };
 }
 }

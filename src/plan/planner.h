@@ -14,21 +14,24 @@
 namespace fesql {
 namespace plan {
 
+using node::NodePointVector;
+using node::PlanNodeList;
+using node::SQLNode;
+using node::PlanNode;
+
 class Planner {
 public:
-    Planner() {
-        node_manager_ = new node::NodeManager();
+    Planner(node::NodeManager *manager) : node_manager_(manager) {
     }
 
     virtual ~Planner() {
-        delete node_manager_;
     }
 
-    virtual node::PlanNode *CreatePlan() = 0;
+    virtual PlanNode *CreatePlan(SQLNode *parser_tree_ptr) = 0;
 protected:
     node::PlanNode *CreatePlanRecurse(node::SQLNode *root);
     node::PlanNode *CreateSelectPlan(node::SelectStmt *root);
-    node::ProjectPlanNode*CreateProjectPlanNode(node::SQLNode *root, std::string table_name);
+    node::ProjectPlanNode *CreateProjectPlanNode(node::SQLNode *root, std::string table_name);
     node::PlanNode *CreateDataProviderPlanNode(node::SQLNode *root);
     node::PlanNode *CreateDataCollectorPlanNode(node::SQLNode *root);
     node::NodeManager *node_manager_;
@@ -36,17 +39,11 @@ protected:
 
 class SimplePlanner : public Planner {
 public:
-    SimplePlanner(::fesql::node::SQLNode *root) : parser_tree_ptr_(root) {
-
+    SimplePlanner(node::NodeManager *manager) : Planner(manager) {
     }
-    const ::fesql::node::SQLNode *GetParserTree() const {
-        return parser_tree_ptr_;
-    }
-
-    node::PlanNode *CreatePlan();
+    PlanNode *CreatePlan(SQLNode *parser_tree_ptr);
 private:
 
-    ::fesql::node::SQLNode *parser_tree_ptr_;
 };
 
 }
