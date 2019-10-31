@@ -34,7 +34,7 @@ typedef void* yyscan_t;
   int64_t lval;
   float fval;
   double dval;
-  char* sval;
+  std::string sval;
 }
 
 %{
@@ -63,7 +63,8 @@ void yyerror(YYLTYPE* yyllocp,
 %token EOL
 
 %type <node> grammar line_list primary var types
-             indented fn_def return_stmt assign_stmt para plist expr
+             indented fn_def return_stmt assign_stmt 
+             para plist expr
 %start grammar
 
 %%
@@ -78,7 +79,7 @@ indented :
             $1->indent = 0;
             root->children.push_back($1);
          }
-         | 
+         |
          INDENT fn_def {
             $2->indent = $1;
             root->children.push_back($2);
@@ -96,8 +97,8 @@ indented :
             root->children.push_back($2);
          };
 
-fn_def : 
-       DEF SPACE  IDENTIFIER '(' plist ')' ':' types {
+fn_def :
+       DEF SPACE IDENTIFIER '(' plist ')' ':' types {
             ::fesql::ast::FnNodeFnDef* fn_def = new ::fesql::ast::FnNodeFnDef();
             fn_def->type = ::fesql::ast::kFnDef;
             fn_def->name = $3;
@@ -143,12 +144,14 @@ para: IDENTIFIER ':' types {
         para_node->para_type = $3->type;
         $$ = (::fesql::ast::FnNode*) para_node;
     };
+
 primary: INTEGER {
        ::fesql::ast::FnNodeInt32* i32_node = new ::fesql::ast::FnNodeInt32();
         i32_node->type = ::fesql::ast::kFnPrimaryInt32;
         i32_node->value = $1;
         $$ = (::fesql::ast::FnNode*)i32_node;
     };
+
 var: IDENTIFIER {
         ::fesql::ast::FnIdNode* id_node = new ::fesql::ast::FnIdNode();
         id_node->type = ::fesql::ast::kFnId;

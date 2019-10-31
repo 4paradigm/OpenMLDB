@@ -32,10 +32,13 @@ public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~ExprIRBuilder();
 
-    bool Build(::fesql::ast::FnNode* node, ::llvm::Value** output);
+    bool Build(const ::fesql::ast::FnNode* node, ::llvm::Value** output);
 
-    bool BuildBinaryExpr(::fesql::ast::FnBinaryExpr* node, ::llvm::Value** output);
-    bool BuildUnaryExpr(::fesql::ast::FnNode* node, ::llvm::Value** output);
+    bool BuildBinaryExpr(const ::fesql::ast::FnBinaryExpr* node, 
+                         ::llvm::Value** output);
+
+    bool BuildUnaryExpr(const ::fesql::ast::FnNode* node,
+                        ::llvm::Value** output);
 
 private:
     ::llvm::BasicBlock* block_;

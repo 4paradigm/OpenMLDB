@@ -137,7 +137,7 @@ struct FnNodeFnDef {
     FnNodeType type = kFnDef;
     std::vector<FnNode*> children;
     int32_t indent;
-    char* name;
+    std::string name;
     FnNodeType ret_type;
 };
 
@@ -145,13 +145,13 @@ struct FnAssignNode {
     FnNodeType type;
     std::vector<FnNode*> children;
     int32_t indent;
-    char* name;
+    std::string name;
 };
 
 struct FnParaNode {
     FnNodeType type;
     std::vector<FnNode*> children;
-    char* name;
+    std::string name;
     FnNodeType para_type;
 };
 
@@ -170,7 +170,7 @@ struct FnUnaryExpr {
 struct FnIdNode {
     FnNodeType type;
     std::vector<FnNode*> children;
-    char* name;
+    std::string name;
 };
 
 } // namespace of ast

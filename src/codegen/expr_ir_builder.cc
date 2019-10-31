@@ -26,26 +26,28 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var):blo
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
-bool ExprIRBuilder::Build(::fesql::ast::FnNode* node,
+bool ExprIRBuilder::Build(const ::fesql::ast::FnNode* node,
         ::llvm::Value** output) {
 
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
     }
+    //TODO use switch
     if (node->type == ::fesql::ast::kFnExprBinary) {
         return BuildBinaryExpr((::fesql::ast::FnBinaryExpr*)node, output);
+    }else {
+        return BuildUnaryExpr(node, output);
     }
     return false;
 }
 
-bool ExprIRBuilder::BuildUnaryExpr(::fesql::ast::FnNode* node, 
+bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::ast::FnNode* node, 
         ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
     }
-
     //TODO support more node
     ::llvm::IRBuilder<> builder(block_);
     switch (node->type) {
@@ -58,26 +60,37 @@ bool ExprIRBuilder::BuildUnaryExpr(::fesql::ast::FnNode* node,
         case ::fesql::ast::kFnId: 
             {
                 ::fesql::ast::FnIdNode* id_node = (::fesql::ast::FnIdNode*)node;
-                std::string id_name(id_node->name);
-                bool ok = scope_var_->FindVar(id_name, output);
-                return ok;
+                ::llvm::Value* ptr = NULL;
+                bool ok = scope_var_->FindVar(id_node->name, &ptr);
+                if (!ok || ptr == NULL) {
+                    LOG(WARNING) << "fail to find var " << id_node->name;
+                    return false;
+                }
+                if (ptr->getType()->isPointerTy()) {
+                    *output = builder.CreateLoad(ptr, id_node->name.c_str());
+                }else {
+                    *output = ptr;
+                }
+                return true;
             }
         default:
             return false;
-
     }
 }
 
-bool ExprIRBuilder::BuildBinaryExpr(::fesql::ast::FnBinaryExpr* node,
+bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::ast::FnBinaryExpr* node,
         ::llvm::Value** output) {
+
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
     }
+
     if (node->children.size()  != 2) {
         LOG(WARNING) << "invalid binary expr node ";
         return false;
     }
+
     ::llvm::Value* left = NULL;
     bool ok = BuildUnaryExpr(node->children[0], &left);
     if (!ok) {
@@ -91,6 +104,7 @@ bool ExprIRBuilder::BuildBinaryExpr(::fesql::ast::FnBinaryExpr* node,
         LOG(WARNING) << "fail to build right node";
         return false;
     }
+
     if (right->getType()->isIntegerTy() 
             && left->getType()->isIntegerTy()) {
         ::llvm::IRBuilder<> builder(block_);
