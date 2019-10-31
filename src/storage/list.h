@@ -85,7 +85,7 @@ public:
         delete head_;
     }
 
-    void Insert(const K& key, V& value) override {
+    virtual void Insert(const K& key, V& value) override {
         LinkListNode<K, V>* node = new LinkListNode<K, V>(key, value);
         LinkListNode<K, V>* pre = FindLessOrEqual(key);
         node->SetNextNoBarrier(pre->GetNextNoBarrier());
@@ -94,7 +94,7 @@ public:
 
     ListType GetType() const override { return ListType::kLinkList; }
 
-    bool IsEmpty() override {
+    virtual bool IsEmpty() override {
         if (head_->GetNextNoBarrier() == NULL) {
             return true;
         }
@@ -111,7 +111,7 @@ public:
         }
     }
 
-    uint32_t GetSize() override {
+    virtual uint32_t GetSize() override {
         uint32_t cnt = 0;
         LinkListNode<K, V>* node = head_->GetNext();
         while (node != NULL) {
@@ -155,36 +155,36 @@ public:
 
     class LinkListIterator : public Iterator<K, V> {
     public:
-         LinkListIterator(LinkList<K, V, Comparator>* list) : node_(NULL) , list_(list) {}
-         LinkListIterator(const LinkListIterator&) = delete;
-         LinkListIterator& operator= (const LinkListIterator&) = delete;
-         virtual ~LinkListIterator() {}
-         virtual bool Valid() const override {
-             return node_ != NULL;
-         }
-         virtual void Next() override {
-             assert(Valid());
-             node_ = node_->GetNext();
-         }
-         virtual const K& GetKey() const override {
-             assert(Valid());
-             return node_->GetKey();
-         }
-         virtual V& GetValue() override {
-             assert(Valid());
-             return node_->GetValue();
-         }
-         virtual void Seek(const K& k) override {
+        LinkListIterator(LinkList<K, V, Comparator>* list) : node_(NULL) , list_(list) {}
+        LinkListIterator(const LinkListIterator&) = delete;
+        LinkListIterator& operator= (const LinkListIterator&) = delete;
+        virtual ~LinkListIterator() {}
+        virtual bool Valid() const override {
+            return node_ != NULL;
+        }
+        virtual void Next() override {
+            assert(Valid());
+            node_ = node_->GetNext();
+        }
+        virtual const K& GetKey() const override {
+            assert(Valid());
+            return node_->GetKey();
+        }
+        virtual V& GetValue() override {
+            assert(Valid());
+            return node_->GetValue();
+        }
+        virtual void Seek(const K& k) override {
             node_ = list_->FindLessThan(k);
             Next();
-         }
-         virtual void SeekToFirst() override {
-             node_ = list_->head_;
-             Next();
-         }
+        }
+        virtual void SeekToFirst() override {
+            node_ = list_->head_;
+            Next();
+        }
     private:
-         LinkListNode<K, V>* node_;
-         LinkList<K, V, Comparator>* const list_;
+        LinkListNode<K, V>* node_;
+        LinkList<K, V, Comparator>* const list_;
     };
 
     virtual Iterator<K, V>* NewIterator() override {
@@ -229,7 +229,7 @@ public:
         }
     }
 
-    void Insert(const K& key, V& value) override {
+    virtual void Insert(const K& key, V& value) override {
         uint32_t length = GetSize();
         uint32_t new_length = length + 1;
         ArraySt<K, V>* st = (ArraySt<K, V>*)new char[ARRAY_HDR_LEN + new_length * sizeof(ArrayListNode<K, V>)];
@@ -258,7 +258,7 @@ public:
 
     ListType GetType() const override { return ListType::kArrayList; }
     
-    uint32_t GetSize() override {
+    virtual uint32_t GetSize() override {
         ArrayListNode<K,V>* array = array_.load(std::memory_order_relaxed);
         if (array == NULL) {
             return 0;
@@ -267,7 +267,7 @@ public:
         return ast->length_;
     }
 
-    bool IsEmpty() override {
+    virtual bool IsEmpty() override {
         ArrayListNode<K,V>* array = array_.load(std::memory_order_relaxed);
         if (array == NULL) {
             return true;
@@ -371,6 +371,8 @@ class List {
 public:
     List(Comparator cmp) : compare_(cmp) { list_ = new ArrayList<K, V, Comparator>(cmp); }
     ~List() { delete list_.load(std::memory_order_relaxed); }
+    List(const List&) = delete;
+    List& operator= (const List&) = delete;
     void Insert(const K& key, V& value) {
         BaseList<K, V>* list = list_.load(std::memory_order_acquire);
         if (list->GetType() == ListType::kArrayList && list->GetSize() >= MAX_ARRAY_LIST_LEN) {
