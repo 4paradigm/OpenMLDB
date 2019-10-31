@@ -9,7 +9,7 @@
 #include <stdarg.h>
 #include <string.h>
 void yyerror(char *s, ...) {}
-int oldstate;
+int oldstate=0;
 %}
 
 space [ \t]
@@ -19,11 +19,16 @@ comment ("#"{non_newline}*)
 indent {space}*
 
 %x COMMENT
+%x FUN
+%x DEFFUN
 %s BTWMODE
 
 
 
 %%
+
+"%%sql\n" {BEGIN INITIAL;}
+"%%fuc\n" {BEGIN FUN;}
 
  /* keywords */
 
@@ -262,26 +267,28 @@ ZEROFILL	{ return ZEROFILL; }
 
 
  /* function definition */
-"def" {
+<FUN>"def" {
+    BEGIN DEFFUN;
     return DEF;
     }
 
-"return" {
+<DEFFUN>"return" {
     return RETURN;
+    BEGIN FUN;
     }
 
  /* type definition */
-"i32" {
+<DEFFUN>"i32" {
     yylval->intval = 1;
     return I32;
     }
 
 
-{space} {return SPACE;}
+<DEFFUN>{newline} {return NEWLINE;}
 
-{newline} {return NEWLINE;}
+<DEFFUN>{space} {return SPACE;}
 
-{indent} {
+<DEFFUN>{indent} {
     yylval->intval = strlen(yytext);
     return INDENT;
 }
@@ -360,10 +367,12 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 #.*		;
 "--"[ \t].*	;
 
-"/*"            { oldstate = YY_START; BEGIN COMMENT; }
+"/*"            { BEGIN COMMENT; }
 <COMMENT>"*/"   { BEGIN oldstate; }
 <COMMENT>.|\n   ;
 <COMMENT><<EOF>> { yyerror("unclosed comment"); }
+
+<FUN><EOF> {/* end fun */}
 
 	/* everything else */
 [ \t\n]         /* white space */
