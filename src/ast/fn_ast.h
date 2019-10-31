@@ -18,67 +18,32 @@
 #ifndef AST_FN_AST_H_
 #define AST_FN_AST_H_
 
+#include "node/emun.h"
+#include "node/sql_node.h"
 #include <vector>
 #include <string>
 
 namespace fesql {
-namespace ast {
+namespace node {
 
-enum FnNodeType {
-    //primary
-    kFnPrimaryBool = 1,
-    kFnPrimaryInt16,
-    kFnPrimaryInt32,
-    kFnPrimaryInt64,
-    kFnPrimaryFloat,
-    kFnPrimaryDouble,
-
-    kFnDef,
-    kFnValue,
-    kFnId,
-    kFnAssignStmt,
-    kFnReturnStmt,
-    kFnExpr,
-    kFnExprBinary,
-    kFnExprUnary,
-    kFnPara,
-    kFnParaList
-};
-
-inline const std::string FnNodeName(const FnNodeType& type) {
+inline const std::string FnNodeName(const SQLNodeType &type) {
     switch (type) {
-        case kFnPrimaryBool:
-            return "bool";
-        case kFnPrimaryInt16:
-            return "int16";
-        case kFnPrimaryInt32:
-            return "int32";
-        case kFnPrimaryInt64:
-            return "int64";
-        case kFnPrimaryFloat:
-            return "float";
-        case kFnPrimaryDouble:
-            return "double";
-        case kFnDef:
-            return "def";
-        case kFnValue:
-            return "value";
-        case kFnId:
-            return "id";
-        case kFnAssignStmt:
-            return "=";
-        case kFnReturnStmt:
-            return "return";
-        case kFnExpr:
-            return "expr";
-        case kFnExprBinary:
-            return "bexpr";
-        case kFnExprUnary:
-            return "uexpr";
-        case kFnPara:
-            return "para";
-        case kFnParaList:
-            return "plist";
+        case kFnPrimaryBool:return "bool";
+        case kFnPrimaryInt16:return "int16";
+        case kFnPrimaryInt32:return "int32";
+        case kFnPrimaryInt64:return "int64";
+        case kFnPrimaryFloat:return "float";
+        case kFnPrimaryDouble:return "double";
+        case kFnDef:return "def";
+        case kFnValue:return "value";
+        case kFnId:return "id";
+        case kFnAssignStmt:return "=";
+        case kFnReturnStmt:return "return";
+        case kFnExpr:return "expr";
+        case kFnExprBinary:return "bexpr";
+        case kFnExprUnary:return "uexpr";
+        case kFnPara:return "para";
+        case kFnParaList:return "plist";
     }
 
 }
@@ -92,85 +57,93 @@ enum FnOperator {
     kFnOpNone
 };
 
-struct FnNode {
-    FnNodeType type;
-    std::vector<FnNode*> children;
+class FnNode : public SQLNode {
+public:
+    FnNode() : SQLNode(kFunc, 0, 0), indent(0) {};
+    FnNode(SQLNodeType type) : SQLNode(type, 0, 0), indent(0) {};
+public:
+    SQLNodeType type;
+    std::vector<FnNode *> children;
     int32_t indent;
 };
 
-struct FnNodeInt16 {
-    FnNodeType type = kFnPrimaryInt16;
-    std::vector<FnNode*> children;
-    int32_t indent;
+class FnNodeInt16 : public FnNode {
+public:
+    FnNodeInt16() : FnNode(kFnPrimaryInt16) {};
+public:
     int16_t value;
 };
 
-struct FnNodeInt32 {
-    FnNodeType type = kFnPrimaryInt32;
-    std::vector<FnNode*> children;
-    int32_t indent;
+class FnNodeInt32 : public FnNode {
+public:
+    FnNodeInt32() : FnNode(kFnPrimaryInt32) {};
+public:
     int32_t value;
 };
 
-struct FnNodeInt64 {
-    FnNodeType type = kFnPrimaryInt64;
-    std::vector<FnNode*> children;
-    int32_t indent;
+class FnNodeInt64 : public FnNode {
+public:
+    FnNodeInt64() : FnNode(kFnPrimaryInt64){};
+public:
     int32_t value;
 };
 
-struct FnNodeFloat {
-    FnNodeType type = kFnPrimaryFloat;
-    std::vector<FnNode*> children;
-    int32_t indent;
+class FnNodeFloat : public FnNode {
+public:
+    FnNodeFloat() : FnNode(kFnPrimaryFloat) {};
+public:
     float value;
 };
 
-struct FnNodeDouble {
-    FnNodeType type = kFnPrimaryFloat;
-    std::vector<FnNode*> children;
-    int32_t indent;
+class FnNodeDouble : public FnNode {
+public:
+    FnNodeDouble() : FnNode(kFnPrimaryDouble) {};
+public:
     float value;
 };
 
-struct FnNodeFnDef {
-    FnNodeType type = kFnDef;
-    std::vector<FnNode*> children;
-    int32_t indent;
-    char* name;
-    FnNodeType ret_type;
+class FnNodeFnDef : public FnNode {
+public:
+    FnNodeFnDef() : FnNode(kFnDef){};
+public:
+    char *name;
+    SQLNodeType ret_type;
 };
 
-struct FnAssignNode {
-    FnNodeType type;
-    std::vector<FnNode*> children;
-    int32_t indent;
-    char* name;
+class FnAssignNode : public FnNode {
+public:
+    FnAssignNode() : FnNode(kFnAssignStmt){};
+public:
+    char *name;
 };
 
-struct FnParaNode {
-    FnNodeType type;
-    std::vector<FnNode*> children;
-    char* name;
-    FnNodeType para_type;
+class FnParaNode : public FnNode {
+public:
+    FnParaNode() : FnNode(kFnPara){};
+public:
+    char *name;
+    SQLNodeType para_type;
 };
 
-struct FnBinaryExpr {
-    FnNodeType type;
-    std::vector<FnNode*> children;
+class FnBinaryExpr : public FnNode {
+public:
+    FnBinaryExpr() : FnNode(kFnExprBinary) {};
+public:
     FnOperator op;
 };
 
-struct FnUnaryExpr {
-    FnNodeType type;
-    std::vector<FnNode*> children;
+class FnUnaryExpr : public FnNode {
+public:
+    FnUnaryExpr() : FnNode(kFnExprUnary){};
+public:
     FnOperator op;
 };
 
-struct FnIdNode {
-    FnNodeType type;
-    std::vector<FnNode*> children;
-    char* name;
+class FnIdNode : public FnNode {
+public:
+    FnIdNode() : FnNode(kFnId) {};
+public:
+    char *name;
 };
 
 } // namespace of ast

@@ -18,7 +18,7 @@
 #include "gtest/gtest.h"
 
 namespace fesql {
-namespace ast {
+namespace node {
 
 class FnASTParserTest : public ::testing::Test {
 
@@ -32,19 +32,19 @@ TEST_F(FnASTParserTest, test) {
     int ret0 = fnlex_init(&scan);
     const char* test ="def test(a:i32,b:i32):i32\n    c=a+b\n    return c";
     fn_scan_string(test, scan);
-    ::fesql::ast::FnNode node;
+    ::fesql::node::FnNode node;
     int ret = fnparse(scan, &node);
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(3, node.children.size());
 
-    ASSERT_EQ(::fesql::ast::kFnDef, node.children[0]->type);
+    ASSERT_EQ(::fesql::node::kFnDef, node.children[0]->type);
     ASSERT_EQ(0, node.children[0]->indent);
 
-    ASSERT_EQ(::fesql::ast::kFnAssignStmt, node.children[1]->type);
+    ASSERT_EQ(::fesql::node::kFnAssignStmt, node.children[1]->type);
     ASSERT_EQ(4, node.children[1]->indent);
 
-    ASSERT_EQ(::fesql::ast::kFnReturnStmt, node.children[2]->type);
+    ASSERT_EQ(::fesql::node::kFnReturnStmt, node.children[2]->type);
     ASSERT_EQ(4, node.children[2]->indent);
 
 }

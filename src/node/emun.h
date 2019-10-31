@@ -19,6 +19,7 @@ const std::string SPACE_ED = "";
 const std::string OR_INDENT = "|\t";
 const std::string INDENT = " \t";
 enum SQLNodeType {
+    //SQL
     kSelectStmt = 0,
     kExpr,
     kResTarget,
@@ -51,6 +52,26 @@ enum SQLNodeType {
     kPreceding,
     kFollowing,
     kCurrent,
+
+    //primary
+    kFnPrimaryBool,
+    kFnPrimaryInt16,
+    kFnPrimaryInt32,
+    kFnPrimaryInt64,
+    kFnPrimaryFloat,
+    kFnPrimaryDouble,
+
+    // fn
+    kFnDef,
+    kFnValue,
+    kFnId,
+    kFnAssignStmt,
+    kFnReturnStmt,
+    kFnExpr,
+    kFnExprBinary,
+    kFnExprUnary,
+    kFnPara,
+    kFnParaList,
     kUnknow
 };
 /**

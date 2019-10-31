@@ -16,7 +16,7 @@
 %locations
 %lex-param   { yyscan_t scanner }
 %parse-param { yyscan_t scanner }
-%parse-param { ::fesql::ast::FnNode* root }
+%parse-param { ::fesql::node::FnNode* root }
 
 %code requires {
 #include "ast/fn_ast.h"
@@ -29,7 +29,7 @@ typedef void* yyscan_t;
 }
 
 %union {
-  struct ::fesql::ast::FnNode* node;
+  struct ::fesql::node::FnNode* node;
   int32_t ival;
   int64_t lval;
   float fval;
@@ -41,7 +41,7 @@ typedef void* yyscan_t;
 
 extern int fnlex(YYSTYPE* ylvalp, YYLTYPE* yyllocp, yyscan_t scanner);
 void yyerror(YYLTYPE* yyllocp, 
-            yyscan_t unused, ::fesql::ast::FnNode* root, const char* msg ) {
+            yyscan_t unused, ::fesql::node::FnNode* root, const char* msg ) {
 	printf("error %s", msg);
 }
 
@@ -98,38 +98,38 @@ indented :
 
 fn_def : 
        DEF SPACE  IDENTIFIER '(' plist ')' ':' types {
-            ::fesql::ast::FnNodeFnDef* fn_def = new ::fesql::ast::FnNodeFnDef();
-            fn_def->type = ::fesql::ast::kFnDef;
+            ::fesql::node::FnNodeFnDef* fn_def = new ::fesql::node::FnNodeFnDef();
+            fn_def->type = ::fesql::node::kFnDef;
             fn_def->name = $3;
             fn_def->children.push_back($5);
             fn_def->ret_type = $8->type;
-            $$ = (::fesql::ast::FnNode*) fn_def;
+            $$ = (::fesql::node::FnNode*) fn_def;
        };
 
 assign_stmt: IDENTIFIER '=' expr {
-            ::fesql::ast::FnAssignNode* fn_assign = new ::fesql::ast::FnAssignNode();
-            fn_assign->type = ::fesql::ast::kFnAssignStmt;
+            ::fesql::node::FnAssignNode* fn_assign = new ::fesql::node::FnAssignNode();
+            fn_assign->type = ::fesql::node::kFnAssignStmt;
             fn_assign->name = $1;
             fn_assign->children.push_back($3);
-            $$ = (::fesql::ast::FnNode*) fn_assign;
+            $$ = (::fesql::node::FnNode*) fn_assign;
            };
 
 return_stmt:
            RETURN SPACE  expr {
-            $$ = new ::fesql::ast::FnNode();
-            $$->type = ::fesql::ast::kFnReturnStmt;
+            $$ = new ::fesql::node::FnNode();
+            $$->type = ::fesql::node::kFnReturnStmt;
             $$->children.push_back($3);
            };
 
 types: I32 {
-        $$ = new ::fesql::ast::FnNode();
-        $$->type = ::fesql::ast::kFnPrimaryInt32;
+        $$ = new ::fesql::node::FnNode();
+        $$->type = ::fesql::node::kFnPrimaryInt32;
      };
 
 plist:
      para {
-        $$ = new ::fesql::ast::FnNode();
-        $$->type = ::fesql::ast::kFnParaList;
+        $$ = new ::fesql::node::FnNode();
+        $$->type = ::fesql::node::kFnParaList;
         $$->children.push_back($1);
      } | para ',' plist  {
         $3->children.push_back($1);
@@ -137,63 +137,63 @@ plist:
      }; 
 
 para: IDENTIFIER ':' types {
-        ::fesql::ast::FnParaNode* para_node = new ::fesql::ast::FnParaNode();
-        para_node->type = ::fesql::ast::kFnPara;
+        ::fesql::node::FnParaNode* para_node = new ::fesql::node::FnParaNode();
+        para_node->type = ::fesql::node::kFnPara;
         para_node->name = $1;
         para_node->para_type = $3->type;
-        $$ = (::fesql::ast::FnNode*) para_node;
+        $$ = (::fesql::node::FnNode*) para_node;
     };
 primary: INTEGER {
-       ::fesql::ast::FnNodeInt32* i32_node = new ::fesql::ast::FnNodeInt32();
-        i32_node->type = ::fesql::ast::kFnPrimaryInt32;
+       ::fesql::node::FnNodeInt32* i32_node = new ::fesql::node::FnNodeInt32();
+        i32_node->type = ::fesql::node::kFnPrimaryInt32;
         i32_node->value = $1;
-        $$ = (::fesql::ast::FnNode*)i32_node;
+        $$ = (::fesql::node::FnNode*)i32_node;
     };
 var: IDENTIFIER {
-        ::fesql::ast::FnIdNode* id_node = new ::fesql::ast::FnIdNode();
-        id_node->type = ::fesql::ast::kFnId;
+        ::fesql::node::FnIdNode* id_node = new ::fesql::node::FnIdNode();
+        id_node->type = ::fesql::node::kFnId;
         id_node->name = $1;
-        $$ = (::fesql::ast::FnNode*)id_node;
+        $$ = (::fesql::node::FnNode*)id_node;
      };
 
 expr : expr '+' expr {
-        ::fesql::ast::FnBinaryExpr* bexpr = new ::fesql::ast::FnBinaryExpr();
-        bexpr->type = ::fesql::ast::kFnExprBinary;
+        ::fesql::node::FnBinaryExpr* bexpr = new ::fesql::node::FnBinaryExpr();
+        bexpr->type = ::fesql::node::kFnExprBinary;
         bexpr->children.push_back($1);
         bexpr->children.push_back($3);
-        bexpr->op = ::fesql::ast::kFnOpAdd;
-        $$ = (::fesql::ast::FnNode*)bexpr;
+        bexpr->op = ::fesql::node::kFnOpAdd;
+        $$ = (::fesql::node::FnNode*)bexpr;
      }
      | expr '-' expr {
-        ::fesql::ast::FnBinaryExpr* bexpr = new ::fesql::ast::FnBinaryExpr();
-        bexpr->type = ::fesql::ast::kFnExprBinary;
+        ::fesql::node::FnBinaryExpr* bexpr = new ::fesql::node::FnBinaryExpr();
+        bexpr->type = ::fesql::node::kFnExprBinary;
         bexpr->children.push_back($1);
         bexpr->children.push_back($3);
-        bexpr->op = ::fesql::ast::kFnOpMinus;
-        $$ = (::fesql::ast::FnNode*)bexpr;
+        bexpr->op = ::fesql::node::kFnOpMinus;
+        $$ = (::fesql::node::FnNode*)bexpr;
      }
      | expr '*' expr {
-        ::fesql::ast::FnBinaryExpr* bexpr = new ::fesql::ast::FnBinaryExpr();
-        bexpr->type = ::fesql::ast::kFnExprBinary;
+        ::fesql::node::FnBinaryExpr* bexpr = new ::fesql::node::FnBinaryExpr();
+        bexpr->type = ::fesql::node::kFnExprBinary;
         bexpr->children.push_back($1);
         bexpr->children.push_back($3);
-        bexpr->op = ::fesql::ast::kFnOpMulti;
-        $$ = (::fesql::ast::FnNode*)bexpr;
+        bexpr->op = ::fesql::node::kFnOpMulti;
+        $$ = (::fesql::node::FnNode*)bexpr;
      }
      | expr '/' expr {
-        ::fesql::ast::FnBinaryExpr* bexpr = new ::fesql::ast::FnBinaryExpr();
-        bexpr->type = ::fesql::ast::kFnExprBinary;
+        ::fesql::node::FnBinaryExpr* bexpr = new ::fesql::node::FnBinaryExpr();
+        bexpr->type = ::fesql::node::kFnExprBinary;
         bexpr->children.push_back($1);
         bexpr->children.push_back($3);
-        bexpr->op = ::fesql::ast::kFnOpDiv;
-        $$ = (::fesql::ast::FnNode*)bexpr;
+        bexpr->op = ::fesql::node::kFnOpDiv;
+        $$ = (::fesql::node::FnNode*)bexpr;
      }
      | '(' expr ')' {
-        ::fesql::ast::FnUnaryExpr* uexpr = new ::fesql::ast::FnUnaryExpr();
-        uexpr->type = ::fesql::ast::kFnExprUnary;
-        uexpr->op = ::fesql::ast::kFnOpBracket;
+        ::fesql::node::FnUnaryExpr* uexpr = new ::fesql::node::FnUnaryExpr();
+        uexpr->type = ::fesql::node::kFnExprUnary;
+        uexpr->op = ::fesql::node::kFnOpBracket;
         uexpr->children.push_back($2);
-        $$ = (::fesql::ast::FnNode*)uexpr;
+        $$ = (::fesql::node::FnNode*)uexpr;
      }
      | primary 
      | var;
