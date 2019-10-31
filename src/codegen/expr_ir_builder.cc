@@ -39,7 +39,6 @@ bool ExprIRBuilder::Build(const ::fesql::ast::FnNode* node,
     }else {
         return BuildUnaryExpr(node, output);
     }
-    return false;
 }
 
 bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::ast::FnNode* node, 
@@ -48,6 +47,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::ast::FnNode* node,
         LOG(WARNING) << "input node or output is null";
         return false;
     }
+    LOG(INFO) << "build unary " << ::fesql::ast::FnNodeName(node->type);
     //TODO support more node
     ::llvm::IRBuilder<> builder(block_);
     switch (node->type) {
@@ -73,7 +73,16 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::ast::FnNode* node,
                 }
                 return true;
             }
+        case ::fesql::ast::kFnExprBinary: 
+            {
+                return BuildBinaryExpr((::fesql::ast::FnBinaryExpr*)node, output);
+            }
+        case ::fesql::ast::kFnExprUnary:
+            {
+                return BuildUnaryExpr(node->children[0], output);
+            }
         default:
+            LOG(WARNING) << ::fesql::ast::FnNodeName(node->type) << " not support";
             return false;
     }
 }
@@ -91,6 +100,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::ast::FnBinaryExpr* node,
         return false;
     }
 
+    LOG(INFO) << "build binary " << ::fesql::ast::FnNodeName(node->type);
     ::llvm::Value* left = NULL;
     bool ok = BuildUnaryExpr(node->children[0], &left);
     if (!ok) {
@@ -115,7 +125,18 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::ast::FnBinaryExpr* node,
                     *output = builder.CreateAdd(left, right, "expr_add");
                     return true;
                 }
+            case ::fesql::ast::kFnOpMulti:
+                {
+                    *output = builder.CreateMul(left, right, "expr_mul");
+                    return true;
+                }
+            case ::fesql::ast::kFnOpMinus:
+                {
+                    *output = builder.CreateSub(left, right, "expr_sub");
+                    return true;
+                }
             default:
+                LOG(WARNING) << "invalid op ";
                 return false;
         }
     }else {

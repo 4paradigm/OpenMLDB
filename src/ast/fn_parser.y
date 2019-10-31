@@ -34,7 +34,7 @@ typedef void* yyscan_t;
   int64_t lval;
   float fval;
   double dval;
-  std::string sval;
+  char* sval;
 }
 
 %{
@@ -100,8 +100,10 @@ indented :
 fn_def :
        DEF SPACE IDENTIFIER '(' plist ')' ':' types {
             ::fesql::ast::FnNodeFnDef* fn_def = new ::fesql::ast::FnNodeFnDef();
+            std::string name($3);
             fn_def->type = ::fesql::ast::kFnDef;
-            fn_def->name = $3;
+            fn_def->name = name;
+            delete $3;
             fn_def->children.push_back($5);
             fn_def->ret_type = $8->type;
             $$ = (::fesql::ast::FnNode*) fn_def;
@@ -110,7 +112,9 @@ fn_def :
 assign_stmt: IDENTIFIER '=' expr {
             ::fesql::ast::FnAssignNode* fn_assign = new ::fesql::ast::FnAssignNode();
             fn_assign->type = ::fesql::ast::kFnAssignStmt;
-            fn_assign->name = $1;
+            std::string name($1);
+            fn_assign->name = name;
+            delete $1;
             fn_assign->children.push_back($3);
             $$ = (::fesql::ast::FnNode*) fn_assign;
            };
@@ -140,7 +144,9 @@ plist:
 para: IDENTIFIER ':' types {
         ::fesql::ast::FnParaNode* para_node = new ::fesql::ast::FnParaNode();
         para_node->type = ::fesql::ast::kFnPara;
-        para_node->name = $1;
+        std::string name($1);
+        para_node->name = name;
+        delete $1;
         para_node->para_type = $3->type;
         $$ = (::fesql::ast::FnNode*) para_node;
     };
@@ -155,7 +161,9 @@ primary: INTEGER {
 var: IDENTIFIER {
         ::fesql::ast::FnIdNode* id_node = new ::fesql::ast::FnIdNode();
         id_node->type = ::fesql::ast::kFnId;
-        id_node->name = $1;
+        std::string name($1);
+        id_node->name = name;
+        delete $1;
         $$ = (::fesql::ast::FnNode*)id_node;
      };
 

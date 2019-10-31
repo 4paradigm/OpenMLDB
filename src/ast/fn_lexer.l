@@ -51,8 +51,7 @@ indent {space}*
         return INTEGER;
     }
 {identifier} {
-        std::string id(yytext);
-        yylval->sval = id;
+        yylval->sval = strdup(yytext);
         return IDENTIFIER;
     }
 {self} {

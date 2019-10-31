@@ -73,6 +73,31 @@ TEST_F(FnIRBuilderTest, test_add_int32) {
     ASSERT_EQ(test_ret, 4);
 }
 
+TEST_F(FnIRBuilderTest, test_bracket_int32) {
+    yyscan_t scan;
+    int ret0 = fnlex_init(&scan);
+    ASSERT_EQ(0, ret0);
+    const char* test ="def test(a:i32,b:i32):i32\n    c=a*(b+1)\n    return c";
+    fn_scan_string(test, scan);
+    ::fesql::ast::FnNode node;
+    int ret = fnparse(scan, &node);
+    ASSERT_EQ(0, ret);
+
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("custom_fn", *ctx);
+    FnIRBuilder fn_ir_builder(m.get());
+    bool ok = fn_ir_builder.Build(&node);
+    ASSERT_TRUE(ok);
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto test_jit = ExitOnErr(J->lookup("test"));
+    int32_t (*test_fn)(int32_t, int32_t) = (int32_t (*)(int32_t, int32_t))test_jit.getAddress();
+    int32_t test_ret = test_fn(1, 2);
+    ASSERT_EQ(test_ret, 4);
+}
+
 } // namespace of codegen
 } // namespace of fesql
 

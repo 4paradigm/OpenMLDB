@@ -79,6 +79,8 @@ inline const std::string FnNodeName(const FnNodeType& type) {
             return "para";
         case kFnParaList:
             return "plist";
+        default:
+            return  "unknown";
     }
 
 }
