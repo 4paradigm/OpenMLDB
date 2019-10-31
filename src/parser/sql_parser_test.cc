@@ -66,6 +66,7 @@ INSTANTIATE_TEST_CASE_P(StringReturn, SqlParserTest, testing::Values(
     "SELECT COL1, trim(COL2), TS, AVG(AMT) OVER w, SUM(AMT) OVER w FROM t \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY TS ROWS BETWEEN 3 PRECEDING AND 3 FOLLOWING);",
+//    "%%fuc\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\n%%sql\nSELECT COUNT(COL1) FROM t1;",
     "%%fuc\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c"
 
 ));

@@ -22,8 +22,7 @@ self [,()\[\].\:\+\-\*\/\%\^\<\>\=]
 
 
 %x COMMENT
-%x FUN
-%x DEFFUN
+%s FUN
 %s BTWMODE
 
 ident_start [A-Za-z\200-\377_]
@@ -32,8 +31,8 @@ identifier {ident_start}{ident_cont}*
 
 %%
 
-"%%sql\n" {cur_state = 0;}
-"%%fuc\n" {cur_state = 1;}
+"%%sql\n" {BEGIN INITIAL;}
+"%%fuc\n" {BEGIN FUN;}
 
  /* keywords */
 
@@ -52,7 +51,7 @@ AS	{ return AS; }
 ASC	{ return ASC; }
 AUTO_INCREMENT	{ return AUTO_INCREMENT; }
 BEFORE	{ return BEFORE; }
-BETWEEN	{ BEGIN BTWMODE; return BETWEEN; }
+<INITIAL>BETWEEN	{ BEGIN BTWMODE; return BETWEEN; }
 INT8|BIGINT	{ return BIGINT; }
 BINARY	{ return BINARY; }
 BIT	{ return BIT; }
@@ -272,33 +271,28 @@ ZEROFILL	{ return ZEROFILL; }
 
 
  /* function definition */
-"def" {
-        if (1 == cur_state) {
-            cur_state = 2;
+<FUN>"def" {
             return DEF;
-        }
        }
 
-"return" {
+<FUN>"return" {
         return RETURN;
     }
 
  /* type definition */
-"i32" {
+<FUN>"i32" {
     yylval->intval = 1;
     return I32;
     }
 
 
-{newline} {if (2 == cur_state) return NEWLINE;}
+<FUN>{newline} { return NEWLINE;}
 
-{space} {if (2 == cur_state) return SPACE;}
+<FUN>{space} {return SPACE;}
 
-{indent} {
-    if (2 == cur_state) {
+<FUN>{indent} {
         yylval->intval = strlen(yytext);
         return INDENT;
-    }
 }
 
 
@@ -358,27 +352,20 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 ":="     { return ASSIGN; }
 
-{identifier} {
-        if (2 == cur_state) {
+<FUN>{identifier} {
             yylval->strval = strdup(yytext);
             return NAME;
-        } else {
-            yylval->strval = strdup(yytext);
-            return NAME;
-        }
     }
 
-{self} {
-        if (2 == cur_state) {
+<FUN>{self} {
             return yytext[0];
-        }
 	}
 
 #.*		;
 "--"[ \t].*	;
 
 "/*"            { BEGIN COMMENT; }
-<COMMENT>"*/"   { BEGIN cur_state; }
+<COMMENT>"*/"   { BEGIN INITIAL; }
 <COMMENT>.|\n   ;
 <COMMENT><<EOF>> { yyerror("unclosed comment"); }
 

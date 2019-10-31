@@ -530,12 +530,7 @@ fun_def_block : fn_def_indent_op NEWLINE stmt_block {
             $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
             $$->AddChildren($1);
             $$->AddChildren($3);
-        } |
-        INDENT fn_def {
-
-                    $2->indent = $1;
-                    $$ = $2;
-                 }
+        }
         ;
 fn_def_indent_op:
         fn_def {}
