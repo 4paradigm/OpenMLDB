@@ -81,6 +81,25 @@ std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz) {
     thiz.Print(output, "");
     return output;
 }
+void SQLNodeList::Print(std::ostream &output, const std::string &tab) const {
+    if (0 == size_ || NULL == head_) {
+        output << tab << "[]";
+        return;
+    }
+    output << tab << "[\n";
+    SQLLinkedNode *p = head_;
+    const std::string space = tab + "\t";
+    p->node_ptr_->Print(output, space);
+    output << "\n";
+    p = p->next_;
+    while (NULL != p) {
+        p->node_ptr_->Print(output, space);
+        p = p->next_;
+        output << "\n";
+    }
+    output << tab << "]";
+
+}
 void FillSQLNodeList2NodeVector(SQLNodeList *node_list_ptr, std::vector<SQLNode *> &node_list) {
     if (nullptr != node_list_ptr) {
         SQLLinkedNode *ptr = node_list_ptr->GetHead();

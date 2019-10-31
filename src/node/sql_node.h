@@ -107,24 +107,7 @@ public:
         Print(output, "");
     }
 
-    void Print(std::ostream &output, const std::string &tab) const {
-        if (0 == size_ || NULL == head_) {
-            output << tab << "[]";
-            return;
-        }
-        output << tab << "[\n";
-        SQLLinkedNode *p = head_;
-        const std::string space = tab + "\t";
-        p->node_ptr_->Print(output, space);
-        output << "\n";
-        p = p->next_;
-        while (NULL != p) {
-            p->node_ptr_->Print(output, space);
-            p = p->next_;
-            output << "\n";
-        }
-        output << tab << "]";
-    }
+    void Print(std::ostream &output, const std::string &tab) const;
 
     void PushFront(SQLLinkedNode *linked_node_ptr) {
         linked_node_ptr->next_ = head_;
@@ -589,6 +572,126 @@ public:
     UnknowSqlNode(uint32_t line_num, uint32_t location) : SQLNode(kUnknow, line_num, location) {}
 
     void AddChild(SQLNode *node) {};
+};
+
+inline const std::string FnNodeName(const SQLNodeType &type) {
+    switch (type) {
+        case kFnPrimaryBool:return "bool";
+        case kFnPrimaryInt16:return "int16";
+        case kFnPrimaryInt32:return "int32";
+        case kFnPrimaryInt64:return "int64";
+        case kFnPrimaryFloat:return "float";
+        case kFnPrimaryDouble:return "double";
+        case kFnDef:return "def";
+        case kFnValue:return "value";
+        case kFnId:return "id";
+        case kFnAssignStmt:return "=";
+        case kFnReturnStmt:return "return";
+        case kFnExpr:return "expr";
+        case kFnExprBinary:return "bexpr";
+        case kFnExprUnary:return "uexpr";
+        case kFnPara:return "para";
+        case kFnParaList:return "plist";
+    }
+
+}
+
+enum FnOperator {
+    kFnOpAdd,
+    kFnOpMinus,
+    kFnOpMulti,
+    kFnOpDiv,
+    kFnOpBracket,
+    kFnOpNone
+};
+
+class FnNode : public SQLNode {
+public:
+    FnNode() : SQLNode(kFunc, 0, 0), indent(0) {};
+    FnNode(SQLNodeType type) : SQLNode(type, 0, 0), indent(0) {};
+public:
+    SQLNodeType type;
+    std::vector<FnNode *> children;
+    int32_t indent;
+};
+
+class FnNodeInt16 : public FnNode {
+public:
+    FnNodeInt16() : FnNode(kFnPrimaryInt16) {};
+public:
+    int16_t value;
+};
+
+class FnNodeInt32 : public FnNode {
+public:
+    FnNodeInt32() : FnNode(kFnPrimaryInt32) {};
+public:
+    int32_t value;
+};
+
+class FnNodeInt64 : public FnNode {
+public:
+    FnNodeInt64() : FnNode(kFnPrimaryInt64) {};
+public:
+    int32_t value;
+};
+
+class FnNodeFloat : public FnNode {
+public:
+    FnNodeFloat() : FnNode(kFnPrimaryFloat) {};
+public:
+    float value;
+};
+
+class FnNodeDouble : public FnNode {
+public:
+    FnNodeDouble() : FnNode(kFnPrimaryDouble) {};
+public:
+    float value;
+};
+
+class FnNodeFnDef : public FnNode {
+public:
+    FnNodeFnDef() : FnNode(kFnDef) {};
+public:
+    char *name;
+    SQLNodeType ret_type;
+};
+
+class FnAssignNode : public FnNode {
+public:
+    FnAssignNode() : FnNode(kFnAssignStmt) {};
+public:
+    char *name;
+};
+
+class FnParaNode : public FnNode {
+public:
+    FnParaNode() : FnNode(kFnPara) {};
+public:
+    char *name;
+    SQLNodeType para_type;
+};
+
+class FnBinaryExpr : public FnNode {
+public:
+    FnBinaryExpr() : FnNode(kFnExprBinary) {};
+public:
+    FnOperator op;
+};
+
+class FnUnaryExpr : public FnNode {
+public:
+    FnUnaryExpr() : FnNode(kFnExprUnary) {};
+public:
+    FnOperator op;
+};
+
+class FnIdNode : public FnNode {
+public:
+    FnIdNode() : FnNode(kFnId) {};
+public:
+    char *name;
 };
 
 std::string WindowOfExpression(SQLNode *node_ptr);

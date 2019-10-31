@@ -26,20 +26,20 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var):blo
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
-bool ExprIRBuilder::Build(::fesql::ast::FnNode* node,
+bool ExprIRBuilder::Build(::fesql::node::FnNode* node,
         ::llvm::Value** output) {
 
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
     }
-    if (node->type == ::fesql::ast::kFnExprBinary) {
-        return BuildBinaryExpr((::fesql::ast::FnBinaryExpr*)node, output);
+    if (node->type == ::fesql::node::kFnExprBinary) {
+        return BuildBinaryExpr((::fesql::node::FnBinaryExpr*)node, output);
     }
     return false;
 }
 
-bool ExprIRBuilder::BuildUnaryExpr(::fesql::ast::FnNode* node, 
+bool ExprIRBuilder::BuildUnaryExpr(::fesql::node::FnNode* node,
         ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
@@ -49,15 +49,15 @@ bool ExprIRBuilder::BuildUnaryExpr(::fesql::ast::FnNode* node,
     //TODO support more node
     ::llvm::IRBuilder<> builder(block_);
     switch (node->type) {
-        case ::fesql::ast::kFnPrimaryInt32:
+        case ::fesql::node::kFnPrimaryInt32:
             {
-                ::fesql::ast::FnNodeInt32* i32_node = (::fesql::ast::FnNodeInt32*)node;
+                ::fesql::node::FnNodeInt32* i32_node = (::fesql::node::FnNodeInt32*)node;
                 *output = builder.getInt32(i32_node->value);
                 return true;
             }
-        case ::fesql::ast::kFnId: 
+        case ::fesql::node::kFnId:
             {
-                ::fesql::ast::FnIdNode* id_node = (::fesql::ast::FnIdNode*)node;
+                ::fesql::node::FnIdNode* id_node = (::fesql::node::FnIdNode*)node;
                 std::string id_name(id_node->name);
                 bool ok = scope_var_->FindVar(id_name, output);
                 return ok;
@@ -68,7 +68,7 @@ bool ExprIRBuilder::BuildUnaryExpr(::fesql::ast::FnNode* node,
     }
 }
 
-bool ExprIRBuilder::BuildBinaryExpr(::fesql::ast::FnBinaryExpr* node,
+bool ExprIRBuilder::BuildBinaryExpr(::fesql::node::FnBinaryExpr* node,
         ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
@@ -96,7 +96,7 @@ bool ExprIRBuilder::BuildBinaryExpr(::fesql::ast::FnBinaryExpr* node,
         ::llvm::IRBuilder<> builder(block_);
         //TODO type check
         switch (node->op) {
-            case ::fesql::ast::kFnOpAdd:
+            case ::fesql::node::kFnOpAdd:
                 {
                     *output = builder.CreateAdd(left, right, "expr_add");
                     return true;
