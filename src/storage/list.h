@@ -7,45 +7,21 @@
 
 #pragma once
 #include <cstddef>
+#include <type_traits>
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <atomic>
+#include "iterator.h"
 
 namespace fesql {
 namespace storage {
 
-const uint16_t MAX_ARRAY_LIST_LEN = 500;    
-
-struct DefaultComparator {
-    int operator() (const uint64_t a, const uint64_t b) const {
-        if (a > b) {
-            return -1;
-        } else if (a == b) {
-            return 0;
-        }
-        return 1;
-    }
-};
+const uint16_t MAX_ARRAY_LIST_LEN = 400;
 
 enum class ListType {
     kArrayList = 1,
     kLinkList = 2,
-};
-
-template<class K, class V>
-class Iterator {
-public:    
-     Iterator() {}
-     virtual ~Iterator() {}
-     Iterator(const Iterator&) = delete;
-     Iterator& operator= (const Iterator&) = delete;
-     virtual bool Valid() const = 0;
-     virtual void Next() = 0;
-     virtual const K& GetKey() const = 0;
-     virtual V& GetValue() = 0;
-     virtual void Seek(const K& k) = 0;
-     virtual void SeekToFirst() = 0;
 };
 
 template<class K, class V>
@@ -61,27 +37,27 @@ public:
 };
 
 template<class K, class V>
-class Node {
+class LinkListNode {
 public:
-    Node(const K& key, V& value): key_(key), value_(value), next_(NULL) {}
-    Node(): key_(), value_(), next_(NULL) {}
-    ~Node() {}
+    LinkListNode(const K& key, V& value): key_(key), value_(value), next_(NULL) {}
+    LinkListNode(): key_(), value_(), next_(NULL) {}
+    ~LinkListNode() = default;
 
     // Set the next node with memory barrier
-    void SetNext(Node<K,V>* node) {
+    void SetNext(LinkListNode<K,V>* node) {
         next_.store(node, std::memory_order_release);
     }
 
     // Set the next node without memory barrier
-    void SetNextNoBarrier(Node<K,V>* node) {
+    void SetNextNoBarrier(LinkListNode<K,V>* node) {
         next_.store(node, std::memory_order_relaxed);
     }
 
-    Node<K,V>* GetNext() {
+    LinkListNode<K,V>* GetNext() {
         return next_.load(std::memory_order_acquire);
     }
 
-    Node<K,V>* GetNextNoBarrier() {
+    LinkListNode<K,V>* GetNextNoBarrier() {
         return next_.load(std::memory_order_relaxed);
     }
 
@@ -96,22 +72,22 @@ public:
 private:
     K  const key_;
     V  value_;
-    std::atomic<Node<K,V>*> next_;
+    std::atomic<LinkListNode<K,V>*> next_;
 };
 
 template<class K, class V, class Comparator>
 class LinkList : public BaseList<K, V> {
 public:
     LinkList(Comparator cmp) : compare_(cmp) {
-        head_ = new Node<K, V>();
+        head_ = new LinkListNode<K, V>();
     }
     ~LinkList() {
         delete head_;
     }
 
     void Insert(const K& key, V& value) override {
-        Node<K, V>* node = new Node<K, V>(key, value);
-        Node<K, V>* pre = FindLessOrEqual(key);
+        LinkListNode<K, V>* node = new LinkListNode<K, V>(key, value);
+        LinkListNode<K, V>* pre = FindLessOrEqual(key);
         node->SetNextNoBarrier(pre->GetNextNoBarrier());
         pre->SetNext(node);
     }
@@ -126,10 +102,10 @@ public:
     }
 
     void Clear() {
-        Node<K,V>* node = head_->GetNext(0);
+        LinkListNode<K,V>* node = head_->GetNext(0);
         head_->SetNext(NULL);
         while (node != NULL) {
-            Node<K,V>* tmp = node;
+            LinkListNode<K,V>* tmp = node;
             node = node->GetNext(0);
             delete tmp;
         }
@@ -137,10 +113,10 @@ public:
 
     uint32_t GetSize() override {
         uint32_t cnt = 0;
-        Node<K, V>* node = head_->GetNext();
+        LinkListNode<K, V>* node = head_->GetNext();
         while (node != NULL) {
             cnt++;
-            Node<K, V>* tmp = node->GetNext();
+            LinkListNode<K, V>* tmp = node->GetNext();
             // find the end
             if (tmp == NULL) {
                 break;
@@ -150,10 +126,10 @@ public:
         return cnt;
     }
 
-    Node<K, V>* FindLessThan(const K& key) {
-        Node<K, V>* node = head_;
+    LinkListNode<K, V>* FindLessThan(const K& key) {
+        LinkListNode<K, V>* node = head_;
         while (true) {
-            Node<K, V>* next = node->GetNext();
+            LinkListNode<K, V>* next = node->GetNext();
             if (next == NULL || compare_(next->GetKey() , key) > 0) {
                 return node;
             } else {
@@ -162,10 +138,10 @@ public:
         }
     }
 
-    Node<K, V>* FindLessOrEqual(const K& key) {
-        Node<K, V>* node = head_;
+    LinkListNode<K, V>* FindLessOrEqual(const K& key) {
+        LinkListNode<K, V>* node = head_;
         while (node != NULL) {
-            Node<K, V>* next = node->GetNext();
+            LinkListNode<K, V>* next = node->GetNext();
             if (next == NULL) {
                 return node;
             } else if (IsAfterNode(key, next)) {
@@ -180,6 +156,8 @@ public:
     class LinkListIterator : public Iterator<K, V> {
     public:
          LinkListIterator(LinkList<K, V, Comparator>* list) : node_(NULL) , list_(list) {}
+         LinkListIterator(const LinkListIterator&) = delete;
+         LinkListIterator& operator= (const LinkListIterator&) = delete;
          virtual ~LinkListIterator() {}
          virtual bool Valid() const override {
              return node_ != NULL;
@@ -204,10 +182,8 @@ public:
              node_ = list_->head_;
              Next();
          }
-         LinkListIterator(const LinkListIterator&) = delete;
-         LinkListIterator& operator= (const LinkListIterator&) = delete;
     private:
-         Node<K, V>* node_;
+         LinkListNode<K, V>* node_;
          LinkList<K, V, Comparator>* const list_;
     };
 
@@ -216,13 +192,13 @@ public:
     }
 
 private:
-    bool IsAfterNode(const K& key, const Node<K, V>* node) const {
+    bool IsAfterNode(const K& key, const LinkListNode<K, V>* node) const {
         return compare_(key, node->GetKey()) > 0;
     }
 
 private:
     Comparator const compare_;
-    Node<K, V>* head_;
+    LinkListNode<K, V>* head_;
 };
 
 template<class K, class V>
@@ -240,7 +216,9 @@ struct __attribute__ ((__packed__)) ArraySt {
 const uint16_t  ARRAY_HDR_LEN = sizeof(uint16_t);
 #define ARRAY_HDR(s) ((struct ArraySt<K, V> *)((char*)(s)-(sizeof(uint16_t))))
 
-template<class K, class V, class Comparator>
+template<class K, class V, class Comparator, 
+        class = typename std::enable_if<std::is_pod<K>::value && std::is_pod<V>::value>::type>
+        //typename std::enable_if<std::is_pod<K>::value && std::is_pod<V>::value, int>::type = 0>
 class ArrayList : public BaseList<K, V> {
 public:
     ArrayList(Comparator cmp) : compare_(cmp), array_(NULL) {}
@@ -320,6 +298,20 @@ public:
         return length;
     }
 
+    LinkList<K, V, Comparator>* ConvertToLinkList() {
+        uint32_t length = GetSize();
+        if (length == 0) {
+            return NULL;
+        }
+        LinkList<K, V, Comparator>* list = new LinkList<K, V, Comparator>(compare_);
+        ArrayListNode<K, V>* array = array_.load(std::memory_order_relaxed);
+        for (uint32_t idx = 0; idx < length; idx++) {
+            uint32_t cur_idx = length - idx - 1;
+            list.Insert(array[cur_idx].key_, array[cur_idx].value_);
+        }
+        return list;
+    }
+
     class ArrayListIterator : public Iterator<K, V> {
     public:
         ArrayListIterator(ArrayList<K, V, Comparator>* list) : pos_(-1) {
@@ -332,6 +324,8 @@ public:
             }
             list_ = list;
         }
+        ArrayListIterator(const ArrayListIterator&) = delete;
+        ArrayListIterator& operator= (const ArrayListIterator&) = delete;
         virtual ~ArrayListIterator() {}
         virtual bool Valid() const override {
             return array_ != NULL && pos_ >= 0 && pos_ < (int32_t)length_;
@@ -356,8 +350,6 @@ public:
         virtual void SeekToFirst() override {
             pos_ = 0;
         }
-        ArrayListIterator(const ArrayListIterator&) = delete;
-        ArrayListIterator& operator= (const ArrayListIterator&) = delete;
     private:
         int32_t pos_;
         uint32_t length_;
@@ -381,17 +373,16 @@ public:
     ~List() { delete list_.load(std::memory_order_relaxed); }
     void Insert(const K& key, V& value) {
         BaseList<K, V>* list = list_.load(std::memory_order_acquire);
-        /*if (list->GetType() == ListType::kArrayList && list->GetSize() >= MAX_ARRAY_LIST_LEN) {
-            list = ConvertList();
-        }*/
+        if (list->GetType() == ListType::kArrayList && list->GetSize() >= MAX_ARRAY_LIST_LEN) {
+            ArrayList<K, V, Comparator>* array_list = dynamic_cast<ArrayList<K, V, Comparator>>(list);
+            LinkList<K, V, Comparator>* new_list = array_list->ConvertToLinkList();
+            if (new_list != NULL) {
+                list_.store(new_list, std::memory_order_release);
+                delete array_list;
+            }
+        }
         list->Insert(key, value);
     }
-
-    /*BaseList<K, V>* ConvertList() {
-        BaseList<K, V>* list = new LinkList(list_load(std::memory_order_acquire));
-        list_.store(list, std::memory_order_relaxed);
-        return list;
-    }*/
 
 private:
     Comparator const compare_;
