@@ -363,6 +363,62 @@ public class TableAsyncClientTest extends TestCaseBase {
     }
 
     @Test
+    public void testConcurrentAccuracy() {
+        final String name = createSchemaTable();
+        int threadCount = 4;
+        Thread[] threadArr = new Thread[threadCount];
+        for (int threadNum = 0; threadNum < threadCount; threadNum++) {
+            final String index = threadNum + "";
+            final Thread thread = new Thread("thread " + threadNum) {
+                @Override
+                public void run() {
+                    try {
+                        for (int i = 1; i <= 100; i++) {
+                            PutFuture pf = tableAsyncClient.put(name, i, new Object[]{"card" + index, "mcc" + index, (double) i});
+                            Assert.assertTrue(pf.get());
+//                            System.out.println("----------------" + index + "---------------");
+
+                            GetFuture gf = tableAsyncClient.get(name, "card" + index, i);
+                            Object[] row = gf.getRow();
+                            Assert.assertEquals(row[0], "card" + index);
+                            Assert.assertEquals(row[1], "mcc" + index);
+                            Assert.assertEquals(row[2], (double) i);
+
+                            ScanFuture sf = tableAsyncClient.scan(name, "card" + index, "card", i + 1, 0);
+                            KvIterator it = sf.get();
+                            Assert.assertEquals(it.getCount(), i);
+                            for (int j = 1; j <= i; j++) {
+                                Assert.assertTrue(it.valid());
+                                row = it.getDecodedValue();
+                                Assert.assertEquals("card" + index, row[0]);
+                                Assert.assertEquals("mcc" + index, row[1]);
+                                Assert.assertEquals((double) (i - j + 1), row[2]);
+                                it.next();
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Assert.assertTrue(false);
+                    }
+                }
+            };
+            threadArr[threadNum] = thread;
+        }
+        for (int i = 0; i < threadCount; i++) {
+            threadArr[i].start();
+        }
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                threadArr[i].join();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+        nsc.dropTable(name);
+    }
+
+    @Test
     public void testAddTableFieldWithoutColumnKey() {
         String name = createSchemaTable();
         try {
