@@ -1,5 +1,5 @@
 /*
- * dbms_server_impl.h
+ * dbms_sdk.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,38 +15,27 @@
  * limitations under the License.
  */
 
-#ifndef FESQL_DBMS_SERVER_IMPL_H_
-#define FESQL_DBMS_SERVER_IMPL_H_
-
-#include "proto/dbms.pb.h"
-#include "proto/type.pb.h"
-#include <mutex>
-#include <map>
+#ifndef FESQL_DBMS_SDK_H_
+#define FESQL_DBMS_SDK_H_
 
 namespace fesql {
-namespace dbms {
+namespace sdk {
 
-using ::google::protobuf::RpcController;
-using ::google::protobuf::Closure;
-
-typedef std::map<std::string, ::fesql::type::Group> Groups;
-
-class DBMSServerImpl : public DBMSServer {
-
-public:
-    DBMSServerImpl();
-    ~DBMSServerImpl();
-
-    void AddGroup(RpcController* ctr,
-            const AddGroupRequest* request,
-            AddGroupResponse* response,
-            Closure* done);
-
-private:
-    std::mutex mu_;
-    Groups groups_;
+struct GroupDef {
+    std::string name;
 };
 
-} // namespace of dbms
+class DBMSSdk {
+
+public:
+    DBMSSdk(const std::string& endpoint);
+    ~DBMSSdk();
+    bool Init();
+    int32_t CreateGroup(const GroupDef& group);
+private:
+    std::string endpoint_;
+};
+
+} // namespace of sdk
 } // namespace of fesql
-#endif /* !FESQL_DBMS_SERVER_IMPL_H_ */
+#endif /* !FESQL_DBMS_SDK_H_ */

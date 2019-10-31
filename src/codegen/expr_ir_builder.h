@@ -1,5 +1,5 @@
 /*
- * dbms_server_impl.h
+ * expr_ir_builder.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,38 +15,33 @@
  * limitations under the License.
  */
 
-#ifndef FESQL_DBMS_SERVER_IMPL_H_
-#define FESQL_DBMS_SERVER_IMPL_H_
+#ifndef CODEGEN_EXPR_IR_BUILDER_H_
+#define CODEGEN_EXPR_IR_BUILDER_H_
 
-#include "proto/dbms.pb.h"
-#include "proto/type.pb.h"
-#include <mutex>
-#include <map>
+#include "llvm/IR/IRBuilder.h"
+#include "codegen/scope_var.h"
+#include "ast/fn_ast.h"
 
 namespace fesql {
-namespace dbms {
+namespace codegen {
 
-using ::google::protobuf::RpcController;
-using ::google::protobuf::Closure;
-
-typedef std::map<std::string, ::fesql::type::Group> Groups;
-
-class DBMSServerImpl : public DBMSServer {
+class ExprIRBuilder {
 
 public:
-    DBMSServerImpl();
-    ~DBMSServerImpl();
 
-    void AddGroup(RpcController* ctr,
-            const AddGroupRequest* request,
-            AddGroupResponse* response,
-            Closure* done);
+    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
+    ~ExprIRBuilder();
+
+    bool Build(::fesql::ast::FnNode* node, ::llvm::Value** output);
+
+    bool BuildBinaryExpr(::fesql::ast::FnBinaryExpr* node, ::llvm::Value** output);
+    bool BuildUnaryExpr(::fesql::ast::FnNode* node, ::llvm::Value** output);
 
 private:
-    std::mutex mu_;
-    Groups groups_;
+    ::llvm::BasicBlock* block_;
+    ScopeVar* scope_var_;
 };
 
-} // namespace of dbms
+} // namespace of codegen
 } // namespace of fesql
-#endif /* !FESQL_DBMS_SERVER_IMPL_H_ */
+#endif /* !CODEGEN_EXPR_IR_BUILDER_H_ */

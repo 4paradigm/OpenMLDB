@@ -15,6 +15,5 @@ message AddGroupResponse {
 
 
 service DBMSServer {
-
     rpc AddGroup(AddGroupRequest) returns(AddGroupResponse);
 }
