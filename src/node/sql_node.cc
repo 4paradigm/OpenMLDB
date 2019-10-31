@@ -55,18 +55,6 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kAll: output = "kAll";
             break;
-        case kNull: output = "kNull";
-            break;
-        case kInt: output = "kInt";
-            break;
-        case kBigInt: output = "kBigInt";
-            break;
-        case kFloat: output = "kFloat";
-            break;
-        case kDouble: output = "kDouble";
-            break;
-        case kString: output = "kString";
-            break;
         default: output = "unknown";
     }
     return output;

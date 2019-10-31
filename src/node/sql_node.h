@@ -481,82 +481,6 @@ private:
     WindowDefNode *over_;
 };
 
-class ConstNode : public SQLNode {
-
-public:
-    ConstNode() : SQLNode(kNull, 0, 0) {
-    }
-    ConstNode(int val) : SQLNode(kInt, 0, 0) {
-        val_.vint = val;
-    }
-    ConstNode(long val) : SQLNode(kBigInt, 0, 0) {
-        val_.vlong = val;
-    }
-    ConstNode(float val) : SQLNode(kFloat, 0, 0) {
-        val_.vfloat = val;
-    }
-
-    ConstNode(double val) : SQLNode(kDouble, 0, 0) {
-        val_.vdouble = val;
-    }
-
-    ConstNode(const char *val) : SQLNode(kString, 0, 0) {
-        val_.vstr = val;
-    }
-    ConstNode(const std::string &val) : SQLNode(kString, 0, 0) {
-        val_.vstr = val.c_str();
-    }
-
-    ~ConstNode() {}
-    void Print(std::ostream &output, const std::string &org_tab) const {
-        SQLNode::Print(output, org_tab);
-        output << "\n";
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        output << tab << SPACE_ST;
-        switch (type) {
-            case kInt:output << "value: " << val_.vint;
-                break;
-            case kBigInt:output << "value: " << val_.vlong;
-                break;
-            case kString:output << "value: " << val_.vstr;
-                break;
-            case kFloat:output << "value: " << val_.vfloat;
-                break;
-            case kDouble:output << "value: " << val_.vdouble;
-                break;
-            default:output << "value: unknow";
-        }
-    }
-
-    int GetInt() {
-        return val_.vint;
-    }
-
-    long GetLong() {
-        return val_.vlong;
-    }
-
-    const char *GetStr() {
-        return val_.vstr;
-    }
-
-    float GetFloat() {
-        return val_.vfloat;
-    }
-
-    double GetDouble() {
-        return val_.vdouble;
-    }
-
-private:
-    union {
-        int vint;        /* machine integer */
-        long vlong;        /* machine integer */
-        const char *vstr;        /* string */
-        float vfloat;
-        double vdouble;
-    } val_;
-};
 
 class OtherSqlNode : public SQLNode {
 public:
@@ -572,7 +496,6 @@ public:
 
     void AddChild(SQLNode *node) {};
 };
-
 
 inline const std::string FnNodeName(const SQLNodeType &type) {
     switch (type) {
@@ -596,53 +519,16 @@ inline const std::string FnNodeName(const SQLNodeType &type) {
 
 }
 
-
-
 class FnNode : public SQLNode {
 public:
     FnNode() : SQLNode(kFunc, 0, 0), indent(0) {};
     FnNode(SQLNodeType type) : SQLNode(type, 0, 0), indent(0) {};
-    void AddChildren(FnNode * node) {
+    void AddChildren(FnNode *node) {
         children.push_back(node);
     }
 public:
     std::vector<FnNode *> children;
     int32_t indent;
-};
-
-class FnNodeInt16 : public FnNode {
-public:
-    FnNodeInt16() : FnNode(kFnPrimaryInt16) {};
-public:
-    int16_t value;
-};
-
-class FnNodeInt32 : public FnNode {
-public:
-    FnNodeInt32() : FnNode(kFnPrimaryInt32) {};
-public:
-    int32_t value;
-};
-
-class FnNodeInt64 : public FnNode {
-public:
-    FnNodeInt64() : FnNode(kFnPrimaryInt64) {};
-public:
-    int32_t value;
-};
-
-class FnNodeFloat : public FnNode {
-public:
-    FnNodeFloat() : FnNode(kFnPrimaryFloat) {};
-public:
-    float value;
-};
-
-class FnNodeDouble : public FnNode {
-public:
-    FnNodeDouble() : FnNode(kFnPrimaryDouble) {};
-public:
-    float value;
 };
 
 class FnNodeFnDef : public FnNode {
@@ -694,6 +580,91 @@ public:
     FnTypeNode() : FnNode(kType) {};
 public:
     DataType data_type_;
+};
+
+
+class ConstNode : public FnNode{
+
+public:
+    ConstNode() : FnNode(kPrimary), date_type_(kTypeNull) {
+    }
+    ConstNode(int val) : FnNode(kPrimary), date_type_(kTypeInt32) {
+        val_.vint = val;
+    }
+    ConstNode(long val) : FnNode(kPrimary), date_type_(kTypeInt64) {
+        val_.vlong = val;
+    }
+    ConstNode(float val) : FnNode(kPrimary), date_type_(kTypeFloat) {
+        val_.vfloat = val;
+    }
+
+    ConstNode(double val) : FnNode(kPrimary), date_type_(kTypeDouble) {
+        val_.vdouble = val;
+    }
+
+    ConstNode(const char *val) : FnNode(kPrimary), date_type_(kTypeString) {
+        val_.vstr = val;
+    }
+    ConstNode(const std::string &val) : FnNode(kPrimary), date_type_(kTypeString) {
+        val_.vstr = val.c_str();
+    }
+
+    ~ConstNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const {
+        SQLNode::Print(output, org_tab);
+        output << "\n";
+        const std::string tab = org_tab + INDENT + SPACE_ED;
+        output << tab << SPACE_ST;
+        switch (date_type_) {
+            case kTypeInt32:output << "value: " << val_.vint;
+                break;
+            case kTypeInt64:output << "value: " << val_.vlong;
+                break;
+            case kTypeString:output << "value: " << val_.vstr;
+                break;
+            case kTypeFloat:output << "value: " << val_.vfloat;
+                break;
+            case kTypeDouble:output << "value: " << val_.vdouble;
+                break;
+            case kTypeNull:output << "value: null";
+                break;
+            default:output << "value: unknow";
+        }
+    }
+
+    int GetInt() const {
+        return val_.vint;
+    }
+
+    long GetLong() const {
+        return val_.vlong;
+    }
+
+    const char *GetStr() const {
+        return val_.vstr;
+    }
+
+    float GetFloat() const {
+        return val_.vfloat;
+    }
+
+    double GetDouble() const {
+        return val_.vdouble;
+    }
+
+    DataType GetDataType() const {
+        return date_type_;
+    }
+
+private:
+    DataType date_type_;
+    union {
+        int vint;        /* machine integer */
+        long vlong;        /* machine integer */
+        const char *vstr;        /* string */
+        float vfloat;
+        double vdouble;
+    } val_;
 };
 
 std::string WindowOfExpression(SQLNode *node_ptr);

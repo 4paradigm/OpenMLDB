@@ -37,12 +37,7 @@ enum SQLNodeType {
     kList,
     kOrderBy,
 
-    kNull,
-    kInt,
-    kBigInt,
-    kFloat,
-    kDouble,
-    kString,
+    kPrimary,
 
     kDesc,
     kAsc,

@@ -131,10 +131,7 @@ para: IDENTIFIER ':' types {
     };
 
 primary: INTEGER {
-       ::fesql::node::FnNodeInt32* i32_node = new ::fesql::node::FnNodeInt32();
-        i32_node->type = ::fesql::node::kInt;
-        i32_node->value = $1;
-        $$ = (::fesql::node::FnNode*)i32_node;
+        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1);
     };
 var: IDENTIFIER {
         $$ = node_manager->MakeFnIdNode($1);

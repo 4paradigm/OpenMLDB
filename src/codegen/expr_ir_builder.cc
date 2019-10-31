@@ -49,11 +49,21 @@ bool ExprIRBuilder::BuildUnaryExpr(::fesql::node::FnNode* node,
     //TODO support more node
     ::llvm::IRBuilder<> builder(block_);
     switch (node->type) {
-        case ::fesql::node::kFnPrimaryInt32:
+        case ::fesql::node::kPrimary:
             {
-                ::fesql::node::FnNodeInt32* i32_node = (::fesql::node::FnNodeInt32*)node;
-                *output = builder.getInt32(i32_node->value);
-                return true;
+                ::fesql::node::ConstNode* const_node = (::fesql::node::ConstNode*)node;
+
+                switch (const_node->GetDataType()) {
+                    case ::fesql::node::kTypeInt32:
+                        *output = builder.getInt32(const_node->GetInt());
+                        return true;
+                    case ::fesql::node::kTypeInt64:
+                        *output = builder.getInt64(const_node->GetLong());
+                        return true;
+                    default:
+                        return false;
+                }
+
             }
         case ::fesql::node::kFnId:
             {
