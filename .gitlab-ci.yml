@@ -3,7 +3,7 @@ variables:
     GIT_SUBMODULE_STRATEGY: normal
 stages:
     - build
-build_rtidb_and_case:
+build_fesql_and_case:
     stage: build
     script:
         - ln -sf /depends/thirdparty thirdparty
