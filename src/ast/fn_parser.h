@@ -19,6 +19,7 @@
 #define AST_FN_PARSER_H_
 
 #include "ast/fn_ast.h"
+#include "node/node_memory.h"
 #include "ast/fn_parser.gen.h"
 
 #ifndef YY_TYPEDEF_YY_SCANNER_T
@@ -34,7 +35,7 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 
 extern YY_BUFFER_STATE fn_scan_string ( const char *yy_str , yyscan_t yyscanner );
 extern int fnlex_init (yyscan_t* scanner);
-extern int fnparse (yyscan_t scanner, ::fesql::node::FnNode* root);
+extern int fnparse (yyscan_t scanner, ::fesql::node::FnNode* root, ::fesql::node::NodeManager * node_manager);
 extern int fnlex_destroy ( yyscan_t yyscanner );
 
 #endif /* !AST_FN_PARSER_H_ */

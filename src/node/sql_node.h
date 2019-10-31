@@ -32,7 +32,7 @@ class SQLNode {
 
 public:
     SQLNode(const SQLNodeType &type, uint32_t line_num, uint32_t location)
-        : type_(type), line_num_(line_num), location_(location) {
+        : type(type), line_num_(line_num), location_(location) {
     }
 
     virtual ~SQLNode() {
@@ -44,11 +44,11 @@ public:
     }
 
     virtual void Print(std::ostream &output, const std::string &tab) const {
-        output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type_) << "]";
+        output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type) << "]";
     }
 
     SQLNodeType GetType() const {
-        return type_;
+        return type;
     }
 
     uint32_t GetLineNum() const {
@@ -61,8 +61,7 @@ public:
 
     friend std::ostream &operator<<(std::ostream &output, const SQLNode &thiz);
 
-protected:
-    SQLNodeType type_;
+    SQLNodeType type;
 private:
     uint32_t line_num_;
     uint32_t location_;
@@ -514,7 +513,7 @@ public:
         output << "\n";
         const std::string tab = org_tab + INDENT + SPACE_ED;
         output << tab << SPACE_ST;
-        switch (type_) {
+        switch (type) {
             case kInt:output << "value: " << val_.vint;
                 break;
             case kBigInt:output << "value: " << val_.vlong;
@@ -574,6 +573,7 @@ public:
     void AddChild(SQLNode *node) {};
 };
 
+
 inline const std::string FnNodeName(const SQLNodeType &type) {
     switch (type) {
         case kFnPrimaryBool:return "bool";
@@ -596,21 +596,16 @@ inline const std::string FnNodeName(const SQLNodeType &type) {
 
 }
 
-enum FnOperator {
-    kFnOpAdd,
-    kFnOpMinus,
-    kFnOpMulti,
-    kFnOpDiv,
-    kFnOpBracket,
-    kFnOpNone
-};
+
 
 class FnNode : public SQLNode {
 public:
     FnNode() : SQLNode(kFunc, 0, 0), indent(0) {};
     FnNode(SQLNodeType type) : SQLNode(type, 0, 0), indent(0) {};
+    void AddChildren(FnNode * node) {
+        children.push_back(node);
+    }
 public:
-    SQLNodeType type;
     std::vector<FnNode *> children;
     int32_t indent;
 };
@@ -662,14 +657,14 @@ class FnAssignNode : public FnNode {
 public:
     FnAssignNode() : FnNode(kFnAssignStmt) {};
 public:
-    char *name;
+    std::string name;
 };
 
 class FnParaNode : public FnNode {
 public:
     FnParaNode() : FnNode(kFnPara) {};
 public:
-    char *name;
+    std::string name;
     SQLNodeType para_type;
 };
 
@@ -691,7 +686,14 @@ class FnIdNode : public FnNode {
 public:
     FnIdNode() : FnNode(kFnId) {};
 public:
-    char *name;
+    std::string name;
+};
+
+class FnTypeNode : public FnNode {
+public:
+    FnTypeNode() : FnNode(kType) {};
+public:
+    DataType data_type_;
 };
 
 std::string WindowOfExpression(SQLNode *node_ptr);

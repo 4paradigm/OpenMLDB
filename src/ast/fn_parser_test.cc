@@ -23,8 +23,14 @@ namespace node {
 class FnASTParserTest : public ::testing::Test {
 
 public:
-    FnASTParserTest() {}
-    ~FnASTParserTest() {}
+    FnASTParserTest() {
+        manager_ = new NodeManager();
+    }
+    ~FnASTParserTest() {
+        delete manager_;
+    }
+protected:
+    NodeManager *manager_;
 };
 
 TEST_F(FnASTParserTest, test) {
@@ -33,7 +39,7 @@ TEST_F(FnASTParserTest, test) {
     const char* test ="def test(a:i32,b:i32):i32\n    c=a+b\n    return c";
     fn_scan_string(test, scan);
     ::fesql::node::FnNode node;
-    int ret = fnparse(scan, &node);
+    int ret = fnparse(scan, &node, manager_);
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(3, node.children.size());

@@ -25,6 +25,7 @@ enum SQLNodeType {
     kResTarget,
     kTable,
     kFunc,
+    kType,
     kWindowFunc,
     kWindowDef,
     kFrameBound,
@@ -74,6 +75,25 @@ enum SQLNodeType {
     kFnParaList,
     kUnknow
 };
+
+enum DataType {
+    kTypeInt16,
+    kTypeInt32,
+    kTypeInt64,
+    kTypeFloat,
+    kTypeDouble,
+    kTypeString,
+    kTypeNull
+};
+enum FnOperator {
+    kFnOpAdd,
+    kFnOpMinus,
+    kFnOpMulti,
+    kFnOpDiv,
+    kFnOpBracket,
+    kFnOpNone
+};
+
 /**
  * Planner:
  *  basic class for plan
@@ -89,6 +109,7 @@ enum PlanType {
     kAggWindowFunction,
     kUnknowPlan,
 };
+
 }
 }
 
