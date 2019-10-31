@@ -12,12 +12,20 @@ void yyerror(char *s, ...) {}
 int oldstate;
 %}
 
+space [ \t]
+newline [\n\r]
+non_newline [^\n\r]
+comment ("#"{non_newline}*)
+indent {space}*
+
 %x COMMENT
 %s BTWMODE
 
+
+
 %%
 
-    /* keywords */
+ /* keywords */
 
 ADD	{ return ADD; }
 ALL	{ return ALL; }
@@ -252,8 +260,33 @@ YEAR	{ return YEAR; }
 YEAR_MONTH	{ return YEAR_MONTH; }
 ZEROFILL	{ return ZEROFILL; }
 
-   /* numbers */
 
+ /* function definition */
+"def" {
+    return DEF;
+    }
+
+"return" {
+    return RETURN;
+    }
+
+ /* type definition */
+"i32" {
+    yylval->intval = 1;
+    return I32;
+    }
+
+
+{space} {return SPACE;}
+
+{newline} {return NEWLINE;}
+
+{indent} {
+    yylval->intval = strlen(yytext);
+    return INDENT;
+}
+
+ /* numbers */
 -?[0-9]+	        { yylval->intval = atoi(yytext); return INTNUM; }
 
 -?[0-9]+"."[0-9]* |
@@ -262,12 +295,11 @@ ZEROFILL	{ return ZEROFILL; }
 -?[0-9]+"."[0-9]*E[-+]?[0-9]+ |
 -?"."[0-9]*E[-+]?[0-9]+	{ yylval->floatval = atof(yytext) ;
                                   return APPROXNUM; }
-    /* booleans */
+ /* booleans */
 TRUE	{ yylval->intval = 1; return BOOL; }
 UNKNOWN	{ yylval->intval = -1; return BOOL; }
 FALSE	{ yylval->intval = 0; return BOOL; }
 
-   /* strings */
 
 '(\\.|''|[^'\n])*'	|
 \"(\\.|\"\"|[^"\n])*\"  { yylval->strval = strdup(yytext); return STRING; }
@@ -279,13 +311,13 @@ FALSE	{ yylval->intval = 0; return BOOL; }
 X'[0-9A-F]+' |
 0X[0-9A-F]+  { yylval->strval = strdup(yytext); return STRING; }
 
-   /* bit strings */
+ /* bit strings */
 
 0B[01]+      |
 B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 
-   /* operators */
+ /* operators */
 [-+&~|^/%*(),.;!]   { return yytext[0]; }
 
 "&&"		{ return ANDOP; }

@@ -46,6 +46,7 @@ typedef void* yyscan_t;
 	char* strval;
 	int subtok;
 	::fesql::node::SQLNode* node;
+	::fesql::node::FnNode* fnnode;
 	::fesql::node::SQLNode* target;
 	::fesql::node::SQLNodeList* list;
 }
@@ -78,6 +79,13 @@ typedef void* yyscan_t;
 %left '*' '/' '%' MOD
 %left '^'
 %nonassoc UMINUS
+
+%token <intval> I32
+%token <sval> NEWLINE
+%token <intval> INDENT
+%token <sval> DEF
+%token <sval> RETURN
+%token <sval> SPACE
 
 %token ADD
 %token ALL
@@ -316,11 +324,14 @@ typedef void* yyscan_t;
 %token FDATE_ADD FDATE_SUB
 %token FCOUNT
 
-%type <node>  sql_stmt stmt select_stmt select_opts select_expr
+%type <fnnode> grammar line_list primary var types
+             indented fn_def return_stmt assign_stmt para plist fn_expr
+
+%type <node>  sql_stmt stmt select_stmt select_opts select_expr expr
               opt_all_clause
               table_factor table_reference
               column_ref
-              expr simple_expr func_expr expr_const
+              simple_expr func_expr expr_const
               sortby opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
               limit_clause
@@ -352,9 +363,13 @@ typedef void* yyscan_t;
 %type <node> opt_temporary opt_length opt_binary opt_uz enum_list
 %type <node> column_atts data_type opt_ignore_replace create_col_list
 
-%start sql_stmt
+%start grammar
 
 %%
+grammar :
+        line_list {}
+        | sql_stmt {}
+        ;
 
 sql_stmt: stmt ';' {
                     trees.push_back($1);
@@ -497,6 +512,74 @@ opt_as_alias: AS NAME {
   | /* nil */           { emit("enter opt as alias");}
   ;
 
+/**** function def ****/
+
+
+line_list: indented
+         | indented NEWLINE line_list;
+
+indented :
+         fn_def {
+            $1->indent = 0;
+            trees.push_back((::fesql::node::SQLNode*)$1);
+         }
+         |
+         INDENT fn_def {
+            $2->indent = $1;
+            trees.push_back((::fesql::node::SQLNode*)$2);
+         }
+         | return_stmt {
+            $1->indent = 0;
+            trees.push_back((::fesql::node::SQLNode*)$1);
+         }
+         | INDENT return_stmt {
+            $2->indent = $1;
+            trees.push_back((::fesql::node::SQLNode*)$2);
+         }
+         | INDENT assign_stmt {
+            $2->indent = $1;
+            trees.push_back((::fesql::node::SQLNode*)$2);
+         };
+
+fn_def :
+       DEF SPACE  NAME'(' plist ')' ':' types {
+            $$ = node_manager->MakeFnDefNode($3, $5, $8->type);
+       };
+
+assign_stmt: NAME '=' fn_expr {
+            $$ = node_manager->MakeAssignNode($1, $3);
+           };
+
+return_stmt:
+           RETURN SPACE fn_expr {
+            $$ = node_manager->MakeReturnStmtNode($3);
+           };
+
+types: I32 {
+            $$ = node_manager->MakeTypeNode(::fesql::node::kTypeInt32);
+           }
+       ;
+
+plist:
+     para {
+        $$ = node_manager->MakeFnNode(::fesql::node::kFnParaList);
+        $$->AddChildren($1);
+     } | para ',' plist  {
+        $3->AddChildren($1);
+        $$ = $3;
+     };
+
+para: NAME ':' types {
+        $$ = node_manager->MakeFnParaNode($1, $3->type);
+    };
+
+primary: NAME {
+        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1);
+    };
+var: NAME {
+        $$ = node_manager->MakeFnIdNode($1);
+     };
+
 
 /**** expressions ****/
 expr_list:
@@ -511,18 +594,41 @@ expr_list:
         $$ = new_list;
     }
   ;
-expr:
-    simple_expr   { $$ = $1; }
-    |func_expr  { $$ = $1; }
+
+expr :
+     | simple_expr   { $$ = $1; }
+     | func_expr  { $$ = $1; }
+
+     ;
+
+fn_expr:
+    | fn_expr '+' fn_expr {
+            $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAdd);
+        }
+    | fn_expr '-' fn_expr {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMinus);
+        }
+    | fn_expr '*' fn_expr {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMulti);
+        }
+    | fn_expr '/' fn_expr {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpDiv);
+        }
+    | '(' fn_expr ')' {
+        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpBracket);
+        }
+    | primary
+    | var
     ;
+
 
 simple_expr:
     column_ref
         { $$ = $1; }
     | expr_const
         { $$ = $1; }
-
     ;
+
 
 expr_const:
     STRING
@@ -536,6 +642,7 @@ expr_const:
   | NULLX
         { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode()); }
   ;
+
 func_expr:
     function_name '(' '*' ')' over_clause
     {
@@ -553,6 +660,7 @@ func_expr:
     {
         $$ = node_manager->MakeFuncNode($1, $3, $5);
     }
+
 
 /***** Window Definitions */
 window_clause:
