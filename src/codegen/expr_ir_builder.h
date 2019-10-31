@@ -20,7 +20,7 @@
 
 #include "llvm/IR/IRBuilder.h"
 #include "codegen/scope_var.h"
-#include "ast/fn_ast.h"
+#include "node/sql_node.h"
 
 namespace fesql {
 namespace codegen {

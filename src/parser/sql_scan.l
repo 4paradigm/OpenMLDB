@@ -9,7 +9,8 @@
 #include <stdarg.h>
 #include <string.h>
 void yyerror(char *s, ...) {}
-int oldstate=0;
+int cur_state=0;
+int oldstate = 0;
 %}
 
 space [ \t]
@@ -17,18 +18,22 @@ newline [\n\r]
 non_newline [^\n\r]
 comment ("#"{non_newline}*)
 indent {space}*
+self [,()\[\].\:\+\-\*\/\%\^\<\>\=]
+
 
 %x COMMENT
 %x FUN
 %x DEFFUN
 %s BTWMODE
 
-
+ident_start [A-Za-z\200-\377_]
+ident_cont [A-Za-z\200-\377_0-9\$]
+identifier {ident_start}{ident_cont}*
 
 %%
 
-"%%sql\n" {BEGIN INITIAL;}
-"%%fuc\n" {BEGIN FUN;}
+"%%sql\n" {cur_state = 0;}
+"%%fuc\n" {cur_state = 1;}
 
  /* keywords */
 
@@ -99,7 +104,7 @@ DUAL	{ return DUAL; }
 EACH	{ return EACH; }
 ELSE	{ return ELSE; }
 ELSEIF	{ return ELSEIF; }
-END	{ return END; }
+END	{ if (cur_state == 0) return END; }
 ENUM { return ENUM; }
 ESCAPED	{ return ESCAPED; }
 EXISTS	{ yylval->subtok = 0; return EXISTS; }
@@ -267,31 +272,36 @@ ZEROFILL	{ return ZEROFILL; }
 
 
  /* function definition */
-<FUN>"def" {
-    BEGIN DEFFUN;
-    return DEF;
-    }
+"def" {
+        if (1 == cur_state) {
+            cur_state = 2;
+            return DEF;
+        }
+       }
 
-<DEFFUN>"return" {
-    return RETURN;
-    BEGIN FUN;
+"return" {
+        return RETURN;
     }
 
  /* type definition */
-<DEFFUN>"i32" {
+"i32" {
     yylval->intval = 1;
     return I32;
     }
 
 
-<DEFFUN>{newline} {return NEWLINE;}
+{newline} {if (2 == cur_state) return NEWLINE;}
 
-<DEFFUN>{space} {return SPACE;}
+{space} {if (2 == cur_state) return SPACE;}
 
-<DEFFUN>{indent} {
-    yylval->intval = strlen(yytext);
-    return INDENT;
+{indent} {
+    if (2 == cur_state) {
+        yylval->intval = strlen(yytext);
+        return INDENT;
+    }
 }
+
+
 
  /* numbers */
 -?[0-9]+	        { yylval->intval = atoi(yytext); return INTNUM; }
@@ -327,22 +337,6 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
  /* operators */
 [-+&~|^/%*(),.;!]   { return yytext[0]; }
 
-"&&"		{ return ANDOP; }
-"||"            { return OR; }
-
-"="	{ yylval->subtok = 4; return COMPARISON; }
-"<=>"	{ yylval->subtok = 12; return COMPARISON; }
-">="	{ yylval->subtok = 6; return COMPARISON; }
-">"	{ yylval->subtok = 2; return COMPARISON; }
-"<="	{ yylval->subtok = 5; return COMPARISON; }
-"<"	{ yylval->subtok = 1; return COMPARISON; }
-"!="	|
-"<>"	{ yylval->subtok = 3; return COMPARISON; }
-
-"<<"	{ yylval->subtok = 1; return SHIFT; }
-">>"	{ yylval->subtok = 2; return SHIFT; }
-
-
 
 [A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
                           return NAME; }
@@ -364,15 +358,30 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 ":="     { return ASSIGN; }
 
+{identifier} {
+        if (2 == cur_state) {
+            yylval->strval = strdup(yytext);
+            return NAME;
+        } else {
+            yylval->strval = strdup(yytext);
+            return NAME;
+        }
+    }
+
+{self} {
+        if (2 == cur_state) {
+            return yytext[0];
+        }
+	}
+
 #.*		;
 "--"[ \t].*	;
 
 "/*"            { BEGIN COMMENT; }
-<COMMENT>"*/"   { BEGIN oldstate; }
+<COMMENT>"*/"   { BEGIN cur_state; }
 <COMMENT>.|\n   ;
 <COMMENT><<EOF>> { yyerror("unclosed comment"); }
 
-<FUN><EOF> {/* end fun */}
 
 	/* everything else */
 [ \t\n]         /* white space */

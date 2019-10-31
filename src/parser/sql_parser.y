@@ -81,11 +81,11 @@ typedef void* yyscan_t;
 %nonassoc UMINUS
 
 %token <intval> I32
-%token <sval> NEWLINE
+%token <strval> NEWLINE
 %token <intval> INDENT
-%token <sval> DEF
-%token <sval> RETURN
-%token <sval> SPACE
+%token <strval> DEF
+%token <strval> RETURN
+%token <strval> SPACE
 
 %token ADD
 %token ALL
@@ -326,7 +326,7 @@ typedef void* yyscan_t;
 
 %type <fnnode> grammar line_list primary var types
              indented fn_def return_stmt assign_stmt para plist fn_expr
-
+             fun_def_block fn_def_indent_op stmt_block func_stmt
 %type <node>  sql_stmt stmt select_stmt select_opts select_expr expr
               opt_all_clause
               table_factor table_reference
@@ -367,7 +367,7 @@ typedef void* yyscan_t;
 
 %%
 grammar :
-        line_list {}
+        line_list {trees.push_back($1);}
         | sql_stmt {}
         ;
 
@@ -515,31 +515,60 @@ opt_as_alias: AS NAME {
 /**** function def ****/
 
 
-line_list: indented
-         | indented NEWLINE line_list;
+line_list: fun_def_block {
+            $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
+                        $$->AddChildren($1);
+         }
+         | line_list NEWLINE fun_def_block
+         {
+            $$ = $1;
+            $$->AddChildren($3);
+         }
+         ;
 
-indented :
-         fn_def {
+fun_def_block : fn_def_indent_op NEWLINE stmt_block {
+            $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
+            $$->AddChildren($1);
+            $$->AddChildren($3);
+        } |
+        INDENT fn_def {
+
+                    $2->indent = $1;
+                    $$ = $2;
+                 }
+        ;
+fn_def_indent_op:
+        fn_def {}
+        |INDENT fn_def {$$=$2; $$->indent=$1;}
+        ;
+
+
+stmt_block:
+        func_stmt {
+            $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
+            $$->AddChildren($1);
+        }
+        |stmt_block NEWLINE func_stmt {
+            $$->AddChildren($3);
+        }
+        ;
+
+func_stmt:
+         return_stmt {
             $1->indent = 0;
-            trees.push_back((::fesql::node::SQLNode*)$1);
+            $$ = $1;
          }
-         |
-         INDENT fn_def {
+         |INDENT return_stmt
+         {
             $2->indent = $1;
-            trees.push_back((::fesql::node::SQLNode*)$2);
+            $$ = $2;
          }
-         | return_stmt {
-            $1->indent = 0;
-            trees.push_back((::fesql::node::SQLNode*)$1);
-         }
-         | INDENT return_stmt {
+         |INDENT assign_stmt
+         {
             $2->indent = $1;
-            trees.push_back((::fesql::node::SQLNode*)$2);
+            $$ = $2;
          }
-         | INDENT assign_stmt {
-            $2->indent = $1;
-            trees.push_back((::fesql::node::SQLNode*)$2);
-         };
+         ;
 
 fn_def :
        DEF SPACE  NAME'(' plist ')' ':' types {

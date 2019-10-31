@@ -515,6 +515,7 @@ inline const std::string FnNodeName(const SQLNodeType &type) {
         case kFnExprUnary:return "uexpr";
         case kFnPara:return "para";
         case kFnParaList:return "plist";
+        case kFnList:return "funlist";
     }
 
 }
