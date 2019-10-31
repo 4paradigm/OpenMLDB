@@ -1,7 +1,7 @@
 image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.7
 stages:
     - build
-#    - ut
+    - ut
     - it-tablet
     - it-ns
     - integration-test
@@ -18,30 +18,30 @@ build_rtidb_and_case:
             - build/bin/rtidb
 
 
-#cpp_ut:
-#    stage: ut
-#    script:
-#        - ln -sf /usr/workdir/thirdparty thirdparty
-#        - ln -sf /usr/workdir/thirdsrc thirdsrc
-#        - source /root/.bashrc && bash steps/compile.sh
-#        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-#    artifacts:
-#        reports:
-#            junit:
-#                - reports/*.xml
-#java_ut:
-#    stage: ut
-#    script:
-#        - ln -sf /usr/workdir/thirdparty thirdparty
-#        - ln -sf /usr/workdir/thirdsrc thirdsrc
-#        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
-#    artifacts:
-#        reports:
-#            junit:
-#                - java/target/surefire-reports/junitreports/TEST-*.xml
-#                - java/target/surefire-reports/TEST-*.xml
-#                - java/target/failsafe-reports/junitreports/TEST-*.xml
-#                - java/target/failsafe-reports/TEST-*.xml
+cpp_ut:
+    stage: ut
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/compile.sh
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
+    artifacts:
+        reports:
+            junit:
+                - reports/*.xml
+java_ut:
+    stage: ut
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - java/target/surefire-reports/junitreports/TEST-*.xml
+                - java/target/surefire-reports/TEST-*.xml
+                - java/target/failsafe-reports/junitreports/TEST-*.xml
+                - java/target/failsafe-reports/TEST-*.xml
 
 tablet_one_demension:
     stage: it-tablet
