@@ -32,7 +32,7 @@ class SQLNode {
 
 public:
     SQLNode(const SQLNodeType &type, uint32_t line_num, uint32_t location)
-        : type(type), line_num_(line_num), location_(location) {
+        : type_(type), line_num_(line_num), location_(location) {
     }
 
     virtual ~SQLNode() {
@@ -43,12 +43,10 @@ public:
         Print(output, "");
     }
 
-    virtual void Print(std::ostream &output, const std::string &tab) const {
-        output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type) << "]";
-    }
+    virtual void Print(std::ostream &output, const std::string &tab) const;
 
     SQLNodeType GetType() const {
-        return type;
+        return type_;
     }
 
     uint32_t GetLineNum() const {
@@ -61,7 +59,7 @@ public:
 
     friend std::ostream &operator<<(std::ostream &output, const SQLNode &thiz);
 
-    SQLNodeType type;
+    SQLNodeType type_;
 private:
     uint32_t line_num_;
     uint32_t location_;
@@ -612,27 +610,7 @@ public:
     }
 
     ~ConstNode() {}
-    void Print(std::ostream &output, const std::string &org_tab) const {
-        SQLNode::Print(output, org_tab);
-        output << "\n";
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        output << tab << SPACE_ST;
-        switch (date_type_) {
-            case kTypeInt32:output << "value: " << val_.vint;
-                break;
-            case kTypeInt64:output << "value: " << val_.vlong;
-                break;
-            case kTypeString:output << "value: " << val_.vstr;
-                break;
-            case kTypeFloat:output << "value: " << val_.vfloat;
-                break;
-            case kTypeDouble:output << "value: " << val_.vdouble;
-                break;
-            case kTypeNull:output << "value: null";
-                break;
-            default:output << "value: unknow";
-        }
-    }
+    void Print(std::ostream &output, const std::string &org_tab) const;
 
     int GetInt() const {
         return val_.vint;

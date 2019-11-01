@@ -448,7 +448,7 @@ func_stmt:
 
 fn_def :
        DEF SPACE  NAME'(' plist ')' ':' types {
-            $$ = node_manager->MakeFnDefNode($3, $5, $8->type);
+            $$ = node_manager->MakeFnDefNode($3, $5, $8->type_);
        };
 
 assign_stmt: NAME '=' fn_expr {
@@ -475,7 +475,7 @@ plist:
      };
 
 para: NAME ':' types {
-        $$ = node_manager->MakeFnParaNode($1, $3->type);
+        $$ = node_manager->MakeFnParaNode($1, $3->type_);
     };
 
 primary: NAME {

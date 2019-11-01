@@ -65,6 +65,11 @@ std::ostream &operator<<(std::ostream &output, const SQLNode &thiz) {
     return output;
 }
 
+void SQLNode::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type_) << "]";
+
+}
+
 std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz) {
     thiz.Print(output, "");
     return output;
@@ -280,5 +285,28 @@ void OrderByNode::Print(std::ostream &output, const std::string &org_tab) const 
     PrintSQLNode(output, tab, order_by_, "order_by", true);
 }
 
+void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
+    {
+        SQLNode::Print(output, org_tab);
+        output << "\n";
+        const std::string tab = org_tab + INDENT + SPACE_ED;
+        output << tab << SPACE_ST;
+        switch (date_type_) {
+            case kTypeInt32:output << "value: " << val_.vint;
+                break;
+            case kTypeInt64:output << "value: " << val_.vlong;
+                break;
+            case kTypeString:output << "value: " << val_.vstr;
+                break;
+            case kTypeFloat:output << "value: " << val_.vfloat;
+                break;
+            case kTypeDouble:output << "value: " << val_.vdouble;
+                break;
+            case kTypeNull:output << "value: null";
+                break;
+            default:output << "value: unknow";
+        }
+    }
+}
 }
 }
