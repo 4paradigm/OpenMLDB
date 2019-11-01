@@ -136,8 +136,7 @@ SQLNode *NodeManager::MakeFrameBound(SQLNodeType bound_type, SQLNode *offset) {
     return (SQLNode *) node_ptr;
 }
 SQLNode *NodeManager::MakeFrameNode(SQLNode *start, SQLNode *end) {
-    FrameNode *node_ptr = new FrameNode();
-    FillFrameNode(node_ptr, kUnknow, (FrameBound *) (start), (FrameBound *) end);
+    FrameNode *node_ptr = new FrameNode(kFrameRange, start, end);
     RegisterNode((SQLNode *) node_ptr);
     return (SQLNode *) node_ptr;
 }

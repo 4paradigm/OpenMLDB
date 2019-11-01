@@ -33,7 +33,7 @@ bool ExprIRBuilder::Build(::fesql::node::FnNode* node,
         LOG(WARNING) << "input node or output is null";
         return false;
     }
-    if (node->type_ == ::fesql::node::kFnExprBinary) {
+    if (node->GetType()== ::fesql::node::kFnExprBinary) {
         return BuildBinaryExpr((::fesql::node::FnBinaryExpr*)node, output);
     }
     return false;
@@ -48,7 +48,7 @@ bool ExprIRBuilder::BuildUnaryExpr(::fesql::node::FnNode* node,
 
     //TODO support more node
     ::llvm::IRBuilder<> builder(block_);
-    switch (node->type_) {
+    switch (node->GetType()) {
         case ::fesql::node::kPrimary:
             {
                 ::fesql::node::ConstNode* const_node = (::fesql::node::ConstNode*)node;

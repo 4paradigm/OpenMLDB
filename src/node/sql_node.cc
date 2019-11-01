@@ -61,7 +61,7 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
 }
 
 std::ostream &operator<<(std::ostream &output, const SQLNode &thiz) {
-    thiz.Print(output);
+    thiz.Print(output, "");
     return output;
 }
 
@@ -91,6 +91,33 @@ void SQLNodeList::Print(std::ostream &output, const std::string &tab) const {
         output << "\n";
     }
     output << tab << "]";
+
+}
+
+void SQLNodeList::PushFront(SQLLinkedNode *linked_node_ptr) {
+    linked_node_ptr->next_ = head_;
+    head_ = linked_node_ptr;
+    size_ += 1;
+    if (NULL == tail_) {
+        tail_ = head_;
+    }
+
+}
+void SQLNodeList::AppendNodeList(SQLNodeList *node_list_ptr) {
+    if (NULL == node_list_ptr) {
+        return;
+    }
+
+    if (NULL == tail_) {
+        head_ = node_list_ptr->head_;
+        tail_ = head_;
+        size_ = node_list_ptr->size_;
+        return;
+    }
+
+    tail_->next_ = node_list_ptr->head_;
+    tail_ = node_list_ptr->tail_;
+    size_ += node_list_ptr->size_;
 
 }
 void FillSQLNodeList2NodeVector(SQLNodeList *node_list_ptr, std::vector<SQLNode *> &node_list) {
