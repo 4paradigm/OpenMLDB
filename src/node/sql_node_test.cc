@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include "node/sql_node.h"
-#include "node_memory.h"
+#include "node_manager.h"
 #include <strstream>
 #include "gtest/gtest.h"
 

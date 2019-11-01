@@ -18,7 +18,7 @@
 #include <string.h>
 #include <utility>
 #include "node/sql_node.h"
-#include "node/node_memory.h"
+#include "node/node_manager.h"
 #include "parser/sql_parser.gen.h"
 
 extern int yylex(YYSTYPE* yylvalp, 

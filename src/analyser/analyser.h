@@ -10,7 +10,7 @@
 #ifndef FESQL_ANALYSER_H
 #define FESQL_ANALYSER_H
 
-#include "node/node_memory.h"
+#include "node/node_manager.h"
 #include "node/sql_node.h"
 #include <map>
 

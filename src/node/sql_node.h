@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include "emun.h"
+#include "node_enum.h"
 #include <glog/logging.h>
 namespace fesql {
 namespace node {

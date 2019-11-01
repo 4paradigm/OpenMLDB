@@ -15,7 +15,7 @@
  */
 #include "gtest/gtest.h"
 #include "sql_node.h"
-#include "node_memory.h"
+#include "node_manager.h"
 #include <strstream>
 
 namespace fesql {

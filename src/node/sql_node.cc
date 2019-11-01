@@ -2,7 +2,7 @@
 // Created by chenjing on 2019/10/11.
 //
 
-#include <node/node_memory.h>
+#include <node/node_manager.h>
 #include "glog/logging.h"
 #include "sql_node.h"
 

@@ -1,14 +1,14 @@
 /*-------------------------------------------------------------------------
  * Copyright (C) 2019, 4paradigm
- * emun.h
+ * node_enum.h
  *      
  * Author: chenjing
  * Date: 2019/10/29 
  *--------------------------------------------------------------------------
 **/
 
-#ifndef FESQL_EMUN_H
-#define FESQL_EMUN_H
+#ifndef FESQL_NODE_ENUM_H
+#define FESQL_NODE_ENUM_H
 
 #include <string>
 namespace fesql {
@@ -141,4 +141,4 @@ enum ErrorType {
 };
 }
 }
-#endif //FESQL_EMUN_H
+#endif //FESQL_NODE_ENUM_H

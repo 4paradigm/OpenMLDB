@@ -8,7 +8,7 @@
 #include <glog/logging.h>
 #include <list>
 #include <vector>
-#include "emun.h"
+#include "node_enum.h"
 #include <node/sql_node.h>
 namespace fesql {
 namespace node {

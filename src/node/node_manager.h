@@ -8,8 +8,8 @@
  *--------------------------------------------------------------------------
 **/
 
-#ifndef FESQL_NODE_MEMORY_H
-#define FESQL_NODE_MEMORY_H
+#ifndef FESQL_NODE_MANAGER_H
+#define FESQL_NODE_MANAGER_H
 
 #include "sql_node.h"
 #include "plan_node.h"
@@ -153,4 +153,4 @@ private:
 
 }
 }
-#endif //FESQL_NODE_MEMORY_H
+#endif //FESQL_NODE_MANAGER_H

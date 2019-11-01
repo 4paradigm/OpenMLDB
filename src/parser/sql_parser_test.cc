@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "node/node_memory.h"
+#include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "parser/parser.h"
 #include "gtest/gtest.h"
