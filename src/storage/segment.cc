@@ -59,7 +59,7 @@ TableIterator* Segment::NewIterator() {
     if (entries_ == NULL) {
         return new TableIterator();
     }
-	Iterator<Slice, void*>* it = entries_->NewIterator();
+    Iterator<Slice, void*>* it = entries_->NewIterator();
     return new TableIterator(it, NULL);
 }
 
@@ -79,33 +79,33 @@ void TableIterator::Seek(uint64_t time) {
 }
 
 void TableIterator::Seek(const std::string& key, uint64_t ts) {
-	if (pk_it_ == NULL) {
-		return;
-	}
-	Slice spk(key);
+    if (pk_it_ == NULL) {
+        return;
+    }
+    Slice spk(key);
     pk_it_->Seek(spk);
-	if (pk_it_->Valid()) {
-		delete ts_it_;
-		ts_it_ = NULL;
-		while (pk_it_->Valid()) {
-			ts_it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
-			ts_it_->SeekToFirst();
-			if (ts_it_->Valid()) break;
-			delete ts_it_;
-			ts_it_ = NULL;
-			pk_it_->Next();
-		}
-	}
+    if (pk_it_->Valid()) {
+        delete ts_it_;
+        ts_it_ = NULL;
+        while (pk_it_->Valid()) {
+            ts_it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
+            ts_it_->SeekToFirst();
+            if (ts_it_->Valid()) break;
+            delete ts_it_;
+            ts_it_ = NULL;
+            pk_it_->Next();
+        }
+    }
 }
 
 bool TableIterator::Valid() {
     if (ts_it_ == NULL) {
-		return false;
-	}
-	if (pk_it_ == NULL) {
-		return ts_it_->Valid();
-	}
-	return pk_it_->Valid() && ts_it_->Valid();
+        return false;
+    }
+    if (pk_it_ == NULL) {
+        return ts_it_->Valid();
+    }
+    return pk_it_->Valid() && ts_it_->Valid();
 }
 
 void TableIterator::Next() {
@@ -113,19 +113,19 @@ void TableIterator::Next() {
         return;
     }
     ts_it_->Next();
-	if (!ts_it_->Valid() && pk_it_ != NULL) {
-		delete ts_it_;
-		ts_it_ = NULL;
-		pk_it_->Next();
-		while (pk_it_->Valid()) {
-			ts_it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
-			ts_it_->SeekToFirst();
-			if (ts_it_->Valid()) break;
-			delete ts_it_;
-			ts_it_ = NULL;
-			pk_it_->Next();
-		}
-	}
+    if (!ts_it_->Valid() && pk_it_ != NULL) {
+        delete ts_it_;
+        ts_it_ = NULL;
+        pk_it_->Next();
+        while (pk_it_->Valid()) {
+            ts_it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
+            ts_it_->SeekToFirst();
+            if (ts_it_->Valid()) break;
+            delete ts_it_;
+            ts_it_ = NULL;
+            pk_it_->Next();
+        }
+    }
 }
 
 Slice TableIterator::GetValue() const {
@@ -144,11 +144,11 @@ std::string TableIterator::GetPK() const {
 }
 
 void TableIterator::SeekToFirst() {
-	if (pk_it_ != NULL) {
-		delete ts_it_;
+    if (pk_it_ != NULL) {
+        delete ts_it_;
         ts_it_ = NULL;
-		pk_it_->SeekToFirst();
-		if (pk_it_->Valid()) {
+        pk_it_->SeekToFirst();
+        if (pk_it_->Valid()) {
             while (pk_it_->Valid()) {
                 ts_it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
                 ts_it_->SeekToFirst();
@@ -157,10 +157,10 @@ void TableIterator::SeekToFirst() {
                 ts_it_ = NULL;
                 pk_it_->Next();
             }
-		} else {
-			ts_it_ = NULL;
-		}
-	}
+        } else {
+            ts_it_ = NULL;
+        }
+    }
     if (ts_it_ == NULL) {
         return;
     }
