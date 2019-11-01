@@ -169,7 +169,7 @@ if __name__ == "__main__":
                             rtidb_log[module][1]["item"]["num"] = 0
                         value = count - 1 if count > 0 else count
                         gauge["log"].labels(
-                            module, var["item"]["name"]).set(str(value))
+                            module, var["item"]["name"]).set(var["item"]["num"])
                     else:
                         var["item"]["num"] += count
                         var["offset"] = offset
