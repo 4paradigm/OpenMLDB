@@ -119,25 +119,30 @@ private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {
         LOG(INFO) << "register sql node";
         parser_node_list_.push_back(node_ptr);
+        return node_ptr;
     }
 
     FnNode *RegisterNode(FnNode *node_ptr) {
         LOG(INFO) << "register fn node";
         parser_node_list_.push_back((SQLNode *) node_ptr);
+        return node_ptr;
     }
     PlanNode *RegisterNode(PlanNode *node_ptr) {
         LOG(INFO) << "register plan node";
         plan_node_list_.push_back(node_ptr);
+        return node_ptr;
     }
 
     SQLNodeList *RegisterNode(SQLNodeList *node_ptr) {
         LOG(INFO) << "register node list";
         sql_node_list_list_.push_back(node_ptr);
+        return node_ptr;
     }
 
     SQLLinkedNode *RegisterNode(SQLLinkedNode *node_ptr) {
         LOG(INFO) << "register node linked";
         linked_node_list_.push_back(node_ptr);
+        return node_ptr;
     }
 
     std::list<SQLNode *> parser_node_list_;

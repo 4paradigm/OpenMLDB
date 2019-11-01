@@ -139,9 +139,9 @@ public:
     }
     friend std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz);
 private:
+    size_t size_;
     SQLLinkedNode *head_;
     SQLLinkedNode *tail_;
-    size_t size_;
 };
 
 /**
@@ -213,9 +213,9 @@ public:
     }
 
 private:
-    NodePointVector indirection_;    /* subscripts, field names, and '*', or NIL */
-    SQLNode *val_;            /* the value expression to compute or assign */
     std::string name_;            /* column name or NULL */
+    SQLNode *val_;            /* the value expression to compute or assign */
+    NodePointVector indirection_;    /* subscripts, field names, and '*', or NIL */
 };
 
 class WindowDefNode : public SQLNode {
@@ -516,6 +516,7 @@ inline const std::string FnNodeName(const SQLNodeType &type) {
         case kFnPara:return "para";
         case kFnParaList:return "plist";
         case kFnList:return "funlist";
+        default: return "unknowFn";
     }
 
 }

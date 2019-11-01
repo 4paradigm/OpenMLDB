@@ -23,9 +23,7 @@ public:
 //        LOG(INFO) << "plan node " << NameOfPlanNodeType(type_) << " distruction enter";
     }
     int GetChildrenSize();
-    virtual bool AddChild(PlanNode *node) {
-
-    };
+    virtual bool AddChild(PlanNode *node) {};
 
     virtual PlanType GetType() const {
         return type_;
