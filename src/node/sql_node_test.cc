@@ -50,7 +50,7 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
     SQLNode *node = node_manager_->MakeColumnRefNode("col", "t");
     ColumnRefNode *columnnode = (ColumnRefNode *) node;
     std::cout << *node << std::endl;
-    ASSERT_EQ(kColumn, columnnode->GetType());
+    ASSERT_EQ(kColumn, columnnode->pGetType());
     ASSERT_EQ("t", columnnode->GetRelationName());
     ASSERT_EQ("col", columnnode->GetColumnName());
 

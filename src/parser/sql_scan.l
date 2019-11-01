@@ -33,7 +33,7 @@ identifier {ident_start}{ident_cont}*
 %%
 
 "%%sql\n" {BEGIN INITIAL;}
-"%%fuc\n" {BEGIN FUN;}
+"%%fun\n" {BEGIN FUN;}
 
  /* keywords */
 

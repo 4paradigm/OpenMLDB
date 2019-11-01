@@ -70,22 +70,22 @@ INSTANTIATE_TEST_CASE_P(StringReturn, SqlParserTest, testing::Values(
 
 INSTANTIATE_TEST_CASE_P(UDFParse, SqlParserTest, testing::Values(
     // simple udf
-    "%%fuc\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend",
+    "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend",
     // newlines test
-    "%%fuc\n\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n",
-    "%%fuc\n\ndef test(x:i32,y:i32):i32\n\n\n    c=x+y\n    return c\n\n\n\n\nend\n",
-    "%%fuc\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n\n",
-    "%%fuc\ndef test(x:i32,y:i32):i32\n    c=x+y\n\n    return c\nend",
+    "%%fun\n\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n",
+    "%%fun\n\ndef test(x:i32,y:i32):i32\n\n\n    c=x+y\n    return c\n\n\n\n\nend\n",
+    "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n\n",
+    "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n\n    return c\nend",
     // multi def fun
-    "%%fuc\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend",
+    "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend",
     // multi def fun with newlines
-    "%%fuc\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n"
+    "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n"
 
 ));
 
 INSTANTIATE_TEST_CASE_P(SQLAndUDFParse, SqlParserTest, testing::Values(
-    "%%fuc\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n%%sql\nSELECT COUNT(COL1) FROM t1;",
-    "%%fuc\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n"
+    "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n%%sql\nSELECT COUNT(COL1) FROM t1;",
+    "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n"
         "%%sql\nSELECT COL1, trim(COL2), TS, AVG(AMT) OVER w, SUM(AMT) OVER w FROM t \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY TS ROWS BETWEEN 3 PRECEDING AND 3 FOLLOWING);"
