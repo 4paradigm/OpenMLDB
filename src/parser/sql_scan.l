@@ -18,6 +18,7 @@ newline [\n\r]
 non_newline [^\n\r]
 comment ("#"{non_newline}*)
 indent {space}*
+newlines {newline}*
 self [,()\[\].\:\+\-\*\/\%\^\<\>\=]
 
 
@@ -103,7 +104,8 @@ DUAL	{ return DUAL; }
 EACH	{ return EACH; }
 ELSE	{ return ELSE; }
 ELSEIF	{ return ELSEIF; }
-END	{ if (cur_state == 0) return END; }
+<FUNDEF>END {return FUNDEFEND;}
+END	{return END; }
 ENUM { return ENUM; }
 ESCAPED	{ return ESCAPED; }
 EXISTS	{ yylval->subtok = 0; return EXISTS; }
@@ -286,7 +288,7 @@ ZEROFILL	{ return ZEROFILL; }
     }
 
 
-<FUN>{newline} { return NEWLINE;}
+<FUN>{newlines} { return NEWLINES;}
 
 <FUN>{space} {return SPACE;}
 
