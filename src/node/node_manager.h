@@ -13,6 +13,7 @@
 
 #include "sql_node.h"
 #include "plan_node.h"
+#include <ctype.h>
 #include <list>
 
 namespace fesql {

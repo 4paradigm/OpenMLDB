@@ -37,7 +37,7 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
         case kWindowDef: return RegisterNode((SQLNode *) new WindowDefNode());
         case kFrameBound: return RegisterNode((SQLNode *) new FrameBound());
         case kFrames: return RegisterNode((SQLNode *) new FrameNode());
-        case kColumn: return RegisterNode((SQLNode *) new ColumnRefNode());
+        case kColumnRef: return RegisterNode((SQLNode *) new ColumnRefNode());
         case kConst: return RegisterNode((SQLNode *) new ConstNode());
         case kOrderBy: return RegisterNode((SQLNode *) new OrderByNode(nullptr));
         case kLimit: return RegisterNode((SQLNode *) new LimitNode(0));

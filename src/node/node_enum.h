@@ -30,7 +30,7 @@ enum SQLNodeType {
     kWindowDef,
     kFrameBound,
     kFrames,
-    kColumn,
+    kColumnRef,
     kConst,
     kLimit,
     kAll,
@@ -123,14 +123,18 @@ enum ErrorType {
 
     kAnalyserErrorUnknow = 3001,
     kAnalyserErrorUnSupport,
+    kAnalyserErrorSQLTypeNotSupport,
     kAnalyserErrorInitialize,
     kAnalyserErrorParserTreeEmpty,
     kAnalyserErrorFromListEmpty,
     kAnalyserErrorQueryMultiTable,
     kAnalyserErrorTableRefIsNull,
     kAnalyserErrorTableNotExist,
+    kAnalyserErrorColumnNameIsEmpty,
     kAnalyserErrorColumnNotExist,
-    kAnalyserErrorSQLTypeNotSupport,
+    kAnalyserErrorTargetIsNull,
+    kAnalyserErrorGlobalAggFunction,
+
 
     kSystemErrorUnknow = 4001,
     kSystemErrorMemory,

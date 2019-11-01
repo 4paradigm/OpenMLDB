@@ -234,7 +234,7 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kTable: output = "kTable";
             break;
-        case kColumn: output = "kColumn";
+        case kColumnRef: output = "kColumnRef";
             break;
         case kExpr: output = "kExpr";
             break;

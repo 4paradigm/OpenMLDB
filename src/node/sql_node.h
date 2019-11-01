@@ -221,6 +221,10 @@ public:
         return relation_name_;
     }
 
+    void SetRelationName(const std::string &relation_name) {
+        relation_name_ = relation_name;
+    }
+
 private:
     std::string relation_name_;
 };
@@ -266,17 +270,25 @@ private:
 class ColumnRefNode : public SQLNode {
 
 public:
-    ColumnRefNode() : SQLNode(kColumn, 0, 0), column_name_(""), relation_name_("") {}
+    ColumnRefNode() : SQLNode(kColumnRef, 0, 0), column_name_(""), relation_name_("") {}
 
     ColumnRefNode(const std::string &column_name, const std::string &relation_name)
-        : SQLNode(kColumn, 0, 0), column_name_(column_name), relation_name_(relation_name) {}
+        : SQLNode(kColumnRef, 0, 0), column_name_(column_name), relation_name_(relation_name) {}
 
     std::string GetRelationName() const {
         return relation_name_;
     }
 
+    void SetRelationName(const std::string &relation_name) {
+        relation_name_ = relation_name;
+    }
+
     std::string GetColumnName() const {
         return column_name_;
+    }
+
+    void SetColumnName(const std::string &column_name) {
+        column_name_ = column_name;
     }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
@@ -423,12 +435,12 @@ private:
     NodePointVector order_list_ptr_;    /* ORDER BY (list of SortBy) */
 };
 
-class FuncNode : SQLNode {
+class FuncNode : FnNode {
 
 public:
-    FuncNode() : SQLNode(kFunc, 0, 0), function_name_(""), over_(nullptr) {};
+    FuncNode() : FnNode(kFunc), is_agg_(true), function_name_(""), over_(nullptr) {};
     FuncNode(const std::string &function_name)
-        : SQLNode(kFunc, 0, 0), function_name_(function_name), over_(nullptr) {};
+        : FnNode(kFunc), is_agg_(true), function_name_(function_name), over_(nullptr) {};
 
     ~FuncNode() {
     }
@@ -447,14 +459,23 @@ public:
         over_ = over;
     }
 
+    bool GetIsAgg() const {
+        return is_agg_;
+    }
+
+    void SetAgg(bool is_agg) {
+        is_agg_ = is_agg;
+    }
     NodePointVector &GetArgs() {
         return args_;
     }
 
 private:
+    bool is_agg_;
     std::string function_name_;
     WindowDefNode *over_;
     NodePointVector args_;
+
 };
 
 class SQLExprNode : public SQLNode {
