@@ -11,21 +11,6 @@
 namespace fesql {
 namespace node {
 
-/**
- * TODO: 全局内存管理；
- *  1. new SQLNode
- *  2. delete SQLNode
- *  3. maintain SQLNode
- *  4. Object pool maybe ...
- * @param type
- * @param ...
- * @return
- */
-
-
-
-////////////////// Make SQL Parser Node///////////////////////////////////
-
 SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
     switch (type) {
         case kSelectStmt:return RegisterNode((SQLNode *) new SelectStmt());
@@ -48,7 +33,6 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
     }
 }
 
-////////////////// Make Select Node///////////////////////////////////
 SQLNode *NodeManager::MakeSelectStmtNode(SQLNodeList *select_list_ptr,
                                          SQLNodeList *tableref_list_ptr,
                                          SQLNodeList *window_clause_ptr,
@@ -69,28 +53,24 @@ SQLNode *NodeManager::MakeSelectStmtNode(SQLNodeList *select_list_ptr,
     return (SQLNode *) node_ptr;
 }
 
-////////////////// Make Table Node///////////////////////////////////
 SQLNode *NodeManager::MakeTableNode(const std::string &name, const std::string &alias) {
     TableNode *node_ptr = new TableNode(name, alias);
     RegisterNode((SQLNode *) node_ptr);
     return (SQLNode *) node_ptr;
 }
 
-////////////////// Make ResTarget Node///////////////////////////////////
 SQLNode *NodeManager::MakeResTargetNode(SQLNode *node, const std::string &name) {
     ResTarget *node_ptr = new ResTarget(name, node);
     RegisterNode((SQLNode *) node_ptr);
     return node_ptr;
 }
 
-////////////////// Make Column Reference Node///////////////////////////////////
 SQLNode *NodeManager::MakeColumnRefNode(const std::string &column_name, const std::string &relation_name) {
     ColumnRefNode *node_ptr = new ColumnRefNode(column_name, relation_name);
     RegisterNode((SQLNode *) node_ptr);
     return (SQLNode *) node_ptr;
 }
 
-////////////////// Make Function Node///////////////////////////////////
 SQLNode *NodeManager::MakeFuncNode(const std::string &name, SQLNodeList *list_ptr, SQLNode *over) {
     FuncNode *node_ptr = new FuncNode(name);
     FillSQLNodeList2NodeVector(list_ptr, node_ptr->GetArgs());
@@ -99,14 +79,12 @@ SQLNode *NodeManager::MakeFuncNode(const std::string &name, SQLNodeList *list_pt
     return (SQLNode *) node_ptr;
 }
 
-////////////////// Make Limit Node///////////////////////////////////
 SQLNode *NodeManager::MakeLimitNode(int count) {
     LimitNode *node_ptr = new LimitNode(count);
     RegisterNode((SQLNode *) node_ptr);
     return (SQLNode *) node_ptr;
 }
 
-////////////////// Make Function Node///////////////////////////////////
 SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList *orders, SQLNode *frame) {
     WindowDefNode *node_ptr = new WindowDefNode();
     FillSQLNodeList2NodeVector(partitions, node_ptr->GetPartitions());
@@ -123,7 +101,6 @@ SQLNode *NodeManager::MakeWindowDefNode(const std::string &name) {
     return (SQLNode *) node_ptr;
 }
 
-////////////////// Make Frame and Bound Node///////////////////////////////////
 SQLNode *NodeManager::MakeFrameBound(SQLNodeType bound_type) {
     FrameBound *node_ptr = new FrameBound(bound_type);
     RegisterNode((SQLNode *) node_ptr);
@@ -156,7 +133,6 @@ SQLNode *NodeManager::MakeOrderByNode(SQLNode *order) {
     return (SQLNode *) node_ptr;
 }
 
-///////////////// Make Const Node /////////////////////////
 SQLNode *NodeManager::MakeConstNode(int value) {
     SQLNode *node_ptr = new ConstNode(value);
     RegisterNode((SQLNode *) node_ptr);
@@ -212,7 +188,6 @@ SQLLinkedNode *NodeManager::MakeLinkedNode(SQLNode *node_ptr) {
     return linked_node_ptr;
 }
 
-////////////////// Make Plan Node///////////////////////////////////
 PlanNode *NodeManager::MakeLeafPlanNode(const PlanType &type) {
     PlanNode *node_ptr = (PlanNode *) new LeafPlanNode(type);
     RegisterNode(node_ptr);
@@ -261,7 +236,7 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
             break;
         case kProject:node_ptr = (PlanNode *) new ProjectPlanNode();
             break;
-        default: node_ptr = new PlanNode(kUnknowPlan);
+        default: node_ptr = (PlanNode *) new LeafPlanNode(kUnknowPlan);
     }
     RegisterNode(node_ptr);
     return node_ptr;

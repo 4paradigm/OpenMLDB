@@ -20,9 +20,9 @@ public:
 
     PlanNode(PlanType type) : type_(type) {};
 
-    virtual ~PlanNode() {}
+    virtual ~PlanNode() {};
 
-    virtual bool AddChild(PlanNode *node);
+    virtual bool AddChild(PlanNode *node) = 0;
 
     PlanType GetType() const {
         return type_;
@@ -49,6 +49,7 @@ typedef std::vector<PlanNode *> PlanNodeList;
 class LeafPlanNode : public PlanNode {
 public:
     LeafPlanNode(PlanType type) : PlanNode(type) {};
+    ~LeafPlanNode() {};
     virtual bool AddChild(PlanNode *node);
 
 };
@@ -56,6 +57,7 @@ class UnaryPlanNode : public PlanNode {
 
 public:
     UnaryPlanNode(PlanType type) : PlanNode(type) {};
+    ~UnaryPlanNode() {};
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
 };
@@ -63,6 +65,7 @@ public:
 class BinaryPlanNode : public PlanNode {
 public:
     BinaryPlanNode(PlanType type) : PlanNode(type) {};
+    ~BinaryPlanNode() {};
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -71,6 +74,7 @@ public:
 class MultiChildPlanNode : public PlanNode {
 public:
     MultiChildPlanNode(PlanType type) : PlanNode(type) {};
+    ~MultiChildPlanNode() {};
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
 };
@@ -78,11 +82,12 @@ public:
 class SelectPlanNode : public MultiChildPlanNode {
 public:
     SelectPlanNode() : MultiChildPlanNode(kSelect), limit_cnt_(-1) {};
+    ~SelectPlanNode() {};
     int GetLimitCount() {
         return limit_cnt_;
     }
 
-    bool SetLimitCount(int count) {
+    void SetLimitCount(int count) {
         limit_cnt_ = count;
     }
 
@@ -97,6 +102,7 @@ public:
     ProjectPlanNode(node::SQLNode *expression, const std::string &name, const std::string &table, const std::string &w)
         : LeafPlanNode(kProject), expression_(expression), name_(name), table_(table), w_(w) {};
 
+    ~ProjectPlanNode() {};
     void Print(std::ostream &output, const std::string &orgTab) const;
     std::string GetW() const {
         return w_;
@@ -130,6 +136,7 @@ public:
     ProjectListPlanNode() : MultiChildPlanNode(kProjectList) {};
     ProjectListPlanNode(const std::string &table, const std::string &w)
         : MultiChildPlanNode(kProjectList), table_(table), w_(w) {};
+    ~ProjectListPlanNode() {};
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     PlanNodeList &GetProjects() {

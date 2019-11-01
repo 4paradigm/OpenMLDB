@@ -67,6 +67,14 @@ public:
         return type_;
     }
 
+    uint32_t GetLineNum() const {
+        return line_num_;
+    }
+
+    uint32_t GetLocation() const {
+        return location_;
+    }
+
     friend std::ostream &operator<<(std::ostream &output, const SQLNode &thiz);
 
 private:
@@ -549,6 +557,9 @@ public:
         limit_ptr_ = limit;
     }
 
+    int GetDistinctOpt() const {
+        return distinct_opt_;
+    }
     // Print
     void Print(std::ostream &output, const std::string &org_tab) const;
 

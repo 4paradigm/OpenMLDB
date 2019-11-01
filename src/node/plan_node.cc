@@ -12,24 +12,18 @@
 namespace fesql {
 namespace node {
 
-////////////////////////PlanNode////////////////////////////////////
-bool PlanNode::AddChild(PlanNode *node) {
-    return true;
-}
 
 void PlanNode::Print(std::ostream &output, const std::string &tab) const {
     output << tab << SPACE_ST << "plan[" << node::NameOfPlanNodeType(type_) << "]";
 }
 
 
-//////////////////////LeafPlanNode////////////////////////////////////
 bool LeafPlanNode::AddChild(PlanNode *node) {
     LOG(WARNING) << "cannot add child into leaf plan node";
     return false;
 }
 
 
-////////////////////////UnaryPlanNode////////////////////////////////////
 bool UnaryPlanNode::AddChild(PlanNode *node) {
     if (children_.size() >= 1) {
         LOG(WARNING) << "cannot add more than 1 children into unary plan node";
@@ -45,8 +39,6 @@ void UnaryPlanNode::Print(std::ostream &output, const std::string &org_tab) cons
     PrintPlanVector(output, org_tab, children_, "children", true);
 }
 
-
-////////////////////////BinaryPlanNode////////////////////////////////////
 bool BinaryPlanNode::AddChild(PlanNode *node) {
     if (children_.size() >= 2) {
         LOG(WARNING) << "cannot add more than 2 children into binary plan node";
@@ -62,7 +54,6 @@ void BinaryPlanNode::Print(std::ostream &output, const std::string &org_tab) con
     PrintPlanVector(output, org_tab, children_, "children", true);
 }
 
-////////////////////////MultiChildPlanNode////////////////////////////////////
 bool MultiChildPlanNode::AddChild(PlanNode *node) {
     children_.push_back(node);
     return true;
@@ -74,7 +65,6 @@ void MultiChildPlanNode::Print(std::ostream &output, const std::string &org_tab)
     PrintPlanVector(output, org_tab + INDENT, children_, "children", true);
 }
 
-////////////////////////ProjectPlanNode////////////////////////////////////
 void ProjectPlanNode::Print(std::ostream &output, const std::string &orgTab) const {
     PlanNode::Print(output, orgTab);
     output << "\n";
@@ -82,7 +72,6 @@ void ProjectPlanNode::Print(std::ostream &output, const std::string &orgTab) con
 
 }
 
-////////////////////////ProjectListPlanNode////////////////////////////////////
 void ProjectListPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
@@ -93,7 +82,6 @@ void ProjectListPlanNode::Print(std::ostream &output, const std::string &org_tab
     }
 }
 
-////////////////////////Global////////////////////////////////////
 std::string NameOfPlanNodeType(const PlanType &type) {
     switch (type) {
         case kSelect:return std::string("kSelect");

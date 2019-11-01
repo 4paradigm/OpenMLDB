@@ -9,13 +9,11 @@
 namespace fesql {
 namespace node {
 
-////////////////////////SQLNode////////////////////////////////////
 void SQLNode::Print(std::ostream &output, const std::string &tab) const {
     output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type_) << "]";
 
 }
 
-////////////////////////SQLNodeList////////////////////////////////////
 void SQLNodeList::Print(std::ostream &output, const std::string &tab) const {
     if (0 == size_ || NULL == head_) {
         output << tab << "[]";
@@ -63,7 +61,6 @@ void SQLNodeList::AppendNodeList(SQLNodeList *node_list_ptr) {
 
 }
 
-////////////////////////ConstNode////////////////////////////////////
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
     {
         SQLNode::Print(output, org_tab);
@@ -88,7 +85,6 @@ void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
     }
 }
 
-////////////////////////WindowDefNode////////////////////////////////////
 void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -96,7 +92,6 @@ void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, std::to_string(limit_cnt_), "limit_cnt", true);
 }
 
-////////////////////////TableNode////////////////////////////////////
 void TableNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -106,7 +101,6 @@ void TableNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, alias_table_name_, "alias", true);
 }
 
-////////////////////////ColumnRefNode////////////////////////////////////
 void ColumnRefNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -116,7 +110,6 @@ void ColumnRefNode::Print(std::ostream &output, const std::string &org_tab) cons
     PrintValue(output, tab, column_name_, "column_name", true);
 }
 
-////////////////////////OrderByNode////////////////////////////////////
 void OrderByNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -128,7 +121,6 @@ void OrderByNode::Print(std::ostream &output, const std::string &org_tab) const 
     PrintSQLNode(output, tab, order_by_, "order_by", true);
 }
 
-////////////////////////FrameNode////////////////////////////////////
 void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -151,7 +143,6 @@ void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
     }
 }
 
-////////////////////////FuncNode////////////////////////////////////
 void FuncNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     output << "\n";
@@ -164,7 +155,6 @@ void FuncNode::Print(std::ostream &output, const std::string &org_tab) const {
 
 }
 
-////////////////////////WindowDefNode////////////////////////////////////
 void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab;
@@ -181,7 +171,6 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     PrintSQLNode(output, tab, frame_ptr_, "frame", true);
 }
 
-////////////////////////ResTarget////////////////////////////////////
 void ResTarget::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     output << "\n";
@@ -192,7 +181,6 @@ void ResTarget::Print(std::ostream &output, const std::string &org_tab) const {
 
 }
 
-////////////////////////SelectStmt////////////////////////////////////
 void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -218,7 +206,6 @@ void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
 
 
 
-////////////////////////Global////////////////////////////////////
 
 /**
  * get the node type name
