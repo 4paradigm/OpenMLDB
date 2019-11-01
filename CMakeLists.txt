@@ -11,6 +11,7 @@ set(FESQL_VERSION_BUG 0)
 
 set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
+set(COMMON_LIBS  glog gflags unwind lzma)
 
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
