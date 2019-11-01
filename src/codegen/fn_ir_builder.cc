@@ -31,7 +31,6 @@ FnIRBuilder::FnIRBuilder(::llvm::Module* module):module_(module) {}
 FnIRBuilder::~FnIRBuilder() {}
 
 bool FnIRBuilder::Build(const ::fesql::ast::FnNode* root) {
-
     if (root == NULL) {
         LOG(WARNING) << "node is null";
         return false;
