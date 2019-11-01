@@ -12,15 +12,24 @@
 namespace fesql {
 namespace node {
 
-int PlanNode::GetChildrenSize() {
-    return children_.size();
+////////////////////////PlanNode////////////////////////////////////
+bool PlanNode::AddChild(PlanNode *node) {
+    return true;
 }
 
+void PlanNode::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << SPACE_ST << "plan[" << node::NameOfPlanNodeType(type_) << "]";
+}
+
+
+//////////////////////LeafPlanNode////////////////////////////////////
 bool LeafPlanNode::AddChild(PlanNode *node) {
     LOG(WARNING) << "cannot add child into leaf plan node";
     return false;
 }
 
+
+////////////////////////UnaryPlanNode////////////////////////////////////
 bool UnaryPlanNode::AddChild(PlanNode *node) {
     if (children_.size() >= 1) {
         LOG(WARNING) << "cannot add more than 1 children into unary plan node";
@@ -29,12 +38,15 @@ bool UnaryPlanNode::AddChild(PlanNode *node) {
     children_.push_back(node);
     return true;
 }
+
 void UnaryPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
     PrintPlanVector(output, org_tab, children_, "children", true);
 }
 
+
+////////////////////////BinaryPlanNode////////////////////////////////////
 bool BinaryPlanNode::AddChild(PlanNode *node) {
     if (children_.size() >= 2) {
         LOG(WARNING) << "cannot add more than 2 children into binary plan node";
@@ -43,22 +55,45 @@ bool BinaryPlanNode::AddChild(PlanNode *node) {
     children_.push_back(node);
     return true;
 }
+
 void BinaryPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PlanNode::Print(output, org_tab);
     PrintPlanVector(output, org_tab, children_, "children", true);
 }
 
+////////////////////////MultiChildPlanNode////////////////////////////////////
 bool MultiChildPlanNode::AddChild(PlanNode *node) {
     children_.push_back(node);
     return true;
 }
+
 void MultiChildPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
     PrintPlanVector(output, org_tab + INDENT, children_, "children", true);
 }
 
+////////////////////////ProjectPlanNode////////////////////////////////////
+void ProjectPlanNode::Print(std::ostream &output, const std::string &orgTab) const {
+    PlanNode::Print(output, orgTab);
+    output << "\n";
+    PrintSQLNode(output, orgTab, expression_, "expression", true);
+
+}
+
+////////////////////////ProjectListPlanNode////////////////////////////////////
+void ProjectListPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    if (w_.empty()) {
+        PrintPlanVector(output, org_tab + INDENT, projects, "projects on table " + table_, true);
+    } else {
+        PrintPlanVector(output, org_tab + INDENT, projects, "projects on window " + w_, true);
+    }
+}
+
+////////////////////////Global////////////////////////////////////
 std::string NameOfPlanNodeType(const PlanType &type) {
     switch (type) {
         case kSelect:return std::string("kSelect");
@@ -77,6 +112,7 @@ std::ostream &operator<<(std::ostream &output, const PlanNode &thiz) {
     thiz.Print(output, "");
     return output;
 }
+
 
 void PrintPlanVector(std::ostream &output,
                      const std::string &tab,
@@ -115,20 +151,5 @@ void PrintPlanNode(std::ostream &output,
     }
 }
 
-void ProjectPlanNode::Print(std::ostream &output, const std::string &orgTab) const {
-    PlanNode::Print(output, orgTab);
-    output << "\n";
-    PrintSQLNode(output, orgTab, expression_, "expression", true);
-
-}
-void ProjectListPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
-    PlanNode::Print(output, org_tab);
-    output << "\n";
-    if (w_.empty()) {
-        PrintPlanVector(output, org_tab + INDENT, projects, "projects on table " + table_, true);
-    } else {
-        PrintPlanVector(output, org_tab + INDENT, projects, "projects on window " + w_, true);
-    }
-}
 }
 }

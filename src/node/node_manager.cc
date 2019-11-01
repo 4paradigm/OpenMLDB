@@ -320,7 +320,7 @@ FnNode *NodeManager::MakeBinaryExprNode(FnNode *left, FnNode *right, FnOperator 
 }
 
 FnNode *NodeManager::MakeUnaryExprNode(FnNode *left, FnOperator op) {
-    ::fesql::node::FnBinaryExpr* uexpr = new ::fesql::node::FnBinaryExpr();
+    ::fesql::node::FnUnaryExpr* uexpr = new ::fesql::node::FnUnaryExpr();
     uexpr->AddChildren(left);
     uexpr->op = op;
     return RegisterNode((FnNode *) uexpr);

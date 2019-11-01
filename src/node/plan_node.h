@@ -13,41 +13,39 @@
 namespace fesql {
 namespace node {
 
-
 std::string NameOfPlanNodeType(const PlanType &type);
 
 class PlanNode {
 public:
-    PlanNode(PlanType type) : type_(type) {};
-    virtual ~PlanNode() {
-//        LOG(INFO) << "plan node " << NameOfPlanNodeType(type_) << " distruction enter";
-    }
-    int GetChildrenSize();
-    virtual bool AddChild(PlanNode *node) {};
 
-    virtual PlanType GetType() const {
+    PlanNode(PlanType type) : type_(type) {};
+
+    virtual ~PlanNode() {}
+
+    virtual bool AddChild(PlanNode *node);
+
+    PlanType GetType() const {
         return type_;
     }
 
-    std::vector<PlanNode*> &GetChildren() {
+    std::vector<PlanNode *> &GetChildren() {
         return children_;
+    }
+
+    int GetChildrenSize() {
+        return children_.size();
     }
 
     friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
 
-    virtual void Print(std::ostream &output, const std::string &tab) const {
-        output << tab << SPACE_ST << "plan["<<node::NameOfPlanNodeType(type_)<<"]";
-    }
-
-
-
+    virtual void Print(std::ostream &output, const std::string &tab) const;
 
 protected:
     PlanType type_;
-    std::vector<PlanNode*> children_;
+    std::vector<PlanNode *> children_;
 };
 
-typedef std::vector<PlanNode*> PlanNodeList;
+typedef std::vector<PlanNode *> PlanNodeList;
 class LeafPlanNode : public PlanNode {
 public:
     LeafPlanNode(PlanType type) : PlanNode(type) {};
@@ -94,16 +92,9 @@ private:
 
 class ProjectPlanNode : public LeafPlanNode {
 public:
-    ProjectPlanNode() : LeafPlanNode(kProject) {};
-    ProjectPlanNode(node::SQLNode *expression)
-        : LeafPlanNode(kProject), expression_(expression), name_(""), w_("") {};
-    ProjectPlanNode(node::SQLNode *expression, const std::string &name)
-        : LeafPlanNode(kProject), expression_(expression), name_(name) {};
+    ProjectPlanNode() : LeafPlanNode(kProject), expression_(nullptr), name_(""), table_(""), w_("") {};
 
-    ProjectPlanNode(node::SQLNode *expression,
-                    const std::string &name,
-                    const std::string &table,
-                    const std::string &w)
+    ProjectPlanNode(node::SQLNode *expression, const std::string &name, const std::string &table, const std::string &w)
         : LeafPlanNode(kProject), expression_(expression), name_(name), table_(table), w_(w) {};
 
     void Print(std::ostream &output, const std::string &orgTab) const;
@@ -129,15 +120,16 @@ public:
 private:
     node::SQLNode *expression_;
     std::string name_;
-    std::string w_;
     std::string table_;
+    std::string w_;
 
 };
 
 class ProjectListPlanNode : public MultiChildPlanNode {
 public:
     ProjectListPlanNode() : MultiChildPlanNode(kProjectList) {};
-    ProjectListPlanNode(const std::string &table, const std::string &w) : MultiChildPlanNode(kProjectList), table_(table), w_(w) {};
+    ProjectListPlanNode(const std::string &table, const std::string &w)
+        : MultiChildPlanNode(kProjectList), table_(table), w_(w) {};
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     PlanNodeList &GetProjects() {
@@ -149,20 +141,15 @@ public:
 
 private:
     PlanNodeList projects;
-    std::string w_;
     std::string table_;
+    std::string w_;
 };
-
 
 void PrintPlanVector(std::ostream &output,
                      const std::string &tab,
                      PlanNodeList vec,
                      const std::string vector_name,
                      bool last_item);
-
-
-
-
 
 void PrintPlanNode(std::ostream &output,
                    const std::string &org_tab,
