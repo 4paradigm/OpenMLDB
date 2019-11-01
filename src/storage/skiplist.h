@@ -419,7 +419,6 @@ private:
         return max_height_.load(std::memory_order_relaxed);
     }
     
-
 private:
     uint8_t const MaxHeight;
     uint8_t const Branch;

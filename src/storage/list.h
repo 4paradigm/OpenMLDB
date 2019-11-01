@@ -307,7 +307,7 @@ public:
         ArrayListNode<K, V>* array = array_.load(std::memory_order_relaxed);
         for (uint32_t idx = 0; idx < length; idx++) {
             uint32_t cur_idx = length - idx - 1;
-            list.Insert(array[cur_idx].key_, array[cur_idx].value_);
+            list->Insert(array[cur_idx].key_, array[cur_idx].value_);
         }
         return list;
     }
@@ -376,7 +376,7 @@ public:
     void Insert(const K& key, V& value) {
         BaseList<K, V>* list = list_.load(std::memory_order_acquire);
         if (list->GetType() == ListType::kArrayList && list->GetSize() >= MAX_ARRAY_LIST_LEN) {
-            ArrayList<K, V, Comparator>* array_list = dynamic_cast<ArrayList<K, V, Comparator>>(list);
+            ArrayList<K, V, Comparator>* array_list = dynamic_cast<ArrayList<K, V, Comparator>*>(list);
             LinkList<K, V, Comparator>* new_list = array_list->ConvertToLinkList();
             if (new_list != NULL) {
                 list_.store(new_list, std::memory_order_release);
@@ -384,6 +384,10 @@ public:
             }
         }
         list->Insert(key, value);
+    }
+
+    Iterator<K, V>* NewIterator() {
+        return list_.load(std::memory_order_relaxed)->NewIterator();
     }
 
 private:
