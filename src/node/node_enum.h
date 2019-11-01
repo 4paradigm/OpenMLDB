@@ -97,6 +97,9 @@ enum FnOperator {
  */
 enum PlanType {
     kSelect,
+    kPlanTypeScan,
+    kPlanTypeLimit,
+    kPlanTypeFilter,
     kProjectList,
     kProject,
     kScalarFunction,
@@ -104,6 +107,9 @@ enum PlanType {
     kAggFunction,
     kAggWindowFunction,
     kUnknowPlan,
+
+    kScanTypeSeqScan,
+    kScanTypeIndexScan,
 };
 
 }

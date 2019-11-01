@@ -236,6 +236,8 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
             break;
         case kProject:node_ptr = (PlanNode *) new ProjectPlanNode();
             break;
+        case kPlanTypeLimit:node_ptr = (PlanNode*) new LimitPlanNode();
+            break;
         default: node_ptr = (PlanNode *) new LeafPlanNode(kUnknowPlan);
     }
     RegisterNode(node_ptr);

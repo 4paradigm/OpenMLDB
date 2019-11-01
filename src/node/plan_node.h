@@ -46,6 +46,7 @@ protected:
 };
 
 typedef std::vector<PlanNode *> PlanNodeList;
+
 class LeafPlanNode : public PlanNode {
 public:
     LeafPlanNode(PlanType type) : PlanNode(type) {};
@@ -53,6 +54,7 @@ public:
     virtual bool AddChild(PlanNode *node);
 
 };
+
 class UnaryPlanNode : public PlanNode {
 
 public:
@@ -93,6 +95,69 @@ public:
 
 private:
     int limit_cnt_;
+};
+
+class ScanPlanNode : public UnaryPlanNode {
+public:
+    ScanPlanNode(std::string &table_name, PlanType scan_type)
+        : UnaryPlanNode(kPlanTypeScan), scan_type_(scan_type), table_name(table_name), limit_cnt(-1) {};
+    ~ScanPlanNode() {};
+
+    PlanType GetScanType() {
+        return scan_type_;
+    }
+
+    int GetLimit() {
+        return limit_cnt;
+    }
+
+    void SetLimit(int limit) {
+        limit_cnt = limit;
+    }
+
+private:
+    //TODO: OP tid
+    PlanType scan_type_;
+    std::string table_name;
+    //TODO: M2
+    SQLNode *condition;
+    int limit_cnt;
+};
+
+class LimitPlanNode : public MultiChildPlanNode {
+public:
+    LimitPlanNode() : MultiChildPlanNode(kPlanTypeLimit) {
+    }
+    LimitPlanNode(int limit_cnt) : MultiChildPlanNode(kPlanTypeLimit), limit_cnt_(limit_cnt) {
+    }
+
+    ~LimitPlanNode() {};
+
+    int GetLimitCnt() {
+        return limit_cnt_;
+    }
+
+    void SetLimitCnt(int limit_cnt) {
+        limit_cnt_ = limit_cnt;
+    }
+
+private:
+    int limit_cnt_;
+};
+
+/**
+ * TODO:
+ * where 过滤: 暂时不用考虑
+ * having: 对结果过滤
+ *
+ */
+class FilterPlanNode : public UnaryPlanNode {
+public:
+    FilterPlanNode() : UnaryPlanNode(kPlanTypeFilter), condition_(nullptr) {};
+    ~FilterPlanNode();
+
+private:
+    SQLNode *condition_;
 };
 
 class ProjectPlanNode : public LeafPlanNode {

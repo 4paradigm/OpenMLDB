@@ -73,18 +73,22 @@ PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
     }
 
     node::TableNode *table_node_ptr = (node::TableNode *) table_ref_list.at(0);
+
     node::SelectPlanNode *select_plan = (node::SelectPlanNode *) node_manager_->MakePlanNode(node::kSelect);
+
+    node::PlanNode * current_node = select_plan;
+
     std::map<std::string, node::ProjectListPlanNode *> project_list_map;
     // set limit
-    if (nullptr != root->GetLimit() && node::kLimit == root->GetLimit()->GetType()) {
+    if (nullptr != root->GetLimit()) {
         node::LimitNode *limit_ptr = (node::LimitNode *) root->GetLimit();
-        int count = limit_ptr->GetLimitCount();
-        if (count <= 0) {
-            LOG(WARNING) << "can not create select plan with limit <= 0";
-        } else {
-            select_plan->SetLimitCount(limit_ptr->GetLimitCount());
-        }
+        node::LimitPlanNode *limit_plan_ptr = (node::LimitPlanNode *) node_manager_->MakePlanNode(node::kPlanTypeLimit);
+        limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
+        current_node->AddChild(limit_plan_ptr);
+        current_node = limit_plan_ptr;
     }
+
+
 
     // prepare project list plan node
     node::NodePointVector select_expr_list = root->GetSelectList();
@@ -109,7 +113,7 @@ PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
         }
 
         for (auto &v : project_list_map) {
-            select_plan->AddChild(v.second);
+            current_node->AddChild(v.second);
         }
     }
 
