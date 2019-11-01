@@ -408,6 +408,33 @@ def RecoverData():
             return
         print "confset auto_failover true"
 
+def PrintLog(log_cmd, ret_code, ret_stdout, ret_stderr):
+    print log_cmd
+    if ret_code != 0:
+        print ret_stdout
+        print ret_stderr
+        raise Exception, "FAIL !!!"
+    else:
+        print ret_stdout
+
+def GetTablesDic(output):
+    lines = output.split("\n")
+    content_is_started = False
+    partition_on_tablet = {}
+    for line in lines:
+        if line.startswith("---------"):
+            content_is_started = True
+            continue
+        if not content_is_started:
+            continue
+        partition = line.split()
+        if len(partition) < 4:
+            continue
+        partitions = partition_on_tablet.get(partition[2], {})
+        partitions[partition[3]] = partition
+        partition_on_tablet[partition[2]] = partitions
+    return partition_on_tablet
+
 def BalanceLeader():
     auto_failover_flag = -1
     try:
@@ -422,34 +449,50 @@ def BalanceLeader():
             confset_no.append("--cmd=confset auto_failover false")
             code, stdout,stderr = RunWithRetuncode(confset_no)
             # print stdout
-            if code != 0:
-                print "set auto_failover is failed"
-                return
-            print "confset auto_failover false"
+            PrintLog("set auto_failover false", code, stdout, stderr)
+        # get table info from file
         with open(options.showtable_path, "r") as f:
             tables = f.read()
             partitions = GetTables(tables)
             ori_leader_partitions = []
             for endpoint in partitions:
                 for p in partitions[endpoint]:
-                    if p[4] == "leader":
+                    if p[4] == "leader" and p[6] == "yes":
                         ori_leader_partitions.append(p)
         if not ori_leader_partitions:
             print "no leader"
             return 
+        # get current table info
+        show_table = list(common_cmd)
+        show_table.append("--cmd=showtable")
+        code, stdout,stderr = RunWithRetuncode(show_table)
+        PrintLog("showtable", code, stdout, stderr)
+        partitions = GetTablesDic(stdout)
+        time.sleep(1)
+        not_alive_partitions = []
+        for pid in partitions.keys():
+            for endpoint in partitions[pid]:
+                if  partitions[pid][endpoint][6] == "no":
+                    not_alive_partitions.append(partitions[pid][endpoint])
+        for p in not_alive_partitions:
+            recover_cmd = list(common_cmd)
+            recover_cmd.append("--cmd=recovertable %s %s %s"%(p[0], p[2], p[3]))
+            code, stdout, stderr = RunWithRetuncode(recover_cmd)
+            PrintLog("recovertable %s %s %s"%(p[0], p[2], p[3]), code, stdout, stderr)
+            time.sleep(1)
 
+        # balance leader
         print "start to balance leader"
         for p in ori_leader_partitions:
+            if partitions[p[2]][p[3]][4]=="leader" and partitions[p[2]][p[3]][6]=="yes":
+                continue
             changeleader = list(common_cmd)
             changeleader.append("--cmd=changeleader %s %s %s"%(p[0], p[2], p[3]))
             code, stdout, stderr = RunWithRetuncode(changeleader)
-            if code != 0:
-                print "fail to change leader for %s %s"%(p[0], p[2])
-                print stdout
-                print stderr
-            else:
-                print stdout
+            PrintLog("changeleader %s %s %s"%(p[0], p[2], p[3]), code, stdout, stderr)
+            time.sleep(1)
         
+        # find not_alive_partition
         show_table = list(common_cmd)
         show_table.append("--cmd=showtable")
         code, stdout,stderr = RunWithRetuncode(show_table)
@@ -471,19 +514,20 @@ def BalanceLeader():
                 print stderr
             else:
                 print stdout
-        print "balance leader complete successfully!"
+        print "balance leader success!"
     except Exception,ex:
-        print(ex)
+        print "balance leader fail!"
         return -1
-    if auto_failover_flag != -1:
-        # recover auto failover
-        confset_no = list(common_cmd)
-        confset_no.append("--cmd=confset auto_failover true")
-        code, stdout,stderr = RunWithRetuncode(confset_no)
-        if code != 0:
-            print "set auto_failover is failed"
-            return
-        print "confset auto_failover true"
+    finally:
+        if auto_failover_flag != -1:
+            # recover auto failover
+            confset_no = list(common_cmd)
+            confset_no.append("--cmd=confset auto_failover true")
+            print "confset auto_failover true"
+            code, stdout,stderr = RunWithRetuncode(confset_no)
+            if code != 0:
+                print "set auto_failover failed"
+
 
 def Main():
     if options.cmd == "analysis":
