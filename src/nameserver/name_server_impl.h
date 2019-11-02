@@ -8,6 +8,7 @@
 #define RTIDB_NAME_SERVER_H
 
 #include "client/tablet_client.h"
+#include "client/ns_client.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
@@ -41,9 +42,16 @@ struct TabletInfo {
     // tablet state
     TabletState state_;
     // tablet rpc handle
-    std::shared_ptr<TabletClient> client_; 
+    std::shared_ptr<TabletClient> client_;
     // the date create
     uint64_t ctime_;
+};
+
+struct ClusterInfo {
+  std::shared_ptr<::rtidb::client::NsClient> client_;
+  std::shared_ptr<ZkClient> zk_client_;
+  std::shared_ptr<::rtidb::nameserver::ClusterAddress> cluster_add_;
+  uint64_t ctime_;
 };
 
 // the container of tablet
@@ -197,6 +205,16 @@ public:
             const CancelOPRequest* request,
             GeneralResponse* response,
             Closure* done);
+
+    void AddReplicaCluster(RpcController* controller,
+            const AddReplicaClusterRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void MakeReplicaCluster(RpcController *controller,
+            const MakeReplicaClusterRequest *request,
+            MakeReplicaClusterResponse *response,
+            Closure *done);
 
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
@@ -415,6 +433,7 @@ private:
     std::mutex mu_;
     Tablets tablets_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;
@@ -426,12 +445,15 @@ private:
     std::string zk_auto_recover_table_node_;
     std::string zk_table_changed_notify_node_;
     std::string zk_offline_endpoint_lock_node_;
+    std::string zk_zone_data_path_, zk_zone_name_;
     uint32_t table_index_;
-    uint64_t term_;
+    uint64_t term_, zone_term_;
     std::string zk_op_index_node_;
     std::string zk_op_data_path_;
+    std::string zone_name_;
     uint64_t op_index_;
     std::atomic<bool> running_;
+    std::atomic<bool> follower_;
     std::list<std::shared_ptr<OPData>> done_op_list_;
     std::vector<std::list<std::shared_ptr<OPData>>> task_vec_;
     std::condition_variable cv_;

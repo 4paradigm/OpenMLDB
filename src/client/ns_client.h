@@ -90,6 +90,8 @@ public:
                    const std::string& ttl_type, 
                    uint64_t ttl, const std::string& ts_name,
                    std::string& msg);
+
+    bool MakeReplicaCluster(const std::string& name, const uint64_t& term, std::string& msg);
 private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;

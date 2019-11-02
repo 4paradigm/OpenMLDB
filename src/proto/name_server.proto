@@ -264,6 +264,28 @@ message CancelOPRequest {
     optional uint64 op_id = 1;
 }
 
+message ClusterAddress {
+    required string zk_endpoints = 1;
+    required string zk_path = 2;
+}
+message AddReplicaClusterRequest {
+    required ClusterAddress cluster_add = 1;
+    required string alias = 3;
+}
+
+message MakeReplicaClusterRequest {
+    required string zone_name = 1;
+    required uint64 zone_term = 2;
+}
+
+message MakeReplicaClusterResponse {
+    repeated TabletStatus tablets = 1;
+    repeated TableInfo table_info = 2;
+    required int32 code = 3;
+    optional string msg = 4;
+}
+
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -288,4 +310,6 @@ service NameServer {
     rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
     rpc UpdateTableAliveStatus(UpdateTableAliveRequest) returns (GeneralResponse);
     rpc AddTableField(AddTableFieldRequest) returns (GeneralResponse);
+    rpc AddReplicaCluster(AddReplicaClusterRequest) returns (GeneralResponse);
+    rpc MakeReplicaCluster(MakeReplicaClusterRequest) returns (MakeReplicaClusterResponse);
 }
