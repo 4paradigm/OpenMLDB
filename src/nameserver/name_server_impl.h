@@ -47,10 +47,64 @@ struct TabletInfo {
     uint64_t ctime_;
 };
 
-struct ClusterInfo {
+class ClusterInfo {
+public:
+    ClusterInfo(::rtidb::nameserver::ClusterAddress& cd) {
+        cluster_add_.CopyFrom(cd);
+        ctime_ = ::baidu::common::timer::get_micros()/1000;
+    }
+    bool Init(std::string& msg) {
+
+        zk_client_ = std::make_shared<ZkClient>(cluster_add_.zk_endpoints(), 6000, "", cluster_add_.zk_path());
+        if (!zk_client_->Init()) {
+            msg = "zk client init failed";
+            PDLOG(WARNING, "zk client init failed, zk endpoints: %s, zk path: %s",
+                  cluster_add_.zk_endpoints().c_str(), cluster_add_.zk_path().c_str());
+            return false;
+        }
+        std::vector<std::string> children;
+        if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/leader", children) || children.empty()) {
+            msg = "replica cluster get chhilren failed":
+            PDLOG(WARNING, "replica cluster get children failed");
+            return false;
+        }
+        std::string endpoint;
+        if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/leader/" + children[0], endpoint)) {
+            msg = "get replica cluster leader ns failed";
+            PDLOG(WARNING, "get replica cluster leader ns failed");
+            return false;
+        }
+        client_ = std::make_shared<::rtidb::client::NsClient>(endpoint);
+        if (client_->Init() < 0) {
+            msg = "replica cluster ns client init failed";
+            PDLOG(WARNING, "replica cluster ns client init failed");
+            return false;
+        }
+        /*
+        std::vector<::rtidb::nameserver::TableInfo> tables;
+        std::string rpc_msg;
+        if (!client.ShowTable("", tables, rpc_msg)) {
+            code = 300;
+            break;
+        }
+        if (tables.size() > 0) {
+            code = 300; rpc_msg = "remote cluster already has table, cann't add replica cluster";
+            break;
+        }
+         */
+        return true;
+    }
+    bool MakeReplicaCluster(std::string& zone_name, uint64_t term, std::string msg) {
+        if (!client_->MakeReplicaCluster(zone_name, term, msg)) {
+            PDLOG(WARNING, "send MakeReplicaCluster request failed");
+            return false;
+        }
+        return true;
+    }
+private:
   std::shared_ptr<::rtidb::client::NsClient> client_;
   std::shared_ptr<ZkClient> zk_client_;
-  std::shared_ptr<::rtidb::nameserver::ClusterAddress> cluster_add_;
+  ::rtidb::nameserver::ClusterAddress cluster_add_;
   uint64_t ctime_;
 };
 
@@ -238,6 +292,8 @@ private:
     bool Recover();
 
     bool RecoverTableInfo();
+
+    bool RecoverClusterInfo();
 
     bool RecoverOPTask();
 

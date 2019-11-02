@@ -150,17 +150,17 @@ bool NameServerImpl::Recover() {
         PDLOG(INFO, "recover zone_term %u", zone_term_);
         value.clear();
         if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/name", value)) {
-            if (!zk_client_->CreateNode(zk_zone_data_path_ "/name", zone_name_) {
+            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/name", zone_name_)) {
                 PDLOG(WARNING, "create zone name node failed!");
                 return false;
             }
         }
         zone_name_ = value;
-        PDLOG(INFO, "recover zone_name: %s", zone_name_);
+        PDLOG(INFO, "recover zone_name: %s", zone_name_.c_str());
         value.clear();
         if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/follower", value)) {
-            follower_ = value == "true" : true : false;
-            PDLOG(WARNING, "recover follower: %s", follower_);
+            follower_.store(  value == "true" ? true : false, std::memory_order_release);
+            PDLOG(WARNING, "recover follower: %d", follower_.load(std::memory_order_acquire));
         }
         if (!RecoverTableInfo()) {
             PDLOG(WARNING, "recover table info failed!");
@@ -191,6 +191,29 @@ void NameServerImpl::RecoverOfflineTablet() {
     }
 }
 
+bool NameServerImpl::RecoverClusterInfo() {
+    nsc_.clear();
+    std::vector<std::string> cluster_vec;
+    if (!zk_client_->GetChildren(zk_zone_data_path_ + "/replica", cluster_vec)) {
+        if (zk_client_->IsExistNode(zk_zone_data_path_ + "/replica") > 0) {
+            PDLOG(WARNING, "cluster info node is not exist");
+            return true;
+        }
+        PDLOG(WARNING, "get cluster info failed!");
+        return false;
+    }
+    PDLOG(INFO, "need to recover cluster info[%d]", cluster_vec.size());
+    std::string value;
+    for (const auto& alias: cluster_vec) {
+        std::string cluster_alias = zk_zone_data_path_ + "/replica/" + alias;
+        value.clear();
+        if (!zk_client_->GetNodeValue(cluster_alias, value)) {
+            PDLOG(WARNING, "get cluster info failed! name[%s] zk path[%s]", alias.c_str(), cluster_alias.c_str());
+            continue;
+        }
+
+    }
+}
 bool NameServerImpl::RecoverTableInfo() {
     table_info_.clear();
     std::vector<std::string> table_vec;
@@ -5264,43 +5287,16 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             code = 300; rpc_msg = "cluster alias duplicate";
             break;
         }
-        if (cluster_add->zk_endpoints().size() < 1) {
+        if (request->cluster_add().zk_endpoints().size() < 1) {
             code = 300; rpc_msg = "zk endpoints size is zero";
             break;
         }
-        std::shared_ptr<ZkClient> zk_client = std::make_shared<ZkClient>(cluster_add->zk_endpoints(), 6000, "", cluster_add->zk_path());
-        if (!zk_client->Init()) {
-            PDLOG(WARNING, "zk client init failed, cluster alias: %s, zk endpoints: %s, zk path: %s",
-                  request->alias().c_str(), cluster_add->zk_endpoints().c_str(), cluster_add->zk_path().c_str());
-            code = 300; rpc_msg = "zk client init failed";
-            break;
-        }
-        std::vector<std::string> children;
-        if (!zk_client->GetChildren(cluster_add->zk_path() + "/leader", children) || children.empty()) {
-            code = 300; rpc_msg = "get children failed";
-            break;
-        }
-        std::string endpoint;
-        if (!zk_client->GetNodeValue(cluster_add->zk_path() + "/leader/" + children[0], endpoint)) {
-            code = 300; rpc_msg = "get leader failed";
-            break;
-        }
-        std::shared_ptr<::rtidb::client::NsClient> client = std::make_shared<::rtidb::client::NsClient>(endpoint);
-        if ((*client).Init() < 0) {
-            code = 300; rpc_msg = "ns client init failed";
-            break;
-        }
-        std::vector<::rtidb::nameserver::TableInfo> tables;
-        if (!(*client).ShowTable("", tables, rpc_msg)) {
+        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(request->cluster_add());
+        if (!cluster_info->Init(rpc_msg)) {
+            PDLOG(WARNING, "%s init failed, error: %s", request->alias().c_str(), rpc_msg.c_str());
             code = 300;
             break;
         }
-        if (tables.size() > 0) {
-            code = 300; rpc_msg = "remote cluster already has table, cann't add replica cluster";
-            break;
-        }
-        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(client, zk_client, cluster_add, ::baidu::common::timer::get_micros()/1000);
-        nsc_.insert(std::make_pair(request->alias(), cluster_info));
         std::string cluster_value;
         cluster_add->SerializeToString(&cluster_value);
         if (!zk_client_->CreateNode(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
@@ -5308,10 +5304,11 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             code = 300; rpc_msg = "write zk failed";
             break;
         }
-        if (!cluster_info->client_->MakeReplicaCluster(FLAGS_endpoint + FLAGS_zk_root_path, zone_term_, rpc_msg)) {
+        if (!cluster_info->MakeReplicaCluster(zone_name_, zone_term_, rpc_msg)) {
             code = 300;
             break;
         }
+        nsc_.insert(std::make_pair(request->alias(), cluster_info));
     } while(0);
 
     response->set_code(code);
@@ -5363,8 +5360,8 @@ void NameServerImpl::MakeReplicaCluster(::google::protobuf::RpcController *contr
                 break;
             }
             follower_.store(true, std::memory_order_release);
-            zone_name_ = zone_info->zone_name();
-            zone_term_ = zone_info->zone_term();
+            zone_name_ = request->zone_name();
+            zone_term_ = request->zone_term();
         }
     } while(0);
     response->set_code(code);
