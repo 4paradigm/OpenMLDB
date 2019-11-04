@@ -8,11 +8,12 @@
  *--------------------------------------------------------------------------
 **/
 
-#ifndef FESQL_NODE_MEMORY_H
-#define FESQL_NODE_MEMORY_H
+#ifndef FESQL_NODE_MANAGER_H
+#define FESQL_NODE_MANAGER_H
 
 #include "sql_node.h"
 #include "plan_node.h"
+#include <ctype.h>
 #include <list>
 
 namespace fesql {
@@ -36,12 +37,14 @@ public:
             plan_node_ite = plan_node_list_.erase(plan_node_ite);
         }
 
-        for (auto linked_node_ite = linked_node_list_.begin(); linked_node_ite != linked_node_list_.end(); ++linked_node_ite) {
+        for (auto linked_node_ite = linked_node_list_.begin(); linked_node_ite != linked_node_list_.end();
+             ++linked_node_ite) {
             delete (*linked_node_ite);
             linked_node_ite = linked_node_list_.erase(linked_node_ite);
         }
 
-        for (auto sql_node_list_iter = sql_node_list_list_.begin(); sql_node_list_iter != sql_node_list_list_.end(); ++sql_node_list_iter) {
+        for (auto sql_node_list_iter = sql_node_list_list_.begin(); sql_node_list_iter != sql_node_list_list_.end();
+             ++sql_node_list_iter) {
             delete (*sql_node_list_iter);
             sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
         }
@@ -62,7 +65,12 @@ public:
     PlanNode *MakeBinaryPlanNode(const PlanType &type);
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     ProjectListPlanNode *MakeProjectListPlanNode(const std::string &table, const std::string &w);
-    ProjectPlanNode *MakeProjectPlanNode(node::SQLNode * expression, const std::string &name, const std::string &table, const std::string &w);
+    ScanPlanNode *MakeSeqScanPlanNode(const std::string &table);
+    ScanPlanNode *MakeIndexScanPlanNode(const std::string &table);
+    ProjectPlanNode *MakeProjectPlanNode(node::SQLNode *expression,
+                                         const std::string &name,
+                                         const std::string &table,
+                                         const std::string &w);
     // Make SQLxxx Node
     SQLNode *MakeSQLNode(const SQLNodeType &type);
     SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
@@ -85,10 +93,24 @@ public:
     SQLNode *MakeConstNode(float value);
     SQLNode *MakeConstNode(double value);
     SQLNode *MakeConstNode(const std::string &value);
+    SQLNode *MakeConstNode(const char *value);
     SQLNode *MakeConstNode();
 
     SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name);
     SQLNode *MakeResTargetNode(SQLNode *node_ptr, const std::string &name);
+
+    // Make Fn Node
+
+    FnNode *MakeFnNode(const SQLNodeType &type);
+    FnNode *MakeFnIdNode(const std::string &name);
+    FnNode *MakeTypeNode(const DataType &type);
+    FnNode *MakeFnDefNode(const std::string &name, FnNode *plist, const DataType return_type);
+    FnNode *MakeBinaryExprNode(FnNode *left, FnNode *right, FnOperator op);
+    FnNode *MakeUnaryExprNode(FnNode *left, FnOperator op);
+
+    FnNode *MakeFnParaNode(const std::string &name, const DataType &para_type);
+    FnNode *MakeAssignNode(const std::string &name, FnNode *expression);
+    FnNode *MakeReturnStmtNode(FnNode *value);
 
     // Make NodeList
     SQLNodeList *MakeNodeList(SQLNode *node_ptr);
@@ -98,20 +120,33 @@ public:
     SQLNode *MakeNode(SQLNodeType type);
 private:
 
-    SQLNode* RegisterNode(SQLNode *node_ptr) {
+    SQLNode *RegisterNode(SQLNode *node_ptr) {
+//        LOG(INFO) << "register sql node";
         parser_node_list_.push_back(node_ptr);
+        return node_ptr;
     }
 
-    PlanNode* RegisterNode(PlanNode *node_ptr) {
+    FnNode *RegisterNode(FnNode *node_ptr) {
+//        LOG(INFO) << "register fn node";
+        parser_node_list_.push_back((SQLNode *) node_ptr);
+        return node_ptr;
+    }
+    PlanNode *RegisterNode(PlanNode *node_ptr) {
+//        LOG(INFO) << "register plan node";
         plan_node_list_.push_back(node_ptr);
+        return node_ptr;
     }
 
-    SQLNodeList* RegisterNode(SQLNodeList *node_ptr) {
+    SQLNodeList *RegisterNode(SQLNodeList *node_ptr) {
+//        LOG(INFO) << "register node list";
         sql_node_list_list_.push_back(node_ptr);
+        return node_ptr;
     }
 
-    SQLLinkedNode* RegisterNode(SQLLinkedNode *node_ptr) {
+    SQLLinkedNode *RegisterNode(SQLLinkedNode *node_ptr) {
+//        LOG(INFO) << "register node linked";
         linked_node_list_.push_back(node_ptr);
+        return node_ptr;
     }
 
     std::list<SQLNode *> parser_node_list_;
@@ -120,7 +155,6 @@ private:
     std::list<node::PlanNode *> plan_node_list_;
 };
 
-
 }
 }
-#endif //FESQL_NODE_MEMORY_H
+#endif //FESQL_NODE_MANAGER_H

@@ -4,20 +4,38 @@
 %option outfile="sql_scan.gen.cc"
 
 %{
-#include "node/node_memory.h"
+#include "node/node_manager.h"
 #include "parser/sql_parser.gen.h"
 #include <stdarg.h>
 #include <string.h>
 void yyerror(char *s, ...) {}
-int oldstate;
+int cur_state=0;
+int oldstate = 0;
 %}
 
+space [ \t]
+newline [\n\r]
+non_newline [^\n\r]
+comment ("#"{non_newline}*)
+indent {space}*
+newlines {newline}*
+self [,()\[\].\:\+\-\*\/\%\^\<\>\=]
+
+
 %x COMMENT
+%s FUN
 %s BTWMODE
+
+ident_start [A-Za-z\200-\377_]
+ident_cont [A-Za-z\200-\377_0-9\$]
+identifier {ident_start}{ident_cont}*
 
 %%
 
-    /* keywords */
+"%%sql\n" {BEGIN INITIAL;}
+"%%fun\n" {BEGIN FUN;}
+
+ /* keywords */
 
 ADD	{ return ADD; }
 ALL	{ return ALL; }
@@ -34,7 +52,7 @@ AS	{ return AS; }
 ASC	{ return ASC; }
 AUTO_INCREMENT	{ return AUTO_INCREMENT; }
 BEFORE	{ return BEFORE; }
-BETWEEN	{ BEGIN BTWMODE; return BETWEEN; }
+<INITIAL>BETWEEN	{ BEGIN BTWMODE; return BETWEEN; }
 INT8|BIGINT	{ return BIGINT; }
 BINARY	{ return BINARY; }
 BIT	{ return BIT; }
@@ -86,7 +104,8 @@ DUAL	{ return DUAL; }
 EACH	{ return EACH; }
 ELSE	{ return ELSE; }
 ELSEIF	{ return ELSEIF; }
-END	{ return END; }
+<FUNDEF>END {return FUNDEFEND;}
+END	{return END; }
 ENUM { return ENUM; }
 ESCAPED	{ return ESCAPED; }
 EXISTS	{ yylval->subtok = 0; return EXISTS; }
@@ -252,8 +271,35 @@ YEAR	{ return YEAR; }
 YEAR_MONTH	{ return YEAR_MONTH; }
 ZEROFILL	{ return ZEROFILL; }
 
-   /* numbers */
 
+ /* function definition */
+<FUN>"def" {
+            return DEF;
+       }
+
+<FUN>"return" {
+        return RETURN;
+    }
+
+ /* type definition */
+<FUN>"i32" {
+    yylval->intval = 1;
+    return I32;
+    }
+
+
+<FUN>{newlines} { return NEWLINES;}
+
+<FUN>{space} {return SPACE;}
+
+<FUN>{indent} {
+        yylval->intval = strlen(yytext);
+        return INDENT;
+}
+
+
+
+ /* numbers */
 -?[0-9]+	        { yylval->intval = atoi(yytext); return INTNUM; }
 
 -?[0-9]+"."[0-9]* |
@@ -262,12 +308,11 @@ ZEROFILL	{ return ZEROFILL; }
 -?[0-9]+"."[0-9]*E[-+]?[0-9]+ |
 -?"."[0-9]*E[-+]?[0-9]+	{ yylval->floatval = atof(yytext) ;
                                   return APPROXNUM; }
-    /* booleans */
+ /* booleans */
 TRUE	{ yylval->intval = 1; return BOOL; }
 UNKNOWN	{ yylval->intval = -1; return BOOL; }
 FALSE	{ yylval->intval = 0; return BOOL; }
 
-   /* strings */
 
 '(\\.|''|[^'\n])*'	|
 \"(\\.|\"\"|[^"\n])*\"  { yylval->strval = strdup(yytext); return STRING; }
@@ -279,30 +324,14 @@ FALSE	{ yylval->intval = 0; return BOOL; }
 X'[0-9A-F]+' |
 0X[0-9A-F]+  { yylval->strval = strdup(yytext); return STRING; }
 
-   /* bit strings */
+ /* bit strings */
 
 0B[01]+      |
 B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 
-   /* operators */
+ /* operators */
 [-+&~|^/%*(),.;!]   { return yytext[0]; }
-
-"&&"		{ return ANDOP; }
-"||"            { return OR; }
-
-"="	{ yylval->subtok = 4; return COMPARISON; }
-"<=>"	{ yylval->subtok = 12; return COMPARISON; }
-">="	{ yylval->subtok = 6; return COMPARISON; }
-">"	{ yylval->subtok = 2; return COMPARISON; }
-"<="	{ yylval->subtok = 5; return COMPARISON; }
-"<"	{ yylval->subtok = 1; return COMPARISON; }
-"!="	|
-"<>"	{ yylval->subtok = 3; return COMPARISON; }
-
-"<<"	{ yylval->subtok = 1; return SHIFT; }
-">>"	{ yylval->subtok = 2; return SHIFT; }
-
 
 
 [A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
@@ -325,17 +354,27 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 ":="     { return ASSIGN; }
 
+<FUN>{identifier} {
+            yylval->strval = strdup(yytext);
+            return NAME;
+    }
+
+<FUN>{self} {
+            return yytext[0];
+	}
+
 #.*		;
 "--"[ \t].*	;
 
-"/*"            { oldstate = YY_START; BEGIN COMMENT; }
-<COMMENT>"*/"   { BEGIN oldstate; }
+"/*"            { BEGIN COMMENT; }
+<COMMENT>"*/"   { BEGIN INITIAL; }
 <COMMENT>.|\n   ;
 <COMMENT><<EOF>> { yyerror("unclosed comment"); }
 
+
 	/* everything else */
 [ \t\n]         /* white space */
-.               { yyerror("mystery character '%c'", *yytext); }
+.               { yyerror("mystery character '%s'", *yytext); }
 
 %%
 

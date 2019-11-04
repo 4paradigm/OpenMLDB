@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include "emun.h"
+#include "node_enum.h"
 #include <glog/logging.h>
 namespace fesql {
 namespace node {
@@ -28,24 +28,47 @@ namespace node {
 // Global methods
 std::string NameOfSQLNodeType(const SQLNodeType &type);
 
-class SQLNode {
+inline const std::string DataTypeName(const DataType &type) {
+    switch (type) {
+        case kTypeBool:return "bool";
+        case kTypeInt16:return "int16";
+        case kTypeInt32:return "int32";
+        case kTypeInt64:return "int64";
+        case kTypeFloat:return "float";
+        case kTypeDouble:return "double";
+        case kTypeString:return "string";
+        case kTypeNull:return "null";
+        default: return "unknownType";
+    }
+}
 
+inline const std::string FnNodeName(const SQLNodeType &type) {
+    switch (type) {
+        case kFnDef:return "def";
+        case kFnValue:return "value";
+        case kFnId:return "id";
+        case kFnAssignStmt:return "=";
+        case kFnReturnStmt:return "return";
+        case kFnExpr:return "expr";
+        case kFnExprBinary:return "bexpr";
+        case kFnExprUnary:return "uexpr";
+        case kFnPara:return "para";
+        case kFnParaList:return "plist";
+        case kFnList:return "funlist";
+        default: return "unknowFn";
+    }
+}
+
+class SQLNode {
 public:
     SQLNode(const SQLNodeType &type, uint32_t line_num, uint32_t location)
         : type_(type), line_num_(line_num), location_(location) {
     }
 
     virtual ~SQLNode() {
-//        LOG(INFO) << "sql node: " << NameOfSQLNodeType(type_) << " distruction enter >> \n";
     }
 
-    virtual void Print(std::ostream &output) const {
-        Print(output, "");
-    }
-
-    virtual void Print(std::ostream &output, const std::string &tab) const {
-        output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type_) << "]";
-    }
+    virtual void Print(std::ostream &output, const std::string &tab) const;
 
     SQLNodeType GetType() const {
         return type_;
@@ -61,14 +84,12 @@ public:
 
     friend std::ostream &operator<<(std::ostream &output, const SQLNode &thiz);
 
-protected:
-    SQLNodeType type_;
 private:
+    SQLNodeType type_;
     uint32_t line_num_;
     uint32_t location_;
 };
 
-typedef std::vector<SQLNode *> NodePointVector;
 struct SQLLinkedNode {
     SQLNode *node_ptr_;
     SQLLinkedNode *next_;
@@ -83,8 +104,9 @@ struct SQLLinkedNode {
     }
 };
 
-class SQLNodeList {
+typedef std::vector<SQLNode *> NodePointVector;
 
+class SQLNodeList {
 public:
     SQLNodeList() : size_(0), head_(NULL), tail_(NULL) {
     }
@@ -99,275 +121,107 @@ public:
     ~SQLNodeList() {
     }
 
-    const size_t Size() {
+    const size_t GetSize() {
         return size_;
+    }
+
+    SQLLinkedNode *GetHead() {
+        return head_;
     }
 
     void Print(std::ostream &output) const {
         Print(output, "");
     }
 
-    void Print(std::ostream &output, const std::string &tab) const {
-        if (0 == size_ || NULL == head_) {
-            output << tab << "[]";
-            return;
-        }
-        output << tab << "[\n";
-        SQLLinkedNode *p = head_;
-        const std::string space = tab + "\t";
-        p->node_ptr_->Print(output, space);
-        output << "\n";
-        p = p->next_;
-        while (NULL != p) {
-            p->node_ptr_->Print(output, space);
-            p = p->next_;
-            output << "\n";
-        }
-        output << tab << "]";
-    }
+    void Print(std::ostream &output, const std::string &tab) const;
+    void PushFront(SQLLinkedNode *linked_node_ptr);
+    void AppendNodeList(SQLNodeList *node_list_ptr);
 
-    void PushFront(SQLLinkedNode *linked_node_ptr) {
-        linked_node_ptr->next_ = head_;
-        head_ = linked_node_ptr;
-        size_ += 1;
-        if (NULL == tail_) {
-            tail_ = head_;
-        }
-    }
-
-    void AppendNodeList(SQLNodeList *node_list_ptr) {
-        if (NULL == node_list_ptr) {
-            return;
-        }
-
-        if (NULL == tail_) {
-            head_ = node_list_ptr->head_;
-            tail_ = head_;
-            size_ = node_list_ptr->size_;
-            return;
-        }
-
-        tail_->next_ = node_list_ptr->head_;
-        tail_ = node_list_ptr->tail_;
-        size_ += node_list_ptr->size_;
-    }
-
-    SQLLinkedNode *GetHead() {
-        return head_;
-    }
     friend std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz);
+
 private:
+    size_t size_;
     SQLLinkedNode *head_;
     SQLLinkedNode *tail_;
-    size_t size_;
 };
 
-/**
- * SQL Node for Select statement
- */
-class SelectStmt : public SQLNode {
+class FnNode : public SQLNode {
 public:
+    FnNode() : SQLNode(kFunc, 0, 0), indent(0) {};
 
-    SelectStmt() : SQLNode(kSelectStmt, 0, 0), distinct_opt_(0) {
-        limit_ptr_ = NULL;
-        where_clause_ptr_ = NULL;
-        group_clause_ptr_ = NULL;
-        having_clause_ptr_ = NULL;
-        order_clause_ptr_ = NULL;
+    FnNode(SQLNodeType type) : SQLNode(type, 0, 0), indent(0) {};
+
+    void AddChildren(FnNode *node) {
+        children.push_back(node);
     }
 
-    ~SelectStmt() {
+public:
+    std::vector<FnNode *> children;
+    int32_t indent;
+};
+
+class ConstNode : public FnNode {
+
+public:
+    ConstNode() : FnNode(kPrimary), date_type_(kTypeNull) {
+    }
+    ConstNode(int val) : FnNode(kPrimary), date_type_(kTypeInt32) {
+        val_.vint = val;
+    }
+    ConstNode(long val) : FnNode(kPrimary), date_type_(kTypeInt64) {
+        val_.vlong = val;
+    }
+    ConstNode(float val) : FnNode(kPrimary), date_type_(kTypeFloat) {
+        val_.vfloat = val;
     }
 
+    ConstNode(double val) : FnNode(kPrimary), date_type_(kTypeDouble) {
+        val_.vdouble = val;
+    }
+
+    ConstNode(const char *val) : FnNode(kPrimary), date_type_(kTypeString) {
+        val_.vstr = val;
+    }
+    ConstNode(const std::string &val) : FnNode(kPrimary), date_type_(kTypeString) {
+        val_.vstr = val.c_str();
+    }
+
+    ~ConstNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    NodePointVector &GetSelectList() {
-        return select_list_ptr_;
+    int GetInt() const {
+        return val_.vint;
     }
 
-    SQLNode *GetLimit() const {
-        return limit_ptr_;
+    long GetLong() const {
+        return val_.vlong;
     }
 
-    NodePointVector &GetTableRefList() {
-        return tableref_list_ptr_;
+    const char *GetStr() const {
+        return val_.vstr;
     }
 
-    NodePointVector &GetWindowList() {
-        return window_list_ptr_;
+    float GetFloat() const {
+        return val_.vfloat;
     }
 
-    void SetLimit(SQLNode *limit) {
-        limit_ptr_ = limit;
+    double GetDouble() const {
+        return val_.vdouble;
     }
 
-private:
-    int distinct_opt_;
-    SQLNode *limit_ptr_;
-    NodePointVector select_list_ptr_;
-    NodePointVector tableref_list_ptr_;
-    SQLNode *where_clause_ptr_;
-    SQLNode *group_clause_ptr_;
-    SQLNode *having_clause_ptr_;
-    SQLNode *order_clause_ptr_;
-    NodePointVector window_list_ptr_;
-};
-
-class ResTarget : public SQLNode {
-public:
-    ResTarget() : SQLNode(kResTarget, 0, 0) {}
-    ResTarget(const std::string &name, SQLNode *val) : SQLNode(kResTarget, 0, 0), name_(name), val_(val) {}
-    ResTarget(uint32_t line_num, uint32_t location) : SQLNode(kResTarget, line_num, location), indirection_(NULL) {}
-    ~ResTarget() {
-    }
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    std::string GetName() const {
-        return name_;
-    }
-
-    SQLNode *GetVal() const {
-        return val_;
+    DataType GetDataType() const {
+        return date_type_;
     }
 
 private:
-    NodePointVector indirection_;    /* subscripts, field names, and '*', or NIL */
-    SQLNode *val_;            /* the value expression to compute or assign */
-    std::string name_;            /* column name or NULL */
-};
-
-class WindowDefNode : public SQLNode {
-
-public:
-    WindowDefNode()
-        : SQLNode(kWindowDef, 0, 0), window_name_(""), frame_ptr_(NULL) {};
-    ~WindowDefNode() {
-    }
-
-    void SetName(const std::string &name) {
-        window_name_ = name;
-    }
-
-    std::string GetName() const {
-        return window_name_;
-    }
-
-    NodePointVector &GetPartitions() {
-        return partition_list_ptr_;
-    }
-
-    NodePointVector &GetOrders() {
-        return order_list_ptr_;
-    }
-
-    SQLNode *GetFrame() const {
-        return frame_ptr_;
-    }
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-
-    void SetFrame(SQLNode *frame) {
-        frame_ptr_ = frame;
-    }
-
-private:
-    std::string window_name_;            /* window's own name */
-    NodePointVector partition_list_ptr_;    /* PARTITION BY expression list */
-    NodePointVector order_list_ptr_;    /* ORDER BY (list of SortBy) */
-    SQLNode *frame_ptr_;    /* expression for starting bound, if any */
-};
-
-class FrameBound : public SQLNode {
-public:
-    FrameBound() : SQLNode(kFrameBound, 0, 0), bound_type_(kPreceding), offset_(NULL) {};
-    FrameBound(SQLNodeType bound_type) :
-        SQLNode(kFrameBound, 0, 0), bound_type_(bound_type) {}
-    FrameBound(SQLNodeType bound_type, SQLNode *offset) :
-        SQLNode(kFrameBound, 0, 0), bound_type_(bound_type), offset_(offset) {}
-    ~FrameBound() {
-    }
-
-    void Print(std::ostream &output, const std::string &org_tab) const {
-        SQLNode::Print(output, org_tab);
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        std::string space = org_tab + INDENT + INDENT;
-        output << "\n";
-        output << tab << SPACE_ST << "bound: " << NameOfSQLNodeType(bound_type_) << "\n";
-        if (NULL == offset_) {
-            output << space << "UNBOUNDED";
-        } else {
-            offset_->Print(output, space);
-        }
-    }
-
-    SQLNodeType GetBoundType() const {
-        return bound_type_;
-    }
-
-    SQLNode *GetOffset() const {
-        return offset_;
-    }
-private:
-    SQLNodeType bound_type_;
-    SQLNode *offset_;
-};
-
-class FrameNode : public SQLNode {
-public:
-    FrameNode() : SQLNode(kFrames, 0, 0), frame_type_(kFrameRange), start_(NULL), end_(NULL) {};
-
-    ~FrameNode() {
-    }
-
-    void SetFrameType(SQLNodeType frame_type) {
-        frame_type_ = frame_type;
-    }
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-
-    SQLNodeType GetFrameType() const {
-        return frame_type_;
-    }
-
-    SQLNode *GetStart() const {
-        return start_;
-    }
-
-    SQLNode *GetEnd() const {
-        return end_;
-    }
-
-    friend void FillFrameNode(FrameNode *thiz, SQLNodeType frame_type, FrameBound *start, FrameBound *end) {
-        thiz->frame_type_ = frame_type;
-        thiz->start_ = start;
-        thiz->end_ = end;
-    };
-
-private:
-    SQLNodeType frame_type_;
-    SQLNode *start_;
-    SQLNode *end_;
-};
-
-class LimitNode : public SQLNode {
-public:
-    LimitNode() : SQLNode(kLimit, 0, 0), limit_cnt_(0) {};
-    LimitNode(int limit_cnt) : SQLNode(kLimit, 0, 0), limit_cnt_(limit_cnt) {};
-    int GetLimitCount() const {
-        return limit_cnt_;
-    }
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-private:
-    int limit_cnt_;
-};
-class SQLExprNode : public SQLNode {
-public:
-    SQLExprNode() : SQLNode(kExpr, 0, 0) {}
-    SQLExprNode(uint32_t line_num, uint32_t location) : SQLNode(kExpr, line_num, location) {
-    }
-    ~SQLExprNode() {
-    }
+    DataType date_type_;
+    union {
+        int vint;        /* machine integer */
+        long vlong;        /* machine integer */
+        const char *vstr;        /* string */
+        float vfloat;
+        double vdouble;
+    } val_;
 };
 
 class AllNode : public SQLNode {
@@ -378,37 +232,78 @@ public:
     AllNode(const std::string &relation_name) : SQLNode(kAll, 0, 0), relation_name_(relation_name) {
     }
 
-    void SetRelationName(const std::string &relation_name) {
-        relation_name_ = relation_name;
-    }
-
     std::string GetRelationName() const {
         return relation_name_;
+    }
+
+    void SetRelationName(const std::string &relation_name) {
+        relation_name_ = relation_name;
     }
 
 private:
     std::string relation_name_;
 };
+
+class LimitNode : public SQLNode {
+public:
+    LimitNode() : SQLNode(kLimit, 0, 0), limit_cnt_(0) {};
+
+    LimitNode(int limit_cnt) : SQLNode(kLimit, 0, 0), limit_cnt_(limit_cnt) {};
+
+    int GetLimitCount() const {
+        return limit_cnt_;
+    }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+private:
+    int limit_cnt_;
+};
+
+class TableNode : SQLNode {
+public:
+    TableNode() : SQLNode(kTable, 0, 0), org_table_name_(""), alias_table_name_("") {};
+
+    TableNode(const std::string &name, const std::string &alias)
+        : SQLNode(kTable, 0, 0), org_table_name_(name), alias_table_name_(alias) {}
+
+    std::string GetOrgTableName() const {
+        return org_table_name_;
+    }
+
+    std::string GetAliasTableName() const {
+        return alias_table_name_;
+    }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+private:
+    std::string org_table_name_;
+    std::string alias_table_name_;
+};
+
 class ColumnRefNode : public SQLNode {
 
 public:
-    ColumnRefNode() : SQLNode(kColumn, 0, 0), column_name_(""), relation_name_("") {
-
-    }
-    ColumnRefNode(const std::string &column_name)
-        : SQLNode(kColumn, 0, 0), column_name_(column_name), relation_name_("") {
-    }
+    ColumnRefNode() : SQLNode(kColumnRef, 0, 0), column_name_(""), relation_name_("") {}
 
     ColumnRefNode(const std::string &column_name, const std::string &relation_name)
-        : SQLNode(kColumn, 0, 0), column_name_(column_name), relation_name_(relation_name) {
-    }
+        : SQLNode(kColumnRef, 0, 0), column_name_(column_name), relation_name_(relation_name) {}
 
     std::string GetRelationName() const {
         return relation_name_;
     }
 
+    void SetRelationName(const std::string &relation_name) {
+        relation_name_ = relation_name;
+    }
+
     std::string GetColumnName() const {
         return column_name_;
+    }
+
+    void SetColumnName(const std::string &column_name) {
+        column_name_ = column_name;
     }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
@@ -442,36 +337,125 @@ private:
     SQLNode *order_by_;
 };
 
-class TableNode : SQLNode {
-
+class FrameBound : public SQLNode {
 public:
-    TableNode() : SQLNode(kTable, 0, 0), org_table_name_(""), alias_table_name_("") {};
-    TableNode(const std::string &name, const std::string &alias)
-        : SQLNode(kTable, 0, 0), org_table_name_(name), alias_table_name_(alias) {
+    FrameBound() : SQLNode(kFrameBound, 0, 0), bound_type_(kPreceding), offset_(nullptr) {};
 
+    FrameBound(SQLNodeType bound_type) :
+        SQLNode(kFrameBound, 0, 0), bound_type_(bound_type), offset_(nullptr) {}
+
+    FrameBound(SQLNodeType bound_type, SQLNode *offset) :
+        SQLNode(kFrameBound, 0, 0), bound_type_(bound_type), offset_(offset) {}
+
+    ~FrameBound() {
+    }
+
+    void Print(std::ostream &output, const std::string &org_tab) const {
+        SQLNode::Print(output, org_tab);
+        const std::string tab = org_tab + INDENT + SPACE_ED;
+        std::string space = org_tab + INDENT + INDENT;
+        output << "\n";
+        output << tab << SPACE_ST << "bound: " << NameOfSQLNodeType(bound_type_) << "\n";
+        if (NULL == offset_) {
+            output << space << "UNBOUNDED";
+        } else {
+            offset_->Print(output, space);
+        }
+    }
+
+    SQLNodeType GetBoundType() const {
+        return bound_type_;
+    }
+
+    SQLNode *GetOffset() const {
+        return offset_;
+    }
+private:
+    SQLNodeType bound_type_;
+    SQLNode *offset_;
+};
+
+class FrameNode : public SQLNode {
+public:
+    FrameNode() : SQLNode(kFrames, 0, 0), frame_type_(kFrameRange), start_(nullptr), end_(nullptr) {};
+
+    FrameNode(SQLNodeType frame_type, SQLNode *start, SQLNode *end) :
+        SQLNode(kFrames, 0, 0), frame_type_(frame_type), start_(start), end_(end) {};
+
+    ~FrameNode() {
+    }
+
+    SQLNodeType GetFrameType() const {
+        return frame_type_;
+    }
+
+    void SetFrameType(SQLNodeType frame_type) {
+        frame_type_ = frame_type;
+    }
+
+    SQLNode *GetStart() const {
+        return start_;
+    }
+
+    SQLNode *GetEnd() const {
+        return end_;
     }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    std::string GetOrgTableName() const {
-        return org_table_name_;
-    }
-
-    std::string GetAliasTableName() const {
-        return alias_table_name_;
-    }
-
 private:
-    std::string org_table_name_;
-    std::string alias_table_name_;
+    SQLNodeType frame_type_;
+    SQLNode *start_;
+    SQLNode *end_;
 };
 
-class FuncNode : SQLNode {
+class WindowDefNode : public SQLNode {
+public:
+    WindowDefNode()
+        : SQLNode(kWindowDef, 0, 0), window_name_(""), frame_ptr_(NULL) {};
+
+    ~WindowDefNode() {
+    }
+
+    std::string GetName() const {
+        return window_name_;
+    }
+
+    void SetName(const std::string &name) {
+        window_name_ = name;
+    }
+
+    NodePointVector &GetPartitions() {
+        return partition_list_ptr_;
+    }
+
+    NodePointVector &GetOrders() {
+        return order_list_ptr_;
+    }
+
+    SQLNode *GetFrame() const {
+        return frame_ptr_;
+    }
+
+    void SetFrame(SQLNode *frame) {
+        frame_ptr_ = frame;
+    }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+private:
+    std::string window_name_;            /* window's own name */
+    SQLNode *frame_ptr_;    /* expression for starting bound, if any */
+    NodePointVector partition_list_ptr_;    /* PARTITION BY expression list */
+    NodePointVector order_list_ptr_;    /* ORDER BY (list of SortBy) */
+};
+
+class FuncNode : FnNode {
 
 public:
-    FuncNode() : SQLNode(kFunc, 0, 0), function_name_(""), over_(nullptr) {};
+    FuncNode() : FnNode(kFunc), is_agg_(true), function_name_(""), over_(nullptr) {};
     FuncNode(const std::string &function_name)
-        : SQLNode(kFunc, 0, 0), function_name_(function_name), over_(nullptr) {};
+        : FnNode(kFunc), is_agg_(true), function_name_(function_name), over_(nullptr) {};
 
     ~FuncNode() {
     }
@@ -482,10 +466,6 @@ public:
         return function_name_;
     }
 
-    NodePointVector &GetArgs() {
-        return args_;
-    }
-
     WindowDefNode *GetOver() const {
         return over_;
     }
@@ -493,102 +473,196 @@ public:
     void SetOver(WindowDefNode *over) {
         over_ = over;
     }
+
+    bool GetIsAgg() const {
+        return is_agg_;
+    }
+
+    void SetAgg(bool is_agg) {
+        is_agg_ = is_agg;
+    }
+    NodePointVector &GetArgs() {
+        return args_;
+    }
+
 private:
+    bool is_agg_;
     std::string function_name_;
-    NodePointVector args_;
     WindowDefNode *over_;
+    NodePointVector args_;
+
 };
 
-class ConstNode : public SQLNode {
-
+class SQLExprNode : public SQLNode {
 public:
-    ConstNode() : SQLNode(kNull, 0, 0) {
-    }
-    ConstNode(int val) : SQLNode(kInt, 0, 0) {
-        val_.vint = val;
-    }
-    ConstNode(long val) : SQLNode(kBigInt, 0, 0) {
-        val_.vlong = val;
-    }
-    ConstNode(float val) : SQLNode(kFloat, 0, 0) {
-        val_.vfloat = val;
+    SQLExprNode() : SQLNode(kExpr, 0, 0) {}
+
+    SQLExprNode(uint32_t line_num, uint32_t location) : SQLNode(kExpr, line_num, location) {}
+
+    ~SQLExprNode() {}
+};
+
+class ResTarget : public SQLNode {
+public:
+    ResTarget() : SQLNode(kResTarget, 0, 0), name_(""), val_(nullptr) {}
+
+    ResTarget(const std::string &name, SQLNode *val) : SQLNode(kResTarget, 0, 0), name_(name), val_(val) {}
+
+    ~ResTarget() {
     }
 
-    ConstNode(double val) : SQLNode(kDouble, 0, 0) {
-        val_.vdouble = val;
+    std::string GetName() const {
+        return name_;
     }
 
-    ConstNode(const char *val) : SQLNode(kString, 0, 0) {
-        val_.vstr = val;
-    }
-    ConstNode(const std::string &val) : SQLNode(kString, 0, 0) {
-        val_.vstr = val.c_str();
+    SQLNode *GetVal() const {
+        return val_;
     }
 
-    ~ConstNode() {}
-    void Print(std::ostream &output, const std::string &org_tab) const {
-        SQLNode::Print(output, org_tab);
-        output << "\n";
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        output << tab << SPACE_ST;
-        switch (type_) {
-            case kInt:output << "value: " << val_.vint;
-                break;
-            case kBigInt:output << "value: " << val_.vlong;
-                break;
-            case kString:output << "value: " << val_.vstr;
-                break;
-            case kFloat:output << "value: " << val_.vfloat;
-                break;
-            case kDouble:output << "value: " << val_.vdouble;
-                break;
-            default:output << "value: unknow";
-        }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+private:
+    std::string name_;            /* column name or NULL */
+    SQLNode *val_;            /* the value expression to compute or assign */
+    NodePointVector indirection_;    /* subscripts, field names, and '*', or NIL */
+};
+
+class SelectStmt : public SQLNode {
+public:
+    SelectStmt() :
+        SQLNode(kSelectStmt, 0, 0),
+        distinct_opt_(0),
+        where_clause_ptr_(nullptr),
+        group_clause_ptr_(nullptr),
+        having_clause_ptr_(
+            nullptr),
+        order_clause_ptr_(nullptr),
+        limit_ptr_(nullptr) {
     }
 
-    int GetInt() {
-        return val_.vint;
+    ~SelectStmt() {
     }
 
-    long GetLong() {
-        return val_.vlong;
+    // Getter and Setter
+    NodePointVector &GetSelectList() {
+        return select_list_ptr_;
     }
 
-    const char *GetStr() {
-        return val_.vstr;
+    SQLNode *GetLimit() const {
+        return limit_ptr_;
     }
 
-    float GetFloat() {
-        return val_.vfloat;
+    NodePointVector &GetTableRefList() {
+        return tableref_list_ptr_;
     }
 
-    double GetDouble() {
-        return val_.vdouble;
+    NodePointVector &GetWindowList() {
+        return window_list_ptr_;
+    }
+
+    void SetLimit(SQLNode *limit) {
+        limit_ptr_ = limit;
+    }
+
+    int GetDistinctOpt() const {
+        return distinct_opt_;
+    }
+    // Print
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+private:
+    int distinct_opt_;
+    SQLNode *where_clause_ptr_;
+    SQLNode *group_clause_ptr_;
+    SQLNode *having_clause_ptr_;
+    SQLNode *order_clause_ptr_;
+    SQLNode *limit_ptr_;
+    NodePointVector select_list_ptr_;
+    NodePointVector tableref_list_ptr_;
+    NodePointVector window_list_ptr_;
+};
+
+class FnTypeNode : public FnNode {
+public:
+    FnTypeNode() : FnNode(kType) {};
+public:
+    DataType data_type_;
+};
+
+class FnParaNode : public FnNode {
+public:
+    FnParaNode() : FnNode(kFnPara) {};
+    FnParaNode(const std::string &name, const DataType &para_type) : FnNode(kFnPara), name_(name), para_type_(para_type) {};
+    std::string GetName() const {
+        return name_;
+    }
+
+    DataType GetParaType() {
+        return para_type_;
+    }
+private:
+    std::string name_;
+    DataType para_type_;
+};
+
+class FnNodeFnDef : public FnNode {
+public:
+    FnNodeFnDef() : FnNode(kFnDef) {};
+    FnNodeFnDef(const std::string &name, const DataType ret_type) : FnNode(kFnDef), name_(name), ret_type_(ret_type) {};
+    std::string GetName() const {
+        return name_;
+    }
+
+    DataType GetRetType() const {
+        return ret_type_;
     }
 
 private:
-    union {
-        int vint;        /* machine integer */
-        long vlong;        /* machine integer */
-        const char *vstr;        /* string */
-        float vfloat;
-        double vdouble;
-    } val_;
+    std::string name_;
+    DataType ret_type_;
 };
 
-class OtherSqlNode : public SQLNode {
+class FnBinaryExpr : public FnNode {
 public:
-    OtherSqlNode(SQLNodeType &type) : SQLNode(type, 0, 0) {}
-    OtherSqlNode(SQLNodeType &type, uint32_t line_num, uint32_t location) : SQLNode(type, line_num, location) {}
-    void AddChild(SQLNode *node) {};
+    FnBinaryExpr() : FnNode(kFnExprBinary) {};
+    FnBinaryExpr(FnOperator op) : FnNode(kFnExprBinary), op_(op) {};
+    FnOperator GetOp() const {
+        return op_;
+    }
+private:
+    FnOperator op_;
 };
 
-class UnknowSqlNode : public SQLNode {
+class FnUnaryExpr : public FnNode {
 public:
-    UnknowSqlNode() : SQLNode(kUnknow, 0, 0) {}
-    UnknowSqlNode(uint32_t line_num, uint32_t location) : SQLNode(kUnknow, line_num, location) {}
+    FnUnaryExpr() : FnNode(kFnExprUnary) {};
+    FnUnaryExpr(FnOperator op) : FnNode(kFnExprUnary), op_(op) {};
+    FnOperator GetOp() const {
+        return op_;
+    }
+private:
+    FnOperator op_;
+};
 
-    void AddChild(SQLNode *node) {};
+class FnIdNode : public FnNode {
+public:
+    FnIdNode() : FnNode(kFnId) {};
+    FnIdNode(const std::string &name) : FnNode(kFnId), name_(name) {};
+    std::string GetName() const {
+        return name_;
+    }
+private:
+    std::string name_;
+};
+
+class FnAssignNode : public FnNode {
+public:
+    FnAssignNode(const std::string &name) : FnNode(kFnAssignStmt), name_(name) {};
+    std::string GetName() const {
+        return name_;
+    }
+private:
+    std::string name_;
 };
 
 std::string WindowOfExpression(SQLNode *node_ptr);

@@ -15,7 +15,7 @@
  */
 #include "gtest/gtest.h"
 #include "sql_node.h"
-#include "node_memory.h"
+#include "node_manager.h"
 #include <strstream>
 
 namespace fesql {
@@ -38,13 +38,13 @@ protected:
 TEST_F(SqlListNodeTest, PushFrontTest) {
     SQLNodeList *pList = manager_->MakeNodeList();
 
-    ASSERT_EQ(0, pList->Size());
+    ASSERT_EQ(0, pList->GetSize());
 
     pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(1)));
     pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(2)));
     pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(3)));
 
-    ASSERT_EQ(3, pList->Size());
+    ASSERT_EQ(3, pList->GetSize());
     std::strstream out;
     pList->Print(out);
     std::cout << out.str() << std::endl;
@@ -53,12 +53,12 @@ TEST_F(SqlListNodeTest, PushFrontTest) {
 TEST_F(SqlListNodeTest, AppendNodeListTest) {
     SQLNodeList *pList = manager_->MakeNodeList();
     pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(1)));
-    ASSERT_EQ(1, pList->Size());
+    ASSERT_EQ(1, pList->GetSize());
 
     SQLNodeList *pList2 = manager_->MakeNodeList();
     pList2->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(2)));
     pList2->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(3)));
-    ASSERT_EQ(2, pList2->Size());
+    ASSERT_EQ(2, pList2->GetSize());
 
     pList->AppendNodeList(pList2);
     std::strstream out;

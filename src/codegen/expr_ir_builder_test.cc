@@ -32,7 +32,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 
-
+#include "node/node_manager.h"
 using namespace llvm;
 using namespace llvm::orc;
 
@@ -44,24 +44,25 @@ namespace codegen {
 class ExprIRBuilderTest : public ::testing::Test {
 
 public:
-    ExprIRBuilderTest() {}
-    ~ExprIRBuilderTest() {}
+    ExprIRBuilderTest() {
+        manager_ = new node::NodeManager();
+    }
+    ~ExprIRBuilderTest() {
+        delete manager_;
+    }
+protected:
+    node::NodeManager *manager_;
 };
 
-void GenAddExpr(::fesql::ast::FnNode** expr) {
+void GenAddExpr(node::NodeManager *manager, ::fesql::node::FnNode **expr) {
     //TODO free 
-    ::fesql::ast::FnBinaryExpr* bexpr = new ::fesql::ast::FnBinaryExpr();
-    bexpr->type = ::fesql::ast::kFnExprBinary;
-    bexpr->op = ::fesql::ast::kFnOpAdd;
-    ::fesql::ast::FnNodeInt32* i32_node = new ::fesql::ast::FnNodeInt32();
-    i32_node->type = ::fesql::ast::kFnPrimaryInt32;
-    i32_node->value = 1;
-    bexpr->children.push_back((::fesql::ast::FnNode*)i32_node);
-    ::fesql::ast::FnIdNode* id_node = new ::fesql::ast::FnIdNode();
-    id_node->name = "a";
-    id_node->type = ::fesql::ast::kFnId;
-    bexpr->children.push_back((::fesql::ast::FnNode*)id_node);
-    *expr = (::fesql::ast::FnNode*)bexpr;
+    new ::fesql::node::FnBinaryExpr(::fesql::node::kFnOpAdd);
+
+    ::fesql::node::FnNode *i32_node = (node::FnNode *) (manager->MakeConstNode(1));
+    ::fesql::node::FnNode *id_node = (node::FnNode *) (manager->MakeFnIdNode("a"));
+    ::fesql::node::FnNode
+        *bexpr = (node::FnNode *) (manager->MakeBinaryExprNode(i32_node, id_node, fesql::node::kFnOpAdd));
+    *expr = (::fesql::node::FnNode *) bexpr;
 }
 
 TEST_F(ExprIRBuilderTest, test_add_int32) {
@@ -71,20 +72,20 @@ TEST_F(ExprIRBuilderTest, test_add_int32) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     Function *load_fn =
-    Function::Create(FunctionType::get(Type::getInt32Ty(*ctx),
-                                         {Type::getInt32Ty(*ctx)}, 
-                                         false),
-                       Function::ExternalLinkage, "load_fn", m.get());
+        Function::Create(FunctionType::get(Type::getInt32Ty(*ctx),
+                                           {Type::getInt32Ty(*ctx)},
+                                           false),
+                         Function::ExternalLinkage, "load_fn", m.get());
     BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
     IRBuilder<> builder(entry_block);
-    Argument *arg0 = &*load_fn->arg_begin(); 
+    Argument *arg0 = &*load_fn->arg_begin();
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
     scope_var.AddVar("a", arg0);
     ExprIRBuilder expr_builder(entry_block, &scope_var);
-    ::fesql::ast::FnNode* node = NULL;
-    GenAddExpr(&node);
-    llvm::Value* output;
+    ::fesql::node::FnNode *node = NULL;
+    GenAddExpr(manager_, &node);
+    llvm::Value *output;
     bool ok = expr_builder.Build(node, &output);
     ASSERT_TRUE(ok);
     builder.CreateRet(output);
@@ -92,7 +93,7 @@ TEST_F(ExprIRBuilderTest, test_add_int32) {
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
-    int32_t (*decode)(int32_t) = (int32_t (*)(int32_t))load_fn_jit.getAddress();
+    int32_t (*decode)(int32_t) = (int32_t (*)(int32_t)) load_fn_jit.getAddress();
     int32_t ret = decode(1);
     ASSERT_EQ(ret, 2);
 }
@@ -100,7 +101,7 @@ TEST_F(ExprIRBuilderTest, test_add_int32) {
 } // namespace of codegen
 } // namespace of fesql
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();

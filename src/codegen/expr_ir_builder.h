@@ -20,7 +20,7 @@
 
 #include "llvm/IR/IRBuilder.h"
 #include "codegen/scope_var.h"
-#include "ast/fn_ast.h"
+#include "node/sql_node.h"
 
 namespace fesql {
 namespace codegen {
@@ -32,12 +32,12 @@ public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~ExprIRBuilder();
 
-    bool Build(const ::fesql::ast::FnNode* node, ::llvm::Value** output);
+    bool Build(const ::fesql::node::FnNode* node, ::llvm::Value** output);
 
-    bool BuildBinaryExpr(const ::fesql::ast::FnBinaryExpr* node, 
+    bool BuildBinaryExpr(const ::fesql::node::FnBinaryExpr* node,
                          ::llvm::Value** output);
 
-    bool BuildUnaryExpr(const ::fesql::ast::FnNode* node,
+    bool BuildUnaryExpr(const ::fesql::node::FnNode* node,
                         ::llvm::Value** output);
 
 private:

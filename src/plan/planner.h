@@ -7,7 +7,7 @@
 
 #endif //FESQL_PLANNER_H
 
-#include "node/node_memory.h"
+#include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "node/plan_node.h"
 #include "glog/logging.h"

@@ -48,7 +48,7 @@ else
     wget http://pkg.4paradigm.com/rtidb/dev/zlib-1.2.11.tar.gz
     tar zxf zlib-1.2.11.tar.gz 
     cd zlib-1.2.11
-    if [ ""$PLATFORM != "mac" ]
+    if [ ""$PLATFORM == "mac" ]
     then
         sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
     else
@@ -134,10 +134,14 @@ if [ -f "gperf_tool" ]
 then
     echo "gperf_tool exist"
 else
-    wget http://pkg.4paradigm.com/rtidb/dev/gperftools-2.5.tar.gz 
-    tar -zxvf gperftools-2.5.tar.gz 
-    cd gperftools-2.5 
-    ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler  --enable-static --prefix=${DEPS_PREFIX} 
+    #wget http://pkg.4paradigm.com/rtidb/dev/gperftools-2.5.tar.gz
+    #tar -zxvf gperftools-2.5.tar.gz
+    #cd gperftools-2.5
+    #wget https://github.com/gperftools/gperftools/releases/download/gperftools-2.7/gperftools-2.7.tar.gz
+    tar xaf gperftools-2.7.tar.gz
+    cd gperftools-2.7
+    #./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler  --enable-static --prefix=${DEPS_PREFIX}
+    ./configure --prefix=${DEPS_PREFIX}
     make -j2 >/dev/null
     make install
     cd -
@@ -161,7 +165,7 @@ else
     wget http://pkg.4paradigm.com/rtidb/dev/leveldb.tar.gz
     tar -zxvf leveldb.tar.gz
     cd leveldb
-    if [ ""$PLATFORM != "mac" ]
+    if [ ""$PLATFORM == "mac" ]
     then
         sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
     else

@@ -12,14 +12,17 @@
 namespace fesql {
 namespace node {
 
-int PlanNode::GetChildrenSize() {
-    return children_.size();
+
+void PlanNode::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << SPACE_ST << "plan[" << node::NameOfPlanNodeType(type_) << "]";
 }
+
 
 bool LeafPlanNode::AddChild(PlanNode *node) {
     LOG(WARNING) << "cannot add child into leaf plan node";
     return false;
 }
+
 
 bool UnaryPlanNode::AddChild(PlanNode *node) {
     if (children_.size() >= 1) {
@@ -29,6 +32,7 @@ bool UnaryPlanNode::AddChild(PlanNode *node) {
     children_.push_back(node);
     return true;
 }
+
 void UnaryPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
@@ -43,6 +47,7 @@ bool BinaryPlanNode::AddChild(PlanNode *node) {
     children_.push_back(node);
     return true;
 }
+
 void BinaryPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PlanNode::Print(output, org_tab);
@@ -53,8 +58,28 @@ bool MultiChildPlanNode::AddChild(PlanNode *node) {
     children_.push_back(node);
     return true;
 }
+
 void MultiChildPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
+    output << "\n";
+    PrintPlanVector(output, org_tab + INDENT, children_, "children", true);
+}
+
+void ProjectPlanNode::Print(std::ostream &output, const std::string &orgTab) const {
+    PlanNode::Print(output, orgTab);
+    output << "\n";
+    PrintSQLNode(output, orgTab, expression_, "expression", true);
+
+}
+
+void ProjectListPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    if (w_.empty()) {
+        PrintPlanVector(output, org_tab + INDENT, projects, "projects on table " + table_, true);
+    } else {
+        PrintPlanVector(output, org_tab + INDENT, projects, "projects on window " + w_, true);
+    }
     output << "\n";
     PrintPlanVector(output, org_tab + INDENT, children_, "children", true);
 }
@@ -62,6 +87,8 @@ void MultiChildPlanNode::Print(std::ostream &output, const std::string &org_tab)
 std::string NameOfPlanNodeType(const PlanType &type) {
     switch (type) {
         case kSelect:return std::string("kSelect");
+        case kPlanTypeScan:return std::string("kScan");
+        case kPlanTypeLimit:return std::string("kLimit");
         case kProjectList:return std::string("kProjectList");
         case kProject:return std::string("kProject");
         case kScalarFunction:return std::string("kScalarFunction");
@@ -77,6 +104,7 @@ std::ostream &operator<<(std::ostream &output, const PlanNode &thiz) {
     thiz.Print(output, "");
     return output;
 }
+
 
 void PrintPlanVector(std::ostream &output,
                      const std::string &tab,
@@ -115,20 +143,5 @@ void PrintPlanNode(std::ostream &output,
     }
 }
 
-void ProjectPlanNode::Print(std::ostream &output, const std::string &orgTab) const {
-    PlanNode::Print(output, orgTab);
-    output << "\n";
-    PrintSQLNode(output, orgTab, expression_, "expression", true);
-
-}
-void ProjectListPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
-    PlanNode::Print(output, org_tab);
-    output << "\n";
-    if (w_.empty()) {
-        PrintPlanVector(output, org_tab + INDENT, projects, "projects on table " + table_, true);
-    } else {
-        PrintPlanVector(output, org_tab + INDENT, projects, "projects on window " + w_, true);
-    }
-}
 }
 }
