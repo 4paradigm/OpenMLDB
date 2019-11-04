@@ -50,7 +50,7 @@ else
     cd zlib-1.2.11
     if [ ""$PLATFORM != "mac" ]
     then
-        gsed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
+        sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
     else
         sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
     fi
@@ -163,7 +163,7 @@ else
     cd leveldb
     if [ ""$PLATFORM != "mac" ]
     then
-        gsed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
+        sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
     else
         sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
     fi
@@ -213,8 +213,8 @@ else
     then
         rm -rf incubator-brpc
     fi
-    git clone https://github.com/apache/incubator-brpc.git
-
+    wget http://pkg.4paradigm.com/fesql/incubator-brpc.tar.gz
+    tar -zxvf incubator-brpc.tar.gz
     BRPC_DIR=$DEPS_SOURCE/incubator-brpc
     cd incubator-brpc
     if [ ""$PLATFORM != "mac" ]
@@ -242,38 +242,6 @@ else
     cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC ..  && make && make install
     cd ${DEPS_SOURCE}
     touch zk_succ
-fi
-
-if [ -f "rocksdb_succ" ]
-then
-    echo "rocksdb exist"
-else
-    echo "start install rocksdb ..."
-    # rocksdb
-    wget http://pkg.4paradigm.com/rtidb/dev/rocksdb-5.18.3.tar.gz >/dev/null
-    tar zxf rocksdb-5.18.3.tar.gz  >/dev/null
-    cd rocksdb-5.18.3
-    export CPPFLAGS=-I${DEPS_PREFIX}/include
-    export LDFLAGS=-L${DEPS_PREFIX}/lib
-    make static_lib -j2 >/dev/null
-    cp -rf ./include/* ${DEPS_PREFIX}/include
-    cp librocksdb.a ${DEPS_PREFIX}/lib
-    cd -
-    touch rocksdb_succ
-    echo "install rocksdb done"
-fi
-
-
-if [ -f "jit_succ" ]
-then 
-    echo "jit exist"
-else
-    wget --no-check-certificate -O libjit-0.1.4.tar.gz http://git.savannah.gnu.org/cgit/libjit.git/snapshot/libjit-0.1.4.tar.gz
-    tar zxf libjit-0.1.4.tar.gz
-    cd libjit-0.1.4
-    ./bootstrap && ./configure --prefix=${DEPS_PREFIX} && make install
-    cd -
-    touch jit_succ
 fi
 
 if [ -f "abseil_succ" ]
@@ -313,24 +281,6 @@ else
     touch flex_succ
 fi
 
-if [ -f "flatc_succ" ]
-then
-    echo "flatc exist"
-else
-    wget --no-check-certificate -O 1.11.0.tar.gz https://github.com/google/flatbuffers/archive/1.11.0.tar.gz
-    tar zxf 1.11.0.tar.gz
-    cd flatbuffers-1.11.0 &&  mkdir cmake-build
-    if [ ""$PLATFORM != "mac" ]
-    then
-        cd cmake-build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
-    else
-        cd cmake-build && cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
-    fi
-    make -j4 && make install
-    cd ${DEPS_SOURCE}
-    touch flatc_succ
-fi
-
 if [ -f "benchmark_succ" ]
 then
     echo "benchmark exist"
@@ -362,7 +312,7 @@ if [ -d "xz-5.2.4" ]
 then
     echo "zx exist"
 else
-    wget --no-check-certificate -O xz-5.2.4.tar.gz https://tukaani.org/xz/xz-5.2.4.tar.gz
+    wget --no-check-certificate -O xz-5.2.4.tar.gz http://pkg.4paradigm.com/fesql/xz-5.2.4.tar.gz
     tar -zxvf xz-5.2.4.tar.gz
     cd xz-5.2.4 && ./configure --prefix=${DEPS_PREFIX} && make -j4 && make install
     cd -

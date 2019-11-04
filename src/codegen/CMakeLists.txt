@@ -11,10 +11,10 @@ target_link_libraries(ir_base_builder_test ${llvm_libs} ${COMMON_LIBS} gtest pth
 add_test(ir_base_builder_test ir_base_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/ir_base_builder_test.xml)
 list(APPEND test_list ir_base_builder_test)
 
-add_executable(flatbuf_ir_builder_test flatbuf_ir_builder_test.cc)
-target_link_libraries(flatbuf_ir_builder_test fesql_codegen fesql_proto ${llvm_libs} protobuf ${COMMON_LIBS} gtest pthread)
-add_test(flatbuf_ir_builder_test flatbuf_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/flatbuf_ir_builder_test.xml)
-list(APPEND test_list flatbuf_ir_builder_test)
+#add_executable(flatbuf_ir_builder_test flatbuf_ir_builder_test.cc)
+#target_link_libraries(flatbuf_ir_builder_test fesql_codegen fesql_proto ${llvm_libs} protobuf ${COMMON_LIBS} gtest pthread)
+#add_test(flatbuf_ir_builder_test flatbuf_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/flatbuf_ir_builder_test.xml)
+#list(APPEND test_list flatbuf_ir_builder_test)
 
 add_executable(expr_ir_builder_test expr_ir_builder_test.cc)
 target_link_libraries(expr_ir_builder_test gflags fesql_codegen ${llvm_libs} ${COMMON_LIBS} gtest pthread)

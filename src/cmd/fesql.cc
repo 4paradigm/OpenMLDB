@@ -19,7 +19,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sched.h>
-#include <unistd.h>
 #include <iostream>
 #include <sstream>
 
@@ -29,7 +28,7 @@
 #include "brpc/server.h"
 #include "base/linenoise.h"
 #include "base/strings.h"
-#include "version.h"
+#include "cmd/version.h"
 
 DECLARE_string(endpoint);
 DECLARE_int32(port);
@@ -61,8 +60,10 @@ void StartDBMS(char* argv[]) {
     }
 
     std::ostringstream oss;
-    oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "." << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
-    LOG(INFO) <<  "start dbms on port " << FLAGS_port << " with version " << oss.str();
+    oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM
+        << "." << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
+    LOG(INFO) <<  "start dbms on port " << FLAGS_port
+        << " with version " << oss.str();
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
@@ -87,24 +88,25 @@ void HandleCreateGroup(const std::vector<std::string>& args) {
     dbms_sdk->CreateGroup(group, status);
     if (status.code == 0) {
         std::cout << "Create group " << args[2] << " success" << std::endl;
-    }else {
-        std::cout << "Create group failed with error " << status.msg << std::endl;
+    } else {
+        std::cout << "Create group failed with error "
+            << status.msg << std::endl;
     }
 }
 
 void StartClient() {
     std::cout << "Welcome to FeSQL "<< FESQL_VERSION_MAJOR
-              << "." << FESQL_VERSION_MEDIUM 
-              << "." << FESQL_VERSION_MINOR 
+              << "." << FESQL_VERSION_MEDIUM
+              << "." << FESQL_VERSION_MINOR
               << "." << FESQL_VERSION_BUG << std::endl;
     std::string display_prefix =  ">";
     while (true) {
         std::string buf;
-    	char *line = ::fesql::base::linenoise(display_prefix.c_str());
+        char *line = ::fesql::base::linenoise(display_prefix.c_str());
         if (line == NULL) {
             return;
         }
-        if (line[0] != '\0' && line[0] != '/') { 
+        if (line[0] != '\0' && line[0] != '/') {
             buf.assign(line);
             if (!buf.empty()) {
                 ::fesql::base::linenoiseHistoryAdd(line);
@@ -122,17 +124,17 @@ void StartClient() {
             }
         }
     }
-
 }
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-	if (FLAGS_role == "dbms") {
+    if (FLAGS_role == "dbms") {
         StartDBMS(argv);
     } else if (FLAGS_role == "client") {
         StartClient();
     } else {
-        std::cout << "Start failed! FLAGS_role must be tablet, client, dbms" << std::endl;
+        std::cout << "Start failed! FLAGS_role must be tablet, client, dbms"
+            << std::endl;
         return 1;
     }
     return 0;

@@ -17,8 +17,8 @@ find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 configure_file (
-      "${PROJECT_SOURCE_DIR}/src/version.h.in"
-      "${PROJECT_SOURCE_DIR}/src/version.h"
+      "${PROJECT_SOURCE_DIR}/src/cmd/version.h.in"
+      "${PROJECT_SOURCE_DIR}/src/cmd/version.h"
 )
 option(TESTING_ENABLE "Enable Test" ON)
 option(COVERAGE_ENABLE "Enable Coverage" ON) 
