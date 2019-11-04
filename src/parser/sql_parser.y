@@ -85,7 +85,6 @@ typedef void* yyscan_t;
 %token <strval> NEWLINES
 %token <intval> INDENT
 %token <strval> DEF
-%token <strval> RETURN
 %token <strval> SPACE
 
 %token ADD
@@ -328,9 +327,9 @@ typedef void* yyscan_t;
 
 %type <type> types
 %type <fnnode> grammar line_list primary var
-             indented fn_def return_stmt assign_stmt para plist fn_expr
+             fn_def return_stmt assign_stmt para plist fn_expr
              fun_def_block fn_def_indent_op stmt_block func_stmts func_stmt
-%type <node>  sql_stmt stmt select_stmt select_opts select_expr expr
+%type <node>  sql_stmt stmt select_stmt expr
               opt_all_clause
               table_factor table_reference
               column_ref
@@ -341,8 +340,7 @@ typedef void* yyscan_t;
 
 %type <target> projection
 
-%type <list> val_list opt_val_list
-            opt_target_list
+%type <list> opt_target_list
             select_projection_list expr_list
             table_references
             opt_sort_clause sort_clause sortby_list
@@ -355,7 +353,7 @@ typedef void* yyscan_t;
                opt_existing_window_name
 
 %type <intval> opt_window_exclusion_clause
-%type <node> index_list opt_for_join
+%type <node> opt_for_join
 
 
 %start grammar
@@ -598,38 +596,6 @@ relation_factor:
     relation_name
     { $$ = $1; }
 
-index_hint:
-     USE KEY opt_for_join '(' index_list ')'
-                  { emit("INDEXHINT %d %d", $5, 010+$3); }
-   | IGNORE KEY opt_for_join '(' index_list ')'
-                  { emit("INDEXHINT %d %d", $5, 020+$3); }
-   | FORCE KEY opt_for_join '(' index_list ')'
-                  { emit("INDEXHINT %d %d", $5, 030+$3); }
-   | /* nil */
-   ;
-
-index_list: NAME  { emit("INDEX %s", $1); free($1); }
-   | index_list ',' NAME { emit("INDEX %s", $3); free($3); $$ = $1 + 1; }
-   ;
-
-opt_for_join: FOR JOIN { }
-   | /* nil */ { $$ = 0; }
-   ;
-
-opt_as: AS
-  | /* nil */
-  ;
-
-opt_as_alias: AS NAME {
-                        emit("enter opt as alias");
-                        emit ("ALIAS %s", $2); free($2); }
-  | NAME              {  emit("enter opt as alias");
-                        emit ("ALIAS %s", $1); free($1); }
-  | /* nil */           { emit("enter opt as alias");}
-  ;
-
-
-
 
 /**** expressions ****/
 expr_list:
@@ -645,14 +611,12 @@ expr_list:
     }
   ;
 
-expr :
-     | simple_expr   { $$ = $1; }
+expr : simple_expr   { $$ = $1; }
      | func_expr  { $$ = $1; }
-
      ;
 
 fn_expr:
-    | fn_expr '+' fn_expr {
+    fn_expr '+' fn_expr {
             $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAdd);
         }
     | fn_expr '-' fn_expr {
@@ -820,7 +784,7 @@ opt_frame_clause:
 		    ;
 
 opt_window_exclusion_clause:
-            | /*EMPTY*/				{ $$ = 0; }
+             /*EMPTY*/				{ $$ = 0; }
             ;
 frame_extent: frame_bound
 				{
