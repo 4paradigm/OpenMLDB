@@ -17,7 +17,7 @@
 
 #include "dbms/dbms_server_impl.h"
 #include "brpc/server.h"
-#include "absl/time.h"
+#include "absl/time/time.h"
 
 namespace fesql {
 namespace dbms {
@@ -31,13 +31,14 @@ void DBMSServerImpl::AddGroup(RpcController* ctr,
             Closure* done) {
 
     brpc::ClosureGuard done_guard(done);
-    if (request->name().isEmpty()) {
+    if (request->name().empty()) {
         ::fesql::common::Status* status = response->mutable_status();
-        status->set_code(::fesql::common::kOK);
+        status->set_code(::fesql::common::kBadRequest);
         status->set_msg("group name is empty");
         LOG(WARNING) << "create group failed for name is empty";
         return;
     }
+
     std::lock_guard<std::mutex> lock(mu_);
     Groups::iterator it = groups_.find(request->name());
     if (it != groups_.end()) {
@@ -47,12 +48,14 @@ void DBMSServerImpl::AddGroup(RpcController* ctr,
         LOG(WARNING) << "create group failed for name existing";
         return;
     }
-    ::fesql::type::Groups& group = groups_[request->name()];
+
+    ::fesql::type::Group& group = groups_[request->name()];
     group.set_name(request->name());
-
+    ::fesql::common::Status* status = response->mutable_status();
+    status->set_code(::fesql::common::kOk);
+    status->set_msg("ok");
+    LOG(INFO) << "create group " << request->name() << " done";
 }
-
-
 
 } // namespace of dbms
 } // namespace of fesql

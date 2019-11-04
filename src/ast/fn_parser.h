@@ -1,5 +1,5 @@
 /*
- * hash_mk.cc
+ * fn_parser.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,15 +15,26 @@
  * limitations under the License.
  */
 
-#include "base/hash.h"
-#include "benchmark/benchmark.h"
+#ifndef AST_FN_PARSER_H_
+#define AST_FN_PARSER_H_
 
-static void BM_HashFunction(benchmark::State& state) {
-  for (auto _ : state) {
-	int32_t i = -1;
-    benchmark::DoNotOptimize(::fesql::base::MurmurHash64A(&i, 4, 0xe17a1465));
-  }
-}
+#include "ast/fn_ast.h"
+#include "ast/fn_parser.gen.h"
 
-BENCHMARK(BM_HashFunction);
-BENCHMARK_MAIN();
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void* yyscan_t;
+#endif
+
+#ifndef YY_TYPEDEF_YY_BUFFER_STATE
+#define YY_TYPEDEF_YY_BUFFER_STATE
+typedef struct yy_buffer_state *YY_BUFFER_STATE;
+#endif
+
+
+extern YY_BUFFER_STATE fn_scan_string ( const char *yy_str , yyscan_t yyscanner );
+extern int fnlex_init (yyscan_t* scanner);
+extern int fnparse (yyscan_t scanner, ::fesql::ast::FnNode* root);
+extern int fnlex_destroy ( yyscan_t yyscanner );
+
+#endif /* !AST_FN_PARSER_H_ */

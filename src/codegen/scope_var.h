@@ -1,5 +1,5 @@
 /*
- * dbms_server_impl.h
+ * scope_var.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,38 +15,36 @@
  * limitations under the License.
  */
 
-#ifndef FESQL_DBMS_SERVER_IMPL_H_
-#define FESQL_DBMS_SERVER_IMPL_H_
+#ifndef CODEGEN_SCOPE_VAR_H_
+#define CODEGEN_SCOPE_VAR_H_
 
-#include "proto/dbms.pb.h"
-#include "proto/type.pb.h"
-#include <mutex>
+#include <vector>
 #include <map>
+#include "llvm/IR/IRBuilder.h"
 
 namespace fesql {
-namespace dbms {
+namespace codegen {
 
-using ::google::protobuf::RpcController;
-using ::google::protobuf::Closure;
-
-typedef std::map<std::string, ::fesql::type::Group> Groups;
-
-class DBMSServerImpl : public DBMSServer {
-
-public:
-    DBMSServerImpl();
-    ~DBMSServerImpl();
-
-    void AddGroup(RpcController* ctr,
-            const AddGroupRequest* request,
-            AddGroupResponse* response,
-            Closure* done);
-
-private:
-    std::mutex mu_;
-    Groups groups_;
+struct Scope {
+    std::string name;
+    std::map<std::string, ::llvm::Value*> scope_map;
 };
 
-} // namespace of dbms
+typedef std::vector<Scope> Scopes;
+
+class ScopeVar {
+public:
+    ScopeVar();
+    ~ScopeVar();
+    bool Enter(const std::string& name);
+    bool Exit(const std::string& name);
+    bool AddVar(const std::string& name, ::llvm::Value*);
+    bool FindVar(const std::string& name, ::llvm::Value** value);
+
+private:
+    Scopes scopes_;
+};
+
+} // namespace of codegen
 } // namespace of fesql
-#endif /* !FESQL_DBMS_SERVER_IMPL_H_ */
+#endif /* !CODEGEN_SCOPE_VAR_H_ */

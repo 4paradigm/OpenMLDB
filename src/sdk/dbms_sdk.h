@@ -1,5 +1,5 @@
 /*
- * hash_mk.cc
+ * dbms_sdk.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,15 +15,27 @@
  * limitations under the License.
  */
 
-#include "base/hash.h"
-#include "benchmark/benchmark.h"
+#ifndef FESQL_DBMS_SDK_H_
+#define FESQL_DBMS_SDK_H_
 
-static void BM_HashFunction(benchmark::State& state) {
-  for (auto _ : state) {
-	int32_t i = -1;
-    benchmark::DoNotOptimize(::fesql::base::MurmurHash64A(&i, 4, 0xe17a1465));
-  }
-}
+namespace fesql {
+namespace sdk {
 
-BENCHMARK(BM_HashFunction);
-BENCHMARK_MAIN();
+struct GroupDef {
+    std::string name;
+};
+
+class DBMSSdk {
+
+public:
+    DBMSSdk(const std::string& endpoint);
+    ~DBMSSdk();
+    bool Init();
+    int32_t CreateGroup(const GroupDef& group);
+private:
+    std::string endpoint_;
+};
+
+} // namespace of sdk
+} // namespace of fesql
+#endif /* !FESQL_DBMS_SDK_H_ */
