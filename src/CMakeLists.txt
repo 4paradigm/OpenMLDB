@@ -5,6 +5,7 @@ add_subdirectory(analyser)
 add_subdirectory(plan)
 add_subdirectory(proto)
 add_subdirectory(codegen)
+add_subdirectory(storage)
 add_subdirectory(dbms)
 add_subdirectory(sdk)
 
