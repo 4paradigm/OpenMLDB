@@ -2,9 +2,7 @@ image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.7
 stages:
     - build
     - ut
-    - it-tablet
-    - it-ns
-    - integration-test
+    - it
 
 build_rtidb_and_case:
     stage: build
@@ -44,7 +42,7 @@ java_ut:
                 - java/target/failsafe-reports/TEST-*.xml
 
 tablet_one_demension:
-    stage: it-tablet
+    stage: it
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
@@ -58,7 +56,7 @@ tablet_one_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 tablet_multi_demension:
-    stage: it-tablet
+    stage: it
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
@@ -72,7 +70,7 @@ tablet_multi_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 ns_one_demension:
-    stage: it-ns
+    stage: it
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
@@ -86,7 +84,7 @@ ns_one_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 ns_multi_demension:
-    stage: it-ns
+    stage: it
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
@@ -99,8 +97,8 @@ ns_multi_demension:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
 
-integration-test:
-    stage: integration-test
+multi-storage:
+    stage: it
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
