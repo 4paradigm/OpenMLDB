@@ -377,8 +377,6 @@ select_stmt:
             }
     ;
 
-create_stmt: CREATE TABLE 
-
 
 opt_all_clause:
         ALL										{ $$ = NULL;}
@@ -523,7 +521,6 @@ simple_expr:
         { $$ = $1; }
     | expr_const
         { $$ = $1; }
-
     ;
 
 expr_const:
