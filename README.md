@@ -66,5 +66,13 @@ list(APPEND test_list flatbuf_ir_builder_test)
 
 ## 规范检查
 
-请使用tools/cpplint.py 检查代码规范
+请使用tools/cpplint.py 检查代码规范,
+如果有一些格式问题，可以使用clang-format去格式化代码
+```
+tools/cpplint.py  filename
+clang-format filename
+```
+
+
+
 
