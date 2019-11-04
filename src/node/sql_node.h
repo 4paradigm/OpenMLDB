@@ -28,14 +28,22 @@ namespace node {
 // Global methods
 std::string NameOfSQLNodeType(const SQLNodeType &type);
 
+inline const std::string DataTypeName(const DataType &type) {
+    switch (type) {
+        case kTypeBool:return "bool";
+        case kTypeInt16:return "int16";
+        case kTypeInt32:return "int32";
+        case kTypeInt64:return "int64";
+        case kTypeFloat:return "float";
+        case kTypeDouble:return "double";
+        case kTypeString:return "string";
+        case kTypeNull:return "null";
+        default: return "unknownType";
+    }
+}
+
 inline const std::string FnNodeName(const SQLNodeType &type) {
     switch (type) {
-        case kFnPrimaryBool:return "bool";
-        case kFnPrimaryInt16:return "int16";
-        case kFnPrimaryInt32:return "int32";
-        case kFnPrimaryInt64:return "int64";
-        case kFnPrimaryFloat:return "float";
-        case kFnPrimaryDouble:return "double";
         case kFnDef:return "def";
         case kFnValue:return "value";
         case kFnId:return "id";
@@ -49,7 +57,6 @@ inline const std::string FnNodeName(const SQLNodeType &type) {
         case kFnList:return "funlist";
         default: return "unknowFn";
     }
-
 }
 
 class SQLNode {
@@ -585,46 +592,77 @@ public:
 class FnParaNode : public FnNode {
 public:
     FnParaNode() : FnNode(kFnPara) {};
-public:
-    std::string name;
-    SQLNodeType para_type;
+    FnParaNode(const std::string &name, const DataType &para_type) : FnNode(kFnPara), name_(name), para_type_(para_type) {};
+    std::string GetName() const {
+        return name_;
+    }
+
+    DataType GetParaType() {
+        return para_type_;
+    }
+private:
+    std::string name_;
+    DataType para_type_;
 };
 
 class FnNodeFnDef : public FnNode {
 public:
     FnNodeFnDef() : FnNode(kFnDef) {};
+    FnNodeFnDef(const std::string &name, const DataType ret_type) : FnNode(kFnDef), name_(name), ret_type_(ret_type) {};
+    std::string GetName() const {
+        return name_;
+    }
 
-public:
-    char *name;
-    SQLNodeType ret_type;
+    DataType GetRetType() const {
+        return ret_type_;
+    }
+
+private:
+    std::string name_;
+    DataType ret_type_;
 };
 
 class FnBinaryExpr : public FnNode {
 public:
     FnBinaryExpr() : FnNode(kFnExprBinary) {};
-public:
-    FnOperator op;
+    FnBinaryExpr(FnOperator op) : FnNode(kFnExprBinary), op_(op) {};
+    FnOperator GetOp() const {
+        return op_;
+    }
+private:
+    FnOperator op_;
 };
 
 class FnUnaryExpr : public FnNode {
 public:
     FnUnaryExpr() : FnNode(kFnExprUnary) {};
-public:
-    FnOperator op;
+    FnUnaryExpr(FnOperator op) : FnNode(kFnExprUnary), op_(op) {};
+    FnOperator GetOp() const {
+        return op_;
+    }
+private:
+    FnOperator op_;
 };
 
 class FnIdNode : public FnNode {
 public:
     FnIdNode() : FnNode(kFnId) {};
-public:
-    std::string name;
+    FnIdNode(const std::string &name) : FnNode(kFnId), name_(name) {};
+    std::string GetName() const {
+        return name_;
+    }
+private:
+    std::string name_;
 };
 
 class FnAssignNode : public FnNode {
 public:
-    FnAssignNode() : FnNode(kFnAssignStmt) {};
-public:
-    std::string name;
+    FnAssignNode(const std::string &name) : FnNode(kFnAssignStmt), name_(name) {};
+    std::string GetName() const {
+        return name_;
+    }
+private:
+    std::string name_;
 };
 
 std::string WindowOfExpression(SQLNode *node_ptr);

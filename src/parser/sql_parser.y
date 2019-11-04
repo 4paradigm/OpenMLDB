@@ -47,6 +47,7 @@ typedef void* yyscan_t;
 	int subtok;
 	::fesql::node::SQLNode* node;
 	::fesql::node::FnNode* fnnode;
+	::fesql::node::DataType type;
 	::fesql::node::SQLNode* target;
 	::fesql::node::SQLNodeList* list;
 }
@@ -325,7 +326,8 @@ typedef void* yyscan_t;
 %token FDATE_ADD FDATE_SUB
 %token FCOUNT
 
-%type <fnnode> grammar line_list primary var types
+%type <type> types
+%type <fnnode> grammar line_list primary var
              indented fn_def return_stmt assign_stmt para plist fn_expr
              fun_def_block fn_def_indent_op stmt_block func_stmts func_stmt
 %type <node>  sql_stmt stmt select_stmt select_opts select_expr expr
@@ -396,9 +398,13 @@ fun_def_block : fn_def_indent_op NEWLINES stmt_block {
             emit("enter fun_def_block");
             $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
             $$->AddChildren($1);
-            $$->AddChildren($3);
+            for (auto item: $3->children) {
+                $$->AddChildren(item);
+            }
         }
         ;
+
+
 fn_def_indent_op:
         fn_def {
             $$ = $1;
@@ -448,7 +454,7 @@ func_stmt:
 
 fn_def :
        DEF SPACE  NAME'(' plist ')' ':' types {
-            $$ = node_manager->MakeFnDefNode($3, $5, $8->GetType());
+            $$ = node_manager->MakeFnDefNode($3, $5, $8);
        };
 
 assign_stmt: NAME '=' fn_expr {
@@ -461,7 +467,7 @@ return_stmt:
            };
 
 types: I32 {
-            $$ = node_manager->MakeTypeNode(::fesql::node::kTypeInt32);
+            $$ = ::fesql::node::kTypeInt32;
            }
        ;
 
@@ -475,12 +481,14 @@ plist:
      };
 
 para: NAME ':' types {
-        $$ = node_manager->MakeFnParaNode($1, $3->GetType());
+        $$ = node_manager->MakeFnParaNode($1, $3);
     };
 
-primary: NAME {
+primary:
+    INTNUM {
         $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1);
     };
+
 var: NAME {
         $$ = node_manager->MakeFnIdNode($1);
      };

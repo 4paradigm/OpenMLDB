@@ -40,21 +40,12 @@ bool ScopeVar::Enter(const std::string& name) {
     return true;
 }
 
-bool ScopeVar::Exit(const std::string& name) {
-    LOG(INFO) << "exit scope " << name;
+bool ScopeVar::Exit() {
     if (scopes_.size() <= 0) {
-        LOG(WARNING) << "exit scope failed with name " << name;
         return false;
     }
-
-    Scope& exist_scope = scopes_.back();
-    if (exist_scope.name.compare(name) == 0) {
-        scopes_.pop_back();
-        return true;
-    }
-
-    LOG(WARNING) << "exit scope failed for name mismatch " << " the current is "  << exist_scope.name << " the required is " << name;
-    return false;
+    scopes_.pop_back();
+    return true;
 }
 
 bool ScopeVar::AddVar(const std::string& name, ::llvm::Value* value) {

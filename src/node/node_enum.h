@@ -49,14 +49,6 @@ enum SQLNodeType {
     kFollowing,
     kCurrent,
 
-    //primary
-    kFnPrimaryBool,
-    kFnPrimaryInt16,
-    kFnPrimaryInt32,
-    kFnPrimaryInt64,
-    kFnPrimaryFloat,
-    kFnPrimaryDouble,
-
     // fn
     kFnDef,
     kFnValue,
@@ -73,6 +65,7 @@ enum SQLNodeType {
 };
 
 enum DataType {
+    kTypeBool,
     kTypeInt16,
     kTypeInt32,
     kTypeInt64,

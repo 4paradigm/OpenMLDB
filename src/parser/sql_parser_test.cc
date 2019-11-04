@@ -79,7 +79,8 @@ INSTANTIATE_TEST_CASE_P(UDFParse, SqlParserTest, testing::Values(
     // multi def fun
     "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend",
     // multi def fun with newlines
-    "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n"
+    "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n",
+    "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend"
 
 ));
 

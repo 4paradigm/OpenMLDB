@@ -26,26 +26,28 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var):blo
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
-bool ExprIRBuilder::Build(::fesql::node::FnNode* node,
+bool ExprIRBuilder::Build(const ::fesql::node::FnNode* node,
         ::llvm::Value** output) {
 
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
     }
-    if (node->GetType()== ::fesql::node::kFnExprBinary) {
+    //TODO use switch
+    if (node->GetType() == ::fesql::node::kFnExprBinary) {
         return BuildBinaryExpr((::fesql::node::FnBinaryExpr*)node, output);
+    }else {
+        return BuildUnaryExpr(node, output);
     }
-    return false;
 }
 
-bool ExprIRBuilder::BuildUnaryExpr(::fesql::node::FnNode* node,
+bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::FnNode* node,
         ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
     }
-
+    LOG(INFO) << "build unary " << ::fesql::node::FnNodeName(node->GetType());
     //TODO support more node
     ::llvm::IRBuilder<> builder(block_);
     switch (node->GetType()) {
@@ -68,26 +70,47 @@ bool ExprIRBuilder::BuildUnaryExpr(::fesql::node::FnNode* node,
         case ::fesql::node::kFnId:
             {
                 ::fesql::node::FnIdNode* id_node = (::fesql::node::FnIdNode*)node;
-                std::string id_name(id_node->name);
-                bool ok = scope_var_->FindVar(id_name, output);
-                return ok;
+                ::llvm::Value* ptr = NULL;
+                bool ok = scope_var_->FindVar(id_node->GetName(), &ptr);
+                if (!ok || ptr == NULL) {
+                    LOG(WARNING) << "fail to find var " << id_node->GetName();
+                    return false;
+                }
+                if (ptr->getType()->isPointerTy()) {
+                    *output = builder.CreateLoad(ptr, id_node->GetName().c_str());
+                }else {
+                    *output = ptr;
+                }
+                return true;
+            }
+        case ::fesql::node::kFnExprBinary:
+            {
+                return BuildBinaryExpr((::fesql::node::FnBinaryExpr*)node, output);
+            }
+        case ::fesql::node::kFnExprUnary:
+            {
+                return BuildUnaryExpr(node->children[0], output);
             }
         default:
+            LOG(WARNING) << ::fesql::node::FnNodeName(node->GetType()) << " not support";
             return false;
-
     }
 }
 
-bool ExprIRBuilder::BuildBinaryExpr(::fesql::node::FnBinaryExpr* node,
+bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::FnBinaryExpr* node,
         ::llvm::Value** output) {
+
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
     }
+
     if (node->children.size()  != 2) {
         LOG(WARNING) << "invalid binary expr node ";
         return false;
     }
+
+    LOG(INFO) << "build binary " << ::fesql::node::FnNodeName(node->GetType());
     ::llvm::Value* left = NULL;
     bool ok = BuildUnaryExpr(node->children[0], &left);
     if (!ok) {
@@ -101,17 +124,29 @@ bool ExprIRBuilder::BuildBinaryExpr(::fesql::node::FnBinaryExpr* node,
         LOG(WARNING) << "fail to build right node";
         return false;
     }
-    if (right->getType()->isIntegerTy() 
+
+    if (right->getType()->isIntegerTy()
             && left->getType()->isIntegerTy()) {
         ::llvm::IRBuilder<> builder(block_);
         //TODO type check
-        switch (node->op) {
+        switch (node->GetOp()) {
             case ::fesql::node::kFnOpAdd:
                 {
                     *output = builder.CreateAdd(left, right, "expr_add");
                     return true;
                 }
+            case ::fesql::node::kFnOpMulti:
+                {
+                    *output = builder.CreateMul(left, right, "expr_mul");
+                    return true;
+                }
+            case ::fesql::node::kFnOpMinus:
+                {
+                    *output = builder.CreateSub(left, right, "expr_sub");
+                    return true;
+                }
             default:
+                LOG(WARNING) << "invalid op ";
                 return false;
         }
     }else {

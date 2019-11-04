@@ -1,5 +1,5 @@
 /*
- * dbms_sdk.h
+ * flags.cc
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,34 +15,10 @@
  * limitations under the License.
  */
 
-#ifndef FESQL_DBMS_SDK_H_
-#define FESQL_DBMS_SDK_H_
-#include <string>
+#include <gflags/gflags.h>
+// cluster config
+DEFINE_string(endpoint, "", "config the ip and port that fesql serves for");
+DEFINE_int32(port, 0, "config the port that fesql serves for");
+DEFINE_int32(thread_pool_size, 8, "config the thread pool for dbms and tablet");
 
-namespace fesql {
-namespace sdk {
 
-struct GroupDef {
-    std::string name;
-};
-
-struct Status {
-    std::string msg;
-    int32_t code;
-};
-
-class DBMSSdk {
-
-public:
-    virtual ~DBMSSdk() {};
-    virtual void CreateGroup(const GroupDef& group,
-            Status& status) = 0;
-};
-
-// create a new dbms sdk with a endpoint
-// failed return NULL
-DBMSSdk* CreateDBMSSdk(const std::string& endpoint);
-
-} // namespace of sdk
-} // namespace of fesql
-#endif /* !FESQL_DBMS_SDK_H_ */

@@ -41,7 +41,6 @@ public:
             const AddGroupRequest* request,
             AddGroupResponse* response,
             Closure* done);
-
 private:
     std::mutex mu_;
     Groups groups_;

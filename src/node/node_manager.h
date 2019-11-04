@@ -93,6 +93,7 @@ public:
     SQLNode *MakeConstNode(float value);
     SQLNode *MakeConstNode(double value);
     SQLNode *MakeConstNode(const std::string &value);
+    SQLNode *MakeConstNode(const char *value);
     SQLNode *MakeConstNode();
 
     SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name);
@@ -103,11 +104,11 @@ public:
     FnNode *MakeFnNode(const SQLNodeType &type);
     FnNode *MakeFnIdNode(const std::string &name);
     FnNode *MakeTypeNode(const DataType &type);
-    FnNode *MakeFnDefNode(const std::string &name, FnNode *plist, SQLNodeType return_type);
+    FnNode *MakeFnDefNode(const std::string &name, FnNode *plist, const DataType return_type);
     FnNode *MakeBinaryExprNode(FnNode *left, FnNode *right, FnOperator op);
     FnNode *MakeUnaryExprNode(FnNode *left, FnOperator op);
 
-    FnNode *MakeFnParaNode(const std::string &name, SQLNodeType para_type);
+    FnNode *MakeFnParaNode(const std::string &name, const DataType &para_type);
     FnNode *MakeAssignNode(const std::string &name, FnNode *expression);
     FnNode *MakeReturnStmtNode(FnNode *value);
 
