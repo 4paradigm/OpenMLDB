@@ -113,6 +113,8 @@ PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
         }
 
         for (auto &v : project_list_map) {
+            node::ProjectListPlanNode * project_list = v.second;
+            project_list->AddChild(node_manager_->MakeSeqScanPlanNode(project_list->GetTable()));
             current_node->AddChild(v.second);
         }
     }

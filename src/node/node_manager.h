@@ -65,6 +65,8 @@ public:
     PlanNode *MakeBinaryPlanNode(const PlanType &type);
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     ProjectListPlanNode *MakeProjectListPlanNode(const std::string &table, const std::string &w);
+    ScanPlanNode *MakeSeqScanPlanNode(const std::string &table);
+    ScanPlanNode *MakeIndexScanPlanNode(const std::string &table);
     ProjectPlanNode *MakeProjectPlanNode(node::SQLNode *expression,
                                          const std::string &name,
                                          const std::string &table,

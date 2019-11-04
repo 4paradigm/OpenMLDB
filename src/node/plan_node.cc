@@ -80,11 +80,15 @@ void ProjectListPlanNode::Print(std::ostream &output, const std::string &org_tab
     } else {
         PrintPlanVector(output, org_tab + INDENT, projects, "projects on window " + w_, true);
     }
+    output << "\n";
+    PrintPlanVector(output, org_tab + INDENT, children_, "children", true);
 }
 
 std::string NameOfPlanNodeType(const PlanType &type) {
     switch (type) {
         case kSelect:return std::string("kSelect");
+        case kPlanTypeScan:return std::string("kScan");
+        case kPlanTypeLimit:return std::string("kLimit");
         case kProjectList:return std::string("kProjectList");
         case kProject:return std::string("kProject");
         case kScalarFunction:return std::string("kScalarFunction");

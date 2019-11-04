@@ -99,7 +99,7 @@ private:
 
 class ScanPlanNode : public UnaryPlanNode {
 public:
-    ScanPlanNode(std::string &table_name, PlanType scan_type)
+    ScanPlanNode(const std::string &table_name, PlanType scan_type)
         : UnaryPlanNode(kPlanTypeScan), scan_type_(scan_type), table_name(table_name), limit_cnt(-1) {};
     ~ScanPlanNode() {};
 
@@ -209,6 +209,14 @@ public:
     }
     void AddProject(ProjectPlanNode *project) {
         projects.push_back((PlanNode *) project);
+    }
+
+    std::string GetTable() const {
+        return table_;
+    }
+
+    std::string GetW() const {
+        return w_;
     }
 
 private:

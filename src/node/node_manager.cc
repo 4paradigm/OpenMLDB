@@ -211,6 +211,21 @@ PlanNode *NodeManager::MakeMultiPlanNode(const PlanType &type) {
     RegisterNode(node_ptr);
     return node_ptr;
 }
+
+ScanPlanNode *NodeManager::MakeSeqScanPlanNode(const std::string &table) {
+    node::ScanPlanNode *node_ptr = new ScanPlanNode(table, kScanTypeSeqScan);
+    RegisterNode((PlanNode *) node_ptr);
+    return node_ptr;
+}
+
+ScanPlanNode *NodeManager::MakeIndexScanPlanNode(const std::string &table) {
+    node::ScanPlanNode *node_ptr = new ScanPlanNode(table, kScanTypeIndexScan);
+    RegisterNode((PlanNode *) node_ptr);
+    return node_ptr;
+}
+
+
+
 ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(const std::string &table, const std::string &w) {
     ProjectListPlanNode *node_ptr = new ProjectListPlanNode(table, w);
     RegisterNode((PlanNode *) node_ptr);
