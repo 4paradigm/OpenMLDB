@@ -24,9 +24,9 @@
 extern int yylex(YYSTYPE* yylvalp, 
                  YYLTYPE* yyllocp, 
                  yyscan_t scanner);
-void emit(char *s, ...);
+void emit(const char *s, ...);
 
-void yyerror_msg(char *s, ...);
+void yyerror_msg(const char *s, ...);
 void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &trees, ::fesql::node::NodeManager *node_manager, const char* msg ) {
 printf("error %s", msg);
 }
@@ -353,7 +353,6 @@ typedef void* yyscan_t;
                opt_existing_window_name
 
 %type <intval> opt_window_exclusion_clause
-%type <node> opt_for_join
 
 
 %start grammar
@@ -860,7 +859,7 @@ function_name:
 %%
 
 
-void emit(char *s, ...)
+void emit(const char *s, ...)
 {
 
   va_list ap;
@@ -870,7 +869,7 @@ void emit(char *s, ...)
   printf("\n");
 }
 
-void yyerror_msg(char *s, ...)
+void yyerror_msg(const char *s, ...)
 {
 
   va_list ap;
