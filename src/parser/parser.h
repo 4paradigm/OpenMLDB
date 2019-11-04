@@ -18,7 +18,7 @@
 #ifndef FESQL_PARSER_PARSER_H_
 #define FESQL_PARSER_PARSER_H_
 
-#include "node/node_memory.h"
+#include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "parser/sql_parser.gen.h"
 #include <iostream>

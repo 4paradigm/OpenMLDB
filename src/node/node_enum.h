@@ -1,14 +1,14 @@
 /*-------------------------------------------------------------------------
  * Copyright (C) 2019, 4paradigm
- * emun.h
+ * node_enum.h
  *      
  * Author: chenjing
  * Date: 2019/10/29 
  *--------------------------------------------------------------------------
 **/
 
-#ifndef FESQL_EMUN_H
-#define FESQL_EMUN_H
+#ifndef FESQL_NODE_ENUM_H
+#define FESQL_NODE_ENUM_H
 
 #include <string>
 namespace fesql {
@@ -19,28 +19,25 @@ const std::string SPACE_ED = "";
 const std::string OR_INDENT = "|\t";
 const std::string INDENT = " \t";
 enum SQLNodeType {
+    //SQL
     kSelectStmt = 0,
     kExpr,
     kResTarget,
     kTable,
     kFunc,
+    kType,
     kWindowFunc,
     kWindowDef,
     kFrameBound,
     kFrames,
-    kColumn,
+    kColumnRef,
     kConst,
     kLimit,
     kAll,
     kList,
     kOrderBy,
 
-    kNull,
-    kInt,
-    kBigInt,
-    kFloat,
-    kDouble,
-    kString,
+    kPrimary,
 
     kDesc,
     kAsc,
@@ -51,8 +48,41 @@ enum SQLNodeType {
     kPreceding,
     kFollowing,
     kCurrent,
+
+    // fn
+    kFnDef,
+    kFnValue,
+    kFnId,
+    kFnAssignStmt,
+    kFnReturnStmt,
+    kFnExpr,
+    kFnExprBinary,
+    kFnExprUnary,
+    kFnPara,
+    kFnParaList,
+    kFnList,
     kUnknow
 };
+
+enum DataType {
+    kTypeBool,
+    kTypeInt16,
+    kTypeInt32,
+    kTypeInt64,
+    kTypeFloat,
+    kTypeDouble,
+    kTypeString,
+    kTypeNull
+};
+enum FnOperator {
+    kFnOpAdd,
+    kFnOpMinus,
+    kFnOpMulti,
+    kFnOpDiv,
+    kFnOpBracket,
+    kFnOpNone
+};
+
 /**
  * Planner:
  *  basic class for plan
@@ -60,6 +90,9 @@ enum SQLNodeType {
  */
 enum PlanType {
     kSelect,
+    kPlanTypeScan,
+    kPlanTypeLimit,
+    kPlanTypeFilter,
     kProjectList,
     kProject,
     kScalarFunction,
@@ -67,7 +100,11 @@ enum PlanType {
     kAggFunction,
     kAggWindowFunction,
     kUnknowPlan,
+
+    kScanTypeSeqScan,
+    kScanTypeIndexScan,
 };
+
 }
 }
 
@@ -85,14 +122,18 @@ enum ErrorType {
 
     kAnalyserErrorUnknow = 3001,
     kAnalyserErrorUnSupport,
+    kAnalyserErrorSQLTypeNotSupport,
     kAnalyserErrorInitialize,
     kAnalyserErrorParserTreeEmpty,
     kAnalyserErrorFromListEmpty,
     kAnalyserErrorQueryMultiTable,
     kAnalyserErrorTableRefIsNull,
     kAnalyserErrorTableNotExist,
+    kAnalyserErrorColumnNameIsEmpty,
     kAnalyserErrorColumnNotExist,
-    kAnalyserErrorSQLTypeNotSupport,
+    kAnalyserErrorTargetIsNull,
+    kAnalyserErrorGlobalAggFunction,
+
 
     kSystemErrorUnknow = 4001,
     kSystemErrorMemory,
@@ -103,4 +144,4 @@ enum ErrorType {
 };
 }
 }
-#endif //FESQL_EMUN_H
+#endif //FESQL_NODE_ENUM_H

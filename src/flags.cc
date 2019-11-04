@@ -1,6 +1,6 @@
 /*
- * version.h
- * Copyright 2017 elasticlog <elasticlog01@gmail.com>
+ * flags.cc
+ * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef FESQL_VERSION_H_
-#define FESQL_VERSION_H_
 
-#define FESQL_VERSION_MAJOR 0
-#define FESQL_VERSION_MEDIUM 1
-#define FESQL_VERSION_MINOR 0
-#define FESQL_VERSION_BUG 0
+#include <gflags/gflags.h>
+// cluster config
+DEFINE_string(endpoint, "", "config the ip and port that fesql serves for");
+DEFINE_int32(port, 0, "config the port that fesql serves for");
+DEFINE_int32(thread_pool_size, 8, "config the thread pool for dbms and tablet");
 
-#endif /* !FESQL_VERSION_H_ */
 
-/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

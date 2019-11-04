@@ -15,10 +15,25 @@ enum Type {
     kTimestamp = 11;
 }
 
+enum TTLType {
+    kTTLTimeLive = 1;
+    kTTLCountLive = 2;
+    kTTLNone = 3;
+}
+
 message ColumnDef {
     optional string name = 1;
     optional Type type = 2;
     optional uint32 offset = 3;
+}
+
+message IndexDef {
+    optional string name = 1;
+    repeated string first_keys = 2;
+    optional string second_key = 3;
+    repeated string partion_keys = 4;
+    repeated uint64 ttl = 5;
+    optional TTLType ttl_type = 6;
 }
 
 message User {
@@ -46,4 +61,5 @@ message TableDef {
     optional string catalog = 4;
     optional uint64 ctime = 5;
     optional uint64 utime = 6;
+    repeated IndexDef indexes = 7;
 }

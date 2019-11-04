@@ -48,9 +48,9 @@ else
     wget http://pkg.4paradigm.com/rtidb/dev/zlib-1.2.11.tar.gz
     tar zxf zlib-1.2.11.tar.gz 
     cd zlib-1.2.11
-    if [ ""$PLATFORM != "mac" ]
+    if [ ""$PLATFORM == "mac" ]
     then
-        gsed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
+        sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
     else
         sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
     fi
@@ -134,10 +134,14 @@ if [ -f "gperf_tool" ]
 then
     echo "gperf_tool exist"
 else
-    wget http://pkg.4paradigm.com/rtidb/dev/gperftools-2.5.tar.gz 
-    tar -zxvf gperftools-2.5.tar.gz 
-    cd gperftools-2.5 
-    ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler  --enable-static --prefix=${DEPS_PREFIX} 
+    #wget http://pkg.4paradigm.com/rtidb/dev/gperftools-2.5.tar.gz
+    #tar -zxvf gperftools-2.5.tar.gz
+    #cd gperftools-2.5
+    #wget https://github.com/gperftools/gperftools/releases/download/gperftools-2.7/gperftools-2.7.tar.gz
+    tar xaf gperftools-2.7.tar.gz
+    cd gperftools-2.7
+    #./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler  --enable-static --prefix=${DEPS_PREFIX}
+    ./configure --prefix=${DEPS_PREFIX}
     make -j2 >/dev/null
     make install
     cd -
@@ -161,9 +165,9 @@ else
     wget http://pkg.4paradigm.com/rtidb/dev/leveldb.tar.gz
     tar -zxvf leveldb.tar.gz
     cd leveldb
-    if [ ""$PLATFORM != "mac" ]
+    if [ ""$PLATFORM == "mac" ]
     then
-        gsed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
+        sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
     else
         sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
     fi
@@ -191,6 +195,18 @@ else
     echo "openssl done"
 fi
 
+if [ -f "glog_succ" ]
+then 
+    echo "glog exist"
+else
+    wget --no-check-certificate -O glogs-v0.4.tar.gz https://github.com/google/glog/archive/v0.4.0.tar.gz
+    tar zxf glogs-v0.4.tar.gz
+    cd glog-0.4.0
+    ./autogen.sh && ./configure --prefix=${DEPS_PREFIX} && make install
+    cd -
+    touch glog_succ
+fi
+
 if [ -f "brpc_succ" ]
 then
     echo "brpc exist"
@@ -201,15 +217,15 @@ else
     then
         rm -rf incubator-brpc
     fi
-    git clone https://github.com/apache/incubator-brpc.git
-
+    wget http://pkg.4paradigm.com/fesql/incubator-brpc.tar.gz
+    tar -zxvf incubator-brpc.tar.gz
     BRPC_DIR=$DEPS_SOURCE/incubator-brpc
     cd incubator-brpc
     if [ ""$PLATFORM != "mac" ]
     then
-        sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
+        sh config_brpc.sh --with-glog --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
     else
-        sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib --cc=clang --cxx=clang++
+        sh config_brpc.sh --with-glog --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib --cc=clang --cxx=clang++
     fi
     make -j5 libbrpc.a
     make output/include
@@ -230,49 +246,6 @@ else
     cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC ..  && make && make install
     cd ${DEPS_SOURCE}
     touch zk_succ
-fi
-
-if [ -f "rocksdb_succ" ]
-then
-    echo "rocksdb exist"
-else
-    echo "start install rocksdb ..."
-    # rocksdb
-    wget http://pkg.4paradigm.com/rtidb/dev/rocksdb-5.18.3.tar.gz >/dev/null
-    tar zxf rocksdb-5.18.3.tar.gz  >/dev/null
-    cd rocksdb-5.18.3
-    export CPPFLAGS=-I${DEPS_PREFIX}/include
-    export LDFLAGS=-L${DEPS_PREFIX}/lib
-    make static_lib -j2 >/dev/null
-    cp -rf ./include/* ${DEPS_PREFIX}/include
-    cp librocksdb.a ${DEPS_PREFIX}/lib
-    cd -
-    touch rocksdb_succ
-    echo "install rocksdb done"
-fi
-
-if [ -f "glog_succ" ]
-then 
-    echo "glog exist"
-else
-    wget --no-check-certificate -O glogs-v0.4.tar.gz https://github.com/google/glog/archive/v0.4.0.tar.gz
-    tar zxf glogs-v0.4.tar.gz
-    cd glog-0.4.0
-    ./autogen.sh && ./configure --prefix=${DEPS_PREFIX} && make install
-    cd -
-    touch glog_succ
-fi
-
-if [ -f "jit_succ" ]
-then 
-    echo "jit exist"
-else
-    wget --no-check-certificate -O libjit-0.1.4.tar.gz http://git.savannah.gnu.org/cgit/libjit.git/snapshot/libjit-0.1.4.tar.gz
-    tar zxf libjit-0.1.4.tar.gz
-    cd libjit-0.1.4
-    ./bootstrap && ./configure --prefix=${DEPS_PREFIX} && make install
-    cd -
-    touch jit_succ
 fi
 
 if [ -f "abseil_succ" ]
@@ -312,24 +285,6 @@ else
     touch flex_succ
 fi
 
-if [ -f "flatc_succ" ]
-then
-    echo "flatc exist"
-else
-    wget --no-check-certificate -O 1.11.0.tar.gz https://github.com/google/flatbuffers/archive/1.11.0.tar.gz
-    tar zxf 1.11.0.tar.gz
-    cd flatbuffers-1.11.0 &&  mkdir cmake-build
-    if [ ""$PLATFORM != "mac" ]
-    then
-        cd cmake-build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
-    else
-        cd cmake-build && cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
-    fi
-    make -j4 && make install
-    cd ${DEPS_SOURCE}
-    touch flatc_succ
-fi
-
 if [ -f "benchmark_succ" ]
 then
     echo "benchmark exist"
@@ -357,15 +312,14 @@ else
 fi
 
 
-if [ -f "pegtl_succ"]
+if [ -d "xz-5.2.4" ] 
 then
-    echo "pegtl_exist"
+    echo "zx exist"
 else
-    wget --no-check-certificate -O PEGTL-2.8.1.tar.gz https://github.com/taocpp/PEGTL/archive/2.8.1.tar.gz
-    tar xf PEGTL-2.8.1.tar.gz
-    cd PEGTL-2.8.1 && mkdir -p build
-    cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
-    make -j4 && make install
-    cd ${DEPS_SOURCE}
-    touch pegtl_succ
+    wget --no-check-certificate -O xz-5.2.4.tar.gz http://pkg.4paradigm.com/fesql/xz-5.2.4.tar.gz
+    tar -zxvf xz-5.2.4.tar.gz
+    cd xz-5.2.4 && ./configure --prefix=${DEPS_PREFIX} && make -j4 && make install
+    cd -
+    touch xz_succ
 fi
+

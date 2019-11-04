@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include "node/sql_node.h"
-#include "node_memory.h"
+#include "node_manager.h"
 #include <strstream>
 #include "gtest/gtest.h"
 
@@ -50,7 +50,7 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
     SQLNode *node = node_manager_->MakeColumnRefNode("col", "t");
     ColumnRefNode *columnnode = (ColumnRefNode *) node;
     std::cout << *node << std::endl;
-    ASSERT_EQ(kColumn, columnnode->GetType());
+    ASSERT_EQ(kColumnRef, columnnode->GetType());
     ASSERT_EQ("t", columnnode->GetRelationName());
     ASSERT_EQ("col", columnnode->GetColumnName());
 
@@ -60,14 +60,14 @@ TEST_F(SqlNodeTest, MakeConstNodeStringTest) {
 
     ConstNode *node_ptr = (ConstNode *) (node_manager_->MakeConstNode("parser string test"));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(kString, node_ptr->GetType());
+    ASSERT_EQ(kTypeString, node_ptr->GetDataType());
     ASSERT_STREQ("parser string test", node_ptr->GetStr());
 }
 
 TEST_F(SqlNodeTest, MakeConstNodeIntTest) {
     ConstNode *node_ptr = (ConstNode *) (node_manager_->MakeConstNode(1));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(kInt, node_ptr->GetType());
+    ASSERT_EQ(kTypeInt32, node_ptr->GetDataType());
     ASSERT_EQ(1, node_ptr->GetInt());
 
 }
@@ -75,26 +75,26 @@ TEST_F(SqlNodeTest, MakeConstNodeIntTest) {
 TEST_F(SqlNodeTest, MakeConstNodeLongTest) {
     ConstNode *node_ptr = (ConstNode *) (node_manager_->MakeConstNode(1L));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(kBigInt, node_ptr->GetType());
+    ASSERT_EQ(kTypeInt64, node_ptr->GetDataType());
     ASSERT_EQ(1L, node_ptr->GetLong());
 
     node_ptr = (ConstNode *) (node_manager_->MakeConstNode(864000000L));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(kBigInt, node_ptr->GetType());
+    ASSERT_EQ(kTypeInt64, node_ptr->GetDataType());
     ASSERT_EQ(864000000LL, node_ptr->GetLong());
 }
 
 TEST_F(SqlNodeTest, MakeConstNodeDoubleTest) {
     ConstNode *node_ptr = (ConstNode *) (node_manager_->MakeConstNode(1.989E30));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(kDouble, node_ptr->GetType());
+    ASSERT_EQ(kTypeDouble, node_ptr->GetDataType());
     ASSERT_EQ(1.989E30, node_ptr->GetDouble());
 }
 
 TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
     ConstNode *node_ptr = (ConstNode *) (node_manager_->MakeConstNode(1.234f));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(kFloat, node_ptr->GetType());
+    ASSERT_EQ(kTypeFloat, node_ptr->GetDataType());
     ASSERT_EQ(1.234f, node_ptr->GetFloat());
 }
 
@@ -155,8 +155,10 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
     ASSERT_EQ(kFrameBound, node_ptr->GetEnd()->GetType());
     FrameBound *end = (FrameBound *) node_ptr->GetEnd();
     ASSERT_EQ(kPreceding, end->GetBoundType());
-    ASSERT_EQ(kBigInt, end->GetOffset()->GetType());
+
+    ASSERT_EQ(kPrimary, end->GetOffset()->GetType());
     ConstNode *const_ptr = (ConstNode *) end->GetOffset();
+    ASSERT_EQ(kTypeInt64, const_ptr->GetDataType());
     ASSERT_EQ(86400000, const_ptr->GetLong());
 }
 

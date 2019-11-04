@@ -17,6 +17,7 @@
 
 #ifndef FESQL_DBMS_SDK_H_
 #define FESQL_DBMS_SDK_H_
+#include <string>
 
 namespace fesql {
 namespace sdk {
@@ -25,16 +26,22 @@ struct GroupDef {
     std::string name;
 };
 
+struct Status {
+    std::string msg;
+    int32_t code;
+};
+
 class DBMSSdk {
 
 public:
-    DBMSSdk(const std::string& endpoint);
-    ~DBMSSdk();
-    bool Init();
-    int32_t CreateGroup(const GroupDef& group);
-private:
-    std::string endpoint_;
+    virtual ~DBMSSdk() {};
+    virtual void CreateGroup(const GroupDef& group,
+            Status& status) = 0;
 };
+
+// create a new dbms sdk with a endpoint
+// failed return NULL
+DBMSSdk* CreateDBMSSdk(const std::string& endpoint);
 
 } // namespace of sdk
 } // namespace of fesql

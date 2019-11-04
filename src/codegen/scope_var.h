@@ -27,6 +27,7 @@ namespace codegen {
 
 struct Scope {
     std::string name;
+    // the value is the pointer or  value
     std::map<std::string, ::llvm::Value*> scope_map;
 };
 
@@ -36,11 +37,12 @@ class ScopeVar {
 public:
     ScopeVar();
     ~ScopeVar();
+
     bool Enter(const std::string& name);
-    bool Exit(const std::string& name);
+
+    bool Exit();
     bool AddVar(const std::string& name, ::llvm::Value*);
     bool FindVar(const std::string& name, ::llvm::Value** value);
-
 private:
     Scopes scopes_;
 };

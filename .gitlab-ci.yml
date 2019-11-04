@@ -1,14 +1,26 @@
-image: develop-registry.4pd.io/fesql_build_base:0.4
+image: develop-registry.4pd.io/fesql_build_base:0.8
 variables:
     GIT_SUBMODULE_STRATEGY: normal
+
 stages:
     - build
+    - style
+
+style_check:
+    stage: style
+    script:
+        - bash tools/style_check.sh
+    artifacts:
+        reports:
+            junit:
+                - ./style.xml
+
 build_fesql_and_case:
     stage: build
     script:
         - ln -sf /depends/thirdparty thirdparty
         - source /opt/rh/devtoolset-8/enable && bash tools/compile.sh
-        - cd build && make test
+        - cd build && make coverage
     artifacts:
         reports:
             junit:
