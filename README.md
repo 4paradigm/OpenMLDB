@@ -64,4 +64,7 @@ add_test(flatbuf_ir_builder_test flatbuf_ir_builder_test --gtest_output=xml:${CM
 list(APPEND test_list flatbuf_ir_builder_test)
 ```
 
+## 规范检查
+
+请使用tools/cpplint.py 检查代码规范
 
