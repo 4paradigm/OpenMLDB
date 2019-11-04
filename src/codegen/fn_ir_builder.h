@@ -21,7 +21,7 @@
 #include <vector>
 #include "llvm/IR/Module.h"
 #include "codegen/scope_var.h"
-#include "ast/fn_ast.h"
+#include "node/sql_node.h"
 
 namespace fesql {
 namespace codegen {
@@ -33,28 +33,28 @@ public:
     // TODO provide a module manager
     FnIRBuilder(::llvm::Module* module);
     ~FnIRBuilder();
-    bool Build(const ::fesql::ast::FnNode* node);
+    bool Build(const ::fesql::node::FnNode* node);
 
-    bool BuildFnHead(const ::fesql::ast::FnNodeFnDef* fn_def,
+    bool BuildFnHead(const ::fesql::node::FnNodeFnDef* fn_def,
                      ::llvm::Function** fn);
 
     bool BuildStmt(int32_t pindent, 
-            const ::fesql::ast::FnNode* node, 
+            const ::fesql::node::FnNode* node, 
             ::llvm::BasicBlock* block);
 
-    bool BuildAssignStmt(const ::fesql::ast::FnAssignNode* node, 
+    bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node, 
             ::llvm::BasicBlock* block);
-    bool BuildReturnStmt(const ::fesql::ast::FnNode* node,
+    bool BuildReturnStmt(const ::fesql::node::FnNode* node,
             ::llvm::BasicBlock* block);
 private:
 
-    bool MapLLVMType(const ::fesql::ast::FnNodeType& fn_type,
+    bool MapLLVMType(const ::fesql::node::DataType & fn_type,
             ::llvm::Type** type);
 
-    bool BuildParas(const ::fesql::ast::FnNode* node,
+    bool BuildParas(const ::fesql::node::FnNode* node,
             std::vector<::llvm::Type*>& paras);
 
-    bool FillArgs(const ::fesql::ast::FnNode* node,
+    bool FillArgs(const ::fesql::node::FnNode* node,
             ::llvm::Function* fn);
 private:
     ::llvm::Module* module_;

@@ -1,13 +1,13 @@
 /*-------------------------------------------------------------------------
  * Copyright (C) 2019, 4paradigm
- * node_memory_test.cc
+ * node_manager_test.cc
  *      
  * Author: chenjing
  * Date: 2019/10/28 
  *--------------------------------------------------------------------------
 **/
 
-#include "node/node_memory.h"
+#include "node/node_manager.h"
 #include "gtest/gtest.h"
 
 namespace fesql {

@@ -73,12 +73,15 @@ protected:
     ::fesql::type::TableDef table;
 };
 
-INSTANTIATE_TEST_CASE_P(PairReturn, AnalyserTest, testing::Values(
+INSTANTIATE_TEST_CASE_P(AnalyserValidate, AnalyserTest, testing::Values(
     std::make_pair(error::kSucess,
-                   "SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 FROM t1 limit 10;"),
+                   "SELECT t1.col1 c1,  TRIM(col3) as trimCol3, col2 FROM t1 limit 10;"),
     std::make_pair(error::kAnalyserErrorTableNotExist,
                    "SELECT t2.COL1 c1 FROM t2 limit 10;"),
-    std::make_pair(error::kAnalyserErrorQueryMultiTable, "SELECT t2.COL1 c1 FROM t2, t1 limit 10;")
+    std::make_pair(error::kAnalyserErrorQueryMultiTable, "SELECT t2.col1 c1 FROM t2, t1 limit 10;"),
+    std::make_pair(error::kAnalyserErrorColumnNotExist, "SELECT t1.col100 c1 FROM t1 limit 10;"),
+    std::make_pair(error::kAnalyserErrorGlobalAggFunction,
+                   "SELECT t1.col1 c1,  MIN(col3) as trimCol3, col2 FROM t1 limit 10;")
 ));
 
 TEST_P(AnalyserTest, RunAnalyseTest) {
@@ -92,6 +95,13 @@ TEST_P(AnalyserTest, RunAnalyseTest) {
     ret = analyser->Analyse(list, query_tree);
     ASSERT_EQ(param.first, ret);
 }
+
+TEST_F(AnalyserTest, ColumnRefValidateTest) {
+    ASSERT_TRUE(analyser->IsColumnExistInTable("col1", "t1"));
+    ASSERT_FALSE(analyser->IsColumnExistInTable("col100", "t1"));
+    ASSERT_FALSE(analyser->IsColumnExistInTable("col1", "t2"));
+}
+
 
 }
 }
