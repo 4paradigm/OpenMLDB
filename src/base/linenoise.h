@@ -41,6 +41,7 @@
 
 #ifdef __cplusplus
 extern "C" {
+#include <cstddef>
 #endif
 
 namespace fesql {
