@@ -5331,38 +5331,36 @@ void NameServerImpl::MakeReplicaCluster(::google::protobuf::RpcController *contr
     }
     do {
         if (follower_.load(std::memory_order_acquire)) {
-            code = 300; rpc_msg = "cur nameserver is not leader";
+            if (request->zone_name() == zone_name_) {
+                if (request->zone_term() < zone_term_) {
+                    code = 300; rpc_msg = "term le cur term";
+                    break;
+                }
+                if (request->zone_term() == zone_term_) {
+                    code = 1; rpc_msg = "already join zone";
+                    break;
+                }
+            } else {
+                code = 300; rpc_msg = "cur nameserver is not leader";
+                break;
+            }
+        }
+        if (!(zk_client_->SetNodeValue(zk_zone_data_path_ + "/name", request->zone_name()) &&
+            zk_client_->SetNodeValue(zk_zone_data_path_ + "/term", std::to_string(request->zone_term())))) {
+            code = 304; rpc_msg = "set zk failed";
+            PDLOG(WARNING, "set zone info failed, zone: %s, term: %ul", request->zone_name().c_str(),
+                  request->zone_term());
             break;
         }
-        if (request->zone_name() != zone_name_) {
-            code = 300; rpc_msg = "cur cluster is not leader";
-            PDLOG(WARNING, "error %s try make replica cluster", request->zone_name().c_str());
+        if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", "true")) {
+            code = 304; rpc_msg = "set zk failed";
+            PDLOG(WARNING, "set zk failed, save follower value failed");
             break;
-        } else {
-            if (request->zone_term() < zone_term_) {
-                code = 300; rpc_msg = "term le cur term";
-                break;
-            }
-            if (request->zone_term() == zone_term_) {
-                code = 1; rpc_msg = "already join zone";
-                break;
-            }
-            if (!(zk_client_->SetNodeValue(zk_zone_data_path_ + "/name", request->zone_name()) &&
-                zk_client_->SetNodeValue(zk_zone_data_path_ + "/term", std::to_string(request->zone_term())))) {
-                code = 304; rpc_msg = "set zk failed";
-                PDLOG(WARNING, "set zone info failed, zone: %s, term: %ul", request->zone_name().c_str(),
-                    request->zone_term());
-                break;
-            }
-            if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", "true")) {
-                code = 304; rpc_msg = "set zk failed";
-                PDLOG(WARNING, "set zk failed, save follower value failed");
-                break;
-            }
-            follower_.store(true, std::memory_order_release);
-            zone_name_ = request->zone_name();
-            zone_term_ = request->zone_term();
         }
+        follower_.store(true, std::memory_order_release);
+        zone_name_ = request->zone_name();
+        zone_term_ = request->zone_term();
+
     } while(0);
     response->set_code(code);
     response->set_msg(rpc_msg);
