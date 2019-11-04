@@ -115,6 +115,9 @@ public:
         limit_cnt = limit;
     }
 
+    SQLNode * GetCondition() const {
+        return condition;
+    }
 private:
     //TODO: OP tid
     PlanType scan_type_;

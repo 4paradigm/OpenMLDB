@@ -341,7 +341,7 @@ typedef void* yyscan_t;
 
 %type <target> projection
 
-%type <list> val_list opt_val_list case_list
+%type <list> val_list opt_val_list
             opt_target_list
             select_projection_list expr_list
             table_references
@@ -355,16 +355,8 @@ typedef void* yyscan_t;
                opt_existing_window_name
 
 %type <intval> opt_window_exclusion_clause
-%type <node> groupby_list opt_with_rollup opt_asc_desc
-%type <node> opt_inner_cross opt_outer
-%type <node> left_or_right opt_left_or_right_outer column_list
 %type <node> index_list opt_for_join
 
-%type <node> delete_opts delete_list
-%type <node> insert_opts insert_vals insert_vals_list
-%type <node> insert_asgn_list opt_if_not_exists update_opts update_asgn_list
-%type <node> opt_temporary opt_length opt_binary opt_uz enum_list
-%type <node> column_atts data_type opt_ignore_replace create_col_list
 
 %start grammar
 
