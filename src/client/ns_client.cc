@@ -426,12 +426,30 @@ bool NsClient::UpdateTTL(const std::string& name,
 bool NsClient::MakeReplicaCluster(const std::string& name, const uint64_t& term, std::string& msg) {
     ::rtidb::nameserver::MakeReplicaClusterRequest request;
     ::rtidb::nameserver::MakeReplicaClusterResponse response;
-    request.mutable_zone_info()->set_zone_name(name);
-    request.mutable_zone_info()->set_zone_term(term);
+    request.set_zone_name(name);
+    request.set_zone_term(term);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::MakeReplicaCluster,
                                     &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && ((response.code() == 0) || (response.code() == 1))) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::ReplicaOf(const std::string& zk_ep, const std::string& zk_path, const std::string& alias, std::string& msg) {
+    ::rtidb::nameserver::AddReplicaClusterRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_alias(alias);
+    auto cluster_add = request.mutable_cluster_add();
+    cluster_add->set_zk_endpoints(zk_path);
+    cluster_add->set_zk_endpoints(zk_ep);
+
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaCluster,
+                                    &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+
+    if (ok && (response.code() == 0)) {
         return true;
     }
     return false;

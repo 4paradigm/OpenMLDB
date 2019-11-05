@@ -92,6 +92,8 @@ public:
                    std::string& msg);
 
     bool MakeReplicaCluster(const std::string& name, const uint64_t& term, std::string& msg);
+
+    bool ReplicaOf(const std::string &zk_ep, const std::string &zk_path, const std::string &alias, std::string& msg);
 private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;

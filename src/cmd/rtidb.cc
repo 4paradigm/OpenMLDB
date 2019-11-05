@@ -1580,6 +1580,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
     tp.Print(true);
 }
 
+
 void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() != 4) {
         std::cout << "addtablefield format error. eg: addtablefield tablename column_name column_type" << std::endl;
@@ -1621,6 +1622,22 @@ void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::clien
         return;
     }
     std::cout << "add table field ok" << std::endl;
+}
+
+void HandleReplicaOf(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "replicaof format error. eg: replicaof zk_endpoints zk_path alias_name [changeleader = true]";
+        return;
+    }
+    std::string zk_endpoints, zk_path, alias, msg;
+    zk_endpoints = parts[1];
+    zk_path = parts[2];
+    alias = parts[3];
+    if (!client->ReplicaOf(zk_endpoints, zk_path, alias, msg)) {
+        std::cout << "replicaof failed. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "add replica cluster ok" << std::endl;
 }
 
 bool HasIsTsCol(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& list) {

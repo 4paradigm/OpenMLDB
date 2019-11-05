@@ -50,9 +50,13 @@ struct TabletInfo {
 
 class ClusterInfo {
 public:
-    ClusterInfo(::rtidb::nameserver::ClusterAddress& cd, ::baidu::common::ThreadPool tp): thread_pool_(tp) {
+    ClusterInfo(::rtidb::nameserver::ClusterAddress& cd, ::baidu::common::ThreadPool tp): mu_(), thread_pool_(tp) {
         cluster_add_.CopyFrom(cd);
         ctime_ = ::baidu::common::timer::get_micros()/1000;
+    }
+    ~ClusterInfo() {
+        std::lock_guard<std::mutex> lock(mu_);
+        thread_pool_.CancelTask(task_id_);
     }
     void CheckZkClient() {
         if (!zk_client_->IsConnected()) {
@@ -69,7 +73,8 @@ public:
                 PDLOG(WARNING, "watch node failed");
             }
         }
-        thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
+        std::lock_guard<std::mutex> lock(mu_);
+        task_id_ = thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
     }
     void UpdateNSClient(const std::vector<std::string>& children) {
         std::string endpoint;
@@ -82,6 +87,7 @@ public:
             PDLOG(WARNING, "replica cluster ns client init failed");
             return;
         }
+        std::lock_guard<std::mutex> lock(mu_);
         client_ = tmp_ptr;
     }
     bool Init(std::string& msg) {
@@ -125,6 +131,9 @@ public:
             break;
         }
          */
+        zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
+        zk_client_->WatchNodes();
+        task_id_ = thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
         return true;
     }
     bool MakeReplicaCluster(std::string& zone_name, uint64_t& term, std::string& msg) {
@@ -132,9 +141,6 @@ public:
             PDLOG(WARNING, "send MakeReplicaCluster request failed");
             return false;
         }
-        zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
-        zk_client_->WatchNodes();
-        thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
         return true;
     }
 
@@ -144,6 +150,8 @@ private:
   ::baidu::common::ThreadPool& thread_pool_;
   ::rtidb::nameserver::ClusterAddress cluster_add_;
   uint64_t session_term_;
+  int64_t task_id_;
+  std::mutex mu_;
   uint64_t ctime_;
 };
 
