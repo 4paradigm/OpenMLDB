@@ -17,20 +17,24 @@
 
 #include "codegen/buf_ir_builder.h"
 
+#include <string>
+#include <utility>
+#include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 
 namespace fesql {
 namespace codegen {
 
-BufIRBuilder::BufIRBuilder(const ::fesql::type::TableDef* table,
+BufIRBuilder::BufIRBuilder(::fesql::type::TableDef* table,
         ::llvm::BasicBlock* block,
-        ScopeVar* scope_var):table_(table),block_(block),sv_(scope_var),
-    types_(){
+        ScopeVar* scope_var):table_(table), block_(block), sv_(scope_var),
+    types_() {
     // two byte header
     int32_t offset = 2;
     for (int32_t i = 0; i < table_->columns_size(); i++) {
         const ::fesql::type::ColumnDef& column = table_->columns(i);
-        types_.put(std::make_pair(column.name(), std::make_pair<column.type(), offset>));
+        types_.insert(std::make_pair(column.name(),
+                    std::make_pair(column.type(), offset)));
         switch (column.type()) {
             case ::fesql::type::kInt16:
                 {
@@ -51,7 +55,8 @@ BufIRBuilder::BufIRBuilder(const ::fesql::type::TableDef* table,
                 }
             default:
                 {
-                    LOG(WARNING) << "not support type " << ::fesql::type::Type_Name(column.type());
+                    LOG(WARNING) << "not support type "
+                        << ::fesql::type::Type_Name(column.type());
                 }
         }
     }
@@ -62,7 +67,6 @@ BufIRBuilder::~BufIRBuilder() {}
 bool BufIRBuilder::BuildGetField(const std::string& name,
        ::llvm::Value* row_ptr,
        ::llvm::Value** output) {
-
     if (output == NULL) {
         LOG(WARNING) << "output is null";
         return false;
@@ -74,11 +78,22 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
         return false;
     }
 
+    ::fesql::type::Type& fe_type =  it->second.first;
+    int32_t offset = it->second.second;
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Type* llvm_type = NULL;
+    bool ok = GetLLVMType(builder, fe_type, &llvm_type);
+    if (!ok) {
+        LOG(WARNING) << "fail to convert fe type to llvm type ";
+        return false;
+    }
+    ::llvm::ConstantInt* llvm_offse = builder.getInt32(offset);
+    return BuildLoadOffset(builder, row_ptr, llvm_offse, llvm_type, output);
 }
 
 
-} // namespace codegen
-} // namespace fesql
+}  // namespace codegen
+}  // namespace fesql
 
 
 

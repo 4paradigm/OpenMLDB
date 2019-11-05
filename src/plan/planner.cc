@@ -6,8 +6,10 @@
  * Date: 2019/10/24 
  *--------------------------------------------------------------------------
 **/
-#include "planner.h"
-#include <map>"
+#include "plan/planner.h"
+
+#include <map>
+
 namespace fesql {
 namespace plan {
 
@@ -135,9 +137,10 @@ node::ProjectPlanNode *Planner::CreateProjectPlanNode(SQLNode *root, std::string
         }
         default: {
             LOG(ERROR) << "can not create project plan node with type " << node::NameOfSQLNodeType(root->GetType());
+            return nullptr;
         }
-
     }
+
 }
 
 PlanNode *Planner::CreateDataProviderPlanNode(SQLNode *root) {

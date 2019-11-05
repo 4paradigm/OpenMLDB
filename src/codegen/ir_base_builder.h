@@ -15,46 +15,26 @@
  * limitations under the License.
  */
 
-#ifndef IR_BASE_BUILDER_H_
-#define IR_BASE_BUILDER_H_
+#ifndef SRC_CODEGEN_IR_BASE_BUILDER_H_
+#define SRC_CODEGEN_IR_BASE_BUILDER_H_
 
 #include "llvm/IR/IRBuilder.h"
 #include "glog/logging.h"
-
+#include "proto/type.pb.h"
 
 namespace fesql {
 namespace codegen {
 
+bool GetLLVMType(::llvm::IRBuilder<>& builder,
+        const ::fesql::type::Type& type,
+        ::llvm::Type** output);
 
-bool BuildLoadRelative(::llvm::IRBuilder<>& builder,
-        ::llvm::LLVMContext& ctx,
-        ::llvm::Value* ptr, 
+bool BuildLoadOffset(::llvm::IRBuilder<>& builder,
+        ::llvm::Value* ptr,
         ::llvm::Value* offset,
         ::llvm::Type* type,
-        ::llvm::Value** output) {
+        ::llvm::Value** output);
 
-    if (!ptr->getType()->isPointerTy()) {
-        LOG(WARNING) << "ptr should be pointer but " <<  ptr->getType()->getTypeID();
-        return false;
-    }
-
-    if (!offset->getType()->isIntegerTy()) {
-        LOG(WARNING) << "offset should be integer type but " << ptr->getType()->getTypeID();
-        return false;
-    }
-
-    // cast ptr to int64
-    ::llvm::Type* int64_ty = ::llvm::Type::getInt64Ty(ctx);
-    ::llvm::Value* ptr_int64_ty = builder.CreatePtrToInt(ptr, int64_ty);
-    // TODO no need cast if offset is int64 
-    ::llvm::Value* offset_int64 = builder.CreateIntCast(offset, int64_ty, true, "cast_32_to_64");
-    ::llvm::Value* ptr_add_offset = builder.CreateAdd(ptr_int64_ty, offset_int64, "ptr_add_offset");
-    // todo check the type
-    ::llvm::Value* int64_to_ty_ptr = builder.CreateIntToPtr(ptr_add_offset, type->getPointerTo());
-    *output = builder.CreateLoad(type, int64_to_ty_ptr, "load_type_value");
-    return true;
-}
-
-} // namespace of codegen
-} // namespace of fesql
-#endif /* !IR_BASE_BUILDER_H_ */
+}  // namespace codegen
+}  // namespace fesql
+#endif  // SRC_CODEGEN_IR_BASE_BUILDER_H_

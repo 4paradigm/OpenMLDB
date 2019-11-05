@@ -21,11 +21,11 @@
 namespace fesql {
 namespace codegen {
 
-bool GetLLVMType(::llvm::LLVMContext& ctx,
+bool GetLLVMType(::llvm::IRBuilder<>& builder,
         const ::fesql::type::Type& type,
         ::llvm::Type** output) {
 
-    if (type == NULL) {
+    if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
     }
@@ -33,27 +33,27 @@ bool GetLLVMType(::llvm::LLVMContext& ctx,
     switch(type) {
         case ::fesql::type::kInt16: 
             {
-                *output = ::llvm::Type::getInt16Ty(ctx);
+                *output = builder.getInt16Ty();
                 return true;
             }
         case ::fesql::type::kInt32:
             {
-                *output = ::llvm::Type::getInt32Ty(ctx);
+                *output = builder.getInt32Ty();
                 return true;
             }
         case ::fesql::type::kInt64:
             {
-                *output = ::llvm::Type::getInt64Ty(ctx);
+                *output = builder.getInt64Ty();
                 return true;
             }
         case ::fesql::type::kFloat:
             {
-                *output = ::llvm::Type::getFloatTy(ctx);
+                *output = builder.getFloatTy();
                 return true;
             }
         case ::fesql::type::kDouble:
             {
-                *output = ::llvm::Type::getDoubleTy(ctx);
+                *output = builder.getDoubleTy();
                 return true;
             }
         default:
@@ -64,8 +64,7 @@ bool GetLLVMType(::llvm::LLVMContext& ctx,
     }
 }
 
-bool BuildLoadRelative(::llvm::IRBuilder<>& builder,
-        ::llvm::LLVMContext& ctx,
+bool BuildLoadOffset(::llvm::IRBuilder<>& builder,
         ::llvm::Value* ptr, 
         ::llvm::Value* offset,
         ::llvm::Type* type,
@@ -82,7 +81,7 @@ bool BuildLoadRelative(::llvm::IRBuilder<>& builder,
     }
 
     // cast ptr to int64
-    ::llvm::Type* int64_ty = ::llvm::Type::getInt64Ty(ctx);
+    ::llvm::Type* int64_ty = builder.getInt64Ty();
     ::llvm::Value* ptr_int64_ty = builder.CreatePtrToInt(ptr, int64_ty);
     // TODO no need cast if offset is int64 
     ::llvm::Value* offset_int64 = builder.CreateIntCast(offset, int64_ty, true, "cast_32_to_64");
