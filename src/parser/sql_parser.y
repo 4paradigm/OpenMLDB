@@ -506,8 +506,6 @@ select_stmt:
             }
     ;
 
-create_stmt: CREATE TABLE 
-
 
 opt_all_clause:
         ALL										{ $$ = NULL;}
