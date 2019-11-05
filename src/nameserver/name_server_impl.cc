@@ -166,7 +166,8 @@ bool NameServerImpl::Recover() {
             PDLOG(WARNING, "recover table info failed!");
             return false;
         }
-    }    
+        RecoverClusterInfo();
+    }
     UpdateTableStatus();
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -191,27 +192,35 @@ void NameServerImpl::RecoverOfflineTablet() {
     }
 }
 
-bool NameServerImpl::RecoverClusterInfo() {
+void NameServerImpl::RecoverClusterInfo() {
     nsc_.clear();
     std::vector<std::string> cluster_vec;
     if (!zk_client_->GetChildren(zk_zone_data_path_ + "/replica", cluster_vec)) {
         if (zk_client_->IsExistNode(zk_zone_data_path_ + "/replica") > 0) {
             PDLOG(WARNING, "cluster info node is not exist");
-            return true;
+            return;
         }
         PDLOG(WARNING, "get cluster info failed!");
-        return false;
+        return;
     }
     PDLOG(INFO, "need to recover cluster info[%d]", cluster_vec.size());
-    std::string value;
+    std::string value, rpc_msg;
     for (const auto& alias: cluster_vec) {
         std::string cluster_alias = zk_zone_data_path_ + "/replica/" + alias;
-        value.clear();
+        rpc_msg.clear();
         if (!zk_client_->GetNodeValue(cluster_alias, value)) {
             PDLOG(WARNING, "get cluster info failed! name[%s] zk path[%s]", alias.c_str(), cluster_alias.c_str());
             continue;
         }
-
+        ::rtidb::nameserver::ClusterAddress cluster_add;
+        cluster_add.ParseFromString(value);
+        value.clear();
+        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(cluster_add);
+        if (!cluster_info->Init(rpc_msg)) {
+            PDLOG(WARNING, "%s init failed, error: %s", alias.c_str(), rpc_msg.c_str());
+            continue;
+        }
+        nsc_.insert(std::make_pair(alias, cluster_info));
     }
 }
 bool NameServerImpl::RecoverTableInfo() {
@@ -5291,7 +5300,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             code = 300; rpc_msg = "zk endpoints size is zero";
             break;
         }
-        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(request->cluster_add());
+        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(request->cluster_add(), thread_pool_);
         if (!cluster_info->Init(rpc_msg)) {
             PDLOG(WARNING, "%s init failed, error: %s", request->alias().c_str(), rpc_msg.c_str());
             code = 300;

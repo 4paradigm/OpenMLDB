@@ -24,6 +24,7 @@
 #include "base/schema_codec.h"
 
 DECLARE_uint32(name_server_task_concurrency);
+DECLARE_int32(zk_keep_alive_check_interval);
 
 namespace rtidb {
 namespace nameserver {
@@ -49,22 +50,54 @@ struct TabletInfo {
 
 class ClusterInfo {
 public:
-    ClusterInfo(::rtidb::nameserver::ClusterAddress& cd) {
+    ClusterInfo(::rtidb::nameserver::ClusterAddress& cd, ::baidu::common::ThreadPool tp): thread_pool_(tp) {
         cluster_add_.CopyFrom(cd);
         ctime_ = ::baidu::common::timer::get_micros()/1000;
     }
+    void CheckZkClient() {
+        if (!zk_client_->IsConnected()) {
+            PDLOG(WARNING, "reconnect zk");
+            if (zk_client_->Reconnect()) {
+                PDLOG(INFO, "reconnect zk ok");
+            }
+        }
+        if (session_term_ != zk_client_->GetSessionTerm()) {
+            if (zk_client_->WatchNodes()) {
+                session_term_ = zk_client_->GetSessionTerm();
+                PDLOG(INFO, "watch node ok");
+            } else {
+                PDLOG(WARNING, "watch node failed");
+            }
+        }
+        thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
+    }
+    void UpdateNSClient(const std::vector<std::string>& children) {
+        std::string endpoint;
+        if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/leader/" + children[0], endpoint)) {
+            PDLOG(WARNING, "get replica cluster leader ns failed");
+            return;
+        }
+        std::shared_ptr<::rtidb::client::NsClient> tmp_ptr = std::make_shared<::rtidb::client::NsClient>(endpoint);
+        if (tmp_ptr->Init() < 0) {
+            PDLOG(WARNING, "replica cluster ns client init failed");
+            return;
+        }
+        client_ = tmp_ptr;
+    }
     bool Init(std::string& msg) {
 
-        zk_client_ = std::make_shared<ZkClient>(cluster_add_.zk_endpoints(), 6000, "", cluster_add_.zk_path());
+        zk_client_ = std::make_shared<ZkClient>(cluster_add_.zk_endpoints(), 6000, "", \
+        cluster_add_.zk_path(), cluster_add_.zk_path() + "/leader");
         if (!zk_client_->Init()) {
             msg = "zk client init failed";
             PDLOG(WARNING, "zk client init failed, zk endpoints: %s, zk path: %s",
                   cluster_add_.zk_endpoints().c_str(), cluster_add_.zk_path().c_str());
             return false;
         }
+        session_term_ = zk_client_->GetSessionTerm();
         std::vector<std::string> children;
         if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/leader", children) || children.empty()) {
-            msg = "replica cluster get chhilren failed":
+            msg = "replica cluster get chhilren failed";
             PDLOG(WARNING, "replica cluster get children failed");
             return false;
         }
@@ -94,17 +127,23 @@ public:
          */
         return true;
     }
-    bool MakeReplicaCluster(std::string& zone_name, uint64_t term, std::string msg) {
+    bool MakeReplicaCluster(std::string& zone_name, uint64_t& term, std::string& msg) {
         if (!client_->MakeReplicaCluster(zone_name, term, msg)) {
             PDLOG(WARNING, "send MakeReplicaCluster request failed");
             return false;
         }
+        zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
+        zk_client_->WatchNodes();
+        thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
         return true;
     }
+
 private:
   std::shared_ptr<::rtidb::client::NsClient> client_;
   std::shared_ptr<ZkClient> zk_client_;
+  ::baidu::common::ThreadPool& thread_pool_;
   ::rtidb::nameserver::ClusterAddress cluster_add_;
+  uint64_t session_term_;
   uint64_t ctime_;
 };
 
@@ -293,7 +332,7 @@ private:
 
     bool RecoverTableInfo();
 
-    bool RecoverClusterInfo();
+    void RecoverClusterInfo();
 
     bool RecoverOPTask();
 
