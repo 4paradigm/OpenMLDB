@@ -844,9 +844,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
         }
-        if (th.hasTsCol()) {
-            time = 0;
-        }
         if (time == 0 && (ts == null || ts.isEmpty())) {
             throw new TabletException("ts is null or empty");
         }

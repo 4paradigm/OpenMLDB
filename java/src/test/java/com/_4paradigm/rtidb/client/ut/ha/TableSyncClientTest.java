@@ -384,6 +384,59 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
+    public void testPutForIgnoreTime() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        Common.ColumnDesc col4 = Common.ColumnDesc.newBuilder().setName("ts_1").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        Common.ColumnKey colKey1 = Common.ColumnKey.newBuilder().setIndexName("card").addTsName("ts").addTsName("ts_1").build();
+        Common.ColumnKey colKey2 = Common.ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts").build();
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
+                .addColumnKey(colKey1).addColumnKey(colKey2)
+                .setPartitionNum(1).setReplicaNum(1)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        try {
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 5);
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("card", "card0");
+            data.put("mcc", "mcc1");
+            data.put("amt", 1.7);
+            data.put("ts", 1236l);
+            data.put("ts_1", 444l);
+            tableSyncClient.put(name, 111111111l, data);
+
+            Object[] row = tableSyncClient.getRow(name, "card0", "card", 1236l, "ts", null);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.7);
+            Assert.assertEquals(row[3], 1236l);
+            Assert.assertEquals(row[4], 444l);
+
+            Assert.assertTrue(tableSyncClient.put(name, 111111111l, new Object[]{"card1", "mcc1", 1.7, 1236l, 444l}));
+            row = tableSyncClient.getRow(name, "card1", "card", 1236l, "ts", null);
+            Assert.assertEquals(row[0], "card1");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.7);
+            Assert.assertEquals(row[3], 1236l);
+            Assert.assertEquals(row[4], 444l);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
     public void testAddTableFieldWithColumnKey() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
