@@ -83,7 +83,7 @@ public:
 
 class SelectPlanNode : public MultiChildPlanNode {
 public:
-    SelectPlanNode() : MultiChildPlanNode(kSelect), limit_cnt_(-1) {};
+    SelectPlanNode() : MultiChildPlanNode(kPlanTypeSelect), limit_cnt_(-1) {};
     ~SelectPlanNode() {};
     int GetLimitCount() {
         return limit_cnt_;
@@ -115,7 +115,7 @@ public:
         limit_cnt = limit;
     }
 
-    SQLNode * GetCondition() const {
+    SQLNode *GetCondition() const {
         return condition;
     }
 private:
@@ -167,11 +167,12 @@ class ProjectPlanNode : public LeafPlanNode {
 public:
     ProjectPlanNode() : LeafPlanNode(kProject), expression_(nullptr), name_(""), table_(""), w_("") {};
 
-    ProjectPlanNode(node::SQLNode *expression, const std::string &name, const std::string &table, const std::string &w)
-        : LeafPlanNode(kProject), expression_(expression), name_(name), table_(table), w_(w) {};
-
     ~ProjectPlanNode() {};
     void Print(std::ostream &output, const std::string &orgTab) const;
+
+    void SetW(const std::string w) {
+        w_ = w;
+    }
     std::string GetW() const {
         return w_;
     }
@@ -179,12 +180,25 @@ public:
     std::string GetTable() const {
         return table_;
     }
+    
+    void SetTable(const std::string table) {
+        table_ = table;
+    }
+    
     std::string GetName() const {
         return name_;
     }
 
+    void SetName(const std::string name) {
+        name_ = name;
+    }
+    
     node::SQLNode *GetExpression() const {
         return expression_;
+    }
+    
+    void SetExpression(node::SQLNode * expression) {
+        expression_ = expression;
     }
 
     bool IsWindowProject() {

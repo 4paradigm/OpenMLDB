@@ -109,7 +109,7 @@ enum FnOperator {
  *
  */
 enum PlanType {
-    kSelect,
+    kPlanTypeSelect,
     kPlanTypeScan,
     kPlanTypeLimit,
     kPlanTypeFilter,
@@ -154,11 +154,16 @@ enum ErrorType {
     kAnalyserErrorTargetIsNull,
     kAnalyserErrorGlobalAggFunction,
 
+    kPlanErrorUnknow = 4001,
+    kPlanErrorUnSupport,
+    kPlanErrorNullNode,
+    kPlanErrorTableRefIsEmpty,
+    kPlanErrorQueryMultiTable,
 
-    kSystemErrorUnknow = 4001,
+    kSystemErrorUnknow = 5001,
     kSystemErrorMemory,
 
-    kServerErrorUnknow = 5001,
+    kServerErrorUnknow = 6001,
     kServerErrorConnection,
     kServerErrorSend
 };

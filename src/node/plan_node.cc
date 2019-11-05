@@ -86,7 +86,7 @@ void ProjectListPlanNode::Print(std::ostream &output, const std::string &org_tab
 
 std::string NameOfPlanNodeType(const PlanType &type) {
     switch (type) {
-        case kSelect:return std::string("kSelect");
+        case kPlanTypeSelect:return std::string("kSelect");
         case kPlanTypeScan:return std::string("kScan");
         case kPlanTypeLimit:return std::string("kLimit");
         case kProjectList:return std::string("kProjectList");

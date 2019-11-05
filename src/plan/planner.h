@@ -27,13 +27,13 @@ public:
     virtual ~Planner() {
     }
 
-    virtual PlanNode *CreatePlan(SQLNode *parser_tree_ptr) = 0;
+    virtual int CreatePlanTree(NodePointVector &parser_trees, PlanNodeList &plan_trees) = 0;
 protected:
-    node::PlanNode *CreatePlanRecurse(node::SQLNode *root);
-    node::PlanNode *CreateSelectPlan(node::SelectStmt *root);
-    node::ProjectPlanNode *CreateProjectPlanNode(node::SQLNode *root, std::string table_name);
-    node::PlanNode *CreateDataProviderPlanNode(node::SQLNode *root);
-    node::PlanNode *CreateDataCollectorPlanNode(node::SQLNode *root);
+    int CreatePlanRecurse(node::SQLNode *root, PlanNode* plan_tree);
+    int CreateSelectPlan(node::SQLNode *root, PlanNode* plan_tree);
+    int CreateProjectPlanNode(node::SQLNode *root, std::string table_name, node::ProjectPlanNode * plan_tree);
+    int CreateDataProviderPlanNode(node::SQLNode *root, PlanNode *plan_tree);
+    int CreateDataCollectorPlanNode(node::SQLNode *root, PlanNode *plan_tree);
     node::NodeManager *node_manager_;
 };
 
@@ -41,7 +41,7 @@ class SimplePlanner : public Planner {
 public:
     SimplePlanner(node::NodeManager *manager) : Planner(manager) {
     }
-    PlanNode *CreatePlan(SQLNode *parser_tree_ptr);
+    int CreatePlanTree(NodePointVector &parser_trees, PlanNodeList &plan_trees);
 private:
 
 };

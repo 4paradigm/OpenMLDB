@@ -32,7 +32,7 @@ TEST_F(NodeManagerTest, MakeSQLNode) {
     manager->MakeSQLNode(node::kOrderBy);
     manager->MakeSQLNode(node::kLimit);
 
-    manager->MakePlanNode(node::kSelect);
+    manager->MakePlanNode(node::kPlanTypeSelect);
     manager->MakePlanNode(node::kProjectList);
     manager->MakePlanNode(node::kProject);
     manager->MakePlanNode(node::kProject);

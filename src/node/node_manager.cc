@@ -292,20 +292,11 @@ ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(const std::string &tab
     return node_ptr;
 }
 
-ProjectPlanNode *NodeManager::MakeProjectPlanNode(node::SQLNode *expression,
-                                                  const std::string &name,
-                                                  const std::string &table,
-                                                  const std::string &w) {
-    ProjectPlanNode *node_ptr = new ProjectPlanNode(expression, name, table, w);
-    RegisterNode((PlanNode *) node_ptr);
-
-    return node_ptr;
-}
 
 PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
     PlanNode *node_ptr;
     switch (type) {
-        case kSelect:node_ptr = (PlanNode *) new SelectPlanNode();
+        case kPlanTypeSelect:node_ptr = (PlanNode *) new SelectPlanNode();
             break;
         case kProjectList:node_ptr = (PlanNode *) new ProjectListPlanNode();
             break;

@@ -40,16 +40,18 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
     ASSERT_EQ(1, list.size());
 
     Planner *planner_ptr = new SimplePlanner(manager_);
-    PlanNode *plan_ptr = planner_ptr->CreatePlan(list[0]);
-    ASSERT_TRUE(NULL != plan_ptr);
-    std::cout << *plan_ptr << std::endl;
+    node::PlanNodeList plan_trees;
+    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, plan_trees));
+    ASSERT_EQ(1, plan_trees.size());
+    PlanNode *plan_ptr = plan_trees.front();
+    std::cout << *(plan_ptr) << std::endl;
     // validate select plan
-    ASSERT_EQ(node::kSelect, plan_ptr->GetType());
+    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
     node::SelectPlanNode *select_ptr = (node::SelectPlanNode *) plan_ptr;
     // validate limit 10
     ASSERT_EQ(node::kPlanTypeLimit, select_ptr->GetChildren()[0]->GetType());
     node::LimitPlanNode *limit_node = (node::LimitPlanNode *) select_ptr->GetChildren()[0];
-    ASSERT_EQ(10,limit_node->GetLimitCnt());
+    ASSERT_EQ(10, limit_node->GetLimitCnt());
 
     // validate project list based on current row
     std::vector<PlanNode *> plan_vec = limit_node->GetChildren();
@@ -63,6 +65,7 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
 
 TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
     node::NodePointVector list;
+    node::PlanNodeList trees;
     int ret = parser_->parse(
         "SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 , max(t1.age) over w1 FROM t1 limit 10;",
         list, manager_);
@@ -71,18 +74,20 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
 
     std::cout << *(list[0]) << std::endl;
     Planner *planner_ptr = new SimplePlanner(manager_);
-    PlanNode *plan_ptr = planner_ptr->CreatePlan(list[0]);
+    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees));
+    ASSERT_EQ(1, trees.size());
+    PlanNode *plan_ptr = trees[0];
     ASSERT_TRUE(NULL != plan_ptr);
 
     std::cout << *plan_ptr << std::endl;
     // validate select plan
-    ASSERT_EQ(node::kSelect, plan_ptr->GetType());
+    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
     node::SelectPlanNode *select_ptr = (node::SelectPlanNode *) plan_ptr;
     // validate limit 10
     // validate limit 10
     ASSERT_EQ(node::kPlanTypeLimit, select_ptr->GetChildren()[0]->GetType());
     node::LimitPlanNode *limit_node = (node::LimitPlanNode *) select_ptr->GetChildren()[0];
-    ASSERT_EQ(10,limit_node->GetLimitCnt());
+    ASSERT_EQ(10, limit_node->GetLimitCnt());
 
     // validate project list based on current row
     std::vector<PlanNode *> plan_vec = limit_node->GetChildren();
