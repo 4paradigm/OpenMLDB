@@ -25,7 +25,6 @@ using type::ColumnDef;
 using node::NodePointVector;
 using node::SQLNode;
 using node::NodeManager;
-typedef
 
 enum FuncDefType {
     kFuncTypeUnknow = 1,

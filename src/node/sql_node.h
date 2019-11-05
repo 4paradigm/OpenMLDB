@@ -849,6 +849,9 @@ public:
                     break;
                 case kTypeSecond:ttl_ = ttl->GetLong() * 1000;
                     break;
+                default: {
+                    ttl_ = -1;
+                }
             }
         }
     }
