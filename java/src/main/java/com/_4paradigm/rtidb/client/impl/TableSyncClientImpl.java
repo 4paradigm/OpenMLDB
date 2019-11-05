@@ -778,7 +778,8 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + name);
         }
         if (th.hasTsCol()) {
-            throw new TabletException("has ts column. should not set time");
+//            throw new TabletException("has ts column. should not set time");
+            return put(name, row);
         }
         return put(name, time, row, null);
     }
@@ -842,6 +843,9 @@ public class TableSyncClientImpl implements TableSyncClient {
                         ByteBuffer row, TableHandler th) throws TabletException {
         if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
+        }
+        if (th.hasTsCol()) {
+            time = 0;
         }
         if (time == 0 && (ts == null || ts.isEmpty())) {
             throw new TabletException("ts is null or empty");
@@ -923,7 +927,8 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         if (th.hasTsCol()) {
-            throw new TabletException("has ts column. should not set time");
+//            throw new TabletException("has ts column. should not set time");
+            return put(tname, row);
         }
         if (row == null) {
             throw new TabletException("putting data is null");
