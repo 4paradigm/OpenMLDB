@@ -335,8 +335,9 @@ void PrintSQLVector(std::ostream &output,
     }
     output << tab << SPACE_ST << vector_name << "[list]: \n";
     const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int count = vec.size();
     int i = 0;
-    for (i = 0; i < vec.size() - 1; ++i) {
+    for (i = 0; i < count - 1; ++i) {
         PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
         output << "\n";
     }

@@ -280,7 +280,7 @@ typedef void* yyscan_t;
 %token SQL_CALC_FOUND_ROWS
 %token SQL_SMALL_RESULT
 %token SSL
-%token STRING
+%token STRINGTYPE
 %token STARTING
 %token STRAIGHT_JOIN
 %token TABLE
@@ -483,7 +483,7 @@ types:  I32
         {
             $$ = ::fesql::node::kTypeInt64;
         }
-        |STRING
+        |STRINGTYPE
         {
             $$ = ::fesql::node::kTypeString;
         }
