@@ -44,9 +44,7 @@ TEST_F(SqlListNodeTest, PushFrontTest) {
     pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(3)));
 
     ASSERT_EQ(3, pList->GetSize());
-    std::strstream out;
-    pList->Print(out);
-    std::cout << out.str() << std::endl;
+    std::cout << *pList << std::endl;
 }
 
 TEST_F(SqlListNodeTest, AppendNodeListTest) {
@@ -60,9 +58,7 @@ TEST_F(SqlListNodeTest, AppendNodeListTest) {
     ASSERT_EQ(2, pList2->GetSize());
 
     pList->AppendNodeList(pList2);
-    std::strstream out;
-    pList->Print(out);
-    std::cout << out.str() << std::endl;
+    std::cout << *pList << std::endl;
 
 
 }
