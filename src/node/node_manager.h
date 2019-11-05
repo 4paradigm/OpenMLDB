@@ -4,7 +4,7 @@
  *      负责FeSQL的基础元件（SQLNode, PlanNode)的创建和销毁
  *      SQL的语法解析树、查询计划里面维护的只是这些节点的指针或者引用
  * Author: chenjing
- * Date: 2019/10/28 
+ * Date: 2019/10/28
  *--------------------------------------------------------------------------
 **/
 
@@ -89,12 +89,27 @@ public:
     SQLNode *MakeRowsFrameNode(SQLNode *node_ptr);
     SQLNode *MakeLimitNode(int count);
     SQLNode *MakeConstNode(int value);
+    SQLNode *MakeConstNode(long value, DataType unit);
     SQLNode *MakeConstNode(long value);
     SQLNode *MakeConstNode(float value);
     SQLNode *MakeConstNode(double value);
     SQLNode *MakeConstNode(const std::string &value);
     SQLNode *MakeConstNode(const char *value);
     SQLNode *MakeConstNode();
+
+    SQLNode *MakeNameNode(const std::string &name);
+    SQLNode *MakeCreateTableNode(bool op_if_not_exist,
+                                 const std::string &table_name,
+                                 SQLNodeList *column_desc_list);
+    SQLNode *MakeColumnDescNode(const std::string &column_name, const DataType data_type, bool op_not_null);
+    SQLNode *MakeColumnIndexNode(SQLNodeList *keys, SQLNode *ts, SQLNode *ttl, SQLNode *version);
+    SQLNode *MakeColumnIndexNode(SQLNodeList *index_item_list);
+    SQLNode *MakeKeyNode(SQLNodeList *key_list);
+    SQLNode *MakeKeyNode(const std::string &key);
+    SQLNode *MakeIndexKeyNode(const std::string &key);
+    SQLNode *MakeIndexTsNode(const std::string &ts);
+    SQLNode *MakeIndexVersionNode(const std::string &version);
+    SQLNode *MakeIndexVersionNode(const std::string &version, int count);
 
     SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name);
     SQLNode *MakeResTargetNode(SQLNode *node_ptr, const std::string &name);

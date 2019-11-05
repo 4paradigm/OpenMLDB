@@ -5,7 +5,7 @@
 #include <node/node_manager.h>
 #include "glog/logging.h"
 #include "sql_node.h"
-
+#include <numeric>
 namespace fesql {
 namespace node {
 
@@ -204,9 +204,6 @@ void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSQLVector(output, tab, window_list_ptr_, "window_list", last_child);
 }
 
-
-
-
 /**
  * get the node type name
  * @param type
@@ -217,11 +214,19 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
     switch (type) {
         case kSelectStmt:output = "kSelectStmt";
             break;
+        case kCreateStmt:output = "kCreateStmt";
+            break;
+        case kName: output = "kName";
+            break;
         case kResTarget:output = "kResTarget";
             break;
         case kTable: output = "kTable";
             break;
         case kColumnRef: output = "kColumnRef";
+            break;
+        case kColumnDesc: output = "kColumnDesc";
+            break;
+        case kColumnIndex: output = "kColumnIndex";
             break;
         case kExpr: output = "kExpr";
             break;
@@ -348,5 +353,43 @@ void PrintValue(std::ostream &output,
 }
 
 
+void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, table_name_, "table", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(op_if_not_exist_), "IF NOT EXIST", false);
+    output << "\n";
+    PrintSQLVector(output, tab, column_desc_list_, "column_desc_list_", true);
+}
+
+void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, column_name_, "column_name", false);
+    output << "\n";
+    PrintValue(output, tab, DataTypeName(column_type_), "column_type", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(op_not_null_), "NOT NULL", false);
+}
+
+void ColumnIndexNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    std::string lastdata;
+    lastdata = accumulate(key_.begin(), key_.end(), lastdata);
+    PrintValue(output, tab, lastdata, "keys", false);
+    output << "\n";
+    PrintValue(output, tab, ts_, "ts_col", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(ttl_), "ttl", false);
+    output << "\n";
+    PrintValue(output, tab, version_, "version_column", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(version_count_), "version_count", true);
+}
 }
 }

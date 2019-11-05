@@ -108,12 +108,11 @@ ELSEIF	{ return ELSEIF; }
 END	{return END; }
 ENUM { return ENUM; }
 ESCAPED	{ return ESCAPED; }
-EXISTS	{ yylval->subtok = 0; return EXISTS; }
-NOT[ \t\n]+EXISTS	{ yylval->subtok = 1; return EXISTS; }
+EXISTS	{ return EXISTS; }
 EXIT	{ return EXIT; }
 EXPLAIN	{ return EXPLAIN; }
 FETCH	{ return FETCH; }
-FLOAT4?	{ return FLOAT; }
+FLOAT4|FLOAT?	{ return FLOAT; }
 FOLLOWING   {return FOLLOWING;  }
 FOR	{ return FOR; }
 FORCE	{ return FORCE; }
@@ -141,7 +140,8 @@ INTO	{ return INTO; }
 IS	{ return IS; }
 ITERATE	{ return ITERATE; }
 JOIN	{ return JOIN; }
-INDEX|KEY	{ return KEY; }
+INDEX   { return INDEX; }
+KEY	{ return KEY; }
 KEYS	{ return KEYS; }
 KILL	{ return KILL; }
 LEADING	{ return LEADING; }
@@ -229,6 +229,7 @@ SQL_BIG_RESULT	{ return SQL_BIG_RESULT; }
 SQL_CALC_FOUND_ROWS	{ return SQL_CALC_FOUND_ROWS; }
 SQL_SMALL_RESULT	{ return SQL_SMALL_RESULT; }
 SSL	{ return SSL; }
+STRING  {   return STRING;}
 STARTING	{ return STARTING; }
 STRAIGHT_JOIN	{ return STRAIGHT_JOIN; }
 TABLE	{ return TABLE; }
@@ -241,6 +242,8 @@ TIMESTAMP	{ return TIMESTAMP; }
 INT1|TINYINT	{ return TINYINT; }
 TINYTEXT	{ return TINYTEXT; }
 TO	{ return TO; }
+TS  { return TS; }
+TTL  { return TTL; }
 TRAILING	{ return TRAILING; }
 TRIGGER	{ return TRIGGER; }
 UNDO	{ return UNDO; }
@@ -260,6 +263,7 @@ VALUES?	{ return VALUES; }
 VARBINARY	{ return VARBINARY; }
 VARCHAR(ACTER)?	{ return VARCHAR; }
 VARYING	{ return VARYING; }
+VERSION { return VERSION; }
 WHEN	{ return WHEN; }
 WHERE	{ return WHERE; }
 WHILE	{ return WHILE; }
@@ -298,9 +302,14 @@ ZEROFILL	{ return ZEROFILL; }
 }
 
 
+ /* operator */
 
  /* numbers */
 -?[0-9]+	        { yylval->intval = atoi(yytext); return INTNUM; }
+-?[0-9]+['d']	        { yylval->intval = atoi(yytext); return DAYNUM; }
+-?[0-9]+['h']	        { yylval->intval = atoi(yytext); return HOURNUM; }
+-?[0-9]+['m']	        { yylval->intval = atoi(yytext); return MINUTENUM; }
+-?[0-9]+['s']	        { yylval->intval = atoi(yytext); return SECONDNUM; }
 
 -?[0-9]+"."[0-9]* |
 -?"."[0-9]+	|
@@ -351,7 +360,6 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 @`[^`\n]*$ { yyerror("unterminated quoted user variable %s", yytext); }
 @'[^'\n]*$ { yyerror("unterminated quoted user variable %s", yytext); }
 
-
 ":="     { return ASSIGN; }
 
 <FUN>{identifier} {
@@ -359,7 +367,7 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
             return NAME;
     }
 
-<FUN>{self} {
+{self} {
             return yytext[0];
 	}
 

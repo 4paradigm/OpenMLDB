@@ -21,6 +21,7 @@ const std::string INDENT = " \t";
 enum SQLNodeType {
     //SQL
     kSelectStmt = 0,
+    kCreateStmt,
     kExpr,
     kResTarget,
     kTable,
@@ -31,6 +32,13 @@ enum SQLNodeType {
     kFrameBound,
     kFrames,
     kColumnRef,
+    kColumnDesc,
+    kColumnIndex,
+    kIndexKey,
+    kIndexTs,
+    kIndexVersion,
+    kIndexTTL,
+    kName,
     kConst,
     kLimit,
     kAll,
@@ -72,7 +80,19 @@ enum DataType {
     kTypeFloat,
     kTypeDouble,
     kTypeString,
+    kTypeTimestamp,
+    kTypeHour,
+    kTypeDay,
+    kTypeMinute,
+    kTypeSecond,
     kTypeNull
+};
+
+enum TimeUnit {
+    kTimeUnitHour,
+    kTimeUnitDay,
+    kTimeUnitMinute,
+    kTimeUnitSecond,
 };
 enum FnOperator {
     kFnOpAdd,

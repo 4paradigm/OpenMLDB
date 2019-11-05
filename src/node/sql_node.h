@@ -37,6 +37,7 @@ inline const std::string DataTypeName(const DataType &type) {
         case kTypeFloat:return "float";
         case kTypeDouble:return "double";
         case kTypeString:return "string";
+        case kTypeTimestamp:return "timestamp";
         case kTypeNull:return "null";
         default: return "unknownType";
     }
@@ -145,6 +146,18 @@ private:
     SQLLinkedNode *tail_;
 };
 
+class NameNode : public SQLNode {
+public:
+    NameNode() : SQLNode(kName, 0, 0), name_("") {};
+    NameNode(const std::string &name) : SQLNode(kName, 0, 0), name_(name) {};
+    ~NameNode() {};
+
+    std::string GetName() const {
+        return name_;
+    }
+private:
+    std::string name_;
+};
 class FnNode : public SQLNode {
 public:
     FnNode() : SQLNode(kFunc, 0, 0), indent(0) {};
@@ -182,8 +195,13 @@ public:
     ConstNode(const char *val) : FnNode(kPrimary), date_type_(kTypeString) {
         val_.vstr = val;
     }
+
     ConstNode(const std::string &val) : FnNode(kPrimary), date_type_(kTypeString) {
         val_.vstr = val.c_str();
+    }
+
+    ConstNode(long val, DataType time_type) : FnNode(kPrimary), date_type_(time_type) {
+        val_.vlong = val;
     }
 
     ~ConstNode() {}
@@ -592,7 +610,8 @@ public:
 class FnParaNode : public FnNode {
 public:
     FnParaNode() : FnNode(kFnPara) {};
-    FnParaNode(const std::string &name, const DataType &para_type) : FnNode(kFnPara), name_(name), para_type_(para_type) {};
+    FnParaNode(const std::string &name, const DataType &para_type)
+        : FnNode(kFnPara), name_(name), para_type_(para_type) {};
     std::string GetName() const {
         return name_;
     }
@@ -665,6 +684,184 @@ private:
     std::string name_;
 };
 
+class ColumnDefNode : public SQLNode {
+public:
+    ColumnDefNode() : SQLNode(kColumnDesc, 0, 0), column_name_(""), column_type_(kTypeNull) {}
+    ColumnDefNode(const std::string &name, const DataType &data_type, bool op_not_null) : SQLNode(kColumnDesc, 0, 0),
+                                                                                          column_name_(name),
+                                                                                          column_type_(data_type),
+                                                                                          op_not_null_(op_not_null) {};
+    ~ColumnDefNode() {};
+
+    std::string GetColumnName() const {
+        return column_name_;
+    }
+
+    DataType GetColumnType() const {
+        return column_type_;
+    }
+
+    bool GetIsNotNull() const {
+        return op_not_null_;
+    }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+private:
+    std::string column_name_;
+    DataType column_type_;
+    bool op_not_null_;
+
+};
+
+class CreateStmt : public SQLNode {
+public:
+    CreateStmt() : SQLNode(kCreateStmt, 0, 0), table_name_(""), op_if_not_exist_(false) {
+    }
+
+    CreateStmt(const std::string &table_name, bool op_if_not_exist) :
+        SQLNode(kCreateStmt, 0, 0), table_name_(table_name), op_if_not_exist_(op_if_not_exist) {
+    }
+
+    ~CreateStmt() {};
+
+    NodePointVector &GetColumnDefList() {
+        return column_desc_list_;
+    }
+
+    std::string GetTableName() const {
+        return table_name_;
+    }
+
+    bool GetOpIfNotExist() const {
+        return op_if_not_exist_;
+    }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+private:
+    std::string table_name_;
+    bool op_if_not_exist_;
+    NodePointVector column_desc_list_;
+
+};
+
+class IndexKeyNode : public SQLNode {
+public:
+    IndexKeyNode() : SQLNode(kIndexKey, 0, 0) {}
+    IndexKeyNode(const std::string &key) : SQLNode(kIndexKey, 0, 0) { key_.push_back(key); }
+    ~IndexKeyNode() {};
+    void AddKey(const std::string &key) {
+        key_.push_back(key);
+    }
+    std::vector<std::string> &GetKey() {
+        return key_;
+    }
+private:
+    std::vector<std::string> key_;
+};
+
+class IndexVersionNode : public SQLNode {
+public:
+    IndexVersionNode() : SQLNode(kIndexVersion, 0, 0) {};
+    IndexVersionNode(const std::string &column_name) : SQLNode(kIndexVersion, 0, 0),
+                                                       column_name_(column_name),
+                                                       count_(1) {};
+    IndexVersionNode(const std::string &column_name, int count) : SQLNode(kIndexVersion, 0, 0),
+                                                                  column_name_(column_name),
+                                                                  count_(count) {};
+
+    std::string &GetColumnName() {
+        return column_name_;
+    }
+
+    int GetCount() const {
+        return count_;
+    }
+private:
+    std::string column_name_;
+    int count_;
+};
+
+class IndexTsNode : public SQLNode {
+public:
+    IndexTsNode() : SQLNode(kIndexTs, 0, 0) {};
+    IndexTsNode(const std::string &column_name) : SQLNode(kIndexTs, 0, 0), column_name_(column_name) {};
+
+    std::string &GetColumnName() {
+        return column_name_;
+    }
+
+private:
+    std::string column_name_;
+};
+
+class ColumnIndexNode : public SQLNode {
+public:
+    ColumnIndexNode() : SQLNode(kColumnIndex, 0, 0), ts_(""), version_(""), ttl_(-1) {};
+
+    std::vector<std::string> &GetKey() {
+        return key_;
+    }
+    void SetKey(std::vector<std::string> &key) {
+        key_ = key;
+    }
+
+    std::string GetTs() const {
+        return ts_;
+    }
+
+    void SetTs(std::string &ts) {
+        ts_ = ts;
+    }
+
+    std::string GetVersion() const {
+        return version_;
+    }
+
+    void SetVersion(std::string &version) {
+        version_ = version;
+    }
+
+    int GetVersionCount() const {
+        return version_count_;
+    }
+
+    void SetVersionCount(int count) {
+        version_count_ = count;
+    }
+
+    int64_t GetTTL() const {
+        return ttl_;
+    }
+    void SetTTL(ConstNode *ttl) {
+        if (nullptr == ttl) {
+            ttl_ = -1l;
+        } else {
+            switch (ttl->GetDataType()) {
+                case kTypeInt32:ttl_ = ttl->GetInt();
+                    break;
+                case kTypeInt64:ttl_ = ttl->GetLong();
+                    break;
+                case kTypeDay:ttl_ = ttl->GetLong() * 86400000L;
+                    break;
+                case kTypeHour:ttl_ = ttl->GetLong() * 3600000L;
+                    break;
+                case kTypeMinute:ttl_ = ttl->GetLong() * 60000;
+                    break;
+                case kTypeSecond:ttl_ = ttl->GetLong() * 1000;
+                    break;
+            }
+        }
+    }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+private:
+    std::vector<std::string> key_;
+    std::string ts_;
+    std::string version_;
+    int version_count_;
+    int64_t ttl_;
+
+};
 std::string WindowOfExpression(SQLNode *node_ptr);
 void FillSQLNodeList2NodeVector(SQLNodeList *node_list_ptr, std::vector<SQLNode *> &node_list);
 void PrintSQLNode(std::ostream &output,
