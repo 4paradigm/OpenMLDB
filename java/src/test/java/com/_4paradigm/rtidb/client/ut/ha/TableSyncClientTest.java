@@ -25,6 +25,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.nio.ByteBuffer;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -390,7 +391,7 @@ public class TableSyncClientTest extends TestCaseBase {
         Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
         Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
         Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
-        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("timestamp").setIsTsCol(true).build();
         Common.ColumnDesc col4 = Common.ColumnDesc.newBuilder().setName("ts_1").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
         Common.ColumnKey colKey1 = Common.ColumnKey.newBuilder().setIndexName("card").addTsName("ts").addTsName("ts_1").build();
         Common.ColumnKey colKey2 = Common.ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts").build();
@@ -409,23 +410,23 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("card", "card0");
             data.put("mcc", "mcc1");
             data.put("amt", 1.7);
-            data.put("ts", 1236l);
+            data.put("ts", Timestamp.valueOf("2018-11-22 01:10:22"));
             data.put("ts_1", 444l);
             tableSyncClient.put(name, 111111111l, data);
 
-            Object[] row = tableSyncClient.getRow(name, "card0", "card", 1236l, "ts", null);
+            Object[] row = tableSyncClient.getRow(name, "card0", "card", Timestamp.valueOf("2018-11-22 01:10:22").getTime(), "ts", null);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc1");
             Assert.assertEquals(row[2], 1.7);
-            Assert.assertEquals(row[3], 1236l);
+            Assert.assertEquals(((DateTime) row[3]).getMillis(), Timestamp.valueOf("2018-11-22 01:10:22").getTime());
             Assert.assertEquals(row[4], 444l);
 
-            Assert.assertTrue(tableSyncClient.put(name, 111111111l, new Object[]{"card1", "mcc1", 1.7, 1236l, 444l}));
-            row = tableSyncClient.getRow(name, "card1", "card", 1236l, "ts", null);
+            Assert.assertTrue(tableSyncClient.put(name, 111111111l, new Object[]{"card1", "mcc1", 1.7, Timestamp.valueOf("2018-11-22 01:10:22"), 444l}));
+            row = tableSyncClient.getRow(name, "card1", "card", 444l, "ts_1", null);
             Assert.assertEquals(row[0], "card1");
             Assert.assertEquals(row[1], "mcc1");
             Assert.assertEquals(row[2], 1.7);
-            Assert.assertEquals(row[3], 1236l);
+            Assert.assertEquals(((DateTime) row[3]).getMillis(), Timestamp.valueOf("2018-11-22 01:10:22").getTime());
             Assert.assertEquals(row[4], 444l);
 
         } catch (Exception e) {
