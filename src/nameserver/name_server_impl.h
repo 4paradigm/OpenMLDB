@@ -136,8 +136,8 @@ public:
         task_id_ = thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
         return true;
     }
-    bool MakeReplicaCluster(std::string& zone_name, uint64_t& term, std::string& msg) {
-        if (!client_->MakeReplicaCluster(zone_name, term, msg)) {
+    bool MakeReplicaCluster(const std::string& alias, const std::string& zone_name, const uint64_t& term, std::string& msg) {
+        if (!client_->MakeReplicaCluster(alias, zone_name, term, msg)) {
             PDLOG(WARNING, "send MakeReplicaCluster request failed");
             return false;
         }
@@ -548,12 +548,11 @@ private:
     std::string zk_auto_recover_table_node_;
     std::string zk_table_changed_notify_node_;
     std::string zk_offline_endpoint_lock_node_;
-    std::string zk_zone_data_path_, zk_zone_name_;
+    std::string zk_zone_data_path_, zk_zone_name_, replica_alias_;
     uint32_t table_index_;
     uint64_t term_, zone_term_;
     std::string zk_op_index_node_;
     std::string zk_op_data_path_;
-    std::string zone_name_;
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::atomic<bool> follower_;

@@ -423,9 +423,10 @@ bool NsClient::UpdateTTL(const std::string& name,
     return false;
 }
 
-bool NsClient::MakeReplicaCluster(const std::string& name, const uint64_t& term, std::string& msg) {
+bool NsClient::MakeReplicaCluster(const std::string& alias, const std::string& name, const uint64_t& term, std::string& msg) {
     ::rtidb::nameserver::MakeReplicaClusterRequest request;
     ::rtidb::nameserver::MakeReplicaClusterResponse response;
+    request.set_replica_alias(alias);
     request.set_zone_name(name);
     request.set_zone_term(term);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::MakeReplicaCluster,
