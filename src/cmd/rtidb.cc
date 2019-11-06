@@ -4545,6 +4545,8 @@ void StartNsClient() {
             HandleNSClientCancelOP(parts, &client);
         } else if (parts[0] == "addtablefield") {
             HandleNSAddTableField(parts, &client);
+        } else if (parts[0] == "replicaof") {
+            HandleReplicaOf(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

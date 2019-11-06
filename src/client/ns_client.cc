@@ -442,7 +442,7 @@ bool NsClient::ReplicaOf(const std::string& zk_ep, const std::string& zk_path, c
     ::rtidb::nameserver::GeneralResponse response;
     request.set_alias(alias);
     auto cluster_add = request.mutable_cluster_add();
-    cluster_add->set_zk_endpoints(zk_path);
+    cluster_add->set_zk_path(zk_path);
     cluster_add->set_zk_endpoints(zk_ep);
 
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaCluster,

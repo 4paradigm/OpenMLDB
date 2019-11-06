@@ -50,7 +50,7 @@ struct TabletInfo {
 
 class ClusterInfo {
 public:
-    ClusterInfo(::rtidb::nameserver::ClusterAddress& cd, ::baidu::common::ThreadPool tp): mu_(), thread_pool_(tp) {
+    ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd, ::baidu::common::ThreadPool& tp): mu_(), thread_pool_(tp) {
         cluster_add_.CopyFrom(cd);
         ctime_ = ::baidu::common::timer::get_micros()/1000;
     }

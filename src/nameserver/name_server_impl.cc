@@ -56,7 +56,6 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     std::string zk_config_path = FLAGS_zk_root_path + "/config";
     zk_zone_data_path_ = FLAGS_zk_root_path + "/cluster";
     zk_zone_name_ = FLAGS_endpoint + FLAGS_zk_root_path;
-    zone_term_ = 1;
     zk_auto_failover_node_ = zk_config_path + "/auto_failover";
     zk_table_changed_notify_node_ = zk_table_path + "/notify";
     running_.store(false, std::memory_order_release);
@@ -143,10 +142,12 @@ bool NameServerImpl::Recover() {
         if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/term", value)) {
             if (!zk_client_->CreateNode(zk_zone_data_path_ + "/term", "1")) {
                 PDLOG(WARNING, "create zone term node failed!");
+                zone_term_ = 1;
                 return false;
             }
+        } else {
+            zone_term_ = std::stoull(value);
         }
-        zone_term_ = std::stoull(value);
         PDLOG(INFO, "recover zone_term %u", zone_term_);
         value.clear();
         if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/name", value)) {
@@ -161,6 +162,12 @@ bool NameServerImpl::Recover() {
         if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/follower", value)) {
             follower_.store(  value == "true" ? true : false, std::memory_order_release);
             PDLOG(WARNING, "recover follower: %d", follower_.load(std::memory_order_acquire));
+        } else {
+            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/follower", "false")) {
+                PDLOG(WARNING, "create zone follower node failed!");
+                follower_.store(false, std::memory_order_release);
+                return false;
+            }
         }
         if (!RecoverTableInfo()) {
             PDLOG(WARNING, "recover table info failed!");
@@ -215,7 +222,7 @@ void NameServerImpl::RecoverClusterInfo() {
         ::rtidb::nameserver::ClusterAddress cluster_add;
         cluster_add.ParseFromString(value);
         value.clear();
-        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(cluster_add);
+        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(cluster_add, thread_pool_);
         if (!cluster_info->Init(rpc_msg)) {
             PDLOG(WARNING, "%s init failed, error: %s", alias.c_str(), rpc_msg.c_str());
             continue;
