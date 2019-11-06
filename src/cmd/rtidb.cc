@@ -598,7 +598,32 @@ void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::
     tp.Print(true);
 }
 
-void HandleNSShowNameServer(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client, 
+void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+
+    if (FLAGS_interactive) {
+        printf("Drop table %s? yes/no\n", parts[1].c_str());
+        std::string input;
+        std::cin >> input;
+        std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+        if (input != "yes") {
+            printf("'drop %s' cmd is canceled!\n", parts[1].c_str());
+            return;
+        }
+    }
+    std::string msg;
+    bool ret = client->RemoveReplicaCluster(parts[1], msg);
+    if (!ret) {
+        std::cout << "failed to kick. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "kick ok" << std::endl;
+}
+
+void HandleNSShowNameServer(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client,
         std::shared_ptr<ZkClient> zk_client) {
     if (FLAGS_zk_cluster.empty() || !zk_client) {
         std::cout << "Show nameserver failed. zk_cluster is empty" << std::endl;
@@ -1640,6 +1665,28 @@ void HandleReplicaOf(const std::vector<std::string>& parts, ::rtidb::client::NsC
     std::cout << "add replica cluster ok" << std::endl;
 }
 
+void HandleShowReplicaOf(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    std::vector<std::string> row = {"zk_endpoints", "zk_path", "alias", "age"};
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+
+    std::vector<::rtidb::nameserver::ClusterAdd_Age> cluster_info;
+    std::string msg;
+    bool ok = client->ShowReplicaOf(cluster_info, msg);
+    if (!ok) {
+        std::cout << "Fail to show replica. error msg: " << msg << std::endl;
+        return;
+    }
+    for (auto i : cluster_info) {
+        std::vector<std::string> row;
+        row.push_back(i.replica().cluster_add().zk_endpoints());
+        row.push_back(i.replica().cluster_add().zk_path());
+        row.push_back(i.replica().alias());
+        row.push_back(::rtidb::base::HumanReadableTime(i.age()));
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
 bool HasIsTsCol(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& list) {
     if (list.empty()) {
         return false;
@@ -4547,6 +4594,10 @@ void StartNsClient() {
             HandleNSAddTableField(parts, &client);
         } else if (parts[0] == "replicaof") {
             HandleReplicaOf(parts, &client);
+        } else if (parts[0] == "showreplicaof") {
+            HandleShowReplicaOf(parts, &client);
+        } else if (parts[0] == "removereplicaof") {
+            HandleNSRemoveReplicaCluster(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

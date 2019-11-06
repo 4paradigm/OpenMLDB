@@ -50,13 +50,13 @@ struct TabletInfo {
 
 class ClusterInfo {
 public:
-    ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd, ::baidu::common::ThreadPool& tp): mu_(), thread_pool_(tp) {
+    ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd, ::baidu::common::ThreadPool* tp): mu_(), thread_pool_(tp) {
         cluster_add_.CopyFrom(cd);
         ctime_ = ::baidu::common::timer::get_micros()/1000;
     }
     ~ClusterInfo() {
         std::lock_guard<std::mutex> lock(mu_);
-        thread_pool_.CancelTask(task_id_);
+        thread_pool_->CancelTask(task_id_);
     }
     void CheckZkClient() {
         if (!zk_client_->IsConnected()) {
@@ -74,7 +74,7 @@ public:
             }
         }
         std::lock_guard<std::mutex> lock(mu_);
-        task_id_ = thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
+        task_id_ = thread_pool_->DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
     }
     void UpdateNSClient(const std::vector<std::string>& children) {
         std::string endpoint;
@@ -89,6 +89,7 @@ public:
         }
         std::lock_guard<std::mutex> lock(mu_);
         client_ = tmp_ptr;
+        ctime_ = ::baidu::common::timer::get_micros() / 1000;
     }
     bool Init(std::string& msg) {
 
@@ -133,7 +134,7 @@ public:
          */
         zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
         zk_client_->WatchNodes();
-        task_id_ = thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
+        task_id_ = thread_pool_->DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
         return true;
     }
     bool MakeReplicaCluster(const std::string& alias, const std::string& zone_name, const uint64_t& term, std::string& msg) {
@@ -144,10 +145,26 @@ public:
         return true;
     }
 
+  bool KickReplicaCluster(const std::string& alias, const std::string& zone_name, const uint64_t& term, std::string& msg) {
+      if (!client_->KickReplicaCluster(alias, zone_name, term, msg)) {
+          PDLOG(WARNING, "send MakeReplicaCluster request failed");
+          return false;
+      }
+      return true;
+  }
+
+  const ::rtidb::nameserver::ClusterAddress& ReturnAdd() {
+        return cluster_add_;
+    }
+    const uint64_t& ReturnCt() {
+        return ctime_;
+    }
+
+
 private:
   std::shared_ptr<::rtidb::client::NsClient> client_;
   std::shared_ptr<ZkClient> zk_client_;
-  ::baidu::common::ThreadPool& thread_pool_;
+  ::baidu::common::ThreadPool* thread_pool_;
   ::rtidb::nameserver::ClusterAddress cluster_add_;
   uint64_t session_term_;
   int64_t task_id_;
@@ -316,8 +333,20 @@ public:
             const MakeReplicaClusterRequest *request,
             MakeReplicaClusterResponse *response,
             Closure *done);
+    void ShowReplicaCluster(RpcController *controller,
+            const GeneralRequest *request,
+            ShowReplicaClusterResponse *response,
+            Closure *done);
+    void RemoveReplicaCLuster(RpcController *controller,
+            const RemoveReplicaOfRequest *request,
+            GeneralResponse *response,
+            Closure *done);
+    void KickReplicaCluster(RpcController *controller,
+            const KickReplicaClusterRequest *request,
+            GeneralResponse *response,
+            Closure *done);
 
-    int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+  int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);
 

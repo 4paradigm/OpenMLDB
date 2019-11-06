@@ -273,10 +273,32 @@ message AddReplicaClusterRequest {
     required string alias = 3;
 }
 
+message GeneralRequest {}
+
+message ClusterAdd_Age {
+    required AddReplicaClusterRequest replica = 1;
+    required uint64 age = 2;
+}
+message ShowReplicaClusterResponse {
+    repeated ClusterAdd_Age replicas = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message RemoveReplicaOfRequest {
+    required string alias = 1;
+}
+
 message MakeReplicaClusterRequest {
     required string zone_name = 1;
-    required string replica_alias = 3;
-    required uint64 zone_term = 2;
+    required string replica_alias = 2;
+    required uint64 zone_term = 3;
+}
+
+message KickReplicaClusterRequest {
+    required string zone_name = 1;
+    required string replica_alias = 2;
+    required uint64 zone_term = 3;
 }
 
 message MakeReplicaClusterResponse {
@@ -312,5 +334,8 @@ service NameServer {
     rpc UpdateTableAliveStatus(UpdateTableAliveRequest) returns (GeneralResponse);
     rpc AddTableField(AddTableFieldRequest) returns (GeneralResponse);
     rpc AddReplicaCluster(AddReplicaClusterRequest) returns (GeneralResponse);
+    rpc ShowReplicaCluster(GeneralRequest) returns (ShowReplicaClusterResponse);
+    rpc RemoveReplicaCluster(RemoveReplicaOfRequest) returns (GeneralResponse);
     rpc MakeReplicaCluster(MakeReplicaClusterRequest) returns (MakeReplicaClusterResponse);
+    rpc KickReplicaCluster(KickReplicaClusterRequest) returns (GeneralResponse);
 }

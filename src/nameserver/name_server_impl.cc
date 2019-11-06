@@ -42,7 +42,7 @@ const std::string OFFLINE_LEADER_ENDPOINT = "OFFLINE_LEADER_ENDPOINT";
 const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
-    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1), 
+    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1),
     task_thread_pool_(FLAGS_name_server_task_pool_size), cv_(),
     rand_(0xdeadbeef), session_term_(0) {
     std::string zk_table_path = FLAGS_zk_root_path + "/table";
@@ -139,45 +139,47 @@ bool NameServerImpl::Recover() {
             PDLOG(INFO, "get zk_auto_failover_node[%s]", value.c_str());
         }
         value.clear();
-        if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/term", value)) {
-            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/term", "1")) {
-                PDLOG(WARNING, "create zone term node failed!");
-                zone_term_ = 1;
-                return false;
-            }
-        } else {
-            zone_term_ = std::stoull(value);
-        }
-        PDLOG(INFO, "recover zone_term %u", zone_term_);
-        value.clear();
-        if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/name", value)) {
-            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/name", zk_zone_name_)) {
-                PDLOG(WARNING, "create zone name node failed!");
-                return false;
-            }
-        } else {
-            zk_zone_name_ = value;
-        }
-        PDLOG(INFO, "recover zone_name: %s", zk_zone_name_.c_str());
-        value.clear();
         if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/follower", value)) {
             follower_.store(  value == "true" ? true : false, std::memory_order_release);
             PDLOG(WARNING, "recover follower: %d", follower_.load(std::memory_order_acquire));
         } else {
             if (!zk_client_->CreateNode(zk_zone_data_path_ + "/follower", "false")) {
                 PDLOG(WARNING, "create zone follower node failed!");
-                follower_.store(false, std::memory_order_release);
                 return false;
             }
+            follower_.store(false, std::memory_order_release);
         }
-        if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/alias", value)) {
-            replica_alias_ = value;
-            PDLOG(WARNING, "recover replica alias: %s", replica_alias_.c_str());
-        } else {
-            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/alias", "false")) {
-                PDLOG(WARNING, "create zone alias node failed!");
-                replica_alias_ = "false";
-                return false;
+        if (follower_.load(std::memory_order_acquire)) {
+            value.clear();
+            if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/term", value)) {
+                if (!zk_client_->CreateNode(zk_zone_data_path_ + "/term", "1")) {
+                    PDLOG(WARNING, "create zone term node failed!");
+                    zone_term_ = 1;
+                    return false;
+                }
+            } else {
+                PDLOG(INFO, "recover zone_term %u", zone_term_);
+                zone_term_ = std::stoull(value);
+            }
+            value.clear();
+            if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/name", value)) {
+                if (!zk_client_->CreateNode(zk_zone_data_path_ + "/name", zk_zone_name_)) {
+                    PDLOG(WARNING, "create zone name node failed!");
+                    return false;
+                }
+            } else {
+                PDLOG(INFO, "recover zone_name: %s", zk_zone_name_.c_str());
+                zk_zone_name_ = value;
+            }
+            if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/alias", value)) {
+                replica_alias_ = value;
+                PDLOG(WARNING, "recover replica alias: %s", replica_alias_.c_str());
+            } else {
+                if (!zk_client_->CreateNode(zk_zone_data_path_ + "/alias", "false")) {
+                    PDLOG(WARNING, "create zone alias node failed!");
+                    replica_alias_ = "false";
+                    return false;
+                }
             }
         }
         if (!RecoverTableInfo()) {
@@ -233,7 +235,7 @@ void NameServerImpl::RecoverClusterInfo() {
         ::rtidb::nameserver::ClusterAddress cluster_add;
         cluster_add.ParseFromString(value);
         value.clear();
-        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(cluster_add, thread_pool_);
+        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(cluster_add, &thread_pool_);
         if (!cluster_info->Init(rpc_msg)) {
             PDLOG(WARNING, "%s init failed, error: %s", alias.c_str(), rpc_msg.c_str());
             continue;
@@ -260,7 +262,7 @@ bool NameServerImpl::RecoverTableInfo() {
             PDLOG(WARNING, "get table info failed! name[%s] table node[%s]", table_name.c_str(), table_name_node.c_str());
             continue;
         }
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = 
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
                     std::make_shared<::rtidb::nameserver::TableInfo>();
         if (!table_info->ParseFromString(value)) {
             PDLOG(WARNING, "parse table info failed! name[%s] value[%s] value size[%d]", table_name.c_str(), value.c_str(), value.length());
@@ -305,7 +307,7 @@ bool NameServerImpl::RecoverOPTask() {
         switch (op_data->op_info_.op_type()) {
             case ::rtidb::api::OPType::kMakeSnapshotOP:
                 if (CreateMakeSnapshotOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -313,7 +315,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kAddReplicaOP:
                 if (CreateAddReplicaOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -321,7 +323,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kChangeLeaderOP:
                 if (CreateChangeLeaderOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -329,7 +331,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kMigrateOP:
                 if (CreateMigrateTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -337,7 +339,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kRecoverTableOP:
                 if (CreateRecoverTableOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -345,7 +347,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kOfflineReplicaOP:
                 if (CreateOfflineReplicaTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -353,7 +355,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kDelReplicaOP:
                 if (CreateDelReplicaOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -361,7 +363,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kReAddReplicaOP:
                 if (CreateReAddReplicaTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -369,7 +371,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kReAddReplicaNoSendOP:
                 if (CreateReAddReplicaNoSendTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -377,7 +379,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kReAddReplicaWithDropOP:
                 if (CreateReAddReplicaWithDropTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -385,7 +387,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kReAddReplicaSimplifyOP:
                 if (CreateReAddReplicaSimplifyTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -393,7 +395,7 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kReLoadTableOP:
                 if (CreateReLoadTableTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
@@ -401,24 +403,24 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kUpdatePartitionStatusOP:
                 if (CreateUpdatePartitionStatusOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             default:
-                PDLOG(WARNING, "unsupport recover op[%s]! op_id[%lu]", 
+                PDLOG(WARNING, "unsupport recover op[%s]! op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
                 continue;
         }
         if (!SkipDoneTask(op_data)) {
-            PDLOG(WARNING, "SkipDoneTask task failed. op_id[%lu] task_index[%u]", 
+            PDLOG(WARNING, "SkipDoneTask task failed. op_id[%lu] task_index[%u]",
                             op_data->op_info_.op_id(), op_data->op_info_.task_index());
             continue;
         }
-        if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed || 
+        if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed ||
                 op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kCanceled) {
             done_op_list_.push_back(op_data);
         } else {
@@ -428,7 +430,7 @@ bool NameServerImpl::RecoverOPTask() {
             }
             task_vec_[idx].push_back(op_data);
         }
-        PDLOG(INFO, "recover op[%s] success. op_id[%lu]", 
+        PDLOG(INFO, "recover op[%s] success. op_id[%lu]",
                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
     }
     for (auto& op_list : task_vec_) {
@@ -464,7 +466,7 @@ int NameServerImpl::CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request.name().c_str(), pid);
         return -1;
     }
-    std::shared_ptr<Task> task = CreateMakeSnapshotTask(endpoint, op_data->op_info_.op_id(), 
+    std::shared_ptr<Task> task = CreateMakeSnapshotTask(endpoint, op_data->op_info_.op_id(),
                 ::rtidb::api::OPType::kMakeSnapshotOP, tid, pid);
     if (!task) {
         PDLOG(WARNING, "create makesnapshot task failed. tid[%u] pid[%u]", tid, pid);
@@ -485,12 +487,12 @@ bool NameServerImpl::SkipDoneTask(std::shared_ptr<OPData> op_data) {
     }
     uint32_t task_index = op_data->op_info_.task_index();
     if (op_data->task_list_.empty()) {
-        PDLOG(WARNING, "skip task failed, task_list is empty. op_id[%lu] op_type[%s]", 
+        PDLOG(WARNING, "skip task failed, task_list is empty. op_id[%lu] op_type[%s]",
                         op_id, op_type.c_str());
         return false;
     }
     if (task_index > op_data->task_list_.size() - 1) {
-        PDLOG(WARNING, "skip task failed. op_id[%lu] op_type[%s] task_index[%u]", 
+        PDLOG(WARNING, "skip task failed. op_id[%lu] op_type[%s] task_index[%u]",
                         op_id, op_type.c_str(), task_index);
         return false;
     }
@@ -5318,12 +5320,13 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             code = 300; rpc_msg = "zk endpoints size is zero";
             break;
         }
-        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(request->cluster_add(), thread_pool_);
+        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(request->cluster_add(), &thread_pool_);
         if (!cluster_info->Init(rpc_msg)) {
             PDLOG(WARNING, "%s init failed, error: %s", request->alias().c_str(), rpc_msg.c_str());
             code = 300;
             break;
         }
+        std::lock_guard<std::mutex> lock(mu_);
         std::string cluster_value;
         cluster_add->SerializeToString(&cluster_value);
         if (!zk_client_->CreateNode(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
@@ -5341,10 +5344,116 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
     response->set_code(code);
     response->set_msg(rpc_msg);
 }
+void NameServerImpl::ShowReplicaCluster(RpcController* controller,
+                                       const GeneralRequest* request,
+                                       ShowReplicaClusterResponse* response,
+                                       Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(300);
+        response->set_msg("cur nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (follower_.load(std::memory_order_acquire)) {
+        response->set_code(300);
+        response->set_msg("cur nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
 
+    auto it = nsc_.begin();
+    for(; it != nsc_.end(); ++it) {
+        auto* status = response->add_replicas();
+        auto replica = status->mutable_replica();
+        replica->set_alias(it->first);
+        replica->mutable_cluster_add()->set_zk_path(it->second->ReturnAdd().zk_path());
+        replica->mutable_cluster_add()->set_zk_endpoints(it->second->ReturnAdd().zk_endpoints());
+        status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ReturnCt());
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+}
+void NameServerImpl::RemoveReplicaCLuster(::google::protobuf::RpcController *controller,
+                                            const ::rtidb::nameserver::RemoveReplicaOfRequest *request,
+                                            ::rtidb::nameserver::GeneralResponse *response,
+                                            ::google::protobuf::Closure *done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(300);
+        response->set_msg("cur nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (!follower_.load(std::memory_order_acquire)) {
+        response->set_code(300);
+        response->set_msg("this isn't follower cluster");
+        return;
+    }
+    auto it = nsc_.find(request->alias());
+    if (it == nsc_.end()) {
+        response->set_code(300);
+        response->set_msg("replica name not found");
+        return;
+    }
+    std::string msg;
+    if (!it->second->KickReplicaCluster(it->first, zk_zone_name_, zone_term_, msg)) {
+        response->set_code(300);
+        response->set_msg(msg);
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+    return;
+}
+
+void NameServerImpl::KickReplicaCluster(::google::protobuf::RpcController *controller,
+    const ::rtidb::nameserver::KickReplicaClusterRequest *request,
+    ::rtidb::nameserver::GeneralResponse *response,
+    ::google::protobuf::Closure *done) {
+    brpc::ClosureGuard done_guard(done);
+    uint64_t code = 0;
+    std::string rpc_msg = "ok";
+
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(300);
+        response->set_msg("cur nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    do {
+        if (!follower_.load(std::memory_order_acquire)) {
+            code = 300; rpc_msg = "this isn't follower cluster";
+            break;
+        } else {
+            if (request->replica_alias() != replica_alias_) {
+                code = 2; rpc_msg = "not same replica";
+                break;
+            }
+            if (request->zone_name() == zk_zone_name_) {
+                if (request->zone_term() < zone_term_) {
+                    code = 300; rpc_msg = "term le cur term";
+                    break;
+                }
+            } else {
+                code = 300; rpc_msg = "cur nameserver is not leader";
+                break;
+            }
+        }
+        if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", "false")) {
+            code = 304; rpc_msg = "set zk failed";
+            PDLOG(WARNING, "set zk failed, save follower value failed");
+            break;
+        }
+    follower_.store(false, std::memory_order_release);
+    } while(0);
+    response->set_code(code);
+    response->set_msg(rpc_msg);
+    return;
+}
 void NameServerImpl::MakeReplicaCluster(::google::protobuf::RpcController *controller,
-                                        const ::rtidb::nameserver::MakeReplicaClusterRequest *request,
-                                        ::rtidb::nameserver::MakeReplicaClusterResponse *response,
+                                            const ::rtidb::nameserver::MakeReplicaClusterRequest *request,
+                                            ::rtidb::nameserver::MakeReplicaClusterResponse *response,
                                         ::google::protobuf::Closure *done) {
     brpc::ClosureGuard done_guard(done);
     uint64_t code = 0;
@@ -5356,8 +5465,8 @@ void NameServerImpl::MakeReplicaCluster(::google::protobuf::RpcController *contr
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    PDLOG(INFO, "request zone name is: %s, term is: %u %d,", request->zone_name().c_str(), request->zone_term(), follower_.load(std::memory_order_acquire));
-    PDLOG(INFO, "cur zone name is: %s", zk_zone_name_.c_str());
+    PDLOG(DEBUG, "request zone name is: %s, term is: %u %d,", request->zone_name().c_str(), request->zone_term(), follower_.load(std::memory_order_acquire));
+    PDLOG(DEBUG, "cur zone name is: %s", zk_zone_name_.c_str());
     do {
         if (follower_.load(std::memory_order_acquire)) {
             if (request->replica_alias() != replica_alias_) {
@@ -5378,6 +5487,7 @@ void NameServerImpl::MakeReplicaCluster(::google::protobuf::RpcController *contr
                 break;
             }
         }
+        std::lock_guard<std::mutex> lock(mu_);
         if (!(zk_client_->SetNodeValue(zk_zone_data_path_ + "/name", request->zone_name()) &&
             zk_client_->SetNodeValue(zk_zone_data_path_ + "/term", std::to_string(request->zone_term())))) {
             code = 304; rpc_msg = "set zk failed";

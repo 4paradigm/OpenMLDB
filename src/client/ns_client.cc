@@ -456,6 +456,50 @@ bool NsClient::ReplicaOf(const std::string& zk_ep, const std::string& zk_path, c
     return false;
 }
 
+bool NsClient::ShowReplicaOf(std::vector<::rtidb::nameserver::ClusterAdd_Age>& clusterinfo, std::string& msg) {
+    ::rtidb::nameserver::GeneralRequest request;
+    ::rtidb::nameserver::ShowReplicaClusterResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowReplicaCluster,
+        &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && (response.code() == 0)) {
+        for(int32_t i = 0; i < response.replicas_size(); i++) {
+            auto status = response.replicas(i);
+            clusterinfo.push_back(status);
+        }
+        return true;
+    }
+
+    return false;
+}
+
+bool NsClient::RemoveReplicaCluster(const std::string& alias, std::string& msg) {
+    ::rtidb::nameserver::RemoveReplicaOfRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RemoveReplicaCluster,
+        &request, &response, FLAGS_request_timeout_ms, 1);
+    if (ok && (response.code() == 0)) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::KickReplicaCluster(const std::string& alias, const std::string& zone_name,
+    const uint64_t& term, std::string& msg) {
+    ::rtidb::nameserver::KickReplicaClusterRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_replica_alias(alias);
+    request.set_zone_term(term);
+    request.set_zone_name(zone_name);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::KickReplicaCluster,
+        &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && (response.code() == 0)) {
+        return true;
+    }
+    return false;
+}
+
 }
 }
 
