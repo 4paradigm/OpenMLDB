@@ -22,12 +22,14 @@
 #include <utility>
 #include "node/plan_node.h"
 #include "llvm/IR/IRBuilder.h"
+#include "proto/type.pb.h"
+#include "codegen/scope_var.h"
 
 
 namespace fesql {
 namespace codegen {
 
-typedef std::map<std::string, std::pair<::fesql::type::ColumnDef, int32_t>> Schema;
+typedef std::map<std::string, std::pair<::fesql::type::ColumnDef, int32_t> > Schema;
 
 class RowFnLetIRBuilder {
 
@@ -44,9 +46,15 @@ class RowFnLetIRBuilder {
 
     bool BuildFnHeader(const std::string& name, 
             ::llvm::Function **fn);
-    bool BuildProject(const ::fesql::node::PlanNode* pn,
-            ::llvm::BasicBlock* block);
 
+    bool FillArgs(const std::string& row_ptr_name,
+            const std::string& output_ptr_name,
+            ::llvm::Function *fn,
+            ScopeVar& sv);
+
+    bool StoreColumn(int64_t offset, ::llvm::Value* value, 
+            ScopeVar& sv, const std::string& output_ptr_name,
+            ::llvm::BasicBlock* block);
 
  private:
     // input schema

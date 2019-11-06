@@ -26,7 +26,7 @@ SQLExprIRBuilder::SQLExprIRBuilder(::llvm::BasicBlock* block,
         BufIRBuilder* buf_ir_builder,
         const std::string& row_ptr_name,
         const std::string& output_ptr_name):block_(block),
-    sv_(scope_var), table_(table), row_ptr_name_(row_ptr_name),
+    sv_(scope_var), row_ptr_name_(row_ptr_name),
     output_ptr_name_(output_ptr_name),
     buf_ir_builder_(buf_ir_builder){
 }
@@ -34,7 +34,8 @@ SQLExprIRBuilder::SQLExprIRBuilder(::llvm::BasicBlock* block,
 SQLExprIRBuilder::~SQLExprIRBuilder() {}
 
 bool SQLExprIRBuilder::Build(const ::fesql::node::SQLNode*  node,
-        ::llvm::Value** output) {
+        ::llvm::Value** output,
+        std::string& col_name) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "node or output is null";
         return false;
@@ -44,6 +45,7 @@ bool SQLExprIRBuilder::Build(const ::fesql::node::SQLNode*  node,
             {
                 const ::fesql::node::ColumnRefNode* n = 
                     (const ::fesql::node::ColumnRefNode*)node;
+                col_name.assign(n->GetColumnName());
                 return BuildColumnRef(n, output);
             }
         default:
@@ -82,7 +84,7 @@ bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
         }
         ok = sv_->AddVar(node->GetColumnName(), value);
         if (ok) {
-            &output = value;
+            *output = value;
         }
         return ok;
     }

@@ -20,6 +20,7 @@
 
 #include "llvm/IR/IRBuilder.h"
 #include "codegen/scope_var.h"
+#include "codegen/buf_ir_builder.h"
 #include "node/sql_node.h"
 
 namespace fesql {
@@ -36,7 +37,8 @@ class SQLExprIRBuilder {
     ~SQLExprIRBuilder();
 
     bool Build(const ::fesql::node::SQLNode* node,
-            ::llvm::Value** output);
+            ::llvm::Value** output,
+            std::string& col_name);
 
  private:
     bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
@@ -46,7 +48,7 @@ class SQLExprIRBuilder {
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
     std::string row_ptr_name_;
-    std::string output_ptr_name;
+    std::string output_ptr_name_;
     BufIRBuilder* buf_ir_builder_;
 };
 

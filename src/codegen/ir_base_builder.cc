@@ -97,6 +97,58 @@ bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,
     return true;
 }
 
+bool GetTableType(::llvm::Type* type,
+        ::fesql::type::Type* output) {
+    if (type == NULL || output == NULL) {
+        LOG(WARNING) << "type or output is null";
+        return false;
+    }
+
+    switch(type->getTypeID()) {
+        case ::llvm::Type::FloatTyID:
+            {
+                *output = ::fesql::type::kFloat;
+                return true;
+            }
+        case ::llvm::Type::DoubleTyID: 
+            {
+                *output = ::fesql::type::kDouble;
+                return true;
+            }
+        case ::llvm::Type::IntegerTyID:
+            {
+                switch (type->getIntegerBitWidth()) {
+                    case 16: 
+                        {
+                            *output = ::fesql::type::kInt16;
+                            return true;
+                        }
+                    case 32: 
+                        {
+                            *output = ::fesql::type::kInt32;
+                            return true;
+                        }
+                    case 64: 
+                        {
+                            *output = ::fesql::type::kInt64;
+                            return true;
+                        }
+                    default:
+                        {
+                            LOG(WARNING) << "no mapping type for llvm type";
+                            return false;
+                        }
+
+                }
+            }
+        default: 
+            {
+             LOG(WARNING) << "no mapping type for llvm type";
+             return false;
+            }
+    }
+}
+
 bool BuildLoadOffset(::llvm::IRBuilder<>& builder,
         ::llvm::Value* ptr, 
         ::llvm::Value* offset,
@@ -125,7 +177,25 @@ bool BuildLoadOffset(::llvm::IRBuilder<>& builder,
     return true;
 }
 
+bool BuildStoreOffset(::llvm::IRBuilder<>& builder,
+        ::llvm::Value* ptr,
+        ::llvm::Value* offset,
+        ::llvm::Value* value) {
 
+    if (ptr == NULL || offset == NULL || value == NULL) {
+        LOG(WARNING) << "ptr or offset or value is null";
+        return false;
+    }
+    ::llvm::Value* ptr_with_offset = NULL;
+    bool ok = BuildGetPtrOffset(builder, ptr, offset, value->getType(),
+            &ptr_with_offset);
+    if (!ok || ptr_with_offset == NULL) {
+        LOG(WARNING) << "fail to get offset ptr";
+        return false;
+    }
+    builder.CreateStore(value, ptr_with_offset, false);
+    return true;
+}
 
 
 } // namespace codegen

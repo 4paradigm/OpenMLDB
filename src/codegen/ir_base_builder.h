@@ -29,6 +29,9 @@ bool GetLLVMType(::llvm::IRBuilder<>& builder,
         const ::fesql::type::Type& type,
         ::llvm::Type** output);
 
+bool GetTableType(::llvm::Type* type,
+        ::fesql::type::Type* output);
+
 bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,
         ::llvm::Value* ptr,
         ::llvm::Value* offset,
@@ -40,6 +43,12 @@ bool BuildLoadOffset(::llvm::IRBuilder<>& builder,
         ::llvm::Value* offset,
         ::llvm::Type* type,
         ::llvm::Value** output);
+
+bool BuildStoreOffset(::llvm::IRBuilder<>& builder,
+        ::llvm::Value* ptr,
+        ::llvm::Value* offset,
+        ::llvm::Value* value);
+
 
 }  // namespace codegen
 }  // namespace fesql

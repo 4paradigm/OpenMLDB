@@ -207,7 +207,7 @@ public:
     ~ProjectListPlanNode() {};
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    PlanNodeList &GetProjects() {
+    const PlanNodeList &GetProjects() const {
         return projects;
     }
     void AddProject(ProjectPlanNode *project) {

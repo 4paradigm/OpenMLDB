@@ -5,7 +5,8 @@ include_directories(${INCLUDE_DIRECTORIES}
 llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
 
 add_library(fesql_codegen STATIC scope_var.cc expr_ir_builder.cc
-    fn_ir_builder.cc buf_ir_builder.cc ir_base_builder.cc)
+    fn_ir_builder.cc buf_ir_builder.cc ir_base_builder.cc
+    fn_let_ir_builder.cc)
 
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
 target_link_libraries(ir_base_builder_test fesql_codegen fesql_proto protobuf  ${llvm_libs} ${COMMON_LIBS} gtest pthread)
