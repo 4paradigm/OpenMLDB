@@ -5488,20 +5488,46 @@ void NameServerImpl::MakeReplicaCluster(::google::protobuf::RpcController *contr
             }
         }
         std::lock_guard<std::mutex> lock(mu_);
-        if (!(zk_client_->SetNodeValue(zk_zone_data_path_ + "/name", request->zone_name()) &&
-            zk_client_->SetNodeValue(zk_zone_data_path_ + "/term", std::to_string(request->zone_term())))) {
-            code = 304; rpc_msg = "set zk failed";
-            PDLOG(WARNING, "set zone info failed, zone: %s, term: %ul", request->zone_name().c_str(),
-                  request->zone_term());
+        std::string value;
+        if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/name", value)) {
+            if (!(zk_client_->CreateNode(zk_zone_data_path_ + "/name", request->zone_name()))) {
+                code = 304; rpc_msg = "set zk name failed";
+                PDLOG(WARNING, "set zone name failed, zone: %s, term: %lu", request->zone_name().c_str(),
+                      request->zone_term());
+                break;
+            }
+        } else if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/name", request->zone_name())) {
+                code = 304; rpc_msg = "set zk name failed";
+                PDLOG(WARNING, "set zone name failed, zone: %s, term: %lu", request->zone_name().c_str(),
+                      request->zone_term());
+                break;
+        }
+        if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/term", value)) {
+            if(!zk_client_->CreateNode(zk_zone_data_path_ + "/term", std::to_string(request->zone_term()))) {
+                code = 304; rpc_msg = "set zk term failed";
+                PDLOG(WARNING, "set zone name failed, zone: %s, term: %lu", request->zone_name().c_str(),
+                      request->zone_term());
+                break;
+            }
+        } else if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/term", std::to_string(request->zone_term()))) {
+                code = 304; rpc_msg = "set zk term failed";
+                PDLOG(WARNING, "set zone name failed, zone: %s, term: %lu", request->zone_name().c_str(),
+                      request->zone_term());
+                break;
+        }
+        if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/alias", value)) {
+            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/alias", request->replica_alias())) {
+                code = 304; rpc_msg = "set zk alias failed";
+                PDLOG(WARNING, "set zk failed, save alias value failed");
+                break;
+            }
+        } else if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/alias", request->replica_alias())) {
+            code = 304; rpc_msg = "set zk alias failed";
+            PDLOG(WARNING, "set zk failed, save alias value failed");
             break;
         }
         if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", "true")) {
-            code = 304; rpc_msg = "set zk failed";
-            PDLOG(WARNING, "set zk failed, save follower value failed");
-            break;
-        }
-        if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/alias", replica_alias_)) {
-            code = 304; rpc_msg = "set zk failed";
+            code = 304; rpc_msg = "set zk follower failed";
             PDLOG(WARNING, "set zk failed, save follower value failed");
             break;
         }

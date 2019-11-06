@@ -605,7 +605,7 @@ void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts, ::rtidb
     }
 
     if (FLAGS_interactive) {
-        printf("Drop table %s? yes/no\n", parts[1].c_str());
+        printf("Drop replica %s? yes/no\n", parts[1].c_str());
         std::string input;
         std::cin >> input;
         std::transform(input.begin(), input.end(), input.begin(), ::tolower);

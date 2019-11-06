@@ -476,6 +476,7 @@ bool NsClient::ShowReplicaOf(std::vector<::rtidb::nameserver::ClusterAdd_Age>& c
 bool NsClient::RemoveReplicaCluster(const std::string& alias, std::string& msg) {
     ::rtidb::nameserver::RemoveReplicaOfRequest request;
     ::rtidb::nameserver::GeneralResponse response;
+    request.set_alias(alias);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RemoveReplicaCluster,
         &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && (response.code() == 0)) {
