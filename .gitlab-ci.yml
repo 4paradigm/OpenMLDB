@@ -15,7 +15,6 @@ build_rtidb_and_case:
         paths:
             - build/bin/rtidb
 
-
 cpp_ut:
     stage: ut
     script:
