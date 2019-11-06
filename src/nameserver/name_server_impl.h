@@ -164,11 +164,11 @@ public:
 private:
   std::shared_ptr<::rtidb::client::NsClient> client_;
   std::shared_ptr<ZkClient> zk_client_;
+  std::mutex mu_;
   ::baidu::common::ThreadPool* thread_pool_;
   ::rtidb::nameserver::ClusterAddress cluster_add_;
   uint64_t session_term_;
   int64_t task_id_;
-  std::mutex mu_;
   uint64_t ctime_;
 };
 
