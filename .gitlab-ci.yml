@@ -1,10 +1,8 @@
 image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.7
 stages:
     - build
-#    - ut
-    - it-tablet
-    - it-ns
-    - integration-test
+    - ut
+    - it
 
 build_rtidb_and_case:
     stage: build
@@ -17,34 +15,33 @@ build_rtidb_and_case:
         paths:
             - build/bin/rtidb
 
-
-#cpp_ut:
-#    stage: ut
-#    script:
-#        - ln -sf /usr/workdir/thirdparty thirdparty
-#        - ln -sf /usr/workdir/thirdsrc thirdsrc
-#        - source /root/.bashrc && bash steps/compile.sh
-#        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-#    artifacts:
-#        reports:
-#            junit:
-#                - reports/*.xml
-#java_ut:
-#    stage: ut
-#    script:
-#        - ln -sf /usr/workdir/thirdparty thirdparty
-#        - ln -sf /usr/workdir/thirdsrc thirdsrc
-#        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
-#    artifacts:
-#        reports:
-#            junit:
-#                - java/target/surefire-reports/junitreports/TEST-*.xml
-#                - java/target/surefire-reports/TEST-*.xml
-#                - java/target/failsafe-reports/junitreports/TEST-*.xml
-#                - java/target/failsafe-reports/TEST-*.xml
+cpp_ut:
+    stage: ut
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/compile.sh
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
+    artifacts:
+        reports:
+            junit:
+                - reports/*.xml
+java_ut:
+    stage: ut
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - java/target/surefire-reports/junitreports/TEST-*.xml
+                - java/target/surefire-reports/TEST-*.xml
+                - java/target/failsafe-reports/junitreports/TEST-*.xml
+                - java/target/failsafe-reports/TEST-*.xml
 
 tablet_one_demension:
-    stage: it-tablet
+    stage: it
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
@@ -58,7 +55,7 @@ tablet_one_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 tablet_multi_demension:
-    stage: it-tablet
+    stage: it
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
@@ -72,7 +69,7 @@ tablet_multi_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 ns_one_demension:
-    stage: it-ns
+    stage: it
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
@@ -86,7 +83,7 @@ ns_one_demension:
                 - ./test-output/integrationtest/test-reports/*.xml
 
 ns_multi_demension:
-    stage: it-ns
+    stage: it
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
@@ -99,8 +96,8 @@ ns_multi_demension:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
 
-integration-test:
-    stage: integration-test
+multi-storage:
+    stage: it
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
