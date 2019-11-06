@@ -64,6 +64,39 @@ bool GetLLVMType(::llvm::IRBuilder<>& builder,
     }
 }
 
+bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,
+        ::llvm::Value* ptr,
+        ::llvm::Value* offset,
+        ::llvm::Type* type,
+        ::llvm::Value** outptr) {
+
+    if (outptr == NULL) {
+        LOG(WARNING) << "outptr is null";
+        return false;
+    
+    }
+
+    if (!ptr->getType()->isPointerTy()) {
+        LOG(WARNING) << "ptr should be pointer but " <<  ptr->getType()->getTypeID();
+        return false;
+    }
+
+    if (!offset->getType()->isIntegerTy()) {
+        LOG(WARNING) << "offset should be integer type but " << ptr->getType()->getTypeID();
+        return false;
+    }
+
+    // cast ptr to int64
+    ::llvm::Type* int64_ty = builder.getInt64Ty();
+    ::llvm::Value* ptr_int64_ty = builder.CreatePtrToInt(ptr, int64_ty);
+    // TODO no need cast if offset is int64 
+    ::llvm::Value* offset_int64 = builder.CreateIntCast(offset, int64_ty, true, "cast_32_to_64");
+    ::llvm::Value* ptr_add_offset = builder.CreateAdd(ptr_int64_ty, offset_int64, "ptr_add_offset");
+    // todo check the type
+    *outptr = builder.CreateIntToPtr(ptr_add_offset, type->getPointerTo());
+    return true;
+}
+
 bool BuildLoadOffset(::llvm::IRBuilder<>& builder,
         ::llvm::Value* ptr, 
         ::llvm::Value* offset,

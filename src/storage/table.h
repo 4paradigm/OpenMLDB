@@ -18,9 +18,11 @@ namespace storage {
 class Table {
 
 public:
+
     Table() = default;
     Table(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt);
     ~Table();
+
     bool Init();
 
     bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size);

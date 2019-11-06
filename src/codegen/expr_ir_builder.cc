@@ -21,6 +21,74 @@
 namespace fesql {
 namespace codegen {
 
+SQLExprIRBuilder::SQLExprIRBuilder(::llvm::BasicBlock* block,
+        ScopeVar* scope_var,
+        BufIRBuilder* buf_ir_builder,
+        const std::string& row_ptr_name,
+        const std::string& output_ptr_name):block_(block),
+    sv_(scope_var), table_(table), row_ptr_name_(row_ptr_name),
+    output_ptr_name_(output_ptr_name),
+    buf_ir_builder_(buf_ir_builder){
+}
+
+SQLExprIRBuilder::~SQLExprIRBuilder() {}
+
+bool SQLExprIRBuilder::Build(const ::fesql::node::SQLNode*  node,
+        ::llvm::Value** output) {
+    if (node == NULL || output == NULL) {
+        LOG(WARNING) << "node or output is null";
+        return false;
+    }
+    switch (node->GetType()) {
+        case ::fesql::node::kColumnRef:
+            {
+                const ::fesql::node::ColumnRefNode* n = 
+                    (const ::fesql::node::ColumnRefNode*)node;
+                return BuildColumnRef(n, output);
+            }
+        default:
+            {
+                LOG(WARNING) << "not supported";
+                return false;
+            }
+    }
+}
+
+bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
+        ::llvm::Value** output) {
+
+    if (node == NULL || output == NULL) {
+        LOG(WARNING) << "column ref node is null";
+        return false;
+    }
+
+    ::llvm::Value* row_ptr = NULL;
+    bool ok = sv_->FindVar(row_ptr_name_, &row_ptr);
+
+    if (!ok || row_ptr == NULL) {
+        LOG(WARNING) << "fail to find row ptr with name " << row_ptr_name_;
+        return false;
+    }
+
+    ::llvm::Value* value = NULL;
+    ok = sv_->FindVar(node->GetColumnName(), &value);
+    // not found
+    if (!ok) {
+        // TODO(wangtaize) buf ir builder add build get field ptr
+        ok = buf_ir_builder_->BuildGetField(node->GetColumnName(), row_ptr, &value);
+        if (!ok || value == NULL) {
+            LOG(WARNING) <<  "fail to find column " << node->GetColumnName();
+            return false;
+        }
+        ok = sv_->AddVar(node->GetColumnName(), value);
+        if (ok) {
+            &output = value;
+        }
+        return ok;
+    }
+    return false;
+}
+
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var):block_(block),
     scope_var_(scope_var) {}
 

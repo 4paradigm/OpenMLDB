@@ -1,5 +1,5 @@
 /*
- * ir_base_builder.h
+ * ir_types.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,32 +15,17 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_IR_BASE_BUILDER_H_
-#define SRC_CODEGEN_IR_BASE_BUILDER_H_
-
-#include "llvm/IR/IRBuilder.h"
-#include "glog/logging.h"
-#include "proto/type.pb.h"
+#ifndef SRC_CODEGEN_IR_TYPES_H_
+#define SRC_CODEGEN_IR_TYPES_H_
 
 namespace fesql {
 namespace codegen {
 
-bool GetLLVMType(::llvm::IRBuilder<>& builder,
-        const ::fesql::type::Type& type,
-        ::llvm::Type** output);
-
-bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,
-        ::llvm::Value* ptr,
-        ::llvm::Value* offset,
-        ::llvm::Type* type,
-        ::llvm::Value** outptr);
-
-bool BuildLoadOffset(::llvm::IRBuilder<>& builder,
-        ::llvm::Value* ptr,
-        ::llvm::Value* offset,
-        ::llvm::Type* type,
-        ::llvm::Value** output);
+struct Slice {
+    int32_t size;
+    char* data;
+};
 
 }  // namespace codegen
 }  // namespace fesql
-#endif  // SRC_CODEGEN_IR_BASE_BUILDER_H_
+#endif  // SRC_CODEGEN_IR_TYPES_H_
