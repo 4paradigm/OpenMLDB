@@ -8,7 +8,7 @@
 #include "parser/sql_parser.gen.h"
 #include <stdarg.h>
 #include <string.h>
-void yyerror(char *s, ...) {}
+void yyerror(const char *s, ...) {}
 int cur_state=0;
 int oldstate = 0;
 %}
@@ -104,7 +104,7 @@ DUAL	{ return DUAL; }
 EACH	{ return EACH; }
 ELSE	{ return ELSE; }
 ELSEIF	{ return ELSEIF; }
-<FUNDEF>END {return FUNDEFEND;}
+<FUN>END {return FUNDEFEND;}
 END	{return END; }
 ENUM { return ENUM; }
 ESCAPED	{ return ESCAPED; }

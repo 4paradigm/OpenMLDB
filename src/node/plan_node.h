@@ -12,9 +12,6 @@
 #include <node/sql_node.h>
 namespace fesql {
 namespace node {
-using type::TableDef;
-using type::ColumnDef;
-using type::IndexDef;
 std::string NameOfPlanNodeType(const PlanType &type);
 
 class PlanNode {

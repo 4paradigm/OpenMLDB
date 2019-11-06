@@ -22,7 +22,6 @@
 #include <iostream>
 #include "node_enum.h"
 #include <glog/logging.h>
-#include <proto/type.pb.h>
 namespace fesql {
 namespace node {
 

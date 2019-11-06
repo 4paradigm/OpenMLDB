@@ -1,10 +1,7 @@
 %define api.pure full
 %locations
-
 %output  "sql_parser.gen.cc"
 %defines "sql_parser.gen.h"
-
-// Prefix the parser
 %define parse.error verbose
 %locations
 %lex-param   { yyscan_t scanner }

@@ -13,7 +13,6 @@
 
 #include "sql_node.h"
 #include "plan_node.h"
-#include "proto/type.pb.h"
 #include <ctype.h>
 #include <list>
 
@@ -54,12 +53,6 @@ public:
             sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
         }
 
-        for (auto iter = table_node_list_.begin();
-             iter != table_node_list_.end();
-             ++iter) {
-            delete (*iter);
-            iter = table_node_list_.erase(iter);
-        }
     }
 
     int GetParserNodeListSize() {
@@ -190,17 +183,12 @@ private:
         return node_ptr;
     }
 
-    type::TableDef *RegisterNode(type::TableDef *node_ptr) {
-//        LOG(INFO) << "register sql node";
-        table_node_list_.push_back(node_ptr);
-        return node_ptr;
-    }
+
 
     std::list<SQLNode *> parser_node_list_;
     std::list<SQLNodeList *> sql_node_list_list_;
     std::list<SQLLinkedNode *> linked_node_list_;
     std::list<node::PlanNode *> plan_node_list_;
-    std::list<type::TableDef *> table_node_list_;
 };
 
 }

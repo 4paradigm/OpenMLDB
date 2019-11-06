@@ -139,7 +139,7 @@ int FeSQLAnalyser::TransformFuncNode(node::FuncNode *node_ptr,
 
     // TODO: 细化参数校验
     // TODO: 表达式节点修改：需要带上DataType属性
-    for (int i = 0; i < node_ptr->GetArgs().size(); ++i) {
+    for (int i = 0; i < (int)(node_ptr->GetArgs().size()); ++i) {
         int ret = TransformExprNode(node_ptr->GetArgs()[i], table_name);
         if (0 != ret) {
             LOG(WARNING) << "can not transfrom func node when dealing with "

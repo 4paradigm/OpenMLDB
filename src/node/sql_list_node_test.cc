@@ -37,7 +37,7 @@ protected:
 TEST_F(SqlListNodeTest, PushFrontTest) {
     SQLNodeList *pList = manager_->MakeNodeList();
 
-    ASSERT_EQ(0, pList->GetSize());
+    ASSERT_EQ(0, (int)(pList->GetSize()));
 
     pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(1)));
     pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(2)));
