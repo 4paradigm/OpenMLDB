@@ -28,7 +28,8 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
         case kLimit: return RegisterNode((SQLNode *) new LimitNode(0));
         case kAll: return RegisterNode((SQLNode *) new AllNode());
         case kFnDef: return RegisterNode((SQLNode *) new FnNodeFnDef());
-        default:LOG(WARNING) << "can not make sql node with type " << NameOfSQLNodeType(type);
+        default:LOG(WARNING) << "can not make sql node with type "
+                             << NameOfSQLNodeType(type);
             return nullptr;
     }
 }
@@ -53,25 +54,30 @@ SQLNode *NodeManager::MakeSelectStmtNode(SQLNodeList *select_list_ptr,
     return (SQLNode *) node_ptr;
 }
 
-SQLNode *NodeManager::MakeTableNode(const std::string &name, const std::string &alias) {
+SQLNode *NodeManager::MakeTableNode(const std::string &name,
+                                    const std::string &alias) {
     TableNode *node_ptr = new TableNode(name, alias);
     RegisterNode((SQLNode *) node_ptr);
     return (SQLNode *) node_ptr;
 }
 
-SQLNode *NodeManager::MakeResTargetNode(SQLNode *node, const std::string &name) {
+SQLNode *NodeManager::MakeResTargetNode(SQLNode *node,
+                                        const std::string &name) {
     ResTarget *node_ptr = new ResTarget(name, node);
     RegisterNode((SQLNode *) node_ptr);
     return node_ptr;
 }
 
-SQLNode *NodeManager::MakeColumnRefNode(const std::string &column_name, const std::string &relation_name) {
+SQLNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
+                                        const std::string &relation_name) {
     ColumnRefNode *node_ptr = new ColumnRefNode(column_name, relation_name);
     RegisterNode((SQLNode *) node_ptr);
     return (SQLNode *) node_ptr;
 }
 
-SQLNode *NodeManager::MakeFuncNode(const std::string &name, SQLNodeList *list_ptr, SQLNode *over) {
+SQLNode *NodeManager::MakeFuncNode(const std::string &name,
+                                   SQLNodeList *list_ptr,
+                                   SQLNode *over) {
     FuncNode *node_ptr = new FuncNode(name);
     FillSQLNodeList2NodeVector(list_ptr, node_ptr->GetArgs());
     node_ptr->SetOver((WindowDefNode *) over);
@@ -85,7 +91,9 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
     return (SQLNode *) node_ptr;
 }
 
-SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList *orders, SQLNode *frame) {
+SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *partitions,
+                                        SQLNodeList *orders,
+                                        SQLNode *frame) {
     WindowDefNode *node_ptr = new WindowDefNode();
     FillSQLNodeList2NodeVector(partitions, node_ptr->GetPartitions());
     FillSQLNodeList2NodeVector(orders, node_ptr->GetOrders());
@@ -194,25 +202,23 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
 SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *index_item_list) {
     ColumnIndexNode *node_ptr = new ColumnIndexNode();
     if (nullptr != index_item_list && 0 != index_item_list->GetSize()) {
-        SQLLinkedNode* cur = index_item_list->GetHead();
+        SQLLinkedNode *cur = index_item_list->GetHead();
         while (nullptr != cur && nullptr != cur->node_ptr_) {
             switch (cur->node_ptr_->GetType()) {
-                case kIndexKey:
-                    node_ptr->SetKey(((IndexKeyNode*)cur->node_ptr_)->GetKey());
+                case kIndexKey:node_ptr->SetKey(((IndexKeyNode *) cur->node_ptr_)->GetKey());
                     break;
-                case kIndexTs:
-                    node_ptr->SetTs(((IndexTsNode*)cur->node_ptr_)->GetColumnName());
+                case kIndexTs:node_ptr->SetTs(((IndexTsNode *) cur->node_ptr_)->GetColumnName());
                     break;
-                case kIndexVersion:
-                    node_ptr->SetVersion(((IndexVersionNode*)cur->node_ptr_)->GetColumnName());
-                    node_ptr->SetVersionCount(((IndexVersionNode*)cur->node_ptr_)->GetCount());
+                case kIndexVersion:node_ptr->SetVersion(((IndexVersionNode *) cur->node_ptr_)->GetColumnName());
+                    node_ptr->SetVersionCount(((IndexVersionNode *) cur->node_ptr_)->GetCount());
 
                     break;
-                case kPrimary:
-                    node_ptr->SetTTL((ConstNode*)cur->node_ptr_);
+                case kPrimary:node_ptr->SetTTL((ConstNode *) cur->node_ptr_);
                     break;
                 default: {
-                    LOG(WARNING) << "can not handle type " << NameOfSQLNodeType(cur->node_ptr_->GetType()) << " for column index";
+                    LOG(WARNING) << "can not handle type "
+                                 << NameOfSQLNodeType(cur->node_ptr_->GetType())
+                                 << " for column index";
                 }
             }
             cur = cur->next_;
@@ -221,12 +227,17 @@ SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *index_item_list) {
     }
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *keys, SQLNode *ts, SQLNode *ttl, SQLNode *version) {
+SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *keys,
+                                          SQLNode *ts,
+                                          SQLNode *ttl,
+                                          SQLNode *version) {
     SQLNode *node_ptr = new SQLNode(kColumnIndex, 0, 0);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeColumnDescNode(const std::string &column_name, const DataType data_type, bool op_not_null) {
+SQLNode *NodeManager::MakeColumnDescNode(const std::string &column_name,
+                                         const DataType data_type,
+                                         bool op_not_null) {
     SQLNode *node_ptr = new ColumnDefNode(column_name, data_type, op_not_null);
     return RegisterNode(node_ptr);
 }
@@ -239,7 +250,8 @@ SQLNodeList *NodeManager::MakeNodeList() {
 
 SQLNodeList *NodeManager::MakeNodeList(SQLNode *node_ptr) {
     SQLLinkedNode *linked_node_ptr = MakeLinkedNode(node_ptr);
-    SQLNodeList *new_list_ptr = new SQLNodeList(linked_node_ptr, linked_node_ptr, 1);
+    SQLNodeList
+        *new_list_ptr = new SQLNodeList(linked_node_ptr, linked_node_ptr, 1);
     RegisterNode(new_list_ptr);
     return new_list_ptr;
 }
@@ -286,12 +298,12 @@ ScanPlanNode *NodeManager::MakeIndexScanPlanNode(const std::string &table) {
     return node_ptr;
 }
 
-ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(const std::string &table, const std::string &w) {
+ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(const std::string &table,
+                                                          const std::string &w) {
     ProjectListPlanNode *node_ptr = new ProjectListPlanNode(table, w);
     RegisterNode((PlanNode *) node_ptr);
     return node_ptr;
 }
-
 
 PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
     PlanNode *node_ptr;
@@ -304,20 +316,26 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
             break;
         case kPlanTypeLimit:node_ptr = (PlanNode *) new LimitPlanNode();
             break;
+        case kPlanTypeCreate:node_ptr = (PlanNode *) new CreatePlanNode();
+            break;
         default: node_ptr = (PlanNode *) new LeafPlanNode(kUnknowPlan);
     }
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
-FnNode *NodeManager::MakeFnDefNode(const std::string &name, FnNode *plist, DataType return_type) {
+FnNode *NodeManager::MakeFnDefNode(const std::string &name,
+                                   FnNode *plist,
+                                   DataType return_type) {
     ::fesql::node::FnNodeFnDef *fn_def = new FnNodeFnDef(name, return_type);
     fn_def->AddChildren(plist);
     return RegisterNode((FnNode *) fn_def);
 }
 
-FnNode *NodeManager::MakeAssignNode(const std::string &name, FnNode *expression) {
-    ::fesql::node::FnAssignNode *fn_assign = new ::fesql::node::FnAssignNode(name);
+FnNode *NodeManager::MakeAssignNode(const std::string &name,
+                                    FnNode *expression) {
+    ::fesql::node::FnAssignNode
+        *fn_assign = new ::fesql::node::FnAssignNode(name);
     fn_assign->AddChildren(expression);
     return RegisterNode((FnNode *) fn_assign);
 }
@@ -332,8 +350,10 @@ FnNode *NodeManager::MakeFnNode(const SQLNodeType &type) {
     return RegisterNode((FnNode *) new FnNode(type));
 }
 
-FnNode *NodeManager::MakeFnParaNode(const std::string &name, const DataType &para_type) {
-    ::fesql::node::FnParaNode *para_node = new ::fesql::node::FnParaNode(name, para_type);
+FnNode *NodeManager::MakeFnParaNode(const std::string &name,
+                                    const DataType &para_type) {
+    ::fesql::node::FnParaNode
+        *para_node = new ::fesql::node::FnParaNode(name, para_type);
     return RegisterNode((FnNode *) para_node);
 }
 
@@ -348,7 +368,9 @@ FnNode *NodeManager::MakeFnIdNode(const std::string &name) {
     return RegisterNode((FnNode *) id_node);
 }
 
-FnNode *NodeManager::MakeBinaryExprNode(FnNode *left, FnNode *right, FnOperator op) {
+FnNode *NodeManager::MakeBinaryExprNode(FnNode *left,
+                                        FnNode *right,
+                                        FnOperator op) {
     ::fesql::node::FnBinaryExpr *bexpr = new ::fesql::node::FnBinaryExpr(op);
     bexpr->AddChildren(left);
     bexpr->AddChildren(right);
@@ -384,11 +406,11 @@ SQLNode *NodeManager::MakeIndexVersionNode(const std::string &version) {
     SQLNode *node_ptr = new IndexVersionNode(version);
     return RegisterNode(node_ptr);
 }
-SQLNode *NodeManager::MakeIndexVersionNode(const std::string &version, int count) {
+SQLNode *NodeManager::MakeIndexVersionNode(const std::string &version,
+                                           int count) {
     SQLNode *node_ptr = new IndexVersionNode(version, count);
     return RegisterNode(node_ptr);
 }
-
 
 }
 }

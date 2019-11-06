@@ -9,7 +9,7 @@
 #include "parser/parser.h"
 #include "analyser.h"
 #include "gtest/gtest.h"
-
+#include <utility>
 namespace fesql {
 namespace analyser {
 
@@ -51,8 +51,10 @@ void GetSchema(::fesql::type::TableDef &table) {
     table.set_name("t1");
 }
 
-class AnalyserTest : public ::testing::TestWithParam<std::pair<error::ErrorType, std::string>> {
-public:
+class AnalyserTest
+    : public ::testing::TestWithParam<std::pair<error::ErrorType,
+                                                std::string>> {
+ public:
     AnalyserTest() {
         parser_ = new parser::FeSQLParser();
         manager_ = new NodeManager();
@@ -66,7 +68,7 @@ public:
         delete manager_;
         delete analyser;
     }
-protected:
+ protected:
     parser::FeSQLParser *parser_;
     NodeManager *manager_;
     FeSQLAnalyser *analyser;
@@ -75,13 +77,81 @@ protected:
 
 INSTANTIATE_TEST_CASE_P(AnalyserValidate, AnalyserTest, testing::Values(
     std::make_pair(error::kSucess,
-                   "SELECT t1.col1 c1,  TRIM(col3) as trimCol3, col2 FROM t1 limit 10;"),
+                   "SELECT t1.col1 c1,  TRIM(col3) as trimCol3, col2 FROM t1"
+                       " limit 10;"),
     std::make_pair(error::kAnalyserErrorTableNotExist,
                    "SELECT t2.COL1 c1 FROM t2 limit 10;"),
-    std::make_pair(error::kAnalyserErrorQueryMultiTable, "SELECT t2.col1 c1 FROM t2, t1 limit 10;"),
-    std::make_pair(error::kAnalyserErrorColumnNotExist, "SELECT t1.col100 c1 FROM t1 limit 10;"),
+    std::make_pair(error::kAnalyserErrorQueryMultiTable, "SELECT t2.col1 c1 "
+        "FROM t2, t1 limit 10;"),
+    std::make_pair(error::kAnalyserErrorColumnNotExist, "SELECT t1.col100 c1"
+        " FROM t1 limit 10;"),
     std::make_pair(error::kAnalyserErrorGlobalAggFunction,
-                   "SELECT t1.col1 c1,  MIN(col3) as trimCol3, col2 FROM t1 limit 10;")
+                   "SELECT t1.col1 c1,  MIN(col3) as trimCol3, col2 FROM t1 "
+                       "limit 10;"),
+    std::make_pair(error::kSucess,
+                   "create table test(\n"
+                       "    column1 int NOT NULL,\n"
+                       "    column2 timestamp NOT NULL,\n"
+                       "    column3 int NOT NULL,\n"
+                       "    column4 string NOT NULL,\n"
+                       "    column5 int NOT NULL\n"
+                       ");"),
+    std::make_pair(error::kSucess,
+                   "create table IF NOT EXISTS test(\n"
+                       "    column1 int NOT NULL,\n"
+                       "    column2 timestamp NOT NULL,\n"
+                       "    column3 int NOT NULL,\n"
+                       "    column4 string NOT NULL,\n"
+                       "    column5 int NOT NULL\n"
+                       ");"),
+
+    std::make_pair(error::kSucess,
+                   "create table test(\n"
+                       "    column1 int NOT NULL,\n"
+                       "    column2 timestamp NOT NULL,\n"
+                       "    column3 int NOT NULL,\n"
+                       "    column4 string NOT NULL,\n"
+                       "    column5 int NOT NULL,\n"
+                       "    index(key=(column4))\n"
+                       ");"),
+
+    std::make_pair(error::kSucess,
+                   "create table test(\n"
+                       "    column1 int NOT NULL,\n"
+                       "    column2 timestamp NOT NULL,\n"
+                       "    column3 int NOT NULL,\n"
+                       "    column4 string NOT NULL,\n"
+                       "    column5 int NOT NULL,\n"
+                       "    index(key=(column4, column3))\n"
+                       ");"),
+    std::make_pair(error::kSucess,
+                   "create table test(\n"
+                       "    column1 int NOT NULL,\n"
+                       "    column2 timestamp NOT NULL,\n"
+                       "    column3 int NOT NULL,\n"
+                       "    column4 string NOT NULL,\n"
+                       "    column5 int NOT NULL,\n"
+                       "    index(key=(column4, column3), ts=column5)\n"
+                       ");"),
+    std::make_pair(error::kSucess,
+                   "create table test(\n"
+                       "    column1 int NOT NULL,\n"
+                       "    column2 timestamp NOT NULL,\n"
+                       "    column3 int NOT NULL,\n"
+                       "    column4 string NOT NULL,\n"
+                       "    column5 int NOT NULL,\n"
+                       "    index(key=(column4, column3), ts=column2, ttl=60d)\n"
+                       ");"),
+    std::make_pair(error::kSucess,
+                   "create table test(\n"
+                       "    column1 int NOT NULL,\n"
+                       "    column2 timestamp NOT NULL,\n"
+                       "    column3 int NOT NULL,\n"
+                       "    column4 string NOT NULL,\n"
+                       "    column5 int NOT NULL,\n"
+                       "    index(key=(column4, column3), version=(column5, 3), ts=column2, ttl=60d)\n"
+                       ");")
+
 ));
 
 TEST_P(AnalyserTest, RunAnalyseTest) {
@@ -94,14 +164,18 @@ TEST_P(AnalyserTest, RunAnalyseTest) {
     NodePointVector query_tree;
     ret = analyser->Analyse(list, query_tree);
     ASSERT_EQ(param.first, ret);
+    if (query_tree.size() > 0) {
+        std::cout << *query_tree[0] << std::endl;
+    }
+
 }
+
 
 TEST_F(AnalyserTest, ColumnRefValidateTest) {
     ASSERT_TRUE(analyser->IsColumnExistInTable("col1", "t1"));
     ASSERT_FALSE(analyser->IsColumnExistInTable("col100", "t1"));
     ASSERT_FALSE(analyser->IsColumnExistInTable("col1", "t2"));
 }
-
 
 }
 }

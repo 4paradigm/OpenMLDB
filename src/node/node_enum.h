@@ -20,7 +20,7 @@ const std::string OR_INDENT = "|\t";
 const std::string INDENT = " \t";
 enum SQLNodeType {
     //SQL
-    kSelectStmt = 0,
+        kSelectStmt = 0,
     kCreateStmt,
     kExpr,
     kResTarget,
@@ -57,7 +57,6 @@ enum SQLNodeType {
     kFollowing,
     kCurrent,
 
-    // fn
     kFnDef,
     kFnValue,
     kFnId,
@@ -110,6 +109,7 @@ enum FnOperator {
  */
 enum PlanType {
     kPlanTypeSelect,
+    kPlanTypeCreate,
     kPlanTypeScan,
     kPlanTypeLimit,
     kPlanTypeFilter,
@@ -131,7 +131,7 @@ enum PlanType {
 namespace fesql {
 namespace error {
 enum ErrorType {
-    kSucess= 0,
+    kSucess = 0,
 
     kNodeErrorUnknow = 1001,
     kNodeErrorMakeNodeFail,
@@ -149,10 +149,14 @@ enum ErrorType {
     kAnalyserErrorQueryMultiTable,
     kAnalyserErrorTableRefIsNull,
     kAnalyserErrorTableNotExist,
+    kAnalyserErrorTableAlreadyExist,
     kAnalyserErrorColumnNameIsEmpty,
     kAnalyserErrorColumnNotExist,
     kAnalyserErrorTargetIsNull,
     kAnalyserErrorGlobalAggFunction,
+    kCreateErrorUnSupportColumnType,
+    kCreateErrorDuplicationColumnName,
+    kCreateErrorDuplicationIndexName,
 
     kPlanErrorUnknow = 4001,
     kPlanErrorUnSupport,

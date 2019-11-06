@@ -11,6 +11,7 @@
 #include "node/sql_node.h"
 #include "node/plan_node.h"
 #include "glog/logging.h"
+#include "proto/type.pb.h"
 namespace fesql {
 namespace plan {
 
@@ -18,7 +19,6 @@ using node::NodePointVector;
 using node::PlanNodeList;
 using node::SQLNode;
 using node::PlanNode;
-
 class Planner {
 public:
     Planner(node::NodeManager *manager) : node_manager_(manager) {
@@ -27,13 +27,18 @@ public:
     virtual ~Planner() {
     }
 
-    virtual int CreatePlanTree(NodePointVector &parser_trees, PlanNodeList &plan_trees) = 0;
+    virtual int CreatePlanTree(NodePointVector &parser_trees,
+                               PlanNodeList &plan_trees) = 0;
 protected:
-    int CreatePlanRecurse(node::SQLNode *root, PlanNode* plan_tree);
-    int CreateSelectPlan(node::SQLNode *root, PlanNode* plan_tree);
-    int CreateProjectPlanNode(node::SQLNode *root, std::string table_name, node::ProjectPlanNode * plan_tree);
+    int CreatePlanRecurse(node::SQLNode *root, PlanNode *plan_tree);
+    int CreateSelectPlan(node::SQLNode *root, PlanNode *plan_tree);
+    int CreateCreateTablePlan(node::SQLNode *root, node::CreatePlanNode *plan_tree);
+    int CreateProjectPlanNode(node::SQLNode *root,
+                              std::string table_name,
+                              node::ProjectPlanNode *plan_tree);
     int CreateDataProviderPlanNode(node::SQLNode *root, PlanNode *plan_tree);
     int CreateDataCollectorPlanNode(node::SQLNode *root, PlanNode *plan_tree);
+
     node::NodeManager *node_manager_;
 };
 
@@ -41,10 +46,17 @@ class SimplePlanner : public Planner {
 public:
     SimplePlanner(node::NodeManager *manager) : Planner(manager) {
     }
-    int CreatePlanTree(NodePointVector &parser_trees, PlanNodeList &plan_trees);
+    int CreatePlanTree(NodePointVector &parser_trees,
+                       PlanNodeList &plan_trees);
 private:
 
 };
+
+// TODO(chenjing): move to executor module
+int transformTableDef(std::string table_name,
+                      NodePointVector &column_desc_list,
+                      type::TableDef &table);
+std::string GenerateName(const std::string prefix, int id);
 
 }
 }

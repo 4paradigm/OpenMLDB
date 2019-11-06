@@ -12,7 +12,9 @@
 #include <node/sql_node.h>
 namespace fesql {
 namespace node {
-
+using type::TableDef;
+using type::ColumnDef;
+using type::IndexDef;
 std::string NameOfPlanNodeType(const PlanType &type);
 
 class PlanNode {
@@ -36,7 +38,8 @@ public:
         return children_.size();
     }
 
-    friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
+    friend std::ostream &operator<<(std::ostream &output,
+                                    const PlanNode &thiz);
 
     virtual void Print(std::ostream &output, const std::string &tab) const;
 
@@ -100,7 +103,10 @@ private:
 class ScanPlanNode : public UnaryPlanNode {
 public:
     ScanPlanNode(const std::string &table_name, PlanType scan_type)
-        : UnaryPlanNode(kPlanTypeScan), scan_type_(scan_type), table_name(table_name), limit_cnt(-1) {};
+        : UnaryPlanNode(kPlanTypeScan),
+          scan_type_(scan_type),
+          table_name(table_name),
+          limit_cnt(-1) {};
     ~ScanPlanNode() {};
 
     PlanType GetScanType() {
@@ -131,7 +137,8 @@ class LimitPlanNode : public MultiChildPlanNode {
 public:
     LimitPlanNode() : MultiChildPlanNode(kPlanTypeLimit) {
     }
-    LimitPlanNode(int limit_cnt) : MultiChildPlanNode(kPlanTypeLimit), limit_cnt_(limit_cnt) {
+    LimitPlanNode(int limit_cnt)
+        : MultiChildPlanNode(kPlanTypeLimit), limit_cnt_(limit_cnt) {
     }
 
     ~LimitPlanNode() {};
@@ -165,7 +172,12 @@ private:
 
 class ProjectPlanNode : public LeafPlanNode {
 public:
-    ProjectPlanNode() : LeafPlanNode(kProject), expression_(nullptr), name_(""), table_(""), w_("") {};
+    ProjectPlanNode()
+        : LeafPlanNode(kProject),
+          expression_(nullptr),
+          name_(""),
+          table_(""),
+          w_("") {};
 
     ~ProjectPlanNode() {};
     void Print(std::ostream &output, const std::string &orgTab) const;
@@ -180,11 +192,11 @@ public:
     std::string GetTable() const {
         return table_;
     }
-    
+
     void SetTable(const std::string table) {
         table_ = table;
     }
-    
+
     std::string GetName() const {
         return name_;
     }
@@ -192,12 +204,12 @@ public:
     void SetName(const std::string name) {
         name_ = name;
     }
-    
+
     node::SQLNode *GetExpression() const {
         return expression_;
     }
-    
-    void SetExpression(node::SQLNode * expression) {
+
+    void SetExpression(node::SQLNode *expression) {
         expression_ = expression;
     }
 
@@ -240,6 +252,42 @@ private:
     PlanNodeList projects;
     std::string table_;
     std::string w_;
+};
+
+class CreatePlanNode : public LeafPlanNode {
+public:
+    CreatePlanNode()
+        : LeafPlanNode(kPlanTypeCreate), database_(""), table_name_("") {};
+    ~CreatePlanNode() {};
+
+    std::string GetDatabase() const {
+        return database_;
+    }
+
+    void setDatabase(const std::string &database) {
+        database_ = database;
+    }
+
+    std::string GetTableName() const {
+        return table_name_;
+    }
+
+    void setTableName(const std::string &table_name) {
+        table_name_ = table_name;
+    }
+
+    NodePointVector &GetColumnDescList() {
+        return column_desc_list_;
+    }
+    void SetColumnDescList(NodePointVector &column_desc_list) {
+        column_desc_list_ = column_desc_list;
+    }
+
+private:
+    std::string database_;
+    std::string table_name_;
+    NodePointVector column_desc_list_;
+
 };
 
 void PrintPlanVector(std::ostream &output,

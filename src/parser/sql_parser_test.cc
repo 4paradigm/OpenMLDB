@@ -225,6 +225,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ(60*86400000L, index_node->GetTTL());
 
 
+
 }
 
 } // namespace of parser

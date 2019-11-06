@@ -212,9 +212,9 @@ void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
 std::string NameOfSQLNodeType(const SQLNodeType &type) {
     std::string output;
     switch (type) {
-        case kSelectStmt:output = "kSelectStmt";
+        case kSelectStmt:output = "SELECT";
             break;
-        case kCreateStmt:output = "kCreateStmt";
+        case kCreateStmt:output = "CREATE";
             break;
         case kName: output = "kName";
             break;
@@ -363,6 +363,12 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, std::to_string(op_if_not_exist_), "IF NOT EXIST", false);
     output << "\n";
     PrintSQLVector(output, tab, column_desc_list_, "column_desc_list_", true);
+    output << "\n";
+//    if (nullptr != table_def_) {
+//        PrintValue(output, tab, table_def_->DebugString() , "table def", true);
+//    }
+
+
 }
 
 void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
