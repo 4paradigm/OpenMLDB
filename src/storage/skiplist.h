@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 #include <atomic>
-#include "util/random.h"
+#include "../base/random.h"
 #include "iterator.h"
 #include <iostream>
 #include <assert.h>
@@ -424,7 +424,7 @@ private:
     uint8_t const Branch;
     std::atomic<uint8_t> max_height_; 
     Comparator const compare_;
-    Random rand_;
+    ::fesql::base::Random rand_;
     Node<K, V>* head_;
     std::atomic<Node<K, V>*> tail_;
 };

@@ -153,6 +153,32 @@ public:
         return NULL;
     }
 
+    LinkListNode<K,V>* Split(const K& key) {
+        LinkListNode<K, V>* target = FindLessOrEqual(key);
+        if (target == NULL) {
+            return NULL;
+        }
+        LinkListNode<K, V>* result = target->GetNext();
+        target->SetNext(NULL);
+        return result;
+    }
+
+    LinkListNode<K,V>* SplitByPos(uint64_t pos) {
+        LinkListNode<K, V>* pos_node = head_->GetNext();
+        for (uint64_t idx = 0; idx < pos; idx++) {
+            if (pos_node == NULL) {
+                break;
+            }
+            pos_node = pos_node->GetNext();
+        }
+        if (pos_node == NULL) {
+            return NULL;
+        }
+        LinkListNode<K, V>* result = pos_node->GetNext();
+        pos_node->SetNext(NULL);
+        return result;
+    }
+
     class LinkListIterator : public Iterator<K, V> {
     public:
         LinkListIterator(LinkList<K, V, Comparator>* list) : node_(NULL) , list_(list) {}
@@ -273,6 +299,67 @@ public:
             return true;
         }
         return false;
+    }
+
+    void Clear() {
+        ArrayListNode<K,V>* array = array_.load(std::memory_order_relaxed);
+        if (array != NULL) {
+            array_.store(NULL, std::memory_order_release);
+            ArraySt<K, V>* st = ARRAY_HDR(array_.load(std::memory_order_relaxed));
+            delete[] (char*)st;
+        }
+    }
+
+    void Split(const K& key) {
+        uint32_t length = GetSize();
+        if (length == 0) {
+            return;
+        }
+        uint32_t pos = FindLessOrEqual(key);
+        if (pos == 0) {
+            Clear();
+            return;
+        }
+        if (pos < length - 1) {
+            uint32_t new_length = pos;
+            ArraySt<K, V>* st = (ArraySt<K, V>*)new char[ARRAY_HDR_LEN + new_length * sizeof(ArrayListNode<K, V>)];
+            st->length_ = (uint16_t)new_length;
+            ArrayListNode<K, V>* new_array = st->buf_;
+            ArrayListNode<K, V>* array = array_.load(std::memory_order_relaxed);
+            if (array != NULL) {
+                memcpy((void*)new_array, (void*)array, pos * sizeof(ArrayListNode<K, V>));
+            }
+            array_.store(new_array, std::memory_order_release);
+            if (array != NULL) {
+                ArraySt<K, V>* st = ARRAY_HDR(array);
+                delete[] (char*)st;
+            }
+        }
+    }
+
+    void SplitByPos(uint64_t pos) {
+        if (pos <= 1) {
+            Clear();
+            return;
+        }
+        uint32_t length = GetSize();
+        if (length == 0 || pos > length) {
+            return;
+        }
+
+        uint32_t new_length = pos;
+        ArraySt<K, V>* st = (ArraySt<K, V>*)new char[ARRAY_HDR_LEN + new_length * sizeof(ArrayListNode<K, V>)];
+        st->length_ = (uint16_t)new_length;
+        ArrayListNode<K, V>* new_array = st->buf_;
+        ArrayListNode<K, V>* array = array_.load(std::memory_order_relaxed);
+        if (array != NULL) {
+            memcpy((void*)new_array, (void*)array, pos * sizeof(ArrayListNode<K, V>));
+        }
+        array_.store(new_array, std::memory_order_release);
+        if (array != NULL) {
+            ArraySt<K, V>* st = ARRAY_HDR(array);
+            delete[] (char*)st;
+        }
     }
 
     // TODO : use binary search
