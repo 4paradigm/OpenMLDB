@@ -5375,9 +5375,9 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
     response->set_code(0);
     response->set_msg("ok");
 }
-void NameServerImpl::RemoveReplicaCLuster(::google::protobuf::RpcController *controller,
-                                            const ::rtidb::nameserver::RemoveReplicaOfRequest *request,
-                                            ::rtidb::nameserver::GeneralResponse *response,
+void NameServerImpl::RemoveReplicaCluster(::google::protobuf::RpcController *controller,
+                                            const ::rtidb::nameserver::RemoveReplicaOfRequest* request,
+                                            ::rtidb::nameserver::GeneralResponse* response,
                                             ::google::protobuf::Closure *done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {

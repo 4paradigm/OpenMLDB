@@ -333,20 +333,23 @@ public:
             const MakeReplicaClusterRequest *request,
             MakeReplicaClusterResponse *response,
             Closure *done);
+
     void ShowReplicaCluster(RpcController *controller,
             const GeneralRequest *request,
             ShowReplicaClusterResponse *response,
             Closure *done);
-    void RemoveReplicaCLuster(RpcController *controller,
+
+    void RemoveReplicaCluster(RpcController *controller,
             const RemoveReplicaOfRequest *request,
             GeneralResponse *response,
             Closure *done);
+
     void KickReplicaCluster(RpcController *controller,
             const KickReplicaClusterRequest *request,
             GeneralResponse *response,
             Closure *done);
 
-  int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+    int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);
 
