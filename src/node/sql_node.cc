@@ -303,8 +303,10 @@ std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz) {
   return output;
 }
 
-void FillSQLNodeList2NodeVector(SQLNodeList *node_list_ptr,
-                                std::vector<SQLNode *> &node_list) {
+void FillSQLNodeList2NodeVector(
+    SQLNodeList *node_list_ptr,
+    std::vector<SQLNode *> &node_list  // NOLINT (runtime/references)
+) {
   if (nullptr != node_list_ptr) {
     SQLLinkedNode *ptr = node_list_ptr->GetHead();
     while (nullptr != ptr && nullptr != ptr->node_ptr_) {

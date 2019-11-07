@@ -52,16 +52,14 @@ class FeSQLAnalyser {
     Initialize();
   }
 
-  int Analyse(NodePointVector &parser_trees, NodePointVector &query_tree);
+  int Analyse(NodePointVector &parser_trees,  // NOLINT (runtime/references)
+              NodePointVector &query_tree);   // NOLINT (runtime/references)
   int Analyse(SQLNode *parser_tree);
 
   bool IsTableExist(std::string basic_string);
   bool IsColumnExistInTable(const std::string &oolumn_name,
                             const std::string &table_name);
   FuncDefType GetAggFunDefType(node::FuncNode *func_node);
-
-  int transformTableDef(std::string table_name,
-                        NodePointVector &column_desc_list, TableDef *table);
 
  private:
   NodeManager *node_manager_;

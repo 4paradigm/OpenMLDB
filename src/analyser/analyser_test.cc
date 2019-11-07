@@ -19,7 +19,7 @@ using fesql::node::NodePointVector;
 using fesql::node::PlanNode;
 using fesql::node::SQLNode;
 
-void GetSchema(::fesql::type::TableDef &table) {
+void GetSchema(::fesql::type::TableDef &table) {  // NOLINT (runtime/references)
   {
     ::fesql::type::ColumnDef *column = table.add_columns();
     column->set_name("col1");

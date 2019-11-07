@@ -28,8 +28,9 @@ class Planner {
 
   virtual ~Planner() {}
 
-  virtual int CreatePlanTree(const NodePointVector &parser_trees,
-                             PlanNodeList &plan_trees) = 0;
+  virtual int CreatePlanTree(
+      const NodePointVector &parser_trees,
+      PlanNodeList &plan_trees) = 0;  // NOLINT (runtime/references)
 
  protected:
   int CreatePlanRecurse(node::SQLNode *root, PlanNode *plan_tree);
@@ -48,7 +49,7 @@ class SimplePlanner : public Planner {
  public:
   explicit SimplePlanner(node::NodeManager *manager) : Planner(manager) {}
   int CreatePlanTree(const NodePointVector &parser_trees,
-                     PlanNodeList &plan_trees);
+                     PlanNodeList &plan_trees);  // NOLINT (runtime/references)
 };
 
 // TODO(chenjing): move to executor module

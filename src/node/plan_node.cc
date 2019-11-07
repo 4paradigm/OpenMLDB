@@ -70,7 +70,9 @@ void ProjectPlanNode::Print(std::ostream &output,
                             const std::string &orgTab) const {
   PlanNode::Print(output, orgTab);
   output << "\n";
-  PrintSQLNode(output, orgTab, expression_, "expression", true);
+  PrintSQLNode(output, orgTab, expression_, "expression", false);
+  output << "\n";
+  PrintValue(output, orgTab, name_, "name", true);
 }
 
 void ProjectListPlanNode::Print(std::ostream &output,

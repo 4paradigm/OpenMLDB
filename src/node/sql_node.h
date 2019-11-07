@@ -775,8 +775,9 @@ class ColumnIndexNode : public SQLNode {
   std::string name_;
 };
 std::string WindowOfExpression(SQLNode *node_ptr);
-void FillSQLNodeList2NodeVector(SQLNodeList *node_list_ptr,
-                                std::vector<SQLNode *> &node_list);
+void FillSQLNodeList2NodeVector(
+    SQLNodeList *node_list_ptr,
+    std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)
 void PrintSQLNode(std::ostream &output, const std::string &org_tab,
                   SQLNode *node_ptr, const std::string &item_name,
                   bool last_child);

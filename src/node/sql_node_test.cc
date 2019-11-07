@@ -61,17 +61,18 @@ TEST_F(SqlNodeTest, MakeConstNodeIntTest) {
 }
 
 TEST_F(SqlNodeTest, MakeConstNodeLongTest) {
+  int64_t val1 = 1;
+  int64_t val2 = 864000000L;
   ConstNode *node_ptr =
-      reinterpret_cast<ConstNode *>(node_manager_->MakeConstNode(1L));
+      reinterpret_cast<ConstNode *>(node_manager_->MakeConstNode(val1));
   std::cout << *node_ptr << std::endl;
   ASSERT_EQ(kTypeInt64, node_ptr->GetDataType());
-  ASSERT_EQ(1L, node_ptr->GetLong());
+  ASSERT_EQ(val1, node_ptr->GetLong());
 
-  node_ptr =
-      reinterpret_cast<ConstNode *>(node_manager_->MakeConstNode(864000000L));
+  node_ptr = reinterpret_cast<ConstNode *>(node_manager_->MakeConstNode(val2));
   std::cout << *node_ptr << std::endl;
   ASSERT_EQ(kTypeInt64, node_ptr->GetDataType());
-  ASSERT_EQ(864000000LL, node_ptr->GetLong());
+  ASSERT_EQ(val2, node_ptr->GetLong());
 }
 
 TEST_F(SqlNodeTest, MakeConstNodeDoubleTest) {
@@ -91,6 +92,7 @@ TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
 }
 
 TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
+  int64_t val = 86400000L;
   SQLNodeList *partitions = node_manager_->MakeNodeList();
   SQLNode *ptr1 = node_manager_->MakeColumnRefNode("keycol", "");
   partitions->PushFront(node_manager_->MakeLinkedNode(ptr1));
@@ -102,7 +104,7 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
   SQLNode *frame = node_manager_->MakeFrameNode(
       node_manager_->MakeFrameBound(kPreceding, NULL),
       node_manager_->MakeFrameBound(kPreceding,
-                                    node_manager_->MakeConstNode(86400000L)));
+                                    node_manager_->MakeConstNode(val)));
   WindowDefNode *node_ptr = reinterpret_cast<WindowDefNode *>(
       node_manager_->MakeWindowDefNode(partitions, orders, frame));
   std::cout << *node_ptr << std::endl;
@@ -132,7 +134,8 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
       reinterpret_cast<FrameNode *>(node_manager_->MakeFrameNode(
           node_manager_->MakeFrameBound(kPreceding, NULL),
           node_manager_->MakeFrameBound(
-              kPreceding, node_manager_->MakeConstNode(86400000L))));
+              kPreceding,
+              node_manager_->MakeConstNode(static_cast<int64_t>(86400000)))));
   node_manager_->MakeRangeFrameNode(node_ptr);
   std::cout << *node_ptr << std::endl;
 
