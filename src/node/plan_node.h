@@ -109,7 +109,6 @@ class ScanPlanNode : public UnaryPlanNode {
   // TODO(chenjing): OP tid
   PlanType scan_type_;
   std::string table_name;
-  // TODO: M2
   SQLNode *condition;
   int limit_cnt;
 };
