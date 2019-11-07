@@ -1,105 +1,105 @@
 /*-------------------------------------------------------------------------
  * Copyright (C) 2019, 4paradigm
  * node_enum.h
- *      
+ *
  * Author: chenjing
- * Date: 2019/10/29 
+ * Date: 2019/10/29
  *--------------------------------------------------------------------------
-**/
+ **/
 
-#ifndef FESQL_NODE_ENUM_H
-#define FESQL_NODE_ENUM_H
+#ifndef SRC_NODE_NODE_ENUM_H_
+#define SRC_NODE_NODE_ENUM_H_
 
 #include <string>
 namespace fesql {
 namespace node {
 
-const std::string SPACE_ST = "+-";
-const std::string SPACE_ED = "";
-const std::string OR_INDENT = "|\t";
-const std::string INDENT = " \t";
+const char SPACE_ST[] = "+-";
+const char SPACE_ED[] = "";
+const char OR_INDENT[] = "|\t";
+const char INDENT[] = " \t";
 enum SQLNodeType {
-    //SQL
-        kSelectStmt = 0,
-    kCreateStmt,
-    kExpr,
-    kResTarget,
-    kTable,
-    kFunc,
-    kType,
-    kWindowFunc,
-    kWindowDef,
-    kFrameBound,
-    kFrames,
-    kColumnRef,
-    kColumnDesc,
-    kColumnIndex,
-    kIndexKey,
-    kIndexTs,
-    kIndexVersion,
-    kIndexTTL,
-    kName,
-    kConst,
-    kLimit,
-    kAll,
-    kList,
-    kOrderBy,
+  // SQL
+  kSelectStmt = 0,
+  kCreateStmt,
+  kExpr,
+  kResTarget,
+  kTable,
+  kFunc,
+  kType,
+  kWindowFunc,
+  kWindowDef,
+  kFrameBound,
+  kFrames,
+  kColumnRef,
+  kColumnDesc,
+  kColumnIndex,
+  kIndexKey,
+  kIndexTs,
+  kIndexVersion,
+  kIndexTTL,
+  kName,
+  kConst,
+  kLimit,
+  kAll,
+  kList,
+  kOrderBy,
 
-    kPrimary,
+  kPrimary,
 
-    kDesc,
-    kAsc,
+  kDesc,
+  kAsc,
 
-    kFrameRange,
-    kFrameRows,
+  kFrameRange,
+  kFrameRows,
 
-    kPreceding,
-    kFollowing,
-    kCurrent,
+  kPreceding,
+  kFollowing,
+  kCurrent,
 
-    kFnDef,
-    kFnValue,
-    kFnId,
-    kFnAssignStmt,
-    kFnReturnStmt,
-    kFnExpr,
-    kFnExprBinary,
-    kFnExprUnary,
-    kFnPara,
-    kFnParaList,
-    kFnList,
-    kUnknow
+  kFnDef,
+  kFnValue,
+  kFnId,
+  kFnAssignStmt,
+  kFnReturnStmt,
+  kFnExpr,
+  kFnExprBinary,
+  kFnExprUnary,
+  kFnPara,
+  kFnParaList,
+  kFnList,
+  kUnknow
 };
 
 enum DataType {
-    kTypeBool,
-    kTypeInt16,
-    kTypeInt32,
-    kTypeInt64,
-    kTypeFloat,
-    kTypeDouble,
-    kTypeString,
-    kTypeTimestamp,
-    kTypeHour,
-    kTypeDay,
-    kTypeMinute,
-    kTypeSecond,
-    kTypeNull
+  kTypeBool,
+  kTypeInt16,
+  kTypeInt32,
+  kTypeInt64,
+  kTypeFloat,
+  kTypeDouble,
+  kTypeString,
+  kTypeTimestamp,
+  kTypeHour,
+  kTypeDay,
+  kTypeMinute,
+  kTypeSecond,
+  kTypeNull
 };
 
 enum TimeUnit {
-    kTimeUnitHour,
-    kTimeUnitDay,
-    kTimeUnitMinute,
-    kTimeUnitSecond,
+  kTimeUnitHour,
+  kTimeUnitDay,
+  kTimeUnitMinute,
+  kTimeUnitSecond,
 };
 enum FnOperator {
-    kFnOpAdd,
-    kFnOpMinus,
-    kFnOpMulti,
-    kFnOpDiv,
-    kFnOpBracket,
-    kFnOpNone
+  kFnOpAdd,
+  kFnOpMinus,
+  kFnOpMulti,
+  kFnOpDiv,
+  kFnOpBracket,
+  kFnOpNone
 };
 
 /**
@@ -108,69 +108,69 @@ enum FnOperator {
  *
  */
 enum PlanType {
-    kPlanTypeSelect,
-    kPlanTypeCreate,
-    kPlanTypeScan,
-    kPlanTypeLimit,
-    kPlanTypeFilter,
-    kProjectList,
-    kProject,
-    kScalarFunction,
-    kOpExpr,
-    kAggFunction,
-    kAggWindowFunction,
-    kUnknowPlan,
+  kPlanTypeSelect,
+  kPlanTypeCreate,
+  kPlanTypeScan,
+  kPlanTypeLimit,
+  kPlanTypeFilter,
+  kProjectList,
+  kProject,
+  kScalarFunction,
+  kOpExpr,
+  kAggFunction,
+  kAggWindowFunction,
+  kUnknowPlan,
 
-    kScanTypeSeqScan,
-    kScanTypeIndexScan,
+  kScanTypeSeqScan,
+  kScanTypeIndexScan,
 };
 
-}
-}
+}  // namespace node
+}  // namespace fesql
 
 namespace fesql {
 namespace error {
 enum ErrorType {
-    kSucess = 0,
+  kSucess = 0,
 
-    kNodeErrorUnknow = 1001,
-    kNodeErrorMakeNodeFail,
+  kNodeErrorUnknow = 1001,
+  kNodeErrorMakeNodeFail,
 
-    kParserErrorUnknow = 2001,
-    kParserErrorSyntax,
-    kParserErrorAbort,
+  kParserErrorUnknow = 2001,
+  kParserErrorSyntax,
+  kParserErrorAbort,
 
-    kAnalyserErrorUnknow = 3001,
-    kAnalyserErrorUnSupport,
-    kAnalyserErrorSQLTypeNotSupport,
-    kAnalyserErrorInitialize,
-    kAnalyserErrorParserTreeEmpty,
-    kAnalyserErrorFromListEmpty,
-    kAnalyserErrorQueryMultiTable,
-    kAnalyserErrorTableRefIsNull,
-    kAnalyserErrorTableNotExist,
-    kAnalyserErrorTableAlreadyExist,
-    kAnalyserErrorColumnNameIsEmpty,
-    kAnalyserErrorColumnNotExist,
-    kAnalyserErrorTargetIsNull,
-    kAnalyserErrorGlobalAggFunction,
-    kCreateErrorUnSupportColumnType,
-    kCreateErrorDuplicationColumnName,
-    kCreateErrorDuplicationIndexName,
+  kAnalyserErrorUnknow = 3001,
+  kAnalyserErrorUnSupport,
+  kAnalyserErrorSQLTypeNotSupport,
+  kAnalyserErrorInitialize,
+  kAnalyserErrorParserTreeEmpty,
+  kAnalyserErrorFromListEmpty,
+  kAnalyserErrorQueryMultiTable,
+  kAnalyserErrorTableRefIsNull,
+  kAnalyserErrorTableNotExist,
+  kAnalyserErrorTableAlreadyExist,
+  kAnalyserErrorColumnNameIsEmpty,
+  kAnalyserErrorColumnNotExist,
+  kAnalyserErrorTargetIsNull,
+  kAnalyserErrorGlobalAggFunction,
+  kCreateErrorUnSupportColumnType,
+  kCreateErrorDuplicationColumnName,
+  kCreateErrorDuplicationIndexName,
 
-    kPlanErrorUnknow = 4001,
-    kPlanErrorUnSupport,
-    kPlanErrorNullNode,
-    kPlanErrorTableRefIsEmpty,
-    kPlanErrorQueryMultiTable,
+  kPlanErrorUnknow = 4001,
+  kPlanErrorUnSupport,
+  kPlanErrorNullNode,
+  kPlanErrorTableRefIsEmpty,
+  kPlanErrorQueryMultiTable,
 
-    kSystemErrorUnknow = 5001,
-    kSystemErrorMemory,
+  kSystemErrorUnknow = 5001,
+  kSystemErrorMemory,
 
-    kServerErrorUnknow = 6001,
-    kServerErrorConnection,
-    kServerErrorSend
+  kServerErrorUnknow = 6001,
+  kServerErrorConnection,
+  kServerErrorSend
 };
-}
-}
-#endif //FESQL_NODE_ENUM_H
+}  // namespace error
+}  // namespace fesql
+#endif  // SRC_NODE_NODE_ENUM_H_
