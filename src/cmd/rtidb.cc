@@ -1670,7 +1670,7 @@ void HandleShowReplicaOf(const std::vector<std::string>& parts, ::rtidb::client:
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
 
-    std::vector<::rtidb::nameserver::ClusterAdd_Age> cluster_info;
+    std::vector<::rtidb::nameserver::ClusterAddAge> cluster_info;
     std::string msg;
     bool ok = client->ShowReplicaOf(cluster_info, msg);
     if (!ok) {

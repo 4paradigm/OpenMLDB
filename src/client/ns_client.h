@@ -91,13 +91,13 @@ public:
                    uint64_t ttl, const std::string& ts_name,
                    std::string& msg);
 
-    bool MakeReplicaCluster(const std::string& alias, const std::string& name, const uint64_t& term, std::string& msg);
+    bool AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t& term, std::string& msg);
 
     bool ReplicaOf(const std::string &zk_ep, const std::string &zk_path, const std::string &alias, std::string& msg);
 
-    bool ShowReplicaOf(std::vector<::rtidb::nameserver::ClusterAdd_Age>& clusterinfo, std::string &msg);
+    bool ShowReplicaOf(std::vector<::rtidb::nameserver::ClusterAddAge>& clusterinfo, std::string &msg);
 
-    bool KickReplicaCluster(const std::string &alias, const std::string &zone_name, const uint64_t &term,
+    bool RemoveReplicaClusterByNs(const std::string &alias, const std::string &zone_name, const uint64_t term,
                           std::string &msg);
 
     bool RemoveReplicaCluster(const std::string &alias, std::string &msg);

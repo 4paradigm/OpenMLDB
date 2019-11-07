@@ -423,13 +423,14 @@ bool NsClient::UpdateTTL(const std::string& name,
     return false;
 }
 
-bool NsClient::MakeReplicaCluster(const std::string& alias, const std::string& name, const uint64_t& term, std::string& msg) {
-    ::rtidb::nameserver::MakeReplicaClusterRequest request;
-    ::rtidb::nameserver::MakeReplicaClusterResponse response;
+bool NsClient::AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t& term, std::string& msg) {
+    ::rtidb::nameserver::ReplicaClusterRequestByNs request;
+    ::rtidb::nameserver::AddReplicaClusterRequestByNsResponse response;
     request.set_replica_alias(alias);
     request.set_zone_name(name);
     request.set_zone_term(term);
-    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::MakeReplicaCluster,
+    request.set_follower(true);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaClusterByNs,
                                     &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && ((response.code() == 0) || (response.code() == 1))) {
@@ -456,7 +457,7 @@ bool NsClient::ReplicaOf(const std::string& zk_ep, const std::string& zk_path, c
     return false;
 }
 
-bool NsClient::ShowReplicaOf(std::vector<::rtidb::nameserver::ClusterAdd_Age>& clusterinfo, std::string& msg) {
+bool NsClient::ShowReplicaOf(std::vector<::rtidb::nameserver::ClusterAddAge>& clusterinfo, std::string& msg) {
     ::rtidb::nameserver::GeneralRequest request;
     ::rtidb::nameserver::ShowReplicaClusterResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowReplicaCluster,
@@ -486,14 +487,15 @@ bool NsClient::RemoveReplicaCluster(const std::string& alias, std::string& msg) 
     return false;
 }
 
-bool NsClient::KickReplicaCluster(const std::string& alias, const std::string& zone_name,
-    const uint64_t& term, std::string& msg) {
-    ::rtidb::nameserver::KickReplicaClusterRequest request;
+bool NsClient::RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name,
+    const uint64_t term, std::string& msg) {
+    ::rtidb::nameserver::ReplicaClusterRequestByNs request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_replica_alias(alias);
     request.set_zone_term(term);
     request.set_zone_name(zone_name);
-    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::KickReplicaCluster,
+    request.set_follower(false);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RemoveReplicaClusterByNs,
         &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && (response.code() == 0)) {

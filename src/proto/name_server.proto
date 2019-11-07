@@ -265,43 +265,38 @@ message CancelOPRequest {
 }
 
 message ClusterAddress {
-    required string zk_endpoints = 1;
-    required string zk_path = 2;
+    optional string zk_endpoints = 1;
+    optional string zk_path = 2;
 }
 message AddReplicaClusterRequest {
-    required ClusterAddress cluster_add = 1;
-    required string alias = 3;
+    optional ClusterAddress cluster_add = 1;
+    optional string alias = 3;
 }
 
 message GeneralRequest {}
 
-message ClusterAdd_Age {
-    required AddReplicaClusterRequest replica = 1;
-    required uint64 age = 2;
+message ClusterAddAge {
+    optional AddReplicaClusterRequest replica = 1;
+    optional uint64 age = 2;
 }
 message ShowReplicaClusterResponse {
-    repeated ClusterAdd_Age replicas = 1;
+    repeated ClusterAddAge replicas = 1;
     optional int32 code = 2;
     optional string msg = 3;
 }
 
 message RemoveReplicaOfRequest {
-    required string alias = 1;
+    optional string alias = 1;
 }
 
-message MakeReplicaClusterRequest {
-    required string zone_name = 1;
-    required string replica_alias = 2;
-    required uint64 zone_term = 3;
+message ReplicaClusterRequestByNs {
+    optional string zone_name = 1;
+    optional string replica_alias = 2;
+    optional uint64 zone_term = 3;
+    optional bool follower = 4;
 }
 
-message KickReplicaClusterRequest {
-    required string zone_name = 1;
-    required string replica_alias = 2;
-    required uint64 zone_term = 3;
-}
-
-message MakeReplicaClusterResponse {
+message AddReplicaClusterRequestByNsResponse {
     repeated TabletStatus tablets = 1;
     repeated TableInfo table_info = 2;
     required int32 code = 3;
@@ -336,6 +331,6 @@ service NameServer {
     rpc AddReplicaCluster(AddReplicaClusterRequest) returns (GeneralResponse);
     rpc ShowReplicaCluster(GeneralRequest) returns (ShowReplicaClusterResponse);
     rpc RemoveReplicaCluster(RemoveReplicaOfRequest) returns (GeneralResponse);
-    rpc MakeReplicaCluster(MakeReplicaClusterRequest) returns (MakeReplicaClusterResponse);
-    rpc KickReplicaCluster(KickReplicaClusterRequest) returns (GeneralResponse);
+    rpc AddReplicaClusterByNs(ReplicaClusterRequestByNs) returns (AddReplicaClusterRequestByNsResponse);
+    rpc RemoveReplicaClusterByNs(ReplicaClusterRequestByNs) returns (GeneralResponse);
 }
