@@ -16,6 +16,7 @@
  */
 
 #include "codegen/fn_let_ir_builder.h"
+#include "codegen/fn_ir_builder.h"
 #include "gtest/gtest.h"
 
 #include "parser/parser.h"
@@ -44,12 +45,97 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace codegen {
 
+static node::NodeManager manager;
 class FnLetIRBuilderTest : public ::testing::Test {
 
 public:
      FnLetIRBuilderTest() {}
     ~FnLetIRBuilderTest() {}
 };
+
+void AddFunc(const std::string& fn,
+        ::llvm::Module* m) {
+    ::fesql::node::NodePointVector trees;
+    ::fesql::parser::FeSQLParser parser;
+    int ret = parser.parse(fn, trees, &manager);
+    ASSERT_EQ(0, ret);
+    FnIRBuilder fn_ir_builder(m);
+    bool ok = fn_ir_builder.Build((node::FnNode *) trees[0]);
+    ASSERT_TRUE(ok);
+}
+
+TEST_F(FnLetIRBuilderTest, test_udf) {
+
+
+    ::fesql::type::TableDef table;
+    table.set_name("t1");
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col1");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col2");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kFloat);
+        column->set_name("col3");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kDouble);
+        column->set_name("col4");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col15");
+    }
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_project", *ctx);
+    ::fesql::node::NodePointVector list;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::node::NodeManager manager;
+    const std::string test = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend";
+    AddFunc(test, m.get());
+    int ret = parser.parse("SELECT test(col1,col1) FROM t1 limit 10;", list, &manager);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1, list.size());
+    ::fesql::plan::SimplePlanner planner(&manager);
+    ::fesql::node::PlanNode *plan_ptr = planner.CreatePlan(list[0]);
+    ::fesql::node::ProjectListPlanNode* pp_node_ptr 
+        = (::fesql::node::ProjectListPlanNode*)(plan_ptr->GetChildren()[0]->GetChildren()[0]);
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "int" and take an argument of "int".
+    RowFnLetIRBuilder ir_builder(&table, m.get());
+    std::vector<::fesql::type::ColumnDef> schema;
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(1, schema.size());
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
+    int32_t (*decode)(int8_t*, int8_t*) = (int32_t (*)(int8_t*, int8_t*))load_fn_jit.getAddress();
+    int8_t* ptr = static_cast<int8_t*>(malloc(28));
+    int32_t i = 0;
+    *((int32_t*)(ptr + 2)) = 1;
+    *((int16_t*)(ptr +2+4)) = 2;
+    *((float*)(ptr +2+ 4 + 2)) = 3.1f;
+    *((double*)(ptr +2+ 4 + 2 + 4)) = 4.1;
+    *((int64_t*)(ptr +2+ 4 + 2 + 4 + 8)) = 5;
+    int32_t ret2 = decode(ptr, (int8_t*)&i);
+    ASSERT_EQ(ret2, 0);
+    ASSERT_EQ(i, 3);
+}
+
+
 
 TEST_F(FnLetIRBuilderTest, test_project) {
 
@@ -113,14 +199,15 @@ TEST_F(FnLetIRBuilderTest, test_project) {
     std::cout << decode << std::endl;
 
     int8_t* ptr = static_cast<int8_t*>(malloc(28));
-    int8_t* out_ptr = static_cast<int8_t*>(malloc(4));
-    *((int32_t*)ptr + 2) = 1;
+    int32_t i = 0;
+    *((int32_t*)(ptr + 2)) = 1;
     *((int16_t*)(ptr +2+4)) = 2;
     *((float*)(ptr +2+ 4 + 2)) = 3.1f;
     *((double*)(ptr +2+ 4 + 2 + 4)) = 4.1;
     *((int64_t*)(ptr +2+ 4 + 2 + 4 + 8)) = 5;
-    int32_t ret2 = decode(ptr, out_ptr);
+    int32_t ret2 = decode(ptr, (int8_t*)&i);
     ASSERT_EQ(ret2, 0);
+    ASSERT_EQ(i, 1);
 }
 
 } // namespace of codegen

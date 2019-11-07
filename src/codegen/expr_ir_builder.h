@@ -29,11 +29,14 @@ namespace codegen {
 class SQLExprIRBuilder {
 
  public:
+
     SQLExprIRBuilder(::llvm::BasicBlock* block, 
             ScopeVar* scope_var,
             BufIRBuilder* buf_ir_builder,
             const std::string& row_ptr_name,
-            const std::string& output_ptr_name);
+            const std::string& output_ptr_name,
+            ::llvm::Module* module);
+
     ~SQLExprIRBuilder();
 
     bool Build(const ::fesql::node::SQLNode* node,
@@ -41,7 +44,11 @@ class SQLExprIRBuilder {
             std::string& col_name);
 
  private:
+
     bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
+            ::llvm::Value** output);
+
+    bool BuildCallFn(const ::fesql::node::FuncNode* fn,
             ::llvm::Value** output);
 
  private:
@@ -50,6 +57,7 @@ class SQLExprIRBuilder {
     std::string row_ptr_name_;
     std::string output_ptr_name_;
     BufIRBuilder* buf_ir_builder_;
+    ::llvm::Module* module_;
 };
 
 class ExprIRBuilder {

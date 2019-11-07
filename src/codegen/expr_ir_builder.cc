@@ -25,10 +25,12 @@ SQLExprIRBuilder::SQLExprIRBuilder(::llvm::BasicBlock* block,
         ScopeVar* scope_var,
         BufIRBuilder* buf_ir_builder,
         const std::string& row_ptr_name,
-        const std::string& output_ptr_name):block_(block),
+        const std::string& output_ptr_name,
+        ::llvm::Module* module):block_(block),
     sv_(scope_var), row_ptr_name_(row_ptr_name),
     output_ptr_name_(output_ptr_name),
-    buf_ir_builder_(buf_ir_builder){
+    buf_ir_builder_(buf_ir_builder),
+    module_(module){
 }
 
 SQLExprIRBuilder::~SQLExprIRBuilder() {}
@@ -36,10 +38,12 @@ SQLExprIRBuilder::~SQLExprIRBuilder() {}
 bool SQLExprIRBuilder::Build(const ::fesql::node::SQLNode*  node,
         ::llvm::Value** output,
         std::string& col_name) {
+
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "node or output is null";
         return false;
     }
+
     switch (node->GetType()) {
         case ::fesql::node::kColumnRef:
             {
@@ -48,12 +52,69 @@ bool SQLExprIRBuilder::Build(const ::fesql::node::SQLNode*  node,
                 col_name.assign(n->GetColumnName());
                 return BuildColumnRef(n, output);
             }
+        case ::fesql::node::kFunc:
+            {
+                const ::fesql::node::FuncNode* fn 
+                    = (const ::fesql::node::FuncNode*)node;
+                return BuildCallFn(fn, output);
+            }
         default:
             {
                 LOG(WARNING) << "not supported";
                 return false;
             }
     }
+}
+
+bool SQLExprIRBuilder::BuildCallFn(const ::fesql::node::FuncNode* call_fn,
+        ::llvm::Value** output) {
+
+    if (call_fn == NULL 
+            || output == NULL) {
+        LOG(WARNING) << "call fn or output is null";
+        return false;
+    }
+
+    ::llvm::StringRef name(call_fn->GetFunctionName());
+    // TODO(wangtaize) opt function location 
+    ::llvm::Function* fn =  module_->getFunction(name);
+
+    if (fn == NULL) {
+        LOG(WARNING) << "fail to find func with name " << call_fn->GetFunctionName();
+        return true;
+    }
+
+    const std::vector<::fesql::node::SQLNode* >& args = call_fn->GetArgs();
+    std::vector<::fesql::node::SQLNode* >::const_iterator it = args.begin();
+    std::vector<::llvm::Value*> llvm_args;
+
+    for (; it != args.end(); ++it) {
+        const ::fesql::node::SQLNode* arg = *it;
+        switch (arg->GetType()) {
+            case ::fesql::node::kColumnRef:
+                {
+                    ::llvm::Value* llvm_arg = NULL;
+                    const ::fesql::node::ColumnRefNode* n = 
+                    (const ::fesql::node::ColumnRefNode*)arg;
+                    bool ok = BuildColumnRef(n, &llvm_arg);
+                    if (!ok) {
+                        return false;
+                    }
+                    llvm_args.push_back(llvm_arg);
+                    break;
+                }
+            default:
+                {
+                    LOG(WARNING) << "not supported type";
+                    return false;
+                }
+        }
+    }
+    // TODO(wangtaize) args type check
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::ArrayRef<::llvm::Value*> array_ref(llvm_args);
+    *output = builder.CreateCall(fn->getFunctionType(), fn, array_ref);
+    return true;
 }
 
 bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
@@ -74,6 +135,7 @@ bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
 
     ::llvm::Value* value = NULL;
     ok = sv_->FindVar(node->GetColumnName(), &value);
+    LOG(INFO) << "get table column " << node->GetColumnName();
     // not found
     if (!ok) {
         // TODO(wangtaize) buf ir builder add build get field ptr
@@ -82,13 +144,16 @@ bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
             LOG(WARNING) <<  "fail to find column " << node->GetColumnName();
             return false;
         }
+
         ok = sv_->AddVar(node->GetColumnName(), value);
         if (ok) {
             *output = value;
         }
         return ok;
+    }else {
+        *output = value;
     }
-    return false;
+    return true;
 }
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var):block_(block),

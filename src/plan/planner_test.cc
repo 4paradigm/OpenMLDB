@@ -24,7 +24,6 @@ public:
     PlannerTest() {
         manager_ = new NodeManager();
         parser_ = new parser::FeSQLParser();
-
     }
 
     ~PlannerTest() {}

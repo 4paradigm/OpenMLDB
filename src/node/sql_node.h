@@ -481,6 +481,11 @@ public:
     void SetAgg(bool is_agg) {
         is_agg_ = is_agg;
     }
+
+    const NodePointVector &GetArgs() const {
+        return args_;
+    }
+
     NodePointVector &GetArgs() {
         return args_;
     }

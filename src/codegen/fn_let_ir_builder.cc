@@ -71,7 +71,7 @@ bool RowFnLetIRBuilder::Build(
     BufIRBuilder buf_ir_builder(table_, block, &sv);
     SQLExprIRBuilder sql_expr_ir_builder(block, &sv, 
             &buf_ir_builder, row_ptr_name,
-            output_ptr_name);
+            output_ptr_name, module_);
 
     const ::fesql::node::PlanNodeList& children = node->GetProjects();
     ::fesql::node::PlanNodeList::const_iterator it = children.begin();
@@ -189,6 +189,7 @@ bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
      *fn = ::llvm::Function::Create(fnt, 
              ::llvm::Function::ExternalLinkage,
              name, module_);
+     LOG(INFO) << "create fn header " << name  << " done";
      return true;
 }
 
