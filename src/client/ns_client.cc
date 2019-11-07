@@ -479,6 +479,7 @@ bool NsClient::RemoveReplicaCluster(const std::string& alias, std::string& msg) 
     request.set_alias(alias);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RemoveReplicaCluster,
         &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
     if (ok && (response.code() == 0)) {
         return true;
     }

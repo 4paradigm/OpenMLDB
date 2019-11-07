@@ -704,9 +704,9 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
 }
 
 void NameServerImpl::ShowTablet(RpcController* controller,
-            const ShowTabletRequest* request,
-            ShowTabletResponse* response,
-            Closure* done) {
+        const ShowTabletRequest* request,
+        ShowTabletResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);    
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
@@ -1148,7 +1148,7 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -1543,9 +1543,9 @@ int NameServerImpl::DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::Table
 }
 
 void NameServerImpl::ConfSet(RpcController* controller,
-            const ConfSetRequest* request,
-            GeneralResponse* response,
-            Closure* done) {
+        const ConfSetRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);    
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
@@ -1593,9 +1593,9 @@ void NameServerImpl::ConfSet(RpcController* controller,
 }
 
 void NameServerImpl::ConfGet(RpcController* controller,
-            const ConfGetRequest* request,
-            ConfGetResponse* response,
-            Closure* done) {
+        const ConfGetRequest* request,
+        ConfGetResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);    
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
@@ -1613,9 +1613,9 @@ void NameServerImpl::ConfGet(RpcController* controller,
 }
 
 void NameServerImpl::ChangeLeader(RpcController* controller,
-            const ChangeLeaderRequest* request,
-            GeneralResponse* response,
-            Closure* done) {
+        const ChangeLeaderRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);    
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
@@ -1693,9 +1693,9 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
 }
 
 void NameServerImpl::OfflineEndpoint(RpcController* controller,
-            const OfflineEndpointRequest* request,
-            GeneralResponse* response,
-            Closure* done) {
+        const OfflineEndpointRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);    
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
@@ -1780,9 +1780,9 @@ void NameServerImpl::OfflineEndpointInternal(const std::string& endpoint, uint32
 }
 
 void NameServerImpl::RecoverEndpoint(RpcController* controller,
-            const RecoverEndpointRequest* request,
-            GeneralResponse* response,
-            Closure* done) {
+        const RecoverEndpointRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);    
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
@@ -1833,9 +1833,9 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
 }
 
 void NameServerImpl::RecoverTable(RpcController* controller,
-            const RecoverTableRequest* request,
-            GeneralResponse* response,
-            Closure* done) {
+        const RecoverTableRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);    
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
@@ -1910,9 +1910,9 @@ void NameServerImpl::RecoverTable(RpcController* controller,
 }
 
 void NameServerImpl::CancelOP(RpcController* controller,
-            const CancelOPRequest* request,
-            GeneralResponse* response,
-            Closure* done) {
+        const CancelOPRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);    
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
@@ -2013,11 +2013,11 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
 }
 
 void NameServerImpl::ShowTable(RpcController* controller,
-            const ShowTableRequest* request,
-            ShowTableResponse* response,
-            Closure* done) {
+        const ShowTableRequest* request,
+        ShowTableResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);    
-    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_relaxed)) {
+    if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -2040,7 +2040,7 @@ void NameServerImpl::DropTable(RpcController* controller,
         GeneralResponse* response, 
         Closure* done) {
     brpc::ClosureGuard done_guard(done);    
-    if (!running_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -2107,7 +2107,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -2255,7 +2255,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         GeneralResponse* response, 
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -4722,9 +4722,9 @@ void NameServerImpl::UpdatePartitionStatus(const std::string& name, const std::s
 }
 
 void NameServerImpl::UpdateTableAliveStatus(RpcController* controller,
-            const UpdateTableAliveRequest* request,
-            GeneralResponse* response,
-            Closure* done) {
+        const UpdateTableAliveRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
@@ -5062,7 +5062,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         ::rtidb::nameserver::UpdateTTLResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);    
-    if (!running_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -5327,12 +5327,20 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             break;
         }
         std::lock_guard<std::mutex> lock(mu_);
-        std::string cluster_value;
+        std::string cluster_value, value;
         cluster_add->SerializeToString(&cluster_value);
-        if (!zk_client_->CreateNode(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
-            PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
-            code = 300; rpc_msg = "write zk failed";
-            break;
+        if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), value)) {
+            if(!zk_client_->SetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
+                PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
+                code = 300; rpc_msg = "write zk failed";
+                break;
+            }
+        } else {
+            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
+                PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
+                code = 300; rpc_msg = "write zk failed";
+                break;
+            }
         }
         if (!cluster_info->MakeReplicaCluster(request->alias(), zk_zone_name_, zone_term_, rpc_msg)) {
             code = 300;
@@ -5345,11 +5353,11 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
     response->set_msg(rpc_msg);
 }
 void NameServerImpl::ShowReplicaCluster(RpcController* controller,
-                                       const GeneralRequest* request,
-                                       ShowReplicaClusterResponse* response,
-                                       Closure* done) {
+       const GeneralRequest* request,
+       ShowReplicaClusterResponse* response,
+       Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -5375,20 +5383,15 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
     response->set_code(0);
     response->set_msg("ok");
 }
-void NameServerImpl::RemoveReplicaCluster(::google::protobuf::RpcController *controller,
-                                            const ::rtidb::nameserver::RemoveReplicaOfRequest* request,
-                                            ::rtidb::nameserver::GeneralResponse* response,
-                                            ::google::protobuf::Closure *done) {
+void NameServerImpl::RemoveReplicaCluster(RpcController *controller,
+        const ::rtidb::nameserver::RemoveReplicaOfRequest* request,
+        ::rtidb::nameserver::GeneralResponse* response,
+        ::google::protobuf::Closure *done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_relaxed)) {
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
-        return;
-    }
-    if (!follower_.load(std::memory_order_acquire)) {
-        response->set_code(300);
-        response->set_msg("this isn't follower cluster");
         return;
     }
     auto it = nsc_.find(request->alias());
@@ -5402,15 +5405,16 @@ void NameServerImpl::RemoveReplicaCluster(::google::protobuf::RpcController *con
         response->set_code(300);
         response->set_msg(msg);
     }
+    nsc_.erase(it);
     response->set_code(0);
     response->set_msg("ok");
     return;
 }
 
-void NameServerImpl::KickReplicaCluster(::google::protobuf::RpcController *controller,
-    const ::rtidb::nameserver::KickReplicaClusterRequest *request,
-    ::rtidb::nameserver::GeneralResponse *response,
-    ::google::protobuf::Closure *done) {
+void NameServerImpl::KickReplicaCluster(RpcController *controller,
+        const ::rtidb::nameserver::KickReplicaClusterRequest *request,
+        ::rtidb::nameserver::GeneralResponse *response,
+        ::google::protobuf::Closure *done) {
     brpc::ClosureGuard done_guard(done);
     uint64_t code = 0;
     std::string rpc_msg = "ok";
@@ -5445,16 +5449,17 @@ void NameServerImpl::KickReplicaCluster(::google::protobuf::RpcController *contr
             PDLOG(WARNING, "set zk failed, save follower value failed");
             break;
         }
-    follower_.store(false, std::memory_order_release);
+        PDLOG(INFO, "set follower zk success, value is false");
+        follower_.store(false, std::memory_order_release);
     } while(0);
     response->set_code(code);
     response->set_msg(rpc_msg);
     return;
 }
-void NameServerImpl::MakeReplicaCluster(::google::protobuf::RpcController *controller,
-                                            const ::rtidb::nameserver::MakeReplicaClusterRequest *request,
-                                            ::rtidb::nameserver::MakeReplicaClusterResponse *response,
-                                        ::google::protobuf::Closure *done) {
+void NameServerImpl::MakeReplicaCluster(RpcController *controller,
+        const ::rtidb::nameserver::MakeReplicaClusterRequest *request,
+        ::rtidb::nameserver::MakeReplicaClusterResponse *response,
+        ::google::protobuf::Closure *done) {
     brpc::ClosureGuard done_guard(done);
     uint64_t code = 0;
     std::string rpc_msg = "accept";
