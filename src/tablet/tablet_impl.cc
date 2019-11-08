@@ -51,6 +51,7 @@ DECLARE_int32(task_pool_size);
 DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
+DECLARE_bool(recycle_bin_enabled);
 DECLARE_string(recycle_bin_root_path);
 DECLARE_string(recycle_ssd_bin_root_path);
 DECLARE_string(recycle_hdd_bin_root_path);
@@ -2838,9 +2839,14 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
         return 0;
     }
 
-    std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + 
-           "_" + std::to_string(pid) + "_" + ::rtidb::base::GetNowTime();
-    ::rtidb::base::Rename(source_path, recycle_path);
+    if(FLAGS_recycle_bin_enabled) {
+        std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + 
+                "_" + std::to_string(pid) + "_" + ::rtidb::base::GetNowTime();
+        ::rtidb::base::Rename(source_path, recycle_path);
+    } else {
+        ::rtidb::base::RemoveDir(source_path);
+    }
+
     if (task_ptr) {
         std::lock_guard<std::mutex> lock(mu_);
         task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
@@ -3104,19 +3110,25 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
     std::string binlog_path = db_path + "/binlog";
     if (::rtidb::base::IsExists(binlog_path)) {
         //TODO add clean the recycle bin logic
-        std::string recycle_bin_root_path;
-        ok = ChooseRecycleBinRootPath(tid, pid, mode, recycle_bin_root_path);
-        if (!ok) {
-            response->set_code(139);
-            response->set_msg("fail to get recycle root path");
-            PDLOG(WARNING, "fail to get table recycle root path");
-            return;
-        }
-        std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + 
-               "_" + std::to_string(pid) + "_binlog_" + ::rtidb::base::GetNowTime();
-        ::rtidb::base::Rename(binlog_path, recycle_path);
-        PDLOG(INFO, "binlog has moved form %s to %s. tid %u pid %u", 
+        if(FLAGS_recycle_bin_enabled) {
+            std::string recycle_bin_root_path;
+            ok = ChooseRecycleBinRootPath(tid, pid, mode, recycle_bin_root_path);
+            if (!ok) {
+                response->set_code(139);
+                response->set_msg("fail to get recycle root path");
+                PDLOG(WARNING, "fail to get table recycle root path");
+                return;
+            }
+            std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + 
+                    "_" + std::to_string(pid) + "_binlog_" + ::rtidb::base::GetNowTime();
+            ::rtidb::base::Rename(binlog_path, recycle_path);
+            PDLOG(INFO, "binlog has moved form %s to %s. tid %u pid %u", 
                     binlog_path.c_str(), recycle_path.c_str(), tid, pid);
+        } else {
+            ::rtidb::base::RemoveDir(binlog_path);
+            PDLOG(INFO, "binlog %s has removed. tid %u pid %u", 
+                    binlog_path.c_str(), tid, pid);
+        }
     }
 	response->set_code(0);
 	response->set_msg("ok");
