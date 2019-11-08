@@ -5449,8 +5449,8 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
     do {
         if (follower_.load(std::memory_order_acquire)) {
             if (request->replica_alias() != zone_info_.replica_alias()) {
-                code = 405;
-                rpc_msg = "already join zone";
+                code = 402;
+                rpc_msg = "not same replica name";
                 break;
             }
             if (request->zone_name() == zone_info_.zone_name()) {
@@ -5461,7 +5461,7 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
                 }
                 if (request->zone_term() == zone_info_.zone_term()) {
                     code = 408;
-                    rpc_msg = "already join zone, zone name and zone term are equal";
+                    rpc_msg = "already join zone";
                     break;
                 }
             } else {
