@@ -58,11 +58,11 @@ public:
 
     void UpdateNSClient(const std::vector<std::string>& children);
 
-    bool Init(std::string& msg);
+    int Init(std::string& msg);
 
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
 
-    bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
+    int RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
 
     const ::rtidb::nameserver::ClusterAddress& ReturnAdd() {
         return cluster_add_;
