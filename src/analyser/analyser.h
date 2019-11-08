@@ -17,7 +17,6 @@
 #include <vector>
 #include "node/node_manager.h"
 #include "node/sql_node.h"
-
 #include "proto/type.pb.h"
 
 namespace fesql {

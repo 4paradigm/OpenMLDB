@@ -17,32 +17,35 @@
 
 #ifndef FESQL_DBMS_SDK_H_
 #define FESQL_DBMS_SDK_H_
+#include <proto/type.pb.h>
 #include <string>
 
 namespace fesql {
 namespace sdk {
 
 struct GroupDef {
-    std::string name;
+  std::string name;
 };
 
 struct Status {
-    std::string msg;
-    int32_t code;
+  std::string msg;
+  int32_t code;
 };
 
 class DBMSSdk {
-
-public:
-    virtual ~DBMSSdk() {};
-    virtual void CreateGroup(const GroupDef& group,
-            Status& status) = 0;
+ public:
+  virtual ~DBMSSdk(){};
+  virtual void CreateGroup(const GroupDef &group, Status &status) = 0;
+  virtual void CreateTable(const std::string &sql_str, Status &status) = 0;
+  virtual void ShowSchema(const std::string &name, type::TableDef &table,
+                          Status &status) = 0;
+  virtual void ExecuteScript(const std::string &sql_str, Status &status) = 0;
 };
 
 // create a new dbms sdk with a endpoint
 // failed return NULL
-DBMSSdk* CreateDBMSSdk(const std::string& endpoint);
+DBMSSdk *CreateDBMSSdk(const std::string &endpoint);
 
-} // namespace of sdk
-} // namespace of fesql
+}  // namespace sdk
+}  // namespace fesql
 #endif /* !FESQL_DBMS_SDK_H_ */

@@ -18,34 +18,40 @@
 #ifndef FESQL_DBMS_SERVER_IMPL_H_
 #define FESQL_DBMS_SERVER_IMPL_H_
 
+#include <map>
+#include <mutex>
 #include "proto/dbms.pb.h"
 #include "proto/type.pb.h"
-#include <mutex>
-#include <map>
 
 namespace fesql {
 namespace dbms {
 
-using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
+using ::google::protobuf::RpcController;
 
 typedef std::map<std::string, ::fesql::type::Group> Groups;
+typedef std::map<std::string, ::fesql::type::TableDef> Tables;
 
 class DBMSServerImpl : public DBMSServer {
+ public:
+  DBMSServerImpl();
+  ~DBMSServerImpl();
 
-public:
-    DBMSServerImpl();
-    ~DBMSServerImpl();
+  void AddGroup(RpcController* ctr, const AddGroupRequest* request,
+                AddGroupResponse* response, Closure* done);
 
-    void AddGroup(RpcController* ctr,
-            const AddGroupRequest* request,
-            AddGroupResponse* response,
-            Closure* done);
-private:
-    std::mutex mu_;
-    Groups groups_;
+  void AddTable(RpcController* ctr, const AddTableRequest* request,
+                AddTableResponse* response, Closure* done);
+
+  void ShowSchema(RpcController* controller, const ShowSchemaRequest* request,
+                  ShowSchemaResponse* response, Closure* done);
+
+ private:
+  std::mutex mu_;
+  Groups groups_;
+  Tables tables_;
 };
 
-} // namespace of dbms
-} // namespace of fesql
+}  // namespace dbms
+}  // namespace fesql
 #endif /* !FESQL_DBMS_SERVER_IMPL_H_ */

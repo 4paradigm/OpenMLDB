@@ -36,7 +36,6 @@ int FeSQLParser::parse(const std::string &sqlstr, node::NodePointVector &trees,
   yylex_init(&scanner);
   yy_scan_string(sqlstr.c_str(), scanner);
   int ret = yyparse(scanner, trees, manager);
-  std::cout << "ret: " << ret << " trees size:" << trees.size() << std::endl;
   return ret;
 }
 

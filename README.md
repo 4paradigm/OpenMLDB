@@ -73,6 +73,43 @@ tools/cpplint.py  filename
 clang-format filename
 ```
 
+## CMD使用说明
+
+### 启动服务端
+
+```shell script
+./fesql --role=dbms --port=9111 --log_dir=./log/dbms &
+```
+
+### 启动客户端
+
+```shell script
+./fesql --role=client --endpoint=127.0.0.1:9111 --log_dir=./log/client
+```
+
+### 查看schema
+
+```shell script
+> .showschema table_name
+```
+
+### 从文件创建schema
+
+```shell script
+> .create schema schema_file_path
+```
+
+### 执行SQL语句（TODO)
+
+执行SQL语句以分号结尾
+```shell script
+> CREATE TABLE test （
+... column1 int NOT NULL,
+... column2 int NOT NULL);
+```
+
+
+
 
 
 
