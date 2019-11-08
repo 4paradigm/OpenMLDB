@@ -1,5 +1,5 @@
 /*
- * flags.cc
+ * op.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +15,29 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
-// cluster config
-DEFINE_string(endpoint, "", "config the ip and port that fesql serves for");
-DEFINE_int32(port, 0, "config the port that fesql serves for");
-DEFINE_int32(thread_pool_size, 8, "config the thread pool for dbms and tablet");
+#ifndef SRC_VM_OP_H_
+#define SRC_VM_OP_H_
+
+#include "proto/type.pb.h"
+
+namespace fesql {
+namespace vm {
+
+enum OpType {
+    kOpLoop = 1
+};
+
+
+
+struct LoopOp {
+    uint32_t tid;
+    uint32_t pid;
+    int8_t* projection_fn;
+    std::vector<::fesql::type::ColumnDef> schema;
+    uint32_t output_size;
+    OpType type;
+};
+
+}  // namespace vm
+}  // namespace fesql
+#endif  // SRC_VM_OP_H_

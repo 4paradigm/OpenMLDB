@@ -1,5 +1,5 @@
 /*
- * flags.cc
+ * op_generator.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +15,28 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
-// cluster config
-DEFINE_string(endpoint, "", "config the ip and port that fesql serves for");
-DEFINE_int32(port, 0, "config the port that fesql serves for");
-DEFINE_int32(thread_pool_size, 8, "config the thread pool for dbms and tablet");
+#ifndef SRC_VM_OP_GENERATOR_H_
+#define SRC_VM_OP_GENERATOR_H_
+
+#include "vm/op.h"
+
+namespace fesql {
+namespace vm {
+
+struct OpVector {
+
+};
+
+class OpGenerator {
+
+public:
+    OpGenerator(::llvm::Module* module,
+            ::fesql::node::PlanNode*);
+    ~OpGenerator();
+
+};
+
+}  // namespace vm
+}  // namespace fesql
+
+#endif  // SRC_VM_OP_GENERATOR_H_
