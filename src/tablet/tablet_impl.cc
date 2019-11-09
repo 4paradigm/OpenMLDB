@@ -2844,7 +2844,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
                 "_" + std::to_string(pid) + "_" + ::rtidb::base::GetNowTime();
         ::rtidb::base::Rename(source_path, recycle_path);
     } else {
-        ::rtidb::base::RemoveDir(source_path);
+        ::rtidb::base::RemoveDirRecursive(source_path);
     }
 
     if (task_ptr) {
@@ -3125,7 +3125,7 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
             PDLOG(INFO, "binlog has moved form %s to %s. tid %u pid %u", 
                     binlog_path.c_str(), recycle_path.c_str(), tid, pid);
         } else {
-            ::rtidb::base::RemoveDir(binlog_path);
+            ::rtidb::base::RemoveDirRecursive(binlog_path);
             PDLOG(INFO, "binlog %s has removed. tid %u pid %u", 
                     binlog_path.c_str(), tid, pid);
         }
