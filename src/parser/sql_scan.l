@@ -384,9 +384,7 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 
 	/* everything else */
-[ \t]         /* white space */
-newline              {columnpos = 1; }
-<<EOF>>             { columnpos = 1; }
+[ \n\t]         /* white space */{}
 .               { yyerror("mystery character '%s'", *yytext); }
 
 %%
