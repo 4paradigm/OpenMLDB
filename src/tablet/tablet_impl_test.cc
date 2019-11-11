@@ -2508,10 +2508,7 @@ TEST_F(TabletImplTest, DropTableNoRecycle) {
     ASSERT_EQ(0, drs.code());
     sleep(1);
     ::rtidb::base::GetChildFileName(FLAGS_db_root_path, file_vec);
-    std::string db_bin = "/tmp/gtest/db/" + std::to_string(id) + "_1";
-    for (auto file : file_vec) {
-        ASSERT_NE(db_bin, file);
-    }
+    ASSERT_TRUE(file_vec.empty());
     file_vec.clear();
     ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());

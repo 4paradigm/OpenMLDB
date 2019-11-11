@@ -183,7 +183,7 @@ inline static int GetChildFileName(const std::string& path, std::vector<std::str
             closedir(dir);
             return -1;
         }
-		file_vec.push_back(file_path);
+        file_vec.push_back(file_path);
     }
     closedir(dir);
     return 0;
@@ -191,24 +191,24 @@ inline static int GetChildFileName(const std::string& path, std::vector<std::str
 
 inline static bool IsFolder(const std::string& path) {
     struct stat s;
-	return stat(path.c_str(), &s) == 0 && (s.st_mode & S_IFDIR);
+    return stat(path.c_str(), &s) == 0 && (s.st_mode & S_IFDIR);
 }
 
 inline static bool RemoveDirRecursive(const std::string& path) {
     std::vector<std::string> file_vec;
-	if(GetChildFileName(path, file_vec) != 0) {
-		return false;
-	}
-	for (auto file : file_vec) {
-    	if(IsFolder(file)) {
-			if(!RemoveDirRecursive(file)) {
-				return false;
-			}
-	    } else if(remove(file.c_str()) != 0){
-			return false;
-	    }
-	}
-	return rmdir(path.c_str()) == 0;
+    if(GetChildFileName(path, file_vec) != 0) {
+        return false;
+    }
+    for (auto file : file_vec) {
+        if(IsFolder(file)) {
+            if(!RemoveDirRecursive(file)) {
+                return false;
+            }
+        } else if(remove(file.c_str()) != 0){
+            return false;
+        }
+    }
+    return rmdir(path.c_str()) == 0;
 }
 
 }
