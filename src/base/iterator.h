@@ -6,7 +6,7 @@
 
 #pragma once
 namespace fesql {
-namespace storage {
+namespace base {
 
 struct DefaultComparator {
     int operator() (const uint64_t a, const uint64_t b) const {
@@ -26,6 +26,7 @@ public:
      Iterator(const Iterator&) = delete;
      Iterator& operator= (const Iterator&) = delete;
      virtual ~Iterator() {}
+     virtual bool IsSeekable() const  = 0;
      virtual bool Valid() const = 0;
      virtual void Next() = 0;
      virtual const K& GetKey() const = 0;

@@ -19,21 +19,51 @@
 #define SRC_VM_OP_GENERATOR_H_
 
 #include "vm/op.h"
+#include "vm/table_mgr.h"
 
 namespace fesql {
 namespace vm {
 
 struct OpVector {
-
+    std::string sql;
+    std::vector<OpNode* > ops;
 };
 
 class OpGenerator {
 
-public:
-    OpGenerator(::llvm::Module* module,
-            ::fesql::node::PlanNode*);
+ public:
+
+    OpGenerator(TableMgr* table_mgr);
     ~OpGenerator();
 
+    bool Gen(const ::fesql::node::NodePointVector& trees,
+                 ::llvm::Module* module,
+                 OpVector* ops);
+ private:
+
+    bool GenFnDef(::llvm::Module* module,
+            const ::fesql::node::FnNode* node);
+
+    bool GenSQL(const ::fesql::node::SQLNode* node,
+                ::llvm::Module* module,
+                OpVector* ops);
+
+    bool GenProject(const ::fesql::node::ProjectListPlanNode* node);
+
+    bool GenScan(const ::fesql::node::ScanPlanNode* node,
+            ::llvm::Module* module,
+            OpVector* ops);
+
+    bool GenLimit(const ::fesql::node::LimitPlanNode* node,
+            ::llvm::Module* module,
+            OpVector* ops);
+
+    bool RoutingNode(const ::fesql::node::PlanNode* node,
+            ::llvm::Module* module,
+            OpVector* ops);
+
+ private:
+    TableMgr* table_mgr_;
 };
 
 }  // namespace vm

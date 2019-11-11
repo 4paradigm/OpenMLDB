@@ -30,6 +30,7 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
              typename> friend class ::llvm::orc::LLJITBuilderSetters;
 
  public:
+
     ::llvm::Error AddIRModule(::llvm::orc::JITDylib& jd, // NOLINT
             ::llvm::orc::ThreadSafeModule tsm,
             ::llvm::orc::VModuleKey key);
@@ -37,6 +38,7 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
     ::llvm::orc::VModuleKey CreateVModule();
 
     void ReleaseVModule(::llvm::orc::VModuleKey key);
+
     ~FeSQLJIT();
  protected:
     FeSQLJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e);

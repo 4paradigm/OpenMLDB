@@ -7,12 +7,14 @@
 #include <stdint.h>
 #include <atomic>
 #include "util/random.h"
-#include "iterator.h"
+#include "base/iterator.h"
 #include <iostream>
 #include <assert.h>
 
 namespace fesql {
 namespace storage {
+
+using ::fesql::base::Iterator;
 
 // SkipList node , a thread safe structure 
 template<class K, class V>

@@ -1,5 +1,5 @@
 /*
- * op.h
+ * table_mgr.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,45 +15,36 @@
  * limitations under the License.
  */
 
-#ifndef SRC_VM_OP_H_
-#define SRC_VM_OP_H_
+#ifndef SRC_VM_TABLE_MGR_H_
+#define SRC_VM_TABLE_MGR_H_
 
-#include "proto/type.pb.h"
+#include "proto/type.pb"
+#include "storage/table.h"
 
 namespace fesql {
 namespace vm {
 
-enum OpType {
-    kOpProject = 1,
-    kOpScan,
-    kOpLimit,
-};
-
-struct OpNode {
-    OpType type;
-};
-
-struct ScanOp {
-    OpType type;
+struct TableStatus {
     uint32_t tid;
     uint32_t pid;
-    std::vector<::fesql::type::ColumnDef> input_schema;
-    std::vector<::fesql::type::ColumnDef> output_schema;
+    ::fesql::type::TableDef table_def;
+    ::fesql::storage::Table table;
 };
 
-struct ProjectOp {
-    OpType type;
-    std::vector<::fesql::type::ColumnDef> output_schema;
-    uint32_t output_size;
-    int8_t* fn;
-    std::string fn_name;
-};
+class TableMgr {
 
-struct LimitOp {
-    OpType type;
-    uint32_t limit;
-}
+ public:
+    virtual ~TableMgr() = 0;
+
+    virtual bool GetTableDef(const std::string& db,
+                             const std::string& name,
+                             TableStatus** table) const = 0;
+
+    virtual bool GetTableDef(const uint64_t catalog_id,
+                             const uint64_t tid,
+                             TableStatus** table) const = 0;
+};
 
 }  // namespace vm
 }  // namespace fesql
-#endif  // SRC_VM_OP_H_
+#endif  // TABLE_MGR_H 

@@ -84,6 +84,7 @@ TEST_F(JITTest, test_release_module) {
                   m1);
         if (e) {}
 	 	auto Add1Sym = FeCheck((jit->lookup(jd, "add1")));
+        jit->getExecutionSession().dump(::llvm::errs());
         Add1 = (int (*)(int))Add1Sym.getAddress();
         ASSERT_EQ(Add1(1), 2);
         Add1 = NULL;
@@ -112,10 +113,11 @@ TEST_F(JITTest, test_release_module) {
         if (e) {}
         e = jit->AddIRModule(jd,
 			  	std::move(::llvm::orc::ThreadSafeModule(std::move(m), std::move(ct2))),
-                  m1);
+                  m2);
         if (e) {}
 	 	auto Add1Sym = FeCheck((jit->lookup(jd, "add1")));
         Add1 = (int (*)(int))Add1Sym.getAddress();
+        jit->getExecutionSession().dump(::llvm::errs());
         ASSERT_EQ(Add1(1), 3);
         Add1 = NULL;
      }
