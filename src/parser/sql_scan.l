@@ -1,6 +1,6 @@
 %option noinput nounput noyywrap 8bit nodefault
-%option yylineno
 %option reentrant bison-bridge bison-locations case-insensitive
+%option yylineno
 %option outfile="sql_scan.gen.cc"
 
 %{
@@ -11,6 +11,13 @@
 void yyerror(const char *s, ...) {}
 int cur_state=0;
 int oldstate = 0;
+int columnpos = 0;
+#define YY_USER_ACTION {yylloc->first_line = yylineno; \
+        yylloc->first_column = columnpos;                 \
+        columnpos=columnpos+yyleng;                         \
+        yylloc->last_column=columnpos;                    \
+        yylloc->last_line = yylineno;}
+
 %}
 
 space [ \t]
@@ -18,7 +25,6 @@ newline [\n\r]
 non_newline [^\n\r]
 comment ("#"{non_newline}*)
 indent {space}*
-newlines {newline}*
 self [,()\[\].\:\+\-\*\/\%\^\<\>\=]
 
 
@@ -32,8 +38,8 @@ identifier {ident_start}{ident_cont}*
 
 %%
 
-"%%sql\n" {BEGIN INITIAL;}
-"%%fun\n" {BEGIN FUN;}
+"%%sql\n" {columnpos = 1; BEGIN INITIAL;}
+"%%fun\n" {columnpos = 1;BEGIN FUN;}
 
  /* keywords */
 
@@ -288,8 +294,7 @@ ZEROFILL	{ return ZEROFILL; }
     }
 
 
-<FUN>{newlines} { return NEWLINES;}
-
+<FUN>{newline} { columnpos = 1; return NEWLINE;}
 <FUN>{space} {return SPACE;}
 
 <FUN>{indent} {
@@ -377,7 +382,9 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 
 	/* everything else */
-[ \t\n]         /* white space */
+[ \t]         /* white space */
+newline              {columnpos = 1; }
+<<EOF>>             { columnpos = 1; }
 .               { yyerror("mystery character '%s'", *yytext); }
 
 %%

@@ -277,6 +277,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
     FeSQLParser *parser_;
 };
 
+// TODO(chenjing): line and column check
 TEST_P(SqlParserErrorTest, ParserErrorStatusTest) {
     auto param = GetParam();
     std::cout << param.second << std::endl;
@@ -294,6 +295,14 @@ INSTANTIATE_TEST_CASE_P(
     SQLErrorParse, SqlParserErrorTest,
     testing::Values(std::make_pair(error::kParserErrorSyntax,
                                    "SELECT SUM(*) FROM t1;"),
+                    std::make_pair(error::kParserErrorSyntax, "SELECT t1;")));
+
+INSTANTIATE_TEST_CASE_P(
+    UDFErrorParse, SqlParserErrorTest,
+    testing::Values(
+        std::make_pair(error::kParserErrorSyntax, "%%fun\ndefine test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend"),
+        std::make_pair(error::kParserErrorSyntax, "%%fun\ndef 123test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend"),
+        std::make_pair(error::kParserErrorSyntax, "%%fun\ndef test(x:i32,y:i32):i32\n    c=x)(y\n    return c\nend"),
                     std::make_pair(error::kParserErrorSyntax, "SELECT t1;")));
 
 }  // namespace parser

@@ -1,5 +1,4 @@
 %define api.pure full
-%locations
 %output  "sql_parser.gen.cc"
 %defines "sql_parser.gen.h"
 %define parse.error verbose
@@ -23,13 +22,11 @@ extern int yylex(YYSTYPE* yylvalp,
                  YYLTYPE* yyllocp, 
                  yyscan_t scanner);
 void emit(const char *s, ...);
-
-void yyerror_msg(const char *s, ...);
 void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &trees,
 	::fesql::node::NodeManager *node_manager, ::fesql::base::Status &status, const char* msg) {
 	status.code = ::fesql::error::kParserErrorSyntax;
 	std::ostringstream s;
-        s << "line: "<< yyllocp->first_line << " column: "
+        s << "line: "<< yyllocp->last_line << " column: "
        	<< yyllocp->first_column << ": " << msg;
 	status.msg = s.str();
 }
@@ -90,7 +87,7 @@ typedef void* yyscan_t;
 %nonassoc UMINUS
 
 %token <intval> I32
-%token <strval> NEWLINES
+%token <strval> NEWLINE
 %token <intval> INDENT
 %token <strval> DEF
 %token <strval> SPACE
@@ -371,6 +368,7 @@ typedef void* yyscan_t;
                column_name
                function_name
                opt_existing_window_name
+               NEWLINES
 
 %type <intval> opt_window_exclusion_clause
 
@@ -402,7 +400,8 @@ line_list: fun_def_block {
          | line_list NEWLINES {$$ = $1;}
          | NEWLINES line_list {$$ = $2;}
          ;
-
+NEWLINES: NEWLINE {}
+	| NEWLINES NEWLINE {}
 fun_def_block : fn_def_indent_op NEWLINES stmt_block {
             emit("enter fun_def_block");
             $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
@@ -1020,21 +1019,10 @@ function_name:
 
 void emit(const char *s, ...)
 {
-
-  va_list ap;
-  va_start(ap, s);
-  printf("rpn: ");
-  vfprintf(stdout, s, ap);
-  printf("\n");
-}
-
-void yyerror_msg(const char *s, ...)
-{
-
-  va_list ap;
-  va_start(ap, s);
-
-  vfprintf(stderr, s, ap);
-  fprintf(stderr, "\n");
+//  	va_list ap;
+//  	va_start(ap, s);
+//  	printf("rpn: ");
+//  	vfprintf(stdout, s, ap);
+//  	printf("\n");
 }
 
