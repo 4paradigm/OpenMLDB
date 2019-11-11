@@ -1651,7 +1651,7 @@ void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::clien
 
 void HandleNSAddReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
-        std::cout << "replicaof format error. eg: replicaof zk_endpoints zk_path alias_name [changeleader = true]";
+        std::cout << "addrepcluster format error. eg: addrepcluster zk_endpoints zk_path alias_name";
         return;
     }
     std::string zk_endpoints, zk_path, alias, msg;
@@ -1659,10 +1659,10 @@ void HandleNSAddReplicaCluster(const std::vector<std::string>& parts, ::rtidb::c
     zk_path = parts[2];
     alias = parts[3];
     if (!client->AddReplicaCluster(zk_endpoints, zk_path, alias, msg)) {
-        std::cout << "replicaof failed. error msg: " << msg << std::endl;
+        std::cout << "addrepcluster failed. error msg: " << msg << std::endl;
         return;
     }
-    std::cout << "add replica cluster ok" << std::endl;
+    std::cout << "adrepcluster ok" << std::endl;
 }
 
 void HandleShowReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {

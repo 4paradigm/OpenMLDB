@@ -59,7 +59,7 @@ void ClusterInfo::CheckZkClient() {
             session_term_ = zk_client_->GetSessionTerm();
             PDLOG(INFO, "watch node ok");
         } else {
-        PDLOG(WARNING, "watch node failed");
+            PDLOG(WARNING, "watch node failed");
         }
     }
 }
