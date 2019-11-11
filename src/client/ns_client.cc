@@ -492,7 +492,7 @@ bool NsClient::RemoveReplicaCluster(const std::string& alias, std::string& msg) 
 }
 
 bool NsClient::RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name,
-    const uint64_t term, int* code, std::string& msg) {
+    const uint64_t term, int& code, std::string& msg) {
     ::rtidb::nameserver::ReplicaClusterByNsRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_replica_alias(alias);
@@ -502,8 +502,8 @@ bool NsClient::RemoveReplicaClusterByNs(const std::string& alias, const std::str
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RemoveReplicaClusterByNs,
         &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
-    *code = response.code();
-    if (ok && (*code == 0)) {
+    code = response.code();
+    if (ok && (code == 0)) {
         return true;
     }
     return false;

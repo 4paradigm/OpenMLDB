@@ -141,7 +141,7 @@ bool ClusterInfo::AddReplicaClusterByNs(const std::string& alias, const std::str
 }
 
 bool ClusterInfo::RemoveReplicaClusterByNs(const std::string &alias,
-    const std::string &zone_name, const uint64_t term, int* code,
+    const std::string &zone_name, const uint64_t term, int& code,
     std::string &msg) {
     return client_->RemoveReplicaClusterByNs(alias, zone_name, term, code, msg);
   }
@@ -5520,7 +5520,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             rpc_msg = "replica name not found";
             break;
         }
-        if (!it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), &code, rpc_msg)) {
+        if (!it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
             break;
         }
         if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
