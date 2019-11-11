@@ -38,7 +38,10 @@ int FeSQLParser::parse(
     yyscan_t scanner;
     yylex_init(&scanner);
     yy_scan_string(sqlstr.c_str(), scanner);
+    yyset_lineno(1, scanner);
+    yyset_column(1, scanner);
     int ret = yyparse(scanner, trees, manager, status);
+    yylex_destroy(scanner);
     return ret;
 }
 

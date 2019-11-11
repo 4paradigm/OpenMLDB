@@ -8,15 +8,17 @@
 #include "parser/sql_parser.gen.h"
 #include <stdarg.h>
 #include <string.h>
+
 void yyerror(const char *s, ...) {}
 int cur_state=0;
 int oldstate = 0;
 int columnpos = 0;
 #define YY_USER_ACTION {yylloc->first_line = yylineno; \
-        yylloc->first_column = columnpos;                 \
-        columnpos=columnpos+yyleng;                         \
-        yylloc->last_column=columnpos;                    \
+        yylloc->first_column = yycolumn;                 \
+        yylloc->last_column = yycolumn;                    \
+        yycolumn=yycolumn+yyleng;                         \
         yylloc->last_line = yylineno;}
+
 
 %}
 

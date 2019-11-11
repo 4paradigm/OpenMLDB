@@ -24,7 +24,6 @@
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "parser/sql_parser.gen.h"
-
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
 typedef void *yyscan_t;
@@ -58,4 +57,10 @@ extern int yyparse(
     ::fesql::node::NodeManager *node_manager,
     ::fesql::base::Status &status);  // NOLINT (runtime/references)
 extern int yylex_destroy(yyscan_t yyscanner);
+extern void yyset_lineno(int line_number, yyscan_t scanner );
+extern void yyset_column(int line_number, yyscan_t scanner );
+extern int  yyget_lineno( yyscan_t scanner );
+extern int  yyget_column( yyscan_t scanner );
+extern char *yyget_text( yyscan_t scanner );
+
 #endif  // SRC_PARSER_PARSER_H_

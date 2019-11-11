@@ -26,8 +26,9 @@ void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &
 	::fesql::node::NodeManager *node_manager, ::fesql::base::Status &status, const char* msg) {
 	status.code = ::fesql::error::kParserErrorSyntax;
 	std::ostringstream s;
-        s << "line: "<< yyllocp->last_line << " column: "
-       	<< yyllocp->first_column << ": " << msg;
+        s << "line: "<< yyllocp->last_line << ", column: "
+       	<< yyllocp->first_column << ": " <<
+       	msg;
 	status.msg = s.str();
 }
 %}

@@ -11,8 +11,8 @@ set(FESQL_VERSION_BUG 0)
 
 set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
-#set(COMMON_LIBS  glog gflags unwind lzma)
-set(COMMON_LIBS  glog gflags lzma)
+set(COMMON_LIBS  glog gflags unwind lzma)
+#set(COMMON_LIBS  glog gflags lzma)
 
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -22,7 +22,7 @@ configure_file (
       "${PROJECT_SOURCE_DIR}/src/cmd/version.h"
 )
 option(TESTING_ENABLE "Enable Test" ON)
-option(COVERAGE_ENABLE "Enable Coverage" OFF)
+option(COVERAGE_ENABLE "Enable Coverage" ON)
 if (TESTING_ENABLE)
     enable_testing()
 endif()
