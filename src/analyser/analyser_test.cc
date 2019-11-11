@@ -164,12 +164,13 @@ INSTANTIATE_TEST_CASE_P(
 TEST_P(AnalyserTest, RunAnalyseTest) {
   ParamType param = GetParam();
   NodePointVector list;
-  int ret = parser_->parse(param.second, list, manager_);
+  base::Status status;
+  int ret = parser_->parse(param.second, list, manager_, status);
   ASSERT_EQ(0, ret);
   ASSERT_EQ(1, list.size());
 
   NodePointVector query_tree;
-  ret = analyser->Analyse(list, query_tree);
+  ret = analyser->Analyse(list, query_tree, status);
   ASSERT_EQ(param.first, ret);
   if (query_tree.size() > 0) {
     std::cout << *query_tree[0] << std::endl;

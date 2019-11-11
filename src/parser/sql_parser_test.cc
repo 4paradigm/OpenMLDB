@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <strstream>
+#include <utility>
 #include "gtest/gtest.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
@@ -26,21 +27,22 @@ using fesql::node::NodePointVector;
 using fesql::node::SQLNode;
 
 class SqlParserTest : public ::testing::TestWithParam<std::string> {
- public:
-  SqlParserTest() {
-    manager_ = new NodeManager();
-    parser_ = new FeSQLParser();
-  }
+   public:
+    SqlParserTest() {
+        manager_ = new NodeManager();
+        parser_ = new FeSQLParser();
+    }
 
-  ~SqlParserTest() {
-    delete parser_;
-    delete manager_;
-  }
+    ~SqlParserTest() {
+        delete parser_;
+        delete manager_;
+    }
 
- protected:
-  NodeManager *manager_;
-  FeSQLParser *parser_;
+   protected:
+    NodeManager *manager_;
+    FeSQLParser *parser_;
 };
+
 INSTANTIATE_TEST_CASE_P(
     StringReturn, SqlParserTest,
     testing::Values(
@@ -156,108 +158,148 @@ INSTANTIATE_TEST_CASE_P(
         "FOLLOWING);"));
 
 TEST_P(SqlParserTest, Parser_Select_Expr_List) {
-  std::string sqlstr = GetParam();
-  std::cout << sqlstr << std::endl;
+    std::string sqlstr = GetParam();
+    std::cout << sqlstr << std::endl;
 
-  NodePointVector trees;
-  int ret = parser_->parse(sqlstr.c_str(), trees, manager_);
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
-  ASSERT_EQ(0, ret);
-  //    ASSERT_EQ(1, trees.size());
-  std::cout << *(trees.front()) << std::endl;
+    ASSERT_EQ(0, ret);
+    //    ASSERT_EQ(1, trees.size());
+    std::cout << *(trees.front()) << std::endl;
 
-  SQLNode *node_ptr = trees[0];
+    SQLNode *node_ptr = trees[0];
 }
 
 TEST_F(SqlParserTest, Parser_Create_Stmt) {
-  const std::string sqlstr =
-      "create table IF NOT EXISTS test(\n"
-      "    column1 int NOT NULL,\n"
-      "    column2 timestamp NOT NULL,\n"
-      "    column3 int NOT NULL,\n"
-      "    column4 string NOT NULL,\n"
-      "    column5 int NOT NULL,\n"
-      "    index(key=(column4, column3), version=(column5, 3), ts=column2, "
-      "ttl=60d)\n"
-      ");";
-  NodePointVector trees;
-  int ret = parser_->parse(sqlstr.c_str(), trees, manager_);
+    const std::string sqlstr =
+        "create table IF NOT EXISTS test(\n"
+        "    column1 int NOT NULL,\n"
+        "    column2 timestamp NOT NULL,\n"
+        "    column3 int NOT NULL,\n"
+        "    column4 string NOT NULL,\n"
+        "    column5 int NOT NULL,\n"
+        "    index(key=(column4, column3), version=(column5, 3), ts=column2, "
+        "ttl=60d)\n"
+        ");";
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
-  ASSERT_EQ(0, ret);
-  ASSERT_EQ(1, trees.size());
-  std::cout << *(trees.front()) << std::endl;
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1, trees.size());
+    std::cout << *(trees.front()) << std::endl;
 
-  ASSERT_EQ(node::kCreateStmt, trees.front()->GetType());
-  node::CreateStmt *createStmt = (node::CreateStmt *)trees.front();
+    ASSERT_EQ(node::kCreateStmt, trees.front()->GetType());
+    node::CreateStmt *createStmt = (node::CreateStmt *)trees.front();
 
-  ASSERT_EQ("test", createStmt->GetTableName());
-  ASSERT_EQ(true, createStmt->GetOpIfNotExist());
+    ASSERT_EQ("test", createStmt->GetTableName());
+    ASSERT_EQ(true, createStmt->GetOpIfNotExist());
 
-  ASSERT_EQ(6, createStmt->GetColumnDefList().size());
+    ASSERT_EQ(6, createStmt->GetColumnDefList().size());
 
-  ASSERT_EQ("column1",
-            ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
-                ->GetColumnName());
-  ASSERT_EQ(node::kTypeInt32,
-            ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
-                ->GetColumnType());
-  ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
-                      ->GetIsNotNull());
+    ASSERT_EQ("column1",
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
+                  ->GetColumnName());
+    ASSERT_EQ(node::kTypeInt32,
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
+                  ->GetColumnType());
+    ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
+                        ->GetIsNotNull());
 
-  ASSERT_EQ("column2",
-            ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
-                ->GetColumnName());
-  ASSERT_EQ(node::kTypeTimestamp,
-            ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
-                ->GetColumnType());
-  ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
-                      ->GetIsNotNull());
+    ASSERT_EQ("column2",
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
+                  ->GetColumnName());
+    ASSERT_EQ(node::kTypeTimestamp,
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
+                  ->GetColumnType());
+    ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
+                        ->GetIsNotNull());
 
-  ASSERT_EQ("column3",
-            ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
-                ->GetColumnName());
-  ASSERT_EQ(node::kTypeInt32,
-            ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
-                ->GetColumnType());
-  ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
-                      ->GetIsNotNull());
+    ASSERT_EQ("column3",
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
+                  ->GetColumnName());
+    ASSERT_EQ(node::kTypeInt32,
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
+                  ->GetColumnType());
+    ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
+                        ->GetIsNotNull());
 
-  ASSERT_EQ("column4",
-            ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
-                ->GetColumnName());
-  ASSERT_EQ(node::kTypeString,
-            ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
-                ->GetColumnType());
-  ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
-                      ->GetIsNotNull());
+    ASSERT_EQ("column4",
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
+                  ->GetColumnName());
+    ASSERT_EQ(node::kTypeString,
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
+                  ->GetColumnType());
+    ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
+                        ->GetIsNotNull());
 
-  ASSERT_EQ("column5",
-            ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
-                ->GetColumnName());
-  ASSERT_EQ(node::kTypeInt32,
-            ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
-                ->GetColumnType());
-  ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
-                      ->GetIsNotNull());
+    ASSERT_EQ("column5",
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
+                  ->GetColumnName());
+    ASSERT_EQ(node::kTypeInt32,
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
+                  ->GetColumnType());
+    ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
+                        ->GetIsNotNull());
 
-  ASSERT_EQ(node::kColumnIndex, (createStmt->GetColumnDefList()[5])->GetType());
-  node::ColumnIndexNode *index_node =
-      (node::ColumnIndexNode *)(createStmt->GetColumnDefList()[5]);
-  std::vector<std::string> key;
-  key.push_back("column4");
-  key.push_back("column3");
-  ASSERT_EQ(key, index_node->GetKey());
+    ASSERT_EQ(node::kColumnIndex,
+              (createStmt->GetColumnDefList()[5])->GetType());
+    node::ColumnIndexNode *index_node =
+        (node::ColumnIndexNode *)(createStmt->GetColumnDefList()[5]);
+    std::vector<std::string> key;
+    key.push_back("column4");
+    key.push_back("column3");
+    ASSERT_EQ(key, index_node->GetKey());
 
-  ASSERT_EQ("column2", index_node->GetTs());
-  ASSERT_EQ("column5", index_node->GetVersion());
-  ASSERT_EQ(3, index_node->GetVersionCount());
-  ASSERT_EQ(60 * 86400000L, index_node->GetTTL());
+    ASSERT_EQ("column2", index_node->GetTs());
+    ASSERT_EQ("column5", index_node->GetVersion());
+    ASSERT_EQ(3, index_node->GetVersionCount());
+    ASSERT_EQ(60 * 86400000L, index_node->GetTTL());
 }
+
+class SqlParserErrorTest : public ::testing::TestWithParam<
+                               std::pair<error::ErrorType, std::string>> {
+   public:
+    SqlParserErrorTest() {
+        manager_ = new NodeManager();
+        parser_ = new FeSQLParser();
+    }
+
+    ~SqlParserErrorTest() {
+        delete parser_;
+        delete manager_;
+    }
+
+   protected:
+    NodeManager *manager_;
+    FeSQLParser *parser_;
+};
+
+TEST_P(SqlParserErrorTest, ParserErrorStatusTest) {
+    auto param = GetParam();
+    std::cout << param.second << std::endl;
+
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(param.second.c_str(), trees, manager_, status);
+    ASSERT_EQ(1, ret);
+    ASSERT_EQ(0, trees.size());
+    ASSERT_EQ(param.first, status.code);
+    std::cout << status.msg << std::endl;
+}
+
+INSTANTIATE_TEST_CASE_P(
+    SQLErrorParse, SqlParserErrorTest,
+    testing::Values(std::make_pair(error::kParserErrorSyntax,
+                                   "SELECT SUM(*) FROM t1;"),
+                    std::make_pair(error::kParserErrorSyntax, "SELECT t1;")));
 
 }  // namespace parser
 }  // namespace fesql
 
 int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

@@ -17,6 +17,7 @@
 
 #ifndef FESQL_DBMS_SDK_H_
 #define FESQL_DBMS_SDK_H_
+#include <node/node_enum.h>
 #include <proto/type.pb.h>
 #include <string>
 
@@ -27,19 +28,14 @@ struct GroupDef {
   std::string name;
 };
 
-struct Status {
-  std::string msg;
-  int32_t code;
-};
-
 class DBMSSdk {
  public:
   virtual ~DBMSSdk(){};
-  virtual void CreateGroup(const GroupDef &group, Status &status) = 0;
-  virtual void CreateTable(const std::string &sql_str, Status &status) = 0;
+  virtual void CreateGroup(const GroupDef &group, base::Status &status) = 0;
+  virtual void CreateTable(const std::string &sql_str, base::Status &status) = 0;
   virtual void ShowSchema(const std::string &name, type::TableDef &table,
-                          Status &status) = 0;
-  virtual void ExecuteScript(const std::string &sql_str, Status &status) = 0;
+                          base::Status &status) = 0;
+  virtual void ExecuteScript(const std::string &sql_str, base::Status &status) = 0;
 };
 
 // create a new dbms sdk with a endpoint

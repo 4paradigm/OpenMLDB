@@ -60,7 +60,8 @@ TEST_F(FnIRBuilderTest, test_add_int32) {
     const std::string test = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend";
     std::cout<<test<<std::endl;
     ::fesql::node::NodePointVector trees;
-    int ret = parser_->parse(test, trees, manager_);
+    ::fesql::base::Status status;
+    int ret = parser_->parse(test, trees, manager_, status);
     ASSERT_EQ(0, ret);
 
     // Create an LLJIT instance.
@@ -81,7 +82,8 @@ TEST_F(FnIRBuilderTest, test_add_int32) {
 TEST_F(FnIRBuilderTest, test_bracket_int32) {
     const std::string test = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a*(b+1)\n    return c\nend";
     node::NodePointVector trees;
-    int ret = parser_->parse(test, trees, manager_);
+    base::Status status;
+    int ret = parser_->parse(test, trees, manager_, status);
     ASSERT_EQ(0, ret);
 
     // Create an LLJIT instance.

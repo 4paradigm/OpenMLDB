@@ -35,15 +35,16 @@ class PlannerTest : public ::testing::Test {
 
 TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
   node::NodePointVector list;
+  base::Status status;
   int ret = parser_->parse(
       "SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 FROM t1 limit 10;",
-      list, manager_);
+      list, manager_, status);
   ASSERT_EQ(0, ret);
   ASSERT_EQ(1, list.size());
 
   Planner *planner_ptr = new SimplePlanner(manager_);
   node::PlanNodeList plan_trees;
-  ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, plan_trees));
+  ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, plan_trees, status));
   ASSERT_EQ(1, plan_trees.size());
   PlanNode *plan_ptr = plan_trees.front();
   std::cout << *(plan_ptr) << std::endl;
@@ -69,16 +70,17 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
 TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
   node::NodePointVector list;
   node::PlanNodeList trees;
+  base::Status status;
   int ret = parser_->parse(
       "SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 , max(t1.age) "
       "over w1 FROM t1 limit 10;",
-      list, manager_);
+      list, manager_, status);
   ASSERT_EQ(0, ret);
   ASSERT_EQ(1, list.size());
 
   std::cout << *(list[0]) << std::endl;
   Planner *planner_ptr = new SimplePlanner(manager_);
-  ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees));
+  ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
   ASSERT_EQ(1, trees.size());
   PlanNode *plan_ptr = trees[0];
   ASSERT_TRUE(NULL != plan_ptr);
@@ -119,13 +121,14 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
 
   node::NodePointVector list;
   node::PlanNodeList trees;
-  int ret = parser_->parse(sql_str, list, manager_);
+  base::Status status;
+  int ret = parser_->parse(sql_str, list, manager_, status);
   ASSERT_EQ(0, ret);
   ASSERT_EQ(1, list.size());
   std::cout << *(list[0]) << std::endl;
 
   Planner *planner_ptr = new SimplePlanner(manager_);
-  ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees));
+  ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
   ASSERT_EQ(1, trees.size());
   PlanNode *plan_ptr = trees[0];
   ASSERT_TRUE(NULL != plan_ptr);
@@ -138,7 +141,7 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
 
   type::TableDef table_def;
   transformTableDef(createStmt->GetTableName(), createStmt->GetColumnDescList(),
-                    &table_def);
+                    &table_def, status);
 
   type::TableDef *table = &table_def;
   ASSERT_EQ("test", table->name());

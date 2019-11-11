@@ -28,19 +28,19 @@ namespace fesql {
 namespace sdk {
 
 class DBMSSdkImpl : public DBMSSdk {
- public:
-  DBMSSdkImpl(const std::string &endpoint);
-  ~DBMSSdkImpl();
-  bool Init();
-  void CreateGroup(const GroupDef &group, Status &status) override;
-  void CreateTable(const std::string &sql, Status &status) override;
-  void ShowSchema(const std::string &name, type::TableDef &table,
-                  Status &status) override;
-  void ExecuteScript(const std::string &sql, Status &status) override;
+   public:
+    DBMSSdkImpl(const std::string &endpoint);
+    ~DBMSSdkImpl();
+    bool Init();
+    void CreateGroup(const GroupDef &group, base::Status &status) override;
+    void CreateTable(const std::string &sql, base::Status &status) override;
+    void ShowSchema(const std::string &name, type::TableDef &table,
+                    base::Status &status) override;
+    void ExecuteScript(const std::string &sql, base::Status &status) override;
 
- private:
-  ::brpc::Channel *channel_;
-  std::string endpoint_;
+   private:
+    ::brpc::Channel *channel_;
+    std::string endpoint_;
 };
 
 DBMSSdkImpl::DBMSSdkImpl(const std::string &endpoint)
@@ -48,47 +48,47 @@ DBMSSdkImpl::DBMSSdkImpl(const std::string &endpoint)
 DBMSSdkImpl::~DBMSSdkImpl() { delete channel_; }
 
 bool DBMSSdkImpl::Init() {
-  channel_ = new ::brpc::Channel();
-  brpc::ChannelOptions options;
-  int ret = channel_->Init(endpoint_.c_str(), &options);
-  if (ret != 0) {
-    return false;
-  }
-  return true;
+    channel_ = new ::brpc::Channel();
+    brpc::ChannelOptions options;
+    int ret = channel_->Init(endpoint_.c_str(), &options);
+    if (ret != 0) {
+        return false;
+    }
+    return true;
 }
 
-void DBMSSdkImpl::CreateGroup(const GroupDef &group, Status &status) {
-  ::fesql::dbms::DBMSServer_Stub stub(channel_);
-  ::fesql::dbms::AddGroupRequest request;
-  request.set_name(group.name);
-  ::fesql::dbms::AddGroupResponse response;
-  brpc::Controller cntl;
-  stub.AddGroup(&cntl, &request, &response, NULL);
-  if (cntl.Failed()) {
-    status.code = -1;
-    status.msg = "fail to call remote";
-  } else {
-    status.code = response.status().code();
-    status.msg = response.status().msg();
-  }
+void DBMSSdkImpl::CreateGroup(const GroupDef &group, base::Status &status) {
+    ::fesql::dbms::DBMSServer_Stub stub(channel_);
+    ::fesql::dbms::AddGroupRequest request;
+    request.set_name(group.name);
+    ::fesql::dbms::AddGroupResponse response;
+    brpc::Controller cntl;
+    stub.AddGroup(&cntl, &request, &response, NULL);
+    if (cntl.Failed()) {
+        status.code = -1;
+        status.msg = "fail to call remote";
+    } else {
+        status.code = response.status().code();
+        status.msg = response.status().msg();
+    }
 }
 
 void DBMSSdkImpl::ShowSchema(const std::string &name, type::TableDef &table,
-                             Status &status) {
-  ::fesql::dbms::DBMSServer_Stub stub(channel_);
-  ::fesql::dbms::ShowSchemaRequest request;
-  request.set_name(name);
-  ::fesql::dbms::ShowSchemaResponse response;
-  brpc::Controller cntl;
-  stub.ShowSchema(&cntl, &request, &response, NULL);
-  if (cntl.Failed()) {
-    status.code = -1;
-    status.msg = "fail to call remote";
-  } else {
-    table = response.table();
-    status.code = response.status().code();
-    status.msg = response.status().msg();
-  }
+                             base::Status &status) {
+    ::fesql::dbms::DBMSServer_Stub stub(channel_);
+    ::fesql::dbms::ShowSchemaRequest request;
+    request.set_name(name);
+    ::fesql::dbms::ShowSchemaResponse response;
+    brpc::Controller cntl;
+    stub.ShowSchema(&cntl, &request, &response, NULL);
+    if (cntl.Failed()) {
+        status.code = error::kRpcErrorUnknow;
+        status.msg = "fail to call remote";
+    } else {
+        table = response.table();
+        status.code = response.status().code();
+        status.msg = response.status().msg();
+    }
 }
 /**
  * create table with sql,
@@ -103,70 +103,69 @@ void DBMSSdkImpl::ShowSchema(const std::string &name, type::TableDef &table,
  * @param sql
  * @param status
  */
-void DBMSSdkImpl::CreateTable(const std::string &sql, Status &status) {
-  LOG(INFO) << "create command: " << sql;
-  ExecuteScript(sql, status);
+void DBMSSdkImpl::CreateTable(const std::string &sql, base::Status &status) {
+    LOG(INFO) << "create command: " << sql;
+    ExecuteScript(sql, status);
 }
 
-void DBMSSdkImpl::ExecuteScript(const std::string &sql, Status &status) {
-  node::NodeManager node_manager;
-  parser::FeSQLParser parser;
-  analyser::FeSQLAnalyser analyser(&node_manager);
-  plan::SimplePlanner planner(&node_manager);
+void DBMSSdkImpl::ExecuteScript(const std::string &sql, base::Status &status) {
+    node::NodeManager node_manager;
+    parser::FeSQLParser parser;
+    analyser::FeSQLAnalyser analyser(&node_manager);
+    plan::SimplePlanner planner(&node_manager);
 
-  node::NodePointVector parser_trees;
-  parser.parse(sql, parser_trees, &node_manager);
+    node::NodePointVector parser_trees;
+    parser.parse(sql, parser_trees, &node_manager, status);
 
-  node::NodePointVector query_trees;
-  analyser.Analyse(parser_trees, query_trees);
+    node::NodePointVector query_trees;
+    analyser.Analyse(parser_trees, query_trees, status);
 
-  node::PlanNodeList plan_trees;
-  planner.CreatePlanTree(query_trees, plan_trees);
+    node::PlanNodeList plan_trees;
+    planner.CreatePlanTree(query_trees, plan_trees, status);
 
-  if (plan_trees.size() == 0) {
-    LOG(WARNING) << "fail to create table: fail to generate plan tree";
-    status.code = -1;
-    status.msg = "SQL INVALID";
-    return;
-  }
-
-  node::PlanNode *plan = plan_trees[0];
-  switch (plan->GetType()) {
-    case node::kPlanTypeCreate: {
-      node::CreatePlanNode *create = dynamic_cast<node::CreatePlanNode *>(plan);
-
-      ::fesql::dbms::DBMSServer_Stub stub(channel_);
-      ::fesql::dbms::AddTableRequest request;
-      ::fesql::type::TableDef *table = request.mutable_table();
-      plan::transformTableDef(create->GetTableName(),
-                              create->GetColumnDescList(), table);
-
-      ::fesql::dbms::AddTableResponse response;
-      brpc::Controller cntl;
-      stub.AddTable(&cntl, &request, &response, NULL);
-      if (cntl.Failed()) {
-        status.code = -1;
-        status.msg = "fail to call remote";
-      } else {
-        status.code = response.status().code();
-        status.msg = response.status().msg();
-      }
-      break;
-    }
-    default: {
-      LOG(WARNING) << "fail to handle script";
+    if (0 != status.code) {
       return;
     }
-  }
+
+    node::PlanNode *plan = plan_trees[0];
+    switch (plan->GetType()) {
+        case node::kPlanTypeCreate: {
+            node::CreatePlanNode *create =
+                dynamic_cast<node::CreatePlanNode *>(plan);
+
+            ::fesql::dbms::DBMSServer_Stub stub(channel_);
+            ::fesql::dbms::AddTableRequest request;
+            ::fesql::type::TableDef *table = request.mutable_table();
+            plan::transformTableDef(create->GetTableName(),
+                                    create->GetColumnDescList(), table, status);
+
+            ::fesql::dbms::AddTableResponse response;
+            brpc::Controller cntl;
+            stub.AddTable(&cntl, &request, &response, NULL);
+            if (cntl.Failed()) {
+                status.code = -1;
+                status.msg = "fail to call remote";
+            } else {
+                status.code = response.status().code();
+                status.msg = response.status().msg();
+            }
+            break;
+        }
+        default: {
+            status.msg = "fail to execute script with unSuppurt type" + node::NameOfPlanNodeType(plan->GetType());
+            status.code = fesql::error::kExecuteErrorUnSupport;
+            return;
+        }
+    }
 }
 
 DBMSSdk *CreateDBMSSdk(const std::string &endpoint) {
-  DBMSSdkImpl *sdk_impl = new DBMSSdkImpl(endpoint);
-  if (sdk_impl->Init()) {
-    return sdk_impl;
-  }
+    DBMSSdkImpl *sdk_impl = new DBMSSdkImpl(endpoint);
+    if (sdk_impl->Init()) {
+        return sdk_impl;
+    }
 
-  return NULL;
+    return NULL;
 }
 
 }  // namespace sdk

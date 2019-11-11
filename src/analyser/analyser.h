@@ -22,6 +22,7 @@
 namespace fesql {
 namespace analyser {
 
+using base::Status;
 using node::NodeManager;
 using node::NodePointVector;
 using node::SQLNode;
@@ -34,6 +35,7 @@ enum FuncDefType {
   kFuncTypeScalar,
   kFuncTypeAgg,
 };
+
 class FeSQLAnalyser {
  public:
   explicit FeSQLAnalyser(NodeManager *manager) : node_manager_(manager) {}
@@ -52,8 +54,10 @@ class FeSQLAnalyser {
   }
 
   int Analyse(NodePointVector &parser_trees,  // NOLINT (runtime/references)
-              NodePointVector &query_tree);   // NOLINT (runtime/references)
-  int Analyse(SQLNode *parser_tree);
+              NodePointVector &query_tree,
+              Status &status);  // NOLINT (runtime/references)
+  void Analyse(SQLNode *parser_tree,
+               Status &status);  // NOLINT (runtime/references)
 
   bool IsTableExist(std::string basic_string);
   bool IsColumnExistInTable(const std::string &oolumn_name,
@@ -66,22 +70,35 @@ class FeSQLAnalyser {
   std::map<std::string, FuncDefType> func_defs;
   std::map<std::string, std::map<std::string, const ColumnDef *>> table_map_;
 
-  int Initialize();
-  int TransformSelectNode(node::SelectStmt *parser_node_ptr);
-  int TransformCreateNode(node::CreateStmt *parser_node_ptr);
-  int TransformMultiTableSelectNode(node::SelectStmt *parser_tree);
-  int TransformSingleTableSelectNode(node::SelectStmt *parser_tree);
-  int TransformColumnRef(node::ColumnRefNode *node_ptr,
-                         const std::string &table_name);
-  int TransformFuncNode(node::FuncNode *node_ptr,
-                        const std::string &table_name);
-  int TransformWindowDef(node::WindowDefNode *node_ptr,
-                         const std::string &table_name);
-  int TransformAllRef(node::AllNode *node_ptr,
-                      const std::string &relation_name);
-  int TransformPartition(SQLNode *node_ptr, const std::string &table_name);
-  int TransformOrder(SQLNode *node_ptr, const std::string &table_name);
-  int TransformExprNode(SQLNode *node, const std::string &table_name);
+  void Initialize();
+  void TransformSelectNode(node::SelectStmt *parser_node_ptr,
+                           Status &status);  // NOLINT (runtime/references)
+  void TransformCreateNode(node::CreateStmt *parser_node_ptr,
+                           Status &status);  // NOLINT (runtime/references)
+  void TransformMultiTableSelectNode(
+      node::SelectStmt *parser_tree,
+      Status &status);  // NOLINT (runtime/references)
+  void TransformSingleTableSelectNode(
+      node::SelectStmt *parser_tree,
+      Status &status);  // NOLINT (runtime/references)
+  void TransformColumnRef(node::ColumnRefNode *node_ptr,
+                          const std::string &table_name,
+                          Status &status);  // NOLINT (runtime/references)
+  void TransformFuncNode(node::FuncNode *node_ptr,
+                         const std::string &table_name,
+                         Status &status);  // NOLINT (runtime/references)
+  void TransformWindowDef(node::WindowDefNode *node_ptr,
+                          const std::string &table_name,
+                          Status &status);  // NOLINT (runtime/references)
+  void TransformAllRef(node::AllNode *node_ptr,
+                       const std::string &relation_name,
+                       Status &status);  // NOLINT (runtime/references)
+  void TransformPartition(SQLNode *node_ptr, const std::string &table_name,
+                          Status &status);  // NOLINT (runtime/references)
+  void TransformOrder(SQLNode *node_ptr, const std::string &table_name,
+                      Status &status);  // NOLINT (runtime/references)
+  void TransformExprNode(SQLNode *node, const std::string &table_name,
+                         Status &status);  // NOLINT (runtime/references)
   std::string GenerateName(const std::string prefix, int id);
 };
 

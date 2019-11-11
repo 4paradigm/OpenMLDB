@@ -126,9 +126,7 @@ enum PlanType {
 };
 
 }  // namespace node
-}  // namespace fesql
 
-namespace fesql {
 namespace error {
 enum ErrorType {
   kSucess = 0,
@@ -154,6 +152,7 @@ enum ErrorType {
   kAnalyserErrorColumnNotExist,
   kAnalyserErrorTargetIsNull,
   kAnalyserErrorGlobalAggFunction,
+  kAnalyserErrorUnSupportFunction,
   kCreateErrorUnSupportColumnType,
   kCreateErrorDuplicationColumnName,
   kCreateErrorDuplicationIndexName,
@@ -161,16 +160,29 @@ enum ErrorType {
   kPlanErrorUnknow = 4001,
   kPlanErrorUnSupport,
   kPlanErrorNullNode,
+  kPlanErrorQueryTreeIsEmpty,
   kPlanErrorTableRefIsEmpty,
   kPlanErrorQueryMultiTable,
 
-  kSystemErrorUnknow = 5001,
-  kSystemErrorMemory,
+  kExecuteErrorUnknow = 4001,
+  kExecuteErrorUnSupport,
+  kExecuteErrorNullNode,
 
-  kServerErrorUnknow = 6001,
-  kServerErrorConnection,
-  kServerErrorSend
+  kRpcErrorUnknow = 6001,
+  kRpcErrorConnection,
 };
 }  // namespace error
+
+namespace base {
+struct Status {
+  Status() : code(0), msg("ok") {}
+  Status(int32_t status_code, const std::string &msg_str)
+      : code(status_code), msg(msg_str) {}
+  int32_t code;
+  std::string msg;
+};
+}  // namespace base
+
 }  // namespace fesql
+
 #endif  // SRC_NODE_NODE_ENUM_H_

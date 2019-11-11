@@ -281,10 +281,6 @@ ZEROFILL	{ return ZEROFILL; }
             return DEF;
        }
 
-<FUN>"return" {
-        return RETURN;
-    }
-
  /* type definition */
 <FUN>"i32" {
     yylval->intval = 1;

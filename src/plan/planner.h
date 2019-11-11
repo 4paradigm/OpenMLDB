@@ -18,6 +18,7 @@
 namespace fesql {
 namespace plan {
 
+using base::Status;
 using node::NodePointVector;
 using node::PlanNode;
 using node::PlanNodeList;
@@ -30,17 +31,26 @@ class Planner {
 
   virtual int CreatePlanTree(
       const NodePointVector &parser_trees,
-      PlanNodeList &plan_trees) = 0;  // NOLINT (runtime/references)
+      PlanNodeList &plan_trees,  // NOLINT (runtime/references)
+      Status &status) = 0;       // NOLINT (runtime/references)
 
  protected:
-  int CreatePlanRecurse(node::SQLNode *root, PlanNode *plan_tree);
-  int CreateSelectPlan(node::SQLNode *root, PlanNode *plan_tree);
-  int CreateCreateTablePlan(node::SQLNode *root,
-                            node::CreatePlanNode *plan_tree);
-  int CreateProjectPlanNode(node::SQLNode *root, std::string table_name,
-                            node::ProjectPlanNode *plan_tree);
-  int CreateDataProviderPlanNode(node::SQLNode *root, PlanNode *plan_tree);
-  int CreateDataCollectorPlanNode(node::SQLNode *root, PlanNode *plan_tree);
+  void CreatePlanRecurse(node::SQLNode *root, PlanNode *plan_tree,
+                         Status &status);  // NOLINT (runtime/references)
+  int CreateSelectPlan(node::SQLNode *root, PlanNode *plan_tree,
+                       Status &status);  // NOLINT (runtime/references)
+  void CreateCreateTablePlan(node::SQLNode *root,
+                             node::CreatePlanNode *plan_tree,
+                             Status &status);  // NOLINT (runtime/references)
+  void CreateProjectPlanNode(node::SQLNode *root, std::string table_name,
+                             node::ProjectPlanNode *plan_tree,
+                             Status &status);  // NOLINT (runtime/references)
+  void CreateDataProviderPlanNode(
+      node::SQLNode *root, PlanNode *plan_tree,
+      Status &status);  // NOLINT (runtime/references)
+  void CreateDataCollectorPlanNode(
+      node::SQLNode *root, PlanNode *plan_tree,
+      Status &status);  // NOLINT (runtime/references)
 
   node::NodeManager *node_manager_;
 };
@@ -49,13 +59,15 @@ class SimplePlanner : public Planner {
  public:
   explicit SimplePlanner(node::NodeManager *manager) : Planner(manager) {}
   int CreatePlanTree(const NodePointVector &parser_trees,
-                     PlanNodeList &plan_trees);  // NOLINT (runtime/references)
+                     PlanNodeList &plan_trees,
+                     Status &status);  // NOLINT (runtime/references)
 };
 
 // TODO(chenjing): move to executor module
-int transformTableDef(const std::string &table_name,
-                      const NodePointVector &column_desc_list,
-                      type::TableDef *table);
+void transformTableDef(const std::string &table_name,
+                       const NodePointVector &column_desc_list,
+                       type::TableDef *table,
+                       Status &status);  // NOLINT (runtime/references)
 std::string GenerateName(const std::string prefix, int id);
 
 }  // namespace plan

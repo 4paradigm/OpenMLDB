@@ -42,7 +42,7 @@ static ::fesql::sdk::DBMSSdk *dbms_sdk = NULL;
 
 void PrintTableSchema(fesql::type::TableDef def);
 void HandleSQLScript(std::string basicString);
-void HandleCreateSchema(std::string str, ::fesql::sdk::Status &status);
+void HandleCreateSchema(std::string str, ::fesql::base::Status &status);
 
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
 
@@ -88,7 +88,7 @@ void HandleCreateGroup(const std::vector<std::string> &args) {
 
   ::fesql::sdk::GroupDef group;
   group.name = args[2];
-  ::fesql::sdk::Status status;
+  ::fesql::base::Status status;
   dbms_sdk->CreateGroup(group, status);
   if (status.code == 0) {
     std::cout << "Create group " << args[2] << " success" << std::endl;
@@ -113,7 +113,7 @@ void HandleCreateSchema(std::vector<std::string> &args) {
   str_stream << in.rdbuf();            // read the file
   std::string str = str_stream.str();  // str holds the content of the file
   std::cout << str << "\n";            // you can do anything with the string!!!
-  ::fesql::sdk::Status status;
+  ::fesql::base::Status status;
   HandleCreateSchema(str, status);
   if (status.code == 0) {
     std::cout << "create table " << args[2] << " sucess" << std::endl;
@@ -122,7 +122,7 @@ void HandleCreateSchema(std::vector<std::string> &args) {
   }
 }
 
-void HandleCreateSchema(std::string str, ::fesql::sdk::Status &status) {
+void HandleCreateSchema(std::string str, ::fesql::base::Status &status) {
   if (dbms_sdk == NULL) {
     dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
     if (dbms_sdk == NULL) {
@@ -144,7 +144,7 @@ void HandleShowSchema(std::vector<std::string> args) {
       return;
     }
   }
-  ::fesql::sdk::Status status;
+  ::fesql::base::Status status;
   ::fesql::type::TableDef table;
   dbms_sdk->ShowSchema(args[1], table, status);
   if (status.code == 0) {
@@ -170,8 +170,8 @@ void StartClient(char *argv[]) {
   bool cmd_mode = true;
   while (true) {
     std::string buf;
-    char *line = ::fesql::base::linenoise(
-        cmd_mode ? display_prefix.c_str() : continue_prefix.c_str());
+    char *line = ::fesql::base::linenoise(cmd_mode ? display_prefix.c_str()
+                                                   : continue_prefix.c_str());
     if (line == NULL) {
       return;
     }
@@ -224,13 +224,13 @@ void HandleSQLScript(std::string script) {
       return;
     }
   }
-  ::fesql::sdk::Status status;
+  ::fesql::base::Status status;
   ::fesql::type::TableDef table;
   dbms_sdk->ExecuteScript(script, status);
   if (status.code == 0) {
     std::cout << "sucess" << std::endl;
   } else {
-    std::cout << "error: " << status.msg << std::endl;
+    std::cout << "error: " << status.code << ", msg: " << status.msg << std::endl;
   }
 }
 

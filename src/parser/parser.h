@@ -44,7 +44,8 @@ class FeSQLParser {
 
   int parse(const std::string &sqlstr,
             node::NodePointVector &trees,  // NOLINT (runtime/references)
-            node::NodeManager *manager);
+            node::NodeManager *manager,
+            base::Status &status);  // NOLINT (runtime/references)
 };
 }  // namespace parser
 }  // namespace fesql
@@ -54,6 +55,7 @@ extern int yylex_init(yyscan_t *scanner);
 extern int yyparse(
     yyscan_t scanner,
     fesql::node::NodePointVector &trees,  // NOLINT (runtime/references)
-    ::fesql::node::NodeManager *node_manager);
+    ::fesql::node::NodeManager *node_manager,
+    ::fesql::base::Status &status);  // NOLINT (runtime/references)
 extern int yylex_destroy(yyscan_t yyscanner);
 #endif  // SRC_PARSER_PARSER_H_

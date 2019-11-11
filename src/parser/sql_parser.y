@@ -8,6 +8,7 @@
 %parse-param { yyscan_t scanner }
 %parse-param { ::fesql::node::NodePointVector &trees}
 %parse-param { ::fesql::node::NodeManager *node_manager}
+%parse-param { ::fesql::base::Status &status}
 
 %{
 #include <stdlib.h>
@@ -24,13 +25,19 @@ extern int yylex(YYSTYPE* yylvalp,
 void emit(const char *s, ...);
 
 void yyerror_msg(const char *s, ...);
-void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &trees, ::fesql::node::NodeManager *node_manager, const char* msg ) {
-printf("error %s", msg);
+void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &trees,
+	::fesql::node::NodeManager *node_manager, ::fesql::base::Status &status, const char* msg) {
+	status.code = ::fesql::error::kParserErrorSyntax;
+	std::ostringstream s;
+        s << "line: "<< yyllocp->first_line << " column: "
+       	<< yyllocp->first_column << ": " << msg;
+	status.msg = s.str();
 }
 %}
 
 %code requires {
 #include "node/sql_node.h"
+#include <sstream>
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
 typedef void* yyscan_t;
@@ -815,7 +822,7 @@ func_expr:
     {
           if (strcasecmp($1, "count") != 0)
           {
-            yyerror_msg("Only COUNT function can be with '*' parameter!");
+            yyerror(&(@3), scanner, trees, node_manager, status, "Only COUNT function can be with '*' parameter!");
             YYABORT;
           }
           else
