@@ -1649,7 +1649,7 @@ void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::clien
     std::cout << "add table field ok" << std::endl;
 }
 
-void HandleReplicaOf(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+void HandleNSAddReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "replicaof format error. eg: replicaof zk_endpoints zk_path alias_name [changeleader = true]";
         return;
@@ -1658,21 +1658,21 @@ void HandleReplicaOf(const std::vector<std::string>& parts, ::rtidb::client::NsC
     zk_endpoints = parts[1];
     zk_path = parts[2];
     alias = parts[3];
-    if (!client->ReplicaOf(zk_endpoints, zk_path, alias, msg)) {
+    if (!client->AddReplicaCluster(zk_endpoints, zk_path, alias, msg)) {
         std::cout << "replicaof failed. error msg: " << msg << std::endl;
         return;
     }
     std::cout << "add replica cluster ok" << std::endl;
 }
 
-void HandleShowReplicaOf(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+void HandleShowReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     std::vector<std::string> row = {"zk_endpoints", "zk_path", "alias", "age"};
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
 
     std::vector<::rtidb::nameserver::ClusterAddAge> cluster_info;
     std::string msg;
-    bool ok = client->ShowReplicaOf(cluster_info, msg);
+    bool ok = client->ShowReplicaCluster(cluster_info, msg);
     if (!ok) {
         std::cout << "Fail to show replica. error msg: " << msg << std::endl;
         return;
@@ -4592,11 +4592,11 @@ void StartNsClient() {
             HandleNSClientCancelOP(parts, &client);
         } else if (parts[0] == "addtablefield") {
             HandleNSAddTableField(parts, &client);
-        } else if (parts[0] == "replicaof") {
-            HandleReplicaOf(parts, &client);
-        } else if (parts[0] == "showreplicaof") {
-            HandleShowReplicaOf(parts, &client);
-        } else if (parts[0] == "removereplicaof") {
+        } else if (parts[0] == "addrepcluster") {
+            HandleNSAddReplicaCluster(parts, &client);
+        } else if (parts[0] == "showrepcluster") {
+            HandleShowReplicaCluster(parts, &client);
+        } else if (parts[0] == "removerepcluster") {
             HandleNSRemoveReplicaCluster(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;

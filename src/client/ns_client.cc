@@ -439,7 +439,7 @@ bool NsClient::AddReplicaClusterByNs(const std::string& alias, const std::string
     return false;
 }
 
-bool NsClient::ReplicaOf(const std::string& zk_ep, const std::string& zk_path, const std::string& alias, std::string& msg) {
+bool NsClient::AddReplicaCluster(const std::string& zk_ep, const std::string& zk_path, const std::string& alias, std::string& msg) {
     ::rtidb::nameserver::AddReplicaClusterRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     if (zk_ep.size() < 1 || zk_path.size() < 1 || alias.size() < 1) {
@@ -461,7 +461,7 @@ bool NsClient::ReplicaOf(const std::string& zk_ep, const std::string& zk_path, c
     return false;
 }
 
-bool NsClient::ShowReplicaOf(std::vector<::rtidb::nameserver::ClusterAddAge>& clusterinfo, std::string& msg) {
+bool NsClient::ShowReplicaCluster(std::vector<::rtidb::nameserver::ClusterAddAge>& clusterinfo, std::string& msg) {
     ::rtidb::nameserver::GeneralRequest request;
     ::rtidb::nameserver::ShowReplicaClusterResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowReplicaCluster,

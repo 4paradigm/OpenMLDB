@@ -93,9 +93,9 @@ public:
 
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t& term, std::string& msg);
 
-    bool ReplicaOf(const std::string &zk_ep, const std::string &zk_path, const std::string &alias, std::string& msg);
+    bool AddReplicaCluster(const std::string &zk_ep, const std::string &zk_path, const std::string &alias, std::string& msg);
 
-    bool ShowReplicaOf(std::vector<::rtidb::nameserver::ClusterAddAge>& clusterinfo, std::string &msg);
+    bool ShowReplicaCluster(std::vector<::rtidb::nameserver::ClusterAddAge>& clusterinfo, std::string &msg);
 
     int RemoveReplicaClusterByNs(const std::string &alias, const std::string &zone_name, const uint64_t term,
                           std::string &msg);
