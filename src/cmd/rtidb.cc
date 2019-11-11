@@ -2490,16 +2490,16 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: addtablefield test money float\n");
         } else if (parts[1] == "addrepcluster") {
             printf("desc: add remote replica cluster\n");
-            printf("usage: addrepcluster zk_endpoints zk_path cluster_alias");
-            printf("ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /rtidb_cluster prod_dc01");
+            printf("usage: addrepcluster zk_endpoints zk_path cluster_alias\n");
+            printf("ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /rtidb_cluster prod_dc01\n");
         } else if (parts[1] == "showrepcluster") {
             printf("desc: show remote replica cluster\n");
-            printf("usage: showrepcluster");
+            printf("usage: showrepcluster\n");
             printf("ex: showrepcluster");
         } else if (parts[1] == "removerepcluster") {
             printf("desc: remove remote replica cluster\n");
-            printf("usage: removerepcluster cluster_alias");
-            printf("ex: removerepcluster prod_dc01");
+            printf("usage: removerepcluster cluster_alias\n");
+            printf("ex: removerepcluster prod_dc01\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
