@@ -2314,6 +2314,9 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("setttl - set table ttl\n");
         printf("updatetablealive - update table alive status\n");
         printf("addtablefield - add field to the schema table \n");
+        printf("addrepcluster - add remote replica cluster\n");
+        printf("showrepcluster - show remote replica cluster\n");
+        printf("removerepcluster - remove remote replica cluste \n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -2485,6 +2488,18 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: addtablefield table_name col_name col_type\n");
             printf("ex: addtablefield test card string\n");
             printf("ex: addtablefield test money float\n");
+        } else if (parts[1] == "addrepcluster") {
+            printf("desc: add remote replica cluster\n");
+            printf("usage: addrepcluster zk_endpoints zk_path cluster_alias");
+            printf("ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /rtidb_cluster prod_dc01");
+        } else if (parts[1] == "showrepcluster") {
+            printf("desc: show remote replica cluster\n");
+            printf("usage: showrepcluster");
+            printf("ex: showrepcluster");
+        } else if (parts[1] == "removerepcluster") {
+            printf("desc: remove remote replica cluster\n");
+            printf("usage: removerepcluster cluster_alias");
+            printf("ex: removerepcluster prod_dc01");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
