@@ -1,10 +1,10 @@
 #include "list.h"
-#include "skiplist.h"
-#include "gtest/gtest.h"
-#include <time.h>
 #include <sys/time.h>
-#include <string>
+#include <time.h>
 #include <random>
+#include <string>
+#include "gtest/gtest.h"
+#include "skiplist.h"
 
 namespace fesql {
 namespace storage {
@@ -12,8 +12,7 @@ namespace storage {
 DefaultComparator cmp;
 
 class ListTest : public ::testing::Test {
-
-public:
+ public:
     ListTest() {}
     ~ListTest() {}
 };
@@ -28,10 +27,10 @@ uint64_t loop_time = 10000;
 uint64_t record_cnt = 300;
 
 TEST_F(ListTest, Size) {
-    //ArrayList<uint64_t, CC, DefaultComparator> list(cmp);
-    //ArrayList<uint64_t, DD, DefaultComparator> list(cmp);
-    //ArrayList<DD, CC, DefaultComparator> list(cmp);
-    //static_assert(std::is_pod<DD>::value, "bbb");
+    // ArrayList<uint64_t, CC, DefaultComparator> list(cmp);
+    // ArrayList<uint64_t, DD, DefaultComparator> list(cmp);
+    // ArrayList<DD, CC, DefaultComparator> list(cmp);
+    // static_assert(std::is_pod<DD>::value, "bbb");
     ArrayList<uint64_t, void*, DefaultComparator> list(cmp);
 }
 
@@ -49,10 +48,10 @@ TEST_F(ListTest, ArrayList) {
     Iterator<uint64_t, uint64_t>* iter = list.NewIterator();
     iter->SeekToFirst();
     int count = 0;
-    while(iter->Valid()) {
+    while (iter->Valid()) {
         ASSERT_EQ(arr[count], iter->GetKey());
         iter->Next();
-        count ++;
+        count++;
     }
     ASSERT_EQ(count, 4);
     delete iter;
@@ -72,10 +71,10 @@ TEST_F(ListTest, LinkList) {
     Iterator<uint64_t, uint64_t>* iter = list.NewIterator();
     iter->SeekToFirst();
     int count = 0;
-    while(iter->Valid()) {
+    while (iter->Valid()) {
         ASSERT_EQ(arr[count], iter->GetKey());
         iter->Next();
-        count ++;
+        count++;
     }
     ASSERT_EQ(count, 4);
     delete iter;
@@ -94,12 +93,12 @@ TEST_F(ListTest, LinkListEqualItem) {
     Iterator<uint64_t, uint64_t>* iter = list.NewIterator();
     iter->SeekToFirst();
     int count = 0;
-    while(iter->Valid()) {
+    while (iter->Valid()) {
         if (count > 0) {
             ASSERT_EQ(iter->GetValue(), 4 - count);
         }
         iter->Next();
-        count ++;
+        count++;
     }
     ASSERT_EQ(count, 4);
     delete iter;
@@ -118,12 +117,12 @@ TEST_F(ListTest, ArrayListEqualItem) {
     Iterator<uint64_t, uint64_t>* iter = list.NewIterator();
     iter->SeekToFirst();
     int count = 0;
-    while(iter->Valid()) {
+    while (iter->Valid()) {
         if (count > 0) {
             ASSERT_EQ(iter->GetValue(), 4 - count);
         }
         iter->Next();
-        count ++;
+        count++;
     }
     ASSERT_EQ(count, 4);
     delete iter;
@@ -131,13 +130,12 @@ TEST_F(ListTest, ArrayListEqualItem) {
 
 /*TEST_F(ListTest, SkipListPerform) {
     {
-        std::vector<::fesql::base::Skiplist<uint64_t, uint64_t, DefaultComparator>*> vec;
-        uint64_t value = 1;
-        for (uint64_t idx = 0; idx < loop_time; idx++) {
-            ::fesql::base::Skiplist<uint64_t, uint64_t, DefaultComparator>* list = 
-                new ::fesql::base::Skiplist<uint64_t, uint64_t, DefaultComparator>(12, 4, cmp);
-            for (uint64_t i = 0; i < record_cnt; i++) {
-                list->Insert(i, value);
+        std::vector<::fesql::base::Skiplist<uint64_t, uint64_t,
+DefaultComparator>*> vec; uint64_t value = 1; for (uint64_t idx = 0; idx <
+loop_time; idx++) {
+            ::fesql::base::Skiplist<uint64_t, uint64_t, DefaultComparator>* list
+= new ::fesql::base::Skiplist<uint64_t, uint64_t, DefaultComparator>(12, 4,
+cmp); for (uint64_t i = 0; i < record_cnt; i++) { list->Insert(i, value);
             }
             vec.push_back(list);
         }
@@ -147,7 +145,8 @@ TEST_F(ListTest, ArrayListEqualItem) {
             vec[idx]->Insert(engine() % record_cnt, value);
         }
         uint64_t time_used = get_micros() - cur_time;
-        printf("skiplist insert time: %lu avg: %lu\n", time_used, time_used / loop_time);
+        printf("skiplist insert time: %lu avg: %lu\n", time_used, time_used /
+loop_time);
     }
     SkipList<uint64_t, uint64_t, DefaultComparator> list(12, 4, cmp);
     uint64_t value = 1;
@@ -175,7 +174,7 @@ TEST_F(ListTest, ArrayListEqualItem) {
         std::vector<LinkList<uint64_t, uint64_t, DefaultComparator>*> vec;
         uint64_t value = 1;
         for (uint64_t idx = 0; idx < loop_time; idx++) {
-            LinkList<uint64_t, uint64_t, DefaultComparator>* list = 
+            LinkList<uint64_t, uint64_t, DefaultComparator>* list =
                 new LinkList<uint64_t, uint64_t, DefaultComparator>(cmp);
             for (uint64_t i = 0; i < record_cnt; i++) {
                 list->Insert(i, value);
@@ -188,7 +187,8 @@ TEST_F(ListTest, ArrayListEqualItem) {
             vec[idx]->Insert(engine() % record_cnt, value);
         }
         uint64_t time_used = get_micros() - cur_time;
-        printf("linklist insert time: %lu avg: %lu\n", time_used, time_used / loop_time);
+        printf("linklist insert time: %lu avg: %lu\n", time_used, time_used /
+loop_time);
     }
     LinkList<uint64_t, uint64_t, DefaultComparator> list(cmp);
     uint64_t value = 1;
@@ -216,7 +216,7 @@ TEST_F(ListTest, ArrayListEqualItem) {
         std::vector<ArrayList<uint64_t, uint64_t, DefaultComparator>*> vec;
         uint64_t value = 1;
         for (uint64_t idx = 0; idx < loop_time; idx++) {
-            ArrayList<uint64_t, uint64_t, DefaultComparator>* list = 
+            ArrayList<uint64_t, uint64_t, DefaultComparator>* list =
                 new ArrayList<uint64_t, uint64_t, DefaultComparator>(cmp);
             for (uint64_t i = 0; i < record_cnt; i++) {
                 list->Insert(i, value);
@@ -229,7 +229,8 @@ TEST_F(ListTest, ArrayListEqualItem) {
             vec[idx]->Insert(engine() % record_cnt, value);
         }
         uint64_t time_used = get_micros() - cur_time;
-        printf("arraylist insert time: %lu avg: %lu\n", time_used, time_used / loop_time);
+        printf("arraylist insert time: %lu avg: %lu\n", time_used, time_used /
+loop_time);
     }
     ArrayList<uint64_t, uint64_t, DefaultComparator> list(cmp);
     uint64_t value = 1;
@@ -253,8 +254,8 @@ TEST_F(ListTest, ArrayListEqualItem) {
     printf("arraylist time: %lu avg: %lu\n", time_used, time_used / loop_time);
 }*/
 
-}
-}
+}  // namespace storage
+}  // namespace fesql
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

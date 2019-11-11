@@ -35,11 +35,11 @@ int FeSQLParser::parse(
     node::NodePointVector &trees,  // NOLINT (runtime/references)
     node::NodeManager *manager,
     base::Status &status) {  // NOLINT (runtime/references)
-  yyscan_t scanner;
-  yylex_init(&scanner);
-  yy_scan_string(sqlstr.c_str(), scanner);
-  int ret = yyparse(scanner, trees, manager, status);
-  return ret;
+    yyscan_t scanner;
+    yylex_init(&scanner);
+    yy_scan_string(sqlstr.c_str(), scanner);
+    int ret = yyparse(scanner, trees, manager, status);
+    return ret;
 }
 
 }  // namespace parser

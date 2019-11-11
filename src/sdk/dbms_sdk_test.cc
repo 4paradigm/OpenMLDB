@@ -14,12 +14,12 @@ namespace fesql {
 namespace sdk {
 class DBMSSdkTest : public ::testing::Test {
  public:
-  DBMSSdkTest() {}
+    DBMSSdkTest() {}
 
-  ~DBMSSdkTest() {}
+    ~DBMSSdkTest() {}
 };
 
-//TEST_F(DBMSSdkTest, CreateTableTest) {
+// TEST_F(DBMSSdkTest, CreateTableTest) {
 //  ::fesql::sdk::DBMSSdk *dbms_sdk = nullptr;
 //  dbms_sdk = ::fesql::sdk::CreateDBMSSdk("127.0.0.1");
 //  ASSERT_TRUE(nullptr != dbms_sdk);
@@ -40,6 +40,6 @@ class DBMSSdkTest : public ::testing::Test {
 }  // namespace sdk
 }  // namespace fesql
 int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

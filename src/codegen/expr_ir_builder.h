@@ -18,17 +18,15 @@
 #ifndef CODEGEN_EXPR_IR_BUILDER_H_
 #define CODEGEN_EXPR_IR_BUILDER_H_
 
-#include "llvm/IR/IRBuilder.h"
 #include "codegen/scope_var.h"
+#include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
 namespace fesql {
 namespace codegen {
 
 class ExprIRBuilder {
-
-public:
-
+ public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~ExprIRBuilder();
 
@@ -40,11 +38,11 @@ public:
     bool BuildUnaryExpr(const ::fesql::node::FnNode* node,
                         ::llvm::Value** output);
 
-private:
+ private:
     ::llvm::BasicBlock* block_;
     ScopeVar* scope_var_;
 };
 
-} // namespace of codegen
-} // namespace of fesql
+}  // namespace codegen
+}  // namespace fesql
 #endif /* !CODEGEN_EXPR_IR_BUILDER_H_ */

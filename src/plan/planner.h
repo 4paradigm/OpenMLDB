@@ -25,42 +25,40 @@ using node::PlanNodeList;
 using node::SQLNode;
 class Planner {
  public:
-  explicit Planner(node::NodeManager *manager) : node_manager_(manager) {}
-
-  virtual ~Planner() {}
-
-  virtual int CreatePlanTree(
-      const NodePointVector &parser_trees,
-      PlanNodeList &plan_trees,  // NOLINT (runtime/references)
-      Status &status) = 0;       // NOLINT (runtime/references)
+    explicit Planner(node::NodeManager *manager) : node_manager_(manager) {}
+    virtual ~Planner() {}
+    virtual int CreatePlanTree(
+        const NodePointVector &parser_trees,
+        PlanNodeList &plan_trees,  // NOLINT (runtime/references)
+        Status &status) = 0;       // NOLINT (runtime/references)
 
  protected:
-  void CreatePlanRecurse(node::SQLNode *root, PlanNode *plan_tree,
+    void CreatePlanRecurse(node::SQLNode *root, PlanNode *plan_tree,
+                           Status &status);  // NOLINT (runtime/references)
+    int CreateSelectPlan(node::SQLNode *root, PlanNode *plan_tree,
                          Status &status);  // NOLINT (runtime/references)
-  int CreateSelectPlan(node::SQLNode *root, PlanNode *plan_tree,
-                       Status &status);  // NOLINT (runtime/references)
-  void CreateCreateTablePlan(node::SQLNode *root,
-                             node::CreatePlanNode *plan_tree,
-                             Status &status);  // NOLINT (runtime/references)
-  void CreateProjectPlanNode(node::SQLNode *root, std::string table_name,
-                             node::ProjectPlanNode *plan_tree,
-                             Status &status);  // NOLINT (runtime/references)
-  void CreateDataProviderPlanNode(
-      node::SQLNode *root, PlanNode *plan_tree,
-      Status &status);  // NOLINT (runtime/references)
-  void CreateDataCollectorPlanNode(
-      node::SQLNode *root, PlanNode *plan_tree,
-      Status &status);  // NOLINT (runtime/references)
+    void CreateCreateTablePlan(node::SQLNode *root,
+                               node::CreatePlanNode *plan_tree,
+                               Status &status);  // NOLINT (runtime/references)
+    void CreateProjectPlanNode(node::SQLNode *root, std::string table_name,
+                               node::ProjectPlanNode *plan_tree,
+                               Status &status);  // NOLINT (runtime/references)
+    void CreateDataProviderPlanNode(
+        node::SQLNode *root, PlanNode *plan_tree,
+        Status &status);  // NOLINT (runtime/references)
+    void CreateDataCollectorPlanNode(
+        node::SQLNode *root, PlanNode *plan_tree,
+        Status &status);  // NOLINT (runtime/references)
 
-  node::NodeManager *node_manager_;
+    node::NodeManager *node_manager_;
 };
 
 class SimplePlanner : public Planner {
  public:
-  explicit SimplePlanner(node::NodeManager *manager) : Planner(manager) {}
-  int CreatePlanTree(const NodePointVector &parser_trees,
-                     PlanNodeList &plan_trees,
-                     Status &status);  // NOLINT (runtime/references)
+    explicit SimplePlanner(node::NodeManager *manager) : Planner(manager) {}
+    int CreatePlanTree(const NodePointVector &parser_trees,
+                       PlanNodeList &plan_trees,
+                       Status &status);  // NOLINT (runtime/references)
 };
 
 // TODO(chenjing): move to executor module

@@ -40,12 +40,12 @@ namespace parser {
 
 class FeSQLParser {
  public:
-  FeSQLParser() {}
+    FeSQLParser() {}
 
-  int parse(const std::string &sqlstr,
-            node::NodePointVector &trees,  // NOLINT (runtime/references)
-            node::NodeManager *manager,
-            base::Status &status);  // NOLINT (runtime/references)
+    int parse(const std::string &sqlstr,
+              node::NodePointVector &trees,  // NOLINT (runtime/references)
+              node::NodeManager *manager,
+              base::Status &status);  // NOLINT (runtime/references)
 };
 }  // namespace parser
 }  // namespace fesql

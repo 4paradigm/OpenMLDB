@@ -22,24 +22,22 @@
 namespace fesql {
 namespace base {
 
-static uint64_t MurmurHash64A(const void * key, 
-		              int len, 
-			      unsigned int seed) {
+static uint64_t MurmurHash64A(const void *key, int len, unsigned int seed) {
     const uint64_t m = 0xc6a4a7935bd1e995;
     const int r = 47;
     uint64_t h = seed ^ (len * m);
     const uint8_t *data = (const uint8_t *)key;
-    const uint8_t *end = data + (len-(len&7));
-    while(data != end) {
+    const uint8_t *end = data + (len - (len & 7));
+    while (data != end) {
         uint64_t k;
-        k = (uint64_t) data[0];
-        k |= (uint64_t) data[1] << 8;
-        k |= (uint64_t) data[2] << 16;
-        k |= (uint64_t) data[3] << 24;
-        k |= (uint64_t) data[4] << 32;
-        k |= (uint64_t) data[5] << 40;
-        k |= (uint64_t) data[6] << 48;
-        k |= (uint64_t) data[7] << 56;
+        k = (uint64_t)data[0];
+        k |= (uint64_t)data[1] << 8;
+        k |= (uint64_t)data[2] << 16;
+        k |= (uint64_t)data[3] << 24;
+        k |= (uint64_t)data[4] << 32;
+        k |= (uint64_t)data[5] << 40;
+        k |= (uint64_t)data[6] << 48;
+        k |= (uint64_t)data[7] << 56;
         k *= m;
         k ^= k >> r;
         k *= m;
@@ -48,14 +46,21 @@ static uint64_t MurmurHash64A(const void * key,
         data += 8;
     }
 
-    switch(len & 7) {
-    case 7: h ^= (uint64_t)data[6] << 48;
-    case 6: h ^= (uint64_t)data[5] << 40;
-    case 5: h ^= (uint64_t)data[4] << 32;
-    case 4: h ^= (uint64_t)data[3] << 24;
-    case 3: h ^= (uint64_t)data[2] << 16;
-    case 2: h ^= (uint64_t)data[1] << 8;
-    case 1: h ^= (uint64_t)data[0];
+    switch (len & 7) {
+        case 7:
+            h ^= (uint64_t)data[6] << 48;
+        case 6:
+            h ^= (uint64_t)data[5] << 40;
+        case 5:
+            h ^= (uint64_t)data[4] << 32;
+        case 4:
+            h ^= (uint64_t)data[3] << 24;
+        case 3:
+            h ^= (uint64_t)data[2] << 16;
+        case 2:
+            h ^= (uint64_t)data[1] << 8;
+        case 1:
+            h ^= (uint64_t)data[0];
             h *= m;
     };
     h ^= h >> r;
@@ -64,6 +69,6 @@ static uint64_t MurmurHash64A(const void * key,
     return h;
 }
 
-} // namepsace base
-} // namespace fesql
+}  // namespace base
+}  // namespace fesql
 #endif /* !FESQL_BASE_HASH_H_ */

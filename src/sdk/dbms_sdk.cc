@@ -21,15 +21,14 @@
 #include "brpc/channel.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
-#include "plan/planner.h"
 #include "proto/dbms.pb.h"
 
 namespace fesql {
 namespace sdk {
 
 class DBMSSdkImpl : public DBMSSdk {
-   public:
-    DBMSSdkImpl(const std::string &endpoint);
+ public:
+    explicit DBMSSdkImpl(const std::string &endpoint);
     ~DBMSSdkImpl();
     bool Init();
     void CreateGroup(const GroupDef &group, base::Status &status) override;
@@ -38,7 +37,7 @@ class DBMSSdkImpl : public DBMSSdk {
                     base::Status &status) override;
     void ExecuteScript(const std::string &sql, base::Status &status) override;
 
-   private:
+ private:
     ::brpc::Channel *channel_;
     std::string endpoint_;
 };
@@ -124,7 +123,7 @@ void DBMSSdkImpl::ExecuteScript(const std::string &sql, base::Status &status) {
     planner.CreatePlanTree(query_trees, plan_trees, status);
 
     if (0 != status.code) {
-      return;
+        return;
     }
 
     node::PlanNode *plan = plan_trees[0];
@@ -152,7 +151,8 @@ void DBMSSdkImpl::ExecuteScript(const std::string &sql, base::Status &status) {
             break;
         }
         default: {
-            status.msg = "fail to execute script with unSuppurt type" + node::NameOfPlanNodeType(plan->GetType());
+            status.msg = "fail to execute script with unSuppurt type" +
+                         node::NameOfPlanNodeType(plan->GetType());
             status.code = fesql::error::kExecuteErrorUnSupport;
             return;
         }

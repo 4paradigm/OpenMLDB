@@ -22,45 +22,45 @@ namespace node {
 
 class SqlListNodeTest : public ::testing::Test {
  public:
-  SqlListNodeTest() { manager_ = new NodeManager(); }
+    SqlListNodeTest() { manager_ = new NodeManager(); }
 
-  ~SqlListNodeTest() { delete manager_; }
+    ~SqlListNodeTest() { delete manager_; }
 
  protected:
-  NodeManager *manager_;
+    NodeManager *manager_;
 };
 
 TEST_F(SqlListNodeTest, PushFrontTest) {
-  SQLNodeList *pList = manager_->MakeNodeList();
+    SQLNodeList *pList = manager_->MakeNodeList();
 
-  ASSERT_EQ(0, (int)(pList->GetSize()));
+    ASSERT_EQ(0, (int)(pList->GetSize()));
 
-  pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(1)));
-  pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(2)));
-  pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(3)));
+    pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(1)));
+    pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(2)));
+    pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(3)));
 
-  ASSERT_EQ(3, pList->GetSize());
-  std::cout << *pList << std::endl;
+    ASSERT_EQ(3, pList->GetSize());
+    std::cout << *pList << std::endl;
 }
 
 TEST_F(SqlListNodeTest, AppendNodeListTest) {
-  SQLNodeList *pList = manager_->MakeNodeList();
-  pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(1)));
-  ASSERT_EQ(1, pList->GetSize());
+    SQLNodeList *pList = manager_->MakeNodeList();
+    pList->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(1)));
+    ASSERT_EQ(1, pList->GetSize());
 
-  SQLNodeList *pList2 = manager_->MakeNodeList();
-  pList2->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(2)));
-  pList2->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(3)));
-  ASSERT_EQ(2, pList2->GetSize());
+    SQLNodeList *pList2 = manager_->MakeNodeList();
+    pList2->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(2)));
+    pList2->PushFront(manager_->MakeLinkedNode(manager_->MakeConstNode(3)));
+    ASSERT_EQ(2, pList2->GetSize());
 
-  pList->AppendNodeList(pList2);
-  std::cout << *pList << std::endl;
+    pList->AppendNodeList(pList2);
+    std::cout << *pList << std::endl;
 }
 
 }  // namespace node
 }  // namespace fesql
 
 int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

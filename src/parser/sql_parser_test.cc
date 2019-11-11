@@ -27,7 +27,7 @@ using fesql::node::NodePointVector;
 using fesql::node::SQLNode;
 
 class SqlParserTest : public ::testing::TestWithParam<std::string> {
-   public:
+ public:
     SqlParserTest() {
         manager_ = new NodeManager();
         parser_ = new FeSQLParser();
@@ -38,7 +38,7 @@ class SqlParserTest : public ::testing::TestWithParam<std::string> {
         delete manager_;
     }
 
-   protected:
+ protected:
     NodeManager *manager_;
     FeSQLParser *parser_;
 };
@@ -261,7 +261,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
 
 class SqlParserErrorTest : public ::testing::TestWithParam<
                                std::pair<error::ErrorType, std::string>> {
-   public:
+ public:
     SqlParserErrorTest() {
         manager_ = new NodeManager();
         parser_ = new FeSQLParser();
@@ -272,7 +272,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
         delete manager_;
     }
 
-   protected:
+ protected:
     NodeManager *manager_;
     FeSQLParser *parser_;
 };

@@ -19,17 +19,16 @@
 #define CODEGEN_FN_IR_BUILDER_H_
 
 #include <vector>
-#include "llvm/IR/Module.h"
 #include "codegen/scope_var.h"
+#include "llvm/IR/Module.h"
 #include "node/sql_node.h"
 
 namespace fesql {
 namespace codegen {
 
-// FnIRBuilder 
+// FnIRBuilder
 class FnIRBuilder {
-
-public:
+ public:
     // TODO provide a module manager
     FnIRBuilder(::llvm::Module* module);
     ~FnIRBuilder();
@@ -38,29 +37,28 @@ public:
     bool BuildFnHead(const ::fesql::node::FnNodeFnDef* fn_def,
                      ::llvm::Function** fn);
 
-    bool BuildStmt(int32_t pindent, 
-            const ::fesql::node::FnNode* node, 
-            ::llvm::BasicBlock* block);
+    bool BuildStmt(int32_t pindent, const ::fesql::node::FnNode* node,
+                   ::llvm::BasicBlock* block);
 
-    bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node, 
-            ::llvm::BasicBlock* block);
+    bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node,
+                         ::llvm::BasicBlock* block);
     bool BuildReturnStmt(const ::fesql::node::FnNode* node,
-            ::llvm::BasicBlock* block);
-private:
+                         ::llvm::BasicBlock* block);
 
-    bool MapLLVMType(const ::fesql::node::DataType & fn_type,
-            ::llvm::Type** type);
+ private:
+    bool MapLLVMType(const ::fesql::node::DataType& fn_type,
+                     ::llvm::Type** type);
 
     bool BuildParas(const ::fesql::node::FnNode* node,
-            std::vector<::llvm::Type*>& paras);
+                    std::vector<::llvm::Type*>& paras);
 
-    bool FillArgs(const ::fesql::node::FnNode* node,
-            ::llvm::Function* fn);
-private:
+    bool FillArgs(const ::fesql::node::FnNode* node, ::llvm::Function* fn);
+
+ private:
     ::llvm::Module* module_;
     ScopeVar sv_;
 };
 
-} // namespace of codegen
-} // namespace of fesql
+}  // namespace codegen
+}  // namespace fesql
 #endif /* !CODEGEN_FN_IR_BUILDER_H_ */

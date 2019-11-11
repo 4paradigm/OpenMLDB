@@ -19,32 +19,32 @@ namespace node {
  */
 class NodeManagerTest : public ::testing::Test {
  public:
-  NodeManagerTest() {}
+    NodeManagerTest() {}
 
-  ~NodeManagerTest() {}
+    ~NodeManagerTest() {}
 };
 
 TEST_F(NodeManagerTest, MakeSQLNode) {
-  NodeManager *manager = new NodeManager();
-  manager->MakeSQLNode(node::kSelectStmt);
-  manager->MakeSQLNode(node::kOrderBy);
-  manager->MakeSQLNode(node::kLimit);
+    NodeManager *manager = new NodeManager();
+    manager->MakeSQLNode(node::kSelectStmt);
+    manager->MakeSQLNode(node::kOrderBy);
+    manager->MakeSQLNode(node::kLimit);
 
-  manager->MakePlanNode(node::kPlanTypeSelect);
-  manager->MakePlanNode(node::kProjectList);
-  manager->MakePlanNode(node::kProject);
-  manager->MakePlanNode(node::kProject);
-  manager->MakePlanNode(node::kOpExpr);
+    manager->MakePlanNode(node::kPlanTypeSelect);
+    manager->MakePlanNode(node::kProjectList);
+    manager->MakePlanNode(node::kProject);
+    manager->MakePlanNode(node::kProject);
+    manager->MakePlanNode(node::kOpExpr);
 
-  ASSERT_EQ(3, manager->GetParserNodeListSize());
-  ASSERT_EQ(5, manager->GetPlanNodeListSize());
-  delete manager;
+    ASSERT_EQ(3, manager->GetParserNodeListSize());
+    ASSERT_EQ(5, manager->GetPlanNodeListSize());
+    delete manager;
 }
 
 }  // namespace node
 }  // namespace fesql
 
 int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

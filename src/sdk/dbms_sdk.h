@@ -25,17 +25,19 @@ namespace fesql {
 namespace sdk {
 
 struct GroupDef {
-  std::string name;
+    std::string name;
 };
 
 class DBMSSdk {
  public:
-  virtual ~DBMSSdk(){};
-  virtual void CreateGroup(const GroupDef &group, base::Status &status) = 0;
-  virtual void CreateTable(const std::string &sql_str, base::Status &status) = 0;
-  virtual void ShowSchema(const std::string &name, type::TableDef &table,
-                          base::Status &status) = 0;
-  virtual void ExecuteScript(const std::string &sql_str, base::Status &status) = 0;
+    virtual ~DBMSSdk(){};
+    virtual void CreateGroup(const GroupDef &group, base::Status &status) = 0;
+    virtual void CreateTable(const std::string &sql_str,
+                             base::Status &status) = 0;
+    virtual void ShowSchema(const std::string &name, type::TableDef &table,
+                            base::Status &status) = 0;
+    virtual void ExecuteScript(const std::string &sql_str,
+                               base::Status &status) = 0;
 };
 
 // create a new dbms sdk with a endpoint

@@ -34,22 +34,22 @@ typedef std::map<std::string, ::fesql::type::TableDef> Tables;
 
 class DBMSServerImpl : public DBMSServer {
  public:
-  DBMSServerImpl();
-  ~DBMSServerImpl();
+    DBMSServerImpl();
+    ~DBMSServerImpl();
 
-  void AddGroup(RpcController* ctr, const AddGroupRequest* request,
-                AddGroupResponse* response, Closure* done);
+    void AddGroup(RpcController* ctr, const AddGroupRequest* request,
+                  AddGroupResponse* response, Closure* done);
 
-  void AddTable(RpcController* ctr, const AddTableRequest* request,
-                AddTableResponse* response, Closure* done);
+    void AddTable(RpcController* ctr, const AddTableRequest* request,
+                  AddTableResponse* response, Closure* done);
 
-  void ShowSchema(RpcController* controller, const ShowSchemaRequest* request,
-                  ShowSchemaResponse* response, Closure* done);
+    void ShowSchema(RpcController* controller, const ShowSchemaRequest* request,
+                    ShowSchemaResponse* response, Closure* done);
 
  private:
-  std::mutex mu_;
-  Groups groups_;
-  Tables tables_;
+    std::mutex mu_;
+    Groups groups_;
+    Tables tables_;
 };
 
 }  // namespace dbms

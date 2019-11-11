@@ -1,31 +1,26 @@
 //
 // slice_test.cc
-// Copyright 2017 4paradigm.com 
+// Copyright 2017 4paradigm.com
 
-#include "gtest/gtest.h"
 #include "slice.h"
+#include "gtest/gtest.h"
 
 namespace fesql {
 namespace storage {
 
 class SliceTest : public ::testing::Test {
-
-public:
-    SliceTest(){}
+ public:
+    SliceTest() {}
     ~SliceTest() {}
 };
-
-
-
 
 TEST_F(SliceTest, Compare) {
     Slice a("test1");
     Slice b("test1");
     ASSERT_EQ(0, a.compare(b));
-    ASSERT_TRUE(a==b);
+    ASSERT_TRUE(a == b);
     ASSERT_EQ(sizeof(a), 16);
 }
-
 
 TEST_F(SliceTest, Assign) {
     {
@@ -36,8 +31,8 @@ TEST_F(SliceTest, Assign) {
     ASSERT_TRUE(true);
 }
 
-}
-}
+}  // namespace storage
+}  // namespace fesql
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

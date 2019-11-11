@@ -1,6 +1,6 @@
-include_directories(${INCLUDE_DIRECTORIES} 
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_BINARY_DIR}/src)
+include_directories(${INCLUDE_DIRECTORIES}
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_BINARY_DIR}/src)
 add_executable(list_test list_test.cc)
 target_link_libraries(list_test gflags gtest pthread)
 

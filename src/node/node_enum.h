@@ -19,87 +19,87 @@ const char SPACE_ED[] = "";
 const char OR_INDENT[] = "|\t";
 const char INDENT[] = " \t";
 enum SQLNodeType {
-  // SQL
-  kSelectStmt = 0,
-  kCreateStmt,
-  kExpr,
-  kResTarget,
-  kTable,
-  kFunc,
-  kType,
-  kWindowFunc,
-  kWindowDef,
-  kFrameBound,
-  kFrames,
-  kColumnRef,
-  kColumnDesc,
-  kColumnIndex,
-  kIndexKey,
-  kIndexTs,
-  kIndexVersion,
-  kIndexTTL,
-  kName,
-  kConst,
-  kLimit,
-  kAll,
-  kList,
-  kOrderBy,
+    // SQL
+    kSelectStmt = 0,
+    kCreateStmt,
+    kExpr,
+    kResTarget,
+    kTable,
+    kFunc,
+    kType,
+    kWindowFunc,
+    kWindowDef,
+    kFrameBound,
+    kFrames,
+    kColumnRef,
+    kColumnDesc,
+    kColumnIndex,
+    kIndexKey,
+    kIndexTs,
+    kIndexVersion,
+    kIndexTTL,
+    kName,
+    kConst,
+    kLimit,
+    kAll,
+    kList,
+    kOrderBy,
 
-  kPrimary,
+    kPrimary,
 
-  kDesc,
-  kAsc,
+    kDesc,
+    kAsc,
 
-  kFrameRange,
-  kFrameRows,
+    kFrameRange,
+    kFrameRows,
 
-  kPreceding,
-  kFollowing,
-  kCurrent,
+    kPreceding,
+    kFollowing,
+    kCurrent,
 
-  kFnDef,
-  kFnValue,
-  kFnId,
-  kFnAssignStmt,
-  kFnReturnStmt,
-  kFnExpr,
-  kFnExprBinary,
-  kFnExprUnary,
-  kFnPara,
-  kFnParaList,
-  kFnList,
-  kUnknow
+    kFnDef,
+    kFnValue,
+    kFnId,
+    kFnAssignStmt,
+    kFnReturnStmt,
+    kFnExpr,
+    kFnExprBinary,
+    kFnExprUnary,
+    kFnPara,
+    kFnParaList,
+    kFnList,
+    kUnknow
 };
 
 enum DataType {
-  kTypeBool,
-  kTypeInt16,
-  kTypeInt32,
-  kTypeInt64,
-  kTypeFloat,
-  kTypeDouble,
-  kTypeString,
-  kTypeTimestamp,
-  kTypeHour,
-  kTypeDay,
-  kTypeMinute,
-  kTypeSecond,
-  kTypeNull
+    kTypeBool,
+    kTypeInt16,
+    kTypeInt32,
+    kTypeInt64,
+    kTypeFloat,
+    kTypeDouble,
+    kTypeString,
+    kTypeTimestamp,
+    kTypeHour,
+    kTypeDay,
+    kTypeMinute,
+    kTypeSecond,
+    kTypeNull
 };
 
 enum TimeUnit {
-  kTimeUnitHour,
-  kTimeUnitDay,
-  kTimeUnitMinute,
-  kTimeUnitSecond,
+    kTimeUnitHour,
+    kTimeUnitDay,
+    kTimeUnitMinute,
+    kTimeUnitSecond,
 };
 enum FnOperator {
-  kFnOpAdd,
-  kFnOpMinus,
-  kFnOpMulti,
-  kFnOpDiv,
-  kFnOpBracket,
-  kFnOpNone
+    kFnOpAdd,
+    kFnOpMinus,
+    kFnOpMulti,
+    kFnOpDiv,
+    kFnOpBracket,
+    kFnOpNone
 };
 
 /**
@@ -108,78 +108,78 @@ enum FnOperator {
  *
  */
 enum PlanType {
-  kPlanTypeSelect,
-  kPlanTypeCreate,
-  kPlanTypeScan,
-  kPlanTypeLimit,
-  kPlanTypeFilter,
-  kProjectList,
-  kProject,
-  kScalarFunction,
-  kOpExpr,
-  kAggFunction,
-  kAggWindowFunction,
-  kUnknowPlan,
+    kPlanTypeSelect,
+    kPlanTypeCreate,
+    kPlanTypeScan,
+    kPlanTypeLimit,
+    kPlanTypeFilter,
+    kProjectList,
+    kProject,
+    kScalarFunction,
+    kOpExpr,
+    kAggFunction,
+    kAggWindowFunction,
+    kUnknowPlan,
 
-  kScanTypeSeqScan,
-  kScanTypeIndexScan,
+    kScanTypeSeqScan,
+    kScanTypeIndexScan,
 };
 
 }  // namespace node
 
 namespace error {
 enum ErrorType {
-  kSucess = 0,
+    kSucess = 0,
 
-  kNodeErrorUnknow = 1001,
-  kNodeErrorMakeNodeFail,
+    kNodeErrorUnknow = 1001,
+    kNodeErrorMakeNodeFail,
 
-  kParserErrorUnknow = 2001,
-  kParserErrorSyntax,
-  kParserErrorAbort,
+    kParserErrorUnknow = 2001,
+    kParserErrorSyntax,
+    kParserErrorAbort,
 
-  kAnalyserErrorUnknow = 3001,
-  kAnalyserErrorUnSupport,
-  kAnalyserErrorSQLTypeNotSupport,
-  kAnalyserErrorInitialize,
-  kAnalyserErrorParserTreeEmpty,
-  kAnalyserErrorFromListEmpty,
-  kAnalyserErrorQueryMultiTable,
-  kAnalyserErrorTableRefIsNull,
-  kAnalyserErrorTableNotExist,
-  kAnalyserErrorTableAlreadyExist,
-  kAnalyserErrorColumnNameIsEmpty,
-  kAnalyserErrorColumnNotExist,
-  kAnalyserErrorTargetIsNull,
-  kAnalyserErrorGlobalAggFunction,
-  kAnalyserErrorUnSupportFunction,
-  kCreateErrorUnSupportColumnType,
-  kCreateErrorDuplicationColumnName,
-  kCreateErrorDuplicationIndexName,
+    kAnalyserErrorUnknow = 3001,
+    kAnalyserErrorUnSupport,
+    kAnalyserErrorSQLTypeNotSupport,
+    kAnalyserErrorInitialize,
+    kAnalyserErrorParserTreeEmpty,
+    kAnalyserErrorFromListEmpty,
+    kAnalyserErrorQueryMultiTable,
+    kAnalyserErrorTableRefIsNull,
+    kAnalyserErrorTableNotExist,
+    kAnalyserErrorTableAlreadyExist,
+    kAnalyserErrorColumnNameIsEmpty,
+    kAnalyserErrorColumnNotExist,
+    kAnalyserErrorTargetIsNull,
+    kAnalyserErrorGlobalAggFunction,
+    kAnalyserErrorUnSupportFunction,
+    kCreateErrorUnSupportColumnType,
+    kCreateErrorDuplicationColumnName,
+    kCreateErrorDuplicationIndexName,
 
-  kPlanErrorUnknow = 4001,
-  kPlanErrorUnSupport,
-  kPlanErrorNullNode,
-  kPlanErrorQueryTreeIsEmpty,
-  kPlanErrorTableRefIsEmpty,
-  kPlanErrorQueryMultiTable,
+    kPlanErrorUnknow = 4001,
+    kPlanErrorUnSupport,
+    kPlanErrorNullNode,
+    kPlanErrorQueryTreeIsEmpty,
+    kPlanErrorTableRefIsEmpty,
+    kPlanErrorQueryMultiTable,
 
-  kExecuteErrorUnknow = 4001,
-  kExecuteErrorUnSupport,
-  kExecuteErrorNullNode,
+    kExecuteErrorUnknow = 4001,
+    kExecuteErrorUnSupport,
+    kExecuteErrorNullNode,
 
-  kRpcErrorUnknow = 6001,
-  kRpcErrorConnection,
+    kRpcErrorUnknow = 6001,
+    kRpcErrorConnection,
 };
 }  // namespace error
 
 namespace base {
 struct Status {
-  Status() : code(0), msg("ok") {}
-  Status(int32_t status_code, const std::string &msg_str)
-      : code(status_code), msg(msg_str) {}
-  int32_t code;
-  std::string msg;
+    Status() : code(0), msg("ok") {}
+    Status(int32_t status_code, const std::string &msg_str)
+        : code(status_code), msg(msg_str) {}
+    int32_t code;
+    std::string msg;
 };
 }  // namespace base
 
