@@ -50,9 +50,7 @@ struct TabletInfo {
 
 class ClusterInfo {
 public:
-    ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd, ::baidu::common::ThreadPool* tp);
-
-    ~ClusterInfo();
+    ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cdp);
 
     void CheckZkClient();
 
@@ -62,7 +60,7 @@ public:
 
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
 
-    int RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
+    bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, int* code, std::string& msg);
 
     const ::rtidb::nameserver::ClusterAddress& ReturnAdd() {
         return cluster_add_;
@@ -74,7 +72,6 @@ private:
     std::shared_ptr<::rtidb::client::NsClient> client_;
     std::shared_ptr<ZkClient> zk_client_;
     std::mutex mu_;
-    ::baidu::common::ThreadPool* thread_pool_;
     ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t session_term_;
     int64_t task_id_;
@@ -234,13 +231,13 @@ public:
             Closure* done);
 
     void AddReplicaCluster(RpcController* controller,
-            const AddReplicaClusterRequest* request,
+            const ClusterAddress* request,
             GeneralResponse* response,
             Closure* done);
 
     void AddReplicaClusterByNs(RpcController* controller,
-            const ReplicaClusterRequestByNs* request,
-            AddReplicaClusterRequestByNsResponse* response,
+            const ReplicaClusterByNsRequest* request,
+            AddReplicaClusterByNsResponse* response,
             Closure* done);
 
     void ShowReplicaCluster(RpcController* controller,
@@ -254,7 +251,7 @@ public:
             Closure* done);
 
     void RemoveReplicaClusterByNs(RpcController* controller,
-            const ReplicaClusterRequestByNs* request,
+            const ReplicaClusterByNsRequest* request,
             GeneralResponse* response,
             Closure* done);
 
@@ -271,6 +268,8 @@ public:
     void ProcessTask();
 
     int UpdateZKTaskStatus();
+
+    void CheckClusterInfo();
 
 private:
 
@@ -478,7 +477,7 @@ private:
     Tablets tablets_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
-    ReplicaClusterRequestByNs zone_info_;
+    ReplicaClusterByNsRequest zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;

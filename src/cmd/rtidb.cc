@@ -1679,8 +1679,8 @@ void HandleShowReplicaCluster(const std::vector<std::string>& parts, ::rtidb::cl
     }
     for (auto i : cluster_info) {
         std::vector<std::string> row;
-        row.push_back(i.replica().cluster_add().zk_endpoints());
-        row.push_back(i.replica().cluster_add().zk_path());
+        row.push_back(i.replica().zk_endpoints());
+        row.push_back(i.replica().zk_path());
         row.push_back(i.replica().alias());
         row.push_back(::rtidb::base::HumanReadableTime(i.age()));
         tp.AddRow(row);

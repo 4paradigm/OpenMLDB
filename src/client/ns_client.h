@@ -97,8 +97,8 @@ public:
 
     bool ShowReplicaCluster(std::vector<::rtidb::nameserver::ClusterAddAge>& clusterinfo, std::string &msg);
 
-    int RemoveReplicaClusterByNs(const std::string &alias, const std::string &zone_name, const uint64_t term,
-                          std::string &msg);
+    bool RemoveReplicaClusterByNs(const std::string &alias, const std::string &zone_name, const uint64_t term,
+                          int* code, std::string &msg);
 
     bool RemoveReplicaCluster(const std::string &alias, std::string &msg);
 private:

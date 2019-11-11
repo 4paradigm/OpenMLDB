@@ -267,16 +267,13 @@ message CancelOPRequest {
 message ClusterAddress {
     optional string zk_endpoints = 1;
     optional string zk_path = 2;
-}
-message AddReplicaClusterRequest {
-    optional ClusterAddress cluster_add = 1;
     optional string alias = 3;
 }
 
 message GeneralRequest {}
 
 message ClusterAddAge {
-    optional AddReplicaClusterRequest replica = 1;
+    optional ClusterAddress replica = 1;
     optional uint64 age = 2;
 }
 message ShowReplicaClusterResponse {
@@ -289,14 +286,14 @@ message RemoveReplicaOfRequest {
     optional string alias = 1;
 }
 
-message ReplicaClusterRequestByNs {
+message ReplicaClusterByNsRequest {
     optional string zone_name = 1;
     optional string replica_alias = 2;
     optional uint64 zone_term = 3;
     optional bool follower = 4;
 }
 
-message AddReplicaClusterRequestByNsResponse {
+message AddReplicaClusterByNsResponse {
     repeated TabletStatus tablets = 1;
     repeated TableInfo table_info = 2;
     required int32 code = 3;
@@ -328,9 +325,9 @@ service NameServer {
     rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
     rpc UpdateTableAliveStatus(UpdateTableAliveRequest) returns (GeneralResponse);
     rpc AddTableField(AddTableFieldRequest) returns (GeneralResponse);
-    rpc AddReplicaCluster(AddReplicaClusterRequest) returns (GeneralResponse);
+    rpc AddReplicaCluster(ClusterAddress) returns (GeneralResponse);
     rpc ShowReplicaCluster(GeneralRequest) returns (ShowReplicaClusterResponse);
     rpc RemoveReplicaCluster(RemoveReplicaOfRequest) returns (GeneralResponse);
-    rpc AddReplicaClusterByNs(ReplicaClusterRequestByNs) returns (AddReplicaClusterRequestByNsResponse);
-    rpc RemoveReplicaClusterByNs(ReplicaClusterRequestByNs) returns (GeneralResponse);
+    rpc AddReplicaClusterByNs(ReplicaClusterByNsRequest) returns (AddReplicaClusterByNsResponse);
+    rpc RemoveReplicaClusterByNs(ReplicaClusterByNsRequest) returns (GeneralResponse);
 }

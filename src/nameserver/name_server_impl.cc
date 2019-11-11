@@ -13,6 +13,7 @@
 #include "base/strings.h"
 #include <chrono>
 #include <boost/algorithm/string.hpp>
+#include <algorithm>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -41,14 +42,11 @@ namespace nameserver {
 const std::string OFFLINE_LEADER_ENDPOINT = "OFFLINE_LEADER_ENDPOINT";
 const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
-ClusterInfo::ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd, ::baidu::common::ThreadPool* tp): mu_(), thread_pool_(tp) {
+ClusterInfo::ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd): mu_() {
     cluster_add_.CopyFrom(cd);
     ctime_ = ::baidu::common::timer::get_micros()/1000;
-  }
-ClusterInfo::~ClusterInfo() {
-    std::lock_guard<std::mutex> lock(mu_);
-    thread_pool_->CancelTask(task_id_);
 }
+
 void ClusterInfo::CheckZkClient() {
     if (!zk_client_->IsConnected()) {
         PDLOG(WARNING, "reconnect zk");
@@ -64,90 +62,88 @@ void ClusterInfo::CheckZkClient() {
         PDLOG(WARNING, "watch node failed");
         }
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    task_id_ = thread_pool_->DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
 }
 void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
-      std::string endpoint;
-      if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/leader/" + children[0], endpoint)) {
-          PDLOG(WARNING, "get replica cluster leader ns failed");
-          return;
-      }
-      std::shared_ptr<::rtidb::client::NsClient> tmp_ptr = std::make_shared<::rtidb::client::NsClient>(endpoint);
-      if (tmp_ptr->Init() < 0) {
-          PDLOG(WARNING, "replica cluster ns client init failed");
-          return;
-      }
-      std::lock_guard<std::mutex> lock(mu_);
-      client_ = tmp_ptr;
-      ctime_ = ::baidu::common::timer::get_micros() / 1000;
+    std::vector<std::string> tmp_children(children.begin(), children.end());
+    std::sort(tmp_children.begin(), tmp_children.end());
+    std::string endpoint;
+    if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/leader/" + tmp_children[0], endpoint)) {
+        PDLOG(WARNING, "get replica cluster leader ns failed");
+        return;
+    }
+    std::shared_ptr<::rtidb::client::NsClient> tmp_ptr = std::make_shared<::rtidb::client::NsClient>(endpoint);
+    if (tmp_ptr->Init() < 0) {
+        PDLOG(WARNING, "replica cluster ns client init failed");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    client_ = tmp_ptr;
+    ctime_ = ::baidu::common::timer::get_micros() / 1000;
 }
 
 int ClusterInfo::Init(std::string& msg) {
-      zk_client_ = std::make_shared<ZkClient>(cluster_add_.zk_endpoints(), FLAGS_zk_session_timeout, "", \
-        cluster_add_.zk_path(), cluster_add_.zk_path() + "/leader");
-      bool ok = zk_client_->Init();
-      for (int i = 1; i < 3; i++) {
-        if (ok) {
-            break;
-        }
-        PDLOG(WARNING, "count %d fail to init zookeeper with cluster %s %s", i, cluster_add_.zk_endpoints().c_str(), cluster_add_.zk_path().c_str());
-        ok = zk_client_->Init();
-      }
-      if (!ok) {
-          msg = "connect relica cluster zk failed";
-          return 401;
-      }
-      session_term_ = zk_client_->GetSessionTerm();
-      std::vector<std::string> children;
-      if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/leader", children) || children.empty()) {
-          msg = "get zk failed";
-          PDLOG(WARNING, "get zk failed, get children");
-          return 451;
-      }
-      std::string endpoint;
-      if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/leader/" + children[0], endpoint)) {
-          msg = "get zk failed";
-          PDLOG(WARNING, "get zk failed, get replica cluster leader ns failed");
-          return 451;
-      }
-      client_ = std::make_shared<::rtidb::client::NsClient>(endpoint);
-      if (client_->Init() < 0) {
-          msg = "connect ns failed";
-          PDLOG(WARNING, "connect ns failed, replica cluster ns");
-          return 403;
-      }
-      /*
-      std::vector<::rtidb::nameserver::TableInfo> tables;
-      std::string rpc_msg;
-      if (!client.ShowTable("", tables, rpc_msg)) {
-          code = 300;
-          break;
-      }
-      if (tables.size() > 0) {
-          code = 300; 
-          rpc_msg = "remote cluster already has table, cann't add replica cluster";
-          break;
-      }
-       */
-      zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
-      zk_client_->WatchNodes();
-      task_id_ = thread_pool_->DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&ClusterInfo::CheckZkClient, this));
-      return 0;
+    zk_client_ = std::make_shared<ZkClient>(cluster_add_.zk_endpoints(), FLAGS_zk_session_timeout, "", \
+    cluster_add_.zk_path(), cluster_add_.zk_path() + "/leader");
+    bool ok = zk_client_->Init();
+    for (int i = 1; i < 3; i++) {
+    if (ok) {
+        break;
+    }
+    PDLOG(WARNING, "count %d fail to init zookeeper with cluster %s %s", i, cluster_add_.zk_endpoints().c_str(), cluster_add_.zk_path().c_str());
+    ok = zk_client_->Init();
+    }
+    if (!ok) {
+        msg = "connect relica cluster zk failed";
+        return 401;
+    }
+    session_term_ = zk_client_->GetSessionTerm();
+    std::vector<std::string> children;
+    if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/leader", children) || children.empty()) {
+        msg = "get zk failed";
+        PDLOG(WARNING, "get zk failed, get children");
+        return 451;
+    }
+    std::string endpoint;
+    if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/leader/" + children[0], endpoint)) {
+        msg = "get zk failed";
+        PDLOG(WARNING, "get zk failed, get replica cluster leader ns failed");
+        return 451;
+    }
+    client_ = std::make_shared<::rtidb::client::NsClient>(endpoint);
+    if (client_->Init() < 0) {
+        msg = "connect ns failed";
+        PDLOG(WARNING, "connect ns failed, replica cluster ns");
+        return 403;
+    }
+    /*
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string rpc_msg;
+    if (!client.ShowTable("", tables, rpc_msg)) {
+        code = 300;
+        break;
+    }
+    if (tables.size() > 0) {
+        code = 300;
+        rpc_msg = "remote cluster already has table, cann't add replica cluster";
+        break;
+    }
+    */
+    zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
+    zk_client_->WatchNodes();
+    return 0;
 }
 bool ClusterInfo::AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg) {
-      if (!client_->AddReplicaClusterByNs(alias, zone_name, term, msg)) {
-          PDLOG(WARNING, "send MakeReplicaCluster request failed");
-          return false;
-      }
-      return true;
-  }
+    if (!client_->AddReplicaClusterByNs(alias, zone_name, term, msg)) {
+        PDLOG(WARNING, "send MakeReplicaCluster request failed");
+        return false;
+    }
+    return true;
+}
 
-int ClusterInfo::RemoveReplicaClusterByNs(const std::string &alias,
-    const std::string &zone_name,
-    const uint64_t term,
+bool ClusterInfo::RemoveReplicaClusterByNs(const std::string &alias,
+    const std::string &zone_name, const uint64_t term, int* code,
     std::string &msg) {
-    return client_->RemoveReplicaClusterByNs(alias, zone_name, term, msg);
+    return client_->RemoveReplicaClusterByNs(alias, zone_name, term, code, msg);
   }
 
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
@@ -255,13 +251,6 @@ bool NameServerImpl::Recover() {
             zone_info_.ParseFromString(value);
             follower_.store(zone_info_.follower(), std::memory_order_release);
             PDLOG(WARNING, "recover zone info : %s", value.c_str());
-        } else {
-            value.clear();
-            zone_info_.SerializeToString(&value);
-            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/follower", value)) {
-                PDLOG(WARNING, "create zone follower node failed!");
-                return false;
-            }
         }
         if (!RecoverTableInfo()) {
             PDLOG(WARNING, "recover table info failed!");
@@ -279,6 +268,7 @@ bool NameServerImpl::Recover() {
         RecoverClusterInfo();
     }
     UpdateTaskStatus(true);
+    thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
     return true;
 }
 
@@ -314,7 +304,7 @@ void NameServerImpl::RecoverClusterInfo() {
         }
         ::rtidb::nameserver::ClusterAddress cluster_add;
         cluster_add.ParseFromString(value);
-        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(cluster_add, &thread_pool_);
+        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(cluster_add);
         PDLOG(INFO, "zk add %s|%s", cluster_add.zk_endpoints().c_str(), cluster_add.zk_path().c_str());
         if (cluster_info->Init(rpc_msg) != 0) {
             PDLOG(WARNING, "%s init failed, error: %s", alias.c_str(), rpc_msg.c_str());
@@ -5377,7 +5367,7 @@ bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
 }
 
 void NameServerImpl::AddReplicaCluster(RpcController* controller,
-        const AddReplicaClusterRequest* request,
+        const ClusterAddress* request,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -5395,14 +5385,14 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             rpc_msg = "replica cluster alias duplicate";
             break;
         }
-        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(request->cluster_add(), &thread_pool_);
+        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(*request);
         if ((code = cluster_info->Init(rpc_msg)) != 0) {
             PDLOG(WARNING, "%s init failed, error: %s", request->alias().c_str(), rpc_msg.c_str());
             break;
         }
         std::lock_guard<std::mutex> lock(mu_);
         std::string cluster_value, value;
-        request->cluster_add().SerializeToString(&cluster_value);
+        request->SerializeToString(&cluster_value);
         if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), value)) {
             if(!zk_client_->SetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
                 PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
@@ -5430,8 +5420,8 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
 }
 
 void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
-        const ::rtidb::nameserver::ReplicaClusterRequestByNs* request,
-        ::rtidb::nameserver::AddReplicaClusterRequestByNsResponse* response,
+        const ::rtidb::nameserver::ReplicaClusterByNsRequest* request,
+        ::rtidb::nameserver::AddReplicaClusterByNsResponse* response,
         ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     uint64_t code = 0;
@@ -5502,8 +5492,8 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
         auto* status = response->add_replicas();
         auto replica = status->mutable_replica();
         replica->set_alias(it->first);
-        replica->mutable_cluster_add()->set_zk_path(it->second->ReturnAdd().zk_path());
-        replica->mutable_cluster_add()->set_zk_endpoints(it->second->ReturnAdd().zk_endpoints());
+        replica->set_zk_path(it->second->ReturnAdd().zk_path());
+        replica->set_zk_endpoints(it->second->ReturnAdd().zk_endpoints());
         status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ReturnCt());
     }
     response->set_code(0);
@@ -5530,8 +5520,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             rpc_msg = "replica name not found";
             break;
         }
-        code = it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), rpc_msg);
-        if (code != 0) {
+        if (!it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), &code, rpc_msg)) {
             break;
         }
         if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
@@ -5547,7 +5536,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
 }
 
 void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
-        const ::rtidb::nameserver::ReplicaClusterRequestByNs* request,
+        const ::rtidb::nameserver::ReplicaClusterByNsRequest* request,
         ::rtidb::nameserver::GeneralResponse* response,
         ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -5560,29 +5549,28 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    if (!follower_.load(std::memory_order_acquire)) {
+        response->set_code(405);
+        response->set_msg("this is not follower");
+        return;
+    }
     do {
-        if (!follower_.load(std::memory_order_acquire)) {
-            response->set_code(300);
-            response->set_msg("cur nameserver is not follower");
+        std::lock_guard<std::mutex> lock(mu_);
+        if (request->replica_alias() != zone_info_.replica_alias()) {
+            code = 402;
+            rpc_msg = "not same replica name";
             break;
+        }
+        if (request->zone_name() == zone_info_.zone_name()) {
+            if (request->zone_term() < zone_info_.zone_term()) {
+                code = 406;
+                rpc_msg = "term le cur term";
+                break;
+            }
         } else {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (request->replica_alias() != zone_info_.replica_alias()) {
-                code = 402;
-                rpc_msg = "not same replica name";
-                break;
-            }
-            if (request->zone_name() == zone_info_.zone_name()) {
-                if (request->zone_term() < zone_info_.zone_term()) {
-                    code = 406;
-                    rpc_msg = "term le cur term";
-                    break;
-                }
-            } else {
-                code = 407;
-                rpc_msg = "zone name not equal";
-                break;
-            }
+            code = 407;
+            rpc_msg = "zone name not equal";
+            break;
         }
         std::string value;
         request->SerializeToString(&value);
@@ -5592,14 +5580,27 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
             PDLOG(WARNING, "set zk failed, save follower value failed");
             break;
         }
-        PDLOG(INFO, "set follower zk success, value is false");
         follower_.store(request->follower(), std::memory_order_release);
-        std::lock_guard<std::mutex> lock(mu_);
         zone_info_.CopyFrom(*request);
     } while(0);
     response->set_code(code);
     response->set_msg(rpc_msg);
     return;
+}
+
+void NameServerImpl::CheckClusterInfo() {
+    std::lock_guard<std::mutex> lock(mu_);
+    do {
+        if (nsc_.size() < 1) {
+            break;
+        }
+        decltype(nsc_) tmp_nsc = nsc_;
+        for (auto i : nsc_) {
+           i.second->CheckZkClient();
+        }
+    } while(0);
+
+    thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
 }
 }
 }
