@@ -33,6 +33,9 @@ DECLARE_int32(gc_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(max_traverse_cnt);
+DECLARE_bool(recycle_bin_enabled);
+DECLARE_string(db_root_path);
+DECLARE_string(recycle_bin_root_path);
 
 namespace rtidb {
 namespace tablet {
@@ -2456,6 +2459,67 @@ TEST_F(TabletImplTest, DropTable) {
     tablet.CreateTable(NULL, &request, &response,
             &closure);
     ASSERT_EQ(0, response.code());
+}
+
+TEST_F(TabletImplTest, DropTableNoRecycle) {
+    bool tmp_recycle_bin_enabled = FLAGS_recycle_bin_enabled;
+    std::string tmp_db_root_path = FLAGS_db_root_path;
+    std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
+    std::vector<std::string> file_vec;
+    FLAGS_recycle_bin_enabled = false;
+    FLAGS_db_root_path = "/tmp/gtest/db";
+    FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
+    ::rtidb::base::RemoveDirRecursive(FLAGS_db_root_path);
+    ::rtidb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
+    TabletImpl tablet;
+    uint32_t id = counter++;
+    tablet.Init();
+    MockClosure closure;
+    ::rtidb::api::DropTableRequest dr;
+    dr.set_tid(id);
+    dr.set_pid(1);
+    ::rtidb::api::DropTableResponse drs;
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(100, drs.code());
+
+    ::rtidb::api::CreateTableRequest request;
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(1);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+    ::rtidb::api::CreateTableResponse response;
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+
+    ::rtidb::api::PutRequest prequest;
+    prequest.set_pk("test1");
+    prequest.set_time(9527);
+    prequest.set_value("test0");
+    prequest.set_tid(id);
+    prequest.set_pid(1);
+    ::rtidb::api::PutResponse presponse;
+    tablet.Put(NULL, &prequest, &presponse,
+            &closure);
+    ASSERT_EQ(0, presponse.code());
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(0, drs.code());
+    sleep(1);
+    ::rtidb::base::GetChildFileName(FLAGS_db_root_path, file_vec);
+    std::string db_bin = "/tmp/gtest/db/" + std::to_string(id) + "_1";
+    for (auto file : file_vec) {
+        ASSERT_NE(db_bin, file);
+    }
+    file_vec.clear();
+    ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ASSERT_TRUE(file_vec.empty());
+    tablet.CreateTable(NULL, &request, &response, &closure);
+    ASSERT_EQ(0, response.code());
+    FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
+    FLAGS_db_root_path = tmp_db_root_path;
+    FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
 }
 
 TEST_F(TabletImplTest, Recover) {
