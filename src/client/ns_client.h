@@ -91,7 +91,7 @@ public:
                    uint64_t ttl, const std::string& ts_name,
                    std::string& msg);
 
-    bool AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t& term, std::string& msg);
+    bool AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t term, std::string& msg);
 
     bool AddReplicaCluster(const std::string &zk_ep, const std::string &zk_path, const std::string &alias, std::string& msg);
 

@@ -423,7 +423,7 @@ bool NsClient::UpdateTTL(const std::string& name,
     return false;
 }
 
-bool NsClient::AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t& term, std::string& msg) {
+bool NsClient::AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t term, std::string& msg) {
     ::rtidb::nameserver::ReplicaClusterRequestByNs request;
     ::rtidb::nameserver::AddReplicaClusterRequestByNsResponse response;
     request.set_replica_alias(alias);
