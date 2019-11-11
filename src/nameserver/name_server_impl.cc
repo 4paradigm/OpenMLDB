@@ -5589,13 +5589,17 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
 }
 
 void NameServerImpl::CheckClusterInfo() {
-    std::lock_guard<std::mutex> lock(mu_);
     do {
-        if (nsc_.size() < 1) {
-            break;
+        decltype(nsc_) tmp_nsc;
+        {
+
+            std::lock_guard<std::mutex> lock(mu_);
+            if (nsc_.size() < 1) {
+                break;
+            }
+            tmp_nsc = nsc_;
         }
-        decltype(nsc_) tmp_nsc = nsc_;
-        for (auto i : nsc_) {
+        for (auto i : tmp_nsc) {
            i.second->CheckZkClient();
         }
     } while(0);
