@@ -43,6 +43,8 @@ class Planner {
     void CreateProjectPlanNode(node::SQLNode *root, std::string table_name,
                                node::ProjectPlanNode *plan_tree,
                                Status &status);  // NOLINT (runtime/references)
+    void CreateCmdPlan(SQLNode *root, node::CmdPlanNode *plan_tree,
+                       Status &status);  // NOLINT (runtime/references)
     void CreateDataProviderPlanNode(
         node::SQLNode *root, PlanNode *plan_tree,
         Status &status);  // NOLINT (runtime/references)

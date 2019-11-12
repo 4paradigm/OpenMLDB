@@ -40,9 +40,13 @@ void FeSQLAnalyser::Analyse(SQLNode *parser_tree,
     }
     switch (parser_tree->GetType()) {
         case node::kSelectStmt:
-            return TransformSelectNode((node::SelectStmt *)parser_tree, status);
+            return TransformSelectNode(dynamic_cast<node::SelectStmt *>(parser_tree), status);
         case node::kCreateStmt:
-            return TransformCreateNode((node::CreateStmt *)parser_tree, status);
+            return TransformCreateNode(
+                dynamic_cast<node::CreateStmt *>(parser_tree), status);
+        case node::kCmdStmt:
+            return TransformCmdNode(dynamic_cast<node::CmdNode *>(parser_tree),
+                                    status);
         default: {
             status.msg = "can not support " +
                          node::NameOfSQLNodeType(parser_tree->GetType());
@@ -323,6 +327,11 @@ void FeSQLAnalyser::TransformCreateNode(
         status.code = error::kAnalyserErrorTableAlreadyExist;
         return;
     }
+}
+void FeSQLAnalyser::TransformCmdNode(
+    node::CmdNode *node_ptr, Status &status) {  // NOLINT (runtime/references)
+    // no nothing
+
 }
 
 }  // namespace analyser

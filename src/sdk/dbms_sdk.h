@@ -20,6 +20,7 @@
 #include <node/node_enum.h>
 #include <proto/type.pb.h>
 #include <string>
+#include <vector>
 
 namespace fesql {
 namespace sdk {
@@ -50,6 +51,8 @@ class DBMSSdk {
                                base::Status &status) = 0;
     virtual void ExecuteScript(const std::string &sql_str,
                                base::Status &status) = 0;
+    virtual void PrintTableSchema(fesql::type::TableDef def) = 0;
+    virtual void PrintItems(std::vector<std::string> items) = 0;
 };
 
 // create a new dbms sdk with a endpoint

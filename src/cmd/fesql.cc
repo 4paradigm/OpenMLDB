@@ -40,8 +40,7 @@ DEFINE_string(role, "tablet | dbms | client ", "Set the fesql role");
 
 static ::fesql::sdk::DBMSSdk *dbms_sdk = NULL;
 
-void PrintTableSchema(fesql::type::TableDef def);
-void PrintItems(std::vector<std::string> items);
+
 
 void HandleSQLScript(std::string basicString);
 void HandleCreateSchema(std::string str, ::fesql::base::Status &status);
@@ -173,7 +172,7 @@ void HandleShowDatabases() {
     std::vector<std::string> items;
     dbms_sdk->ShowDatabases(items, status);
     if (status.code == 0) {
-        PrintItems(items);
+        dbms_sdk->PrintItems(items);
     } else {
         std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
     }
@@ -190,7 +189,7 @@ void HandleShowTables() {
     std::vector<std::string> items;
     dbms_sdk->ShowTables(items, status);
     if (status.code == 0) {
-        PrintItems(items);
+        dbms_sdk->PrintItems(items);
     } else {
         std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
     }
@@ -208,21 +207,13 @@ void HandleShowSchema(std::string table_name) {
     ::fesql::type::TableDef table;
     dbms_sdk->ShowSchema(table_name, table, status);
     if (status.code == 0) {
-        PrintTableSchema(table);
+        dbms_sdk->PrintTableSchema(table);
     } else {
         std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
     }
 }
 
-void PrintTableSchema(fesql::type::TableDef table) {
-    std::cout << table.DebugString() << std::endl;
-}
-void PrintItems(std::vector<std::string> items) {
-    for (auto item : items) {
-        std::cout << item << std::endl;
-    }
-    std::cout << items.size() << " rows in set " << std::endl;
-}
+
 void StartClient(char *argv[]) {
     SetupLogging(argv);
     std::cout << "Welcome to FeSQL " << FESQL_VERSION_MAJOR << "."
@@ -251,6 +242,7 @@ void StartClient(char *argv[]) {
         }
 
         cmd_str.append(buf);
+        //TODO(CHENJING) remove
         if (cmd_mode && cmd_str[0] == '.') {
             cmd_mode = true;
             std::vector<std::string> parts;
@@ -344,7 +336,6 @@ void HandleEnterDatabase(std::string &db_name) {
     }
 }
 void HandleSQLScript(std::string script) {
-    std::cout << "handle script:\n" << script << std::endl;
     if (dbms_sdk == NULL) {
         dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
         if (dbms_sdk == NULL) {
@@ -353,11 +344,8 @@ void HandleSQLScript(std::string script) {
         }
     }
     ::fesql::base::Status status;
-    ::fesql::type::TableDef table;
     dbms_sdk->ExecuteScript(script, status);
-    if (status.code == 0) {
-        std::cout << "sucess" << std::endl;
-    } else {
+    if (status.code != 0) {
         std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
     }
 }

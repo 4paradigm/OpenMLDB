@@ -28,7 +28,7 @@ namespace node {
 // Global methods
 std::string NameOfSQLNodeType(const SQLNodeType &type);
 
-inline const std::string DataTypeName(const CmdType &type) {
+inline const std::string CmdTypeName(const CmdType &type) {
     switch (type) {
         case kCmdShowDatabases:
             return "show databases";
@@ -815,13 +815,11 @@ class CmdNode : public SQLNode {
 
     ~CmdNode() {}
 
-    void AddArg(const std::string &arg) {
-        args_.push_back(arg);
-    }
-    const std::vector<std::string> & GetArgs() const {
-        return args_;
-    }
+    void AddArg(const std::string &arg) { args_.push_back(arg); }
+    const std::vector<std::string> &GetArgs() const { return args_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
+
+    const node::CmdType GetCmdType() const { return cmd_type_; }
 
  private:
     node::CmdType cmd_type_;

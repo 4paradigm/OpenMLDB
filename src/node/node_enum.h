@@ -119,6 +119,7 @@ enum CmdType {
  *
  */
 enum PlanType {
+    kPlanTypeCmd,
     kPlanTypeSelect,
     kPlanTypeCreate,
     kPlanTypeScan,
@@ -179,6 +180,11 @@ enum ErrorType {
     kExecuteErrorUnSupport,
     kExecuteErrorNullNode,
 
+    kCmdErrorUnknow = 5001,
+    kCmdErrorUnSupport,
+    kCmdErrorNullNode,
+    kCmdErrorPathError,
+    
     kRpcErrorUnknow = 6001,
     kRpcErrorConnection,
 };

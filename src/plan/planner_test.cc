@@ -167,6 +167,34 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
     //    ASSERT_EQ(3, index_node->GetVersionCount());
 }
 
+TEST_F(PlannerTest, CmdStmtPlanTest) {
+    const std::string sql_str =
+        "show databases;";
+
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    int ret = parser_->parse(sql_str, list, manager_, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1, list.size());
+    std::cout << *(list[0]) << std::endl;
+
+    Planner *planner_ptr = new SimplePlanner(manager_);
+    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+    ASSERT_EQ(1, trees.size());
+    PlanNode *plan_ptr = trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+
+    // validate create plan
+    ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+    node::CmdPlanNode *cmd_plan= (node::CmdPlanNode *)plan_ptr;
+    ASSERT_TRUE(NULL != cmd_plan->GetCmdNode());
+    ASSERT_EQ(node::kCmdShowDatabases, cmd_plan->GetCmdNode()->GetCmdType());
+
+}
+
 }  // namespace plan
 }  // namespace fesql
 

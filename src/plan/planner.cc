@@ -177,14 +177,27 @@ int SimplePlanner::CreatePlanTree(
                 break;
             }
             case node::kCreateStmt: {
-                PlanNode *create_plan =
+                PlanNode *plan =
                     node_manager_->MakePlanNode(node::kPlanTypeCreate);
                 CreateCreateTablePlan(
-                    parser_tree, (node::CreatePlanNode *)create_plan, status);
+                    parser_tree, dynamic_cast<node::CreatePlanNode *>(plan),
+                    status);
                 if (0 != status.code) {
                     return status.code;
                 }
-                plan_trees.push_back(create_plan);
+                plan_trees.push_back(plan);
+                break;
+            }
+            case node::kCmdStmt: {
+                node::PlanNode *cmd_plan =
+                    node_manager_->MakePlanNode(node::kPlanTypeCmd);
+                CreateCmdPlan(parser_tree,
+                              dynamic_cast<node::CmdPlanNode *>(cmd_plan),
+                              status);
+                if (0 != status.code) {
+                    return status.code;
+                }
+                plan_trees.push_back(cmd_plan);
                 break;
             }
             default: {
@@ -196,6 +209,21 @@ int SimplePlanner::CreatePlanTree(
         }
     }
     return status.code;
+}
+void Planner::CreateCmdPlan(SQLNode *root, node::CmdPlanNode *plan,
+                                  Status &status) {
+    if (nullptr == root) {
+        status.msg = "fail to create cmd plan node: query tree node it null";
+        status.code = error::kPlanErrorNullNode;
+        return;
+    }
+    
+    if (root->GetType() != node::kCmdStmt) {
+        status.msg = "fail to create cmd plan node: query tree node it not cmd type";
+        status.code = error::kPlanErrorUnSupport;
+        return; 
+    }
+    plan->SetCmdNode(dynamic_cast<node::CmdNode *>(root));
 }
 
 void transformTableDef(const std::string &table_name,

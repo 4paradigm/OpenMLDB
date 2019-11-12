@@ -228,6 +228,21 @@ class CreatePlanNode : public LeafPlanNode {
     NodePointVector column_desc_list_;
 };
 
+class CmdPlanNode : public LeafPlanNode {
+ public:
+    CmdPlanNode() : LeafPlanNode(kPlanTypeCmd) {}
+    ~CmdPlanNode() {}
+    
+    void SetCmdNode(CmdNode *node) {
+        cmd_node_ = node;
+    }
+    
+    const CmdNode *GetCmdNode() const {
+        return cmd_node_;
+    }
+ private:
+    CmdNode * cmd_node_;
+};
 void PrintPlanVector(std::ostream &output, const std::string &tab,
                      PlanNodeList vec, const std::string vector_name,
                      bool last_item);

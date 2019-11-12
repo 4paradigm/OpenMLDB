@@ -450,7 +450,7 @@ void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, DataTypeName(cmd_type_), "cmd_type", false);
+    PrintValue(output, tab, CmdTypeName(cmd_type_), "cmd_type", false);
     output << "\n";
     PrintValue(output, tab, args_, "args", true);
 }
