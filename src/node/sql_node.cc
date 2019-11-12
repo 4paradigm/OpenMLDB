@@ -319,7 +319,7 @@ void FillSQLNodeList2NodeVector(
 std::string WindowOfExpression(SQLNode *node_ptr) {
   switch (node_ptr->GetType()) {
     case kFunc: {
-      FuncNode *func_node_ptr = dynamic_cast<FuncNode *>(node_ptr);
+      FuncNode *func_node_ptr = reinterpret_cast<FuncNode *>(node_ptr);
       if (nullptr != func_node_ptr->GetOver()) {
         return func_node_ptr->GetOver()->GetName();
       }

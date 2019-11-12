@@ -8,7 +8,6 @@
  **/
 #include "analyser/analyser.h"
 #include <string>
-#include "../node/node_enum.h"
 namespace fesql {
 namespace analyser {
 
@@ -31,9 +30,6 @@ int FeSQLAnalyser::Analyse(NodePointVector &parser_trees,
 }
 
 int FeSQLAnalyser::Analyse(SQLNode *parser_tree) {
-  if (nullptr == parser_tree) {
-    return error::kPlanErrorNullNode;
-  }
   int ret = 0;
   switch (parser_tree->GetType()) {
     case node::kSelectStmt:
