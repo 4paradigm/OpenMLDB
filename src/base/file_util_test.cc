@@ -35,8 +35,14 @@ TEST_F(FileUtilTest, GetChildFileName) {
 }
 
 TEST_F(FileUtilTest, IsFolder) {
-    MkdirRecur("/tmp/gtest/gcfn/test/");
+    MkdirRecur("/tmp/gtest/test/testdir");
     FILE * f = fopen("/tmp/gtest/test0.txt", "w");
+    if(f!=nullptr)
+        fclose(f);
+    f = fopen("/tmp/gtest/test/test1.txt", "w");
+    if(f!=nullptr)
+        fclose(f);
+    f = fopen("/tmp/gtest/test/testdir/test2.txt", "w");
     if(f!=nullptr)
         fclose(f);
     ASSERT_TRUE(IsFolder(std::string("/tmp/gtest")));
@@ -63,5 +69,8 @@ TEST_F(FileUtilTest, RemoveDirRecursive) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
+    int ret = RUN_ALL_TESTS();
+    ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
+    return ret;
 }

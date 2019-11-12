@@ -2469,8 +2469,7 @@ TEST_F(TabletImplTest, DropTableNoRecycle) {
     FLAGS_recycle_bin_enabled = false;
     FLAGS_db_root_path = "/tmp/gtest/db";
     FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
-    ::rtidb::base::RemoveDirRecursive(FLAGS_db_root_path);
-    ::rtidb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
+    ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init();
@@ -2514,6 +2513,7 @@ TEST_F(TabletImplTest, DropTableNoRecycle) {
     ASSERT_TRUE(file_vec.empty());
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
+    ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
     FLAGS_db_root_path = tmp_db_root_path;
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
