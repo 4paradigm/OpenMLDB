@@ -86,11 +86,11 @@ int ClusterInfo::Init(std::string& msg) {
     cluster_add_.zk_path(), cluster_add_.zk_path() + "/leader");
     bool ok = zk_client_->Init();
     for (int i = 1; i < 3; i++) {
-    if (ok) {
-        break;
-    }
-    PDLOG(WARNING, "count %d fail to init zookeeper with cluster %s %s", i, cluster_add_.zk_endpoints().c_str(), cluster_add_.zk_path().c_str());
-    ok = zk_client_->Init();
+        if (ok) {
+            break;
+        }
+        PDLOG(WARNING, "count %d fail to init zookeeper with cluster %s %s", i, cluster_add_.zk_endpoints().c_str(), cluster_add_.zk_path().c_str());
+        ok = zk_client_->Init();
     }
     if (!ok) {
         msg = "connect relica cluster zk failed";
