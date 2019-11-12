@@ -268,7 +268,6 @@ bool NameServerImpl::Recover() {
         RecoverClusterInfo();
     }
     UpdateTaskStatus(true);
-    thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
     return true;
 }
 
@@ -295,17 +294,21 @@ void NameServerImpl::RecoverClusterInfo() {
         return;
     }
     PDLOG(INFO, "need to recover cluster info[%d]", cluster_vec.size());
+
     std::string value, rpc_msg;
     for (const auto& alias: cluster_vec) {
+
         value.clear();
         if (!zk_client_->GetNodeValue(zk_zone_data_path_ + "/replica/" + alias, value)) {
             PDLOG(WARNING, "get cluster info failed! name[%s]", alias.c_str());
             continue;
         }
+
         ::rtidb::nameserver::ClusterAddress cluster_add;
         cluster_add.ParseFromString(value);
         std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(cluster_add);
         PDLOG(INFO, "zk add %s|%s", cluster_add.zk_endpoints().c_str(), cluster_add.zk_path().c_str());
+
         if (cluster_info->Init(rpc_msg) != 0) {
             PDLOG(WARNING, "%s init failed, error: %s", alias.c_str(), rpc_msg.c_str());
             continue;
@@ -820,7 +823,8 @@ bool NameServerImpl::Init() {
     session_term_ = zk_client_->GetSessionTerm();
 
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
-    dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_, 
+    thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
+    dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_,
             boost::bind(&NameServerImpl::OnLocked, this), boost::bind(&NameServerImpl::OnLostLock, this),
             FLAGS_endpoint);
     dist_lock_->Lock();
