@@ -38,6 +38,21 @@ public class GetFuture implements Future<ByteString>{
 		this.config = config;
 	}
 
+	public static GetFuture wrappe(Future<Tablet.GetResponse> f, long _, RTIDBClientConfig config) {
+		return new GetFuture(f, config);
+	}
+
+	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, long _, RTIDBClientConfig config) {
+		this.f = f;
+		this.t = t;
+		this.config = config;
+	}
+
+	public GetFuture(Future<Tablet.GetResponse> f, long _, RTIDBClientConfig config) {
+		this.f = f;
+		this.config = config;
+	}
+
 	@Override
 	public boolean cancel(boolean mayInterruptIfRunning) {
 		return f.cancel(mayInterruptIfRunning);

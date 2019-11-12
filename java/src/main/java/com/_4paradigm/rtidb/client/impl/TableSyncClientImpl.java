@@ -778,7 +778,8 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + name);
         }
         if (th.hasTsCol()) {
-            throw new TabletException("has ts column. should not set time");
+//            throw new TabletException("has ts column. should not set time");
+            return put(name, row);
         }
         return put(name, time, row, null);
     }
@@ -923,7 +924,8 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         if (th.hasTsCol()) {
-            throw new TabletException("has ts column. should not set time");
+//            throw new TabletException("has ts column. should not set time");
+            return put(tname, row);
         }
         if (row == null) {
             throw new TabletException("putting data is null");
