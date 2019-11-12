@@ -22,7 +22,7 @@ configure_file (
       "${PROJECT_SOURCE_DIR}/src/cmd/version.h"
 )
 option(TESTING_ENABLE "Enable Test" ON)
-option(COVERAGE_ENABLE "Enable Coverage" OFF)
+option(COVERAGE_ENABLE "Enable Coverage" ON)
 if (TESTING_ENABLE)
     enable_testing()
 endif()
