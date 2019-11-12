@@ -18,7 +18,7 @@
 #ifndef SRC_VM_TABLE_MGR_H_
 #define SRC_VM_TABLE_MGR_H_
 
-#include "proto/type.pb"
+#include "proto/type.pb.h"
 #include "storage/table.h"
 
 namespace fesql {
@@ -28,21 +28,21 @@ struct TableStatus {
     uint32_t tid;
     uint32_t pid;
     ::fesql::type::TableDef table_def;
-    ::fesql::storage::Table table;
+    ::fesql::storage::Table* table;
 };
 
 class TableMgr {
 
  public:
-    virtual ~TableMgr() = 0;
+    virtual ~TableMgr() {}
 
     virtual bool GetTableDef(const std::string& db,
                              const std::string& name,
-                             TableStatus** table) const = 0;
+                             TableStatus** table) = 0;
 
     virtual bool GetTableDef(const uint64_t catalog_id,
                              const uint64_t tid,
-                             TableStatus** table) const = 0;
+                             TableStatus** table) = 0;
 };
 
 }  // namespace vm

@@ -12,10 +12,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <atomic>
-#include "iterator.h"
+#include "base/iterator.h"
 
 namespace fesql {
 namespace storage {
+
+using ::fesql::base::Iterator;
 
 const uint16_t MAX_ARRAY_LIST_LEN = 400;
 
@@ -182,6 +184,9 @@ public:
             node_ = list_->head_;
             Next();
         }
+        virtual bool IsSeekable() const override {
+            return true;
+        }
     private:
         LinkListNode<K, V>* node_;
         LinkList<K, V, Comparator>* const list_;
@@ -346,6 +351,9 @@ public:
             if (array_ != NULL) {
                 pos_ = list_->FindLessThan(key);
             }
+        }
+        virtual bool IsSeekable() const override {
+            return true;
         }
         virtual void SeekToFirst() override {
             pos_ = 0;

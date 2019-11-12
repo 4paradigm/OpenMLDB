@@ -310,6 +310,10 @@ public:
             node_ = node_->GetNext(0);
         }
 
+        virtual bool IsSeekable() const override {
+            return true;
+        }
+
         virtual const K& GetKey() const override {
             assert(Valid());
             return node_->GetKey();

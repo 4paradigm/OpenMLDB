@@ -52,7 +52,7 @@ struct ProjectOp {
 struct LimitOp {
     OpType type;
     uint32_t limit;
-}
+};
 
 }  // namespace vm
 }  // namespace fesql

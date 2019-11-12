@@ -1,0 +1,6 @@
+import "common.proto";
+
+package fesql.dbms;
+option cc_generic_services = true;
+option java_package = "com._4paradigm.fesql.tablet";
+option java_outer_classname = "Tablet";

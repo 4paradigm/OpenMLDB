@@ -28,11 +28,11 @@ public:
         return type_;
     }
 
-    std::vector<PlanNode *> &GetChildren() {
+    const std::vector<PlanNode *> &GetChildren()  const {
         return children_;
     }
 
-    int GetChildrenSize() {
+    int GetChildrenSize() const {
         return children_.size();
     }
 
@@ -100,15 +100,19 @@ private:
 class ScanPlanNode : public UnaryPlanNode {
 public:
     ScanPlanNode(const std::string &table_name, PlanType scan_type)
-        : UnaryPlanNode(kPlanTypeScan), scan_type_(scan_type), table_name(table_name), limit_cnt(-1) {};
+        : UnaryPlanNode(kPlanTypeScan), scan_type_(scan_type), table_name_(table_name), limit_cnt(-1) {};
     ~ScanPlanNode() {};
 
     PlanType GetScanType() {
         return scan_type_;
     }
 
-    int GetLimit() {
+    const int GetLimit() const {
         return limit_cnt;
+    }
+
+    const std::string& GetTable() const  {
+        return table_name_;
     }
 
     void SetLimit(int limit) {
@@ -121,7 +125,7 @@ public:
 private:
     //TODO: OP tid
     PlanType scan_type_;
-    std::string table_name;
+    std::string table_name_;
     //TODO: M2
     SQLNode *condition;
     int limit_cnt;
@@ -136,7 +140,7 @@ public:
 
     ~LimitPlanNode() {};
 
-    int GetLimitCnt() {
+    const int GetLimitCnt() const {
         return limit_cnt_;
     }
 
@@ -214,7 +218,7 @@ public:
         projects.push_back((PlanNode *) project);
     }
 
-    std::string GetTable() const {
+    const std::string GetTable() const {
         return table_;
     }
 

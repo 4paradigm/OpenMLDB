@@ -14,7 +14,7 @@ namespace fesql {
 namespace plan {
 
 //Planner implementation
-PlanNode *SimplePlanner::CreatePlan(SQLNode *parser_tree_ptr) {
+PlanNode *SimplePlanner::CreatePlan(const SQLNode *parser_tree_ptr) {
 
     if (nullptr == parser_tree_ptr) {
         LOG(WARNING) << "can not create plan with null parser tree";
@@ -24,14 +24,14 @@ PlanNode *SimplePlanner::CreatePlan(SQLNode *parser_tree_ptr) {
     return CreatePlanRecurse(parser_tree_ptr);
 }
 
-PlanNode *Planner::CreatePlanRecurse(SQLNode *root) {
+PlanNode *Planner::CreatePlanRecurse(const SQLNode *root) {
     if (nullptr == root) {
         LOG(WARNING) << "return null plan node with null parser tree";
         return nullptr;
     }
 
     switch (root->GetType()) {
-        case node::kSelectStmt:return CreateSelectPlan((node::SelectStmt *) root);
+        case node::kSelectStmt:return CreateSelectPlan((const node::SelectStmt *) root);
         default:return nullptr;
 
     }
@@ -60,9 +60,9 @@ PlanNode *Planner::CreatePlanRecurse(SQLNode *root) {
  * @param root
  * @return select plan node
  */
-PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
+PlanNode *Planner::CreateSelectPlan(const node::SelectStmt *root) {
 
-    node::NodePointVector table_ref_list = root->GetTableRefList();
+    const node::NodePointVector& table_ref_list = root->GetTableRefList();
 
     if (table_ref_list.empty()) {
         LOG(ERROR) << "can not create select plan node with empty table references";
@@ -74,7 +74,7 @@ PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
         return nullptr;
     }
 
-    node::TableNode *table_node_ptr = (node::TableNode *) table_ref_list.at(0);
+    const node::TableNode *table_node_ptr = (const node::TableNode *) table_ref_list.at(0);
 
     node::SelectPlanNode *select_plan = (node::SelectPlanNode *) node_manager_->MakePlanNode(node::kSelect);
 
@@ -83,7 +83,7 @@ PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
     std::map<std::string, node::ProjectListPlanNode *> project_list_map;
     // set limit
     if (nullptr != root->GetLimit()) {
-        node::LimitNode *limit_ptr = (node::LimitNode *) root->GetLimit();
+        const node::LimitNode *limit_ptr = (node::LimitNode *) root->GetLimit();
         node::LimitPlanNode *limit_plan_ptr = (node::LimitPlanNode *) node_manager_->MakePlanNode(node::kPlanTypeLimit);
         limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
         current_node->AddChild(limit_plan_ptr);
@@ -91,9 +91,8 @@ PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
     }
 
 
-
     // prepare project list plan node
-    node::NodePointVector select_expr_list = root->GetSelectList();
+    const node::NodePointVector& select_expr_list = root->GetSelectList();
 
     if (false == select_expr_list.empty()) {
         for (auto expr : select_expr_list) {
@@ -124,14 +123,14 @@ PlanNode *Planner::CreateSelectPlan(node::SelectStmt *root) {
     return select_plan;
 }
 
-node::ProjectPlanNode *Planner::CreateProjectPlanNode(SQLNode *root, std::string table_name) {
+node::ProjectPlanNode *Planner::CreateProjectPlanNode(const SQLNode *root, const std::string& table_name) {
     if (nullptr == root) {
         return nullptr;
     }
 
     switch (root->GetType()) {
         case node::kResTarget: {
-            node::ResTarget *target_ptr = (node::ResTarget *) root;
+            const node::ResTarget *target_ptr = (const node::ResTarget *) root;
             std::string w = node::WindowOfExpression(target_ptr->GetVal());
             return node_manager_->MakeProjectPlanNode(target_ptr->GetVal(), target_ptr->GetName(), table_name, w);
         }
@@ -143,11 +142,11 @@ node::ProjectPlanNode *Planner::CreateProjectPlanNode(SQLNode *root, std::string
 
 }
 
-PlanNode *Planner::CreateDataProviderPlanNode(SQLNode *root) {
+PlanNode *Planner::CreateDataProviderPlanNode(const SQLNode *root) {
     return nullptr;
 }
 
-PlanNode *Planner::CreateDataCollectorPlanNode(SQLNode *root) {
+PlanNode *Planner::CreateDataCollectorPlanNode(const SQLNode *root) {
     return nullptr;
 }
 

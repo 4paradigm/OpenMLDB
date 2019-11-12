@@ -68,6 +68,7 @@ bool RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock *block = ::llvm::BasicBlock::Create(module_->getContext(),
             "entry", fn);
 
+    // TODO(wangtaize) 
     BufIRBuilder buf_ir_builder(table_, block, &sv);
     SQLExprIRBuilder sql_expr_ir_builder(block, &sv, 
             &buf_ir_builder, row_ptr_name,

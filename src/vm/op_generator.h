@@ -20,12 +20,16 @@
 
 #include "vm/op.h"
 #include "vm/table_mgr.h"
+#include "node/sql_node.h"
+#include "node/plan_node.h"
+#include "llvm/IR/Module.h"
 
 namespace fesql {
 namespace vm {
 
 struct OpVector {
     std::string sql;
+    // TOD(wangtaize) add free logic
     std::vector<OpNode* > ops;
 };
 
@@ -48,7 +52,9 @@ class OpGenerator {
                 ::llvm::Module* module,
                 OpVector* ops);
 
-    bool GenProject(const ::fesql::node::ProjectListPlanNode* node);
+    bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
+            ::llvm::Module* module, 
+            OpVector* ops);
 
     bool GenScan(const ::fesql::node::ScanPlanNode* node,
             ::llvm::Module* module,

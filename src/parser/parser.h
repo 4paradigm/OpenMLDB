@@ -44,7 +44,6 @@ public:
     }
 
     int parse(const std::string &sqlstr, node::NodePointVector &trees, node::NodeManager *manager);
-
 };
 };
 }

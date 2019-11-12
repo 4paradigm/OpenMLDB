@@ -8,6 +8,7 @@
 **/
 
 #include "node_manager.h"
+
 namespace fesql {
 namespace node {
 

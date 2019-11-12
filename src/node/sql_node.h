@@ -44,6 +44,7 @@ inline const std::string DataTypeName(const DataType &type) {
 
 inline const std::string FnNodeName(const SQLNodeType &type) {
     switch (type) {
+        case kPrimary: return "primary";
         case kFnDef:return "def";
         case kFnValue:return "value";
         case kFnId:return "id";
@@ -54,7 +55,7 @@ inline const std::string FnNodeName(const SQLNodeType &type) {
         case kFnExprUnary:return "uexpr";
         case kFnPara:return "para";
         case kFnParaList:return "plist";
-        case kFnList:return "funlist";
+        case kFnList:return "fulist";
         default: return "unknowFn";
     }
 }
@@ -549,6 +550,10 @@ public:
     }
 
     // Getter and Setter
+    const NodePointVector &GetSelectList() const {
+        return select_list_ptr_;
+    }
+
     NodePointVector &GetSelectList() {
         return select_list_ptr_;
     }
@@ -557,8 +562,16 @@ public:
         return limit_ptr_;
     }
 
+    const NodePointVector &GetTableRefList() const {
+        return tableref_list_ptr_;
+    }
+
     NodePointVector &GetTableRefList() {
         return tableref_list_ptr_;
+    }
+
+    const NodePointVector &GetWindowList() const {
+        return window_list_ptr_;
     }
 
     NodePointVector &GetWindowList() {
