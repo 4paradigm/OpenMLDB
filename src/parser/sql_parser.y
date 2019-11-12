@@ -286,6 +286,7 @@ typedef void* yyscan_t;
 %token STARTING
 %token STRAIGHT_JOIN
 %token TABLE
+%token TABLES
 %token TEMPORARY
 %token TEXT
 %token TERMINATED
@@ -355,6 +356,7 @@ typedef void* yyscan_t;
 
  /* create table */
 %type <node>  create_stmt column_desc column_index_item column_index_key
+%type <node>  cmd_stmt
 %type <flag>  op_not_null op_if_not_exist
 %type <list>  column_desc_list column_index_item_list
 
@@ -364,12 +366,12 @@ typedef void* yyscan_t;
             opt_sort_clause sort_clause sortby_list
             window_clause window_definition_list opt_partition_clause
 
-
 %type <strval> relation_name relation_factor
                column_name
                function_name
                opt_existing_window_name
                NEWLINES
+               database_name table_name group_name file_path
 
 %type <intval> opt_window_exclusion_clause
 
@@ -384,23 +386,24 @@ grammar :
 /**** function def ****/
 
 
-line_list: fun_def_block {
+line_list:
+	fun_def_block {
             trees.push_back($1);
-         }
-         | sql_stmt {
+        }
+        | sql_stmt {
             trees.push_back($1);
-         }
-         | line_list NEWLINES fun_def_block
-         {
+        }
+        | line_list NEWLINES fun_def_block
+        {
             trees.push_back($3);
-         }
-         | line_list NEWLINES sql_stmt
-                    {
-                       trees.push_back($3);
-                    }
-         | line_list NEWLINES {$$ = $1;}
-         | NEWLINES line_list {$$ = $2;}
-         ;
+        }
+        | line_list NEWLINES sql_stmt
+        {
+        	trees.push_back($3);
+        }
+        | line_list NEWLINES {$$ = $1;}
+        | NEWLINES line_list {$$ = $2;}
+        ;
 NEWLINES: NEWLINE {}
 	| NEWLINES NEWLINE {}
 fun_def_block : fn_def_indent_op NEWLINES stmt_block {
@@ -556,6 +559,10 @@ stmt:   select_stmt
         {
             $$ = $1;
         }
+        |cmd_stmt
+        {
+        	$$ = $1;
+        }
         ;
 
 
@@ -574,6 +581,48 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                     $$ = node_manager->MakeCreateTableNode($3, $4, $6);
                 }
                 ;
+
+cmd_stmt:
+			CREATE GROUP group_name
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateGroup, $3);
+				free($3);
+			}
+			|CREATE DATABASE database_name
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateDatabase, $3);
+				free($3);
+			}
+			|CREATE TABLE file_path
+			{
+
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateTable, $3);
+				free($3);
+			}
+			|SHOW DATABASES
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowDatabases);
+			}
+			|SHOW TABLES
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowTables);
+			}
+			|DESC table_name
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdDescTable, $2);
+				free($2);
+			}
+			|USE database_name
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
+				free($2);
+			}
+			;
+
+file_path:
+			STRING
+			{}
+			;
 
 column_desc_list:   column_desc
                     {
@@ -701,17 +750,18 @@ projection:
     | expr NAME
     {
         $$ = node_manager->MakeResTargetNode($1, $2);
+		free($2);
     }
     | expr AS NAME
     {
         $$ = node_manager->MakeResTargetNode($1, $3);
+		free($3);
     }
     | '*'
         {
             ::fesql::node::SQLNode *pNode = node_manager->MakeSQLNode(::fesql::node::kAll);
             $$ = node_manager->MakeResTargetNode(pNode, "");
         }
-      ;
     ;
 
 over_clause: OVER window_specification
@@ -719,6 +769,7 @@ over_clause: OVER window_specification
 			| OVER NAME
 				{
 				    $$ = node_manager->MakeWindowDefNode($2);
+				    free($2);
 				}
 			| /*EMPTY*/
 				{ $$ = NULL; }
@@ -806,16 +857,19 @@ simple_expr:
 
 expr_const:
     STRING
+        {
+        	$$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1));
+			free($1);
+        }
+  	| INTNUM
         { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
-  | INTNUM
+  	| APPROXNUM
         { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
-  | APPROXNUM
+  	| BOOL
         { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
-  | BOOL
-        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
-  | NULLX
+  	| NULLX
         { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode()); }
-  ;
+  	;
 
 func_expr:
     function_name '(' '*' ')' over_clause
@@ -859,6 +913,7 @@ window_definition:
 		NAME AS window_specification
 		{
 		    ((::fesql::node::WindowDefNode*)$3)->SetName($1);
+			free($1);
 		    $$ = $3;
 		}
 		;
@@ -1002,7 +1057,17 @@ column_ref:
  *
  *===========================================================*/
 
+database_name:
+	NAME
+	;
 
+group_name:
+	NAME
+	;
+
+table_name:
+	NAME
+	;
 column_name:
     NAME
   ;

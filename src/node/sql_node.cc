@@ -228,6 +228,9 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kCreateStmt:
             output = "CREATE";
             break;
+        case kCmdStmt:
+            output = "CMD";
+            break;
         case kName:
             output = "kName";
             break;
@@ -383,6 +386,19 @@ void PrintValue(std::ostream &output, const std::string &org_tab,
     output << org_tab << SPACE_ST << item_name << ": " << value;
 }
 
+void PrintValue(std::ostream &output, const std::string &org_tab,
+                const std::vector<std::string> &vec,
+                const std::string &item_name, bool last_child) {
+    std::string value = "";
+    for (auto item : vec) {
+        value.append(item).append(",");
+    }
+    if (vec.size() > 0) {
+        value.pop_back();
+    }
+    output << org_tab << SPACE_ST << item_name << ": " << value;
+}
+
 void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -430,5 +446,14 @@ void ColumnIndexNode::Print(std::ostream &output,
     PrintValue(output, tab, std::to_string(version_count_), "version_count",
                true);
 }
+void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, DataTypeName(cmd_type_), "cmd_type", false);
+    output << "\n";
+    PrintValue(output, tab, args_, "args", true);
+}
+
 }  // namespace node
 }  // namespace fesql

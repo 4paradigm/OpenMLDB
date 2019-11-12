@@ -418,6 +418,16 @@ SQLNode *NodeManager::MakeIndexVersionNode(const std::string &version,
     SQLNode *node_ptr = new IndexVersionNode(version, count);
     return RegisterNode(node_ptr);
 }
+SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type) {
+    SQLNode *node_ptr = new CmdNode(cmd_type);
+    return RegisterNode(node_ptr);
+}
+SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
+                                  const std::string &arg) {
+    CmdNode *node_ptr = new CmdNode(cmd_type);
+    node_ptr->AddArg(arg);
+    return RegisterNode(node_ptr);
+}
 
 }  // namespace node
 }  // namespace fesql

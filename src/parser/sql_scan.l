@@ -19,7 +19,49 @@ int columnpos = 0;
         yycolumn=yycolumn+yyleng;                         \
         yylloc->last_line = yylineno;}
 
+inline unsigned char escaped_char(unsigned char c)
+{
+  switch (c)
+  {
+    case 'b':
+      return '\b';
+    case 'f':
+      return '\f';
+    case 'n':
+      return '\n';
+    case 'r':
+      return '\r';
+    case 't':
+      return '\t';
+    default:
+      return c;
+  }
+}
 
+int64_t parse_string(const char *src, char *dest, int64_t len, int quote_type) {
+    int64_t i;
+    int64_t index = 0;
+    for (i = 0; i < len; ++i) {
+        unsigned char c = src[i];
+        if (c == '\\') {
+            if (i < len - 1) {
+                c = src[++i];
+            } else {
+                break;
+            }
+            c = escaped_char(c);
+        } else if (quote_type == 0 && c == '\'' && i + 1 < len &&
+                   src[i + 1] == '\'') {
+            ++i;
+        } else if (quote_type == 1 && c == '"' && i + 1 < len &&
+                   src[i + 1] == '"') {
+            ++i;
+        }
+        dest[index++] = c;
+    }
+    dest[index] = '\0';
+    return index;
+}
 %}
 
 space [ \t]
@@ -241,6 +283,7 @@ STRING  {   return STRINGTYPE;}
 STARTING	{ return STARTING; }
 STRAIGHT_JOIN	{ return STRAIGHT_JOIN; }
 TABLE	{ return TABLE; }
+TABLES { return TABLES; }
 TEMPORARY	{ return TEMPORARY; }
 TERMINATED	{ return TERMINATED; }
 TEXT	{ return TEXT; }
@@ -327,7 +370,13 @@ FALSE	{ yylval->intval = 0; return BOOL; }
 
 
 '(\\.|''|[^'\n])*'	|
-\"(\\.|\"\"|[^"\n])*\"  { yylval->strval = strdup(yytext); return STRING; }
+\"(\\.|\"\"|[^"\n])*\"  {
+                            char *src = yytext+1;
+                            int len = strlen(src) - 1; //remove last quote charactor
+                            yylval->strval = (char*)(malloc(len+1));
+                            parse_string(src, yylval->strval, len, 1);
+                            return STRING;
+                         }
 
 '(\\.|[^'\n])*$	        { yyerror("Unterminated string %s", yytext); }
 \"(\\.|[^"\n])*$	{ yyerror("Unterminated string %s", yytext); }

@@ -130,6 +130,8 @@ class NodeManager {
     FnNode *MakeAssignNode(const std::string &name, FnNode *expression);
     FnNode *MakeReturnStmtNode(FnNode *value);
 
+    SQLNode *MakeCmdNode(node::CmdType cmd_type);
+    SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
     // Make NodeList
     SQLNodeList *MakeNodeList(SQLNode *node_ptr);
     SQLNodeList *MakeNodeList();

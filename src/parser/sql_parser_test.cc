@@ -145,6 +145,15 @@ INSTANTIATE_TEST_CASE_P(
                     ");"));
 
 INSTANTIATE_TEST_CASE_P(
+    SQLCmdParserTest, SqlParserTest,
+    testing::Values("CREATE DATABASE db1;",
+                    "CREATE TABLE \"schema.sql\";",
+                    "CREATE GROUP group1;",
+                    "DESC t1;",
+                    "SHOW TABLES;",
+                    "SHOW DATABASES;"));
+
+INSTANTIATE_TEST_CASE_P(
     SQLAndUDFParse, SqlParserTest,
     testing::Values(
         "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return "
@@ -168,8 +177,6 @@ TEST_P(SqlParserTest, Parser_Select_Expr_List) {
     ASSERT_EQ(0, ret);
     //    ASSERT_EQ(1, trees.size());
     std::cout << *(trees.front()) << std::endl;
-
-    SQLNode *node_ptr = trees[0];
 }
 
 TEST_F(SqlParserTest, Parser_Create_Stmt) {
@@ -300,10 +307,16 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     UDFErrorParse, SqlParserErrorTest,
     testing::Values(
-        std::make_pair(error::kParserErrorSyntax, "%%fun\ndefine test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend"),
-        std::make_pair(error::kParserErrorSyntax, "%%fun\ndef 123test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend"),
-        std::make_pair(error::kParserErrorSyntax, "%%fun\ndef test(x:i32,y:i32):i32\n    c=x)(y\n    return c\nend"),
-                    std::make_pair(error::kParserErrorSyntax, "SELECT t1;")));
+        std::make_pair(error::kParserErrorSyntax,
+                       "%%fun\ndefine test(x:i32,y:i32):i32\n    c=x+y\n    "
+                       "return c\nend"),
+        std::make_pair(error::kParserErrorSyntax,
+                       "%%fun\ndef 123test(x:i32,y:i32):i32\n    c=x+y\n    "
+                       "return c\nend"),
+        std::make_pair(
+            error::kParserErrorSyntax,
+            "%%fun\ndef test(x:i32,y:i32):i32\n    c=x)(y\n    return c\nend"),
+        std::make_pair(error::kParserErrorSyntax, "SELECT t1;")));
 
 }  // namespace parser
 }  // namespace fesql

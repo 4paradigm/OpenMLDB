@@ -22,6 +22,7 @@ enum SQLNodeType {
     // SQL
     kSelectStmt = 0,
     kCreateStmt,
+    kCmdStmt,
     kExpr,
     kResTarget,
     kTable,
@@ -102,6 +103,16 @@ enum FnOperator {
     kFnOpNone
 };
 
+enum CmdType {
+    kCmdCreateGroup,
+    kCmdCreateDatabase,
+    kCmdCreateTable,
+    kCmdUseDatabase,
+    kCmdShowDatabases,
+    kCmdShowTables,
+    kCmdDescTable,
+    kCmdDropTable
+};
 /**
  * Planner:
  *  basic class for plan

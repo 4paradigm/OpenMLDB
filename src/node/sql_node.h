@@ -28,6 +28,29 @@ namespace node {
 // Global methods
 std::string NameOfSQLNodeType(const SQLNodeType &type);
 
+inline const std::string DataTypeName(const CmdType &type) {
+    switch (type) {
+        case kCmdShowDatabases:
+            return "show databases";
+        case kCmdShowTables:
+            return "show tables";
+        case kCmdUseDatabase:
+            return "use database";
+        case kCmdCreateDatabase:
+            return "create database";
+        case kCmdCreateTable:
+            return "create table";
+        case kCmdCreateGroup:
+            return "create group";
+        case kCmdDescTable:
+            return "desc table";
+        case kCmdDropTable:
+            return "drop table";
+        default:
+            return "unknown cmd type";
+    }
+}
+
 inline const std::string DataTypeName(const DataType &type) {
     switch (type) {
         case kTypeBool:
@@ -783,6 +806,26 @@ class ColumnIndexNode : public SQLNode {
     int version_count_;
     int64_t ttl_;
     std::string name_;
+};
+
+class CmdNode : public SQLNode {
+ public:
+    explicit CmdNode(node::CmdType cmd_type)
+        : SQLNode(kCmdStmt, 0, 0), cmd_type_(cmd_type) {}
+
+    ~CmdNode() {}
+
+    void AddArg(const std::string &arg) {
+        args_.push_back(arg);
+    }
+    const std::vector<std::string> & GetArgs() const {
+        return args_;
+    }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    node::CmdType cmd_type_;
+    std::vector<std::string> args_;
 };
 std::string WindowOfExpression(SQLNode *node_ptr);
 void FillSQLNodeList2NodeVector(
