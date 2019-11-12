@@ -365,6 +365,9 @@ private:
             const ::rtidb::common::StorageMode& mode,
             std::string& path);
 
+    void DelRecycle(const std::string &path);
+    
+    void SchedDelRecycle();
 
 private:
     Tables tables_;

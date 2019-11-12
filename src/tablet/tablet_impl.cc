@@ -52,6 +52,7 @@ DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(recycle_bin_enabled);
+DECLARE_uint32(recycle_ttl);
 DECLARE_string(recycle_bin_root_path);
 DECLARE_string(recycle_ssd_bin_root_path);
 DECLARE_string(recycle_hdd_bin_root_path);
@@ -148,6 +149,7 @@ bool TabletImpl::Init() {
     }
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+    task_pool_.DelayTask(FLAGS_recycle_ttl, boost::bind(&TabletImpl::SchedDelRecycle, this));
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
@@ -3767,6 +3769,34 @@ bool TabletImpl::ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
     return true;
 }
 
+void TabletImpl::DelRecycle(const std::string &path) {
+    std::vector<std::string> file_vec;
+    ::rtidb::base::GetChildFileName(path, file_vec);
+    for(auto file_path : file_vec) {
+        std::string file_name = ::rtidb::base::ParseFileNameFromPath(file_path);
+        std::vector<std::string> parts;
+        int64_t recycle_time;
+        int64_t now_time = ::rtidb::base::getNowTimeInSecond();
+        ::rtidb::base::SplitString(file_name, "_", parts);
+        if(parts.size() == 3) {
+            recycle_time = ::rtidb::base::ParseTimeToSecond(parts[2]);
+        } else {
+            recycle_time = ::rtidb::base::ParseTimeToSecond(parts[3]);
+        }
+        if (FLAGS_recycle_ttl != 0 && (now_time - recycle_time) / 60 > FLAGS_recycle_ttl) {
+            ::rtidb::base::RemoveDirRecursive(file_path);
+        }
+    }
+}
+
+void TabletImpl::SchedDelRecycle() {
+    for (auto kv : mode_recycle_root_paths_) {
+        for(auto path : kv.second) {
+            DelRecycle(path);
+        }
+    }
+    task_pool_.DelayTask(FLAGS_recycle_ttl, boost::bind(&TabletImpl::SchedDelRecycle, this));
+}
 
 bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
 

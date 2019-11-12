@@ -172,6 +172,20 @@ static inline int GetNowHour() {
  	return t.tm_hour;
 }
 
+static inline int64_t getNowTimeInSecond() {
+    return time(0);
+}
+
+static inline int64_t ParseTimeToSecond(const std::string& str) {
+    struct tm timeinfo;
+    timeinfo.tm_year = std::stoi(str.substr(0, 4), nullptr)-1900;
+    timeinfo.tm_mon = std::stoi(str.substr(4, 2), nullptr)-1;
+    timeinfo.tm_mday = std::stoi(str.substr(6, 2), nullptr);
+    timeinfo.tm_hour = std::stoi(str.substr(8, 2), nullptr);
+    timeinfo.tm_min = std::stoi(str.substr(10, 2), nullptr);
+    timeinfo.tm_sec = std::stoi(str.substr(12, 2), nullptr);
+    return mktime(&timeinfo);
+}
 
 }
 }

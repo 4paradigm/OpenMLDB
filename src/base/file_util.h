@@ -211,6 +211,16 @@ inline static bool RemoveDirRecursive(const std::string& path) {
     return rmdir(path.c_str()) == 0;
 }
 
+inline static std::string ParseFileNameFromPath(const std::string& path) {
+    size_t index = path.rfind('/');
+    if (index == std::string::npos) {
+        index = 0;
+    }else {
+        index += 1;
+    }
+    return path.substr(index, path.length() - index);
+}
+
 }
 }
 
