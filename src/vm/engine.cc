@@ -66,7 +66,7 @@ RunSession::~RunSession() {}
 
 int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t length,
         uint32_t* row_cnt) {
-    if (row_cnt) {
+    if (row_cnt == NULL) {
         LOG(WARNING) << "buf or row cnt is null ";
         return -1;
     }
@@ -86,19 +86,25 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t length,
     if (min > limit_op->limit) {
         min = limit_op->limit;
     }
+    LOG(INFO) << "project with limit " << min;
     int32_t (*udf)(int8_t*, int8_t*) = (int32_t(*)(int8_t*, int8_t*))project_op->fn;
     uint32_t count = 0;
     while (it->Valid() && count < min) {
+        LOG(INFO) << "key " << it->GetKey();
         ::fesql::storage::Slice value = it->GetValue();
-        // TODO use const int8_t*
         int8_t* output = (int8_t*)malloc(project_op->output_size);
         int8_t* row = reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
         uint32_t ret = udf(row, output);
         if (ret != 0) {
+            LOG(WARNING) << "fail to run udf "  << ret;
+            delete it;
             return 1;
         }
         buf.push_back(output);
+        it->Next();
+        count ++;
     }
+    *row_cnt = count;
     return 0;
 }
 

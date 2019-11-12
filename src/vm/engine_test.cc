@@ -64,8 +64,8 @@ class TableMgrImpl : public TableMgr {
 class EngineTest : public ::testing::Test {};
 
 TEST_F(EngineTest, test_normal) {
-    ::fesql::storage::Table table("t1", 1, 1, 8);
-    table.Init();
+    ::fesql::storage::Table table("t1", 1, 1, 1);
+    ASSERT_TRUE(table.Init());
     int8_t* ptr = static_cast<int8_t*>(malloc(28));
     *((int32_t*)(ptr + 2)) = 1;
     *((int16_t*)(ptr +2+4)) = 2;
@@ -73,8 +73,8 @@ TEST_F(EngineTest, test_normal) {
     *((double*)(ptr +2+ 4 + 2 + 4)) = 4.1;
     *((int64_t*)(ptr +2+ 4 + 2 + 4 + 8)) = 5;
 
-    table.Put("k1", 1, (char*)ptr, 28);
-
+    ASSERT_TRUE(table.Put("k1", 1, (char*)ptr, 28));
+    ASSERT_TRUE(table.Put("k1", 2, (char*)ptr, 28));
     TableStatus status;
     status.table = &table;
     status.table_def.set_name("t1");
@@ -116,8 +116,16 @@ TEST_F(EngineTest, test_normal) {
     uint32_t row_cnt = 0;
     int32_t ret = session.Run(output, (uint32_t)2, &row_cnt);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, row_cnt);
+    ASSERT_EQ(2, row_cnt);
+    ASSERT_EQ(length, 4);
+    int8_t* output1 = output[0];
+    int8_t* output2 = output[1];
+    ASSERT_EQ(3, *((int32_t*)output1));
+    ASSERT_EQ(3, *((int32_t*)output2));
+    free(output1);
+    free(output2);
 }
+
 
 }  // namespace vm
 }  // namespace fesql
