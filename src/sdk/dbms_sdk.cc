@@ -25,6 +25,7 @@
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "proto/dbms.pb.h"
+#include "base/texttable.h"
 namespace fesql {
 namespace sdk {
 
@@ -257,14 +258,29 @@ void DBMSSdkImpl::EnterDatabase(const DatabaseDef &database,
 }
 
 void DBMSSdkImpl::PrintTableSchema(fesql::type::TableDef table) {
-    std::cout << table.DebugString() << std::endl;
+    ::fesql::base::TextTable t( '-', '|', '+' );
+
+    t.add("Field");
+    t.add( "Type" );
+    t.add( "Null" );
+    t.endOfRow();
+
+    for(auto column : table.columns()) {
+        t.add(column.name());
+        t.add(fesql::type::Type_Name(column.type()));
+        t.add(column.is_null() ? "YES" : "NO");
+        t.endOfRow();
+    }
+    std::cout << t;
 }
 
 void DBMSSdkImpl::PrintItems(std::vector<std::string> items) {
-    for (auto item : items) {
-        std::cout << item << std::endl;
+    ::fesql::base::TextTable t( '-', '|', '+' );
+    for(auto item : items) {
+        t.add(item);
+        t.endOfRow();
     }
-    std::cout << items.size() << " rows in set " << std::endl;
+    std::cout << t;
 }
 
 void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {

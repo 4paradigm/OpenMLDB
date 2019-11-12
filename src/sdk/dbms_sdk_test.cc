@@ -19,24 +19,11 @@ class DBMSSdkTest : public ::testing::Test {
     ~DBMSSdkTest() {}
 };
 
-// TEST_F(DBMSSdkTest, CreateTableTest) {
-//  ::fesql::sdk::DBMSSdk *dbms_sdk = nullptr;
-//  dbms_sdk = ::fesql::sdk::CreateDBMSSdk("127.0.0.1");
-//  ASSERT_TRUE(nullptr != dbms_sdk);
-//
-//  const std::string sql =
-//      "create table IF NOT EXISTS test(\n"
-//      "    column1 int NOT NULL,\n"
-//      "    column2 timestamp NOT NULL,\n"
-//      "    column3 int NOT NULL,\n"
-//      "    column4 string NOT NULL,\n"
-//      "    column5 int NOT NULL\n"
-//      ");";
-//  ::fesql::sdk::Status status;
-//  dbms_sdk->CreateTable(sql, status);
-//
-//  ASSERT_EQ(0, status.code);
-//}
+ TEST_F(DBMSSdkTest, CreateTableTest) {
+  ::fesql::sdk::DBMSSdk *dbms_sdk = nullptr;
+  ASSERT_TRUE(nullptr == dbms_sdk);
+
+}
 }  // namespace sdk
 }  // namespace fesql
 int main(int argc, char **argv) {
