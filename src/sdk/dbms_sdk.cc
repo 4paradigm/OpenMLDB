@@ -32,9 +32,13 @@ class DBMSSdkImpl : public DBMSSdk {
     ~DBMSSdkImpl();
     bool Init();
     void CreateGroup(const GroupDef &group, base::Status &status) override;
+    void CreateDatabase(const DatabaseDef &database, base::Status &status);
+    void EnterDatabase(const DatabaseDef &database, base::Status &status);
     void CreateTable(const std::string &sql, base::Status &status) override;
     void ShowSchema(const std::string &name, type::TableDef &table,
                     base::Status &status) override;
+    void ShowTables(std::vector<std::string> &names, base::Status &status);
+    void ShowDatabases(std::vector<std::string> &names, base::Status &status);
     void ExecuteScript(const std::string &sql, base::Status &status) override;
 
  private:
@@ -67,6 +71,43 @@ void DBMSSdkImpl::CreateGroup(const GroupDef &group, base::Status &status) {
         status.code = -1;
         status.msg = "fail to call remote";
     } else {
+        status.code = response.status().code();
+        status.msg = response.status().msg();
+    }
+}
+void DBMSSdkImpl::ShowTables(std::vector<std::string> &names,
+                             base::Status &status) {
+    ::fesql::dbms::DBMSServer_Stub stub(channel_);
+    ::fesql::dbms::ShowItemsRequest request;
+    ::fesql::dbms::ShowItemsResponse response;
+    brpc::Controller cntl;
+    stub.ShowTables(&cntl, &request, &response, NULL);
+    if (cntl.Failed()) {
+        status.code = error::kRpcErrorUnknow;
+        status.msg = "fail to call remote";
+    } else {
+        for(auto item: response.items()) {
+            names.push_back(item);
+        }
+        status.code = response.status().code();
+        status.msg = response.status().msg();
+    }
+}
+
+void DBMSSdkImpl::ShowDatabases(std::vector<std::string> &names,
+                             base::Status &status) {
+    ::fesql::dbms::DBMSServer_Stub stub(channel_);
+    ::fesql::dbms::ShowItemsRequest request;
+    ::fesql::dbms::ShowItemsResponse response;
+    brpc::Controller cntl;
+    stub.ShowDatabases(&cntl, &request, &response, NULL);
+    if (cntl.Failed()) {
+        status.code = error::kRpcErrorUnknow;
+        status.msg = "fail to call remote";
+    } else {
+        for(auto item: response.items()) {
+            names.push_back(item);
+        }
         status.code = response.status().code();
         status.msg = response.status().msg();
     }
@@ -158,7 +199,38 @@ void DBMSSdkImpl::ExecuteScript(const std::string &sql, base::Status &status) {
         }
     }
 }
-
+void DBMSSdkImpl::CreateDatabase(const DatabaseDef &database,
+                                 base::Status &status) {
+    ::fesql::dbms::DBMSServer_Stub stub(channel_);
+    ::fesql::dbms::AddDatabaseRequest request;
+    request.set_name(database.name);
+    ::fesql::dbms::AddDatabaseResponse response;
+    brpc::Controller cntl;
+    stub.AddDatabase(&cntl, &request, &response, NULL);
+    if (cntl.Failed()) {
+        status.code = -1;
+        status.msg = "fail to call remote";
+    } else {
+        status.code = response.status().code();
+        status.msg = response.status().msg();
+    }
+}
+void DBMSSdkImpl::EnterDatabase(const DatabaseDef &database,
+                                base::Status &status) {
+    ::fesql::dbms::DBMSServer_Stub stub(channel_);
+    ::fesql::dbms::EnterDatabaseRequest request;
+    request.set_name(database.name);
+    ::fesql::dbms::EnterDatabaseResponse response;
+    brpc::Controller cntl;
+    stub.EnterDatabase(&cntl, &request, &response, NULL);
+    if (cntl.Failed()) {
+        status.code = -1;
+        status.msg = "fail to call remote";
+    } else {
+        status.code = response.status().code();
+        status.msg = response.status().msg();
+    }
+}
 DBMSSdk *CreateDBMSSdk(const std::string &endpoint) {
     DBMSSdkImpl *sdk_impl = new DBMSSdkImpl(endpoint);
     if (sdk_impl->Init()) {

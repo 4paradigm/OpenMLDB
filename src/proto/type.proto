@@ -49,6 +49,7 @@ message Group {
     optional uint64 owner = 4;
 }
 
+
 message CataLog {
     optional string name = 1;
     optional uint64 ctime = 3;
@@ -62,4 +63,10 @@ message TableDef {
     optional uint64 ctime = 5;
     optional uint64 utime = 6;
     repeated IndexDef indexes = 7;
+}
+message Database {
+    optional string name = 1;
+    optional uint64 ctime = 2;
+    optional uint64 utime = 3;
+    repeated TableDef tables = 4;
 }

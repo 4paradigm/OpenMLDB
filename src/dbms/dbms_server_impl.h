@@ -30,7 +30,8 @@ using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
 
 typedef std::map<std::string, ::fesql::type::Group> Groups;
-typedef std::map<std::string, ::fesql::type::TableDef> Tables;
+typedef std::map<std::string, ::fesql::type::Database> Databases;
+typedef std::map<std::string, ::fesql::type::TableDef*> Tables;
 
 class DBMSServerImpl : public DBMSServer {
  public:
@@ -40,16 +41,28 @@ class DBMSServerImpl : public DBMSServer {
     void AddGroup(RpcController* ctr, const AddGroupRequest* request,
                   AddGroupResponse* response, Closure* done);
 
+    void AddDatabase(RpcController* ctr, const AddDatabaseRequest* request,
+                     AddDatabaseResponse* response, Closure* done) override;
+
+    void EnterDatabase(RpcController* ctr, const EnterDatabaseRequest* request,
+                       EnterDatabaseResponse* response, Closure* done);
     void AddTable(RpcController* ctr, const AddTableRequest* request,
                   AddTableResponse* response, Closure* done);
 
     void ShowSchema(RpcController* controller, const ShowSchemaRequest* request,
                     ShowSchemaResponse* response, Closure* done);
+    void ShowDatabases(RpcController* controller, const ShowItemsRequest* request,
+                       ShowItemsResponse* response, Closure* done);
+    void ShowTables(RpcController* controller, const ShowItemsRequest* request,
+                       ShowItemsResponse* response, Closure* done);
 
  private:
     std::mutex mu_;
+    ::fesql::type::Database* db_;
     Groups groups_;
+    Databases databases_;
     Tables tables_;
+    void InitTable(type::Database* db, Tables &table);
 };
 
 }  // namespace dbms

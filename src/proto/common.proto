@@ -8,6 +8,7 @@ enum StatusCode {
     kBadRequest = 11;
     kNameExists = 12;
     kTableExists = 13;
+    kNoDatabase = 14;
 }
 
 message Status {

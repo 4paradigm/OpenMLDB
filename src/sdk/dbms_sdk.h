@@ -28,14 +28,26 @@ struct GroupDef {
     std::string name;
 };
 
+struct DatabaseDef {
+    std::string name;
+};
+
 class DBMSSdk {
  public:
     virtual ~DBMSSdk(){};
     virtual void CreateGroup(const GroupDef &group, base::Status &status) = 0;
+    virtual void CreateDatabase(const DatabaseDef &database,
+                                base::Status &status) = 0;
+    virtual void EnterDatabase(const DatabaseDef &database,
+                                base::Status &status) = 0;
     virtual void CreateTable(const std::string &sql_str,
                              base::Status &status) = 0;
     virtual void ShowSchema(const std::string &name, type::TableDef &table,
                             base::Status &status) = 0;
+    virtual void ShowTables(std::vector<std::string> &names,
+                            base::Status &status) = 0;
+    virtual void ShowDatabases(std::vector<std::string> &names,
+                               base::Status &status) = 0;
     virtual void ExecuteScript(const std::string &sql_str,
                                base::Status &status) = 0;
 };
