@@ -87,27 +87,51 @@ clang-format filename
 ./fesql --role=client --endpoint=127.0.0.1:9111 --log_dir=./log/client
 ```
 
-### 查看schema
+### CMD SQL
+
+#### 创建数据库
 
 ```shell script
-> .showschema table_name
+> CREATE DATABAE db_name
+```
+#### 查看所有数据库列表信息
+```shell script
+> SHOW DATABASES;
+```
+#### 进入数据库
+```shell script
+> USE db_name;
 ```
 
-### 从文件创建schema
-
+#### 查看当前数据库下表信息
 ```shell script
-> .create schema schema_file_path
+> SHOW TABLES;
 ```
 
-### 执行SQL语句（TODO)
+#### 从文件创建schema
 
-执行SQL语句以分号结尾
 ```shell script
-> CREATE TABLE test （
+> .CREATE TABLE schema_file_path
+```
+
+#### 创建表
+```shell script
+> CREATE TABLE test (
 ... column1 int NOT NULL,
-... column2 int NOT NULL);
+... column2 int NOT NULL
+... );
 ```
 
+#### 查看表schema 
+
+```SQL
+> DESC table_name
+```
+
+### 查询SQL
+```shell script
+> SELECT col1, col2, col3 from t1;
+```
 
 
 
