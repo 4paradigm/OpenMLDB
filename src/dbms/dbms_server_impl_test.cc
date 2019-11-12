@@ -44,7 +44,6 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         MockClosure closure;
         dbms_server.AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kNoDatabase, response.status().code());
-        ASSERT_EQ("out of database", response.status().msg());
     }
 
     // create database
@@ -72,7 +71,6 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         MockClosure closure;
         dbms_server.AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kNoDatabase, response.status().code());
-        ASSERT_EQ("out of database", response.status().msg());
     }
 
     // use database
