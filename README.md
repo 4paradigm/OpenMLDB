@@ -120,12 +120,21 @@ clang-format filename
 ... column1 int NOT NULL,
 ... column2 int NOT NULL
 ... );
+
+
 ```
 
 #### 查看表schema 
 
 ```SQL
 > DESC table_name
++---------+---------+------+
+| Field   | Type    | Null |
++---------+---------+------+
+| column1 | kInt32  | NO   |
+| col2    | kString | NO   |
+| col3    | kFloat  | NO   |
++---------+---------+------+
 ```
 
 ### 查询SQL
