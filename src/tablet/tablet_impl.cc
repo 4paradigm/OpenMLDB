@@ -1638,7 +1638,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
     }
     if (is_leader) {
         {
-            std::lock_guard<std::mutex> lock(mu_);
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             if (table->IsLeader()) {
                 PDLOG(WARNING, "table is leader. tid[%u] pid[%u]", tid, pid);
                 response->set_code(102);
@@ -1656,7 +1656,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
             PDLOG(WARNING,"add replicator failed. tid[%u] pid[%u]", tid, pid);
         }
     } else {
-        std::lock_guard<std::mutex> lock(mu_);
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         if (!table->IsLeader()) {
             PDLOG(WARNING, "table is follower. tid[%u] pid[%u]", tid, pid);
             response->set_code(0);
@@ -1867,7 +1867,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
     uint32_t tid = request->tid();
     std::map<uint32_t, std::shared_ptr<Table>> table_map;
     {
-        std::lock_guard<std::mutex> lock(mu_);
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         auto it = tables_.find(tid);
         if (it == tables_.end()) {
             response->set_code(100);
@@ -1944,7 +1944,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             ::rtidb::api::GetTableStatusResponse* response,
             Closure* done) {
     brpc::ClosureGuard done_guard(done);        
-    std::lock_guard<std::mutex> lock(mu_);        
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     for (auto it = tables_.begin(); it != tables_.end(); ++it) {
         if (request->has_tid() && request->tid() != it->first) {
             continue;
@@ -2061,38 +2061,40 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
     std::shared_ptr<LogReplicator> replicator;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
+    bool has_error = true;
+    do {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         table = GetTableUnLock(tid, pid);
-        bool has_error = true;
-        do {
-            if (!table) {
-                PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
-                break;
-            }
-            if (table->GetTableStat() != ::rtidb::storage::kNormal) {
-                PDLOG(WARNING, "table state is %d, cannot make snapshot. %u, pid %u", 
-                             table->GetTableStat(), tid, pid);
-                break;
-            }    
-            snapshot = GetSnapshotUnLock(tid, pid);
-            if (!snapshot) {
-                PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
-                break;
-            }
-            replicator = GetReplicatorUnLock(tid, pid);
-            if (!replicator) {
-                PDLOG(WARNING, "replicator is not exist. tid[%u] pid[%u]", tid, pid);
-                break;
-            }
-            has_error = false;
-        } while (0);
-        if (has_error) {
-            if (task) {
-                task->set_status(::rtidb::api::kFailed);
-            }    
-            return;
+        if (!table) {
+            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
+            break;
         }
+        if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+            PDLOG(WARNING, "table state is %d, cannot make snapshot. %u, pid %u", 
+                    table->GetTableStat(), tid, pid);
+            break;
+        }    
+        snapshot = GetSnapshotUnLock(tid, pid);
+        if (!snapshot) {
+            PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
+            break;
+        }
+        replicator = GetReplicatorUnLock(tid, pid);
+        if (!replicator) {
+            PDLOG(WARNING, "replicator is not exist. tid[%u] pid[%u]", tid, pid);
+            break;
+        }
+        has_error = false;
+    } while (0);
+    if (has_error) {
+        if (task) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task->set_status(::rtidb::api::kFailed);
+        }    
+        return;
+    }
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         table->SetTableStat(::rtidb::storage::kMakingSnapshot);
     }
     uint64_t cur_offset = replicator->GetOffset();
@@ -2119,8 +2121,11 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
         }
     }
     {
-        std::lock_guard<std::mutex> lock(mu_);
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         table->SetTableStat(::rtidb::storage::kNormal);
+    }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
         if (task) {
             if (ret == 0) {
                 task->set_status(::rtidb::api::kDone);
@@ -2145,30 +2150,33 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         }
     }    
     uint32_t tid = request->tid();        
-    uint32_t pid = request->pid();        
-    std::lock_guard<std::mutex> lock(mu_);
-    std::shared_ptr<Snapshot> snapshot = GetSnapshotUnLock(tid, pid);
+    uint32_t pid = request->pid();
     do {
-        if (!snapshot) {
-            response->set_code(111);
-            response->set_msg("snapshot is not exist");
-            PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
-            break;
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            std::shared_ptr<Snapshot> snapshot = GetSnapshotUnLock(tid, pid);
+            if (!snapshot) {
+                response->set_code(111);
+                response->set_msg("snapshot is not exist");
+                PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
+                break;
+            }
+            std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
+            if (!table) {
+                PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+                response->set_code(100);
+                response->set_msg("table is not exist");
+                break;
+            }
+            if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+                response->set_code(105);
+                response->set_msg("table status is not kNormal");
+                PDLOG(WARNING, "table state is %d, cannot make snapshot. %u, pid %u", 
+                        table->GetTableStat(), tid, pid);
+                break;
+            }
         }
-        std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
-        if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
-            response->set_code(100);
-            response->set_msg("table is not exist");
-            break;
-        }
-        if (table->GetTableStat() != ::rtidb::storage::kNormal) {
-            response->set_code(105);
-            response->set_msg("table status is not kNormal");
-            PDLOG(WARNING, "table state is %d, cannot make snapshot. %u, pid %u", 
-                         table->GetTableStat(), tid, pid);
-            break;
-        }
+        std::lock_guard<std::mutex> lock(mu_);
         if (task_ptr) {
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }    
@@ -2178,6 +2186,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         return;
     } while (0);
     if (task_ptr) {       
+        std::lock_guard<std::mutex> lock(mu_);
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
 }
@@ -2190,7 +2199,7 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     std::vector<std::pair<uint32_t, uint32_t> > table_set;
     {
-        std::lock_guard<std::mutex> lock(mu_);
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
             for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
                 if (iter->first == 0 && inner->first == 0) {
@@ -2240,11 +2249,14 @@ void TabletImpl::SendData(RpcController* controller,
         dir_name = request->dir_name();
         path.append(request->dir_name() + "/");
     }
+    std::shared_ptr<Table> table;
+    if (request->block_id() == 0) {
+        table = GetTable(tid, pid);
+    }
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = file_receiver_map_.find(combine_key);
         if (request->block_id() == 0) {
-            std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
             if (table) {
                 PDLOG(WARNING, "table already exists. tid %u, pid %u", tid, pid);
                 response->set_code(101);
@@ -2327,37 +2339,40 @@ void TabletImpl::SendSnapshot(RpcController* controller,
             response->set_msg("add task failed");
             return;
         }
-    }    
-    std::lock_guard<std::mutex> lock(mu_);
+    }
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
     std::string sync_snapshot_key = request->endpoint() + "_" + 
                     std::to_string(tid) + "_" + std::to_string(pid);
     do {
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
+            if (!table) {
+                PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+                response->set_code(100);
+                response->set_msg("table is not exist");
+                break;
+            }
+            if (!table->IsLeader()) {
+                PDLOG(WARNING, "table is follower. tid %u, pid %u", tid, pid);
+                response->set_code(103);
+                response->set_msg("table is follower");
+                break;
+            }
+            if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
+                PDLOG(WARNING, "table status is not kSnapshotPaused. tid %u, pid %u", tid, pid);
+                response->set_code(107);
+                response->set_msg("table status is not kSnapshotPaused");
+                break;
+            }
+        }
+        std::lock_guard<std::mutex> lock(mu_);
         if (sync_snapshot_set_.find(sync_snapshot_key) != sync_snapshot_set_.end()) {
             PDLOG(WARNING, "snapshot is sending. tid %u pid %u endpoint %s", 
-                            tid, pid, request->endpoint().c_str());
+                    tid, pid, request->endpoint().c_str());
             response->set_code(128);
             response->set_msg("snapshot is sending");
-            break;
-        }
-        if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
-            response->set_code(100);
-            response->set_msg("table is not exist");
-            break;
-        }
-        if (!table->IsLeader()) {
-            PDLOG(WARNING, "table is follower. tid %u, pid %u", tid, pid);
-            response->set_code(103);
-            response->set_msg("table is follower");
-            break;
-        }
-        if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
-            PDLOG(WARNING, "table status is not kSnapshotPaused. tid %u, pid %u", tid, pid);
-            response->set_code(107);
-            response->set_msg("table status is not kSnapshotPaused");
             break;
         }
         if (task_ptr) {
@@ -2371,6 +2386,7 @@ void TabletImpl::SendSnapshot(RpcController* controller,
         return;
     } while(0);
     if (task_ptr) {
+        std::lock_guard<std::mutex> lock(mu_);
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
 }
@@ -2468,30 +2484,33 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
             return;
         }
     }    
-    std::lock_guard<std::mutex> lock(mu_);
-    std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
     do {
-        if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(100);
-            response->set_msg("table is not exist");
-            break;
-        }
-        if (table->GetTableStat() == ::rtidb::storage::kSnapshotPaused) {
-            PDLOG(INFO, "table status is kSnapshotPaused, need not pause. tid[%u] pid[%u]", 
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
+            if (!table) {
+                PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+                response->set_code(100);
+                response->set_msg("table is not exist");
+                break;
+            }
+            if (table->GetTableStat() == ::rtidb::storage::kSnapshotPaused) {
+                PDLOG(INFO, "table status is kSnapshotPaused, need not pause. tid[%u] pid[%u]", 
                         request->tid(), request->pid());
-        } else if (table->GetTableStat() != ::rtidb::storage::kNormal) {
-            PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
-                            table->GetTableStat(), request->tid(), request->pid());
-            response->set_code(105);
-            response->set_msg("table status is not kNormal");
-            break;
-        } else {
-            table->SetTableStat(::rtidb::storage::kSnapshotPaused);
-            PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-                       table->GetTableStat(), request->tid(), request->pid());
-        }           
+            } else if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+                PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
+                        table->GetTableStat(), request->tid(), request->pid());
+                response->set_code(105);
+                response->set_msg("table status is not kNormal");
+                break;
+            } else {
+                table->SetTableStat(::rtidb::storage::kSnapshotPaused);
+                PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+                        table->GetTableStat(), request->tid(), request->pid());
+            }
+        }
         if (task_ptr) {
+            std::lock_guard<std::mutex> lock(mu_);
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
         }
         response->set_code(0);
@@ -2499,6 +2518,7 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
         return;
     } while(0);
     if (task_ptr) {
+        std::lock_guard<std::mutex> lock(mu_);
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
 }
@@ -2517,18 +2537,18 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
         }
     }
     do {
-        std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-        if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(100);
-            response->set_msg("table is not exist");
-            break;
-        }
         {
-            std::lock_guard<std::mutex> lock(mu_);
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
+            if (!table) {
+                PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+                response->set_code(100);
+                response->set_msg("table is not exist");
+                break;
+            }
             if (table->GetTableStat() == rtidb::storage::kNormal) {
                 PDLOG(INFO, "table status is already kNormal, need not recover. tid[%u] pid[%u]", 
-                            request->tid(), request->pid());
+                        request->tid(), request->pid());
 
             } else if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
                 PDLOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
@@ -2539,11 +2559,12 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
             } else {
                 table->SetTableStat(::rtidb::storage::kNormal);
                 PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-                           table->GetTableStat(), request->tid(), request->pid());
+                        table->GetTableStat(), request->tid(), request->pid());
             }
-            if (task_ptr) {       
-                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-            }
+        }
+        std::lock_guard<std::mutex> lock(mu_);
+        if (task_ptr) {       
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
         }
         response->set_code(0);
         response->set_msg("ok");
@@ -2705,7 +2726,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
             break;
         }
         {
-            std::lock_guard<std::mutex> lock(mu_);
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table->SetTableStat(::rtidb::storage::kLoading);
         }
         uint64_t latest_offset = 0;
@@ -2758,7 +2779,7 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
             break;
         }
         {
-            std::lock_guard<std::mutex> lock(mu_);
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table->SetTableStat(::rtidb::storage::kLoading);
         }
         uint64_t latest_offset = 0;
@@ -2816,7 +2837,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         // do block other requests
         {
-            std::lock_guard<std::mutex> lock(mu_);
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -3270,7 +3291,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
     if (table) {
         PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
@@ -3361,7 +3382,7 @@ int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_met
         }
         PDLOG(INFO, "create disk table. tid %u pid %u", tid, pid);
     }
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
     if (table) {
         PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
@@ -3606,7 +3627,7 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
 }
 
 std::shared_ptr<Snapshot> TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     return GetSnapshotUnLock(tid, pid);
 }
 
@@ -3633,12 +3654,12 @@ std::shared_ptr<LogReplicator> TabletImpl::GetReplicatorUnLock(uint32_t tid, uin
 }
 
 std::shared_ptr<LogReplicator> TabletImpl::GetReplicator(uint32_t tid, uint32_t pid) {
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     return GetReplicatorUnLock(tid, pid);
 }
 
 std::shared_ptr<Table> TabletImpl::GetTable(uint32_t tid, uint32_t pid) {
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     return GetTableUnLock(tid, pid);
 }
 
