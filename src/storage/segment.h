@@ -2,7 +2,7 @@
 // segment.h
 // Copyright (C) 2017 4paradigm.com
 // Author denglong
-// Date 2019-11-01 
+// Date 2019-11-01
 // 
 
 #pragma once
@@ -11,7 +11,7 @@
 #include <vector>
 #include "skiplist.h"
 #include "list.h"
-#include "util/slice.h"
+#include "../base/slice.h"
 #include <mutex>
 #include <atomic>
 #include <memory>
@@ -20,6 +20,8 @@
 namespace fesql {
 namespace storage {
 // the desc time comparator
+using ::fesql::base::Slice;
+
 struct TimeComparator {
     int operator()(const uint64_t& a, const uint64_t& b) const {
         if (a > b) {

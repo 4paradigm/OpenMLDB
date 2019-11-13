@@ -6,7 +6,7 @@
 #include "slice.h"
 
 namespace fesql {
-namespace storage {
+namespace base {
 
 class SliceTest : public ::testing::Test {
 
@@ -14,9 +14,6 @@ public:
     SliceTest(){}
     ~SliceTest() {}
 };
-
-
-
 
 TEST_F(SliceTest, Compare) {
     Slice a("test1");

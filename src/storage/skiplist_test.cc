@@ -4,11 +4,12 @@
 
 #include "skiplist.h"
 #include "gtest/gtest.h"
-#include "util/slice.h"
+#include "../base/slice.h"
 #include <vector>
 
 namespace fesql {
 namespace storage {
+using ::fesql::base::Slice;
 
 class NodeTest : public ::testing::Test {
 
@@ -24,7 +25,6 @@ public:
     ~SkipListTest() {}
 
 };
-
 
 struct SliceComparator {
     int operator()(const Slice& a, const Slice& b) const {
@@ -67,8 +67,6 @@ struct StrComparator {
         return a.compare(b);
     }
 };
-
-
 
 TEST_F(NodeTest, SetNext) {
     uint32_t key = 1;

@@ -11,7 +11,7 @@ namespace fesql {
 namespace storage {
 
 const uint8_t KEY_ENTRY_MAX_HEIGHT = 12;
-const static SliceComparator scmp;
+static const SliceComparator scmp;
 Segment::Segment():entries_(NULL),mu_() {
     entries_ = new KeyEntries(KEY_ENTRY_MAX_HEIGHT, 4, scmp);
 }

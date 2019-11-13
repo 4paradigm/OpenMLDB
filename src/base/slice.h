@@ -5,7 +5,7 @@
 #include <string>
 
 namespace fesql {
-namespace storage {
+namespace base {
 
 class Slice {
 public:
