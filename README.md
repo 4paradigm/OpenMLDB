@@ -87,47 +87,43 @@ clang-format filename
 ./fesql --role=client --endpoint=127.0.0.1:9111 --log_dir=./log/client
 ```
 
-### CMD SQL
+
+## FeSQL CMD 
 
 #### 创建数据库
 
-```shell script
-> CREATE DATABAE db_name
+```mysql
+CREATE DATABASE db_name
 ```
-#### 查看所有数据库列表信息
-```shell script
-> SHOW DATABASES;
-```
+
 #### 进入数据库
-```shell script
-> USE db_name;
+
+```MYSQL
+USE db_name;
+```
+
+#### 查看所有数据库列表信息
+
+```mysql
+ SHOW DATABASES;
 ```
 
 #### 查看当前数据库下表信息
-```shell script
-> SHOW TABLES;
+
+```mysql
+SHOW TABLES;
 ```
 
-#### 从文件创建schema
+#### 从文件创建schema(待定)
 
-```shell script
-> .CREATE TABLE schema_file_path
+```mysql
+CREATE TABLE schema_file_path
 ```
 
-#### 创建表
-```shell script
-> CREATE TABLE test (
-... column1 int NOT NULL,
-... column2 int NOT NULL
-... );
+#### 查看表schema
 
-
-```
-
-#### 查看表schema 
-
-```SQL
-> DESC table_name
+```mysql
+DESC table_name
 +---------+---------+------+
 | Field   | Type    | Null |
 +---------+---------+------+
@@ -136,6 +132,7 @@ clang-format filename
 | col3    | kFloat  | NO   |
 +---------+---------+------+
 ```
+
 
 ### 查询SQL
 ```shell script
