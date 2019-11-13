@@ -60,6 +60,9 @@ class TextTable {
     std::vector<Row> const& rows() const { return _rows; }
 
     void setup() const {
+        if (rows().size() == 0) {
+            return;
+        }
         determineWidths();
         setupAlignment();
     }
@@ -120,6 +123,9 @@ class TextTable {
 };
 
 std::ostream& operator<<(std::ostream& stream, TextTable const& table) {
+    if (0 == table.rows().size()) {
+        return stream;
+    }
     table.setup();
     stream << table.ruler() << "\n";
     int line = 0;
