@@ -1,6 +1,21 @@
 import "common.proto";
 
-package fesql.dbms;
+package fesql.tablet;
 option cc_generic_services = true;
 option java_package = "com._4paradigm.fesql.tablet";
 option java_outer_classname = "Tablet";
+
+message QueryRequest {
+    optional string sql = 1;
+    optional string db = 2;
+}
+
+message QueryResponse {
+    optional Common.Status status = 1;
+    optional bytes result_set = 2;
+    optional bytes schema = 3;
+}
+
+service TabletServer {
+    rpc Query(QueryRequest) returns(QueryResponse);
+}
