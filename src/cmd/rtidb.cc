@@ -598,7 +598,32 @@ void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::
     tp.Print(true);
 }
 
-void HandleNSShowNameServer(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client, 
+void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+
+    if (FLAGS_interactive) {
+        printf("Drop replica %s? yes/no\n", parts[1].c_str());
+        std::string input;
+        std::cin >> input;
+        std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+        if (input != "yes") {
+            printf("'drop %s' cmd is canceled!\n", parts[1].c_str());
+            return;
+        }
+    }
+    std::string msg;
+    bool ret = client->RemoveReplicaCluster(parts[1], msg);
+    if (!ret) {
+        std::cout << "failed to kick. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "kick ok" << std::endl;
+}
+
+void HandleNSShowNameServer(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client,
         std::shared_ptr<ZkClient> zk_client) {
     if (FLAGS_zk_cluster.empty() || !zk_client) {
         std::cout << "Show nameserver failed. zk_cluster is empty" << std::endl;
@@ -1580,6 +1605,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
     tp.Print(true);
 }
 
+
 void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() != 4) {
         std::cout << "addtablefield format error. eg: addtablefield tablename column_name column_type" << std::endl;
@@ -1623,6 +1649,44 @@ void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::clien
     std::cout << "add table field ok" << std::endl;
 }
 
+void HandleNSAddReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "addrepcluster format error. eg: addrepcluster zk_endpoints zk_path alias_name";
+        return;
+    }
+    std::string zk_endpoints, zk_path, alias, msg;
+    zk_endpoints = parts[1];
+    zk_path = parts[2];
+    alias = parts[3];
+    if (!client->AddReplicaCluster(zk_endpoints, zk_path, alias, msg)) {
+        std::cout << "addrepcluster failed. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "adrepcluster ok" << std::endl;
+}
+
+void HandleShowReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    std::vector<std::string> row = {"zk_endpoints", "zk_path", "alias", "age"};
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+
+    std::vector<::rtidb::nameserver::ClusterAddAge> cluster_info;
+    std::string msg;
+    bool ok = client->ShowReplicaCluster(cluster_info, msg);
+    if (!ok) {
+        std::cout << "Fail to show replica. error msg: " << msg << std::endl;
+        return;
+    }
+    for (auto i : cluster_info) {
+        std::vector<std::string> row;
+        row.push_back(i.replica().zk_endpoints());
+        row.push_back(i.replica().zk_path());
+        row.push_back(i.replica().alias());
+        row.push_back(::rtidb::base::HumanReadableTime(i.age()));
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
 bool HasIsTsCol(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& list) {
     if (list.empty()) {
         return false;
@@ -2250,6 +2314,9 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("setttl - set table ttl\n");
         printf("updatetablealive - update table alive status\n");
         printf("addtablefield - add field to the schema table \n");
+        printf("addrepcluster - add remote replica cluster\n");
+        printf("showrepcluster - show remote replica cluster\n");
+        printf("removerepcluster - remove remote replica cluste \n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -2421,6 +2488,18 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: addtablefield table_name col_name col_type\n");
             printf("ex: addtablefield test card string\n");
             printf("ex: addtablefield test money float\n");
+        } else if (parts[1] == "addrepcluster") {
+            printf("desc: add remote replica cluster\n");
+            printf("usage: addrepcluster zk_endpoints zk_path cluster_alias\n");
+            printf("ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /rtidb_cluster prod_dc01\n");
+        } else if (parts[1] == "showrepcluster") {
+            printf("desc: show remote replica cluster\n");
+            printf("usage: showrepcluster\n");
+            printf("ex: showrepcluster");
+        } else if (parts[1] == "removerepcluster") {
+            printf("desc: remove remote replica cluster\n");
+            printf("usage: removerepcluster cluster_alias\n");
+            printf("ex: removerepcluster prod_dc01\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -4528,6 +4607,12 @@ void StartNsClient() {
             HandleNSClientCancelOP(parts, &client);
         } else if (parts[0] == "addtablefield") {
             HandleNSAddTableField(parts, &client);
+        } else if (parts[0] == "addrepcluster") {
+            HandleNSAddReplicaCluster(parts, &client);
+        } else if (parts[0] == "showrepcluster") {
+            HandleShowReplicaCluster(parts, &client);
+        } else if (parts[0] == "removerepcluster") {
+            HandleNSRemoveReplicaCluster(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
