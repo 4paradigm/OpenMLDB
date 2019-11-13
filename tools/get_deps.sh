@@ -134,14 +134,14 @@ if [ -f "gperf_tool" ]
 then
     echo "gperf_tool exist"
 else
-    #wget http://pkg.4paradigm.com/rtidb/dev/gperftools-2.5.tar.gz
-    #tar -zxvf gperftools-2.5.tar.gz
-    #cd gperftools-2.5
+    wget http://pkg.4paradigm.com/rtidb/dev/gperftools-2.5.tar.gz
+    tar -zxvf gperftools-2.5.tar.gz
+    cd gperftools-2.5
     #wget https://github.com/gperftools/gperftools/releases/download/gperftools-2.7/gperftools-2.7.tar.gz
-    tar xaf gperftools-2.7.tar.gz
-    cd gperftools-2.7
-    #./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler  --enable-static --prefix=${DEPS_PREFIX}
-    ./configure --prefix=${DEPS_PREFIX}
+#    tar xaf gperftools-2.7.tar.gz
+#    cd gperftools-2.7
+    ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler  --enable-static --prefix=${DEPS_PREFIX}
+#    ./configure --prefix=${DEPS_PREFIX}
     make -j2 >/dev/null
     make install
     cd -

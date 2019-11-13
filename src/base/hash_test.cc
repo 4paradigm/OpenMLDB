@@ -21,8 +21,7 @@ namespace fesql {
 namespace base {
 
 class HashTest : public ::testing::Test {
-
-public:
+ public:
     HashTest() {}
     ~HashTest() {}
 };
@@ -39,11 +38,10 @@ TEST_F(HashTest, CharPtr_Hash) {
     ASSERT_EQ(output, -4155090522938856779);
 }
 
-} // namespace of base
-} // namespace of  fesql
+}  // namespace base
+}  // namespace fesql
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-

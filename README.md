@@ -73,6 +73,73 @@ tools/cpplint.py  filename
 clang-format filename
 ```
 
+## CMD使用说明
+
+### 启动服务端
+
+```shell script
+./fesql --role=dbms --port=9111 --log_dir=./log/dbms &
+```
+
+### 启动客户端
+
+```shell script
+./fesql --role=client --endpoint=127.0.0.1:9111 --log_dir=./log/client
+```
+
+
+## FeSQL CMD 
+
+#### 创建数据库
+
+```mysql
+CREATE DATABASE db_name
+```
+
+#### 进入数据库
+
+```MYSQL
+USE db_name;
+```
+
+#### 查看所有数据库列表信息
+
+```mysql
+ SHOW DATABASES;
+```
+
+#### 查看当前数据库下表信息
+
+```mysql
+SHOW TABLES;
+```
+
+#### 从文件创建schema(待定)
+
+```mysql
+CREATE TABLE schema_file_path
+```
+
+#### 查看表schema
+
+```mysql
+DESC table_name
++---------+---------+------+
+| Field   | Type    | Null |
++---------+---------+------+
+| column1 | kInt32  | NO   |
+| col2    | kString | NO   |
+| col3    | kFloat  | NO   |
++---------+---------+------+
+```
+
+
+### 查询SQL
+```shell script
+> SELECT col1, col2, col3 from t1;
+```
+
+
 
 
 

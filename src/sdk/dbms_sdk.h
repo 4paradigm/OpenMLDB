@@ -17,7 +17,10 @@
 
 #ifndef FESQL_DBMS_SDK_H_
 #define FESQL_DBMS_SDK_H_
+#include <node/node_enum.h>
+#include <proto/type.pb.h>
 #include <string>
+#include <vector>
 
 namespace fesql {
 namespace sdk {
@@ -26,23 +29,36 @@ struct GroupDef {
     std::string name;
 };
 
-struct Status {
-    std::string msg;
-    int32_t code;
+struct DatabaseDef {
+    std::string name;
 };
 
 class DBMSSdk {
-
-public:
-    virtual ~DBMSSdk() {};
-    virtual void CreateGroup(const GroupDef& group,
-            Status& status) = 0;
+ public:
+    virtual ~DBMSSdk(){};
+    virtual void CreateGroup(const GroupDef &group, base::Status &status) = 0;
+    virtual void CreateDatabase(const DatabaseDef &database,
+                                base::Status &status) = 0;
+    virtual void EnterDatabase(const DatabaseDef &database,
+                                base::Status &status) = 0;
+    virtual void CreateTable(const std::string &sql_str,
+                             base::Status &status) = 0;
+    virtual void ShowSchema(const std::string &name, type::TableDef &table,
+                            base::Status &status) = 0;
+    virtual void ShowTables(std::vector<std::string> &names,
+                            base::Status &status) = 0;
+    virtual void ShowDatabases(std::vector<std::string> &names,
+                               base::Status &status) = 0;
+    virtual void ExecuteScript(const std::string &sql_str,
+                               base::Status &status) = 0;
+    virtual void PrintTableSchema(fesql::type::TableDef def) = 0;
+    virtual void PrintItems(std::vector<std::string> items) = 0;
 };
 
 // create a new dbms sdk with a endpoint
 // failed return NULL
-DBMSSdk* CreateDBMSSdk(const std::string& endpoint);
+DBMSSdk *CreateDBMSSdk(const std::string &endpoint);
 
-} // namespace of sdk
-} // namespace of fesql
+}  // namespace sdk
+}  // namespace fesql
 #endif /* !FESQL_DBMS_SDK_H_ */

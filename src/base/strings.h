@@ -18,17 +18,18 @@
 #ifndef FESQL_BASE_STRINGS_H_
 #define FESQL_BASE_STRINGS_H_
 
-#include <string>
-#include <vector>
-#include <iostream>
 #include <sys/time.h>
 #include <time.h>
+#include <iostream>
+#include <string>
+#include <vector>
 
 namespace fesql {
 namespace base {
-const static char LABELS[10] = {'0','1','2','3','4','5','6','7','8','9'};
+const static char LABELS[10] = {'0', '1', '2', '3', '4',
+                                '5', '6', '7', '8', '9'};
 const static uint32_t TIME_OFFSET[] = {1000, 60, 60, 24};
-const static char* TIME_LABEL[] = { "ms", "s", "m", "h", "d"};
+const static char* TIME_LABEL[] = {"ms", "s", "m", "h", "d"};
 
 static inline void SplitString(const std::string& full,
                                const std::string& delim,
@@ -57,17 +58,13 @@ static inline void SplitString(const std::string& full,
     }
 }
 
-static inline bool IsVisible(char c) {
-    return (c >= 0x20 && c <= 0x7E);
-}
-
-
+static inline bool IsVisible(char c) { return (c >= 0x20 && c <= 0x7E); }
 
 static inline std::string FormatToString(uint32_t name, uint32_t max_shift) {
     uint32_t shift = 0;
     std::string result;
     result.resize(max_shift);
-    char* rbuffer = reinterpret_cast<char*>(& (result[0]));
+    char* rbuffer = reinterpret_cast<char*>(&(result[0]));
     for (uint32_t i = 0; i < max_shift; i++) {
         rbuffer[i] = '0';
     }
@@ -135,10 +132,11 @@ static inline std::string NumToString(double num) {
 
 static inline std::string HumanReadableString(int64_t num) {
     static const int max_shift = 6;
-    static const char* const prefix[max_shift + 1] = {"", " K", " M", " G", " T", " P", " E"};
+    static const char* const prefix[max_shift + 1] = {"",   " K", " M", " G",
+                                                      " T", " P", " E"};
     int shift = 0;
     double v = num;
-    while ((num>>=10) > 0 && shift < max_shift) {
+    while ((num >>= 10) > 0 && shift < max_shift) {
         v /= 1024;
         shift++;
     }
@@ -172,14 +170,14 @@ static inline std::string GetNowTime() {
 }
 
 static inline int GetNowHour() {
-	struct timeval tv;
+    struct timeval tv;
     gettimeofday(&tv, NULL);
     const time_t seconds = tv.tv_sec;
     struct tm t;
     localtime_r(&seconds, &t);
- 	return t.tm_hour;
+    return t.tm_hour;
 }
 
-} // namespace base
-} // namespace fesql
+}  // namespace base
+}  // namespace fesql
 #endif /* !FESQL_BASE_STRINGS_H_ */

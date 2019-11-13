@@ -18,34 +18,53 @@
 #ifndef FESQL_DBMS_SERVER_IMPL_H_
 #define FESQL_DBMS_SERVER_IMPL_H_
 
+#include <map>
+#include <mutex>
 #include "proto/dbms.pb.h"
 #include "proto/type.pb.h"
-#include <mutex>
-#include <map>
 
 namespace fesql {
 namespace dbms {
 
-using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
+using ::google::protobuf::RpcController;
 
 typedef std::map<std::string, ::fesql::type::Group> Groups;
+typedef std::map<std::string, ::fesql::type::Database> Databases;
+typedef std::map<std::string, ::fesql::type::TableDef*> Tables;
 
 class DBMSServerImpl : public DBMSServer {
-
-public:
+ public:
     DBMSServerImpl();
     ~DBMSServerImpl();
 
-    void AddGroup(RpcController* ctr,
-            const AddGroupRequest* request,
-            AddGroupResponse* response,
-            Closure* done);
-private:
+    void AddGroup(RpcController* ctr, const AddGroupRequest* request,
+                  AddGroupResponse* response, Closure* done);
+
+    void AddDatabase(RpcController* ctr, const AddDatabaseRequest* request,
+                     AddDatabaseResponse* response, Closure* done) override;
+
+    void EnterDatabase(RpcController* ctr, const EnterDatabaseRequest* request,
+                       EnterDatabaseResponse* response, Closure* done);
+    void AddTable(RpcController* ctr, const AddTableRequest* request,
+                  AddTableResponse* response, Closure* done);
+
+    void ShowSchema(RpcController* controller, const ShowSchemaRequest* request,
+                    ShowSchemaResponse* response, Closure* done);
+    void ShowDatabases(RpcController* controller, const ShowItemsRequest* request,
+                       ShowItemsResponse* response, Closure* done);
+    void ShowTables(RpcController* controller, const ShowItemsRequest* request,
+                       ShowItemsResponse* response, Closure* done);
+
+ private:
     std::mutex mu_;
+    ::fesql::type::Database* db_;
     Groups groups_;
+    Databases databases_;
+    Tables tables_;
+    void InitTable(type::Database* db, Tables &table);
 };
 
-} // namespace of dbms
-} // namespace of fesql
+}  // namespace dbms
+}  // namespace fesql
 #endif /* !FESQL_DBMS_SERVER_IMPL_H_ */

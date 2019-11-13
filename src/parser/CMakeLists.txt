@@ -17,7 +17,7 @@ add_custom_command(OUTPUT ${SQL_AST_PARSER_GEN}
         COMMAND bison ${PROJECT_SOURCE_DIR}/src/parser/sql_parser.y
         )
 
-add_library(fesql_parser STATIC  ${CMAKE_CURRENT_BINARY_DIR}/sql_scan.gen.cc ${CMAKE_CURRENT_BINARY_DIR}/sql_parser.gen.cc parser.cc)
+add_library(fesql_parser STATIC ${CMAKE_CURRENT_BINARY_DIR}/sql_scan.gen.cc ${CMAKE_CURRENT_BINARY_DIR}/sql_parser.gen.cc parser.cc)
 
 add_executable(sql_parser_test sql_parser_test.cc)
 target_link_libraries(sql_parser_test fesql_parser fesql_node ${COMMON_LIBS} gtest pthread)

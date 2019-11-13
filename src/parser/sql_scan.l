@@ -1,6 +1,6 @@
 %option noinput nounput noyywrap 8bit nodefault
-%option yylineno
 %option reentrant bison-bridge bison-locations case-insensitive
+%option yylineno
 %option outfile="sql_scan.gen.cc"
 
 %{
@@ -8,9 +8,60 @@
 #include "parser/sql_parser.gen.h"
 #include <stdarg.h>
 #include <string.h>
-void yyerror(char *s, ...) {}
+
+void yyerror(const char *s, ...) {}
 int cur_state=0;
 int oldstate = 0;
+int columnpos = 0;
+#define YY_USER_ACTION {yylloc->first_line = yylineno; \
+        yylloc->first_column = yycolumn;                 \
+        yylloc->last_column = yycolumn;                    \
+        yycolumn=yycolumn+yyleng;                         \
+        yylloc->last_line = yylineno;}
+
+inline unsigned char escaped_char(unsigned char c)
+{
+  switch (c)
+  {
+    case 'b':
+      return '\b';
+    case 'f':
+      return '\f';
+    case 'n':
+      return '\n';
+    case 'r':
+      return '\r';
+    case 't':
+      return '\t';
+    default:
+      return c;
+  }
+}
+
+int64_t parse_string(const char *src, char *dest, int64_t len, int quote_type) {
+    int64_t i;
+    int64_t index = 0;
+    for (i = 0; i < len; ++i) {
+        unsigned char c = src[i];
+        if (c == '\\') {
+            if (i < len - 1) {
+                c = src[++i];
+            } else {
+                break;
+            }
+            c = escaped_char(c);
+        } else if (quote_type == 0 && c == '\'' && i + 1 < len &&
+                   src[i + 1] == '\'') {
+            ++i;
+        } else if (quote_type == 1 && c == '"' && i + 1 < len &&
+                   src[i + 1] == '"') {
+            ++i;
+        }
+        dest[index++] = c;
+    }
+    dest[index] = '\0';
+    return index;
+}
 %}
 
 space [ \t]
@@ -18,7 +69,6 @@ newline [\n\r]
 non_newline [^\n\r]
 comment ("#"{non_newline}*)
 indent {space}*
-newlines {newline}*
 self [,()\[\].\:\+\-\*\/\%\^\<\>\=]
 
 
@@ -32,8 +82,8 @@ identifier {ident_start}{ident_cont}*
 
 %%
 
-"%%sql\n" {BEGIN INITIAL;}
-"%%fun\n" {BEGIN FUN;}
+"%%sql\n" {columnpos = 1; BEGIN INITIAL;}
+"%%fun\n" {columnpos = 1;BEGIN FUN;}
 
  /* keywords */
 
@@ -104,16 +154,15 @@ DUAL	{ return DUAL; }
 EACH	{ return EACH; }
 ELSE	{ return ELSE; }
 ELSEIF	{ return ELSEIF; }
-<FUNDEF>END {return FUNDEFEND;}
+<FUN>END {return FUNDEFEND;}
 END	{return END; }
 ENUM { return ENUM; }
 ESCAPED	{ return ESCAPED; }
-EXISTS	{ yylval->subtok = 0; return EXISTS; }
-NOT[ \t\n]+EXISTS	{ yylval->subtok = 1; return EXISTS; }
+EXISTS	{ return EXISTS; }
 EXIT	{ return EXIT; }
 EXPLAIN	{ return EXPLAIN; }
 FETCH	{ return FETCH; }
-FLOAT4?	{ return FLOAT; }
+FLOAT4|FLOAT?	{ return FLOAT; }
 FOLLOWING   {return FOLLOWING;  }
 FOR	{ return FOR; }
 FORCE	{ return FORCE; }
@@ -141,7 +190,8 @@ INTO	{ return INTO; }
 IS	{ return IS; }
 ITERATE	{ return ITERATE; }
 JOIN	{ return JOIN; }
-INDEX|KEY	{ return KEY; }
+INDEX   { return INDEX; }
+KEY	{ return KEY; }
 KEYS	{ return KEYS; }
 KILL	{ return KILL; }
 LEADING	{ return LEADING; }
@@ -229,9 +279,11 @@ SQL_BIG_RESULT	{ return SQL_BIG_RESULT; }
 SQL_CALC_FOUND_ROWS	{ return SQL_CALC_FOUND_ROWS; }
 SQL_SMALL_RESULT	{ return SQL_SMALL_RESULT; }
 SSL	{ return SSL; }
+STRING  {   return STRINGTYPE;}
 STARTING	{ return STARTING; }
 STRAIGHT_JOIN	{ return STRAIGHT_JOIN; }
 TABLE	{ return TABLE; }
+TABLES { return TABLES; }
 TEMPORARY	{ return TEMPORARY; }
 TERMINATED	{ return TERMINATED; }
 TEXT	{ return TEXT; }
@@ -241,6 +293,8 @@ TIMESTAMP	{ return TIMESTAMP; }
 INT1|TINYINT	{ return TINYINT; }
 TINYTEXT	{ return TINYTEXT; }
 TO	{ return TO; }
+TS  { return TS; }
+TTL  { return TTL; }
 TRAILING	{ return TRAILING; }
 TRIGGER	{ return TRIGGER; }
 UNDO	{ return UNDO; }
@@ -260,6 +314,7 @@ VALUES?	{ return VALUES; }
 VARBINARY	{ return VARBINARY; }
 VARCHAR(ACTER)?	{ return VARCHAR; }
 VARYING	{ return VARYING; }
+VERSION { return VERSION; }
 WHEN	{ return WHEN; }
 WHERE	{ return WHERE; }
 WHILE	{ return WHILE; }
@@ -277,10 +332,6 @@ ZEROFILL	{ return ZEROFILL; }
             return DEF;
        }
 
-<FUN>"return" {
-        return RETURN;
-    }
-
  /* type definition */
 <FUN>"i32" {
     yylval->intval = 1;
@@ -288,8 +339,7 @@ ZEROFILL	{ return ZEROFILL; }
     }
 
 
-<FUN>{newlines} { return NEWLINES;}
-
+<FUN>{newline} { columnpos = 1; return NEWLINE;}
 <FUN>{space} {return SPACE;}
 
 <FUN>{indent} {
@@ -298,9 +348,14 @@ ZEROFILL	{ return ZEROFILL; }
 }
 
 
+ /* operator */
 
  /* numbers */
 -?[0-9]+	        { yylval->intval = atoi(yytext); return INTNUM; }
+-?[0-9]+['d']	        { yylval->intval = atoi(yytext); return DAYNUM; }
+-?[0-9]+['h']	        { yylval->intval = atoi(yytext); return HOURNUM; }
+-?[0-9]+['m']	        { yylval->intval = atoi(yytext); return MINUTENUM; }
+-?[0-9]+['s']	        { yylval->intval = atoi(yytext); return SECONDNUM; }
 
 -?[0-9]+"."[0-9]* |
 -?"."[0-9]+	|
@@ -315,7 +370,13 @@ FALSE	{ yylval->intval = 0; return BOOL; }
 
 
 '(\\.|''|[^'\n])*'	|
-\"(\\.|\"\"|[^"\n])*\"  { yylval->strval = strdup(yytext); return STRING; }
+\"(\\.|\"\"|[^"\n])*\"  {
+                            char *src = yytext+1;
+                            int len = strlen(src) - 1; //remove last quote charactor
+                            yylval->strval = (char*)(malloc(len+1));
+                            parse_string(src, yylval->strval, len, 1);
+                            return STRING;
+                         }
 
 '(\\.|[^'\n])*$	        { yyerror("Unterminated string %s", yytext); }
 \"(\\.|[^"\n])*$	{ yyerror("Unterminated string %s", yytext); }
@@ -351,7 +412,6 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 @`[^`\n]*$ { yyerror("unterminated quoted user variable %s", yytext); }
 @'[^'\n]*$ { yyerror("unterminated quoted user variable %s", yytext); }
 
-
 ":="     { return ASSIGN; }
 
 <FUN>{identifier} {
@@ -359,7 +419,7 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
             return NAME;
     }
 
-<FUN>{self} {
+{self} {
             return yytext[0];
 	}
 
@@ -373,7 +433,7 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 
 	/* everything else */
-[ \t\n]         /* white space */
+[ \n\t]         /* white space */{}
 .               { yyerror("mystery character '%s'", *yytext); }
 
 %%

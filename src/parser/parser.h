@@ -15,18 +15,18 @@
  * limitations under the License.
  */
 
-#ifndef FESQL_PARSER_PARSER_H_
-#define FESQL_PARSER_PARSER_H_
+#ifndef SRC_PARSER_PARSER_H_
+#define SRC_PARSER_PARSER_H_
 
+#include <iostream>
+#include <list>
+#include <string>
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "parser/sql_parser.gen.h"
-#include <iostream>
-#include <list>
-
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
-typedef void* yyscan_t;
+typedef void *yyscan_t;
 #endif
 
 #ifndef YY_TYPEDEF_YY_BUFFER_STATE
@@ -38,21 +38,29 @@ namespace fesql {
 namespace parser {
 
 class FeSQLParser {
-public:
+ public:
+    FeSQLParser() {}
 
-    FeSQLParser() {
-    }
-
-    int parse(const std::string &sqlstr, node::NodePointVector &trees, node::NodeManager *manager);
-
+    int parse(const std::string &sqlstr,
+              node::NodePointVector &trees,  // NOLINT (runtime/references)
+              node::NodeManager *manager,
+              base::Status &status);  // NOLINT (runtime/references)
 };
-};
-}
+}  // namespace parser
+}  // namespace fesql
 
 extern YY_BUFFER_STATE yy_scan_string(const char *yy_str, yyscan_t yyscanner);
 extern int yylex_init(yyscan_t *scanner);
-extern int yyparse(yyscan_t scanner,
-                   fesql::node::NodePointVector &trees,
-                   ::fesql::node::NodeManager *node_manager);
+extern int yyparse(
+    yyscan_t scanner,
+    fesql::node::NodePointVector &trees,  // NOLINT (runtime/references)
+    ::fesql::node::NodeManager *node_manager,
+    ::fesql::base::Status &status);  // NOLINT (runtime/references)
 extern int yylex_destroy(yyscan_t yyscanner);
-#endif /* !FESQL_PARSER_PARSER_H_ */
+extern void yyset_lineno(int line_number, yyscan_t scanner );
+extern void yyset_column(int line_number, yyscan_t scanner );
+extern int  yyget_lineno( yyscan_t scanner );
+extern int  yyget_column( yyscan_t scanner );
+extern char *yyget_text( yyscan_t scanner );
+
+#endif  // SRC_PARSER_PARSER_H_

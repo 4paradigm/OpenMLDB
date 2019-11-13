@@ -1,6 +1,6 @@
-include_directories(${INCLUDE_DIRECTORIES} 
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_BINARY_DIR}/src)
+include_directories(${INCLUDE_DIRECTORIES}
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_BINARY_DIR}/src)
 
 llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
 
