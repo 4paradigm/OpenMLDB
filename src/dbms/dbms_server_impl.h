@@ -49,12 +49,12 @@ class DBMSServerImpl : public DBMSServer {
     void AddTable(RpcController* ctr, const AddTableRequest* request,
                   AddTableResponse* response, Closure* done);
 
-    void ShowSchema(RpcController* controller, const ShowSchemaRequest* request,
-                    ShowSchemaResponse* response, Closure* done);
-    void ShowDatabases(RpcController* controller, const ShowItemsRequest* request,
-                       ShowItemsResponse* response, Closure* done);
-    void ShowTables(RpcController* controller, const ShowItemsRequest* request,
-                       ShowItemsResponse* response, Closure* done);
+    void GetSchema(RpcController* controller, const GetSchemaRequest* request,
+                    GetSchemaResponse* response, Closure* done);
+    void GetDatabases(RpcController* controller, const GetItemsRequest* request,
+                       GetItemsResponse* response, Closure* done);
+    void GetTables(RpcController* controller, const GetItemsRequest* request,
+                       GetItemsResponse* response, Closure* done);
 
  private:
     std::mutex mu_;

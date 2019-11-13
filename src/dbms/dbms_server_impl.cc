@@ -97,9 +97,9 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
     status->set_msg("ok");
     LOG(INFO) << "create table " << request->table().name() << " done";
 }
-void DBMSServerImpl::ShowSchema(RpcController* ctr,
-                                const ShowSchemaRequest* request,
-                                ShowSchemaResponse* response, Closure* done) {
+void DBMSServerImpl::GetSchema(RpcController* ctr,
+                                const GetSchemaRequest* request,
+                                GetSchemaResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::lock_guard<std::mutex> lock(mu_);
     if (tables_.find(request->name()) == tables_.end()) {
@@ -183,9 +183,9 @@ void DBMSServerImpl::EnterDatabase(RpcController* ctr,
     LOG(INFO) << "create database " << request->name() << " done";
 }
 
-void DBMSServerImpl::ShowDatabases(RpcController* controller,
-                                   const ShowItemsRequest* request,
-                                   ShowItemsResponse* response, Closure* done) {
+void DBMSServerImpl::GetDatabases(RpcController* controller,
+                                   const GetItemsRequest* request,
+                                   GetItemsResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     // TODO(chenjing): case intensive
     ::fesql::common::Status* status = response->mutable_status();
@@ -198,9 +198,9 @@ void DBMSServerImpl::ShowDatabases(RpcController* controller,
     status->set_msg("ok");
 }
 
-void DBMSServerImpl::ShowTables(RpcController* controller,
-                                const ShowItemsRequest* request,
-                                ShowItemsResponse* response, Closure* done) {
+void DBMSServerImpl::GetTables(RpcController* controller,
+                                const GetItemsRequest* request,
+                                GetItemsResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (nullptr == db_) {
         ::fesql::common::Status* status = response->mutable_status();

@@ -170,7 +170,7 @@ void HandleShowDatabases() {
     }
     ::fesql::base::Status status;
     std::vector<std::string> items;
-    dbms_sdk->ShowDatabases(items, status);
+    dbms_sdk->GetDatabases(items, status);
     if (status.code == 0) {
         dbms_sdk->PrintItems(items);
     } else {
@@ -187,7 +187,7 @@ void HandleShowTables() {
     }
     ::fesql::base::Status status;
     std::vector<std::string> items;
-    dbms_sdk->ShowTables(items, status);
+    dbms_sdk->GetTables(items, status);
     if (status.code == 0) {
         dbms_sdk->PrintItems(items);
     } else {
@@ -205,7 +205,7 @@ void HandleShowSchema(std::string table_name) {
     }
     ::fesql::base::Status status;
     ::fesql::type::TableDef table;
-    dbms_sdk->ShowSchema(table_name, table, status);
+    dbms_sdk->GetSchema(table_name, table, status);
     if (status.code == 0) {
         dbms_sdk->PrintTableSchema(table);
     } else {

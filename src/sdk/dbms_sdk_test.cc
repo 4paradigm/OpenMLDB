@@ -50,7 +50,7 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
         // get databases is empty
         std::vector<std::string> names;
         Status status;
-        dbms_sdk->ShowDatabases(names, status);
+        dbms_sdk->GetDatabases(names, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(0, names.size());
     }
@@ -86,7 +86,7 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
         // get databases
         std::vector<std::string> names;
         Status status;
-        dbms_sdk->ShowDatabases(names, status);
+        dbms_sdk->GetDatabases(names, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(3, names.size());
     }
@@ -221,7 +221,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         DatabaseDef db;
         std::vector<std::string> names;
         Status status;
-        dbms_sdk->ShowTables(names, status);
+        dbms_sdk->GetTables(names, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(3, names.size());
     }
@@ -238,7 +238,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         DatabaseDef db;
         std::vector<std::string> names;
         Status status;
-        dbms_sdk->ShowTables(names, status);
+        dbms_sdk->GetTables(names, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(0, names.size());
     }
@@ -293,7 +293,7 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
         DatabaseDef db;
         std::vector<std::string> names;
         Status status;
-        dbms_sdk->ShowTables(names, status);
+        dbms_sdk->GetTables(names, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(1, names.size());
     }

@@ -38,10 +38,10 @@ class DBMSSdkImpl : public DBMSSdk {
     void CreateDatabase(const DatabaseDef &database, base::Status &status);
     void EnterDatabase(const DatabaseDef &database, base::Status &status);
     void CreateTable(const std::string &sql, base::Status &status) override;
-    void ShowSchema(const std::string &name, type::TableDef &table,
+    void GetSchema(const std::string &name, type::TableDef &table,
                     base::Status &status) override;
-    void ShowTables(std::vector<std::string> &names, base::Status &status);
-    void ShowDatabases(std::vector<std::string> &names, base::Status &status);
+    void GetTables(std::vector<std::string> &names, base::Status &status);
+    void GetDatabases(std::vector<std::string> &names, base::Status &status);
     void ExecuteScript(const std::string &sql, base::Status &status) override;
     void PrintTableSchema(fesql::type::TableDef def);
     void PrintItems(std::vector<std::string> items);
@@ -80,13 +80,13 @@ void DBMSSdkImpl::CreateGroup(const GroupDef &group, base::Status &status) {
         status.msg = response.status().msg();
     }
 }
-void DBMSSdkImpl::ShowTables(std::vector<std::string> &names,
+void DBMSSdkImpl::GetTables(std::vector<std::string> &names,
                              base::Status &status) {
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::ShowItemsRequest request;
-    ::fesql::dbms::ShowItemsResponse response;
+    ::fesql::dbms::GetItemsRequest request;
+    ::fesql::dbms::GetItemsResponse response;
     brpc::Controller cntl;
-    stub.ShowTables(&cntl, &request, &response, NULL);
+    stub.GetTables(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
         status.code = error::kRpcErrorUnknow;
         status.msg = "fail to call remote";
@@ -99,13 +99,13 @@ void DBMSSdkImpl::ShowTables(std::vector<std::string> &names,
     }
 }
 
-void DBMSSdkImpl::ShowDatabases(std::vector<std::string> &names,
+void DBMSSdkImpl::GetDatabases(std::vector<std::string> &names,
                                 base::Status &status) {
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::ShowItemsRequest request;
-    ::fesql::dbms::ShowItemsResponse response;
+    ::fesql::dbms::GetItemsRequest request;
+    ::fesql::dbms::GetItemsResponse response;
     brpc::Controller cntl;
-    stub.ShowDatabases(&cntl, &request, &response, NULL);
+    stub.GetDatabases(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
         status.code = error::kRpcErrorUnknow;
         status.msg = "fail to call remote";
@@ -118,14 +118,14 @@ void DBMSSdkImpl::ShowDatabases(std::vector<std::string> &names,
     }
 }
 
-void DBMSSdkImpl::ShowSchema(const std::string &name, type::TableDef &table,
+void DBMSSdkImpl::GetSchema(const std::string &name, type::TableDef &table,
                              base::Status &status) {
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::ShowSchemaRequest request;
+    ::fesql::dbms::GetSchemaRequest request;
     request.set_name(name);
-    ::fesql::dbms::ShowSchemaResponse response;
+    ::fesql::dbms::GetSchemaResponse response;
     brpc::Controller cntl;
-    stub.ShowSchema(&cntl, &request, &response, NULL);
+    stub.GetSchema(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
         status.code = error::kRpcErrorUnknow;
         status.msg = "fail to call remote";
@@ -282,7 +282,7 @@ void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {
     switch (cmd_node->GetCmdType()) {
         case node::kCmdShowDatabases: {
             std::vector<std::string> names;
-            ShowDatabases(names, status);
+            GetDatabases(names, status);
             if (status.code == 0) {
                 PrintItems(names);
             }
@@ -290,7 +290,7 @@ void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {
         }
         case node::kCmdShowTables: {
             std::vector<std::string> names;
-            ShowTables(names, status);
+            GetTables(names, status);
             if (status.code == 0) {
                 PrintItems(names);
             }
@@ -298,7 +298,7 @@ void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {
         }
         case node::kCmdDescTable: {
             type::TableDef table;
-            ShowSchema(cmd_node->GetArgs()[0], table, status);
+            GetSchema(cmd_node->GetArgs()[0], table, status);
             if (status.code == 0) {
                 PrintTableSchema(table);
             }

@@ -38,20 +38,20 @@ message AddTableResponse {
     optional common.Status status = 1;
 }
 
-message ShowSchemaRequest {
+message GetSchemaRequest {
     optional string name = 1;
 }
 
-message ShowSchemaResponse {
+message GetSchemaResponse {
     optional common.Status status = 1;
     optional type.TableDef table = 2;
 }
 
-message ShowItemsRequest {
+message GetItemsRequest {
     optional string name = 1;
 }
 
-message ShowItemsResponse {
+message GetItemsResponse {
     optional common.Status status = 1;
     repeated string items = 2;
 }
@@ -61,7 +61,7 @@ service DBMSServer {
     rpc AddDatabase (AddDatabaseRequest) returns (AddDatabaseResponse);
     rpc EnterDatabase (EnterDatabaseRequest) returns (EnterDatabaseResponse);
     rpc AddTable (AddTableRequest) returns (AddTableResponse);
-    rpc ShowSchema (ShowSchemaRequest) returns (ShowSchemaResponse);
-    rpc ShowDatabases (ShowItemsRequest) returns (ShowItemsResponse);
-    rpc ShowTables (ShowItemsRequest) returns (ShowItemsResponse);
+    rpc GetSchema (GetSchemaRequest) returns (GetSchemaResponse);
+    rpc GetDatabases (GetItemsRequest) returns (GetItemsResponse);
+    rpc GetTables (GetItemsRequest) returns (GetItemsResponse);
 }

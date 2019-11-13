@@ -43,11 +43,11 @@ class DBMSSdk {
                                 base::Status &status) = 0;
     virtual void CreateTable(const std::string &sql_str,
                              base::Status &status) = 0;
-    virtual void ShowSchema(const std::string &name, type::TableDef &table,
+    virtual void GetSchema(const std::string &name, type::TableDef &table,
                             base::Status &status) = 0;
-    virtual void ShowTables(std::vector<std::string> &names,
+    virtual void GetTables(std::vector<std::string> &names,
                             base::Status &status) = 0;
-    virtual void ShowDatabases(std::vector<std::string> &names,
+    virtual void GetDatabases(std::vector<std::string> &names,
                                base::Status &status) = 0;
     virtual void ExecuteScript(const std::string &sql_str,
                                base::Status &status) = 0;

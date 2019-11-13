@@ -199,10 +199,10 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
     {
-        ::fesql::dbms::ShowItemsRequest request;
-        ::fesql::dbms::ShowItemsResponse response;
+        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
-        dbms_server.ShowTables(NULL, &request, &response, &closure);
+        dbms_server.GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
         ASSERT_EQ(3, response.items_size());
         ASSERT_EQ("test1", response.items(0));
@@ -229,23 +229,23 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
     {
-        ::fesql::dbms::ShowItemsRequest request;
-        ::fesql::dbms::ShowItemsResponse response;
+        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
-        dbms_server.ShowTables(NULL, &request, &response, &closure);
+        dbms_server.GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
         ASSERT_EQ(0, response.items_size());
     }
 }
 
-TEST_F(DBMSServerImplTest, ShowDatabasesAndTablesTest) {
+TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
     ::fesql::dbms::DBMSServerImpl dbms_server;
     // show database
     {
-        ::fesql::dbms::ShowItemsRequest request;
-        ::fesql::dbms::ShowItemsResponse response;
+        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
-        dbms_server.ShowDatabases(NULL, &request, &response, &closure);
+        dbms_server.GetDatabases(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
         ASSERT_EQ(0, response.items_size());
     }
@@ -260,10 +260,10 @@ TEST_F(DBMSServerImplTest, ShowDatabasesAndTablesTest) {
     }
     // show database
     {
-        ::fesql::dbms::ShowItemsRequest request;
-        ::fesql::dbms::ShowItemsResponse response;
+        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
-        dbms_server.ShowDatabases(NULL, &request, &response, &closure);
+        dbms_server.GetDatabases(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
         ASSERT_EQ(1, response.items_size());
         ASSERT_EQ("db_test1", response.items(0));
@@ -290,10 +290,10 @@ TEST_F(DBMSServerImplTest, ShowDatabasesAndTablesTest) {
 
     // show database
     {
-        ::fesql::dbms::ShowItemsRequest request;
-        ::fesql::dbms::ShowItemsResponse response;
+        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
-        dbms_server.ShowDatabases(NULL, &request, &response, &closure);
+        dbms_server.GetDatabases(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
         ASSERT_EQ(3, response.items_size());
         ASSERT_EQ("db_test1", response.items(0));
@@ -303,10 +303,10 @@ TEST_F(DBMSServerImplTest, ShowDatabasesAndTablesTest) {
 
     // show tables out of database
     {
-        ::fesql::dbms::ShowItemsRequest request;
-        ::fesql::dbms::ShowItemsResponse response;
+        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
-        dbms_server.ShowTables(NULL, &request, &response, &closure);
+        dbms_server.GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kNoDatabase, response.status().code());
     }
 
@@ -425,10 +425,10 @@ TEST_F(DBMSServerImplTest, ShowDatabasesAndTablesTest) {
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
     {
-        ::fesql::dbms::ShowItemsRequest request;
-        ::fesql::dbms::ShowItemsResponse response;
+        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
-        dbms_server.ShowTables(NULL, &request, &response, &closure);
+        dbms_server.GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
         ASSERT_EQ(3, response.items_size());
         ASSERT_EQ("test1", response.items(0));
@@ -446,10 +446,10 @@ TEST_F(DBMSServerImplTest, ShowDatabasesAndTablesTest) {
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
     {
-        ::fesql::dbms::ShowItemsRequest request;
-        ::fesql::dbms::ShowItemsResponse response;
+        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
-        dbms_server.ShowTables(NULL, &request, &response, &closure);
+        dbms_server.GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
         ASSERT_EQ(2, response.items_size());
         ASSERT_EQ("test1", response.items(0));
@@ -466,15 +466,15 @@ TEST_F(DBMSServerImplTest, ShowDatabasesAndTablesTest) {
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
     {
-        ::fesql::dbms::ShowItemsRequest request;
-        ::fesql::dbms::ShowItemsResponse response;
+        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
-        dbms_server.ShowTables(NULL, &request, &response, &closure);
+        dbms_server.GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
         ASSERT_EQ(0, response.items_size());
     }
 }
-TEST_F(DBMSServerImplTest, ShowTableTest) {
+TEST_F(DBMSServerImplTest, GetTableTest) {
     ::fesql::dbms::DBMSServerImpl dbms_server;
     // create database
     {
@@ -543,11 +543,11 @@ TEST_F(DBMSServerImplTest, ShowTableTest) {
 
     // show table test
     {
-        ::fesql::dbms::ShowSchemaRequest request;
-        ::fesql::dbms::ShowSchemaResponse response;
+        ::fesql::dbms::GetSchemaRequest request;
+        ::fesql::dbms::GetSchemaResponse response;
         request.set_name("test");
         MockClosure closure;
-        dbms_server.ShowSchema(NULL, &request, &response, &closure);
+        dbms_server.GetSchema(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
         ASSERT_EQ(table.DebugString(), response.table().DebugString());
     }
