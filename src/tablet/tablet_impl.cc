@@ -150,7 +150,7 @@ bool TabletImpl::Init() {
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     if (FLAGS_recycle_ttl != 0) {
-        task_pool_.DelayTask(FLAGS_recycle_ttl, boost::bind(&TabletImpl::SchedDelRecycle, this));
+        task_pool_.DelayTask(FLAGS_recycle_ttl*60*1000, boost::bind(&TabletImpl::SchedDelRecycle, this));
     }
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
@@ -3785,7 +3785,7 @@ void TabletImpl::DelRecycle(const std::string &path) {
         } else {
             recycle_time = ::rtidb::base::ParseTimeToSecond(parts[3]);
         }
-        if (FLAGS_recycle_ttl != 0 && (now_time - recycle_time) / 60 > FLAGS_recycle_ttl) {
+        if (FLAGS_recycle_ttl != 0 && (now_time - recycle_time) > FLAGS_recycle_ttl * 60) {
             ::rtidb::base::RemoveDirRecursive(file_path);
         }
     }
@@ -3797,7 +3797,7 @@ void TabletImpl::SchedDelRecycle() {
             DelRecycle(path);
         }
     }
-    task_pool_.DelayTask(FLAGS_recycle_ttl, boost::bind(&TabletImpl::SchedDelRecycle, this));
+    task_pool_.DelayTask(FLAGS_recycle_ttl*60*1000, boost::bind(&TabletImpl::SchedDelRecycle, this));
 }
 
 bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {

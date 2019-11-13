@@ -3476,7 +3476,7 @@ TEST_F(TabletImplTest, DelRecycle) {
     FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
     std::string tmp_recycle_path = "/tmp/gtest/recycle";
     ::rtidb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
-    ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/98_1_binlog_20191111070955/binlog/");    
+    ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/98_1_binlog_20191111070955/binlog/");
     ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/100_3_20191111115149/binlog/");
     TabletImpl tablet;
     tablet.Init();
@@ -3485,7 +3485,8 @@ TEST_F(TabletImplTest, DelRecycle) {
     ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(2, file_vec.size());
 
-    sleep(35);
+    std::cout << "sleep for 30s" << std::endl;
+    sleep(30);
 
     std::string now_time = ::rtidb::base::GetNowTime();
     ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/101_4_"+now_time+"/binlog/");
@@ -3494,13 +3495,15 @@ TEST_F(TabletImplTest, DelRecycle) {
     ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(4, file_vec.size());
 
+    std::cout << "sleep for 35s" << std::endl;
     sleep(35);
 
     file_vec.clear();
     ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(2, file_vec.size());
 
-    sleep(35);
+    std::cout << "sleep for 80s" << std::endl;
+    sleep(80);
 
     file_vec.clear();
     ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
