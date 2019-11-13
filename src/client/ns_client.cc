@@ -423,6 +423,36 @@ bool NsClient::UpdateTTL(const std::string& name,
     return false;
 }
 
+bool NsClient::CreateTableForReplicaCluster(std::string& msg) {
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    if (ShowTable("", tables, msg)) {
+        return false;
+    }
+    if (tables.size() == 0) {
+        return true;
+    }
+    ::rtidb::nameserver::CreateTableRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    ::rtidb::nameserver::TableInfo* table_info;
+    for (uint32_t i = 0; i < tables.size(); i++) {
+        table_info = request.mutable_table_info();
+        table_info->CopyFrom(tables[i]);
+        bool ok = false;
+        uint32_t retry_time = 3;
+        for (uint32_t j = 0; j < retry_time; j++) {
+            ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response, FLAGS_request_timeout_ms, 1);
+            if (ok) {
+                break;
+            }
+        }
+        msg = response.msg();
+        if (!(ok && response.code() == 0)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool NsClient::AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t term, std::string& msg) {
     ::rtidb::nameserver::ReplicaClusterByNsRequest request;
     ::rtidb::nameserver::AddReplicaClusterByNsResponse response;

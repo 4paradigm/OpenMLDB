@@ -58,6 +58,8 @@ public:
 
     int Init(std::string& msg);
 
+    bool CreateTableForReplicaCluster(); 
+   
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
 
     bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, int& code, std::string& msg);

@@ -132,6 +132,16 @@ int ClusterInfo::Init(std::string& msg) {
     zk_client_->WatchNodes();
     return 0;
 }
+
+bool ClusterInfo::CreateTableForReplicaCluster() {
+    std::string msg;
+    if (!client_->CreateTableForReplicaCluster(msg)) {
+        PDLOG(WARNING, "create table for replica cluster failed!, msg is: %s", msg.c_str());
+        return false;
+    }
+    return true;
+}
+
 bool ClusterInfo::AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg) {
     if (!client_->AddReplicaClusterByNs(alias, zone_name, term, msg)) {
         PDLOG(WARNING, "send MakeReplicaCluster request failed");
@@ -2325,11 +2335,19 @@ void NameServerImpl::CreateTable(RpcController* controller,
         GeneralResponse* response, 
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
+    }
+    if (follower_.load(std::memory_order_acquire)) {
+        if (!request->for_replica_cluster()) {
+            response->set_code(501);
+            response->set_msg("nameserver is follower");
+            PDLOG(WARNING, "cur nameserver is follower");
+            return;
+        }
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
@@ -2338,11 +2356,13 @@ void NameServerImpl::CreateTable(RpcController* controller,
         response->set_msg("check TableMeta failed, index column type can not float or double");
         return;
     }
-    if (FillColumnKey(*table_info) < 0) {
-        response->set_code(307);
-        response->set_msg("fill column key failed");
-        PDLOG(WARNING, "fill column key failed");
-        return;
+    if (!request->for_replica_cluster()) { 
+        if (FillColumnKey(*table_info) < 0) {
+            response->set_code(307);
+            response->set_msg("fill column key failed");
+            PDLOG(WARNING, "fill column key failed");
+            return;
+        }
     }
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -2361,6 +2381,34 @@ void NameServerImpl::CreateTable(RpcController* controller,
         PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
                         table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
         return;
+    }
+    if (request->for_replica_cluster()) {
+        uint32_t tablets_size = 0;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            for (const auto& kv : tablets_) {
+                if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+                    tablets_size++;
+                }
+            }
+        }
+        if (table_info->table_partition_size() > 0) {
+            std::set<std::string> endpoint_set;
+            for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+                for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+                    std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+                    if (!table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                        continue;
+                    }
+                    endpoint_set.insert(endpoint);
+                }
+            }
+            table_info->set_replica_num(std::min(tablets_size, (uint32_t)endpoint_set.size()));
+            table_info->set_partition_num(table_info->table_partition_size());
+            table_info->clear_table_partition();
+        } else {
+            table_info->set_replica_num(std::min(tablets_size, table_info->replica_num()));
+        }
     }
     if (table_info->table_partition_size() > 0) {
         std::set<uint32_t> pid_set;
@@ -5413,6 +5461,9 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             break;
         }
         nsc_.insert(std::make_pair(request->alias(), cluster_info));
+
+        //create tables for replica cluster
+        task_thread_pool_.AddTask(boost::bind(&ClusterInfo::CreateTableForReplicaCluster, cluster_info));
     } while(0);
 
     response->set_code(code);
