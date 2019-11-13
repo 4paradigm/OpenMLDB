@@ -6,7 +6,7 @@
 #include "gtest/gtest.h"
 
 namespace fesql {
-namespace storage {
+namespace base {
 
 class SliceTest : public ::testing::Test {
  public:

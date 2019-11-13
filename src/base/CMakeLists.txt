@@ -17,3 +17,6 @@ add_executable(hash_mk hash_mk.cc)
 target_link_libraries(hash_mk gflags benchmark benchmark_main pthread)
 list(APPEND mk_list hash_mk)
 add_library(fesql_base STATIC linenoise.cc)
+
+add_executable(slice_test slice_test.cc)
+target_link_libraries(slice_test gflags gtest pthread)
