@@ -15,6 +15,9 @@
 //  SpinMutex has very low overhead for low-contention cases.  Method names
 //  are chosen so you can use std::unique_lock or std::lock_guard with it.
 //
+
+#pragma once
+
 namespace rtidb {
 namespace base {
 
