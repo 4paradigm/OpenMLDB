@@ -3778,12 +3778,12 @@ void TabletImpl::DelRecycle(const std::string &path) {
         std::string file_name = ::rtidb::base::ParseFileNameFromPath(file_path);
         std::vector<std::string> parts;
         int64_t recycle_time;
-        int64_t now_time = ::rtidb::base::getNowTimeInSecond();
+        int64_t now_time = ::baidu::common::timer::get_micros() / 1000000;
         ::rtidb::base::SplitString(file_name, "_", parts);
         if(parts.size() == 3) {
-            recycle_time = ::rtidb::base::ParseTimeToSecond(parts[2]);
+            recycle_time = ::rtidb::base::ParseTimeToSecond(parts[2], "%Y%m%d%H%M%S");
         } else {
-            recycle_time = ::rtidb::base::ParseTimeToSecond(parts[3]);
+            recycle_time = ::rtidb::base::ParseTimeToSecond(parts[3], "%Y%m%d%H%M%S");
         }
         if (FLAGS_recycle_ttl != 0 && (now_time - recycle_time) > FLAGS_recycle_ttl * 60) {
             ::rtidb::base::RemoveDirRecursive(file_path);
