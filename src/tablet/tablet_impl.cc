@@ -149,7 +149,9 @@ bool TabletImpl::Init() {
     }
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
-    task_pool_.DelayTask(FLAGS_recycle_ttl, boost::bind(&TabletImpl::SchedDelRecycle, this));
+    if (FLAGS_recycle_ttl != 0) {
+        task_pool_.DelayTask(FLAGS_recycle_ttl, boost::bind(&TabletImpl::SchedDelRecycle, this));
+    }
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);

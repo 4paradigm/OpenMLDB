@@ -36,6 +36,7 @@ DECLARE_uint32(max_traverse_cnt);
 DECLARE_bool(recycle_bin_enabled);
 DECLARE_string(db_root_path);
 DECLARE_string(recycle_bin_root_path);
+DECLARE_uint32(recycle_ttl);
 
 namespace rtidb {
 namespace tablet {
@@ -3466,6 +3467,48 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         unlink(snapshot_file.c_str());
         FLAGS_make_snapshot_threshold_offset = offset;
     }
+}
+
+TEST_F(TabletImplTest, DelRecycle) {
+    uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
+    std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
+    FLAGS_recycle_ttl = 1;
+    FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
+    std::string tmp_recycle_path = "/tmp/gtest/recycle";
+    ::rtidb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
+    ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/98_1_binlog_20191111070955/binlog/");    
+    ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/100_3_20191111115149/binlog/");
+    TabletImpl tablet;
+    tablet.Init();
+
+    std::vector<std::string> file_vec;
+    ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ASSERT_EQ(2, file_vec.size());
+
+    sleep(35);
+
+    std::string now_time = ::rtidb::base::GetNowTime();
+    ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/101_4_"+now_time+"/binlog/");
+    ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/99_2_binlog_"+now_time+"/binlog/");
+    file_vec.clear();
+    ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ASSERT_EQ(4, file_vec.size());
+
+    sleep(35);
+
+    file_vec.clear();
+    ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ASSERT_EQ(2, file_vec.size());
+
+    sleep(35);
+
+    file_vec.clear();
+    ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
+    ASSERT_EQ(0, file_vec.size());
+
+    ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
+    FLAGS_recycle_ttl = tmp_recycle_ttl;
+    FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
 }
 
 }

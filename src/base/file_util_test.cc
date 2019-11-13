@@ -35,7 +35,7 @@ TEST_F(FileUtilTest, GetChildFileName) {
 }
 
 TEST_F(FileUtilTest, IsFolder) {
-    MkdirRecur("/tmp/gtest/test/testdir");
+    MkdirRecur("/tmp/gtest/test/testdir/");
     FILE * f = fopen("/tmp/gtest/test0.txt", "w");
     if(f!=nullptr)
         fclose(f);
@@ -62,6 +62,13 @@ TEST_F(FileUtilTest, RemoveDirRecursive) {
         fclose(f);
     RemoveDirRecursive("/tmp/gtest");
     ASSERT_FALSE(IsExists("/tmp/gtest"));
+}
+
+TEST_F(FileUtilTest, ParseFileNameFromPath) {
+    ASSERT_EQ("test.txt", ParseFileNameFromPath("test.txt"));
+    ASSERT_EQ("test", ParseFileNameFromPath("/home/rtidb/test"));
+    ASSERT_EQ("", ParseFileNameFromPath("/home/rtidb/"));
+    ASSERT_EQ("", ParseFileNameFromPath("/"));
 }
 
 } // namespace base
