@@ -103,7 +103,8 @@ TEST_F(OpGeneratorTest, test_normal) {
     ::fesql::parser::FeSQLParser parser;
     ::fesql::node::NodeManager manager;
     const std::string sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
-    int ret = parser.parse(sql, list, &manager);
+    ::fesql::base::Status parse_status;
+    int ret = parser.parse(sql, list, &manager, parse_status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(2, list.size());
 

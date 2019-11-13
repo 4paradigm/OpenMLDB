@@ -1,4 +1,5 @@
 import "common.proto";
+import "type.proto";
 
 package fesql.dbms;
 option cc_generic_services = true;
@@ -10,10 +11,57 @@ message AddGroupRequest {
 }
 
 message AddGroupResponse {
-    optional common.Status status =1;
+    optional common.Status status = 1;
 }
 
+message AddDatabaseRequest {
+    optional string name = 1;
+}
+
+message AddDatabaseResponse {
+    optional common.Status status = 1;
+}
+
+message EnterDatabaseRequest {
+    optional string name = 1;
+}
+
+message EnterDatabaseResponse {
+    optional common.Status status = 1;
+}
+
+message AddTableRequest {
+    optional type.TableDef table = 1;
+}
+
+message AddTableResponse {
+    optional common.Status status = 1;
+}
+
+message ShowSchemaRequest {
+    optional string name = 1;
+}
+
+message ShowSchemaResponse {
+    optional common.Status status = 1;
+    optional type.TableDef table = 2;
+}
+
+message ShowItemsRequest {
+    optional string name = 1;
+}
+
+message ShowItemsResponse {
+    optional common.Status status = 1;
+    repeated string items = 2;
+}
 
 service DBMSServer {
-    rpc AddGroup(AddGroupRequest) returns(AddGroupResponse);
+    rpc AddGroup (AddGroupRequest) returns (AddGroupResponse);
+    rpc AddDatabase (AddDatabaseRequest) returns (AddDatabaseResponse);
+    rpc EnterDatabase (EnterDatabaseRequest) returns (EnterDatabaseResponse);
+    rpc AddTable (AddTableRequest) returns (AddTableResponse);
+    rpc ShowSchema (ShowSchemaRequest) returns (ShowSchemaResponse);
+    rpc ShowDatabases (ShowItemsRequest) returns (ShowItemsResponse);
+    rpc ShowTables (ShowItemsRequest) returns (ShowItemsResponse);
 }

@@ -18,9 +18,7 @@ namespace storage {
 using ::fesql::base::Iterator;
 
 class Table {
-
-public:
-
+ public:
     Table() = default;
 
     Table(const std::string& name,
@@ -29,24 +27,19 @@ public:
 
     bool Init();
 
-    bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size);
+    bool Put(const std::string& pk, uint64_t time, const char* data,
+             uint32_t size);
 
     TableIterator* NewIterator(const std::string& pk);
     TableIterator* NewIterator();
 
-    inline std::string GetName() const {
-        return name_;
-    }
+    inline std::string GetName() const { return name_; }
 
-    inline uint32_t GetId() const {
-        return id_;
-    }
+    inline uint32_t GetId() const { return id_; }
 
-    inline uint32_t GetPid() const {
-        return pid_;
-    }
+    inline uint32_t GetPid() const { return pid_; }
 
-private:
+ private:
     std::string name_;
     uint32_t id_;
     uint32_t pid_;
@@ -54,5 +47,5 @@ private:
     Segment** segments_ = NULL;
 };
 
-}
-}
+}  // namespace storage
+}  // namespace fesql

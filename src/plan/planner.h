@@ -1,50 +1,76 @@
-//
-// Created by 陈靓 on 2019/10/24.
-//
+/*-------------------------------------------------------------------------
+ * Copyright (C) 2019, 4paradigm
+ * plan.h
+ *
+ * Author: chenjing
+ * Date: 2019/10/24
+ *--------------------------------------------------------------------------
+ **/
+#ifndef SRC_PLAN_PLANNER_H_
+#define SRC_PLAN_PLANNER_H_
 
-#ifndef FESQL_PLANNER_H
-#define FESQL_PLANNER_H
-
-#endif //FESQL_PLANNER_H
-
-#include "node/node_manager.h"
-#include "node/sql_node.h"
-#include "node/plan_node.h"
+#include <string>
 #include "glog/logging.h"
+#include "node/node_manager.h"
+#include "node/plan_node.h"
+#include "node/sql_node.h"
+#include "proto/type.pb.h"
 namespace fesql {
 namespace plan {
 
+using base::Status;
 using node::NodePointVector;
+using node::PlanNode;
 using node::PlanNodeList;
 using node::SQLNode;
-using node::PlanNode;
 
 class Planner {
-public:
-    Planner(node::NodeManager *manager) : node_manager_(manager) {
-    }
+ public:
+    explicit Planner(node::NodeManager *manager) : node_manager_(manager) {}
+    virtual ~Planner() {}
+    virtual int CreatePlanTree(
+        const NodePointVector &parser_trees,
+        PlanNodeList &plan_trees,  // NOLINT (runtime/references)
+        Status &status) = 0;       // NOLINT (runtime/references)
 
-    virtual ~Planner() {
-    }
-
-    virtual PlanNode *CreatePlan(const SQLNode *parser_tree_ptr) = 0;
-protected:
-    node::PlanNode *CreatePlanRecurse(const node::SQLNode *root);
-    node::PlanNode *CreateSelectPlan(const node::SelectStmt *root);
-    node::ProjectPlanNode *CreateProjectPlanNode(const node::SQLNode *root, const std::string& table_name);
-    node::PlanNode *CreateDataProviderPlanNode(const node::SQLNode *root);
-    node::PlanNode *CreateDataCollectorPlanNode(const node::SQLNode *root);
+ protected:
+    void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
+                           Status &status);  // NOLINT (runtime/references)
+    int CreateSelectPlan(const node::SQLNode *root, PlanNode *plan_tree,
+                         Status &status);  // NOLINT (runtime/references)
+    void CreateCreateTablePlan(const node::SQLNode *root,
+                               node::CreatePlanNode *plan_tree,
+                               Status &status);  // NOLINT (runtime/references)
+    void CreateProjectPlanNode(const node::SQLNode *root, const std::string& table_name,
+                               node::ProjectPlanNode *plan_tree,
+                               Status &status);  // NOLINT (runtime/references)
+    void CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan_tree,
+                       Status &status);  // NOLINT (runtime/references)
+    void CreateDataProviderPlanNode(
+        const node::SQLNode *root, PlanNode *plan_tree,
+        Status &status);  // NOLINT (runtime/references)
+    void CreateDataCollectorPlanNode(
+        const node::SQLNode *root, PlanNode *plan_tree,
+        Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
 };
 
 class SimplePlanner : public Planner {
-public:
-    SimplePlanner(node::NodeManager *manager) : Planner(manager) {
-    }
-    PlanNode *CreatePlan(const SQLNode *parser_tree_ptr);
-private:
-
+ public:
+    explicit SimplePlanner(node::NodeManager *manager) : Planner(manager) {}
+    int CreatePlanTree(const NodePointVector &parser_trees,
+                       PlanNodeList &plan_trees,
+                       Status &status);  // NOLINT (runtime/references)
 };
 
-}
-}
+// TODO(chenjing): move to executor module
+void TransformTableDef(const std::string &table_name,
+                       const NodePointVector &column_desc_list,
+                       type::TableDef *table,
+                       Status &status);  // NOLINT (runtime/references)
+std::string GenerateName(const std::string prefix, int id);
+
+}  // namespace plan
+}  // namespace fesql
+
+#endif  // SRC_PLAN_PLANNER_H_

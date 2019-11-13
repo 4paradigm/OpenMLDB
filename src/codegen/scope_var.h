@@ -18,8 +18,8 @@
 #ifndef CODEGEN_SCOPE_VAR_H_
 #define CODEGEN_SCOPE_VAR_H_
 
-#include <vector>
 #include <map>
+#include <vector>
 #include "llvm/IR/IRBuilder.h"
 
 namespace fesql {
@@ -34,7 +34,7 @@ struct Scope {
 typedef std::vector<Scope> Scopes;
 
 class ScopeVar {
-public:
+ public:
     ScopeVar();
     ~ScopeVar();
 
@@ -43,10 +43,11 @@ public:
     bool Exit();
     bool AddVar(const std::string& name, ::llvm::Value*);
     bool FindVar(const std::string& name, ::llvm::Value** value);
-private:
+
+ private:
     Scopes scopes_;
 };
 
-} // namespace of codegen
-} // namespace of fesql
+}  // namespace codegen
+}  // namespace fesql
 #endif /* !CODEGEN_SCOPE_VAR_H_ */

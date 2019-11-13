@@ -1,16 +1,13 @@
 %define api.pure full
-%locations
-
 %output  "sql_parser.gen.cc"
 %defines "sql_parser.gen.h"
-
-// Prefix the parser
 %define parse.error verbose
 %locations
 %lex-param   { yyscan_t scanner }
 %parse-param { yyscan_t scanner }
 %parse-param { ::fesql::node::NodePointVector &trees}
 %parse-param { ::fesql::node::NodeManager *node_manager}
+%parse-param { ::fesql::base::Status &status}
 
 %{
 #include <stdlib.h>
@@ -24,16 +21,21 @@
 extern int yylex(YYSTYPE* yylvalp, 
                  YYLTYPE* yyllocp, 
                  yyscan_t scanner);
-void emit(char *s, ...);
-
-void yyerror_msg(char *s, ...);
-void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &trees, ::fesql::node::NodeManager *node_manager, const char* msg ) {
-printf("error %s", msg);
+void emit(const char *s, ...);
+void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &trees,
+	::fesql::node::NodeManager *node_manager, ::fesql::base::Status &status, const char* msg) {
+	status.code = ::fesql::error::kParserErrorSyntax;
+	std::ostringstream s;
+        s << "line: "<< yyllocp->last_line << ", column: "
+       	<< yyllocp->first_column << ": " <<
+       	msg;
+	status.msg = s.str();
 }
 %}
 
 %code requires {
 #include "node/sql_node.h"
+#include <sstream>
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
 typedef void* yyscan_t;
@@ -45,10 +47,10 @@ typedef void* yyscan_t;
 	double floatval;
 	char* strval;
 	int subtok;
+	bool flag;
 	::fesql::node::SQLNode* node;
 	::fesql::node::FnNode* fnnode;
 	::fesql::node::DataType type;
-	::fesql::node::SQLNode* target;
 	::fesql::node::SQLNodeList* list;
 }
 
@@ -56,6 +58,10 @@ typedef void* yyscan_t;
 %token <strval> NAME
 %token <strval> STRING
 %token <intval> INTNUM
+%token <intval> DAYNUM
+%token <intval> HOURNUM
+%token <intval> MINUTENUM
+%token <intval> SECONDNUM
 %token <intval> BOOL
 %token <floatval> APPROXNUM
 
@@ -82,7 +88,7 @@ typedef void* yyscan_t;
 %nonassoc UMINUS
 
 %token <intval> I32
-%token <strval> NEWLINES
+%token <strval> NEWLINE
 %token <intval> INDENT
 %token <strval> DEF
 %token <strval> SPACE
@@ -155,7 +161,7 @@ typedef void* yyscan_t;
 %token FUNDEFEND
 %token ENUM
 %token ESCAPED
-%token <subtok> EXISTS
+%token EXISTS
 %token EXIT
 %token EXPLAIN
 %token FETCH
@@ -276,9 +282,11 @@ typedef void* yyscan_t;
 %token SQL_CALC_FOUND_ROWS
 %token SQL_SMALL_RESULT
 %token SSL
+%token STRINGTYPE
 %token STARTING
 %token STRAIGHT_JOIN
 %token TABLE
+%token TABLES
 %token TEMPORARY
 %token TEXT
 %token TERMINATED
@@ -291,6 +299,9 @@ typedef void* yyscan_t;
 %token TO
 %token TRAILING
 %token TRIGGER
+%token TS
+%token TTL
+
 %token UNDO
 %token UNION
 %token UNIQUE
@@ -308,6 +319,7 @@ typedef void* yyscan_t;
 %token VARBINARY
 %token VARCHAR
 %token VARYING
+%token VERSION
 %token WINDOW
 %token WHEN
 %token WHERE
@@ -325,20 +337,28 @@ typedef void* yyscan_t;
 %token FDATE_ADD FDATE_SUB
 %token FCOUNT
 
+ /* udf */
 %type <type> types
 %type <fnnode> grammar line_list primary var
              fn_def return_stmt assign_stmt para plist fn_expr
              fun_def_block fn_def_indent_op stmt_block func_stmts func_stmt
+
+%type <node> primary_time column_ref
+ /* select stmt */
 %type <node>  sql_stmt stmt select_stmt expr
               opt_all_clause
               table_factor table_reference
-              column_ref
+              projection
               simple_expr func_expr expr_const
               sortby opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
               limit_clause
 
-%type <target> projection
+ /* create table */
+%type <node>  create_stmt column_desc column_index_item column_index_key
+%type <node>  cmd_stmt
+%type <flag>  op_not_null op_if_not_exist
+%type <list>  column_desc_list column_index_item_list
 
 %type <list> opt_target_list
             select_projection_list expr_list
@@ -346,14 +366,14 @@ typedef void* yyscan_t;
             opt_sort_clause sort_clause sortby_list
             window_clause window_definition_list opt_partition_clause
 
-
 %type <strval> relation_name relation_factor
                column_name
                function_name
                opt_existing_window_name
+               NEWLINES
+               database_name table_name group_name file_path
 
 %type <intval> opt_window_exclusion_clause
-%type <node> opt_for_join
 
 
 %start grammar
@@ -366,24 +386,26 @@ grammar :
 /**** function def ****/
 
 
-line_list: fun_def_block {
+line_list:
+	fun_def_block {
             trees.push_back($1);
-         }
-         | sql_stmt {
+        }
+        | sql_stmt {
             trees.push_back($1);
-         }
-         | line_list NEWLINES fun_def_block
-         {
+        }
+        | line_list NEWLINES fun_def_block
+        {
             trees.push_back($3);
-         }
-         | line_list NEWLINES sql_stmt
-                    {
-                       trees.push_back($3);
-                    }
-         | line_list NEWLINES {$$ = $1;}
-         | NEWLINES line_list {$$ = $2;}
-         ;
-
+        }
+        | line_list NEWLINES sql_stmt
+        {
+        	trees.push_back($3);
+        }
+        | line_list NEWLINES {$$ = $1;}
+        | NEWLINES line_list {$$ = $2;}
+        ;
+NEWLINES: NEWLINE {}
+	| NEWLINES NEWLINE {}
 fun_def_block : fn_def_indent_op NEWLINES stmt_block {
             emit("enter fun_def_block");
             $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
@@ -456,10 +478,35 @@ return_stmt:
             $$ = node_manager->MakeReturnStmtNode($3);
            };
 
-types: I32 {
+types:  I32
+        {
             $$ = ::fesql::node::kTypeInt32;
-           }
-       ;
+        }
+        |INTEGER
+        {
+            $$ = ::fesql::node::kTypeInt32;
+        }
+        |BIGINT
+        {
+            $$ = ::fesql::node::kTypeInt64;
+        }
+        |STRINGTYPE
+        {
+            $$ = ::fesql::node::kTypeString;
+        }
+        |FLOAT
+        {
+            $$ = ::fesql::node::kTypeFloat;
+        }
+        |DOUBLE
+        {
+            $$ = ::fesql::node::kTypeDouble;
+        }
+        |TIMESTAMP
+        {
+            $$ = ::fesql::node::kTypeTimestamp;
+        }
+        ;
 
 plist:
      para {
@@ -479,6 +526,19 @@ primary:
         $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1);
     };
 
+primary_time:
+    DAYNUM {
+        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeDay);
+    }
+    |HOURNUM {
+        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeHour);
+    }
+    |MINUTENUM {
+        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeMinute);
+    }
+    |SECONDNUM{
+        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeSecond);
+    }
 var: NAME {
         $$ = node_manager->MakeFnIdNode($1);
      };
@@ -491,11 +551,19 @@ sql_stmt: stmt ';' {
 
    /* statements: select statement */
 
-stmt: select_stmt {
-                    $$ = $1;
-                    }
-
-   ;
+stmt:   select_stmt
+        {
+            $$ = $1;
+        }
+        |create_stmt
+        {
+            $$ = $1;
+        }
+        |cmd_stmt
+        {
+        	$$ = $1;
+        }
+        ;
 
 
 
@@ -506,6 +574,146 @@ select_stmt:
             }
     ;
 
+
+create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')'
+                {
+                    $$ = node_manager->MakeCreateTableNode($3, $4, $6);
+                }
+                ;
+
+cmd_stmt:
+			CREATE GROUP group_name
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateGroup, $3);
+				free($3);
+			}
+			|CREATE DATABASE database_name
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateDatabase, $3);
+				free($3);
+			}
+			|CREATE TABLE file_path
+			{
+
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateTable, $3);
+				free($3);
+			}
+			|SHOW DATABASES
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowDatabases);
+			}
+			|SHOW TABLES
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowTables);
+			}
+			|DESC table_name
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdDescTable, $2);
+				free($2);
+			}
+			|USE database_name
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
+				free($2);
+			}
+			;
+
+file_path:
+			STRING
+			{}
+			;
+
+column_desc_list:   column_desc
+                    {
+                        $$ = node_manager->MakeNodeList($1);
+                    }
+                    | column_desc ',' column_desc_list
+                    {
+                        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
+                        new_list->AppendNodeList($3);
+                        $$ = new_list;
+                    }
+                    ;
+
+column_desc:    column_name types op_not_null
+                {
+                    $$ = node_manager->MakeColumnDescNode($1, $2, $3);
+                }
+                | INDEX '(' column_index_item_list ')'
+                {
+                    $$ = node_manager->MakeColumnIndexNode($3);
+                }
+                ;
+
+column_index_item_list:    column_index_item
+                    {
+                        $$ = node_manager->MakeNodeList($1);
+                    }
+                    | column_index_item ',' column_index_item_list
+                    {
+                        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
+                        new_list->AppendNodeList($3);
+                        $$ = new_list;
+                    }
+                    ;
+
+column_index_item:  KEY '=' column_name
+                    {
+                        $$ = node_manager->MakeIndexKeyNode($3);
+                    }
+                    | KEY '=' '(' column_index_key ')'
+                    {
+                        $$ = $4;
+                    }
+                    | TS '=' column_name
+                    {
+                        $$ = node_manager->MakeIndexTsNode($3);
+                    }
+                    | TTL '=' primary_time
+                    {
+                        $$ = $3;
+                    }
+                    | VERSION '=' column_name
+                    {
+                        $$ = node_manager->MakeIndexVersionNode($3);
+                    }
+                    | VERSION '=' '(' column_name ',' INTNUM ')'
+                    {
+                        $$ = node_manager->MakeIndexVersionNode($4, $6);
+                    }
+                    ;
+
+column_index_key:   column_name
+            {
+                $$ = node_manager->MakeIndexKeyNode($1);
+            }
+            | column_index_key ',' column_name
+            {
+                $$ = $1;
+                ((::fesql::node::IndexKeyNode*)$$)->AddKey($3);
+            }
+            ;
+
+
+op_if_not_exist:    IF NOT EXISTS
+                    {
+                        $$ = true;
+                    }
+                    |/*EMPTY*/
+                    {
+                        $$ = false;
+                    }
+                    ;
+
+op_not_null:    NOT NULLX
+                {
+                    $$ = true;
+                }
+                |/*EMPTY*/
+                {
+                    $$ = false;
+                }
+                ;
 
 opt_all_clause:
         ALL										{ $$ = NULL;}
@@ -541,17 +749,18 @@ projection:
     | expr NAME
     {
         $$ = node_manager->MakeResTargetNode($1, $2);
+		free($2);
     }
     | expr AS NAME
     {
         $$ = node_manager->MakeResTargetNode($1, $3);
+		free($3);
     }
     | '*'
         {
             ::fesql::node::SQLNode *pNode = node_manager->MakeSQLNode(::fesql::node::kAll);
             $$ = node_manager->MakeResTargetNode(pNode, "");
         }
-      ;
     ;
 
 over_clause: OVER window_specification
@@ -559,6 +768,7 @@ over_clause: OVER window_specification
 			| OVER NAME
 				{
 				    $$ = node_manager->MakeWindowDefNode($2);
+				    free($2);
 				}
 			| /*EMPTY*/
 				{ $$ = NULL; }
@@ -646,23 +856,26 @@ simple_expr:
 
 expr_const:
     STRING
+        {
+        	$$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1));
+			free($1);
+        }
+  	| INTNUM
         { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
-  | INTNUM
+  	| APPROXNUM
         { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
-  | APPROXNUM
+  	| BOOL
         { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
-  | BOOL
-        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
-  | NULLX
+  	| NULLX
         { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode()); }
-  ;
+  	;
 
 func_expr:
     function_name '(' '*' ')' over_clause
     {
           if (strcasecmp($1, "count") != 0)
           {
-            yyerror_msg("Only COUNT function can be with '*' parameter!");
+            yyerror(&(@3), scanner, trees, node_manager, status, "Only COUNT function can be with '*' parameter!");
             YYABORT;
           }
           else
@@ -699,6 +912,7 @@ window_definition:
 		NAME AS window_specification
 		{
 		    ((::fesql::node::WindowDefNode*)$3)->SetName($1);
+			free($1);
 		    $$ = $3;
 		}
 		;
@@ -842,7 +1056,17 @@ column_ref:
  *
  *===========================================================*/
 
+database_name:
+	NAME
+	;
 
+group_name:
+	NAME
+	;
+
+table_name:
+	NAME
+	;
 column_name:
     NAME
   ;
@@ -858,23 +1082,12 @@ function_name:
 %%
 
 
-void emit(char *s, ...)
+void emit(const char *s, ...)
 {
-
-  va_list ap;
-  va_start(ap, s);
-  printf("rpn: ");
-  vfprintf(stdout, s, ap);
-  printf("\n");
-}
-
-void yyerror_msg(char *s, ...)
-{
-
-  va_list ap;
-  va_start(ap, s);
-
-  vfprintf(stderr, s, ap);
-  fprintf(stderr, "\n");
+//  	va_list ap;
+//  	va_start(ap, s);
+//  	printf("rpn: ");
+//  	vfprintf(stdout, s, ap);
+//  	printf("\n");
 }
 

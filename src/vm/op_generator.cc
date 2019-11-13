@@ -52,7 +52,7 @@ bool OpGenerator::Gen(const ::fesql::node::NodePointVector& trees,
                 }
             case ::fesql::node::kSelectStmt: 
                 {
-                    bool ok = GenSQL(node, module, ops);
+                    bool ok = GenSQL(trees, module, ops);
                     if (!ok) {
                         return false;
                     }
@@ -68,23 +68,25 @@ bool OpGenerator::Gen(const ::fesql::node::NodePointVector& trees,
     return true;
 }
 
-bool OpGenerator::GenSQL(const ::fesql::node::SQLNode* node,
+bool OpGenerator::GenSQL(const ::fesql::node::NodePointVector &trees,
         ::llvm::Module* module,
         OpVector* ops) {
 
-    if (node == NULL || module == NULL || ops == NULL) {
+    if (module == NULL || ops == NULL) {
         LOG(WARNING) << "input args has null";
         return false;
     }
 
     ::fesql::node::NodeManager nm;
     ::fesql::plan::SimplePlanner planer(&nm);
-    ::fesql::node::PlanNode* plan =  planer.CreatePlan(node);
-    if (plan == NULL) {
+    ::fesql::base::Status status;
+    ::fesql::node::PlanNodeList pnl;
+    int ret =  planer.CreatePlanTree(trees, pnl, status);
+    if (ret != 0) {
         LOG(WARNING) << "fail to create sql plan";
         return false;
     }
-    bool ok = RoutingNode(plan->GetChildren()[0], module, ops);
+    bool ok = RoutingNode(pnl[0]->GetChildren()[0], module, ops);
     if (!ok) {
         LOG(WARNING) << "fail to gen op";
     }

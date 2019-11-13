@@ -1,26 +1,28 @@
 /*-------------------------------------------------------------------------
  * Copyright (C) 2019, 4paradigm
  * node_enum.h
- *      
+ *
  * Author: chenjing
- * Date: 2019/10/29 
+ * Date: 2019/10/29
  *--------------------------------------------------------------------------
-**/
+ **/
 
-#ifndef FESQL_NODE_ENUM_H
-#define FESQL_NODE_ENUM_H
+#ifndef SRC_NODE_NODE_ENUM_H_
+#define SRC_NODE_NODE_ENUM_H_
 
 #include <string>
 namespace fesql {
 namespace node {
 
-const std::string SPACE_ST = "+-";
-const std::string SPACE_ED = "";
-const std::string OR_INDENT = "|\t";
-const std::string INDENT = " \t";
+const char SPACE_ST[] = "+-";
+const char SPACE_ED[] = "";
+const char OR_INDENT[] = "|\t";
+const char INDENT[] = " \t";
 enum SQLNodeType {
-    //SQL
+    // SQL
     kSelectStmt = 0,
+    kCreateStmt,
+    kCmdStmt,
     kExpr,
     kResTarget,
     kTable,
@@ -31,6 +33,13 @@ enum SQLNodeType {
     kFrameBound,
     kFrames,
     kColumnRef,
+    kColumnDesc,
+    kColumnIndex,
+    kIndexKey,
+    kIndexTs,
+    kIndexVersion,
+    kIndexTTL,
+    kName,
     kConst,
     kLimit,
     kAll,
@@ -49,7 +58,6 @@ enum SQLNodeType {
     kFollowing,
     kCurrent,
 
-    // fn
     kFnDef,
     kFnValue,
     kFnId,
@@ -72,7 +80,19 @@ enum DataType {
     kTypeFloat,
     kTypeDouble,
     kTypeString,
+    kTypeTimestamp,
+    kTypeHour,
+    kTypeDay,
+    kTypeMinute,
+    kTypeSecond,
     kTypeNull
+};
+
+enum TimeUnit {
+    kTimeUnitHour,
+    kTimeUnitDay,
+    kTimeUnitMinute,
+    kTimeUnitSecond,
 };
 enum FnOperator {
     kFnOpAdd,
@@ -83,13 +103,25 @@ enum FnOperator {
     kFnOpNone
 };
 
+enum CmdType {
+    kCmdCreateGroup,
+    kCmdCreateDatabase,
+    kCmdCreateTable,
+    kCmdUseDatabase,
+    kCmdShowDatabases,
+    kCmdShowTables,
+    kCmdDescTable,
+    kCmdDropTable
+};
 /**
  * Planner:
  *  basic class for plan
  *
  */
 enum PlanType {
-    kSelect,
+    kPlanTypeCmd,
+    kPlanTypeSelect,
+    kPlanTypeCreate,
     kPlanTypeScan,
     kPlanTypeLimit,
     kPlanTypeFilter,
@@ -105,13 +137,11 @@ enum PlanType {
     kScanTypeIndexScan,
 };
 
-}
-}
+}  // namespace node
 
-namespace fesql {
 namespace error {
 enum ErrorType {
-    kSucess= 0,
+    kSucess = 0,
 
     kNodeErrorUnknow = 1001,
     kNodeErrorMakeNodeFail,
@@ -129,19 +159,47 @@ enum ErrorType {
     kAnalyserErrorQueryMultiTable,
     kAnalyserErrorTableRefIsNull,
     kAnalyserErrorTableNotExist,
+    kAnalyserErrorTableAlreadyExist,
     kAnalyserErrorColumnNameIsEmpty,
     kAnalyserErrorColumnNotExist,
     kAnalyserErrorTargetIsNull,
     kAnalyserErrorGlobalAggFunction,
+    kAnalyserErrorUnSupportFunction,
+    kCreateErrorUnSupportColumnType,
+    kCreateErrorDuplicationColumnName,
+    kCreateErrorDuplicationIndexName,
 
+    kPlanErrorUnknow = 4001,
+    kPlanErrorUnSupport,
+    kPlanErrorNullNode,
+    kPlanErrorQueryTreeIsEmpty,
+    kPlanErrorTableRefIsEmpty,
+    kPlanErrorQueryMultiTable,
 
-    kSystemErrorUnknow = 4001,
-    kSystemErrorMemory,
+    kExecuteErrorUnknow = 4001,
+    kExecuteErrorUnSupport,
+    kExecuteErrorNullNode,
 
-    kServerErrorUnknow = 5001,
-    kServerErrorConnection,
-    kServerErrorSend
+    kCmdErrorUnknow = 5001,
+    kCmdErrorUnSupport,
+    kCmdErrorNullNode,
+    kCmdErrorPathError,
+    
+    kRpcErrorUnknow = 6001,
+    kRpcErrorConnection,
 };
-}
-}
-#endif //FESQL_NODE_ENUM_H
+}  // namespace error
+
+namespace base {
+struct Status {
+    Status() : code(0), msg("ok") {}
+    Status(int32_t status_code, const std::string &msg_str)
+        : code(status_code), msg(msg_str) {}
+    int32_t code;
+    std::string msg;
+};
+}  // namespace base
+
+}  // namespace fesql
+
+#endif  // SRC_NODE_NODE_ENUM_H_

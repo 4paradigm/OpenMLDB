@@ -1,14 +1,10 @@
 include_directories(${INCLUDE_DIRECTORIES} 
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_BINARY_DIR}/src)
-
 add_library(fesql_storage STATIC table.cc segment.cc)
 
 add_executable(list_test list_test.cc)
 target_link_libraries(list_test gflags gtest pthread)
-
-add_executable(slice_test util/slice_test.cc)
-target_link_libraries(slice_test gflags gtest pthread)
 
 add_executable(skiplist_test skiplist_test.cc)
 target_link_libraries(skiplist_test gflags gtest pthread)

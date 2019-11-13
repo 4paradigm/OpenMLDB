@@ -18,9 +18,9 @@
 #ifndef SRC_CODEGEN_IR_BASE_BUILDER_H_
 #define SRC_CODEGEN_IR_BASE_BUILDER_H_
 
-#include "llvm/IR/IRBuilder.h"
 #include "glog/logging.h"
 #include "proto/type.pb.h"
+#include "llvm/IR/IRBuilder.h"
 
 namespace fesql {
 namespace codegen {
@@ -53,3 +53,4 @@ bool BuildStoreOffset(::llvm::IRBuilder<>& builder,
 }  // namespace codegen
 }  // namespace fesql
 #endif  // SRC_CODEGEN_IR_BASE_BUILDER_H_
+

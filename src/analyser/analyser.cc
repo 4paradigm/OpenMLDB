@@ -5,121 +5,138 @@
  * Author: chenjing
  * Date: 2019/10/30
  *--------------------------------------------------------------------------
-**/
-#include "analyser.h"
+ **/
+#include "analyser/analyser.h"
+#include <string>
+#include "../node/node_enum.h"
 namespace fesql {
 namespace analyser {
 
 int FeSQLAnalyser::Analyse(NodePointVector &parser_trees,
-                           NodePointVector &query_trees) {
-
+                           NodePointVector &query_trees,
+                           Status &status) {  // NOLINT (runtime/references)
     if (parser_trees.empty()) {
-        return error::kAnalyserErrorParserTreeEmpty;
+        status.code = error::kAnalyserErrorParserTreeEmpty;
+        status.msg = "fail to analyse: parser trees is empty";
+        return status.code;
     }
 
     for (auto tree : parser_trees) {
-        SQLNode *query_tree = nullptr;
-        switch (tree->GetType()) {
-            case node::kSelectStmt:query_tree = node_manager_->MakeSQLNode(node::kSelectStmt);
-                break;
-            default:LOG(WARNING) << "can not analyser parser tree with type "
-                                 << node::NameOfSQLNodeType(tree->GetType());
-                return error::kAnalyserErrorSQLTypeNotSupport;
+        Analyse(tree, status);
+        if (0 != status.code) {
+            return status.code;
         }
-        if (nullptr == query_tree) {
-            LOG(WARNING) << "can not analyser parser tree";
-            return error::kNodeErrorMakeNodeFail;
-        }
-
-        int ret = Analyse(tree, query_tree);
-        if (0 != ret) {
-            // TODO: print tree info if in debug mode
-            LOG(WARNING) << "fail to analyser parser tree";
-            return ret;
-        }
-
-        query_trees.push_back(query_tree);
+        query_trees.push_back(tree);
     }
     return 0;
 }
 
-int FeSQLAnalyser::Analyse(SQLNode *parser_tree, SQLNode *query_tree) {
-    int ret = 0;
+void FeSQLAnalyser::Analyse(SQLNode *parser_tree,
+                            Status &status) {  // NOLINT (runtime/references)
+    if (nullptr == parser_tree) {
+        status.code = error::kPlanErrorNullNode;
+        status.msg = "fail to analyse: parser tree node it null";
+        return;
+    }
     switch (parser_tree->GetType()) {
         case node::kSelectStmt:
-            ret = TransformSelectNode((node::SelectStmt *) parser_tree,
-                                      (node::SelectStmt *) query_tree);
-            break;
-        default:ret = error::kAnalyserErrorSQLTypeNotSupport;
+            return TransformSelectNode(dynamic_cast<node::SelectStmt *>(parser_tree), status);
+        case node::kCreateStmt:
+            return TransformCreateNode(
+                dynamic_cast<node::CreateStmt *>(parser_tree), status);
+        case node::kCmdStmt:
+            return TransformCmdNode(dynamic_cast<node::CmdNode *>(parser_tree),
+                                    status);
+        default: {
+            status.msg = "can not support " +
+                         node::NameOfSQLNodeType(parser_tree->GetType());
+            status.code = error::kAnalyserErrorSQLTypeNotSupport;
+            return;
+        }
     }
-    return ret;
 }
 
-int FeSQLAnalyser::TransformMultiTableSelectNode(node::SelectStmt *parser_tree,
-                                                 node::SelectStmt *query_tree) {
-    LOG(WARNING) << "can not support select query on multi tables";
-    return error::kAnalyserErrorQueryMultiTable;
+void FeSQLAnalyser::TransformMultiTableSelectNode(
+    node::SelectStmt *parser_tree,
+    Status &status) {  // NOLINT (runtime/references)
+    status.code = error::kAnalyserErrorQueryMultiTable;
+    status.msg = "can not support select query on multi tables";
 }
 
-int FeSQLAnalyser::TransformSelectNode(node::SelectStmt *parser_tree,
-                                       node::SelectStmt *query_tree) {
+void FeSQLAnalyser::TransformSelectNode(
+    node::SelectStmt *parser_tree,
+    Status &status) {  // NOLINT (runtime/references)
     if (parser_tree->GetTableRefList().empty()) {
-        LOG(WARNING) << "can not transform select node when table references (from table list) is empty";
-        return error::kAnalyserErrorFromListEmpty;
+        status.msg =
+            "can not transform select node when table references (from "
+            "table list) is empty";
+        status.code = error::kAnalyserErrorFromListEmpty;
+        return;
     }
 
     if (parser_tree->GetTableRefList().size() == 1) {
-        return TransformSingleTableSelectNode(parser_tree, query_tree);
+        TransformSingleTableSelectNode(parser_tree, status);
     } else {
-        return TransformMultiTableSelectNode(parser_tree, query_tree);
+        TransformMultiTableSelectNode(parser_tree, status);
     }
 }
-int FeSQLAnalyser::TransformSingleTableSelectNode(node::SelectStmt *parser_tree, node::SelectStmt *query_tree) {
-    node::TableNode *table_ref = (node::TableNode *) (parser_tree->GetTableRefList().at(0));
+void FeSQLAnalyser::TransformSingleTableSelectNode(
+    node::SelectStmt *parser_tree,
+    Status &status) {  // NOLINT (runtime/references)
+    node::TableNode *table_ref =
+        (node::TableNode *)(parser_tree->GetTableRefList().at(0));
 
     if (nullptr == table_ref) {
-        LOG(WARNING) << "can not transform select node when table reference is null";
-        return error::kAnalyserErrorTableRefIsNull;
+        status.msg =
+            "can not transform select node when table reference is null";
+        status.code = error::kAnalyserErrorTableRefIsNull;
+        return;
     }
 
     if (false == IsTableExist(table_ref->GetOrgTableName())) {
-        LOG(WARNING) << "can not query select when table " << table_ref->GetOrgTableName() << " is not exist in db";
-        return error::kAnalyserErrorTableNotExist;
+        status.msg = "can not query select when table " +
+                     table_ref->GetOrgTableName() + " is not exist in db";
+        status.code = error::kAnalyserErrorTableNotExist;
+        return;
     }
 
     for (auto node : parser_tree->GetSelectList()) {
-
-        node::ResTarget *target = (node::ResTarget *) node;
-        int ret = 0;
+        node::ResTarget *target = (node::ResTarget *)node;
         switch (target->GetVal()->GetType()) {
             case node::kColumnRef: {
-                ret = TransformColumnRef((node::ColumnRefNode *) target->GetVal(), table_ref->GetOrgTableName());
+                TransformColumnRef((node::ColumnRefNode *)target->GetVal(),
+                                   table_ref->GetOrgTableName(), status);
                 break;
             }
             case node::kFunc: {
-                ret = TransformFuncNode((node::FuncNode *) target->GetVal(), table_ref->GetOrgTableName());
+                TransformFuncNode((node::FuncNode *)target->GetVal(),
+                                  table_ref->GetOrgTableName(), status);
                 break;
             }
             case node::kAll: {
-                ret = TransformAllRef((node::AllNode *) target->GetVal(), table_ref->GetOrgTableName());
+                TransformAllRef((node::AllNode *)target->GetVal(),
+                                table_ref->GetOrgTableName(), status);
                 break;
             }
-            default: {}
-
+            default: {
+                status.msg =
+                    "SELECT error: can not handle " +
+                    node::NameOfSQLNodeType(target->GetVal()->GetType());
+                status.code = error::kAnalyserErrorSQLTypeNotSupport;
+            }
         }
-        if (0 != ret) {
-            return ret;
+        if (0 != status.code) {
+            return;
         }
     }
-
-    return 0;
 }
 
 bool FeSQLAnalyser::IsTableExist(std::string basic_string) {
     return table_map_.find(basic_string) != table_map_.end();
 }
 
-bool FeSQLAnalyser::IsColumnExistInTable(const std::string &column_name, const std::string &table_name) {
+bool FeSQLAnalyser::IsColumnExistInTable(const std::string &column_name,
+                                         const std::string &table_name) {
     if (table_map_.find(table_name) == table_map_.end()) {
         return false;
     }
@@ -128,60 +145,75 @@ bool FeSQLAnalyser::IsColumnExistInTable(const std::string &column_name, const s
     return map.find(column_name) != map.end();
 }
 
-int FeSQLAnalyser::TransformFuncNode(node::FuncNode *node_ptr, const std::string &table_name) {
-
-    // TODO: 细化参数校验
-    // TODO: 表达式节点修改：需要带上DataType属性
-    for (int i = 0; i < node_ptr->GetArgs().size(); ++i) {
-        int ret = TransformExprNode(node_ptr->GetArgs()[i], table_name);
-        if (0 != ret) {
-            LOG(WARNING) << "can not transfrom func node when dealing with " << i + 1 << "th parameter";
+void FeSQLAnalyser::TransformFuncNode(
+    node::FuncNode *node_ptr, const std::string &table_name,
+    Status &status) {  // NOLINT (runtime/references)
+    // TODO(chenjing): 细化参数校验
+    // TODO(chenjing): 表达式节点修改：需要带上DataType属性
+    for (int i = 0; i < static_cast<int>(node_ptr->GetArgs().size()); ++i) {
+        TransformExprNode(node_ptr->GetArgs()[i], table_name, status);
+        if (0 != status.code) {
+            return;
+        }
+    }
+    // TODO(chenjing): add function signature validate
+    FuncDefType func_type = GetAggFunDefType(node_ptr);
+    switch (func_type) {
+        case kFuncTypeUnknow:
+            status.msg =
+                "function '" + node_ptr->GetFunctionName() + "' is undefined";
+            status.code = error::kAnalyserErrorGlobalAggFunction;
+            break;
+        case kFuncTypeAgg:
+            node_ptr->SetAgg(true);
+            break;
+        case kFuncTypeScalar:
+            node_ptr->SetAgg(false);
+            break;
+        default: {
+            status.msg =
+                "FUNCTION error: can not hanlde " + std::to_string(func_type);
+            status.code = error::kAnalyserErrorUnSupportFunction;
         }
     }
 
-    // TODO:
-
-    // TODO: add function signature validate
-    switch (GetAggFunDefType(node_ptr)) {
-        case kFuncTypeUnknow:LOG(WARNING) << "function '" << node_ptr->GetFunctionName() << "' is undefined";
-            return error::kAnalyserErrorGlobalAggFunction;
-        case kFuncTypeAgg:node_ptr->SetAgg(true);
-            break;
-        case kFuncTypeScalar:node_ptr->SetAgg(false);
-            break;
+    if (0 != status.code) {
+        return;
     }
 
     if (nullptr == node_ptr->GetOver() && node_ptr->GetIsAgg()) {
-        LOG(WARNING) << "can not apply agg function without 'over' window";
-        return error::kAnalyserErrorGlobalAggFunction;
+        status.msg = "can not apply agg function without 'over' window";
+        status.code = error::kAnalyserErrorGlobalAggFunction;
+        return;
     }
 
     if (nullptr != node_ptr->GetOver()) {
-        TransformWindowDef(node_ptr->GetOver(), table_name);
+        TransformWindowDef(node_ptr->GetOver(), table_name, status);
     }
-
-    return 0;
 }
-int FeSQLAnalyser::TransformColumnRef(node::ColumnRefNode *node_ptr, const std::string &table_name) {
+void FeSQLAnalyser::TransformColumnRef(
+    node::ColumnRefNode *node_ptr, const std::string &table_name,
+    Status &status) {  // NOLINT (runtime/references)
     if (node_ptr->GetColumnName().empty()) {
-        LOG(WARNING) << "can not query select when column is empty";
-        return error::kAnalyserErrorColumnNameIsEmpty;
+        status.msg = "can not query select when column is empty";
+        status.code = error::kAnalyserErrorColumnNameIsEmpty;
+        return;
     }
 
     if (node_ptr->GetRelationName().empty()) {
         node_ptr->SetRelationName(table_name);
     }
-    if (false == IsColumnExistInTable(node_ptr->GetColumnName(), node_ptr->GetRelationName())) {
-        LOG(WARNING) << "can not query select when column " << node_ptr->GetColumnName() << " is not exit in table "
-                     << node_ptr->GetRelationName();
-        return error::kAnalyserErrorColumnNotExist;
+    if (false == IsColumnExistInTable(node_ptr->GetColumnName(),
+                                      node_ptr->GetRelationName())) {
+        status.msg = "can not query select when column " +
+                     node_ptr->GetColumnName() + " is not exit in table " +
+                     node_ptr->GetRelationName();
+        status.code = error::kAnalyserErrorColumnNotExist;
+        return;
     }
-
-    return 0;
 }
 
-int FeSQLAnalyser::Initialize() {
-
+void FeSQLAnalyser::Initialize() {
     func_defs["SUBSTR"] = kFuncTypeScalar;
     func_defs["TRIM"] = kFuncTypeScalar;
     func_defs["COUNT"] = kFuncTypeAgg;
@@ -191,14 +223,15 @@ int FeSQLAnalyser::Initialize() {
     func_defs["MAX"] = kFuncTypeAgg;
 
     if (tables_.empty()) {
-        return 0;
+        return;
     }
     table_map_.clear();
-    for (auto table: tables_) {
+    for (auto table : tables_) {
         if (table_map_.find(table->name()) != table_map_.end()) {
-            LOG(WARNING) << "error occur when initialize tables: table duplicate in db";
             table_map_.clear();
-            return error::kAnalyserErrorInitialize;
+            LOG(WARNING)
+                << "error occur when initialize tables: table duplicate in db";
+            return;
         }
 
         std::map<std::string, const ColumnDef *> column_map;
@@ -207,68 +240,99 @@ int FeSQLAnalyser::Initialize() {
         }
         table_map_[table->name()] = column_map;
     }
-    return 0;
 }
-int FeSQLAnalyser::TransformAllRef(node::AllNode *node_ptr, const std::string &relation_name) {
+void FeSQLAnalyser::TransformAllRef(
+    node::AllNode *node_ptr, const std::string &relation_name,
+    Status &status) {  // NOLINT (runtime/references)
     if (node_ptr->GetRelationName().empty()) {
         node_ptr->SetRelationName(relation_name);
-        return 0;
+        return;
     }
 
     if (node_ptr->GetRelationName() == relation_name) {
-        return 0;
+        return;
     }
 
-    LOG(WARNING) << "can not query " << node_ptr->GetRelationName() << ".* from table " << relation_name;
-    return error::kAnalyserErrorTableNotExist;
+    status.msg = "can not query " + node_ptr->GetRelationName() +
+                 ".* from table " + relation_name;
+    status.code = error::kAnalyserErrorTableNotExist;
 }
 
 FuncDefType FeSQLAnalyser::GetAggFunDefType(node::FuncNode *node_ptr) {
-
     if (func_defs.find(node_ptr->GetFunctionName()) == func_defs.end()) {
         return kFuncTypeUnknow;
     }
     return func_defs[node_ptr->GetFunctionName()];
 }
 
-int FeSQLAnalyser::TransformWindowDef(node::WindowDefNode *node_ptr, const std::string &table_name) {
-
-    // TODO: window is exist
-    // TODO: window is redefined
+void FeSQLAnalyser::TransformWindowDef(
+    node::WindowDefNode *node_ptr, const std::string &table_name,
+    Status &status) {  // NOLINT (runtime/references)
+    // TODO(chenjing): window is exist
+    // TODO(chenjing): window is redefined
     for (auto partition : node_ptr->GetPartitions()) {
-        int ret = TransformPartition(partition, table_name);
-        if (ret != 0) {
-            return ret;
+        TransformPartition(partition, table_name, status);
+        if (0 != status.code) {
+            return;
         }
     }
 
     for (auto order : node_ptr->GetOrders()) {
-        int ret = TransformOrder(order, table_name);
-        if (ret != 0) {
-            return ret;
+        TransformOrder(order, table_name, status);
+        if (0 != status.code) {
+            return;
         }
     }
-
-    return 0;
 }
 
-int FeSQLAnalyser::TransformOrder(SQLNode *node_ptr, const std::string &table_name) {
-    return 0;
+void FeSQLAnalyser::TransformOrder(
+    SQLNode *node_ptr, const std::string &table_name,
+    Status &status) {  // NOLINT (runtime/references)
 }
 
-int FeSQLAnalyser::TransformPartition(SQLNode *node_ptr, const std::string &table_name) {
-    return 0;
+void FeSQLAnalyser::TransformPartition(
+    SQLNode *node_ptr, const std::string &table_name,
+    Status &status) {  // NOLINT (runtime/references)
 }
 
-int FeSQLAnalyser::TransformExprNode(SQLNode *node_ptr, const std::string &table_name) {
+void FeSQLAnalyser::TransformExprNode(
+    SQLNode *node_ptr, const std::string &table_name,
+    Status &status) {  // NOLINT (runtime/references)
     switch (node_ptr->GetType()) {
-        case node::kColumnRef:return TransformColumnRef((node::ColumnRefNode *) node_ptr, table_name);
-        case node::kFunc: return TransformFuncNode((node::FuncNode *) node_ptr, table_name);
-        case node::kPrimary:break;
-        case node::kExpr: break;
+        case node::kColumnRef:
+            return TransformColumnRef((node::ColumnRefNode *)node_ptr,
+                                      table_name, status);
+        case node::kFunc:
+            return TransformFuncNode((node::FuncNode *)node_ptr, table_name,
+                                     status);
+        case node::kPrimary:
+        case node::kExpr:
+        default: {
+            status.code = error::kAnalyserErrorSQLTypeNotSupport;
+            status.msg = "can not support " +
+                         node::NameOfSQLNodeType(node_ptr->GetType()) +
+                         " in expr";
+            return;
+        }
     }
-    return 0;
 }
 
+void FeSQLAnalyser::TransformCreateNode(
+    node::CreateStmt *parser_node_ptr,
+    Status &status) {  // NOLINT (runtime/references)
+    if (!parser_node_ptr->GetOpIfNotExist() &&
+        IsTableExist(parser_node_ptr->GetTableName())) {
+        status.msg = "CREATE TABLE " + parser_node_ptr->GetTableName() +
+                     "ALREADY EXISTS";
+        status.code = error::kAnalyserErrorTableAlreadyExist;
+        return;
+    }
 }
+void FeSQLAnalyser::TransformCmdNode(
+    node::CmdNode *node_ptr, Status &status) {  // NOLINT (runtime/references)
+    // no nothing
+
 }
+
+}  // namespace analyser
+}  // namespace fesql

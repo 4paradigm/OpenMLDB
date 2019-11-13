@@ -84,9 +84,10 @@ bool SQLCompiler::Parse(const std::string& sql,
         ::fesql::node::NodeManager& node_mgr,
         ::fesql::node::NodePointVector& trees) {
     ::fesql::parser::FeSQLParser parser;
-    int ret = parser.parse(sql, trees, &node_mgr);
+    ::fesql::base::Status status;
+    int ret = parser.parse(sql, trees, &node_mgr, status);
     if (ret != 0) {
-        LOG(WARNING) << "fail to parse sql " << sql;
+        LOG(WARNING) << "fail to parse sql " << sql << " with error " << status.msg;
         return false;
     }
     return true;

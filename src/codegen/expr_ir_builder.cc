@@ -156,91 +156,87 @@ bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
     return true;
 }
 
-ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var):block_(block),
-    scope_var_(scope_var) {}
+
+ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
+    : block_(block), scope_var_(scope_var) {}
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
 bool ExprIRBuilder::Build(const ::fesql::node::FnNode* node,
-        ::llvm::Value** output) {
-
+                          ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
     }
-    //TODO use switch
+    // TODO use switch
     if (node->GetType() == ::fesql::node::kFnExprBinary) {
         return BuildBinaryExpr((::fesql::node::FnBinaryExpr*)node, output);
-    }else {
+    } else {
         return BuildUnaryExpr(node, output);
     }
 }
 
 bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::FnNode* node,
-        ::llvm::Value** output) {
+                                   ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
     }
     LOG(INFO) << "build unary " << ::fesql::node::FnNodeName(node->GetType());
-    //TODO support more node
+    // TODO support more node
     ::llvm::IRBuilder<> builder(block_);
     switch (node->GetType()) {
-        case ::fesql::node::kPrimary:
-            {
-                ::fesql::node::ConstNode* const_node = (::fesql::node::ConstNode*)node;
+        case ::fesql::node::kPrimary: {
+            ::fesql::node::ConstNode* const_node =
+                (::fesql::node::ConstNode*)node;
 
-                switch (const_node->GetDataType()) {
-                    case ::fesql::node::kTypeInt32:
-                        *output = builder.getInt32(const_node->GetInt());
-                        return true;
-                    case ::fesql::node::kTypeInt64:
-                        *output = builder.getInt64(const_node->GetLong());
-                        return true;
-                    default:
-                        return false;
-                }
-
-            }
-        case ::fesql::node::kFnId:
-            {
-                ::fesql::node::FnIdNode* id_node = (::fesql::node::FnIdNode*)node;
-                ::llvm::Value* ptr = NULL;
-                bool ok = scope_var_->FindVar(id_node->GetName(), &ptr);
-                if (!ok || ptr == NULL) {
-                    LOG(WARNING) << "fail to find var " << id_node->GetName();
+            switch (const_node->GetDataType()) {
+                case ::fesql::node::kTypeInt32:
+                    *output = builder.getInt32(const_node->GetInt());
+                    return true;
+                case ::fesql::node::kTypeInt64:
+                    *output = builder.getInt64(const_node->GetLong());
+                    return true;
+                default:
                     return false;
-                }
-                if (ptr->getType()->isPointerTy()) {
-                    *output = builder.CreateLoad(ptr, id_node->GetName().c_str());
-                }else {
-                    *output = ptr;
-                }
-                return true;
             }
-        case ::fesql::node::kFnExprBinary:
-            {
-                return BuildBinaryExpr((::fesql::node::FnBinaryExpr*)node, output);
+        }
+        case ::fesql::node::kFnId: {
+            ::fesql::node::FnIdNode* id_node = (::fesql::node::FnIdNode*)node;
+            ::llvm::Value* ptr = NULL;
+            bool ok = scope_var_->FindVar(id_node->GetName(), &ptr);
+            if (!ok || ptr == NULL) {
+                LOG(WARNING) << "fail to find var " << id_node->GetName();
+                return false;
             }
-        case ::fesql::node::kFnExprUnary:
-            {
-                return BuildUnaryExpr(node->children[0], output);
+            if (ptr->getType()->isPointerTy()) {
+                *output = builder.CreateLoad(ptr, id_node->GetName().c_str());
+            } else {
+                *output = ptr;
             }
+            return true;
+        }
+        case ::fesql::node::kFnExprBinary: {
+            return BuildBinaryExpr((::fesql::node::FnBinaryExpr*)node, output);
+        }
+        case ::fesql::node::kFnExprUnary: {
+            return BuildUnaryExpr(node->children[0], output);
+        }
         default:
-            LOG(WARNING) << ::fesql::node::FnNodeName(node->GetType()) << " not support";
+            LOG(WARNING) << ::fesql::node::FnNodeName(node->GetType())
+                         << " not support";
             return false;
     }
 }
 
 bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::FnBinaryExpr* node,
-        ::llvm::Value** output) {
-
+                                    ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
     }
 
-    if (node->children.size()  != 2) {
+    if (node->children.size() != 2) {
         LOG(WARNING) << "invalid binary expr node ";
         return false;
     }
@@ -260,38 +256,31 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::FnBinaryExpr* node,
         return false;
     }
 
-    if (right->getType()->isIntegerTy()
-            && left->getType()->isIntegerTy()) {
+    if (right->getType()->isIntegerTy() && left->getType()->isIntegerTy()) {
         ::llvm::IRBuilder<> builder(block_);
-        //TODO type check
+        // TODO type check
         switch (node->GetOp()) {
-            case ::fesql::node::kFnOpAdd:
-                {
-                    *output = builder.CreateAdd(left, right, "expr_add");
-                    return true;
-                }
-            case ::fesql::node::kFnOpMulti:
-                {
-                    *output = builder.CreateMul(left, right, "expr_mul");
-                    return true;
-                }
-            case ::fesql::node::kFnOpMinus:
-                {
-                    *output = builder.CreateSub(left, right, "expr_sub");
-                    return true;
-                }
+            case ::fesql::node::kFnOpAdd: {
+                *output = builder.CreateAdd(left, right, "expr_add");
+                return true;
+            }
+            case ::fesql::node::kFnOpMulti: {
+                *output = builder.CreateMul(left, right, "expr_mul");
+                return true;
+            }
+            case ::fesql::node::kFnOpMinus: {
+                *output = builder.CreateSub(left, right, "expr_sub");
+                return true;
+            }
             default:
                 LOG(WARNING) << "invalid op ";
                 return false;
         }
-    }else {
+    } else {
         LOG(WARNING) << "left mismatch right type";
         return false;
     }
 }
 
-} // namespace of codegen
-} // namespace of fesql
-
-
-
+}  // namespace codegen
+}  // namespace fesql

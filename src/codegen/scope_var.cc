@@ -20,8 +20,8 @@
 
 namespace fesql {
 namespace codegen {
-ScopeVar::ScopeVar(){}
-ScopeVar::~ScopeVar(){}
+ScopeVar::ScopeVar() {}
+ScopeVar::~ScopeVar() {}
 
 bool ScopeVar::Enter(const std::string& name) {
     LOG(INFO) << "enter scope " << name;
@@ -54,9 +54,10 @@ bool ScopeVar::AddVar(const std::string& name, ::llvm::Value* value) {
         return false;
     }
     Scope& exist_scope = scopes_.back();
-    std::map<std::string, ::llvm::Value*>::iterator it = exist_scope.scope_map.find(name);
+    std::map<std::string, ::llvm::Value*>::iterator it =
+        exist_scope.scope_map.find(name);
     if (it != exist_scope.scope_map.end()) {
-        LOG(WARNING) << "var with name "<< name << " exists ";
+        LOG(WARNING) << "var with name " << name << " exists ";
         return false;
     }
     exist_scope.scope_map.insert(std::make_pair(name, value));
@@ -64,9 +65,8 @@ bool ScopeVar::AddVar(const std::string& name, ::llvm::Value* value) {
 }
 
 bool ScopeVar::FindVar(const std::string& name, ::llvm::Value** value) {
-
     if (value == NULL) {
-        LOG(WARNING) << " input value is null" ;
+        LOG(WARNING) << " input value is null";
         return false;
     }
 
@@ -76,10 +76,11 @@ bool ScopeVar::FindVar(const std::string& name, ::llvm::Value** value) {
     }
 
     Scope& exist_scope = scopes_.back();
-    std::map<std::string, ::llvm::Value*>::iterator it = exist_scope.scope_map.find(name);
+    std::map<std::string, ::llvm::Value*>::iterator it =
+        exist_scope.scope_map.find(name);
 
     if (it == exist_scope.scope_map.end()) {
-        LOG(WARNING) << "var with name "<< name << " does not exist ";
+        LOG(WARNING) << "var with name " << name << " does not exist ";
         return false;
     }
 
@@ -87,8 +88,5 @@ bool ScopeVar::FindVar(const std::string& name, ::llvm::Value** value) {
     return true;
 }
 
-} // namespace of codegen
-} // namespace of fesql
-
-
-
+}  // namespace codegen
+}  // namespace fesql

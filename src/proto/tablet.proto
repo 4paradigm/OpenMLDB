@@ -11,7 +11,7 @@ message QueryRequest {
 }
 
 message QueryResponse {
-    optional Common.Status status = 1;
+    optional common.Status status = 1;
     optional bytes result_set = 2;
     optional bytes schema = 3;
 }

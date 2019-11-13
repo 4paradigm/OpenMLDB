@@ -19,8 +19,8 @@
 //
 // Desc: Parse FeSQL Command
 //
-#include "node/sql_node.h"
 #include "parser/parser.h"
+#include "node/sql_node.h"
 
 /**
  * FeSQL command parser
@@ -30,16 +30,20 @@
  */
 namespace fesql {
 namespace parser {
-int FeSQLParser::parse(const std::string &sqlstr, node::NodePointVector &trees, node::NodeManager* manager) {
+int FeSQLParser::parse(
+    const std::string &sqlstr,
+    node::NodePointVector &trees,  // NOLINT (runtime/references)
+    node::NodeManager *manager,
+    base::Status &status) {  // NOLINT (runtime/references)
     yyscan_t scanner;
     yylex_init(&scanner);
     yy_scan_string(sqlstr.c_str(), scanner);
-    int ret = yyparse(scanner, trees, manager);
-    std::cout << "ret: " << ret << " trees size:" << trees.size() << std::endl;
+    yyset_lineno(1, scanner);
+    yyset_column(1, scanner);
+    int ret = yyparse(scanner, trees, manager, status);
+    yylex_destroy(scanner);
     return ret;
 }
 
-}
-}
-
-
+}  // namespace parser
+}  // namespace fesql

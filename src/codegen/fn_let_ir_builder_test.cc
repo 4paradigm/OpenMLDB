@@ -57,7 +57,8 @@ void AddFunc(const std::string& fn,
         ::llvm::Module* m) {
     ::fesql::node::NodePointVector trees;
     ::fesql::parser::FeSQLParser parser;
-    int ret = parser.parse(fn, trees, &manager);
+    ::fesql::base::Status status;
+    int ret = parser.parse(fn, trees, &manager, status);
     ASSERT_EQ(0, ret);
     FnIRBuilder fn_ir_builder(m);
     bool ok = fn_ir_builder.Build((node::FnNode *) trees[0]);
@@ -102,15 +103,18 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     ::fesql::node::NodePointVector list;
     ::fesql::parser::FeSQLParser parser;
     ::fesql::node::NodeManager manager;
+    ::fesql::base::Status status;
     const std::string test = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend";
     AddFunc(test, m.get());
-    int ret = parser.parse("SELECT test(col1,col1) FROM t1 limit 10;", list, &manager);
+    int ret = parser.parse("SELECT test(col1,col1) FROM t1 limit 10;", list, &manager, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1, list.size());
     ::fesql::plan::SimplePlanner planner(&manager);
-    ::fesql::node::PlanNode *plan_ptr = planner.CreatePlan(list[0]);
+    ::fesql::node::PlanNodeList trees;
+    ret = planner.CreatePlanTree(list, trees, status);
+    ASSERT_EQ(0, ret);
     ::fesql::node::ProjectListPlanNode* pp_node_ptr 
-        = (::fesql::node::ProjectListPlanNode*)(plan_ptr->GetChildren()[0]->GetChildren()[0]);
+        = (::fesql::node::ProjectListPlanNode*)(trees[0]->GetChildren()[0]->GetChildren()[0]);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(&table, m.get());
@@ -172,13 +176,17 @@ TEST_F(FnLetIRBuilderTest, test_project) {
     ::fesql::node::NodePointVector list;
     ::fesql::parser::FeSQLParser parser;
     ::fesql::node::NodeManager manager;
-    int ret = parser.parse("SELECT col1 FROM t1 limit 10;", list, &manager);
+    ::fesql::base::Status status;
+    int ret = parser.parse("SELECT col1 FROM t1 limit 10;", list, &manager, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1, list.size());
     ::fesql::plan::SimplePlanner planner(&manager);
-    ::fesql::node::PlanNode *plan_ptr = planner.CreatePlan(list[0]);
+
+    ::fesql::node::PlanNodeList plan;
+    ret = planner.CreatePlanTree(list, plan, status);
+    ASSERT_EQ(0, ret);
     ::fesql::node::ProjectListPlanNode* pp_node_ptr 
-        = (::fesql::node::ProjectListPlanNode*)(plan_ptr->GetChildren()[0]->GetChildren()[0]);
+        = (::fesql::node::ProjectListPlanNode*)(plan[0]->GetChildren()[0]->GetChildren()[0]);
 
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
