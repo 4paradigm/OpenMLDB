@@ -41,22 +41,26 @@ class OpGenerator {
     ~OpGenerator();
 
     bool Gen(const ::fesql::node::NodePointVector& trees,
-                 ::llvm::Module* module,
-                 OpVector* ops);
+             const std::string& db,
+             ::llvm::Module* module,
+             OpVector* ops);
  private:
 
     bool GenFnDef(::llvm::Module* module,
             const ::fesql::node::FnNode* node);
 
     bool GenSQL(const ::fesql::node::NodePointVector& node,
+                const std::string& db,
                 ::llvm::Module* module,
                 OpVector* ops);
 
     bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
+            const std::string& db,
             ::llvm::Module* module, 
             OpVector* ops);
 
     bool GenScan(const ::fesql::node::ScanPlanNode* node,
+            const std::string& db,
             ::llvm::Module* module,
             OpVector* ops);
 
@@ -65,6 +69,7 @@ class OpGenerator {
             OpVector* ops);
 
     bool RoutingNode(const ::fesql::node::PlanNode* node,
+            const std::string& db,
             ::llvm::Module* module,
             OpVector* ops);
 

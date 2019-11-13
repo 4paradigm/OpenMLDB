@@ -20,6 +20,7 @@
 
 #include "vm/table_mgr.h"
 #include "vm/sql_compiler.h"
+#include "base/spin_lock.h"
 #include <memory>
 #include <mutex>
 #include <map>
@@ -69,18 +70,29 @@ class RunSession {
 
 
 
+typedef std::map<std::string,
+                 std::map<std::string, std::shared_ptr<CompileInfo>>> EngineCache;
 class Engine {
  public:
 
     Engine(TableMgr* table_mgr);
+
     ~Engine();
 
-    bool Get(const std::string& sql, RunSession& session);
+    bool Get(const std::string& db,
+             const std::string& sql, 
+             RunSession& session);
+
+    std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
+            const std::string& sql);
+
+    bool AddCacheLocked(const std::string& db, const std::string& sql
+                 std::shared_ptr<CompileInfo> compile_info);
 
  private:
     TableMgr* table_mgr_;
-    std::mutex mu_;
-    std::map<std::string, std::shared_ptr<CompileInfo> > cache_;
+    base::SpinMutex mu_;
+    EngineCache cache_;
 };
 
 }  // namespace vm

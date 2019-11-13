@@ -64,8 +64,8 @@ class TableMgrImpl : public TableMgr {
 class EngineTest : public ::testing::Test {};
 
 TEST_F(EngineTest, test_normal) {
-    ::fesql::storage::Table table("t1", 1, 1, 1);
-    ASSERT_TRUE(table.Init());
+    std::unique_ptr<::fesql::storage::Table> table(new ::fesql::storage::Table("t1", 1, 1, 1));
+    ASSERT_TRUE(table->Init());
     int8_t* ptr = static_cast<int8_t*>(malloc(28));
     *((int32_t*)(ptr + 2)) = 1;
     *((int16_t*)(ptr +2+4)) = 2;
@@ -73,10 +73,10 @@ TEST_F(EngineTest, test_normal) {
     *((double*)(ptr +2+ 4 + 2 + 4)) = 4.1;
     *((int64_t*)(ptr +2+ 4 + 2 + 4 + 8)) = 5;
 
-    ASSERT_TRUE(table.Put("k1", 1, (char*)ptr, 28));
-    ASSERT_TRUE(table.Put("k1", 2, (char*)ptr, 28));
+    ASSERT_TRUE(table->Put("k1", 1, (char*)ptr, 28));
+    ASSERT_TRUE(table->Put("k1", 2, (char*)ptr, 28));
     TableStatus status;
-    status.table = &table;
+    status.table = std::move(table);
     status.table_def.set_name("t1");
     {
         ::fesql::type::ColumnDef* column = status.table_def.add_columns();

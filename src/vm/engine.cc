@@ -27,7 +27,7 @@ Engine::~Engine() {}
 bool Engine::Get(const std::string& sql, 
         RunSession& session) {
     {
-        std::lock_guard<std::mutex> lock(mu_);
+        std::lock_guard<base::SpinMutex> lock(mu_);
         std::map<std::string, std::shared_ptr<CompileInfo>>::iterator it = cache_.find(sql);
         if (it != cache_.end()) {
             session.SetCompileInfo(it->second);
@@ -47,7 +47,7 @@ bool Engine::Get(const std::string& sql,
     info->row_size = info->sql_ctx.row_size;
     {
         // check 
-        std::lock_guard<std::mutex> lock(mu_);
+        std::lock_guard<base::SpinMutex> lock(mu_);
         std::map<std::string, std::shared_ptr<CompileInfo>>::iterator it = cache_.find(sql);
         session.SetTableMgr(table_mgr_);
         if (it == cache_.end()) {
@@ -59,6 +59,20 @@ bool Engine::Get(const std::string& sql,
         }
     }
     return true;
+}
+
+std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
+        const std::string& sql, RunSession& session) {
+    std::lock_guard<base::SpinMutex> lock(mu_);
+    EngineCache::iterator it = cache_.find(db);
+    if (it == cache_.end()) {
+        return std::shared_ptr<CompileInfo>();
+    }
+    std::map<std::string, std::shared_ptr<CompileInfo>> iit = it->second.find(sql);
+    if (iit == it->second.end()) {
+        return std::shared_ptr<CompileInfo>();
+    }
+    return iit->second;
 }
 
 RunSession::RunSession() {}
@@ -74,9 +88,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t length,
     ScanOp* scan_op = (ScanOp*)(compile_info_->sql_ctx.ops.ops[0]);
     ProjectOp* project_op = (ProjectOp*)(compile_info_->sql_ctx.ops.ops[1]);
     LimitOp* limit_op = (LimitOp*)(compile_info_->sql_ctx.ops.ops[2]);
-    TableStatus* status = NULL;
-    bool ok = table_mgr_->GetTableDef(0, scan_op->tid, &status);
-    if (!ok || status == NULL) {
+    std::shared_ptr<TableStatus> status = table_mgr_->GetTableDef(scan_op->db,
+            scan_op->tid);
+    if (!status) {
         LOG(WARNING) << "fail to find table with tid " << scan_op->tid;
         return -1;
     }
@@ -86,11 +100,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t length,
     if (min > limit_op->limit) {
         min = limit_op->limit;
     }
-    LOG(INFO) << "project with limit " << min;
     int32_t (*udf)(int8_t*, int8_t*) = (int32_t(*)(int8_t*, int8_t*))project_op->fn;
     uint32_t count = 0;
     while (it->Valid() && count < min) {
-        LOG(INFO) << "key " << it->GetKey();
         ::fesql::storage::Slice value = it->GetValue();
         int8_t* output = (int8_t*)malloc(project_op->output_size);
         int8_t* row = reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
@@ -105,6 +117,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t length,
         count ++;
     }
     *row_cnt = count;
+    delete it;
     return 0;
 }
 

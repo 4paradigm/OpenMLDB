@@ -9,6 +9,7 @@ add_subdirectory(storage)
 add_subdirectory(dbms)
 add_subdirectory(sdk)
 add_subdirectory(vm)
+add_subdirectory(tablet)
 
 include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src

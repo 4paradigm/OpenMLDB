@@ -30,6 +30,7 @@ OpGenerator::OpGenerator(TableMgr* table_mgr):table_mgr_(table_mgr) {}
 OpGenerator::~OpGenerator() {}
 
 bool OpGenerator::Gen(const ::fesql::node::NodePointVector& trees,
+        const std::string& db,
         ::llvm::Module* module,
         OpVector* ops) {
     if (module == NULL || ops == NULL) {
@@ -52,7 +53,7 @@ bool OpGenerator::Gen(const ::fesql::node::NodePointVector& trees,
                 }
             case ::fesql::node::kSelectStmt: 
                 {
-                    bool ok = GenSQL(trees, module, ops);
+                    bool ok = GenSQL(trees, db, module, ops);
                     if (!ok) {
                         return false;
                     }
@@ -69,6 +70,7 @@ bool OpGenerator::Gen(const ::fesql::node::NodePointVector& trees,
 }
 
 bool OpGenerator::GenSQL(const ::fesql::node::NodePointVector &trees,
+        const std::string& db,
         ::llvm::Module* module,
         OpVector* ops) {
 
@@ -94,6 +96,7 @@ bool OpGenerator::GenSQL(const ::fesql::node::NodePointVector &trees,
 }
 
 bool OpGenerator::RoutingNode(const ::fesql::node::PlanNode* node,
+        const std::string& db,
         ::llvm::Module* module,
         OpVector* ops) {
 
@@ -114,13 +117,13 @@ bool OpGenerator::RoutingNode(const ::fesql::node::PlanNode* node,
             {
                 const ::fesql::node::ScanPlanNode* scan_node = 
                     (const ::fesql::node::ScanPlanNode*)node;
-                return GenScan(scan_node, module, ops);
+                return GenScan(scan_node, db, module, ops);
             }
         case ::fesql::node::kProjectList:
             {
                 const ::fesql::node::ProjectListPlanNode* ppn = 
                     (const ::fesql::node::ProjectListPlanNode*)node;
-                return GenProject(ppn, module, ops);
+                return GenProject(ppn, db, module, ops);
             }
         default:
             {
@@ -132,6 +135,7 @@ bool OpGenerator::RoutingNode(const ::fesql::node::PlanNode* node,
 }
 
 bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
+        const std::string& db,
         ::llvm::Module* module,
         OpVector* ops) {
 
@@ -144,13 +148,13 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
     // TODO(wangtaize) share_ptr
     TableStatus* table_status = NULL;
     // TODO(wangtaize) add db
-    std::string db = "";
-    bool ok = table_mgr_->GetTableDef(db, node->GetTable(), &table_status);
-    if (!ok || table_status == NULL) {
+    std::shared_ptr<TableStatus> table_status = table_mgr_->GetTableDef(db, node->GetTable());
+    if (!table_status) {
         LOG(WARNING) << "fail to find table " << node->GetTable();
         return false;
     }
     ScanOp* sop = new ScanOp();
+    sop->db = db;
     sop->type = kOpScan;
     sop->tid = table_status->tid;
     sop->pid = table_status->pid;
@@ -163,6 +167,7 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
 }
 
 bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
+        const std::string& db,
         ::llvm::Module* module,
         OpVector* ops) {
 
@@ -182,7 +187,6 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
             return false;
         }
     }
-    std::string db = "";
     TableStatus* table_status = NULL;
     bool ok = table_mgr_->GetTableDef(db, node->GetTable(), &table_status);
     if (!ok) {

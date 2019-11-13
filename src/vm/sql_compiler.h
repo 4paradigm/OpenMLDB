@@ -30,6 +30,8 @@ namespace vm {
 struct SQLContext {
     // the sql content
     std::string sql;
+    // the database
+    std::string db;
     // the operators
     OpVector ops;
     // TODO(wangtaize) add a light jit engine 

@@ -1,4 +1,5 @@
 import "common.proto";
+import "type.proto";
 
 package fesql.tablet;
 option cc_generic_services = true;
@@ -16,6 +17,18 @@ message QueryResponse {
     optional bytes schema = 3;
 }
 
+message CreateTableRequest {
+    optional type.TableDef table = 1;
+    optional uint32 tid = 2;
+    repeated uint32 pids = 3;
+    optional string db = 4;
+}
+
+message CreateTableResponse {
+    optional common.Status status = 1;
+}
+
 service TabletServer {
+    rpc CreateTable(CreateTableRequest) returns(CreateTableResponse);
     rpc Query(QueryRequest) returns(QueryResponse);
 }

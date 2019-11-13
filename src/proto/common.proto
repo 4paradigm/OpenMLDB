@@ -9,6 +9,7 @@ enum StatusCode {
     kNameExists = 12;
     kTableExists = 13;
     kNoDatabase = 14;
+    kConnError = 20;
 }
 
 message Status {

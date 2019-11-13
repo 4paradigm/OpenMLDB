@@ -64,7 +64,9 @@ message TableDef {
     optional uint64 ctime = 5;
     optional uint64 utime = 6;
     repeated IndexDef indexes = 7;
+    optional uint32 partitions = 8 [default = 1];
 }
+
 message Database {
     optional string name = 1;
     optional uint64 ctime = 2;
