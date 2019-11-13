@@ -15,45 +15,42 @@
  * limitations under the License.
  */
 
-#ifndef IR_BASE_BUILDER_H_
-#define IR_BASE_BUILDER_H_
+#ifndef SRC_CODEGEN_IR_BASE_BUILDER_H_
+#define SRC_CODEGEN_IR_BASE_BUILDER_H_
 
 #include "glog/logging.h"
+#include "proto/type.pb.h"
 #include "llvm/IR/IRBuilder.h"
 
 namespace fesql {
 namespace codegen {
 
-bool BuildLoadRelative(::llvm::IRBuilder<>& builder, ::llvm::LLVMContext& ctx,
-                       ::llvm::Value* ptr, ::llvm::Value* offset,
-                       ::llvm::Type* type, ::llvm::Value** output) {
-    if (!ptr->getType()->isPointerTy()) {
-        LOG(WARNING) << "ptr should be pointer but "
-                     << ptr->getType()->getTypeID();
-        return false;
-    }
+bool GetLLVMType(::llvm::IRBuilder<>& builder,
+        const ::fesql::type::Type& type,
+        ::llvm::Type** output);
 
-    if (!offset->getType()->isIntegerTy()) {
-        LOG(WARNING) << "offset should be integer type but "
-                     << ptr->getType()->getTypeID();
-        return false;
-    }
+bool GetTableType(::llvm::Type* type,
+        ::fesql::type::Type* output);
 
-    // cast ptr to int64
-    ::llvm::Type* int64_ty = ::llvm::Type::getInt64Ty(ctx);
-    ::llvm::Value* ptr_int64_ty = builder.CreatePtrToInt(ptr, int64_ty);
-    // TODO no need cast if offset is int64
-    ::llvm::Value* offset_int64 =
-        builder.CreateIntCast(offset, int64_ty, true, "cast_32_to_64");
-    ::llvm::Value* ptr_add_offset =
-        builder.CreateAdd(ptr_int64_ty, offset_int64, "ptr_add_offset");
-    // todo check the type
-    ::llvm::Value* int64_to_ty_ptr =
-        builder.CreateIntToPtr(ptr_add_offset, type->getPointerTo());
-    *output = builder.CreateLoad(type, int64_to_ty_ptr, "load_type_value");
-    return true;
-}
+bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,
+        ::llvm::Value* ptr,
+        ::llvm::Value* offset,
+        ::llvm::Type* type,
+        ::llvm::Value** outptr);
+
+bool BuildLoadOffset(::llvm::IRBuilder<>& builder,
+        ::llvm::Value* ptr,
+        ::llvm::Value* offset,
+        ::llvm::Type* type,
+        ::llvm::Value** output);
+
+bool BuildStoreOffset(::llvm::IRBuilder<>& builder,
+        ::llvm::Value* ptr,
+        ::llvm::Value* offset,
+        ::llvm::Value* value);
+
 
 }  // namespace codegen
 }  // namespace fesql
-#endif /* !IR_BASE_BUILDER_H_ */
+#endif  // SRC_CODEGEN_IR_BASE_BUILDER_H_
+

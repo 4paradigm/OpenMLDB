@@ -23,6 +23,7 @@ using node::NodePointVector;
 using node::PlanNode;
 using node::PlanNodeList;
 using node::SQLNode;
+
 class Planner {
  public:
     explicit Planner(node::NodeManager *manager) : node_manager_(manager) {}
@@ -33,25 +34,24 @@ class Planner {
         Status &status) = 0;       // NOLINT (runtime/references)
 
  protected:
-    void CreatePlanRecurse(node::SQLNode *root, PlanNode *plan_tree,
+    void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
-    int CreateSelectPlan(node::SQLNode *root, PlanNode *plan_tree,
+    int CreateSelectPlan(const node::SQLNode *root, PlanNode *plan_tree,
                          Status &status);  // NOLINT (runtime/references)
-    void CreateCreateTablePlan(node::SQLNode *root,
+    void CreateCreateTablePlan(const node::SQLNode *root,
                                node::CreatePlanNode *plan_tree,
                                Status &status);  // NOLINT (runtime/references)
-    void CreateProjectPlanNode(node::SQLNode *root, std::string table_name,
+    void CreateProjectPlanNode(const node::SQLNode *root, const std::string& table_name,
                                node::ProjectPlanNode *plan_tree,
                                Status &status);  // NOLINT (runtime/references)
-    void CreateCmdPlan(SQLNode *root, node::CmdPlanNode *plan_tree,
+    void CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan_tree,
                        Status &status);  // NOLINT (runtime/references)
     void CreateDataProviderPlanNode(
-        node::SQLNode *root, PlanNode *plan_tree,
+        const node::SQLNode *root, PlanNode *plan_tree,
         Status &status);  // NOLINT (runtime/references)
     void CreateDataCollectorPlanNode(
-        node::SQLNode *root, PlanNode *plan_tree,
+        const node::SQLNode *root, PlanNode *plan_tree,
         Status &status);  // NOLINT (runtime/references)
-
     node::NodeManager *node_manager_;
 };
 
@@ -64,7 +64,7 @@ class SimplePlanner : public Planner {
 };
 
 // TODO(chenjing): move to executor module
-void transformTableDef(const std::string &table_name,
+void TransformTableDef(const std::string &table_name,
                        const NodePointVector &column_desc_list,
                        type::TableDef *table,
                        Status &status);  // NOLINT (runtime/references)

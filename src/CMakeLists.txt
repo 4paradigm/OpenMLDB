@@ -8,13 +8,13 @@ add_subdirectory(codegen)
 add_subdirectory(storage)
 add_subdirectory(dbms)
 add_subdirectory(sdk)
+add_subdirectory(vm)
 
 include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
 add_executable(fesql cmd/fesql.cc flags.cc)
-#target_link_libraries(fesql fesql_dbms fesql_sdk fesql_base fesql_proto fesql_parser fesql_node fesql_codegen gflags brpc glog lzma leveldb protobuf z snappy ssl crypto dl pthread)
 target_link_libraries(fesql fesql_dbms fesql_sdk fesql_base fesql_proto fesql_parser fesql_analyser fesql_planner fesql_node fesql_codegen brpc ${COMMON_LIBS} leveldb protobuf z snappy ssl crypto dl pthread)
 
 

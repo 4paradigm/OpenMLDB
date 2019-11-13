@@ -7,8 +7,10 @@
  *--------------------------------------------------------------------------
  **/
 
+
 #include "node/node_manager.h"
 #include <string>
+
 namespace fesql {
 namespace node {
 

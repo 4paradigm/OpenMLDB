@@ -78,6 +78,8 @@ inline const std::string DataTypeName(const DataType &type) {
 
 inline const std::string FnNodeName(const SQLNodeType &type) {
     switch (type) {
+        case kPrimary: 
+            return "primary";
         case kFnDef:
             return "def";
         case kFnValue:
@@ -483,6 +485,9 @@ class FuncNode : public FnNode {
 
     void SetAgg(bool is_agg) { is_agg_ = is_agg; }
     NodePointVector &GetArgs() { return args_; }
+    const NodePointVector &GetArgs() const {
+        return args_;
+    }
 
  private:
     bool is_agg_;
@@ -536,13 +541,31 @@ class SelectStmt : public SQLNode {
     ~SelectStmt() {}
 
     // Getter and Setter
-    NodePointVector &GetSelectList() { return select_list_ptr_; }
+    const NodePointVector &GetSelectList() const {
+        return select_list_ptr_;
+    }
+
+    NodePointVector &GetSelectList() {
+        return select_list_ptr_;
+    }
 
     SQLNode *GetLimit() const { return limit_ptr_; }
 
-    NodePointVector &GetTableRefList() { return tableref_list_ptr_; }
+    const NodePointVector &GetTableRefList() const {
+        return tableref_list_ptr_;
+    }
 
-    NodePointVector &GetWindowList() { return window_list_ptr_; }
+    NodePointVector &GetTableRefList() {
+        return tableref_list_ptr_;
+    }
+
+    const NodePointVector &GetWindowList() const {
+        return window_list_ptr_;
+    }
+
+    NodePointVector &GetWindowList() {
+        return window_list_ptr_;
+    }
 
     void SetLimit(SQLNode *limit) { limit_ptr_ = limit; }
 
@@ -680,6 +703,7 @@ class CreateStmt : public SQLNode {
     ~CreateStmt() {}
 
     NodePointVector &GetColumnDefList() { return column_desc_list_; }
+    const NodePointVector &GetColumnDefList() const { return column_desc_list_; }
 
     std::string GetTableName() const { return table_name_; }
 

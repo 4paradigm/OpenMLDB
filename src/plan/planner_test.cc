@@ -140,7 +140,7 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
     node::CreatePlanNode *createStmt = (node::CreatePlanNode *)plan_ptr;
 
     type::TableDef table_def;
-    transformTableDef(createStmt->GetTableName(),
+    TransformTableDef(createStmt->GetTableName(),
                       createStmt->GetColumnDescList(), &table_def, status);
 
     type::TableDef *table = &table_def;
@@ -190,8 +190,7 @@ TEST_F(PlannerTest, CmdStmtPlanTest) {
     // validate create plan
     ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
     node::CmdPlanNode *cmd_plan= (node::CmdPlanNode *)plan_ptr;
-    ASSERT_TRUE(NULL != cmd_plan->GetCmdNode());
-    ASSERT_EQ(node::kCmdShowDatabases, cmd_plan->GetCmdNode()->GetCmdType());
+    ASSERT_EQ(node::kCmdShowDatabases, cmd_plan->GetCmdType());
 
 }
 

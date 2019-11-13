@@ -61,8 +61,7 @@ TEST_F(IRBaseBuilderTest, test_load_float) {
     Value *offset = builder.getInt32(4);
     Type *float_type = Type::getFloatTy(*ctx);
     Value *output = NULL;
-    bool ok =
-        BuildLoadRelative(builder, *ctx, arg0, offset, float_type, &output);
+    bool ok = BuildLoadOffset(builder, arg0, offset, float_type, &output);
     ASSERT_TRUE(ok);
     builder.CreateRet(output);
     m->print(::llvm::errs(), NULL);
@@ -95,8 +94,7 @@ TEST_F(IRBaseBuilderTest, test_load_int64) {
     Value *offset = builder.getInt32(8);
     IntegerType *int64_type = Type::getInt64Ty(*ctx);
     Value *output = NULL;
-    bool ok =
-        BuildLoadRelative(builder, *ctx, arg0, offset, int64_type, &output);
+    bool ok = BuildLoadOffset(builder, arg0, offset, int64_type, &output);
     ASSERT_TRUE(ok);
     builder.CreateRet(output);
     m->print(::llvm::errs(), NULL);

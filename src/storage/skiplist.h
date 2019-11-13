@@ -6,13 +6,15 @@
 
 #include <stdint.h>
 #include <atomic>
-#include "../base/random.h"
-#include "iterator.h"
+#include "base/random.h"
+#include "base/iterator.h"
 #include <iostream>
 #include <assert.h>
 
 namespace fesql {
 namespace storage {
+
+using ::fesql::base::Iterator;
 
 // SkipList node , a thread safe structure 
 template<class K, class V>
@@ -306,6 +308,10 @@ public:
         virtual void Next() override{
             assert(Valid());
             node_ = node_->GetNext(0);
+        }
+
+        virtual bool IsSeekable() const override {
+            return true;
         }
 
         virtual const K& GetKey() const override {

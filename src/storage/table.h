@@ -9,17 +9,22 @@
 
 #include <atomic>
 #include <memory>
-#include "iterator.h"
+#include "base/iterator.h"
 #include "segment.h"
 
 namespace fesql {
 namespace storage {
 
+using ::fesql::base::Iterator;
+
 class Table {
  public:
     Table() = default;
-    Table(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt);
+
+    Table(const std::string& name,
+          uint32_t id, uint32_t pid, uint32_t seg_cnt);
     ~Table();
+
     bool Init();
 
     bool Put(const std::string& pk, uint64_t time, const char* data,

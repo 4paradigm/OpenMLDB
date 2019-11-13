@@ -575,7 +575,6 @@ select_stmt:
     ;
 
 
-
 create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')'
                 {
                     $$ = node_manager->MakeCreateTableNode($3, $4, $6);

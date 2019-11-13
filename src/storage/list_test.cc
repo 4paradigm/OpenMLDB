@@ -9,6 +9,7 @@
 namespace fesql {
 namespace storage {
 
+using ::fesql::base::DefaultComparator;
 DefaultComparator cmp;
 
 class ListTest : public ::testing::Test {

@@ -15,10 +15,11 @@
 #include <mutex>
 #include <atomic>
 #include <memory>
-#include "iterator.h"
+#include "base/iterator.h"
 
 namespace fesql {
 namespace storage {
+using ::fesql::base::Iterator;
 // the desc time comparator
 using ::fesql::base::Slice;
 

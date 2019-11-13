@@ -186,11 +186,6 @@ void DBMSSdkImpl::ExecuteScript(const std::string &sql, base::Status &status) {
     switch (plan->GetType()) {
         case node::kPlanTypeCmd: {
             node::CmdPlanNode *cmd = dynamic_cast<node::CmdPlanNode *>(plan);
-            if (nullptr == cmd->GetCmdNode()) {
-                status.msg = "fail to execute cmd : cmd plan null";
-                status.code = error::kExecuteErrorNullNode;
-                return;
-            }
             handleCmd(cmd, status);
             return;
         }
@@ -201,7 +196,7 @@ void DBMSSdkImpl::ExecuteScript(const std::string &sql, base::Status &status) {
             ::fesql::dbms::DBMSServer_Stub stub(channel_);
             ::fesql::dbms::AddTableRequest request;
             ::fesql::type::TableDef *table = request.mutable_table();
-            plan::transformTableDef(create->GetTableName(),
+            plan::TransformTableDef(create->GetTableName(),
                                     create->GetColumnDescList(), table, status);
 
             ::fesql::dbms::AddTableResponse response;
@@ -284,7 +279,7 @@ void DBMSSdkImpl::PrintItems(std::vector<std::string> items) {
 }
 
 void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {
-    switch (cmd_node->GetCmdNode()->GetCmdType()) {
+    switch (cmd_node->GetCmdType()) {
         case node::kCmdShowDatabases: {
             std::vector<std::string> names;
             ShowDatabases(names, status);
@@ -303,7 +298,7 @@ void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {
         }
         case node::kCmdDescTable: {
             type::TableDef table;
-            ShowSchema(cmd_node->GetCmdNode()->GetArgs()[0], table, status);
+            ShowSchema(cmd_node->GetArgs()[0], table, status);
             if (status.code == 0) {
                 PrintTableSchema(table);
             }
@@ -311,20 +306,20 @@ void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {
         }
         case node::kCmdCreateGroup: {
             GroupDef group;
-            group.name = cmd_node->GetCmdNode()->GetArgs()[0];
+            group.name = cmd_node->GetArgs()[0];
             CreateGroup(group, status);
             break;
         }
         case node::kCmdCreateDatabase: {
             DatabaseDef db;
-            db.name = cmd_node->GetCmdNode()->GetArgs()[0];
+            db.name = cmd_node->GetArgs()[0];
             CreateDatabase(db, status);
             break;
         }
         case node::kCmdCreateTable: {
             std::ifstream in;
             in.open(
-                cmd_node->GetCmdNode()->GetArgs()[0]);  // open the input file
+                cmd_node->GetArgs()[0]);  // open the input file
             if (!in.is_open()) {
                 status.code = error::kCmdErrorPathError;
                 status.msg = "Incorrect file path";
@@ -340,13 +335,13 @@ void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {
         }
         case node::kCmdUseDatabase: {
             DatabaseDef db;
-            db.name = cmd_node->GetCmdNode()->GetArgs()[0];
+            db.name = cmd_node->GetArgs()[0];
             EnterDatabase(db, status);
             break;
         }
         default: {
             status.code = error::kCmdErrorUnSupport;
-            status.msg = "UnSupport Cmd " + node::CmdTypeName(cmd_node->GetCmdNode()->GetCmdType());
+            status.msg = "UnSupport Cmd " + node::CmdTypeName(cmd_node->GetCmdType());
         }
 
     }
