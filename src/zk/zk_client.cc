@@ -58,6 +58,17 @@ ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
     data_.data = NULL;
 }
 
+ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
+        const std::string& endpoint, const std::string& zk_root_path, const std::string& zone_path):hosts_(hosts),
+        session_timeout_(session_timeout), endpoint_(endpoint), zk_root_path_(zk_root_path),
+        nodes_root_path_(zone_path), nodes_watch_callbacks_(), mu_(), cv_(),
+        zk_(NULL),
+        nodes_watching_(false), data_(), connected_(false), registed_(false),
+        children_callbacks_(), session_term_(0) {
+    data_.count = 0;
+    data_.data = NULL;
+}
+
 ZkClient::~ZkClient() {
     if (zk_) {
         zookeeper_close(zk_);
