@@ -2351,6 +2351,13 @@ void NameServerImpl::CreateTable(RpcController* controller,
             response->set_msg("nameserver is follower");
             PDLOG(WARNING, "cur nameserver is follower");
             return;
+        } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
+                request->zone_info().replica_alias() != zone_info_.replica_alias() ||
+                request->zone_info().zone_term() != zone_info_.zone_term()) {
+            response->set_code(502);
+            response->set_msg("zone_info mismathch");
+            PDLOG(WARNING, "zone_info mismathch");
+            return;
         }
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
