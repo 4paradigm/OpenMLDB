@@ -1,4 +1,4 @@
-#-*-coding:utf-8 -*-
+# -*-coding:utf-8 -*-
 import os
 import time
 import sys
@@ -9,12 +9,50 @@ from prometheus_client import start_http_server
 from prometheus_client import Gauge
 
 method = ["put", "get", "scan"]
-monitor_key = ["count", "error", "qps", "latency", "latency_50", "latency_90", "latency_99", "latency_999", "latency_9999", "max_latency"]
+monitor_key = ["count", "error", "qps", "latency", "latency_50",
+               "latency_90", "latency_99", "latency_999", "latency_9999", "max_latency"]
 
-rtidb_log = {"tablet": [{"file_name": "/rtidb_mon.log", "offset": 0, "item": {"name": "restart_num", "key":"./bin/boot.sh", "num": 0}}, 
-                        {"file_name" : "/tablet.warning.log", "offset": 0, "item": {"name": "reconnect_num", "key":"reconnect zk", "num": 0}}],
-             "ns": [{"file_name": "/rtidb_ns_mon.log", "offset": 0, "item": {"name": "restart_num", "key":"./bin/boot_ns.sh", "num": 0}},
-                    {"file_name" : "/nameserver.warning.log", "offset": 0, "item": {"name": "reconnect_num", "key":"reconnect zk", "num": 0}}]}
+rtidb_log = {
+    "tablet": [
+        {
+            "file_name": "/rtidb_mon.log",
+            "offset": 0,
+            "item": {
+                "name": "restart_num",
+                "key": "./bin/boot.sh",
+                "num": 0
+            }
+        },
+        {
+            "file_name": "/tablet.warning.log",
+            "offset": 0,
+            "item": {
+                "name": "reconnect_num",
+                "key": "reconnect zk",
+                "num": 0
+            }
+        }],
+    "ns": [
+        {
+            "file_name": "/rtidb_ns_mon.log",
+            "offset": 0,
+            "item": {
+                "name": "restart_num",
+                "key": "./bin/boot_ns.sh",
+                "num": 0
+            }
+        },
+        {
+            "file_name": "/nameserver.warning.log",
+            "offset": 0,
+            "item": {
+                "name": "reconnect_num",
+                "key": "reconnect zk",
+                "num": 0
+            }
+        }]
+}
+
 
 def get_data(url):
     result = {}
@@ -25,7 +63,7 @@ def get_data(url):
         item_arr = content.split("\n")
         if len(item_arr) < 12:
             continue
-        cur_method = item_arr[-12].split(" ")[0]    
+        cur_method = item_arr[-12].split(" ")[0]
         cur_method = cur_method.lower()
         if cur_method in method:
             result.setdefault(cur_method, {})
@@ -33,7 +71,8 @@ def get_data(url):
                 arr = item.strip().split(":")
                 if arr[0] in monitor_key:
                     result[cur_method][arr[0]] = arr[1].strip()
-    return result                
+    return result
+
 
 def get_conf():
     conf_map = {}
@@ -56,6 +95,7 @@ def get_conf():
                 conf_map["interval"] = int(arr[1].strip())
         return conf_map
 
+
 def get_timestamp():
     ct = time.time()
     local_time = time.localtime(ct)
@@ -64,7 +104,8 @@ def get_timestamp():
     today = time.strftime("%Y%m%d", local_time)
     return ["%s.%03d" % (data_head, data_secs) + " +0800", today]
 
-def search_key(file_name, offset, keyword):    
+
+def search_key(file_name, offset, keyword):
     if not os.path.exists(file_name):
         return (0, 0)
     count = 0
@@ -75,6 +116,7 @@ def search_key(file_name, offset, keyword):
                 count += 1
         return (count, f.tell())
 
+
 if __name__ == "__main__":
     conf_map = get_conf()
     env_dist = os.environ
@@ -84,7 +126,8 @@ if __name__ == "__main__":
     start_http_server(port)
     gauge = {}
     for cur_method in method:
-        gauge[cur_method] = Gauge("rtidb_" + cur_method, cur_method, ["latency", "type"])
+        gauge[cur_method] = Gauge(
+            "rtidb_" + cur_method, cur_method, ["latency", "type"])
 
     gauge["log"] = Gauge("rtidb_log", "log", ["role", "type"])
 
@@ -114,19 +157,24 @@ if __name__ == "__main__":
                 if module not in conf_map:
                     continue
                 for var in rtidb_log[module]:
-                    (count, offset) = search_key(conf_map[module] + var["file_name"], var["offset"], var["item"]["key"])
+                    (count, offset) = search_key(
+                        conf_map[module] + var["file_name"], var["offset"], var["item"]["key"])
                     if var["item"]["name"] == "restart_num":
-                        if count != var["item"]["num"]:
-                            log_file.write(time_stamp + "\t" + module + " start\n")
-                            var["item"]["num"] = count
-                            rtidb_log[module][1]["offset"] = 0
+                        var["offset"] = offset
+                        if count > 0:
+                            log_file.write(time_stamp + "\t" +
+                                           module + " start\n")
+                            var["item"]["num"] += count
+                            rtidb_log[module][1]["item"]["offset"] = 0
                             rtidb_log[module][1]["item"]["num"] = 0
-                        value =  count - 1 if count > 0 else count
-                        gauge["log"].labels(module, var["item"]["name"]).set(str(value))
+                        value = count - 1 if count > 0 else count
+                        gauge["log"].labels(
+                            module, var["item"]["name"]).set(var["item"]["num"])
                     else:
                         var["item"]["num"] += count
                         var["offset"] = offset
-                        gauge["log"].labels(module, var["item"]["name"]).set(str(var["item"]["num"]))
+                        gauge["log"].labels(module, var["item"]["name"]).set(
+                            str(var["item"]["num"]))
             if url == "":
                 continue
             result = get_data(url)
@@ -135,9 +183,11 @@ if __name__ == "__main__":
                 for key in monitor_key:
                     data += "\t" + key + ":" + result[method_data][key]
                     if key.find("latency") == -1:
-                        gauge[method_data].labels("type", key).set(result[method_data][key])
+                        gauge[method_data].labels("type", key).set(
+                            result[method_data][key])
                     else:
-                        gauge[method_data].labels("latency", key).set(result[method_data][key])
+                        gauge[method_data].labels("latency", key).set(
+                            result[method_data][key])
                 log_file.write(data + "\n")
                 log_file.flush()
         except Exception, ex:
