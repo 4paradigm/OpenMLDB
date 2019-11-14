@@ -65,6 +65,7 @@ class OpGenerator {
             OpVector* ops);
 
     bool GenLimit(const ::fesql::node::LimitPlanNode* node,
+            const std::string& db,
             ::llvm::Module* module,
             OpVector* ops);
 

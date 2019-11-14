@@ -30,7 +30,7 @@ SQLCompiler::SQLCompiler(TableMgr* table_mgr):
 SQLCompiler::~SQLCompiler() {}
 
 bool SQLCompiler::Compile(SQLContext& ctx) { //NOLINT
-    LOG(INFO) << "start compile sql " << ctx.sql;
+    LOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::NodeManager nm;
     ::fesql::node::NodePointVector  trees;
     bool ok = Parse(ctx.sql, nm, trees);
@@ -41,7 +41,7 @@ bool SQLCompiler::Compile(SQLContext& ctx) { //NOLINT
     OpGenerator op_generator(table_mgr_);
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
-    ok = op_generator.Gen(trees, m.get(), &ctx.ops);
+    ok = op_generator.Gen(trees, ctx.db, m.get(), &ctx.ops);
     // TODO(wangtaize) clean ctx
     if (!ok) {
         LOG(WARNING) << "fail to generate operators for sql " << ctx.sql;

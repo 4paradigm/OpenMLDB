@@ -29,6 +29,7 @@
 #include "brpc/server.h"
 #include "cmd/version.h"
 #include "dbms/dbms_server_impl.h"
+#include "tablet/tablet_server_impl.h"
 #include "glog/logging.h"
 #include "sdk/dbms_sdk.h"
 
@@ -47,6 +48,33 @@ void HandleCreateSchema(std::string str, ::fesql::base::Status &status);
 
 void HandleEnterDatabase(std::string &db_name);
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
+
+void StartTablet(char *argv[]) {
+    SetupLogging(argv);
+    ::fesql::tablet::TabletServerImpl *tablet = new ::fesql::tablet::TabletServerImpl();
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+
+    if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        LOG(WARNING) << "Fail to add tablet service";
+        exit(1);
+    }
+
+    if (server.Start(FLAGS_port, &options) != 0) {
+        LOG(WARNING) << "Fail to start tablet server";
+        exit(1);
+    }
+
+    std::ostringstream oss;
+    oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
+        << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
+    LOG(INFO) << "start tablet on port " << FLAGS_port << " with version "
+              << oss.str();
+    server.set_version(oss.str());
+    server.RunUntilAskedToQuit();
+}
+
 
 void StartDBMS(char *argv[]) {
     SetupLogging(argv);
@@ -354,6 +382,8 @@ int main(int argc, char *argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "dbms") {
         StartDBMS(argv);
+    } else if (FLAGS_role == "tablet") {
+        StartTablet(argv);
     } else if (FLAGS_role == "client") {
         StartClient(argv);
     } else {

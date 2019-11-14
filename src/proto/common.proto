@@ -10,6 +10,7 @@ enum StatusCode {
     kTableExists = 13;
     kNoDatabase = 14;
     kConnError = 20;
+    kSQLError = 30;
 }
 
 message Status {

@@ -25,12 +25,12 @@ Engine::Engine(TableMgr* table_mgr):table_mgr_(table_mgr) {}
 Engine::~Engine() {}
 
 bool Engine::Get(const std::string& sql, 
+        const std::string& db,
         RunSession& session) {
     {
-        std::lock_guard<base::SpinMutex> lock(mu_);
-        std::map<std::string, std::shared_ptr<CompileInfo>>::iterator it = cache_.find(sql);
-        if (it != cache_.end()) {
-            session.SetCompileInfo(it->second);
+        std::shared_ptr<CompileInfo> info = GetCacheLocked(db, sql);
+        if (info) {
+            session.SetCompileInfo(info);
             session.SetTableMgr(table_mgr_);
             return true;
         }
@@ -38,6 +38,7 @@ bool Engine::Get(const std::string& sql,
 
     std::shared_ptr<CompileInfo> info(new CompileInfo());
     info->sql_ctx.sql = sql;
+    info->sql_ctx.db = db;
     SQLCompiler compiler(table_mgr_);
     bool ok = compiler.Compile(info->sql_ctx);
     if (!ok) {
@@ -46,12 +47,13 @@ bool Engine::Get(const std::string& sql,
     }
     info->row_size = info->sql_ctx.row_size;
     {
+        session.SetTableMgr(table_mgr_);
         // check 
         std::lock_guard<base::SpinMutex> lock(mu_);
-        std::map<std::string, std::shared_ptr<CompileInfo>>::iterator it = cache_.find(sql);
-        session.SetTableMgr(table_mgr_);
-        if (it == cache_.end()) {
-            cache_.insert(std::make_pair(sql, info));
+        std::map<std::string, std::shared_ptr<CompileInfo>>& sql_in_db = cache_[db];
+        std::map<std::string, std::shared_ptr<CompileInfo>>::iterator it = sql_in_db.find(sql);
+        if (it == sql_in_db.end()) {
+            sql_in_db.insert(std::make_pair(sql, info));
             session.SetCompileInfo(info);
         }else {
             session.SetCompileInfo(it->second);
@@ -62,13 +64,13 @@ bool Engine::Get(const std::string& sql,
 }
 
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
-        const std::string& sql, RunSession& session) {
+        const std::string& sql) {
     std::lock_guard<base::SpinMutex> lock(mu_);
     EngineCache::iterator it = cache_.find(db);
     if (it == cache_.end()) {
         return std::shared_ptr<CompileInfo>();
     }
-    std::map<std::string, std::shared_ptr<CompileInfo>> iit = it->second.find(sql);
+    std::map<std::string, std::shared_ptr<CompileInfo>>::iterator iit = it->second.find(sql);
     if (iit == it->second.end()) {
         return std::shared_ptr<CompileInfo>();
     }
@@ -78,12 +80,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 RunSession::RunSession() {}
 RunSession::~RunSession() {}
 
-int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t length,
-        uint32_t* row_cnt) {
-    if (row_cnt == NULL) {
-        LOG(WARNING) << "buf or row cnt is null ";
-        return -1;
-    }
+int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
     // Simple op runner
     ScanOp* scan_op = (ScanOp*)(compile_info_->sql_ctx.ops.ops[0]);
     ProjectOp* project_op = (ProjectOp*)(compile_info_->sql_ctx.ops.ops[1]);
@@ -96,7 +93,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t length,
     }
     ::fesql::storage::TableIterator* it = status->table->NewIterator();
     it->SeekToFirst();
-    uint32_t min = length;
+    uint32_t min = limit;
     if (min > limit_op->limit) {
         min = limit_op->limit;
     }
@@ -116,7 +113,6 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t length,
         it->Next();
         count ++;
     }
-    *row_cnt = count;
     delete it;
     return 0;
 }

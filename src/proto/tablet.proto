@@ -1,5 +1,5 @@
-import "common.proto";
 import "type.proto";
+import "common.proto";
 
 package fesql.tablet;
 option cc_generic_services = true;
@@ -13,8 +13,8 @@ message QueryRequest {
 
 message QueryResponse {
     optional common.Status status = 1;
-    optional bytes result_set = 2;
-    optional bytes schema = 3;
+    repeated bytes result_set = 2;
+    repeated type.ColumnDef schema = 3;
 }
 
 message CreateTableRequest {

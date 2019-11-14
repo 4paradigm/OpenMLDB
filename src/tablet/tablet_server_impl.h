@@ -21,6 +21,7 @@
 #include "proto/tablet.pb.h"
 #include "base/spin_lock.h"
 #include "vm/table_mgr.h"
+#include "vm/engine.h"
 #include "brpc/server.h"
 
 namespace fesql {
@@ -43,11 +44,13 @@ typedef std::map<std::string,
 typedef std::map<std::string,
                  std::map<std::string, uint32_t>> TableNames;
 
-class TabletServerImpl : public TabletServer {
+class TabletServerImpl : public TabletServer, public vm::TableMgr {
 
  public:
     TabletServerImpl();
     ~TabletServerImpl();
+
+    bool Init();
 
     void CreateTable(RpcController* ctrl,
             const CreateTableRequest* request,
@@ -59,20 +62,32 @@ class TabletServerImpl : public TabletServer {
             QueryResponse* response,
             Closure* done);
 
+   std::shared_ptr<vm::TableStatus> GetTableDef(const std::string& db,
+                                            const std::string& name) ;
+
+   std::shared_ptr<vm::TableStatus> GetTableDef(const std::string& db,
+                                            const uint32_t tid);
+
+   
  private:
     inline std::shared_ptr<vm::TableStatus> GetTableLocked(const std::string& db,
             uint32_t tid, uint32_t pid);
+
+    std::shared_ptr<vm::TableStatus> GetTableDefUnLocked(const std::string& db,
+            uint32_t tid);
 
     std::shared_ptr<vm::TableStatus> GetTableUnLocked(const std::string& db,
             uint32_t tid, uint32_t pid);
 
     bool AddTableUnLocked(std::shared_ptr<vm::TableStatus>& table);
+
     inline bool AddTableLocked(std::shared_ptr<vm::TableStatus>& table);
 
  private:
     base::SpinMutex slock_;
     Tables tables_;
     TableNames table_names_;
+    std::unique_ptr<vm::Engine> engine_;
 };
 
 }  // namespace tablet

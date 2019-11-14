@@ -38,6 +38,7 @@ struct CompileInfo {
 
 class RunSession {
  public:
+
     RunSession();
 
     ~RunSession();
@@ -50,8 +51,7 @@ class RunSession {
         return compile_info_->sql_ctx.schema;
     }
 
-    int32_t Run(std::vector<int8_t*>& buf, uint32_t length,
-                uint32_t* row_cnt);
+    int32_t Run(std::vector<int8_t*>& buf, uint32_t limit);
 
  private:
 
@@ -85,9 +85,6 @@ class Engine {
 
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
             const std::string& sql);
-
-    bool AddCacheLocked(const std::string& db, const std::string& sql
-                 std::shared_ptr<CompileInfo> compile_info);
 
  private:
     TableMgr* table_mgr_;

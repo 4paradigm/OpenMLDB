@@ -11,8 +11,9 @@ set(FESQL_VERSION_BUG 0)
 
 set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
-set(COMMON_LIBS  glog gflags unwind lzma)
-#set(COMMON_LIBS  glog gflags lzma)
+set(COMMON_LIBS glog gflags unwind lzma)
+set(FESQL_LIBS fesql_sdk fesql_dbms fesql_tablet fesql_vm fesql_codegen fesql_parser
+    fesql_planner fesql_proto fesql_analyser fesql_node fesql_storage)
 
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -32,7 +33,7 @@ if (COVERAGE_ENABLE)
         APPEND_COVERAGE_COMPILER_FLAGS()
     endif()
 endif()
-
+llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
 add_definitions('-g')
 add_definitions('-Wall')
 add_definitions('-std=c++11')

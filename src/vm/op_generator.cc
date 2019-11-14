@@ -88,7 +88,7 @@ bool OpGenerator::GenSQL(const ::fesql::node::NodePointVector &trees,
         LOG(WARNING) << "fail to create sql plan";
         return false;
     }
-    bool ok = RoutingNode(pnl[0]->GetChildren()[0], module, ops);
+    bool ok = RoutingNode(pnl[0]->GetChildren()[0], db, module, ops);
     if (!ok) {
         LOG(WARNING) << "fail to gen op";
     }
@@ -111,7 +111,7 @@ bool OpGenerator::RoutingNode(const ::fesql::node::PlanNode* node,
             {
                 const ::fesql::node::LimitPlanNode* limit_node = 
                     (const ::fesql::node::LimitPlanNode*)node;
-                return GenLimit(limit_node, module, ops);
+                return GenLimit(limit_node, db, module, ops);
             }
         case ::fesql::node::kPlanTypeScan:
             {
@@ -145,14 +145,12 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
         return false;
     }
 
-    // TODO(wangtaize) share_ptr
-    TableStatus* table_status = NULL;
-    // TODO(wangtaize) add db
     std::shared_ptr<TableStatus> table_status = table_mgr_->GetTableDef(db, node->GetTable());
     if (!table_status) {
         LOG(WARNING) << "fail to find table " << node->GetTable();
         return false;
     }
+
     ScanOp* sop = new ScanOp();
     sop->db = db;
     sop->type = kOpScan;
@@ -181,15 +179,15 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     std::vector<::fesql::node::PlanNode *>::const_iterator it = node->GetChildren().begin();
     for (; it != node->GetChildren().end(); ++it) {
         const ::fesql::node::PlanNode* pn = *it;
-        bool ok = RoutingNode(pn, module, ops);
+        bool ok = RoutingNode(pn, db, module, ops);
         if (!ok) {
             LOG(WARNING) << "fail to rouing node ";
             return false;
         }
     }
-    TableStatus* table_status = NULL;
-    bool ok = table_mgr_->GetTableDef(db, node->GetTable(), &table_status);
-    if (!ok) {
+    std::shared_ptr<TableStatus> table_status = table_mgr_->GetTableDef(db,
+            node->GetTable());
+    if (!table_status) {
         LOG(WARNING) << "fail to find table with name " << node->GetTable();
         return false;
     }
@@ -198,7 +196,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     ::fesql::codegen::RowFnLetIRBuilder builder(&table_status->table_def, module);
     std::string fn_name = "__internal_sql_codegen";
     std::vector<::fesql::type::ColumnDef> output_schema;
-    ok = builder.Build(fn_name, node, output_schema);
+    bool ok = builder.Build(fn_name, node, output_schema);
 
     if (!ok) {
         LOG(WARNING) << "fail to run row fn builder";
@@ -246,6 +244,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
 }
 
 bool OpGenerator::GenLimit(const ::fesql::node::LimitPlanNode* node,
+        const std::string& db,
         ::llvm::Module* module,
         OpVector* ops) {
 
@@ -262,7 +261,7 @@ bool OpGenerator::GenLimit(const ::fesql::node::LimitPlanNode* node,
     std::vector<::fesql::node::PlanNode *>::const_iterator it = node->GetChildren().begin();
     for (; it != node->GetChildren().end(); ++it) {
         const ::fesql::node::PlanNode* pn = *it;
-        bool ok = RoutingNode(pn, module, ops);
+        bool ok = RoutingNode(pn, db, module, ops);
         if (!ok) {
             LOG(WARNING) << "fail to routing node";
             return false;

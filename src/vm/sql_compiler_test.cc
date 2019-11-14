@@ -45,57 +45,53 @@ namespace vm {
 class TableMgrImpl : public TableMgr {
 
  public:
-    TableMgrImpl(TableStatus* status):status_(status) {}
+    TableMgrImpl(std::shared_ptr<TableStatus> status):status_(status) {}
     ~TableMgrImpl() {}
-    bool GetTableDef(const std::string&,
-            const std::string&,
-            TableStatus** status) {
-        *status = status_;
-        return true;
+    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
+            const std::string&) {
+        return  status_;
     }
-    bool GetTableDef(const uint64_t, const uint64_t,
-            TableStatus** table) {
-        *table = status_;
-        return true;
+    std::shared_ptr<TableStatus> GetTableDef(const std::string&, const uint32_t) {
+        return status_;
     }
  private:
-    TableStatus* status_;
+    std::shared_ptr<TableStatus> status_;
 };
 
 class SQLCompilerTest : public ::testing::Test {};
 
 TEST_F(SQLCompilerTest, test_normal) {
-    TableStatus status;
-    status.table_def.set_name("t1");
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    status->table_def.set_name("t1");
     {
-        ::fesql::type::ColumnDef* column = status.table_def.add_columns();
+        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
         column->set_type(::fesql::type::kInt32);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef* column = status.table_def.add_columns();
+        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
         column->set_type(::fesql::type::kInt16);
         column->set_name("col2");
     }
     {
-        ::fesql::type::ColumnDef* column = status.table_def.add_columns();
+        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
         column->set_type(::fesql::type::kFloat);
         column->set_name("col3");
     }
 
     {
-        ::fesql::type::ColumnDef* column = status.table_def.add_columns();
+        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
         column->set_type(::fesql::type::kDouble);
         column->set_name("col4");
     }
 
     {
-        ::fesql::type::ColumnDef* column = status.table_def.add_columns();
+        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
         column->set_type(::fesql::type::kInt64);
         column->set_name("col15");
     }
     const std::string sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
-    TableMgrImpl table_mgr(&status);
+    TableMgrImpl table_mgr(status);
     SQLCompiler sql_compiler(&table_mgr);
     SQLContext sql_context;
     sql_context.sql = sql;

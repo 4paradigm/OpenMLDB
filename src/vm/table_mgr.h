@@ -50,7 +50,7 @@ class TableMgr {
     virtual std::shared_ptr<TableStatus> GetTableDef(const std::string& db,
                                               const std::string& name) = 0;
 
-    virtual std::shared_ptr<TableStatus> GetTableDef(const std::string db,
+    virtual std::shared_ptr<TableStatus> GetTableDef(const std::string& db,
                              const uint32_t tid) = 0;
 };
 
