@@ -96,7 +96,7 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
         DatabaseDef db;
         db.name = "db_2";
         Status status;
-        dbms_sdk->EnterDatabase(db, status);
+        dbms_sdk->IsExistDatabase(db, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
@@ -105,8 +105,8 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
         DatabaseDef db;
         db.name = "db_not_exist";
         Status status;
-        dbms_sdk->EnterDatabase(db, status);
-        ASSERT_TRUE(0 != static_cast<int>(status.code));
+        ASSERT_EQ(false, dbms_sdk->IsExistDatabase(db, status));
+        ASSERT_EQ(0, status.code);
     }
 }
 TEST_F(DBMSSdkTest, GroupAPITest) {
@@ -148,21 +148,11 @@ TEST_F(DBMSSdkTest, TableAPITest) {
     {
         Status status;
         DatabaseDef db;
+        ::fesql::sdk::ExecuteResult result;
         db.name = "db_2";
         dbms_sdk->CreateDatabase(db, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
-
-    {
-        // use databases db1
-        DatabaseDef db;
-        db.name = "db_1";
-        Status status;
-        dbms_sdk->EnterDatabase(db, status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-    }
-
-
 
     {
         // create table test1
@@ -178,8 +168,14 @@ TEST_F(DBMSSdkTest, TableAPITest) {
             ");";
         db.name = "db_1";
         Status status;
-        dbms_sdk->ExecuteScript(sql, status);
+        ::fesql::sdk::ExecuteResult result;
+        ::fesql::sdk::ExecuteRequst request;
+        request.database = db;
+        request.sql = sql;
+        dbms_sdk->ExecuteScript(request, result,status);
+        std::cout << status.msg <<std::endl;
         ASSERT_EQ(0, static_cast<int>(status.code));
+
     }
     {
         // create table test2
@@ -195,7 +191,11 @@ TEST_F(DBMSSdkTest, TableAPITest) {
 
         db.name = "db_1";
         Status status;
-        dbms_sdk->ExecuteScript(sql, status);
+        ::fesql::sdk::ExecuteResult result;
+        ::fesql::sdk::ExecuteRequst request;
+        request.database = db;
+        request.sql = sql;
+        dbms_sdk->ExecuteScript(request, result, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
     {
@@ -213,32 +213,41 @@ TEST_F(DBMSSdkTest, TableAPITest) {
 
         db.name = "db_1";
         Status status;
-        dbms_sdk->ExecuteScript(sql, status);
+        ::fesql::sdk::ExecuteResult result;
+        ::fesql::sdk::ExecuteRequst request;
+        request.database = db;
+        request.sql = sql;
+        dbms_sdk->ExecuteScript(request, result, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
     {
-        // show tables
+        // show db_1 tables
         DatabaseDef db;
+        db.name = "db_1";
         std::vector<std::string> names;
         Status status;
-        dbms_sdk->GetTables(names, status);
+        ::fesql::sdk::ExecuteRequst request;
+
+        dbms_sdk->GetTables(db, names, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(3, names.size());
     }
+
     {
         // use databases db2
         DatabaseDef db;
         db.name = "db_2";
         Status status;
-        dbms_sdk->EnterDatabase(db, status);
+        dbms_sdk->IsExistDatabase(db, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
     {
         // show tables empty
         DatabaseDef db;
+        db.name = "db_2";
         std::vector<std::string> names;
         Status status;
-        dbms_sdk->GetTables(names, status);
+        dbms_sdk->GetTables(db, names, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(0, names.size());
     }
@@ -262,12 +271,11 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
     }
 
     {
-        // use databases db1
+        // exist databases db1
         DatabaseDef db;
         db.name = "db_1";
         Status status;
-        dbms_sdk->EnterDatabase(db, status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
+        ASSERT_EQ(true, dbms_sdk->IsExistDatabase(db, status));
     }
 
     {
@@ -285,17 +293,65 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
 
         db.name = "db_1";
         Status status;
-        dbms_sdk->ExecuteScript(sql, status);
+        fesql::sdk::ExecuteResult result;
+        fesql::sdk::ExecuteRequst request;
+        request.database = db;
+        request.sql = sql;
+        dbms_sdk->ExecuteScript(request, result, status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    {
+        // create table db1
+        DatabaseDef db;
+        std::string sql =
+            "create table test4(\n"
+            "    column1 int NOT NULL,\n"
+            "    column2 timestamp NOT NULL,\n"
+            "    index(key=(column4))\n"
+            ");";
+
+        db.name = "db_1";
+        Status status;
+        fesql::sdk::ExecuteResult result;
+        fesql::sdk::ExecuteRequst request;
+        request.database = db;
+        request.sql = sql;
+        dbms_sdk->ExecuteScript(request, result, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
     {
         // show tables
+        // create table db1
         DatabaseDef db;
-        std::vector<std::string> names;
+        std::string sql =
+            "show tables;";
+
+        db.name = "db_1";
         Status status;
-        dbms_sdk->GetTables(names, status);
+        fesql::sdk::ExecuteResult result;
+        fesql::sdk::ExecuteRequst request;
+        request.database = db;
+        request.sql = sql;
+        dbms_sdk->ExecuteScript(request, result, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_EQ(1, names.size());
+    }
+
+    {
+        // desc table 
+        // create table db1
+        DatabaseDef db;
+        std::string sql =
+            "desc test4;";
+
+        db.name = "db_1";
+        Status status;
+        fesql::sdk::ExecuteResult result;
+        fesql::sdk::ExecuteRequst request;
+        request.database = db;
+        request.sql = sql;
+        dbms_sdk->ExecuteScript(request, result, status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
     }
 }
 

@@ -21,11 +21,11 @@
 #include <iostream>
 #include <sstream>
 #include "analyser/analyser.h"
+#include "base/texttable.h"
 #include "brpc/channel.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "proto/dbms.pb.h"
-#include "base/texttable.h"
 namespace fesql {
 namespace sdk {
 
@@ -36,23 +36,25 @@ class DBMSSdkImpl : public DBMSSdk {
     bool Init();
     void CreateGroup(const GroupDef &group, base::Status &status) override;
     void CreateDatabase(const DatabaseDef &database, base::Status &status);
-    void EnterDatabase(const DatabaseDef &database, base::Status &status);
-    void CreateTable(const std::string &sql, base::Status &status) override;
-    void GetSchema(const std::string &name, type::TableDef &table,
-                    base::Status &status) override;
-    void GetTables(std::vector<std::string> &names, base::Status &status);
+    bool IsExistDatabase(const DatabaseDef &database, base::Status &status);
+    void GetSchema(const DatabaseDef &database, const std::string &name, type::TableDef &table,
+                   base::Status &status) override;
+    void GetTables(const DatabaseDef &database, std::vector<std::string> &names, base::Status &status);
     void GetDatabases(std::vector<std::string> &names, base::Status &status);
-    void ExecuteScript(const std::string &sql, base::Status &status) override;
-    void PrintTableSchema(fesql::type::TableDef def);
-    void PrintItems(std::vector<std::string> items);
+    void ExecuteScript(const ExecuteRequst &request, ExecuteResult &result, base::Status &status) override;
+    void PrintTableSchema(std::ostream &stream, fesql::type::TableDef def);
+    void PrintItems(std::ostream &stream, std::vector<std::string> items);
+
+
  private:
     ::brpc::Channel *channel_;
     std::string endpoint_;
-    void handleCmd(node::CmdPlanNode *cmd_node, base::Status &status);
+    void handleCmd(const DatabaseDef &database, node::CmdPlanNode *cmd_node, ExecuteResult &cmd, base::Status &status);
 };
 
 DBMSSdkImpl::DBMSSdkImpl(const std::string &endpoint)
-    : channel_(NULL), endpoint_(endpoint) {}
+    : channel_(NULL), endpoint_(endpoint){}
+
 DBMSSdkImpl::~DBMSSdkImpl() { delete channel_; }
 
 bool DBMSSdkImpl::Init() {
@@ -80,12 +82,14 @@ void DBMSSdkImpl::CreateGroup(const GroupDef &group, base::Status &status) {
         status.msg = response.status().msg();
     }
 }
-void DBMSSdkImpl::GetTables(std::vector<std::string> &names,
-                             base::Status &status) {
+void DBMSSdkImpl::GetTables(const DatabaseDef &db, std::vector<std::string> &names,
+                            base::Status &status) {
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetItemsRequest request;
     ::fesql::dbms::GetItemsResponse response;
     brpc::Controller cntl;
+
+    request.set_db_name(db.name);
     stub.GetTables(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
         status.code = error::kRpcErrorUnknow;
@@ -100,7 +104,7 @@ void DBMSSdkImpl::GetTables(std::vector<std::string> &names,
 }
 
 void DBMSSdkImpl::GetDatabases(std::vector<std::string> &names,
-                                base::Status &status) {
+                               base::Status &status) {
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetItemsRequest request;
     ::fesql::dbms::GetItemsResponse response;
@@ -118,10 +122,11 @@ void DBMSSdkImpl::GetDatabases(std::vector<std::string> &names,
     }
 }
 
-void DBMSSdkImpl::GetSchema(const std::string &name, type::TableDef &table,
-                             base::Status &status) {
+void DBMSSdkImpl::GetSchema(const DatabaseDef &database, const std::string &name, type::TableDef &table,
+                            base::Status &status) {
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetSchemaRequest request;
+    request.set_db_name(database.name);
     request.set_name(name);
     ::fesql::dbms::GetSchemaResponse response;
     brpc::Controller cntl;
@@ -135,44 +140,31 @@ void DBMSSdkImpl::GetSchema(const std::string &name, type::TableDef &table,
         status.msg = response.status().msg();
     }
 }
-/**
- * create table with sql,
- * sql sample:
- * 'CREATE TABLE IF NOT EXISTS table_name (
- *      column1 int NOT NULL,
- *      column2 string NOT NULL,
- *      column3 double NOT NULL,
- *      column4 timestamp NOT NULL,
- *      index(key=(column1,column2), ts=timestamp, ttl=60d)
- * );'
- * @param sql
- * @param status
- */
-void DBMSSdkImpl::CreateTable(const std::string &sql, base::Status &status) {
-    LOG(INFO) << "create command: " << sql;
-    ExecuteScript(sql, status);
-}
 
-void DBMSSdkImpl::ExecuteScript(const std::string &sql, base::Status &status) {
+void DBMSSdkImpl::ExecuteScript(const ExecuteRequst &request, ExecuteResult &result, base::Status &status) {
     node::NodeManager node_manager;
     parser::FeSQLParser parser;
     analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
 
+    // TODO(chenjing): init with db
     node::NodePointVector parser_trees;
-    parser.parse(sql, parser_trees, &node_manager, status);
+    parser.parse(request.sql, parser_trees, &node_manager, status);
     if (0 != status.code) {
+        LOG(WARNING) << status.msg;
         return;
     }
     node::NodePointVector query_trees;
     analyser.Analyse(parser_trees, query_trees, status);
     if (0 != status.code) {
+        LOG(WARNING) << status.msg;
         return;
     }
     node::PlanNodeList plan_trees;
     planner.CreatePlanTree(query_trees, plan_trees, status);
 
     if (0 != status.code) {
+        LOG(WARNING) << status.msg;
         return;
     }
 
@@ -181,12 +173,13 @@ void DBMSSdkImpl::ExecuteScript(const std::string &sql, base::Status &status) {
     if (nullptr == plan) {
         status.msg = "fail to execute plan : plan null";
         status.code = error::kExecuteErrorNullNode;
+        LOG(WARNING) << status.msg;
         return;
     }
     switch (plan->GetType()) {
         case node::kPlanTypeCmd: {
             node::CmdPlanNode *cmd = dynamic_cast<node::CmdPlanNode *>(plan);
-            handleCmd(cmd, status);
+            handleCmd(request.database, cmd, result, status);
             return;
         }
         case node::kPlanTypeCreate: {
@@ -194,14 +187,16 @@ void DBMSSdkImpl::ExecuteScript(const std::string &sql, base::Status &status) {
                 dynamic_cast<node::CreatePlanNode *>(plan);
 
             ::fesql::dbms::DBMSServer_Stub stub(channel_);
-            ::fesql::dbms::AddTableRequest request;
-            ::fesql::type::TableDef *table = request.mutable_table();
+            ::fesql::dbms::AddTableRequest add_table_request;
+            ::fesql::dbms::AddTableResponse response;
+
+            add_table_request.set_db_name(request.database.name);
+
+            ::fesql::type::TableDef *table = add_table_request.mutable_table();
             plan::TransformTableDef(create->GetTableName(),
                                     create->GetColumnDescList(), table, status);
-
-            ::fesql::dbms::AddTableResponse response;
             brpc::Controller cntl;
-            stub.AddTable(&cntl, &request, &response, NULL);
+            stub.AddTable(&cntl, &add_table_request, &response, NULL);
             if (cntl.Failed()) {
                 status.code = -1;
                 status.msg = "fail to call remote";
@@ -235,72 +230,80 @@ void DBMSSdkImpl::CreateDatabase(const DatabaseDef &database,
         status.msg = response.status().msg();
     }
 }
-void DBMSSdkImpl::EnterDatabase(const DatabaseDef &database,
+bool DBMSSdkImpl::IsExistDatabase(const DatabaseDef &database,
                                 base::Status &status) {
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::EnterDatabaseRequest request;
+    ::fesql::dbms::IsExistRequest request;
     request.set_name(database.name);
-    ::fesql::dbms::EnterDatabaseResponse response;
+    ::fesql::dbms::IsExistResponse response;
     brpc::Controller cntl;
-    stub.EnterDatabase(&cntl, &request, &response, NULL);
+    stub.IsExistDatabase(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
         status.code = -1;
         status.msg = "fail to call remote";
+        return false;
     } else {
         status.code = response.status().code();
         status.msg = response.status().msg();
+        return response.exist();
     }
 }
 
-void DBMSSdkImpl::PrintTableSchema(fesql::type::TableDef table) {
-    ::fesql::base::TextTable t( '-', '|', '+' );
+void DBMSSdkImpl::PrintTableSchema(std::ostream &stream, fesql::type::TableDef table) {
+    ::fesql::base::TextTable t('-', '|', '+');
 
     t.add("Field");
-    t.add( "Type" );
-    t.add( "Null" );
+    t.add("Type");
+    t.add("Null");
     t.endOfRow();
 
-    for(auto column : table.columns()) {
+    for (auto column : table.columns()) {
         t.add(column.name());
         t.add(fesql::type::Type_Name(column.type()));
         t.add(column.is_null() ? "YES" : "NO");
         t.endOfRow();
     }
-    std::cout << t;
+    stream<< t;
 }
 
-void DBMSSdkImpl::PrintItems(std::vector<std::string> items) {
-    ::fesql::base::TextTable t( '-', '|', '+' );
-    for(auto item : items) {
+void DBMSSdkImpl::PrintItems(std::ostream &stream, std::vector<std::string> items) {
+    ::fesql::base::TextTable t('-', '|', '+');
+    for (auto item : items) {
         t.add(item);
         t.endOfRow();
     }
-    std::cout << t;
+    stream << t;
 }
 
-void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {
+void DBMSSdkImpl::handleCmd(const DatabaseDef &db, node::CmdPlanNode *cmd_node, ExecuteResult &result, base::Status &status) {
     switch (cmd_node->GetCmdType()) {
         case node::kCmdShowDatabases: {
             std::vector<std::string> names;
             GetDatabases(names, status);
             if (status.code == 0) {
-                PrintItems(names);
+                std::ostringstream oss;
+                PrintItems(oss, names);
+                result.result = oss.str();
             }
             return;
         }
         case node::kCmdShowTables: {
             std::vector<std::string> names;
-            GetTables(names, status);
+            GetTables(db, names, status);
             if (status.code == 0) {
-                PrintItems(names);
+                std::ostringstream oss;
+                PrintItems(oss, names);
+                result.result = oss.str();
             }
             return;
         }
         case node::kCmdDescTable: {
             type::TableDef table;
-            GetSchema(cmd_node->GetArgs()[0], table, status);
+            GetSchema(db, cmd_node->GetArgs()[0], table, status);
             if (status.code == 0) {
-                PrintTableSchema(table);
+                std::ostringstream oss;
+                PrintTableSchema(oss, table);
+                result.result = oss.str();
             }
             break;
         }
@@ -311,15 +314,14 @@ void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {
             break;
         }
         case node::kCmdCreateDatabase: {
-            DatabaseDef db;
-            db.name = cmd_node->GetArgs()[0];
-            CreateDatabase(db, status);
+            DatabaseDef new_db;
+            new_db.name = cmd_node->GetArgs()[0];
+            CreateDatabase(new_db, status);
             break;
         }
         case node::kCmdCreateTable: {
             std::ifstream in;
-            in.open(
-                cmd_node->GetArgs()[0]);  // open the input file
+            in.open(cmd_node->GetArgs()[0]);  // open the input file
             if (!in.is_open()) {
                 status.code = error::kCmdErrorPathError;
                 status.msg = "Incorrect file path";
@@ -330,29 +332,34 @@ void DBMSSdkImpl::handleCmd(node::CmdPlanNode *cmd_node, base::Status &status) {
             std::string str =
                 str_stream.str();  // str holds the content of the file
             ::fesql::base::Status status;
-            CreateTable(str, status);
+            ExecuteRequst requst;
+            requst.database = db;
+            requst.sql = str;
+            ExecuteScript(requst, result, status);
             break;
         }
         case node::kCmdUseDatabase: {
             DatabaseDef db;
             db.name = cmd_node->GetArgs()[0];
-            EnterDatabase(db, status);
+            if (IsExistDatabase(db, status)) {
+                result.database = db;
+            }
             break;
         }
         default: {
             status.code = error::kCmdErrorUnSupport;
-            status.msg = "UnSupport Cmd " + node::CmdTypeName(cmd_node->GetCmdType());
+            status.msg =
+                "UnSupport Cmd " + node::CmdTypeName(cmd_node->GetCmdType());
         }
-
     }
 }
+
 DBMSSdk *CreateDBMSSdk(const std::string &endpoint) {
     DBMSSdkImpl *sdk_impl = new DBMSSdkImpl(endpoint);
     if (sdk_impl->Init()) {
         return sdk_impl;
     }
-
-    return NULL;
+    return nullptr;
 }
 
 }  // namespace sdk

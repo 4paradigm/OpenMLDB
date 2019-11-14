@@ -14,12 +14,6 @@
 
 namespace fesql {
 namespace base {
-#include <iomanip>
-#include <iostream>
-#include <map>
-#include <string>
-#include <vector>
-
 class TextTable {
  public:
     enum class Alignment { LEFT, RIGHT };
@@ -137,15 +131,14 @@ std::ostream& operator<<(std::ostream& stream, TextTable const& table) {
             auto alignment = table.alignment(i) == TextTable::Alignment::LEFT
                                  ? std::left
                                  : std::right;
-            stream << std::setw(table.width(i))  << alignment << " " + row[i];
-                stream << table.vertical();
-
+            stream << std::setw(table.width(i)) << alignment << " " + row[i];
+            stream << table.vertical();
         }
         stream << "\n";
-        if (line<1 || line == table.rows().size()-1) {
+        if (line < 1 || line == table.rows().size() - 1) {
             stream << table.ruler() << "\n";
         }
-        line ++;
+        line++;
     }
 
     return stream;

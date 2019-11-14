@@ -44,8 +44,8 @@ class DBMSServerImpl : public DBMSServer {
     void AddDatabase(RpcController* ctr, const AddDatabaseRequest* request,
                      AddDatabaseResponse* response, Closure* done) override;
 
-    void EnterDatabase(RpcController* ctr, const EnterDatabaseRequest* request,
-                       EnterDatabaseResponse* response, Closure* done);
+    void IsExistDatabase(RpcController* ctr, const IsExistRequest* request,
+                       IsExistResponse* response, Closure* done);
     void AddTable(RpcController* ctr, const AddTableRequest* request,
                   AddTableResponse* response, Closure* done);
 
@@ -58,11 +58,11 @@ class DBMSServerImpl : public DBMSServer {
 
  private:
     std::mutex mu_;
-    ::fesql::type::Database* db_;
     Groups groups_;
     Databases databases_;
-    Tables tables_;
     void InitTable(type::Database* db, Tables &table);
+    type::Database * GetDatabase(const std::string db_name, common::Status &status);
+
 };
 
 }  // namespace dbms

@@ -73,19 +73,11 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         ASSERT_EQ(fesql::common::kNoDatabase, response.status().code());
     }
 
-    // use database
-    {
-        ::fesql::dbms::EnterDatabaseRequest request;
-        ::fesql::dbms::EnterDatabaseResponse response;
-        request.set_name("db_test");
-        MockClosure closure;
-        dbms_server.EnterDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
 
     // create table
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test");
         ::fesql::type::TableDef* table = request.mutable_table();
         table->set_name("test1");
         {
@@ -103,6 +95,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
     // create table
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test");
         ::fesql::type::TableDef* table = request.mutable_table();
         table->set_name("test2");
         {
@@ -120,6 +113,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
     // create table with index
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test");
         ::fesql::type::TableDef* table = request.mutable_table();
         table->set_name("test3");
         {
@@ -164,6 +158,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
     // empty table name
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test");
         ::fesql::dbms::AddTableResponse response;
         MockClosure closure;
         dbms_server.AddTable(NULL, &request, &response, &closure);
@@ -174,6 +169,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
     // table name exist
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test");
         ::fesql::type::TableDef* table = request.mutable_table();
         table->set_name("test1");
         {
@@ -189,17 +185,9 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         ASSERT_EQ("table already exists", response.status().msg());
     }
 
-    // show tables
-    {
-        ::fesql::dbms::EnterDatabaseRequest request;
-        ::fesql::dbms::EnterDatabaseResponse response;
-        request.set_name("db_test");
-        MockClosure closure;
-        dbms_server.EnterDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
     {
         ::fesql::dbms::GetItemsRequest request;
+        request.set_db_name("db_test");
         ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
         dbms_server.GetTables(NULL, &request, &response, &closure);
@@ -220,16 +208,10 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         dbms_server.AddDatabase(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
-    {
-        ::fesql::dbms::EnterDatabaseRequest request;
-        ::fesql::dbms::EnterDatabaseResponse response;
-        request.set_name("db_test1");
-        MockClosure closure;
-        dbms_server.EnterDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
+
     {
         ::fesql::dbms::GetItemsRequest request;
+        request.set_db_name("db_test1");
         ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
         dbms_server.GetTables(NULL, &request, &response, &closure);
@@ -310,19 +292,10 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         ASSERT_EQ(fesql::common::kNoDatabase, response.status().code());
     }
 
-    // use database 1
-    {
-        ::fesql::dbms::EnterDatabaseRequest request;
-        ::fesql::dbms::EnterDatabaseResponse response;
-        request.set_name("db_test1");
-        MockClosure closure;
-        dbms_server.EnterDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
-
     // create table 1
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test1");
         ::fesql::type::TableDef* table = request.mutable_table();
         table->set_name("test1");
         {
@@ -340,6 +313,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
     // create table 2
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test1");
         ::fesql::type::TableDef* table = request.mutable_table();
         table->set_name("test2");
         {
@@ -357,6 +331,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
     // create table 3
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test1");
         ::fesql::type::TableDef* table = request.mutable_table();
         table->set_name("test3");
         {
@@ -371,19 +346,11 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
-    // use database 2
-    {
-        ::fesql::dbms::EnterDatabaseRequest request;
-        ::fesql::dbms::EnterDatabaseResponse response;
-        request.set_name("db_test2");
-        MockClosure closure;
-        dbms_server.EnterDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
 
     // create database 2 : table 1
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test2");
         ::fesql::type::TableDef* table = request.mutable_table();
         table->set_name("test1");
         {
@@ -401,6 +368,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
     // create database 2: table 4
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test2");
         ::fesql::type::TableDef* table = request.mutable_table();
         table->set_name("test4");
         {
@@ -415,17 +383,10 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
-    // show database 1 tables
-    {
-        ::fesql::dbms::EnterDatabaseRequest request;
-        ::fesql::dbms::EnterDatabaseResponse response;
-        request.set_name("db_test1");
-        MockClosure closure;
-        dbms_server.EnterDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
+
     {
         ::fesql::dbms::GetItemsRequest request;
+        request.set_db_name("db_test1");
         ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
         dbms_server.GetTables(NULL, &request, &response, &closure);
@@ -436,17 +397,9 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         ASSERT_EQ("test3", response.items(2));
     }
 
-    // show database 2 tables
-    {
-        ::fesql::dbms::EnterDatabaseRequest request;
-        ::fesql::dbms::EnterDatabaseResponse response;
-        request.set_name("db_test2");
-        MockClosure closure;
-        dbms_server.EnterDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
     {
         ::fesql::dbms::GetItemsRequest request;
+        request.set_db_name("db_test2");
         ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
         dbms_server.GetTables(NULL, &request, &response, &closure);
@@ -456,17 +409,9 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         ASSERT_EQ("test4", response.items(1));
     }
 
-    // show database 3 tables
-    {
-        ::fesql::dbms::EnterDatabaseRequest request;
-        ::fesql::dbms::EnterDatabaseResponse response;
-        request.set_name("db_test3");
-        MockClosure closure;
-        dbms_server.EnterDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
     {
         ::fesql::dbms::GetItemsRequest request;
+        request.set_db_name("db_test3");
         ::fesql::dbms::GetItemsResponse response;
         MockClosure closure;
         dbms_server.GetTables(NULL, &request, &response, &closure);
@@ -483,16 +428,6 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
         request.set_name("db_test");
         MockClosure closure;
         dbms_server.AddDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
-
-    // use database
-    {
-        ::fesql::dbms::EnterDatabaseRequest request;
-        ::fesql::dbms::EnterDatabaseResponse response;
-        request.set_name("db_test");
-        MockClosure closure;
-        dbms_server.EnterDatabase(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -534,6 +469,7 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
     // create table with index
     {
         ::fesql::dbms::AddTableRequest request;
+        request.set_db_name("db_test");
         *(request.mutable_table()) = table;
         ::fesql::dbms::AddTableResponse response;
         MockClosure closure;
@@ -544,6 +480,7 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
     // show table test
     {
         ::fesql::dbms::GetSchemaRequest request;
+        request.set_db_name("db_test");
         ::fesql::dbms::GetSchemaResponse response;
         request.set_name("test");
         MockClosure closure;
@@ -607,14 +544,26 @@ TEST_F(DBMSServerImplTest, DataBaseTest) {
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
-    // use database
+    // exist database
     {
-        ::fesql::dbms::EnterDatabaseRequest request;
-        ::fesql::dbms::EnterDatabaseResponse response;
+        ::fesql::dbms::IsExistRequest request;
+        ::fesql::dbms::IsExistResponse response;
         request.set_name("db_test");
         MockClosure closure;
-        dbms_server.EnterDatabase(NULL, &request, &response, &closure);
+        dbms_server.IsExistDatabase(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
+        ASSERT_EQ(true, response.exist());
+    }
+
+    // not exist database
+    {
+        ::fesql::dbms::IsExistRequest request;
+        ::fesql::dbms::IsExistResponse response;
+        request.set_name("db_test_not_exist");
+        MockClosure closure;
+        dbms_server.IsExistDatabase(NULL, &request, &response, &closure);
+        ASSERT_EQ(fesql::common::kOk, response.status().code());
+        ASSERT_EQ(false, response.exist());
     }
 }
 

@@ -33,26 +33,31 @@ struct DatabaseDef {
     std::string name;
 };
 
+struct ExecuteRequst {
+    DatabaseDef database;
+    std::string sql;
+};
+struct ExecuteResult {
+    DatabaseDef database;
+    std::string result;
+};
+
 class DBMSSdk {
  public:
     virtual ~DBMSSdk(){};
     virtual void CreateGroup(const GroupDef &group, base::Status &status) = 0;
     virtual void CreateDatabase(const DatabaseDef &database,
                                 base::Status &status) = 0;
-    virtual void EnterDatabase(const DatabaseDef &database,
+    virtual bool IsExistDatabase(const DatabaseDef &database,
                                 base::Status &status) = 0;
-    virtual void CreateTable(const std::string &sql_str,
-                             base::Status &status) = 0;
-    virtual void GetSchema(const std::string &name, type::TableDef &table,
+    virtual void GetSchema(const DatabaseDef &database, const std::string &name, type::TableDef &table,
                             base::Status &status) = 0;
-    virtual void GetTables(std::vector<std::string> &names,
+    virtual void GetTables(const DatabaseDef &database, std::vector<std::string> &names,
                             base::Status &status) = 0;
     virtual void GetDatabases(std::vector<std::string> &names,
                                base::Status &status) = 0;
-    virtual void ExecuteScript(const std::string &sql_str,
+    virtual void ExecuteScript(const ExecuteRequst &request, ExecuteResult &result,
                                base::Status &status) = 0;
-    virtual void PrintTableSchema(fesql::type::TableDef def) = 0;
-    virtual void PrintItems(std::vector<std::string> items) = 0;
 };
 
 // create a new dbms sdk with a endpoint
