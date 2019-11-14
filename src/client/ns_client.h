@@ -52,7 +52,7 @@ public:
 
     bool DropTable(const std::string& name, std::string& msg);
 
-    bool CreateTableForReplicaCluster(std::string& msg);
+    bool CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, std::string& msg);
 
     bool AddReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint, std::string& msg);
 

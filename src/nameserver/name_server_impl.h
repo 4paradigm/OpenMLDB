@@ -58,7 +58,7 @@ public:
 
     int Init(std::string& msg);
 
-    bool CreateTableForReplicaCluster(); 
+    bool CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info); 
    
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
 
@@ -272,6 +272,8 @@ public:
     int UpdateZKTaskStatus();
 
     void CheckClusterInfo();
+
+    void CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info);
 
 private:
 
