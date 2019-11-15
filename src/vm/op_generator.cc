@@ -33,6 +33,7 @@ bool OpGenerator::Gen(const ::fesql::node::NodePointVector& trees,
         const std::string& db,
         ::llvm::Module* module,
         OpVector* ops) {
+
     if (module == NULL || ops == NULL) {
         LOG(WARNING) << "module or ops is null";
         return false;
@@ -131,7 +132,6 @@ bool OpGenerator::RoutingNode(const ::fesql::node::PlanNode* node,
                 return false;
             }
     }
-
 }
 
 bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,

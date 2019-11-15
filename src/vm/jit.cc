@@ -27,6 +27,7 @@ using ::llvm::orc::LLJIT;
 FeSQLJIT::FeSQLJIT(::llvm::orc::LLJITBuilderState& s,
         ::llvm::Error& e):LLJIT(s,e) {}
 FeSQLJIT::~FeSQLJIT() {
+
 }
 
 ::llvm::Error FeSQLJIT::AddIRModule(::llvm::orc::JITDylib& jd, // NOLINT

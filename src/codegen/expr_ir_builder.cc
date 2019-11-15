@@ -231,6 +231,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::FnNode* node,
 
 bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::FnBinaryExpr* node,
                                     ::llvm::Value** output) {
+
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;

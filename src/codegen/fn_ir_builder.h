@@ -32,6 +32,7 @@ class FnIRBuilder {
     // TODO provide a module manager
     FnIRBuilder(::llvm::Module* module);
     ~FnIRBuilder();
+
     bool Build(const ::fesql::node::FnNode* node);
 
     bool BuildFnHead(const ::fesql::node::FnNodeFnDef* fn_def,
@@ -42,10 +43,12 @@ class FnIRBuilder {
 
     bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node,
                          ::llvm::BasicBlock* block);
+
     bool BuildReturnStmt(const ::fesql::node::FnNode* node,
                          ::llvm::BasicBlock* block);
 
  private:
+
     bool MapLLVMType(const ::fesql::node::DataType& fn_type,
                      ::llvm::Type** type);
 
