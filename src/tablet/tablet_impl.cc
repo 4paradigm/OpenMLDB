@@ -3786,6 +3786,7 @@ void TabletImpl::DelRecycle(const std::string &path) {
             recycle_time = ::rtidb::base::ParseTimeToSecond(parts[3], "%Y%m%d%H%M%S");
         }
         if (FLAGS_recycle_ttl != 0 && (now_time - recycle_time) > FLAGS_recycle_ttl * 60) {
+            PDLOG(INFO, "delete recycle dir %s", file_path.c_str());
             ::rtidb::base::RemoveDirRecursive(file_path);
         }
     }
