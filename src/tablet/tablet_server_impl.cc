@@ -37,6 +37,18 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     ::fesql::common::Status* status = response->mutable_status();
+    if (request->pids_size() == 0) {
+        status->set_code(common::kBadRequest);
+        status->set_msg("create table without pid");
+        return;
+    }
+    if (request->tid() <= 0) {
+        status->set_code(common::kBadRequest);
+        status->set_msg("create table with invalid tid " + std::to_string(request->tid()));
+        return;
+    }
+
+
     for (int32_t i = 0; i < request->pids_size(); ++i) {
 
         std::shared_ptr<vm::TableStatus> table_status(new vm::TableStatus(request->tid(),

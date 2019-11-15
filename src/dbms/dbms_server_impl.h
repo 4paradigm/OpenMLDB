@@ -22,6 +22,7 @@
 #include <mutex>
 #include "proto/dbms.pb.h"
 #include "proto/type.pb.h"
+#include "tablet/tablet_internal_sdk.h"
 
 namespace fesql {
 namespace dbms {
@@ -45,24 +46,31 @@ class DBMSServerImpl : public DBMSServer {
                      AddDatabaseResponse* response, Closure* done) override;
 
     void IsExistDatabase(RpcController* ctr, const IsExistRequest* request,
-                       IsExistResponse* response, Closure* done);
+                         IsExistResponse* response, Closure* done);
     void AddTable(RpcController* ctr, const AddTableRequest* request,
                   AddTableResponse* response, Closure* done);
 
     void GetSchema(RpcController* controller, const GetSchemaRequest* request,
-                    GetSchemaResponse* response, Closure* done);
+                   GetSchemaResponse* response, Closure* done);
     void GetDatabases(RpcController* controller, const GetItemsRequest* request,
-                       GetItemsResponse* response, Closure* done);
+                      GetItemsResponse* response, Closure* done);
     void GetTables(RpcController* controller, const GetItemsRequest* request,
-                       GetItemsResponse* response, Closure* done);
+                   GetItemsResponse* response, Closure* done);
+
+    void SetTabletEndpoint(const std::string& endpoint) {
+        tablet_endpoint_ = endpoint;
+    }
 
  private:
     std::mutex mu_;
     Groups groups_;
     Databases databases_;
-    void InitTable(type::Database* db, Tables &table);
-    type::Database * GetDatabase(const std::string db_name, common::Status &status);
-
+    int32_t tid_;
+    std::string tablet_endpoint_;
+    fesql::tablet::TabletInternalSDK * tablet_sdk;
+    void InitTable(type::Database* db, Tables& table);
+    type::Database* GetDatabase(const std::string db_name,
+                                common::Status& status);
 };
 
 }  // namespace dbms

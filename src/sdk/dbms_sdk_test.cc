@@ -11,6 +11,7 @@
 #include "dbms/dbms_server_impl.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "tablet/tablet_server_impl.h"
 
 namespace fesql {
 namespace sdk {
@@ -22,27 +23,30 @@ class DBMSSdkTest : public ::testing::Test {
     ~DBMSSdkTest() {}
 };
 
-void StartDBMSSever(brpc::Server &server, const std::string &endpoint) {
-    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
+TEST_F(DBMSSdkTest, DatabasesAPITest) {
+    brpc::Server server;
+    brpc::Server tablet_server;
+    int tablet_port = 8200;
+    int port = 9444;
+
+    tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
+    ASSERT_TRUE(tablet->Init());
     brpc::ServerOptions options;
-    options.num_threads = 2;
+    if (0 != tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+        LOG(WARNING) << "Fail to add tablet service";
+        exit(1);
+    }
+    tablet_server.Start(tablet_port, &options);
+
+    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
     if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG(WARNING) << "Fail to add dbms service";
         exit(1);
     }
+    server.Start(port, &options);
+    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
 
-    if (server.Start(endpoint.c_str(), &options) != 0) {
-        LOG(WARNING) << "Fail to start dbms server";
-        exit(1);
-    }
-    LOG(INFO) << "start dbms on port " << endpoint;
-}
-
-TEST_F(DBMSSdkTest, DatabasesAPITest) {
-    brpc::Server server;
-    int port = 9444;
     const std::string endpoint = "127.0.0.1:" + std::to_string(port);
-    StartDBMSSever(server, endpoint);
     ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
 
@@ -51,6 +55,7 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
         std::vector<std::string> names;
         Status status;
         dbms_sdk->GetDatabases(names, status);
+        std::cout << status.msg << std::endl;
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(0, names.size());
     }
@@ -108,12 +113,35 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
         ASSERT_EQ(false, dbms_sdk->IsExistDatabase(db, status));
         ASSERT_EQ(0, status.code);
     }
+
+    delete tablet;
+    delete dbms;
+    delete dbms_sdk;
 }
 TEST_F(DBMSSdkTest, GroupAPITest) {
     brpc::Server server;
+    brpc::Server tablet_server;
+    int tablet_port = 8201;
     int port = 9445;
+
+    tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
+    ASSERT_TRUE(tablet->Init());
+    brpc::ServerOptions options;
+    if (0 != tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+        LOG(WARNING) << "Fail to add tablet service";
+        exit(1);
+    }
+    tablet_server.Start(tablet_port, &options);
+
+    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
+    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        LOG(WARNING) << "Fail to add dbms service";
+        exit(1);
+    }
+    server.Start(port, &options);
+    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
+
     const std::string endpoint = "127.0.0.1:" + std::to_string(port);
-    StartDBMSSever(server, endpoint);
     ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
 
@@ -125,13 +153,35 @@ TEST_F(DBMSSdkTest, GroupAPITest) {
         dbms_sdk->CreateGroup(group, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
+    delete dbms;
+    delete dbms_sdk;
+    delete tablet;
 }
 
 TEST_F(DBMSSdkTest, TableAPITest) {
     brpc::Server server;
+    brpc::Server tablet_server;
+    int tablet_port = 8203;
     int port = 9446;
+
+    tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
+    ASSERT_TRUE(tablet->Init());
+    brpc::ServerOptions options;
+    if (0 != tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+        LOG(WARNING) << "Fail to add tablet service";
+        exit(1);
+    }
+    tablet_server.Start(tablet_port, &options);
+
+    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
+    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        LOG(WARNING) << "Fail to add dbms service";
+        exit(1);
+    }
+    server.Start(port, &options);
+    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
+
     const std::string endpoint = "127.0.0.1:" + std::to_string(port);
-    StartDBMSSever(server, endpoint);
     ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
 
@@ -172,10 +222,9 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         ::fesql::sdk::ExecuteRequst request;
         request.database = db;
         request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result,status);
-        std::cout << status.msg <<std::endl;
+        dbms_sdk->ExecuteScript(request, result, status);
+        std::cout << status.msg << std::endl;
         ASSERT_EQ(0, static_cast<int>(status.code));
-
     }
     {
         // create table test2
@@ -251,13 +300,35 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(0, names.size());
     }
+    delete dbms;
+    delete dbms_sdk;
+    delete tablet;
 }
 
 TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
     brpc::Server server;
+    brpc::Server tablet_server;
+    int tablet_port = 8204;
     int port = 9447;
+
+    tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
+    ASSERT_TRUE(tablet->Init());
+    brpc::ServerOptions options;
+    if (0 != tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+        LOG(WARNING) << "Fail to add tablet service";
+        exit(1);
+    }
+    tablet_server.Start(tablet_port, &options);
+
+    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
+    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        LOG(WARNING) << "Fail to add dbms service";
+        exit(1);
+    }
+    server.Start(port, &options);
+    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
+
     const std::string endpoint = "127.0.0.1:" + std::to_string(port);
-    StartDBMSSever(server, endpoint);
     ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
 
@@ -320,39 +391,10 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
         dbms_sdk->ExecuteScript(request, result, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
-    {
-        // show tables
-        // create table db1
-        DatabaseDef db;
-        std::string sql =
-            "show tables;";
 
-        db.name = "db_1";
-        Status status;
-        fesql::sdk::ExecuteResult result;
-        fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-    }
-
-    {
-        // desc table 
-        // create table db1
-        DatabaseDef db;
-        std::string sql =
-            "desc test4;";
-
-        db.name = "db_1";
-        Status status;
-        fesql::sdk::ExecuteResult result;
-        fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-    }
+    delete dbms;
+    delete dbms_sdk;
+    delete tablet;
 }
 
 }  // namespace sdk

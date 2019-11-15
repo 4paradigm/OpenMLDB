@@ -7,8 +7,10 @@
  *--------------------------------------------------------------------------
  **/
 #include "dbms/dbms_server_impl.h"
+#include "brpc/server.h"
 #include "gtest/gtest.h"
 #include "node/node_enum.h"
+#include "tablet/tablet_server_impl.h"
 namespace fesql {
 namespace dbms {
 using fesql::base::Status;
@@ -27,8 +29,17 @@ class DBMSServerImplTest : public ::testing::Test {
 };
 
 TEST_F(DBMSServerImplTest, CreateTableTest) {
-    ::fesql::dbms::DBMSServerImpl dbms_server;
 
+    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
+    ASSERT_TRUE(tablet->Init());
+    brpc::ServerOptions options;
+    brpc::Server server;
+    server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE);
+    int32_t port = 8120;
+    server.Start(port, &options);
+
+    ::fesql::dbms::DBMSServerImpl dbms_server;
+    dbms_server.SetTabletEndpoint("127.0.0.1:" + std::to_string(port));
     // null db
     {
         ::fesql::dbms::AddTableRequest request;
@@ -72,7 +83,6 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         dbms_server.AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kNoDatabase, response.status().code());
     }
-
 
     // create table
     {
@@ -222,6 +232,14 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
 
 TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
     ::fesql::dbms::DBMSServerImpl dbms_server;
+    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
+    ASSERT_TRUE(tablet->Init());
+    brpc::ServerOptions options;
+    brpc::Server server;
+    server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE);
+    int32_t port = 8121;
+    server.Start(port, &options);
+    dbms_server.SetTabletEndpoint("127.0.0.1:" + std::to_string(port));
     // show database
     {
         ::fesql::dbms::GetItemsRequest request;
@@ -346,7 +364,6 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
-
     // create database 2 : table 1
     {
         ::fesql::dbms::AddTableRequest request;
@@ -382,7 +399,6 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         dbms_server.AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
-
 
     {
         ::fesql::dbms::GetItemsRequest request;
@@ -421,6 +437,14 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
 }
 TEST_F(DBMSServerImplTest, GetTableTest) {
     ::fesql::dbms::DBMSServerImpl dbms_server;
+    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
+    ASSERT_TRUE(tablet->Init());
+    brpc::ServerOptions options;
+    brpc::Server server;
+    server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE);
+    int32_t port = 8122;
+    server.Start(port, &options);
+    dbms_server.SetTabletEndpoint("127.0.0.1:" + std::to_string(port));
     // create database
     {
         ::fesql::dbms::AddDatabaseRequest request;
@@ -492,6 +516,14 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
 
 TEST_F(DBMSServerImplTest, DataBaseTest) {
     ::fesql::dbms::DBMSServerImpl dbms_server;
+    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
+    ASSERT_TRUE(tablet->Init());
+    brpc::ServerOptions options;
+    brpc::Server server;
+    server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE);
+    int32_t port = 8123;
+    server.Start(port, &options);
+    dbms_server.SetTabletEndpoint("127.0.0.1:" + std::to_string(port));
     // create database
     {
         ::fesql::dbms::AddDatabaseRequest request;

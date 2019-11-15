@@ -23,31 +23,38 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include "analyser/analyser.h"
+#include "base/texttable.h"
+#include "plan/planner.h"
+#include "sdk/tablet_sdk.h"
 
 #include "base/linenoise.h"
 #include "base/strings.h"
 #include "brpc/server.h"
 #include "cmd/version.h"
 #include "dbms/dbms_server_impl.h"
-#include "tablet/tablet_server_impl.h"
 #include "glog/logging.h"
-#include "sdk/dbms_sdk.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
+#include "sdk/dbms_sdk.h"
+#include "tablet/tablet_server_impl.h"
 
 DECLARE_string(endpoint);
+DECLARE_string(tablet_endpoint);
 DECLARE_int32(port);
 DECLARE_int32(thread_pool_size);
 
 DEFINE_string(role, "tablet | dbms | client ", "Set the fesql role");
 
 static ::fesql::sdk::DBMSSdk *dbms_sdk = NULL;
+static std::unique_ptr<::fesql::sdk::TabletSdk> table_sdk;
 static ::std::string cmd_client_db = "";
 
-void HandleSQLScript(std::string basicString);
+void HandleSQLScript(std::string basicString, fesql::base::Status &status);
 void HandleCreateSchema(std::string str, ::fesql::base::Status &status);
 
 void HandleEnterDatabase(std::string &db_name);
+void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status);
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
 
 void StartTablet(int argc, char *argv[]) {
@@ -55,7 +62,8 @@ void StartTablet(int argc, char *argv[]) {
     ::llvm::InitLLVM X(argc, argv);
     ::llvm::InitializeNativeTarget();
     ::llvm::InitializeNativeTargetAsmPrinter();
-    ::fesql::tablet::TabletServerImpl *tablet = new ::fesql::tablet::TabletServerImpl();
+    ::fesql::tablet::TabletServerImpl *tablet =
+        new ::fesql::tablet::TabletServerImpl();
     bool ok = tablet->Init();
     if (!ok) {
         LOG(WARNING) << "Fail to init tablet service";
@@ -85,10 +93,10 @@ void StartTablet(int argc, char *argv[]) {
     server.RunUntilAskedToQuit();
 }
 
-
 void StartDBMS(char *argv[]) {
     SetupLogging(argv);
     ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
+    dbms->SetTabletEndpoint(FLAGS_tablet_endpoint);
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
@@ -144,7 +152,12 @@ void StartClient(char *argv[]) {
         cmd_str.append(buf);
         // TODO(CHENJING) remove
         if (cmd_str.back() == ';') {
-            HandleSQLScript(cmd_str);
+            ::fesql::base::Status status;
+            HandleSQLScript(cmd_str, status);
+            if (0 != status.code) {
+                std::cout << "ERROR " << status.code << ":" << status.msg
+                          << std::endl;
+            }
             cmd_str.clear();
             cmd_mode = true;
         } else {
@@ -174,7 +187,114 @@ void HandleEnterDatabase(std::string &db_name) {
         std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
     }
 }
-void HandleSQLScript(std::string script) {
+
+void PrintTableSchema(std::ostream &stream, fesql::type::TableDef table) {
+    ::fesql::base::TextTable t('-', '|', '+');
+
+    t.add("Field");
+    t.add("Type");
+    t.add("Null");
+    t.endOfRow();
+
+    for (auto column : table.columns()) {
+        t.add(column.name());
+        t.add(fesql::type::Type_Name(column.type()));
+        t.add(column.is_null() ? "YES" : "NO");
+        t.endOfRow();
+    }
+    stream << t;
+}
+
+void PrintItems(std::ostream &stream, std::vector<std::string> items) {
+    ::fesql::base::TextTable t('-', '|', '+');
+    for (auto item : items) {
+        t.add(item);
+        t.endOfRow();
+    }
+    stream << t;
+}
+void HandleSQLScript(std::string script, fesql::base::Status &status) {
+    if (dbms_sdk == NULL) {
+        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
+        if (dbms_sdk == NULL) {
+            status.code = fesql::error::kRpcErrorConnection;
+            status.msg = "Fail to connect to dbms";
+            return;
+        }
+    }
+
+    {
+        fesql::node::NodeManager node_manager;
+        fesql::parser::FeSQLParser parser;
+        fesql::analyser::FeSQLAnalyser analyser(&node_manager);
+        fesql::plan::SimplePlanner planner(&node_manager);
+
+        // TODO(chenjing): init with db
+        fesql::node::NodePointVector parser_trees;
+        parser.parse(script, parser_trees, &node_manager, status);
+        if (0 != status.code) {
+            LOG(WARNING) << status.msg;
+            return;
+        }
+
+        fesql::node::SQLNode *node = parser_trees[0];
+
+        if (nullptr == node) {
+            status.msg = "fail to execute cmd: parser tree is null";
+            status.code = fesql::error::kCmdErrorNullNode;
+            LOG(WARNING) << status.msg;
+            return;
+        }
+        switch (node->GetType()) {
+            case fesql::node::kCmdStmt: {
+                fesql::node::CmdNode *cmd =
+                    dynamic_cast<fesql::node::CmdNode *>(node);
+                handleCmd(cmd, status);
+                return;
+            }
+            case fesql::node::kCreateStmt: {
+                fesql::sdk::ExecuteRequst request;
+                ::fesql::sdk::ExecuteResult result;
+                request.database.name = cmd_client_db;
+                request.sql = script;
+                dbms_sdk->ExecuteScript(request, result, status);
+                return;
+            }
+            case fesql::node::kSelectStmt: {
+                if (!table_sdk) {
+                    table_sdk =
+                        ::fesql::sdk::CreateTabletSdk(FLAGS_tablet_endpoint);
+                }
+
+                if (!table_sdk) {
+                    status.code = fesql::error::kCmdErrorNullNode;
+                    status.msg = " Fail to create tablet sdk";
+                    return;
+                }
+                ::fesql::sdk::Query query;
+                query.db = cmd_client_db;
+                query.sql = script;
+                std::unique_ptr<::fesql::sdk::ResultSet> rs =
+                    table_sdk->SyncQuery(query);
+                if (!rs) {
+                    std::cout << "Fail to query sql";
+                } else {
+                    std::cout
+                        << "query result column size: " << rs->GetColumnCnt()
+                        << std::endl;
+                }
+                return;
+            }
+            default: {
+                status.msg = "fail to execute script with unSuppurt type" +
+                             fesql::node::NameOfSQLNodeType(node->GetType());
+                status.code = fesql::error::kExecuteErrorUnSupport;
+                return;
+            }
+        }
+    }
+}
+void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
     if (dbms_sdk == NULL) {
         dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
         if (dbms_sdk == NULL) {
@@ -182,20 +302,81 @@ void HandleSQLScript(std::string script) {
             return;
         }
     }
-    ::fesql::base::Status status;
-    fesql::sdk::ExecuteRequst request;
-    ::fesql::sdk::ExecuteResult result;
-    request.database.name = cmd_client_db;
-    request.sql = script;
-    dbms_sdk->ExecuteScript(request, result, status);
-    if (status.code != 0) {
-        std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
-    } else {
-        if (!result.database.name.empty()) {
-            cmd_client_db = result.database.name;
+    ::fesql::sdk::DatabaseDef db;
+    db.name = cmd_client_db;
+    switch (cmd_node->GetCmdType()) {
+        case fesql::node::kCmdShowDatabases: {
+            std::vector<std::string> names;
+            dbms_sdk->GetDatabases(names, status);
+            if (status.code == 0) {
+                std::ostringstream oss;
+                PrintItems(oss, names);
+            }
+            return;
         }
-        if (!result.result.empty()) {
-            std::cout << result.result << std::endl;
+        case fesql::node::kCmdShowTables: {
+            std::vector<std::string> names;
+            dbms_sdk->GetTables(db, names, status);
+            if (status.code == 0) {
+                std::ostringstream oss;
+                PrintItems(oss, names);
+            }
+            return;
+        }
+        case fesql::node::kCmdDescTable: {
+            fesql::type::TableDef table;
+            dbms_sdk->GetSchema(db, cmd_node->GetArgs()[0], table, status);
+            if (status.code == 0) {
+                std::ostringstream oss;
+                PrintTableSchema(oss, table);
+            }
+            break;
+        }
+        case fesql::node::kCmdCreateGroup: {
+            fesql::sdk::GroupDef group;
+            group.name = cmd_node->GetArgs()[0];
+            dbms_sdk->CreateGroup(group, status);
+            break;
+        }
+        case fesql::node::kCmdCreateDatabase: {
+            fesql::sdk::DatabaseDef new_db;
+            new_db.name = cmd_node->GetArgs()[0];
+            dbms_sdk->CreateDatabase(new_db, status);
+            break;
+        }
+        case fesql::node::kCmdCreateTable: {
+            std::ifstream in;
+            in.open(cmd_node->GetArgs()[0]);  // open the input file
+            if (!in.is_open()) {
+                status.code = fesql::error::kCmdErrorPathError;
+                status.msg = "Incorrect file path";
+                return;
+            }
+            std::stringstream str_stream;
+            str_stream << in.rdbuf();  // read the file
+            std::string str =
+                str_stream.str();  // str holds the content of the file
+            ::fesql::base::Status status;
+            ::fesql::sdk::ExecuteRequst requst;
+            ::fesql::sdk::ExecuteResult result;
+
+            requst.database.name = cmd_client_db;
+            requst.sql = str;
+            dbms_sdk->ExecuteScript(requst, result, status);
+            break;
+        }
+        case fesql::node::kCmdUseDatabase: {
+            fesql::sdk::DatabaseDef usedb;
+            usedb.name = cmd_node->GetArgs()[0];
+            if (dbms_sdk->IsExistDatabase(usedb, status)) {
+                cmd_client_db = usedb.name;
+            }
+            break;
+        }
+        default: {
+            status.code = fesql::error::kCmdErrorUnSupport;
+            status.msg = "UnSupport Cmd " +
+                         fesql::node::CmdTypeName(cmd_node->GetCmdType());
         }
     }
 }

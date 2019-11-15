@@ -22,8 +22,9 @@
 namespace fesql {
 namespace dbms {
 
-DBMSServerImpl::DBMSServerImpl() {}
-DBMSServerImpl::~DBMSServerImpl() {}
+DBMSServerImpl::DBMSServerImpl()
+    : tablet_endpoint_(""), tablet_sdk(nullptr), tid_(0) {}
+DBMSServerImpl::~DBMSServerImpl() { delete tablet_sdk; }
 
 void DBMSServerImpl::AddGroup(RpcController* ctr,
                               const AddGroupRequest* request,
@@ -67,7 +68,7 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
         return;
     }
 
-    type::Database *db;
+    type::Database* db;
     {
         common::Status get_db_status;
         db = GetDatabase(request->db_name(), get_db_status);
@@ -97,6 +98,52 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
         }
     }
 
+    if (nullptr == tablet_sdk) {
+        if (tablet_endpoint_.empty()) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(::fesql::common::kConnError);
+            status->set_msg("can't connect tablet endpoint is empty");
+            LOG(WARNING) << status->msg();
+            return;
+        }
+        tablet_sdk = new fesql::tablet::TabletInternalSDK(tablet_endpoint_);
+        if (tablet_sdk == NULL) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(::fesql::common::kConnError);
+            status->set_msg(
+                "Fail to connect to tablet (maybe you should check "
+                "tablet_endpoint");
+            LOG(WARNING) << status->msg();
+            return;
+        }
+        if (false == tablet_sdk->Init()) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(::fesql::common::kConnError);
+            status->set_msg(
+                "Fail to init tablet (maybe you should check tablet_endpoint");
+            LOG(WARNING) << status->msg();
+            return;
+        }
+    }
+
+    // TODO(chenjing): 后续是否需要从tablet同步表schema数据
+    {
+        fesql::common::Status create_table_status;
+        fesql::tablet::CreateTableRequest create_table_request;
+        create_table_request.set_db(request->db_name());
+        create_table_request.set_tid(tid_ + 1);
+        // TODO(chenjing): pid setting
+        create_table_request.add_pids(0);
+        *(create_table_request.mutable_table()) = request->table();
+        tablet_sdk->CreateTable(&create_table_request, create_table_status);
+        if (0 != create_table_status.code()) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(create_table_status.code());
+            status->set_msg(create_table_status.msg());
+            return;
+        }
+    }
+
     ::fesql::type::TableDef* table = db->add_tables();
     // TODO(chenjing):add create time
     table->set_name(request->table().name());
@@ -109,6 +156,7 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
     ::fesql::common::Status* status = response->mutable_status();
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
+    tid_ += 1;
     LOG(INFO) << "create table " << request->table().name() << " done";
 }
 void DBMSServerImpl::GetSchema(RpcController* ctr,
@@ -123,7 +171,7 @@ void DBMSServerImpl::GetSchema(RpcController* ctr,
         return;
     }
 
-    type::Database *db;
+    type::Database* db;
     {
         common::Status get_db_status;
         db = GetDatabase(request->db_name(), get_db_status);
@@ -235,7 +283,7 @@ void DBMSServerImpl::GetTables(RpcController* controller,
                                GetItemsResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
 
-    type::Database *db;
+    type::Database* db;
     {
         common::Status get_db_status;
         db = GetDatabase(request->db_name(), get_db_status);
@@ -255,7 +303,7 @@ void DBMSServerImpl::GetTables(RpcController* controller,
 
     ::fesql::common::Status* status = response->mutable_status();
     std::lock_guard<std::mutex> lock(mu_);
-    for (auto table: db->tables()) {
+    for (auto table : db->tables()) {
         response->add_items(table.name());
     }
     status->set_code(::fesql::common::kOk);
@@ -270,7 +318,7 @@ void DBMSServerImpl::InitTable(type::Database* db, Tables& tables) {
 }
 
 type::Database* DBMSServerImpl::GetDatabase(const std::string db_name,
-                                 common::Status& status) {
+                                            common::Status& status) {
     if (db_name.empty()) {
         status.set_code(::fesql::common::kNoDatabase);
         status.set_msg("Database name is empty");
