@@ -273,7 +273,7 @@ public:
 
     void CheckClusterInfo();
 
-    void CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info);
+    bool CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info, const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info);
 
 private:
 
@@ -322,6 +322,9 @@ private:
 
     bool SkipDoneTask(std::shared_ptr<OPData> op_data);
 
+    int CreateTableForReplicaClusterTask(const ::rtidb::nameserver::TableInfo& table_info,
+            const std::string& alias,
+            std::shared_ptr<OPData> op_data);
     // Get the lock
     void OnLocked();
     // Lost the lock
@@ -417,6 +420,11 @@ private:
                     const std::string& name, uint32_t pid, const std::string& endpoint, 
                     uint64_t offset_delta, uint32_t concurrency);
 
+    std::shared_ptr<Task> CreateTableForReplicaClusterTask(const ::rtidb::nameserver::TableInfo& table_info,
+            const std::string& alias,
+            uint64_t op_index,
+            ::rtidb::api::OPType op_type);
+
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
@@ -455,7 +463,10 @@ private:
                     const std::string& endpoint, bool is_leader, bool is_alive, uint64_t parent_id, uint32_t concurrency);
     int CreateOfflineReplicaOP(const std::string& name, uint32_t pid, 
                     const std::string& endpoint, uint32_t concurrency = FLAGS_name_server_task_concurrency);
-
+    int CreateTableForReplicaClusterOP(const ::rtidb::nameserver::TableInfo& table_info,
+            const std::string& alias,
+            uint64_t parent_id = INVALID_PARENT_ID,
+            uint32_t concurrencyi = FLAGS_name_server_task_concurrency);
     void NotifyTableChanged();
     void DeleteDoneOP();
     void UpdateTableStatus();

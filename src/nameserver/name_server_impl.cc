@@ -133,7 +133,8 @@ int ClusterInfo::Init(std::string& msg) {
     return 0;
 }
 
-bool ClusterInfo::CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info) {
+bool ClusterInfo::CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info, 
+        const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info) {
     std::string msg;
     if (!client_->CreateTableForReplicaCluster(table_info, zone_info, msg)) {
         PDLOG(WARNING, "create table for replica cluster failed!, msg is: %s", msg.c_str());
@@ -2491,11 +2492,22 @@ void NameServerImpl::CreateTable(RpcController* controller,
             table_info_.insert(std::make_pair(table_info->name(), table_info));
             NotifyTableChanged();
         }
+        if (!nsc_.empty()) {
+            decltype(nsc_) tmp_nsc;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                tmp_nsc = nsc_;
+            }
+            for (auto kv : tmp_nsc) {
+                if( CreateTableForReplicaClusterOP(*table_info, kv.first)) {
+                    PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
+                    break;
+                }
+            }
+        }
         response->set_code(0);
         response->set_msg("ok");
-        if (!nsc_.empty()) {
-            task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CreateTableForReplicaCluster, this, *table_info)); 
-        }
+        return;
     } while (0);
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableOnTablet, this, table_info));
 }
@@ -4158,6 +4170,54 @@ int NameServerImpl::CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_da
     return 0;
 }
 
+int NameServerImpl::CreateTableForReplicaClusterOP(const ::rtidb::nameserver::TableInfo& table_info, 
+        const std::string& alias,  
+        uint64_t parent_id, 
+        uint32_t concurrency) {
+    std::string value = alias;
+    std::string name = table_info.name();
+    uint32_t pid = UINT32_MAX;
+    std::shared_ptr<OPData> op_data;
+    if (CreateOPData(::rtidb::api::OPType::kCreateTableForReplicaClusterOP, value, op_data, name, pid, parent_id) < 0) {
+        PDLOG(WARNING, "create CreateTableForReplicaClusterOP data error. table[%s] pid[%u] alias[%s]",
+                name.c_str(), pid, alias.c_str());
+        return -1;
+    }
+    if (CreateTableForReplicaClusterTask(table_info, alias, op_data) < 0) {
+        PDLOG(WARNING, "create CreateTableForReplicaCluster task failed. table[%s] pid[%u] alias[%s]",
+                        table_info.name().c_str(), pid, alias.c_str());
+        return -1;
+    }
+    if (AddOPData(op_data, concurrency) < 0) {
+        PDLOG(WARNING, "add op data failed. name[%s] pid[%u] alias[%s]", 
+                        table_info.name().c_str(), pid, alias.c_str());
+        return -1;
+    }
+    PDLOG(INFO, "create CreateTableForReplicaCluster op ok. op_id[%lu] name[%s] pid[%u] alias[%s]", 
+                op_data->op_info_.op_id(), table_info.name().c_str(), pid, alias.c_str());
+    return 0;
+}
+
+int NameServerImpl::CreateTableForReplicaClusterTask(const ::rtidb::nameserver::TableInfo& table_info, 
+        const std::string& alias, 
+        std::shared_ptr<OPData> op_data) {
+    auto it = nsc_.find(alias);
+    if (it == nsc_.end()) {
+        PDLOG(WARNING, "replica cluster [%s] is not online", alias.c_str());
+        return -1;
+    }
+    std::shared_ptr<Task> task = CreateTableForReplicaClusterTask(table_info, alias, 
+            op_data->op_info_.op_id(), ::rtidb::api::OPType::kCreateTableForReplicaClusterOP);
+    if (!task) {
+        PDLOG(WARNING, "create CreateTableForReplicaCluster task failed. table[%s] pid[%u]", table_info.name().c_str(), op_data->op_info_.pid());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    PDLOG(INFO, "create CreateTableForReplicaCluster task ok. name[%s] pid[%u] alias[%s]", 
+            table_info.name().c_str(), op_data->op_info_.pid(), alias.c_str());
+    return 0;
+}
+
 int NameServerImpl::CreateReLoadTableOP(const std::string& name, uint32_t pid, 
             const std::string& endpoint, uint64_t parent_id, uint32_t concurrency) {
     std::shared_ptr<OPData> op_data;
@@ -4417,6 +4477,26 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(const std::string& 
     task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::SendSnapshot, it->second->client_, tid, pid, 
                 des_endpoint, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+    return task;
+}
+
+std::shared_ptr<Task> NameServerImpl::CreateTableForReplicaClusterTask(const ::rtidb::nameserver::TableInfo& table_info, 
+        const std::string& alias, 
+        uint64_t op_index, 
+        ::rtidb::api::OPType op_type) {
+    auto it = nsc_.find(alias);
+    if (it == nsc_.end()) {
+        return std::shared_ptr<Task>();
+    }
+    std::shared_ptr<Task> task = std::make_shared<Task>(alias, std::make_shared<::rtidb::api::TaskInfo>());
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kCreateTableForReplicaCluster);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(alias);
+
+    boost::function<bool ()> fun = boost::bind(&NameServerImpl::CreateTableForReplicaCluster, this, table_info, it->second);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
@@ -5476,18 +5556,30 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         nsc_.insert(std::make_pair(request->alias(), cluster_info));
 
         //create tables for replica cluster
-        std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_list;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            for (const auto kv : table_info_) {
-                table_info_list.push_back(kv.second);
-            } 
-        }
-        for (const auto& table_info : table_info_list) {
-            task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CreateTableForReplicaCluster, this, *table_info));
-        }
-    } while(0);
-
+        if (!table_info_.empty()) {
+            decltype(nsc_) tmp_nsc;
+            std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_list;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                for (const auto kv : table_info_) {
+                    table_info_list.push_back(kv.second);
+                } 
+                tmp_nsc = nsc_;
+            }
+            for (auto kv : tmp_nsc) {
+                for (const auto& table_info : table_info_list) {
+                    if (CreateTableForReplicaClusterOP(*table_info, kv.first)) {
+                        PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
+                        code = 503;
+                        rpc_msg = "create table for replica cluster failed";
+                        break;   
+                    }
+                }
+                break;
+            }
+            break;
+        } 
+    }while(0);
     response->set_code(code);
     response->set_msg(rpc_msg);
 }
@@ -5548,9 +5640,9 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
     response->set_msg(rpc_msg);
 }
 void NameServerImpl::ShowReplicaCluster(RpcController* controller,
-       const GeneralRequest* request,
-       ShowReplicaClusterResponse* response,
-       Closure* done) {
+        const GeneralRequest* request,
+        ShowReplicaClusterResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
         response->set_code(300);
@@ -5591,22 +5683,22 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
         if (it == nsc_.end()) {
             code = 404;
             rpc_msg = "replica name not found";
-            break;
-        }
-        if (!it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
-            break;
-        }
-        if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
-            code = 452;
-            rpc_msg = "del zk failed";
-            break;
-        }
-        nsc_.erase(it);
-    } while(0);
-    response->set_code(code);
-    response->set_msg(rpc_msg);
-    return;
-}
+                break;
+            }
+            if (!it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
+                break;
+            }
+            if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
+                code = 452;
+                rpc_msg = "del zk failed";
+                break;
+            }
+            nsc_.erase(it);
+        } while(0);
+        response->set_code(code);
+        response->set_msg(rpc_msg);
+        return;
+    }
 
 void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
         const ::rtidb::nameserver::ReplicaClusterByNsRequest* request,
@@ -5673,26 +5765,15 @@ void NameServerImpl::CheckClusterInfo() {
             tmp_nsc = nsc_;
         }
         for (auto i : tmp_nsc) {
-           i.second->CheckZkClient();
+            i.second->CheckZkClient();
         }
     } while(0);
 
     thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
 }
 
-void NameServerImpl::CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info) {
-    decltype(nsc_) tmp_nsc;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        if (nsc_.size() < 1) {
-            return;
-        }
-        tmp_nsc = nsc_;
-    }
-    for (auto i : tmp_nsc) {
-        i.second->CreateTableForReplicaCluster(table_info, zone_info_);
-    }
-    task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CreateTableForReplicaCluster, this, table_info));
+bool NameServerImpl::CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info, const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info) {
+    return cluster_info->CreateTableForReplicaCluster(table_info, zone_info_);
 }
 
 }
