@@ -138,6 +138,7 @@ std::shared_ptr<vm::TableStatus> TabletServerImpl::GetTableDef(const std::string
 
 std::shared_ptr<vm::TableStatus> TabletServerImpl::GetTableDef(const std::string& db,
         const std::string& name) {
+
     std::lock_guard<base::SpinMutex> lock(slock_);
     TableNames::iterator it = table_names_.find(db);
     if (it == table_names_.end()) {
@@ -148,6 +149,7 @@ std::shared_ptr<vm::TableStatus> TabletServerImpl::GetTableDef(const std::string
     if (iit == it->second.end()) {
         return std::shared_ptr<vm::TableStatus>();
     }
+
     uint32_t tid = iit->second;
     return GetTableDefUnLocked(db, tid);
 }
@@ -178,6 +180,7 @@ void TabletServerImpl::Query(RpcController* ctrl,
         return;
     }
 
+    // TODO(wangtaize) opt the result buf
     std::vector<int8_t*>::iterator it = buf.begin();
     for (; it != buf.end(); ++it) {
         void* ptr = (void*)*it;
@@ -185,6 +188,7 @@ void TabletServerImpl::Query(RpcController* ctrl,
         free(ptr);
     }
 
+    // TODO(wangtaize) opt the schema
     std::vector<::fesql::type::ColumnDef>::const_iterator sit = session.GetSchema().begin();
     for (; sit != session.GetSchema().end(); ++sit) {
         ::fesql::type::ColumnDef* column = response->add_schema();

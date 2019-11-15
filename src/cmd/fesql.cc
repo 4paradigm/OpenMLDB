@@ -32,6 +32,8 @@
 #include "tablet/tablet_server_impl.h"
 #include "glog/logging.h"
 #include "sdk/dbms_sdk.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/TargetSelect.h"
 
 DECLARE_string(endpoint);
 DECLARE_int32(port);
@@ -41,17 +43,24 @@ DEFINE_string(role, "tablet | dbms | client ", "Set the fesql role");
 
 static ::fesql::sdk::DBMSSdk *dbms_sdk = NULL;
 
-
-
 void HandleSQLScript(std::string basicString);
 void HandleCreateSchema(std::string str, ::fesql::base::Status &status);
 
 void HandleEnterDatabase(std::string &db_name);
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
 
-void StartTablet(char *argv[]) {
+void StartTablet(int argc, char *argv[]) {
     SetupLogging(argv);
+    ::llvm::InitLLVM X(argc, argv);
+    ::llvm::InitializeNativeTarget();
+    ::llvm::InitializeNativeTargetAsmPrinter();
     ::fesql::tablet::TabletServerImpl *tablet = new ::fesql::tablet::TabletServerImpl();
+    bool ok = tablet->Init();
+    if (!ok) {
+        LOG(WARNING) << "Fail to init tablet service";
+        exit(1);
+    }
+
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
@@ -383,7 +392,7 @@ int main(int argc, char *argv[]) {
     if (FLAGS_role == "dbms") {
         StartDBMS(argv);
     } else if (FLAGS_role == "tablet") {
-        StartTablet(argv);
+        StartTablet(argc, argv);
     } else if (FLAGS_role == "client") {
         StartClient(argv);
     } else {
