@@ -17,8 +17,8 @@
 
 #include "sdk/tablet_sdk.h"
 
-#include "proto/tablet.pb.h"
 #include "brpc/channel.h"
+#include "proto/tablet.pb.h"
 
 namespace fesql {
 namespace sdk {
@@ -27,35 +27,28 @@ class TabletSdkImpl;
 class ResultSetImpl;
 
 class ResultSetImpl : public ResultSet {
-
  public:
-    ResultSetImpl():response_() {}
+    ResultSetImpl() : response_() {}
     ~ResultSetImpl() {}
 
-    uint32_t GetColumnCnt() {
-        return response_.schema_size();
-    }
-    const std::string& GetColumnName(uint32_t i) {
-        //TODO check i out of index
+    const uint32_t GetColumnCnt() const { return response_.schema_size(); }
+    const std::string& GetColumnName(uint32_t i) const {
+        // TODO check i out of index
         return response_.schema(i).name();
     }
-    uint32_t GetRowCnt() {
-        return response_.result_set_size();
-    }
+    const uint32_t GetRowCnt() const { return response_.result_set_size(); }
+
  private:
     friend TabletSdkImpl;
     tablet::QueryResponse response_;
 };
 
 class TabletSdkImpl : public TabletSdk {
-
  public:
     TabletSdkImpl() {}
-    TabletSdkImpl(const std::string& endpoint) : endpoint_(endpoint),
-    channel_(NULL) {}
-    ~TabletSdkImpl() {
-        delete channel_;
-    }
+    TabletSdkImpl(const std::string& endpoint)
+        : endpoint_(endpoint), channel_(NULL) {}
+    ~TabletSdkImpl() { delete channel_; }
 
     bool Init();
 
@@ -103,6 +96,3 @@ std::unique_ptr<TabletSdk> CreateTabletSdk(const std::string& endpoint) {
 
 }  // namespace sdk
 }  // namespace fesql
-
-
-

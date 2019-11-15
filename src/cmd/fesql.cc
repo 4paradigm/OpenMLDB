@@ -188,7 +188,22 @@ void HandleEnterDatabase(std::string &db_name) {
     }
 }
 
-void PrintTableSchema(std::ostream &stream, fesql::type::TableDef table) {
+void PrintResultSet(std::ostream &stream,
+                    const ::fesql::sdk::ResultSet *result_set) {
+    if (nullptr == result_set || result_set->GetColumnCnt() == 0) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+    ::fesql::base::TextTable t('-', '|', '+');
+
+    for (unsigned i = 0; i < result_set->GetColumnCnt(); i++) {
+        t.add(result_set->GetColumnName(i));
+    }
+    t.endOfRow();
+    stream << t << std::endl;
+}
+void PrintTableSchema(std::ostream &stream,
+                      const fesql::type::TableDef &table) {
     ::fesql::base::TextTable t('-', '|', '+');
 
     t.add("Field");
@@ -203,15 +218,35 @@ void PrintTableSchema(std::ostream &stream, fesql::type::TableDef table) {
         t.endOfRow();
     }
     stream << t;
+    unsigned items_size = table.columns().size();
+    if (items_size > 1) {
+        stream << items_size << " rows in set" << std::endl;
+    } else {
+        stream << items_size << " row in set" << std::endl;
+    }
 }
 
-void PrintItems(std::ostream &stream, std::vector<std::string> items) {
+void PrintItems(std::ostream &stream, const std::string &head,
+                const std::vector<std::string> &items) {
+    if (items.empty()) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+
     ::fesql::base::TextTable t('-', '|', '+');
+    t.add(head);
+    t.endOfRow();
     for (auto item : items) {
         t.add(item);
         t.endOfRow();
     }
     stream << t;
+    unsigned items_size = items.size();
+    if (items_size > 1) {
+        stream << items_size << " rows in set" << std::endl;
+    } else {
+        stream << items_size << " row in set" << std::endl;
+    }
 }
 void HandleSQLScript(std::string script, fesql::base::Status &status) {
     if (dbms_sdk == NULL) {
@@ -277,16 +312,14 @@ void HandleSQLScript(std::string script, fesql::base::Status &status) {
                 std::unique_ptr<::fesql::sdk::ResultSet> rs =
                     table_sdk->SyncQuery(query);
                 if (!rs) {
-                    std::cout << "Fail to query sql";
+                    std::cout << "Fail to query sql: " << status.msg << std::endl;
                 } else {
-                    std::cout
-                        << "query result column size: " << rs->GetColumnCnt()
-                        << std::endl;
+                    PrintResultSet(std::cout, rs.get());
                 }
                 return;
             }
             default: {
-                status.msg = "fail to execute script with unSuppurt type" +
+                status.msg = "Fail to execute script with unSuppurt type" +
                              fesql::node::NameOfSQLNodeType(node->GetType());
                 status.code = fesql::error::kExecuteErrorUnSupport;
                 return;
@@ -309,8 +342,7 @@ void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
             std::vector<std::string> names;
             dbms_sdk->GetDatabases(names, status);
             if (status.code == 0) {
-                std::ostringstream oss;
-                PrintItems(oss, names);
+                PrintItems(std::cout, "Databases", names);
             }
             return;
         }
@@ -319,7 +351,7 @@ void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
             dbms_sdk->GetTables(db, names, status);
             if (status.code == 0) {
                 std::ostringstream oss;
-                PrintItems(oss, names);
+                PrintItems(std::cout, "Tables_In_" + cmd_client_db, names);
             }
             return;
         }
@@ -328,7 +360,7 @@ void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
             dbms_sdk->GetSchema(db, cmd_node->GetArgs()[0], table, status);
             if (status.code == 0) {
                 std::ostringstream oss;
-                PrintTableSchema(oss, table);
+                PrintTableSchema(std::cout, table);
             }
             break;
         }
@@ -336,12 +368,18 @@ void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
             fesql::sdk::GroupDef group;
             group.name = cmd_node->GetArgs()[0];
             dbms_sdk->CreateGroup(group, status);
+            if (0 == status.code) {
+                std::cout << "Create group success" << std::endl;
+            }
             break;
         }
         case fesql::node::kCmdCreateDatabase: {
             fesql::sdk::DatabaseDef new_db;
             new_db.name = cmd_node->GetArgs()[0];
             dbms_sdk->CreateDatabase(new_db, status);
+            if (0 == status.code) {
+                std::cout << "Create database success" << std::endl;
+            }
             break;
         }
         case fesql::node::kCmdCreateTable: {
@@ -363,14 +401,24 @@ void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
             requst.database.name = cmd_client_db;
             requst.sql = str;
             dbms_sdk->ExecuteScript(requst, result, status);
+            if (0 == status.code) {
+                std::cout << "Create table success" << std::endl;
+            }
             break;
         }
         case fesql::node::kCmdUseDatabase: {
             fesql::sdk::DatabaseDef usedb;
             usedb.name = cmd_node->GetArgs()[0];
-            if (dbms_sdk->IsExistDatabase(usedb, status)) {
-                cmd_client_db = usedb.name;
+            if (0 == status.code) {
+                if (dbms_sdk->IsExistDatabase(usedb, status)) {
+                    cmd_client_db = usedb.name;
+                    std::cout << "Database changed" << std::endl;
+                } else {
+                    std::cout << "Database '" << usedb.name << "' not exists"
+                              << std::endl;
+                }
             }
+
             break;
         }
         default: {
