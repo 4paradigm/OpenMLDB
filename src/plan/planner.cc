@@ -31,25 +31,21 @@ namespace plan {
  *          + project_node
  *          + ..
  *      + limit_count
- *
  * @param root
  * @return select plan node
  */
-
 int Planner::CreateSelectPlan(const node::SQLNode *select_tree, PlanNode *plan_tree,
                               Status &status) {  // NOLINT (runtime/references)
     const node::SelectStmt *root = (const node::SelectStmt *)select_tree;
     node::SelectPlanNode *select_plan = (node::SelectPlanNode *)plan_tree;
 
     const node::NodePointVector& table_ref_list = root->GetTableRefList();
-
     if (table_ref_list.empty()) {
         status.msg =
             "can not create select plan node with empty table references";
         status.code = error::kPlanErrorTableRefIsEmpty;
         return status.code;
     }
-
     if (table_ref_list.size() > 1) {
         status.msg =
             "can not create select plan node based on more than 2 tables";
@@ -58,9 +54,7 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree, PlanNode *plan_t
     }
 
     const node::TableNode *table_node_ptr = (const node::TableNode *)table_ref_list.at(0);
-
     node::PlanNode *current_node = select_plan;
-
     std::map<std::string, node::ProjectListPlanNode *> project_list_map;
     // set limit
     if (nullptr != root->GetLimit()) {
@@ -87,7 +81,6 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree, PlanNode *plan_t
             if (0 != status.code) {
                 return status.code;
             }
-
             std::string key = project_node_ptr->GetW().empty()
                                   ? project_node_ptr->GetTable()
                                   : project_node_ptr->GetW();

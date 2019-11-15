@@ -6,6 +6,8 @@
  * Date: 2019/11/12
  *--------------------------------------------------------------------------
  **/
+#ifndef FESQL_BASE_TEXTTABLE_H_
+#define FESQL_BASE_TEXTTABLE_H_
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -14,12 +16,6 @@
 
 namespace fesql {
 namespace base {
-#include <iomanip>
-#include <iostream>
-#include <map>
-#include <string>
-#include <vector>
-
 class TextTable {
  public:
     enum class Alignment { LEFT, RIGHT };
@@ -60,22 +56,18 @@ class TextTable {
     std::vector<Row> const& rows() const { return _rows; }
 
     void setup() const {
+        if (rows().size() == 0) {
+            return;
+        }
         determineWidths();
         setupAlignment();
     }
 
-    std::string ruler() const {
-        std::string result;
-        result += _corner;
-        for (auto width = _width.begin(); width != _width.end(); ++width) {
-            result += repeat(*width, _horizontal);
-            result += _corner;
-        }
+    std::string ruler() const;
 
-        return result;
-    }
-
+    void setupAlignment() const;
     int width(unsigned i) const { return _width[i]; }
+    friend std::ostream& operator<<(std::ostream& stream, const TextTable& table);
 
  private:
     char _horizontal;
@@ -94,55 +86,9 @@ class TextTable {
     }
 
     unsigned columns() const { return _rows[0].size(); }
-
-    void determineWidths() const {
-        _width.assign(columns(), 0);
-        for (auto rowIterator = _rows.begin(); rowIterator != _rows.end();
-             ++rowIterator) {
-            Row const& row = *rowIterator;
-            for (unsigned i = 0; i < row.size(); ++i) {
-                _width[i] =
-                    _width[i] > row[i].size() ? _width[i] : row[i].size();
-            }
-        }
-        for (int j = 0; j < _width.size(); ++j) {
-            _width[j] += 2;
-        }
-    }
-
-    void setupAlignment() const {
-        for (unsigned i = 0; i < columns(); ++i) {
-            if (_alignment.find(i) == _alignment.end()) {
-                _alignment[i] = Alignment::LEFT;
-            }
-        }
-    }
+    void determineWidths() const;
 };
 
-std::ostream& operator<<(std::ostream& stream, TextTable const& table) {
-    table.setup();
-    stream << table.ruler() << "\n";
-    int line = 0;
-    for (auto rowIterator = table.rows().begin();
-         rowIterator != table.rows().end(); ++rowIterator) {
-        TextTable::Row const& row = *rowIterator;
-        stream << table.vertical();
-        for (unsigned i = 0; i < row.size(); ++i) {
-            auto alignment = table.alignment(i) == TextTable::Alignment::LEFT
-                                 ? std::left
-                                 : std::right;
-            stream << std::setw(table.width(i))  << alignment << " " + row[i];
-                stream << table.vertical();
-
-        }
-        stream << "\n";
-        if (line<1 || line == table.rows().size()-1) {
-            stream << table.ruler() << "\n";
-        }
-        line ++;
-    }
-
-    return stream;
-}
 }  // namespace base
 }  // namespace fesql
+#endif /* !FESQL_BASE_TEXTTABLE_H_ */

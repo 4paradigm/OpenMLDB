@@ -16,7 +16,9 @@
  */
 
 #include "sdk/tablet_sdk.h"
+#include "sdk/dbms_sdk.h"
 
+#include "dbms/dbms_server_impl.h"
 #include "tablet/tablet_server_impl.h"
 #include "tablet/tablet_internal_sdk.h"
 #include "gtest/gtest.h"
@@ -89,9 +91,95 @@ TEST_F(TabletSdkTest, test_normal) {
     query.db = "db1";
     query.sql = "select col1, col2 from t1 limit 1;";
     std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
-    if (rs) {}
+    if (rs) {
+        ASSERT_EQ(2, rs->GetColumnCnt());
+        ASSERT_EQ("col1", rs->GetColumnName(0));
+        ASSERT_EQ("col2", rs->GetColumnName(1));
+        ASSERT_EQ(0, rs->GetRowCnt());
+    }
 }
 
+TEST_F(TabletSdkTest, test_create_and_query) {
+    //prepare servive
+    brpc::Server server;
+    brpc::Server tablet_server;
+    int tablet_port = 8300;
+    int port = 9500;
+
+    tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
+    ASSERT_TRUE(tablet->Init());
+    brpc::ServerOptions options;
+    if (0 != tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+        LOG(WARNING) << "Fail to add tablet service";
+        exit(1);
+    }
+    tablet_server.Start(tablet_port, &options);
+
+    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
+    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        LOG(WARNING) << "Fail to add dbms service";
+        exit(1);
+    }
+    server.Start(port, &options);
+    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
+
+    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    ASSERT_TRUE(nullptr != dbms_sdk);
+
+    // create database db1
+    {
+        fesql::base::Status status;
+        DatabaseDef db;
+        db.name = "db_1";
+        dbms_sdk->CreateDatabase(db, status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    {
+        // create table db1
+        DatabaseDef db;
+        std::string sql =
+            "create table t1(\n"
+            "    column1 int NOT NULL,\n"
+            "    column2 double NOT NULL,\n"
+            "    column3 float NOT NULL,\n"
+            "    column4 bigint NOT NULL\n"
+            ");";
+
+        db.name = "db_1";
+        fesql::base::Status status;
+        fesql::sdk::ExecuteResult result;
+        fesql::sdk::ExecuteRequst request;
+        request.database = db;
+        request.sql = sql;
+        dbms_sdk->ExecuteScript(request, result, status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    std::unique_ptr<TabletSdk> sdk = CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
+    if (sdk) {
+        ASSERT_TRUE(true);
+    }else {
+        ASSERT_FALSE(true);
+    }
+    Query query;
+    query.db = "db_1";
+    query.sql = "select column1, column2 from t1 limit 1;";
+    std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+    if (rs) {
+        ASSERT_EQ(2, rs->GetColumnCnt());
+        ASSERT_EQ("column1", rs->GetColumnName(0));
+        ASSERT_EQ("column2", rs->GetColumnName(1));
+        ASSERT_EQ(0, rs->GetRowCnt());
+    }
+
+    delete dbms;
+    delete dbms_sdk;
+    delete tablet;
+
+
+}
 }  // namespace sdk
 }  // namespace fesql
 
