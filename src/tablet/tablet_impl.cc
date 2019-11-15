@@ -51,6 +51,8 @@ DECLARE_int32(task_pool_size);
 DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
+DECLARE_bool(recycle_bin_enabled);
+DECLARE_uint32(recycle_ttl);
 DECLARE_string(recycle_bin_root_path);
 DECLARE_string(recycle_ssd_bin_root_path);
 DECLARE_string(recycle_hdd_bin_root_path);
@@ -147,6 +149,9 @@ bool TabletImpl::Init() {
     }
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+    if (FLAGS_recycle_ttl != 0) {
+        task_pool_.DelayTask(FLAGS_recycle_ttl*60*1000, boost::bind(&TabletImpl::SchedDelRecycle, this));
+    }
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
@@ -2859,9 +2864,14 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
         return 0;
     }
 
-    std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + 
-           "_" + std::to_string(pid) + "_" + ::rtidb::base::GetNowTime();
-    ::rtidb::base::Rename(source_path, recycle_path);
+    if(FLAGS_recycle_bin_enabled) {
+        std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + 
+                "_" + std::to_string(pid) + "_" + ::rtidb::base::GetNowTime();
+        ::rtidb::base::Rename(source_path, recycle_path);
+    } else {
+        ::rtidb::base::RemoveDirRecursive(source_path);
+    }
+
     if (task_ptr) {
         std::lock_guard<std::mutex> lock(mu_);
         task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
@@ -3125,19 +3135,25 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
     std::string binlog_path = db_path + "/binlog";
     if (::rtidb::base::IsExists(binlog_path)) {
         //TODO add clean the recycle bin logic
-        std::string recycle_bin_root_path;
-        ok = ChooseRecycleBinRootPath(tid, pid, mode, recycle_bin_root_path);
-        if (!ok) {
-            response->set_code(139);
-            response->set_msg("fail to get recycle root path");
-            PDLOG(WARNING, "fail to get table recycle root path");
-            return;
-        }
-        std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + 
-               "_" + std::to_string(pid) + "_binlog_" + ::rtidb::base::GetNowTime();
-        ::rtidb::base::Rename(binlog_path, recycle_path);
-        PDLOG(INFO, "binlog has moved form %s to %s. tid %u pid %u", 
+        if(FLAGS_recycle_bin_enabled) {
+            std::string recycle_bin_root_path;
+            ok = ChooseRecycleBinRootPath(tid, pid, mode, recycle_bin_root_path);
+            if (!ok) {
+                response->set_code(139);
+                response->set_msg("fail to get recycle root path");
+                PDLOG(WARNING, "fail to get table recycle root path");
+                return;
+            }
+            std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + 
+                    "_" + std::to_string(pid) + "_binlog_" + ::rtidb::base::GetNowTime();
+            ::rtidb::base::Rename(binlog_path, recycle_path);
+            PDLOG(INFO, "binlog has moved form %s to %s. tid %u pid %u", 
                     binlog_path.c_str(), recycle_path.c_str(), tid, pid);
+        } else {
+            ::rtidb::base::RemoveDirRecursive(binlog_path);
+            PDLOG(INFO, "binlog %s has removed. tid %u pid %u", 
+                    binlog_path.c_str(), tid, pid);
+        }
     }
 	response->set_code(0);
 	response->set_msg("ok");
@@ -3776,6 +3792,35 @@ bool TabletImpl::ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
     return true;
 }
 
+void TabletImpl::DelRecycle(const std::string &path) {
+    std::vector<std::string> file_vec;
+    ::rtidb::base::GetChildFileName(path, file_vec);
+    for(auto file_path : file_vec) {
+        std::string file_name = ::rtidb::base::ParseFileNameFromPath(file_path);
+        std::vector<std::string> parts;
+        int64_t recycle_time;
+        int64_t now_time = ::baidu::common::timer::get_micros() / 1000000;
+        ::rtidb::base::SplitString(file_name, "_", parts);
+        if(parts.size() == 3) {
+            recycle_time = ::rtidb::base::ParseTimeToSecond(parts[2], "%Y%m%d%H%M%S");
+        } else {
+            recycle_time = ::rtidb::base::ParseTimeToSecond(parts[3], "%Y%m%d%H%M%S");
+        }
+        if (FLAGS_recycle_ttl != 0 && (now_time - recycle_time) > FLAGS_recycle_ttl * 60) {
+            PDLOG(INFO, "delete recycle dir %s", file_path.c_str());
+            ::rtidb::base::RemoveDirRecursive(file_path);
+        }
+    }
+}
+
+void TabletImpl::SchedDelRecycle() {
+    for (auto kv : mode_recycle_root_paths_) {
+        for(auto path : kv.second) {
+            DelRecycle(path);
+        }
+    }
+    task_pool_.DelayTask(FLAGS_recycle_ttl*60*1000, boost::bind(&TabletImpl::SchedDelRecycle, this));
+}
 
 bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
 
