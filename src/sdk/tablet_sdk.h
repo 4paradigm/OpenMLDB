@@ -34,9 +34,9 @@ class ResultSet {
  public:
     ResultSet() {}
     virtual ~ResultSet() {}
-    virtual uint32_t GetColumnCnt() = 0;
-    virtual const std::string& GetColumnName(uint32_t i) = 0;
-    virtual uint32_t GetRowCnt() = 0;
+    virtual const uint32_t GetColumnCnt() const = 0;
+    virtual const std::string& GetColumnName(uint32_t i) const = 0;
+    virtual const uint32_t GetRowCnt() const = 0;
 };
 
 class TabletSdk {

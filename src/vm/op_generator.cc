@@ -86,12 +86,12 @@ bool OpGenerator::GenSQL(const ::fesql::node::NodePointVector &trees,
     ::fesql::node::PlanNodeList pnl;
     int ret =  planer.CreatePlanTree(trees, pnl, status);
     if (ret != 0) {
-        LOG(WARNING) << "fail to create sql plan";
+        LOG(WARNING) << "Fail create sql plan: " << status.msg;
         return false;
     }
     bool ok = RoutingNode(pnl[0]->GetChildren()[0], db, module, ops);
     if (!ok) {
-        LOG(WARNING) << "fail to gen op";
+        LOG(WARNING) << "Fail to gen op";
     }
     return ok;
 }
