@@ -181,14 +181,14 @@ class ProjectPlanNode : public LeafPlanNode {
 
     void SetName(const std::string name) { name_ = name; }
 
-    node::SQLNode *GetExpression() const { return expression_; }
+    node::ExprNode* GetExpression() const { return expression_; }
 
-    void SetExpression(node::SQLNode *expression) { expression_ = expression; }
+    void SetExpression(node::ExprNode* expression) { expression_ = expression; }
 
     bool IsWindowProject() { return !w_.empty(); }
 
  private:
-    node::SQLNode *expression_;
+    node::ExprNode *expression_;
     std::string name_;
     std::string table_;
     std::string w_;

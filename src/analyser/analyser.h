@@ -23,6 +23,7 @@ namespace fesql {
 namespace analyser {
 
 using base::Status;
+using node::ExprNode;
 using node::NodeManager;
 using node::NodePointVector;
 using node::SQLNode;

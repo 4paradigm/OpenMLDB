@@ -22,92 +22,84 @@ namespace fesql {
 namespace codegen {
 
 SQLExprIRBuilder::SQLExprIRBuilder(::llvm::BasicBlock* block,
-        ScopeVar* scope_var,
-        BufIRBuilder* buf_ir_builder,
-        const std::string& row_ptr_name,
-        const std::string& output_ptr_name,
-        ::llvm::Module* module):block_(block),
-    sv_(scope_var), row_ptr_name_(row_ptr_name),
-    output_ptr_name_(output_ptr_name),
-    buf_ir_builder_(buf_ir_builder),
-    module_(module){
-}
+                                   ScopeVar* scope_var,
+                                   BufIRBuilder* buf_ir_builder,
+                                   const std::string& row_ptr_name,
+                                   const std::string& output_ptr_name,
+                                   ::llvm::Module* module)
+    : block_(block),
+      sv_(scope_var),
+      row_ptr_name_(row_ptr_name),
+      output_ptr_name_(output_ptr_name),
+      buf_ir_builder_(buf_ir_builder),
+      module_(module) {}
 
 SQLExprIRBuilder::~SQLExprIRBuilder() {}
 
-bool SQLExprIRBuilder::Build(const ::fesql::node::SQLNode*  node,
-        ::llvm::Value** output,
-        std::string& col_name) {
-
+bool SQLExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
+                             ::llvm::Value** output, std::string& col_name) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "node or output is null";
         return false;
     }
-
-    switch (node->GetType()) {
-        case ::fesql::node::kColumnRef:
-            {
-                const ::fesql::node::ColumnRefNode* n = 
-                    (const ::fesql::node::ColumnRefNode*)node;
-                col_name.assign(n->GetColumnName());
-                return BuildColumnRef(n, output);
-            }
-        case ::fesql::node::kFunc:
-            {
-                const ::fesql::node::FuncNode* fn 
-                    = (const ::fesql::node::FuncNode*)node;
-                return BuildCallFn(fn, output);
-            }
-        default:
-            {
-                LOG(WARNING) << "not supported";
-                return false;
-            }
+    switch (node->GetExprType()) {
+        case ::fesql::node::kExprColumnRef: {
+            const ::fesql::node::ColumnRefNode* n =
+                (const ::fesql::node::ColumnRefNode*)node;
+            col_name.assign(n->GetColumnName());
+            return BuildColumnRef(n, output);
+        }
+        case ::fesql::node::kExprFunc: {
+            const ::fesql::node::FuncNode* fn =
+                (const ::fesql::node::FuncNode*)node;
+            return BuildCallFn(fn, output);
+        }
+        default: {
+            LOG(WARNING) << "not supported";
+            return false;
+        }
     }
 }
 
 bool SQLExprIRBuilder::BuildCallFn(const ::fesql::node::FuncNode* call_fn,
-        ::llvm::Value** output) {
-
-    if (call_fn == NULL 
-            || output == NULL) {
+                                   ::llvm::Value** output) {
+    if (call_fn == NULL || output == NULL) {
         LOG(WARNING) << "call fn or output is null";
         return false;
     }
 
     ::llvm::StringRef name(call_fn->GetFunctionName());
-    // TODO(wangtaize) opt function location 
-    ::llvm::Function* fn =  module_->getFunction(name);
+    // TODO(wangtaize) opt function location
+    ::llvm::Function* fn = module_->getFunction(name);
 
     if (fn == NULL) {
-        LOG(WARNING) << "fail to find func with name " << call_fn->GetFunctionName();
+        LOG(WARNING) << "fail to find func with name "
+                     << call_fn->GetFunctionName();
         return true;
     }
 
-    const std::vector<::fesql::node::SQLNode* >& args = call_fn->GetArgs();
-    std::vector<::fesql::node::SQLNode* >::const_iterator it = args.begin();
+    const std::vector<::fesql::node::SQLNode*>& args = call_fn->GetArgs();
+    std::vector<::fesql::node::SQLNode*>::const_iterator it = args.begin();
     std::vector<::llvm::Value*> llvm_args;
 
     for (; it != args.end(); ++it) {
-        const ::fesql::node::SQLNode* arg = *it;
-        switch (arg->GetType()) {
-            case ::fesql::node::kColumnRef:
-                {
-                    ::llvm::Value* llvm_arg = NULL;
-                    const ::fesql::node::ColumnRefNode* n = 
+        const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
+        switch (arg->GetExprType()) {
+            case ::fesql::node::kExprColumnRef: {
+                ::llvm::Value* llvm_arg = NULL;
+                const ::fesql::node::ColumnRefNode* n =
                     (const ::fesql::node::ColumnRefNode*)arg;
-                    bool ok = BuildColumnRef(n, &llvm_arg);
-                    if (!ok) {
-                        return false;
-                    }
-                    llvm_args.push_back(llvm_arg);
-                    break;
-                }
-            default:
-                {
-                    LOG(WARNING) << "not supported type";
+                bool ok = BuildColumnRef(n, &llvm_arg);
+                if (!ok) {
                     return false;
                 }
+                llvm_args.push_back(llvm_arg);
+                break;
+            }
+            default: {
+                LOG(WARNING) << "not supported type";
+                return false;
+            }
         }
     }
     // TODO(wangtaize) args type check
@@ -118,8 +110,7 @@ bool SQLExprIRBuilder::BuildCallFn(const ::fesql::node::FuncNode* call_fn,
 }
 
 bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
-        ::llvm::Value** output) {
-
+                                      ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "column ref node is null";
         return false;
@@ -139,9 +130,10 @@ bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
     // not found
     if (!ok) {
         // TODO(wangtaize) buf ir builder add build get field ptr
-        ok = buf_ir_builder_->BuildGetField(node->GetColumnName(), row_ptr, &value);
+        ok = buf_ir_builder_->BuildGetField(node->GetColumnName(), row_ptr,
+                                            &value);
         if (!ok || value == NULL) {
-            LOG(WARNING) <<  "fail to find column " << node->GetColumnName();
+            LOG(WARNING) << "fail to find column " << node->GetColumnName();
             return false;
         }
 
@@ -150,34 +142,19 @@ bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
             *output = value;
         }
         return ok;
-    }else {
+    } else {
         *output = value;
     }
     return true;
 }
-
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block), scope_var_(scope_var) {}
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
-bool ExprIRBuilder::Build(const ::fesql::node::FnNode* node,
+bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                           ::llvm::Value** output) {
-    if (node == NULL || output == NULL) {
-        LOG(WARNING) << "input node or output is null";
-        return false;
-    }
-    // TODO use switch
-    if (node->GetType() == ::fesql::node::kFnExprBinary) {
-        return BuildBinaryExpr((::fesql::node::FnBinaryExpr*)node, output);
-    } else {
-        return BuildUnaryExpr(node, output);
-    }
-}
-
-bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::FnNode* node,
-                                   ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
@@ -185,8 +162,8 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::FnNode* node,
     LOG(INFO) << "build unary " << ::fesql::node::FnNodeName(node->GetType());
     // TODO support more node
     ::llvm::IRBuilder<> builder(block_);
-    switch (node->GetType()) {
-        case ::fesql::node::kPrimary: {
+    switch (node->GetExprType()) {
+        case ::fesql::node::kExprPrimary: {
             ::fesql::node::ConstNode* const_node =
                 (::fesql::node::ConstNode*)node;
 
@@ -201,8 +178,8 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::FnNode* node,
                     return false;
             }
         }
-        case ::fesql::node::kFnId: {
-            ::fesql::node::FnIdNode* id_node = (::fesql::node::FnIdNode*)node;
+        case ::fesql::node::kExprId: {
+            ::fesql::node::ExprIdNode* id_node = (::fesql::node::ExprIdNode*)node;
             ::llvm::Value* ptr = NULL;
             bool ok = scope_var_->FindVar(id_node->GetName(), &ptr);
             if (!ok || ptr == NULL) {
@@ -216,11 +193,11 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::FnNode* node,
             }
             return true;
         }
-        case ::fesql::node::kFnExprBinary: {
-            return BuildBinaryExpr((::fesql::node::FnBinaryExpr*)node, output);
+        case ::fesql::node::kExprBinary: {
+            return BuildBinaryExpr((::fesql::node::BinaryExpr*)node, output);
         }
-        case ::fesql::node::kFnExprUnary: {
-            return BuildUnaryExpr(node->children[0], output);
+        case ::fesql::node::kExprUnary: {
+            return Build(node->children[0], output);
         }
         default:
             LOG(WARNING) << ::fesql::node::FnNodeName(node->GetType())
@@ -229,7 +206,30 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::FnNode* node,
     }
 }
 
-bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::FnBinaryExpr* node,
+bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
+                                   ::llvm::Value** output) {
+    if (node == NULL || output == NULL) {
+        LOG(WARNING) << "input node or output is null";
+        return false;
+    }
+
+    if (node->children.size() != 1) {
+        LOG(WARNING) << "invalid unary expr node ";
+        return false;
+    }
+
+    LOG(INFO) << "build unary"
+              << ::fesql::node::ExprTypeName(node->GetExprType());
+    ::llvm::Value* left = NULL;
+    bool ok = Build(node->children[0], &left);
+    if (!ok) {
+        LOG(WARNING) << "fail to build unary child";
+        return false;
+    }
+    LOG(WARNING) << "can't support unary yet";
+    return false;
+}
+bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                                     ::llvm::Value** output) {
 
     if (node == NULL || output == NULL) {
@@ -244,14 +244,14 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::FnBinaryExpr* node,
 
     LOG(INFO) << "build binary " << ::fesql::node::FnNodeName(node->GetType());
     ::llvm::Value* left = NULL;
-    bool ok = BuildUnaryExpr(node->children[0], &left);
+    bool ok = Build(node->children[0], &left);
     if (!ok) {
         LOG(WARNING) << "fail to build left node";
         return false;
     }
 
     ::llvm::Value* right = NULL;
-    ok = BuildUnaryExpr(node->children[1], &right);
+    ok = Build(node->children[1], &right);
     if (!ok) {
         LOG(WARNING) << "fail to build right node";
         return false;

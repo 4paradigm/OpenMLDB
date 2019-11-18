@@ -61,7 +61,7 @@ void AddFunc(const std::string& fn,
     int ret = parser.parse(fn, trees, &manager, status);
     ASSERT_EQ(0, ret);
     FnIRBuilder fn_ir_builder(m);
-    bool ok = fn_ir_builder.Build((node::FnNode *) trees[0]);
+    bool ok = fn_ir_builder.Build((node::FnNodeList *) trees[0]);
     ASSERT_TRUE(ok);
 }
 

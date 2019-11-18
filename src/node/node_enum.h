@@ -26,13 +26,10 @@ enum SQLNodeType {
     kExpr,
     kResTarget,
     kTable,
-    kFunc,
-    kType,
     kWindowFunc,
     kWindowDef,
     kFrameBound,
     kFrames,
-    kColumnRef,
     kColumnDesc,
     kColumnIndex,
     kIndexKey,
@@ -42,11 +39,9 @@ enum SQLNodeType {
     kName,
     kConst,
     kLimit,
-    kAll,
     kList,
     kOrderBy,
 
-    kPrimary,
 
     kDesc,
     kAsc,
@@ -58,20 +53,30 @@ enum SQLNodeType {
     kFollowing,
     kCurrent,
 
+    kFn,
     kFnDef,
     kFnValue,
-    kFnId,
     kFnAssignStmt,
     kFnReturnStmt,
-    kFnExpr,
-    kFnExprBinary,
-    kFnExprUnary,
     kFnPara,
     kFnParaList,
     kFnList,
     kUnknow
 };
 
+enum ExprType {
+    kExprBinary,
+    kExprUnary,
+    kExprIn,
+    kExprFunc,
+    kExprCase,
+    kExprCast,
+    kExprId,
+    kExprColumnRef,
+    kExprPrimary,
+    kExprAll,
+    kExprUnknow
+};
 enum DataType {
     kTypeBool,
     kTypeInt16,

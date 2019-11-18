@@ -47,7 +47,7 @@ class OpGenerator {
  private:
 
     bool GenFnDef(::llvm::Module* module,
-            const ::fesql::node::FnNode* node);
+            const ::fesql::node::FnNodeList* node);
 
     bool GenSQL(const ::fesql::node::NodePointVector& node,
                 const std::string& db,

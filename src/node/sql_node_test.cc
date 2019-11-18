@@ -39,7 +39,7 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
     SQLNode *node = node_manager_->MakeColumnRefNode("col", "t");
     ColumnRefNode *columnnode = dynamic_cast<ColumnRefNode *>(node);
     std::cout << *node << std::endl;
-    ASSERT_EQ(kColumnRef, columnnode->GetType());
+    ASSERT_EQ(kExprColumnRef, columnnode->GetExprType());
     ASSERT_EQ("t", columnnode->GetRelationName());
     ASSERT_EQ("col", columnnode->GetColumnName());
 }
@@ -152,7 +152,8 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
     FrameBound *end = dynamic_cast<FrameBound *>(node_ptr->GetEnd());
     ASSERT_EQ(kPreceding, end->GetBoundType());
 
-    ASSERT_EQ(kPrimary, end->GetOffset()->GetType());
+    ASSERT_EQ(kExpr, end->GetOffset()->GetType());
+    ASSERT_EQ(kExprPrimary, dynamic_cast<ExprNode*>(end->GetOffset())->GetExprType());
     ConstNode *const_ptr = dynamic_cast<ConstNode *>(end->GetOffset());
     ASSERT_EQ(kTypeInt64, const_ptr->GetDataType());
     ASSERT_EQ(86400000, const_ptr->GetLong());

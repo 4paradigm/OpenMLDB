@@ -62,13 +62,18 @@ class TabletServerImpl : public TabletServer, public vm::TableMgr {
             QueryResponse* response,
             Closure* done);
 
+    void Insert(RpcController* ctrl,
+                const InsertRequest* request,
+                InsertResponse* response,
+                Closure* done);
+
    std::shared_ptr<vm::TableStatus> GetTableDef(const std::string& db,
                                             const std::string& name) ;
 
    std::shared_ptr<vm::TableStatus> GetTableDef(const std::string& db,
                                             const uint32_t tid);
 
-   
+
  private:
     inline std::shared_ptr<vm::TableStatus> GetTableLocked(const std::string& db,
             uint32_t tid, uint32_t pid);
