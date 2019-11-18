@@ -2353,7 +2353,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
             PDLOG(WARNING, "cur nameserver is follower");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
-                request->zone_info().replica_alias() != zone_info_.replica_alias() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
             response->set_code(502);
             response->set_msg("zone_info mismathch");
@@ -2499,7 +2498,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
                 tmp_nsc = nsc_;
             }
             for (auto kv : tmp_nsc) {
-                if( CreateTableForReplicaClusterOP(*table_info, kv.first)) {
+                if(CreateTableForReplicaClusterOP(*table_info, kv.first)) {
                     PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
                     break;
                 }
@@ -5556,7 +5555,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         nsc_.insert(std::make_pair(request->alias(), cluster_info));
 
         //create tables for replica cluster
-        if (!table_info_.empty()) {
+        if ((!table_info_.empty()) && (!nsc_.empty())) {
             decltype(nsc_) tmp_nsc;
             std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_list;
             {
@@ -5627,11 +5626,20 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
         }
         std::string zone_info;
         request->SerializeToString(&zone_info);
-        if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", zone_info)) {
-            code = 304;
-            rpc_msg = "set zk failed";
-            PDLOG(WARNING, "set zk failed, save follower value failed");
-            break;
+        if (zk_client_->IsExistNode(zk_zone_data_path_ + "/follower") > 0) {
+            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/follower", zone_info)) {
+                PDLOG(WARNING, "write follower to zk failed, alias: %s", request->replica_alias().c_str());
+                code = 450;
+                rpc_msg = "create zk failed";
+                break;
+            } 
+        } else {
+            if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", zone_info)) {
+                code = 304;
+                rpc_msg = "set zk failed";
+                PDLOG(WARNING, "set zk failed, save follower value failed");
+                break;
+            }
         }
         follower_.store(request->follower(), std::memory_order_release);
         zone_info_.CopyFrom(*request);
