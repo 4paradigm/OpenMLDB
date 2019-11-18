@@ -23,6 +23,10 @@
 namespace fesql {
 namespace vm {
 
+struct JITString {
+    int32_t size;
+    int8_t* data;
+};
 
 class FeSQLJIT : public ::llvm::orc::LLJIT {
     template <typename,

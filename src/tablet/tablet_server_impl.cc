@@ -35,6 +35,7 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
         const CreateTableRequest* request,
         CreateTableResponse* response,
         Closure* done) {
+
     brpc::ClosureGuard done_guard(done);
     ::fesql::common::Status* status = response->mutable_status();
     if (request->pids_size() == 0) {
@@ -57,6 +58,7 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
         std::unique_ptr<storage::Table> table(new storage::Table(request->table().name(),
                     request->tid(),
                     request->pids(i), 1));
+
         bool ok = table->Init();
 
         if (!ok) {
@@ -77,6 +79,40 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
     }
     status->set_code(common::kOk);
     LOG(INFO) << "create table with name " << request->table().name() << " done";
+}
+
+void TabletServerImpl::Insert(RpcController* ctrl,
+        const InsertRequest* request,
+        InsertResponse* response,
+        Closure* done) {
+
+    brpc::ClosureGuard done_guard(done);
+    ::fesql::common::Status* status = response->mutable_status();
+    if (request->db().empty()
+            || request->table().empty()) {
+        status->set_code(common::kBadRequest);
+        status->set_msg("db or table name is empty");
+        return;
+    }
+    std::shared_ptr<vm::TableStatus> table = GetTableDef(request->db(),
+            request->table());
+
+    if (!table) {
+        status->set_code(common::kTableNotFound);
+        status->set_msg("table is not found");
+        return;
+    }
+
+    bool ok = table->table->Put(request->key(), request->ts(),
+            request->row().c_str(), request->row().size());
+    if (!ok) {
+        status->set_code(common::kTablePutFailed);
+        status->set_msg("fail to put row");
+        LOG(WARNING) << "fail to put data to table " << request->table() 
+            << " with key " << request->key();
+        return;
+    }
+    status->set_code(common::kOk);
 }
 
 bool TabletServerImpl::AddTableLocked(std::shared_ptr<vm::TableStatus>& table) {

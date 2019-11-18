@@ -67,6 +67,7 @@ BufIRBuilder::~BufIRBuilder() {}
 bool BufIRBuilder::BuildGetField(const std::string& name,
        ::llvm::Value* row_ptr,
        ::llvm::Value** output) {
+
     if (output == NULL) {
         LOG(WARNING) << "output is null";
         return false;
@@ -82,11 +83,13 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
     int32_t offset = it->second.second;
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* llvm_type = NULL;
+
     bool ok = GetLLVMType(builder, fe_type, &llvm_type);
     if (!ok) {
         LOG(WARNING) << "fail to convert fe type to llvm type ";
         return false;
     }
+
     ::llvm::ConstantInt* llvm_offse = builder.getInt32(offset);
     return BuildLoadOffset(builder, row_ptr, llvm_offse, llvm_type, output);
 }

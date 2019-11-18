@@ -21,7 +21,7 @@
 namespace fesql {
 namespace codegen {
 
-struct Slice {
+struct IRString {
     int32_t size;
     char* data;
 };

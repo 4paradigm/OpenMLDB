@@ -42,10 +42,12 @@ class FnIRBuilder {
 
     bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node,
                          ::llvm::BasicBlock* block);
+
     bool BuildReturnStmt(const ::fesql::node::FnReturnStmt* node,
                          ::llvm::BasicBlock* block);
 
  private:
+
     bool MapLLVMType(const ::fesql::node::DataType& fn_type,
                      ::llvm::Type** type);
 

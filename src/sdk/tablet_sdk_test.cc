@@ -173,7 +173,6 @@ TEST_F(TabletSdkTest, test_create_and_query) {
         ASSERT_EQ("column2", rs->GetColumnName(1));
         ASSERT_EQ(0u, rs->GetRowCnt());
     }
-
     delete dbms;
     delete dbms_sdk;
     delete tablet;

@@ -44,6 +44,7 @@ class TabletSdk {
  public:
     TabletSdk() = default;
     virtual ~TabletSdk() {}
+   // virtual void SyncPut() = 0;
     virtual std::unique_ptr<ResultSet> SyncQuery(const Query& query) = 0;
 };
 

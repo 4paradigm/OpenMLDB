@@ -30,6 +30,7 @@ add_test(engine_test engine_test
     --gtest_output=xml:${CMAKE_BINARY_DIR}/engine_test.xml)
 list(APPEND test_list engine_test)
 
-
-
+add_executable(engine_bm engine_bm.cc)
+target_link_libraries(engine_bm fesql_vm fesql_codegen fesql_parser fesql_node
+    fesql_planner fesql_storage fesql_proto benchmark protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 

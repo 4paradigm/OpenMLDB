@@ -50,8 +50,10 @@ class DBMSSdk {
                                 base::Status &status) = 0;
     virtual bool IsExistDatabase(const DatabaseDef &database,
                                 base::Status &status) = 0;
-    virtual void GetSchema(const DatabaseDef &database, const std::string &name, type::TableDef &table,
-                            base::Status &status) = 0;
+    virtual void GetSchema(const DatabaseDef &database, 
+                           const std::string &name, 
+                           type::TableDef &table,
+                           base::Status &status) = 0;
     virtual void GetTables(const DatabaseDef &database, std::vector<std::string> &names,
                             base::Status &status) = 0;
     virtual void GetDatabases(std::vector<std::string> &names,
