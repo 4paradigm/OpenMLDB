@@ -5520,40 +5520,41 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
     int code = 0;
     std::string rpc_msg("ok");
     do {
-        if (nsc_.find(request->alias()) != nsc_.end()) {
-            code = 400;
-            rpc_msg = "replica cluster alias duplicate";
-            break;
-        }
-        std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(*request);
-        if ((code = cluster_info->Init(rpc_msg)) != 0) {
-            PDLOG(WARNING, "%s init failed, error: %s", request->alias().c_str(), rpc_msg.c_str());
-            break;
-        }
-        std::lock_guard<std::mutex> lock(mu_);
-        std::string cluster_value, value;
-        request->SerializeToString(&cluster_value);
-        if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), value)) {
-            if(!zk_client_->SetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
-                PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
-                code = 304;
-                rpc_msg = "set zk failed";
+        {
+            if (nsc_.find(request->alias()) != nsc_.end()) {
+                code = 400;
+                rpc_msg = "replica cluster alias duplicate";
                 break;
             }
-        } else {
-            if (!zk_client_->CreateNode(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
-                PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
-                code = 450;
-                rpc_msg = "create zk failed";
+            std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(*request);
+            if ((code = cluster_info->Init(rpc_msg)) != 0) {
+                PDLOG(WARNING, "%s init failed, error: %s", request->alias().c_str(), rpc_msg.c_str());
                 break;
             }
-        }
-        if (!cluster_info->AddReplicaClusterByNs(request->alias(), zone_info_.zone_name(), zone_info_.zone_term(), rpc_msg)) {
-            code = 300;
-            break;
-        }
-        nsc_.insert(std::make_pair(request->alias(), cluster_info));
-
+            std::lock_guard<std::mutex> lock(mu_);
+            std::string cluster_value, value;
+            request->SerializeToString(&cluster_value);
+            if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), value)) {
+                if(!zk_client_->SetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
+                    PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
+                    code = 304;
+                    rpc_msg = "set zk failed";
+                    break;
+                }
+            } else {
+                if (!zk_client_->CreateNode(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
+                    PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
+                    code = 450;
+                    rpc_msg = "create zk failed";
+                    break;
+                }
+            }
+            if (!cluster_info->AddReplicaClusterByNs(request->alias(), zone_info_.zone_name(), zone_info_.zone_term(), rpc_msg)) {
+                code = 300;
+                break;
+            }
+            nsc_.insert(std::make_pair(request->alias(), cluster_info));
+        } 
         //create tables for replica cluster
         if ((!table_info_.empty()) && (!nsc_.empty())) {
             decltype(nsc_) tmp_nsc;
