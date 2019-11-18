@@ -94,11 +94,11 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     int64_t val = 86400000L;
     SQLNodeList *partitions = node_manager_->MakeNodeList();
     SQLNode *ptr1 = node_manager_->MakeColumnRefNode("keycol", "");
-    partitions->PushFront(node_manager_->MakeLinkedNode(ptr1));
+    partitions->PushBack(ptr1);
 
     SQLNode *ptr2 = node_manager_->MakeColumnRefNode("col1", "");
     SQLNodeList *orders = node_manager_->MakeNodeList();
-    orders->PushFront(node_manager_->MakeLinkedNode(ptr2));
+    orders->PushBack(ptr2);
 
     SQLNode *frame = node_manager_->MakeFrameNode(
         node_manager_->MakeFrameBound(kPreceding, NULL),

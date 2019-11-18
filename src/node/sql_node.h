@@ -161,37 +161,24 @@ struct SQLLinkedNode {
      */
     ~SQLLinkedNode() {}
 };
+
 typedef std::vector<SQLNode *> NodePointVector;
 class SQLNodeList {
  public:
-    SQLNodeList() : size_(0), head_(NULL), tail_(NULL) {}
-
-    SQLNodeList(SQLLinkedNode *head, SQLLinkedNode *tail, size_t size)
-        : size_(size), head_(head), tail_(tail) {}
-
-    /**
-     * SQLNodeList 只负责存储指针，不释放指针管理的区域
-     */
+    SQLNodeList() {}
     ~SQLNodeList() {}
-
-    const size_t GetSize() { return size_; }
-
-    SQLLinkedNode *GetHead() { return head_; }
-
-    void Print(std::ostream &output) const { Print(output, ""); }
-
+    void PushBack(SQLNode *node_ptr) { list_.push_back(node_ptr); }
+    const int GetSize() const {
+        return list_.size();
+    }
+    std::vector<SQLNode*> GetList() const {
+        return list_;
+    }
     void Print(std::ostream &output, const std::string &tab) const;
-    void PushFront(SQLLinkedNode *linked_node_ptr);
-    void AppendNodeList(SQLNodeList *node_list_ptr);
-
-    friend std::ostream &operator<<(std::ostream &output,
-                                    const SQLNodeList &thiz);
-
  private:
-    size_t size_;
-    SQLLinkedNode *head_;
-    SQLLinkedNode *tail_;
+    std::vector<SQLNode *> list_;
 };
+
 class ExprNode : public SQLNode {
  public:
     explicit ExprNode(ExprType expr_type)
@@ -877,7 +864,7 @@ void PrintSQLNode(std::ostream &output, const std::string &org_tab,
                   SQLNode *node_ptr, const std::string &item_name,
                   bool last_child);
 void PrintSQLVector(std::ostream &output, const std::string &tab,
-                    NodePointVector vec, const std::string &vector_name,
+                    const NodePointVector &vec, const std::string &vector_name,
                     bool last_item);
 void PrintValue(std::ostream &output, const std::string &org_tab,
                 const std::string &value, const std::string &item_name,

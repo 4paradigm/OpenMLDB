@@ -208,44 +208,41 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
 }
 
 SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *index_item_list) {
-    ColumnIndexNode *node_ptr = new ColumnIndexNode();
+    ColumnIndexNode *index_ptr = new ColumnIndexNode();
     if (nullptr != index_item_list && 0 != index_item_list->GetSize()) {
-        SQLLinkedNode *cur = index_item_list->GetHead();
-        while (nullptr != cur && nullptr != cur->node_ptr_) {
-            switch (cur->node_ptr_->GetType()) {
+        for (auto node_ptr : index_item_list->GetList()) {
+            switch (node_ptr->GetType()) {
                 case kIndexKey:
-                    node_ptr->SetKey(
-                        dynamic_cast<IndexKeyNode *>(cur->node_ptr_)->GetKey());
+                    index_ptr->SetKey(
+                        dynamic_cast<IndexKeyNode *>(node_ptr)->GetKey());
                     break;
                 case kIndexTs:
-                    node_ptr->SetTs(dynamic_cast<IndexTsNode *>(cur->node_ptr_)
-                                        ->GetColumnName());
+                    index_ptr->SetTs(
+                        dynamic_cast<IndexTsNode *>(node_ptr)->GetColumnName());
                     break;
                 case kIndexVersion:
-                    node_ptr->SetVersion(
-                        dynamic_cast<IndexVersionNode *>(cur->node_ptr_)
+                    index_ptr->SetVersion(
+                        dynamic_cast<IndexVersionNode *>(node_ptr)
                             ->GetColumnName());
 
-                    node_ptr->SetVersionCount(
-                        dynamic_cast<IndexVersionNode *>(cur->node_ptr_)
-                            ->GetCount());
+                    index_ptr->SetVersionCount(
+                        dynamic_cast<IndexVersionNode *>(node_ptr)->GetCount());
                     break;
                 case kIndexTTL: {
                     IndexTTLNode *ttl_node =
-                        dynamic_cast<IndexTTLNode *>(cur->node_ptr_);
-                    node_ptr->SetTTL(ttl_node->GetTTLExpr());
+                        dynamic_cast<IndexTTLNode *>(node_ptr);
+                    index_ptr->SetTTL(ttl_node->GetTTLExpr());
                     break;
                 }
                 default: {
                     LOG(WARNING) << "can not handle type "
-                                 << NameOfSQLNodeType(cur->node_ptr_->GetType())
+                                 << NameOfSQLNodeType(node_ptr->GetType())
                                  << " for column index";
                 }
             }
-            cur = cur->next_;
         }
     }
-    return RegisterNode(node_ptr);
+    return RegisterNode(index_ptr);
 }
 SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *keys, SQLNode *ts,
                                           SQLNode *ttl, SQLNode *version) {
@@ -264,20 +261,6 @@ SQLNodeList *NodeManager::MakeNodeList() {
     SQLNodeList *new_list_ptr = new SQLNodeList();
     RegisterNode(new_list_ptr);
     return new_list_ptr;
-}
-
-SQLNodeList *NodeManager::MakeNodeList(SQLNode *node_ptr) {
-    SQLLinkedNode *linked_node_ptr = MakeLinkedNode(node_ptr);
-    SQLNodeList *new_list_ptr =
-        new SQLNodeList(linked_node_ptr, linked_node_ptr, 1);
-    RegisterNode(new_list_ptr);
-    return new_list_ptr;
-}
-
-SQLLinkedNode *NodeManager::MakeLinkedNode(SQLNode *node_ptr) {
-    SQLLinkedNode *linked_node_ptr = new SQLLinkedNode(node_ptr);
-    RegisterNode(linked_node_ptr);
-    return linked_node_ptr;
 }
 
 PlanNode *NodeManager::MakeLeafPlanNode(const PlanType &type) {
@@ -428,7 +411,7 @@ SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
     return RegisterNode(node_ptr);
 }
 ExprNode *NodeManager::MakeAllNode(const std::string &relation_name) {
-    ExprNode * node_ptr = new AllNode(relation_name);
+    ExprNode *node_ptr = new AllNode(relation_name);
     return RegisterNode(node_ptr);
 }
 

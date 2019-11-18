@@ -559,6 +559,10 @@ stmt:   select_stmt
         {
             $$ = $1;
         }
+//        |insert_stmt
+//        {
+//        	$$ = $1;
+//        }
         |cmd_stmt
         {
         	$$ = $1;
@@ -581,6 +585,12 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                 }
                 ;
 
+//%type<node> insert_stmt
+//$type<list> insert_value_list
+//insert_stmt:	INSERT INTO table_reference VALUES '(' insert_value_list ')'
+//				{
+//
+//				}
 cmd_stmt:
 			CREATE GROUP group_name
 			{
@@ -627,11 +637,10 @@ column_desc_list:   column_desc
                     {
                         $$ = node_manager->MakeNodeList($1);
                     }
-                    | column_desc ',' column_desc_list
+                    | column_desc_list ',' column_desc
                     {
-                        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-                        new_list->AppendNodeList($3);
-                        $$ = new_list;
+                    	$$ = $1;
+                        $$->PushBack($3);
                     }
                     ;
 
@@ -649,11 +658,10 @@ column_index_item_list:    column_index_item
                     {
                         $$ = node_manager->MakeNodeList($1);
                     }
-                    | column_index_item ',' column_index_item_list
+                    |  column_index_item_list ',' column_index_item
                     {
-                        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-                        new_list->AppendNodeList($3);
-                        $$ = new_list;
+                        $$ = $1;
+                        $$->PushBack($3);
                     }
                     ;
 
@@ -733,11 +741,10 @@ opt_target_list: select_projection_list						{ $$ = $1; }
 select_projection_list: projection {
                             $$ = node_manager->MakeNodeList($1);
                        }
-    | projection ',' select_projection_list
+    | select_projection_list ',' projection
     {
-        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-        new_list->AppendNodeList($3);
-        $$ = new_list;
+        $$ = $1;
+        $$->PushBack($3);
     }
     ;
 
@@ -775,11 +782,10 @@ over_clause: OVER window_specification
 		;
 
 table_references:    table_reference { $$ = node_manager->MakeNodeList($1); }
-    | table_reference ',' table_references
+    |  table_references ',' table_reference
     {
-        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-        new_list->AppendNodeList($3);
-        $$ = new_list;
+     	$$ = $1;
+        $$->PushBack($3);
     }
     ;
 
@@ -813,13 +819,12 @@ expr_list:
     {
       $$ = node_manager->MakeNodeList($1);
     }
-  | expr ',' expr_list
+  	| expr_list ',' expr
     {
-        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-        new_list->AppendNodeList($3);
-        $$ = new_list;
+        $$ = $1;
+        $$->PushBack($3);
     }
-  ;
+  	;
 
 expr : simple_expr   { $$ = $1; }
      | func_expr  { $$ = $1; }
@@ -900,11 +905,10 @@ window_definition_list:
     {
         $$ = node_manager->MakeNodeList($1);
     }
-	| window_definition ',' window_definition_list
+	| window_definition_list ',' window_definition
 	{
-        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-        new_list->AppendNodeList($3);
-        $$ = new_list;
+	 	$$ = $1;
+        $$->PushBack($3);
 	}
 	;
 
@@ -962,11 +966,10 @@ sortby_list:
 			{
 			     $$ = node_manager->MakeNodeList($1);
 			}
-			|sortby ',' sortby_list
-			{
-			    ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-                new_list->AppendNodeList($3);
-                $$ = new_list;
+			|sortby_list ',' sortby 			{
+				$$ = $1;
+                $$->PushBack($3);
+
 			}
 		    ;
 
