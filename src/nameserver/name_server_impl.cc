@@ -5746,16 +5746,18 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
             rpc_msg = "zone name not equal";
             break;
         }
-        std::string value;
-        request->SerializeToString(&value);
-        if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", value)) {
-            code = 304;
-            rpc_msg = "set zk failed";
-            PDLOG(WARNING, "set zk failed, save follower value failed");
+        std::string node = zk_zone_data_path_ + "/follower";
+        if (!zk_client_->DeleteNode(node)) {
+            PDLOG(WARNING, "delete zk node[%s] failed", node.c_str());
+            code = 451;
+            rpc_msg = "del zk failed";
             break;
         }
-        follower_.store(request->follower(), std::memory_order_release);
-        zone_info_.CopyFrom(*request);
+        follower_.store(false, std::memory_order_release);
+        zone_info_.set_follower(false);
+        zone_info_.set_replica_alias("");
+        zone_info_.set_zone_name(FLAGS_endpoint + FLAGS_zk_root_path);
+        zone_info_.set_zone_term(1);
     } while(0);
     response->set_code(code);
     response->set_msg(rpc_msg);
