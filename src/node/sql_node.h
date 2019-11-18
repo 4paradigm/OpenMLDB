@@ -192,6 +192,26 @@ class SQLNodeList {
     SQLLinkedNode *head_;
     SQLLinkedNode *tail_;
 };
+class ExprNode : public SQLNode {
+ public:
+    ExprNode(ExprType expr_type)
+        : SQLNode(kExpr, 0, 0), expr_type_(expr_type) {}
+    ~ExprNode() {}
+    void AddChild(ExprNode *expr) { children.push_back(expr); }
+    const ExprType GetExprType() const { return expr_type_; }
+
+    std::vector<ExprNode *> children;
+ private:
+    ExprType expr_type_;
+};
+class FnNode : public SQLNode {
+ public:
+    FnNode() : SQLNode(kFn, 0, 0), indent(0) {}
+    explicit FnNode(SQLNodeType type) : SQLNode(type, 0, 0), indent(0) {}
+
+ public:
+    int32_t indent;
+};
 
 class NameNode : public SQLNode {
  public:
@@ -353,26 +373,6 @@ class WindowDefNode : public SQLNode {
     SQLNode *frame_ptr_;      /* expression for starting bound, if any */
     NodePointVector partition_list_ptr_; /* PARTITION BY expression list */
     NodePointVector order_list_ptr_;     /* ORDER BY (list of SortBy) */
-};
-class ExprNode : public SQLNode {
- public:
-    ExprNode(ExprType expr_type)
-        : SQLNode(kExpr, 0, 0), expr_type_(expr_type) {}
-    ~ExprNode() {}
-    void AddChild(ExprNode *expr) { children.push_back(expr); }
-    const ExprType GetExprType() const { return expr_type_; }
-
-    std::vector<ExprNode *> children;
- private:
-    ExprType expr_type_;
-};
-class FnNode : public SQLNode {
- public:
-    FnNode() : SQLNode(kFn, 0, 0), indent(0) {}
-    explicit FnNode(SQLNodeType type) : SQLNode(type, 0, 0), indent(0) {}
-
- public:
-    int32_t indent;
 };
 
 class AllNode : public ExprNode {
@@ -545,57 +545,6 @@ class ColumnRefNode : public ExprNode {
     std::string relation_name_;
 };
 
-
-class FnNodeList : public FnNode {
- public:
-    FnNodeList() : FnNode(kFnList) {}
-
-    const std::vector<FnNode *> &GetChildren() const { return children; }
-
-    void AddChild(FnNode *child) { children.push_back(child); }
-
-    std::vector<FnNode *> children;
-};
-class FnParaNode : public FnNode {
- public:
-    FnParaNode() : FnNode(kFnPara) {}
-    FnParaNode(const std::string &name, const DataType &para_type)
-        : FnNode(kFnPara), name_(name), para_type_(para_type) {}
-    std::string GetName() const { return name_; }
-
-    DataType GetParaType() { return para_type_; }
-
- private:
-    std::string name_;
-    DataType para_type_;
-};
-class FnNodeFnDef : public FnNode {
- public:
-    FnNodeFnDef(const std::string &name, FnNodeList *parameters,
-                const DataType ret_type)
-        : FnNode(kFnDef),
-          name_(name),
-          parameters_(parameters),
-          ret_type_(ret_type) {}
-
-    const std::string name_;
-    const FnNodeList *parameters_;
-    const DataType ret_type_;
-};
-class FnAssignNode : public FnNode {
- public:
-    explicit FnAssignNode(const std::string &name, ExprNode *expression)
-        : FnNode(kFnAssignStmt), name_(name), expression_(expression) {}
-    std::string GetName() const { return name_; }
-    const ExprNode *expression_;
-    const std::string name_;
-};
-class FnReturnStmt : public FnNode {
- public:
-    FnReturnStmt(ExprNode *return_expr)
-        : FnNode(kFnReturnStmt), return_expr_(return_expr) {}
-    const ExprNode *return_expr_;
-};
 
 class ResTarget : public SQLNode {
  public:
@@ -869,6 +818,56 @@ class CmdNode : public SQLNode {
     std::vector<std::string> args_;
 };
 
+class FnNodeList : public FnNode {
+ public:
+    FnNodeList() : FnNode(kFnList) {}
+
+    const std::vector<FnNode *> &GetChildren() const { return children; }
+
+    void AddChild(FnNode *child) { children.push_back(child); }
+
+    std::vector<FnNode *> children;
+};
+class FnParaNode : public FnNode {
+ public:
+    FnParaNode() : FnNode(kFnPara) {}
+    FnParaNode(const std::string &name, const DataType &para_type)
+        : FnNode(kFnPara), name_(name), para_type_(para_type) {}
+    std::string GetName() const { return name_; }
+
+    DataType GetParaType() { return para_type_; }
+
+ private:
+    std::string name_;
+    DataType para_type_;
+};
+class FnNodeFnDef : public FnNode {
+ public:
+    FnNodeFnDef(const std::string &name, FnNodeList *parameters,
+                const DataType ret_type)
+        : FnNode(kFnDef),
+          name_(name),
+          parameters_(parameters),
+          ret_type_(ret_type) {}
+
+    const std::string name_;
+    const FnNodeList *parameters_;
+    const DataType ret_type_;
+};
+class FnAssignNode : public FnNode {
+ public:
+    explicit FnAssignNode(const std::string &name, ExprNode *expression)
+        : FnNode(kFnAssignStmt), name_(name), expression_(expression) {}
+    std::string GetName() const { return name_; }
+    const ExprNode *expression_;
+    const std::string name_;
+};
+class FnReturnStmt : public FnNode {
+ public:
+    FnReturnStmt(ExprNode *return_expr)
+        : FnNode(kFnReturnStmt), return_expr_(return_expr) {}
+    const ExprNode *return_expr_;
+};
 std::string WindowOfExpression(ExprNode*node_ptr);
 void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,
