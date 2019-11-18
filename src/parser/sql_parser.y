@@ -926,6 +926,8 @@ window_specification: '(' opt_existing_window_name opt_partition_clause
 
 opt_existing_window_name:
 						NAME { $$ = $1; }
+						| /*EMPTY*/		{ $$ = NULL; }
+
                         ;
 
 opt_partition_clause: PARTITION BY expr_list		{ $$ = $3; }

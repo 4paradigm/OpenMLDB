@@ -173,6 +173,9 @@ TEST_P(SqlParserTest, Parser_Select_Expr_List) {
     base::Status status;
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
+    if (0 != status.code) {
+        std::cout<< status.msg << std::endl;
+    }
     ASSERT_EQ(0, ret);
     //    ASSERT_EQ(1, trees.size());
     std::cout << *(trees.front()) << std::endl;
