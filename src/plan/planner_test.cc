@@ -40,12 +40,12 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
         "SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 FROM t1 limit 10;",
         list, manager_, status);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, list.size());
+    ASSERT_EQ(1u, list.size());
 
     Planner *planner_ptr = new SimplePlanner(manager_);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, plan_trees, status));
-    ASSERT_EQ(1, plan_trees.size());
+    ASSERT_EQ(1u, plan_trees.size());
     PlanNode *plan_ptr = plan_trees.front();
     std::cout << *(plan_ptr) << std::endl;
     // validate select plan
@@ -59,10 +59,10 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
 
     // validate project list based on current row
     std::vector<PlanNode *> plan_vec = limit_node->GetChildren();
-    ASSERT_EQ(1, plan_vec.size());
+    ASSERT_EQ(1u, plan_vec.size());
     ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
     ASSERT_EQ(
-        3, ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
+        3u, ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
 
     delete planner_ptr;
 }
@@ -76,12 +76,12 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
         "over w1 FROM t1 limit 10;",
         list, manager_, status);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, list.size());
+    ASSERT_EQ(1u, list.size());
 
     std::cout << *(list[0]) << std::endl;
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
-    ASSERT_EQ(1, trees.size());
+    ASSERT_EQ(1u, trees.size());
     PlanNode *plan_ptr = trees[0];
     ASSERT_TRUE(NULL != plan_ptr);
 
@@ -98,13 +98,13 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
 
     // validate project list based on current row
     std::vector<PlanNode *> plan_vec = limit_node->GetChildren();
-    ASSERT_EQ(2, plan_vec.size());
+    ASSERT_EQ(2u, plan_vec.size());
     ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
     ASSERT_EQ(
-        3, ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
+        3u, ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
     ASSERT_EQ(node::kProjectList, plan_vec.at(1)->GetType());
     ASSERT_EQ(
-        1, ((node::ProjectListPlanNode *)plan_vec.at(1))->GetProjects().size());
+        1u, ((node::ProjectListPlanNode *)plan_vec.at(1))->GetProjects().size());
     delete planner_ptr;
 }
 
@@ -124,12 +124,12 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
     base::Status status;
     int ret = parser_->parse(sql_str, list, manager_, status);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, list.size());
+    ASSERT_EQ(1u, list.size());
     std::cout << *(list[0]) << std::endl;
 
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
-    ASSERT_EQ(1, trees.size());
+    ASSERT_EQ(1u, trees.size());
     PlanNode *plan_ptr = trees[0];
     ASSERT_TRUE(NULL != plan_ptr);
 
@@ -157,7 +157,7 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
     ASSERT_EQ(type::Type::kString, table->columns(3).type());
     ASSERT_EQ(type::Type::kInt32, table->columns(4).type());
     ASSERT_EQ(1, table->indexes_size());
-    ASSERT_EQ(60 * 86400000L, table->indexes(0).ttl(0));
+    ASSERT_EQ(60 * 86400000UL, table->indexes(0).ttl(0));
     ASSERT_EQ(2, table->indexes(0).first_keys_size());
     ASSERT_EQ("column4", table->indexes(0).first_keys(0));
     ASSERT_EQ("column3", table->indexes(0).first_keys(1));
@@ -168,20 +168,19 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
 }
 
 TEST_F(PlannerTest, CmdStmtPlanTest) {
-    const std::string sql_str =
-        "show databases;";
+    const std::string sql_str = "show databases;";
 
     node::NodePointVector list;
     node::PlanNodeList trees;
     base::Status status;
     int ret = parser_->parse(sql_str, list, manager_, status);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, list.size());
+    ASSERT_EQ(1u, list.size());
     std::cout << *(list[0]) << std::endl;
 
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
-    ASSERT_EQ(1, trees.size());
+    ASSERT_EQ(1u, trees.size());
     PlanNode *plan_ptr = trees[0];
     ASSERT_TRUE(NULL != plan_ptr);
 
@@ -189,9 +188,8 @@ TEST_F(PlannerTest, CmdStmtPlanTest) {
 
     // validate create plan
     ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
-    node::CmdPlanNode *cmd_plan= (node::CmdPlanNode *)plan_ptr;
+    node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
     ASSERT_EQ(node::kCmdShowDatabases, cmd_plan->GetCmdType());
-
 }
 
 }  // namespace plan

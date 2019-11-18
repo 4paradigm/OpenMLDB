@@ -21,7 +21,6 @@
 #include <unistd.h>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include "analyser/analyser.h"
 #include "base/texttable.h"

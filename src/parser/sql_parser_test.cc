@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <strstream>
 #include <utility>
 #include "gtest/gtest.h"
 #include "node/node_manager.h"
@@ -195,7 +194,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, trees.size());
+    ASSERT_EQ(1u, trees.size());
     std::cout << *(trees.front()) << std::endl;
 
     ASSERT_EQ(node::kCreateStmt, trees.front()->GetType());
@@ -204,7 +203,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("test", createStmt->GetTableName());
     ASSERT_EQ(true, createStmt->GetOpIfNotExist());
 
-    ASSERT_EQ(6, createStmt->GetColumnDefList().size());
+    ASSERT_EQ(6u, createStmt->GetColumnDefList().size());
 
     ASSERT_EQ("column1",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
@@ -293,7 +292,7 @@ TEST_P(SqlParserErrorTest, ParserErrorStatusTest) {
     base::Status status;
     int ret = parser_->parse(param.second.c_str(), trees, manager_, status);
     ASSERT_EQ(1, ret);
-    ASSERT_EQ(0, trees.size());
+    ASSERT_EQ(0u, trees.size());
     ASSERT_EQ(param.first, status.code);
     std::cout << status.msg << std::endl;
 }

@@ -30,7 +30,7 @@ uint64_t record_cnt = 300;
 
 TEST_F(ListTest, Size) {
     ArrayList<uint64_t, void*, DefaultComparator> list(cmp);
-    ASSERT_EQ(32, sizeof(list));
+    ASSERT_EQ(32ul, sizeof(list));
 }
 
 TEST_F(ListTest, ArrayList) {
@@ -62,25 +62,25 @@ TEST_F(ListTest, ArrayListSplitByPos) {
     uint64_t value1 = 5;
     list.Insert(5, value1);
     list.SplitByPos(1111);
-    ASSERT_EQ(list.GetSize(), 1);
+    ASSERT_EQ(list.GetSize(), 1u);
     list.SplitByPos(1);
-    ASSERT_EQ(list.GetSize(), 1);
+    ASSERT_EQ(list.GetSize(), 1u);
     list.Insert(6, value1);
-    ASSERT_EQ(list.GetSize(), 2);
+    ASSERT_EQ(list.GetSize(), 2u);
     list.SplitByPos(1);
-    ASSERT_EQ(list.GetSize(), 1);
+    ASSERT_EQ(list.GetSize(), 1u);
     for (int i = 0; i < 50; i++) {
         list.Insert(6, value1);
     }
-    ASSERT_EQ(list.GetSize(), 51);
+    ASSERT_EQ(list.GetSize(), 51u);
     list.SplitByPos(52);
-    ASSERT_EQ(list.GetSize(), 51);
+    ASSERT_EQ(list.GetSize(), 51u);
     list.SplitByPos(51);
-    ASSERT_EQ(list.GetSize(), 51);
+    ASSERT_EQ(list.GetSize(), 51u);
     list.SplitByPos(20);
-    ASSERT_EQ(list.GetSize(), 20);
+    ASSERT_EQ(list.GetSize(), 20u);
     list.SplitByPos(0);
-    ASSERT_EQ(list.GetSize(), 0);
+    ASSERT_EQ(list.GetSize(), 0u);
 }
 
 TEST_F(ListTest, LinkListSplitByPos) {
@@ -89,25 +89,25 @@ TEST_F(ListTest, LinkListSplitByPos) {
     uint64_t value1 = 5;
     list.Insert(5, value1);
     list.SplitByPos(1111);
-    ASSERT_EQ(list.GetSize(), 1);
+    ASSERT_EQ(list.GetSize(), 1u);
     list.SplitByPos(1);
-    ASSERT_EQ(list.GetSize(), 1);
+    ASSERT_EQ(list.GetSize(), 1u);
     list.Insert(6, value1);
-    ASSERT_EQ(list.GetSize(), 2);
+    ASSERT_EQ(list.GetSize(), 2u);
     list.SplitByPos(1);
-    ASSERT_EQ(list.GetSize(), 1);
+    ASSERT_EQ(list.GetSize(), 1u);
     for (int i = 0; i < 50; i++) {
         list.Insert(6, value1);
     }
-    ASSERT_EQ(list.GetSize(), 51);
+    ASSERT_EQ(list.GetSize(), 51u);
     list.SplitByPos(52);
-    ASSERT_EQ(list.GetSize(), 51);
+    ASSERT_EQ(list.GetSize(), 51u);
     list.SplitByPos(51);
-    ASSERT_EQ(list.GetSize(), 51);
+    ASSERT_EQ(list.GetSize(), 51u);
     list.SplitByPos(20);
-    ASSERT_EQ(list.GetSize(), 20);
+    ASSERT_EQ(list.GetSize(), 20u);
     list.SplitByPos(0);
-    ASSERT_EQ(list.GetSize(), 0);
+    ASSERT_EQ(list.GetSize(), 0u);
 }
 
 TEST_F(ListTest, ArrayListSplit) {
@@ -116,20 +116,20 @@ TEST_F(ListTest, ArrayListSplit) {
     uint64_t value1 = 5;
     list.Insert(5, value1);
     list.Split(1);
-    ASSERT_EQ(list.GetSize(), 1);
+    ASSERT_EQ(list.GetSize(), 1u);
     list.Split(1111);
-    ASSERT_EQ(list.GetSize(), 0);
+    ASSERT_EQ(list.GetSize(), 0u);
     for (int i = 0; i < 10; i++) {
         list.Insert(i, value1);
     }
-    ASSERT_EQ(list.GetSize(), 10);
+    ASSERT_EQ(list.GetSize(), 10u);
     list.Split(4);
-    ASSERT_EQ(list.GetSize(), 5);
+    ASSERT_EQ(list.GetSize(), 5u);
     list.Insert(8, value1);
     list.Insert(7, value1);
-    ASSERT_EQ(list.GetSize(), 7);
+    ASSERT_EQ(list.GetSize(), 7u);
     list.Split(7);
-    ASSERT_EQ(list.GetSize(), 3);
+    ASSERT_EQ(list.GetSize(), 3u);
 }
 
 TEST_F(ListTest, LinkListSplit) {
@@ -138,20 +138,20 @@ TEST_F(ListTest, LinkListSplit) {
     uint64_t value1 = 5;
     list.Insert(5, value1);
     list.Split(1);
-    ASSERT_EQ(list.GetSize(), 1);
+    ASSERT_EQ(list.GetSize(), 1u);
     list.Split(1111);
-    ASSERT_EQ(list.GetSize(), 0);
+    ASSERT_EQ(list.GetSize(), 0u);
     for (int i = 0; i < 10; i++) {
         list.Insert(i, value1);
     }
-    ASSERT_EQ(list.GetSize(), 10);
+    ASSERT_EQ(list.GetSize(), 10u);
     list.Split(4);
-    ASSERT_EQ(list.GetSize(), 5);
+    ASSERT_EQ(list.GetSize(), 5u);
     list.Insert(8, value1);
     list.Insert(7, value1);
-    ASSERT_EQ(list.GetSize(), 7);
+    ASSERT_EQ(list.GetSize(), 7u);
     list.Split(7);
-    ASSERT_EQ(list.GetSize(), 3);
+    ASSERT_EQ(list.GetSize(), 3u);
 }
 
 TEST_F(ListTest, LinkList) {
