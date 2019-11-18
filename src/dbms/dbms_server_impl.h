@@ -65,9 +65,9 @@ class DBMSServerImpl : public DBMSServer {
     std::mutex mu_;
     Groups groups_;
     Databases databases_;
-    int32_t tid_;
     std::string tablet_endpoint_;
     fesql::tablet::TabletInternalSDK * tablet_sdk;
+    int32_t tid_;
     void InitTable(type::Database* db, Tables& table);
     type::Database* GetDatabase(const std::string db_name,
                                 common::Status& status);

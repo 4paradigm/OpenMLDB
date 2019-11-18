@@ -859,8 +859,8 @@ class FnAssignNode : public FnNode {
     explicit FnAssignNode(const std::string &name, ExprNode *expression)
         : FnNode(kFnAssignStmt), name_(name), expression_(expression) {}
     std::string GetName() const { return name_; }
-    const ExprNode *expression_;
     const std::string name_;
+    const ExprNode *expression_;
 };
 class FnReturnStmt : public FnNode {
  public:
