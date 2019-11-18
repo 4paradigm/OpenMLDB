@@ -240,9 +240,6 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kTable:
             output = "kTable";
             break;
-        case kColumnRef:
-            output = "kColumnRef";
-            break;
         case kColumnDesc:
             output = "kColumnDesc";
             break;
@@ -251,9 +248,6 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kExpr:
             output = "kExpr";
-            break;
-        case kFunc:
-            output = "kFunc";
             break;
         case kWindowDef:
             output = "kWindowDef";
@@ -288,9 +282,6 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kLimit:
             output = "kLimit";
             break;
-        case kAll:
-            output = "kAll";
-            break;
         default:
             output = "unknown";
     }
@@ -320,9 +311,9 @@ void FillSQLNodeList2NodeVector(
     }
 }
 
-std::string WindowOfExpression(SQLNode *node_ptr) {
-    switch (node_ptr->GetType()) {
-        case kFunc: {
+std::string WindowOfExpression(ExprNode* node_ptr) {
+    switch (node_ptr->GetExprType()) {
+        case kExprFunc: {
             FuncNode *func_node_ptr = dynamic_cast<FuncNode *>(node_ptr);
             if (nullptr != func_node_ptr->GetOver()) {
                 return func_node_ptr->GetOver()->GetName();
@@ -331,9 +322,9 @@ std::string WindowOfExpression(SQLNode *node_ptr) {
             if (func_node_ptr->GetArgs().empty()) {
                 return "";
             }
-
             for (auto arg : func_node_ptr->GetArgs()) {
-                std::string arg_w = WindowOfExpression(arg);
+
+                std::string arg_w = WindowOfExpression(dynamic_cast<ExprNode*>(arg));
                 if (false == arg_w.empty()) {
                     return arg_w;
                 }

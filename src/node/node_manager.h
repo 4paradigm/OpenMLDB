@@ -75,8 +75,8 @@ class NodeManager {
                                 SQLNodeList *window_clause_ptr,
                                 SQLNode *limit_clause_ptr);
     SQLNode *MakeTableNode(const std::string &name, const std::string &alias);
-    SQLNode *MakeFuncNode(const std::string &name, SQLNodeList *args,
-                          SQLNode *over);
+    ExprNode *MakeFuncNode(const std::string &name, SQLNodeList *args,
+                           SQLNode *over);
     SQLNode *MakeWindowDefNode(const std::string &name);
     SQLNode *MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList *orders,
                                SQLNode *frame);
@@ -87,14 +87,6 @@ class NodeManager {
     SQLNode *MakeRangeFrameNode(SQLNode *node_ptr);
     SQLNode *MakeRowsFrameNode(SQLNode *node_ptr);
     SQLNode *MakeLimitNode(int count);
-    SQLNode *MakeConstNode(int value);
-    SQLNode *MakeConstNode(int64_t value, DataType unit);
-    SQLNode *MakeConstNode(int64_t value);
-    SQLNode *MakeConstNode(float value);
-    SQLNode *MakeConstNode(double value);
-    SQLNode *MakeConstNode(const std::string &value);
-    SQLNode *MakeConstNode(const char *value);
-    SQLNode *MakeConstNode();
 
     SQLNode *MakeNameNode(const std::string &name);
     SQLNode *MakeCreateTableNode(bool op_if_not_exist,
@@ -109,26 +101,38 @@ class NodeManager {
     SQLNode *MakeKeyNode(const std::string &key);
     SQLNode *MakeIndexKeyNode(const std::string &key);
     SQLNode *MakeIndexTsNode(const std::string &ts);
+    SQLNode *MakeIndexTTLNode(ExprNode *ttl_expr);
     SQLNode *MakeIndexVersionNode(const std::string &version);
     SQLNode *MakeIndexVersionNode(const std::string &version, int count);
 
-    SQLNode *MakeColumnRefNode(const std::string &column_name,
-                               const std::string &relation_name);
-    SQLNode *MakeResTargetNode(SQLNode *node_ptr, const std::string &name);
+    SQLNode *MakeResTargetNode(ExprNode *node_ptr, const std::string &name);
 
+    ExprNode *MakeColumnRefNode(const std::string &column_name,
+                                const std::string &relation_name);
+    ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
+                                 FnOperator op);
+    ExprNode *MakeUnaryExprNode(ExprNode *left, FnOperator op);
+    ExprNode *MakeFnIdNode(const std::string &name);
     // Make Fn Node
+    ExprNode *MakeConstNode(int value);
+    ExprNode *MakeConstNode(int64_t value, DataType unit);
+    ExprNode *MakeConstNode(int64_t value);
+    ExprNode *MakeConstNode(float value);
+    ExprNode *MakeConstNode(double value);
+    ExprNode *MakeConstNode(const std::string &value);
+    ExprNode *MakeConstNode(const char *value);
+    ExprNode *MakeConstNode();
+
+    ExprNode *MakeAllNode(const std::string &relation_name);
 
     FnNode *MakeFnNode(const SQLNodeType &type);
-    FnNode *MakeFnIdNode(const std::string &name);
-    FnNode *MakeTypeNode(const DataType &type);
-    FnNode *MakeFnDefNode(const std::string &name, FnNode *plist,
+    FnNodeList *MakeFnListNode();
+    FnNode *MakeFnDefNode(const std::string &name, FnNodeList *plist,
                           const DataType return_type);
-    FnNode *MakeBinaryExprNode(FnNode *left, FnNode *right, FnOperator op);
-    FnNode *MakeUnaryExprNode(FnNode *left, FnOperator op);
 
     FnNode *MakeFnParaNode(const std::string &name, const DataType &para_type);
-    FnNode *MakeAssignNode(const std::string &name, FnNode *expression);
-    FnNode *MakeReturnStmtNode(FnNode *value);
+    FnNode *MakeAssignNode(const std::string &name, ExprNode *expression);
+    FnNode *MakeReturnStmtNode(ExprNode *value);
 
     SQLNode *MakeCmdNode(node::CmdType cmd_type);
     SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
@@ -141,6 +145,11 @@ class NodeManager {
 
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {
+        parser_node_list_.push_back(node_ptr);
+        return node_ptr;
+    }
+
+    ExprNode *RegisterNode(ExprNode *node_ptr) {
         parser_node_list_.push_back(node_ptr);
         return node_ptr;
     }

@@ -50,7 +50,9 @@ typedef void* yyscan_t;
 	bool flag;
 	::fesql::node::SQLNode* node;
 	::fesql::node::FnNode* fnnode;
+	::fesql::node::ExprNode* expr;
 	::fesql::node::DataType type;
+	::fesql::node::FnNodeList* fnlist;
 	::fesql::node::SQLNodeList* list;
 }
 
@@ -339,17 +341,18 @@ typedef void* yyscan_t;
 
  /* udf */
 %type <type> types
-%type <fnnode> grammar line_list primary var
-             fn_def return_stmt assign_stmt para plist fn_expr
-             fun_def_block fn_def_indent_op stmt_block func_stmts func_stmt
+%type <fnnode> grammar line_list
+			   fun_def_block fn_def_indent_op  func_stmt
+               fn_def return_stmt assign_stmt para
+%type<fnlist> plist stmt_block func_stmts
 
-%type <node> primary_time column_ref
+%type <expr> var primary fn_expr primary_time column_ref expr simple_expr func_expr expr_const
  /* select stmt */
-%type <node>  sql_stmt stmt select_stmt expr
+%type <node>  sql_stmt stmt select_stmt
               opt_all_clause
               table_factor table_reference
               projection
-              simple_expr func_expr expr_const
+
               sortby opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
               limit_clause
@@ -407,11 +410,10 @@ line_list:
 NEWLINES: NEWLINE {}
 	| NEWLINES NEWLINE {}
 fun_def_block : fn_def_indent_op NEWLINES stmt_block {
-            emit("enter fun_def_block");
-            $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
-            $$->AddChildren($1);
-            for (auto item: $3->children) {
-                $$->AddChildren(item);
+            $$ = node_manager->MakeFnListNode();
+            ((::fesql::node::FnNodeList*)$$)->AddChild($1);
+            for (auto item: ((::fesql::node::FnNodeList*)$3)->GetChildren()) {
+                ((::fesql::node::FnNodeList*)$$)->AddChild(item);
             }
         }
         ;
@@ -433,15 +435,13 @@ stmt_block:
         ;
 func_stmts:
         func_stmt {
-
-            emit("enter func stmt");
-            $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
-                        $$->AddChildren($1);
+			$$ = node_manager->MakeFnListNode();
+            $$->AddChild($1);
         }
         |func_stmts NEWLINES func_stmt {
             emit("enter func stmts");
             $$ = $1;
-            $$->AddChildren($3);
+            $$->AddChild($3);
         }
         ;
 func_stmt:
@@ -510,10 +510,10 @@ types:  I32
 
 plist:
      para {
-        $$ = node_manager->MakeFnNode(::fesql::node::kFnParaList);
-        $$->AddChildren($1);
+        $$ = node_manager->MakeFnListNode();
+        $$->AddChild($1);
      } | para ',' plist  {
-        $3->AddChildren($1);
+        $3->AddChild($1);
         $$ = $3;
      };
 
@@ -523,21 +523,21 @@ para: NAME ':' types {
 
 primary:
     INTNUM {
-        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1);
+        $$ = node_manager->MakeConstNode($1);
     };
 
 primary_time:
     DAYNUM {
-        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeDay);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeDay);
     }
     |HOURNUM {
-        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeHour);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeHour);
     }
     |MINUTENUM {
-        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeMinute);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeMinute);
     }
     |SECONDNUM{
-        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeSecond);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeSecond);
     }
 var: NAME {
         $$ = node_manager->MakeFnIdNode($1);
@@ -671,7 +671,7 @@ column_index_item:  KEY '=' column_name
                     }
                     | TTL '=' primary_time
                     {
-                        $$ = $3;
+                        $$ = node_manager->MakeIndexTTLNode($3);
                     }
                     | VERSION '=' column_name
                     {
@@ -758,7 +758,7 @@ projection:
     }
     | '*'
         {
-            ::fesql::node::SQLNode *pNode = node_manager->MakeSQLNode(::fesql::node::kAll);
+            ::fesql::node::ExprNode* pNode = node_manager->MakeAllNode("");
             $$ = node_manager->MakeResTargetNode(pNode, "");
         }
     ;
@@ -857,17 +857,17 @@ simple_expr:
 expr_const:
     STRING
         {
-        	$$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1));
+        	$$ = node_manager->MakeConstNode($1);
 			free($1);
         }
   	| INTNUM
-        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
+        { $$ = (node_manager->MakeConstNode($1)); }
   	| APPROXNUM
-        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
+        { $$ = (node_manager->MakeConstNode($1)); }
   	| BOOL
-        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
+        { $$ = (node_manager->MakeConstNode($1)); }
   	| NULLX
-        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode()); }
+        { $$ = (node_manager->MakeConstNode()); }
   	;
 
 func_expr:

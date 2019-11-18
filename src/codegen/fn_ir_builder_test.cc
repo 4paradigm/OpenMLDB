@@ -72,7 +72,7 @@ TEST_F(FnIRBuilderTest, test_add_int32) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("custom_fn", *ctx);
     FnIRBuilder fn_ir_builder(m.get());
-    bool ok = fn_ir_builder.Build((node::FnNode *)trees[0]);
+    bool ok = fn_ir_builder.Build((node::FnNodeList*)trees[0]);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
@@ -97,7 +97,7 @@ TEST_F(FnIRBuilderTest, test_bracket_int32) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("custom_fn", *ctx);
     FnIRBuilder fn_ir_builder(m.get());
-    bool ok = fn_ir_builder.Build((node::FnNode *)trees[0]);
+    bool ok = fn_ir_builder.Build((node::FnNodeList *)trees[0]);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());

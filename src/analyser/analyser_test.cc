@@ -171,6 +171,9 @@ TEST_P(AnalyserTest, RunAnalyseTest) {
 
     NodePointVector query_tree;
     ret = analyser->Analyse(list, query_tree, status);
+    if (0 != status.code) {
+        std::cout << status.msg << std::endl;
+    }
     ASSERT_EQ(param.first, ret);
     if (query_tree.size() > 0) {
         std::cout << *query_tree[0] << std::endl;
