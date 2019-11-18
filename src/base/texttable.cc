@@ -72,4 +72,4 @@ std::string TextTable::ruler() const {
 }
 
 }  // namespace base
-} // namespace fesql
+}  // namespace fesql

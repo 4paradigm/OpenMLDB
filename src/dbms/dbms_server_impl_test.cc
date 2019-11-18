@@ -29,7 +29,6 @@ class DBMSServerImplTest : public ::testing::Test {
 };
 
 TEST_F(DBMSServerImplTest, CreateTableTest) {
-
     tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
     ASSERT_TRUE(tablet->Init());
     brpc::ServerOptions options;

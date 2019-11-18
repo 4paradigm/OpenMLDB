@@ -31,16 +31,23 @@ class DBMSSdkImpl : public DBMSSdk {
     explicit DBMSSdkImpl(const std::string &endpoint);
     ~DBMSSdkImpl();
     bool Init();
-    void CreateGroup(const GroupDef &group, base::Status &status) override;
-    void CreateDatabase(const DatabaseDef &database, base::Status &status);
-    bool IsExistDatabase(const DatabaseDef &database, base::Status &status);
+    void CreateGroup(const GroupDef &group, base::Status &status) // NOLINT (runtime/references)
+        override;
+    void CreateDatabase(const DatabaseDef &database,
+                        base::Status &status);  // NOLINT (runtime/references)
+    bool IsExistDatabase(const DatabaseDef &database,
+                         base::Status &status);  // NOLINT (runtime/references)
+
     void GetSchema(const DatabaseDef &database, const std::string &name,
-                   type::TableDef &table, base::Status &status) override;
-    void GetTables(const DatabaseDef &database, std::vector<std::string> &names,
-                   base::Status &status);
-    void GetDatabases(std::vector<std::string> &names, base::Status &status);
-    void ExecuteScript(const ExecuteRequst &request, ExecuteResult &result,
-                       base::Status &status) override;
+                   type::TableDef &table, base::Status &status) // NOLINT (runtime/references)
+        override;
+    void GetTables(const DatabaseDef &database, std::vector<std::string> &names, // NOLINT (runtime/references)
+                   base::Status &status);  // NOLINT (runtime/references)
+    void GetDatabases(std::vector<std::string> &names, // NOLINT (runtime/references)
+                      base::Status &status);  // NOLINT (runtime/references)
+    void ExecuteScript(
+        const ExecuteRequst &request, ExecuteResult &result,
+        base::Status &status) override;  // NOLINT (runtime/references)
 
  private:
     ::brpc::Channel *channel_;
@@ -62,7 +69,9 @@ bool DBMSSdkImpl::Init() {
     return true;
 }
 
-void DBMSSdkImpl::CreateGroup(const GroupDef &group, base::Status &status) {
+void DBMSSdkImpl::CreateGroup(
+    const GroupDef &group,
+    base::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::AddGroupRequest request;
     request.set_name(group.name);
@@ -77,9 +86,9 @@ void DBMSSdkImpl::CreateGroup(const GroupDef &group, base::Status &status) {
         status.msg = response.status().msg();
     }
 }
-void DBMSSdkImpl::GetTables(const DatabaseDef &db,
-                            std::vector<std::string> &names,
-                            base::Status &status) {
+void DBMSSdkImpl::GetTables(
+    const DatabaseDef &db, std::vector<std::string> &names,
+    base::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetItemsRequest request;
     ::fesql::dbms::GetItemsResponse response;
@@ -99,8 +108,9 @@ void DBMSSdkImpl::GetTables(const DatabaseDef &db,
     }
 }
 
-void DBMSSdkImpl::GetDatabases(std::vector<std::string> &names,
-                               base::Status &status) {
+void DBMSSdkImpl::GetDatabases(
+    std::vector<std::string> &names,
+    base::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetItemsRequest request;
     ::fesql::dbms::GetItemsResponse response;
@@ -118,9 +128,9 @@ void DBMSSdkImpl::GetDatabases(std::vector<std::string> &names,
     }
 }
 
-void DBMSSdkImpl::GetSchema(const DatabaseDef &database,
-                            const std::string &name, type::TableDef &table,
-                            base::Status &status) {
+void DBMSSdkImpl::GetSchema(
+    const DatabaseDef &database, const std::string &name, type::TableDef &table,
+    base::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetSchemaRequest request;
     request.set_db_name(database.name);
@@ -138,8 +148,9 @@ void DBMSSdkImpl::GetSchema(const DatabaseDef &database,
     }
 }
 
-void DBMSSdkImpl::ExecuteScript(const ExecuteRequst &request,
-                                ExecuteResult &result, base::Status &status) {
+void DBMSSdkImpl::ExecuteScript(
+    const ExecuteRequst &request, ExecuteResult &result,
+    base::Status &status) {  // NOLINT (runtime/references)
     node::NodeManager node_manager;
     parser::FeSQLParser parser;
     analyser::FeSQLAnalyser analyser(&node_manager);
@@ -211,8 +222,9 @@ void DBMSSdkImpl::ExecuteScript(const ExecuteRequst &request,
         }
     }
 }
-void DBMSSdkImpl::CreateDatabase(const DatabaseDef &database,
-                                 base::Status &status) {
+void DBMSSdkImpl::CreateDatabase(
+    const DatabaseDef &database,
+    base::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::AddDatabaseRequest request;
     request.set_name(database.name);
@@ -227,8 +239,9 @@ void DBMSSdkImpl::CreateDatabase(const DatabaseDef &database,
         status.msg = response.status().msg();
     }
 }
-bool DBMSSdkImpl::IsExistDatabase(const DatabaseDef &database,
-                                  base::Status &status) {
+bool DBMSSdkImpl::IsExistDatabase(
+    const DatabaseDef &database,
+    base::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::IsExistRequest request;
     request.set_name(database.name);

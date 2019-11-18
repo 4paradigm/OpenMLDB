@@ -145,7 +145,7 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
     }
 
     ::fesql::type::TableDef* table = db->add_tables();
-    // TODO(chenjing):add create time
+    // TODO(chenjing): add create time
     table->set_name(request->table().name());
     for (auto column : request->table().columns()) {
         *(table->add_columns()) = column;

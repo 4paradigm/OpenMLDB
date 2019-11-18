@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-#ifndef FESQL_DBMS_SERVER_IMPL_H_
-#define FESQL_DBMS_SERVER_IMPL_H_
+#ifndef SRC_DBMS_DBMS_SERVER_IMPL_H_
+#define SRC_DBMS_DBMS_SERVER_IMPL_H_
 
 #include <map>
-#include <mutex>
+#include <mutex> // NOLINT (build/c++11)
+#include <string>
 #include "proto/dbms.pb.h"
 #include "proto/type.pb.h"
 #include "tablet/tablet_internal_sdk.h"
@@ -66,13 +67,15 @@ class DBMSServerImpl : public DBMSServer {
     Groups groups_;
     Databases databases_;
     std::string tablet_endpoint_;
-    fesql::tablet::TabletInternalSDK * tablet_sdk;
+    fesql::tablet::TabletInternalSDK* tablet_sdk;
     int32_t tid_;
-    void InitTable(type::Database* db, Tables& table);
-    type::Database* GetDatabase(const std::string db_name,
-                                common::Status& status);
+    void InitTable(type::Database* db,
+                   Tables& table);  // NOLINT (runtime/references)
+    type::Database* GetDatabase(
+        const std::string db_name,
+        common::Status& status);  // NOLINT (runtime/references)
 };
 
 }  // namespace dbms
 }  // namespace fesql
-#endif /* !FESQL_DBMS_SERVER_IMPL_H_ */
+#endif  // SRC_DBMS_DBMS_SERVER_IMPL_H_

@@ -311,7 +311,7 @@ void FillSQLNodeList2NodeVector(
     }
 }
 
-std::string WindowOfExpression(ExprNode* node_ptr) {
+std::string WindowOfExpression(ExprNode *node_ptr) {
     switch (node_ptr->GetExprType()) {
         case kExprFunc: {
             FuncNode *func_node_ptr = dynamic_cast<FuncNode *>(node_ptr);
@@ -323,8 +323,8 @@ std::string WindowOfExpression(ExprNode* node_ptr) {
                 return "";
             }
             for (auto arg : func_node_ptr->GetArgs()) {
-
-                std::string arg_w = WindowOfExpression(dynamic_cast<ExprNode*>(arg));
+                std::string arg_w =
+                    WindowOfExpression(dynamic_cast<ExprNode *>(arg));
                 if (false == arg_w.empty()) {
                     return arg_w;
                 }

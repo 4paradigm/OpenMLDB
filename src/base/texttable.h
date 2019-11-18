@@ -6,8 +6,8 @@
  * Date: 2019/11/12
  *--------------------------------------------------------------------------
  **/
-#ifndef FESQL_BASE_TEXTTABLE_H_
-#define FESQL_BASE_TEXTTABLE_H_
+#ifndef SRC_BASE_TEXTTABLE_H_
+#define SRC_BASE_TEXTTABLE_H_
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -20,7 +20,7 @@ class TextTable {
  public:
     enum class Alignment { LEFT, RIGHT };
     typedef std::vector<std::string> Row;
-    TextTable(char horizontal = '-', char vertical = '|', char corner = '+')
+    explicit TextTable(char horizontal = '-', char vertical = '|', char corner = '+')
         : _horizontal(horizontal), _vertical(vertical), _corner(corner) {}
 
     void setAlignment(unsigned i, Alignment alignment) {
@@ -67,7 +67,8 @@ class TextTable {
 
     void setupAlignment() const;
     int width(unsigned i) const { return _width[i]; }
-    friend std::ostream& operator<<(std::ostream& stream, const TextTable& table);
+    friend std::ostream& operator<<(std::ostream& stream,
+                                    const TextTable& table);
 
  private:
     char _horizontal;
@@ -91,4 +92,4 @@ class TextTable {
 
 }  // namespace base
 }  // namespace fesql
-#endif /* !FESQL_BASE_TEXTTABLE_H_ */
+#endif /* !SRC_BASE_TEXTTABLE_H_ */

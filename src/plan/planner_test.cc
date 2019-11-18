@@ -62,7 +62,8 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
     ASSERT_EQ(1u, plan_vec.size());
     ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
     ASSERT_EQ(
-        3u, ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
+        3u,
+        ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
 
     delete planner_ptr;
 }
@@ -101,10 +102,12 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
     ASSERT_EQ(2u, plan_vec.size());
     ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
     ASSERT_EQ(
-        3u, ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
+        3u,
+        ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
     ASSERT_EQ(node::kProjectList, plan_vec.at(1)->GetType());
     ASSERT_EQ(
-        1u, ((node::ProjectListPlanNode *)plan_vec.at(1))->GetProjects().size());
+        1u,
+        ((node::ProjectListPlanNode *)plan_vec.at(1))->GetProjects().size());
     delete planner_ptr;
 }
 
