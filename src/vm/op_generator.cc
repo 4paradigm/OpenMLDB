@@ -212,7 +212,6 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
             }
         }
     }
-
     ProjectOp* pop = new ProjectOp();
     pop->type = kOpProject;
     pop->output_schema = output_schema;
@@ -220,6 +219,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     pop->fn = NULL;
     pop->output_size = output_size;
     ops->ops.push_back((OpNode*)pop);
+    DLOG(INFO) << "project output size " << output_size;
     return true;
 }
 

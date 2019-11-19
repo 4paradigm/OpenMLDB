@@ -29,6 +29,30 @@ struct Query {
     std::string db;
 };
 
+struct Insert {
+    std::string row;
+    std::string db;
+    std::string table;
+    std::string key;
+    uint64_t ts;
+};
+
+class ResultSetIterator {
+
+ public:
+   ResultSetIterator() {}
+   virtual ~ResultSetIterator() {}
+
+   virtual bool HasNext() = 0; 
+
+   virtual void Next() = 0;
+   virtual bool GetInt16(uint32_t idx, int16_t* val) = 0;
+   virtual bool GetInt32(uint32_t idx, int32_t* val) = 0;
+   virtual bool GetInt64(uint32_t idx, int64_t* val) = 0;
+   virtual bool GetFloat(uint32_t idx, float* val) = 0;
+   virtual bool GetDouble(uint32_t idx, double* val) = 0;
+};
+
 class ResultSet {
 
  public:
@@ -37,6 +61,7 @@ class ResultSet {
     virtual const uint32_t GetColumnCnt() const = 0;
     virtual const std::string& GetColumnName(uint32_t i) const = 0;
     virtual const uint32_t GetRowCnt() const = 0;
+    virtual std::unique_ptr<ResultSetIterator> Iterator() = 0;
 };
 
 class TabletSdk {
@@ -44,7 +69,7 @@ class TabletSdk {
  public:
     TabletSdk() = default;
     virtual ~TabletSdk() {}
-   // virtual void SyncPut() = 0;
+    virtual bool SyncInsert(const Insert& insert) = 0;
     virtual std::unique_ptr<ResultSet> SyncQuery(const Query& query) = 0;
 };
 

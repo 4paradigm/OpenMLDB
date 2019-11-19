@@ -21,7 +21,9 @@
 #include "dbms/dbms_server_impl.h"
 #include "tablet/tablet_server_impl.h"
 #include "tablet/tablet_internal_sdk.h"
+#include "storage/codec.h"
 #include "gtest/gtest.h"
+#include "base/strings.h"
 #include "brpc/server.h"
 
 #include "llvm/Support/InitLLVM.h"
@@ -87,6 +89,24 @@ TEST_F(TabletSdkTest, test_normal) {
     }else {
         ASSERT_FALSE(true);
     }
+
+    Insert insert;
+    insert.row.resize(28);
+    char* str_buf = reinterpret_cast<char*>(&((insert.row)[0]));
+    storage::RowBuilder rbuilder(&table_def->columns(), (int8_t*)str_buf, 28);
+    ASSERT_TRUE(rbuilder.AppendInt32(1));
+    ASSERT_TRUE(rbuilder.AppendInt16(2));
+    ASSERT_TRUE(rbuilder.AppendFloat(3.1f));
+    ASSERT_TRUE(rbuilder.AppendDouble(4.1));
+    ASSERT_TRUE(rbuilder.AppendInt64(5));
+    std::cout << base::DebugString(str_buf, 28) << std::endl;
+    std::cout << base::DebugString(insert.row.c_str(), 28) << std::endl;
+    insert.db = "db1";
+    insert.table = "t1";
+    insert.key ="k";
+    insert.ts = 1024;
+    ASSERT_TRUE(sdk->SyncInsert(insert));
+
     Query query;
     query.db = "db1";
     query.sql = "select col1, col2 from t1 limit 1;";
@@ -95,7 +115,20 @@ TEST_F(TabletSdkTest, test_normal) {
         ASSERT_EQ(2u, rs->GetColumnCnt());
         ASSERT_EQ("col1", rs->GetColumnName(0));
         ASSERT_EQ("col2", rs->GetColumnName(1));
-        ASSERT_EQ(0u, rs->GetRowCnt());
+        ASSERT_EQ(1, rs->GetRowCnt());
+        std::unique_ptr<ResultSetIterator> it = rs->Iterator();
+        ASSERT_TRUE(it->HasNext());
+        it->Next();
+        {
+            int32_t val = 0;
+            ASSERT_TRUE(it->GetInt32(0, &val));
+            ASSERT_EQ(val, 1);
+        }
+        {
+            int16_t val = 0;
+            ASSERT_TRUE(it->GetInt16(1, &val));
+            ASSERT_EQ(val, 2);
+        }
     }
 }
 

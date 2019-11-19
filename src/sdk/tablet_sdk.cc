@@ -19,12 +19,126 @@
 
 #include "brpc/channel.h"
 #include "proto/tablet.pb.h"
+#include "storage/codec.h"
+#include "glog/logging.h"
 
 namespace fesql {
 namespace sdk {
 
 class TabletSdkImpl;
 class ResultSetImpl;
+class ResultSetIteratorImpl;
+
+class ResultSetIteratorImpl : public ResultSetIterator {
+
+ public:
+
+    ResultSetIteratorImpl(tablet::QueryResponse* response);
+
+    ~ResultSetIteratorImpl();
+
+    bool HasNext();
+    
+    void Next();
+
+    bool GetInt16(uint32_t idx, int16_t* val);
+    bool GetInt32(uint32_t idx, int32_t* val);
+    bool GetInt64(uint32_t idx, int64_t* val);
+    bool GetFloat(uint32_t idx, float* val);
+    bool GetDouble(uint32_t idx, double* val);
+
+ private:
+    std::vector<uint32_t> offsets_;
+    uint32_t idx_;
+    tablet::QueryResponse* response_;
+    std::unique_ptr<storage::RowView> row_view_;
+};
+
+ResultSetIteratorImpl::ResultSetIteratorImpl(tablet::QueryResponse* response):
+    offsets_(), idx_(0), response_(response), row_view_() {
+    uint32_t offset = 2;
+    for (int32_t i = 0; i < response_->schema_size(); i++) {
+        offsets_.push_back(offset);
+        const ::fesql::type::ColumnDef& column = response_->schema(i);
+        switch (column.type()) {
+            case ::fesql::type::kInt16:
+                {
+                    offset += 2;
+                    break;
+                }
+            case ::fesql::type::kInt32:
+            case ::fesql::type::kFloat:
+                {
+                    offset += 4;
+                    break;
+                }
+            case ::fesql::type::kInt64:
+            case ::fesql::type::kDouble:
+                {
+                    offset += 8;
+                    break;
+                }
+            default:
+                {
+                    LOG(WARNING) << ::fesql::type::Type_Name(column.type())  << " is not supported";
+                    break;
+                }
+        }
+    }
+}
+
+
+ResultSetIteratorImpl::~ResultSetIteratorImpl() {}
+
+bool ResultSetIteratorImpl::HasNext() {
+    if ((int32_t)idx_ < response_->result_set_size()) return true;
+    return false;
+}
+
+void ResultSetIteratorImpl::Next() {
+    const int8_t* row = reinterpret_cast<const int8_t*>(response_->result_set(idx_).c_str());
+    uint32_t size = response_->result_set(idx_).size();
+    row_view_ = std::move(
+            std::unique_ptr<storage::RowView>(
+                new storage::RowView(&(response_->schema()),
+                    row, &offsets_, size)));
+    idx_ += 1;
+}
+
+bool ResultSetIteratorImpl::GetInt16(uint32_t idx, int16_t* val) {
+    if (!row_view_) {
+        return false;
+    }
+    return row_view_->GetInt16(idx, val);
+}
+
+bool ResultSetIteratorImpl::GetInt32(uint32_t idx, int32_t* val) {
+    if (!row_view_) {
+        return false;
+    }
+    return row_view_->GetInt32(idx, val);
+}
+
+bool ResultSetIteratorImpl::GetInt64(uint32_t idx, int64_t* val) {
+    if (!row_view_) {
+        return false;
+    }
+    return row_view_->GetInt64(idx, val);
+}
+
+bool ResultSetIteratorImpl::GetFloat(uint32_t idx, float* val) {
+    if (!row_view_) {
+        return false;
+    }
+    return row_view_->GetFloat(idx, val);
+}
+
+bool ResultSetIteratorImpl::GetDouble(uint32_t idx, double* val) {
+    if (!row_view_) {
+        return false;
+    }
+    return row_view_->GetDouble(idx, val);
+}
 
 class ResultSetImpl : public ResultSet {
  public:
@@ -36,7 +150,14 @@ class ResultSetImpl : public ResultSet {
         // TODO check i out of index
         return response_.schema(i).name();
     }
-    const uint32_t GetRowCnt() const { return response_.result_set_size(); }
+
+    const uint32_t GetRowCnt() const { 
+        return response_.result_set_size(); 
+    }
+
+    std::unique_ptr<ResultSetIterator> Iterator() {
+        return std::move(std::unique_ptr<ResultSetIteratorImpl>(new ResultSetIteratorImpl(&response_)));
+    }
 
  private:
     friend TabletSdkImpl;
@@ -54,6 +175,8 @@ class TabletSdkImpl : public TabletSdk {
 
     std::unique_ptr<ResultSet> SyncQuery(const Query& query);
 
+    bool SyncInsert(const Insert& insert);
+
  private:
     std::string endpoint_;
     brpc::Channel* channel_;
@@ -69,6 +192,24 @@ bool TabletSdkImpl::Init() {
     return true;
 }
 
+bool TabletSdkImpl::SyncInsert(const Insert& insert) {
+    ::fesql::tablet::TabletServer_Stub stub(channel_);
+    ::fesql::tablet::InsertRequest req;
+    req.set_db(insert.db);
+    req.set_table(insert.table);
+    req.set_row(insert.row);
+    req.set_ts(insert.ts);
+    req.set_key(insert.key);
+    ::fesql::tablet::InsertResponse response;
+    brpc::Controller cntl;
+    stub.Insert(&cntl, &req, &response, NULL);
+    if (cntl.Failed() 
+            || response.status().code() != ::fesql::common::kOk) {
+        return false;
+    }
+    return true;
+}
+
 std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(const Query& query) {
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::QueryRequest request;
@@ -76,8 +217,9 @@ std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(const Query& query) {
     request.set_db(query.db);
     brpc::Controller cntl;
     ResultSetImpl* rs = new ResultSetImpl();
-    stub.Query(&cntl, &request, &rs->response_, NULL);
-    if (cntl.Failed()) {
+    stub.Query(&cntl, &request, &(rs->response_), NULL);
+    if (cntl.Failed() 
+            || rs->response_.status().code() != common::kOk) {
         delete rs;
         return std::unique_ptr<ResultSet>();
     }

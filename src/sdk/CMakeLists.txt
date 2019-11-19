@@ -6,7 +6,6 @@ add_library(fesql_sdk STATIC dbms_sdk.cc tablet_sdk.cc)
 add_dependencies(fesql_sdk fesql_node fesql_parser fesql_analyser fesql_planner fesql_proto)
 
 add_executable(dbms_sdk_test dbms_sdk_test.cc)
-#target_link_libraries(dbms_sdk_test fesql_dbms fesql_sdk fesql_base fesql_proto fesql_parser fesql_analyser fesql_planner fesql_node fesql_codegen brpc ${COMMON_LIBS} leveldb protobuf z snappy ssl crypto dl gtest pthread)
 target_link_libraries(dbms_sdk_test ${FESQL_LIBS} brpc protobuf gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread)
 add_test(dbms_sdk_test dbms_sdk_test --gtest_output=xml:${CMAKE_BINARY_DIR}/dbms_sdk_test.xml)
 list(APPEND test_list dbms_sdk_test)

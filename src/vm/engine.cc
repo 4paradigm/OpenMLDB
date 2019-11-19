@@ -16,6 +16,7 @@
  */
 
 #include "vm/engine.h"
+#include "base/strings.h"
 
 namespace fesql {
 namespace vm {
@@ -45,7 +46,7 @@ bool Engine::Get(const std::string& sql,
         // do clean
         return false;
     }
-    info->row_size = info->sql_ctx.row_size;
+    info->row_size = 2 + info->sql_ctx.row_size;
     {
         session.SetTableMgr(table_mgr_);
         // check 
@@ -101,9 +102,11 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
     uint32_t count = 0;
     while (it->Valid() && count < min) {
         ::fesql::storage::Slice value = it->GetValue();
-        int8_t* output = (int8_t*)malloc(project_op->output_size);
+        DLOG(INFO) << "value " << base::DebugString(value.data(), value.size());
+        DLOG(INFO) << "key " << it->GetKey() << " row size " << 2 + project_op->output_size;
+        int8_t* output = (int8_t*)malloc(2 + project_op->output_size);
         int8_t* row = reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
-        uint32_t ret = udf(row, output);
+        uint32_t ret = udf(row, output + 2);
         if (ret != 0) {
             LOG(WARNING) << "fail to run udf "  << ret;
             delete it;
