@@ -445,6 +445,10 @@ class ExprIdNode : public ExprNode {
 class ConstNode : public ExprNode {
  public:
     ConstNode() : ExprNode(kExprPrimary), date_type_(kTypeNull) {}
+    explicit ConstNode(int16_t val)
+        : ExprNode(kExprPrimary), date_type_(kTypeInt16) {
+        val_.vsmallint = val;
+    }
     explicit ConstNode(int val)
         : ExprNode(kExprPrimary), date_type_(kTypeInt32) {
         val_.vint = val;
@@ -485,6 +489,8 @@ class ConstNode : public ExprNode {
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
 
+    int16_t GetSmallInt() const { return val_.vsmallint; }
+
     int GetInt() const { return val_.vint; }
 
     int64_t GetLong() const { return val_.vlong; }
@@ -500,6 +506,7 @@ class ConstNode : public ExprNode {
  private:
     DataType date_type_;
     union {
+        int16_t vsmallint;
         int vint;         /* machine integer */
         int64_t vlong;    /* machine integer */
         const char *vstr; /* string */

@@ -170,19 +170,67 @@ void StartClient(char *argv[]) {
     }
 }
 
-void PrintResultSet(std::ostream &stream,
-                    const ::fesql::sdk::ResultSet *result_set) {
-    if (nullptr == result_set || result_set->GetColumnCnt() == 0) {
+void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
+    if (nullptr == result_set || result_set->GetRowCnt() == 0) {
         stream << "Empty set" << std::endl;
         return;
     }
     ::fesql::base::TextTable t('-', '|', '+');
 
+    // Add Header
     for (unsigned i = 0; i < result_set->GetColumnCnt(); i++) {
         t.add(result_set->GetColumnName(i));
     }
     t.endOfRow();
+
+    std::unique_ptr<fesql::sdk::ResultSetIterator> it = result_set->Iterator();
+    while (it->HasNext()) {
+        it->Next();
+        for (unsigned i = 0; i < result_set->GetColumnCnt(); i++) {
+            switch (result_set->GetColumnType(i)) {
+                case fesql::sdk::kTypeInt16: {
+                    int16_t value;
+                    it->GetInt16(i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case fesql::sdk::kTypeInt32: {
+                    int32_t value;
+                    it->GetInt32(i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case fesql::sdk::kTypeInt64: {
+                    int64_t value;
+                    it->GetInt64(i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case fesql::sdk::kTypeFloat: {
+                    float value;
+                    it->GetFloat(i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case fesql::sdk::kTypeDouble: {
+                    double value;
+                    it->GetDouble(i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                default: {
+                    t.add("NA");
+                }
+            }
+        }
+        t.endOfRow();
+    }
     stream << t << std::endl;
+    if (result_set->GetRowCnt() > 1) {
+        stream << result_set->GetRowCnt() << " rows in set" << std::endl;
+    } else {
+        stream << result_set->GetRowCnt() << " row in set" << std::endl;
+    }
 }
 void PrintTableSchema(std::ostream &stream,
                       const fesql::type::TableDef &table) {
@@ -278,6 +326,9 @@ void HandleSQLScript(
                 request.sql = script;
                 dbms_sdk->ExecuteScript(request, result, status);
                 return;
+            }
+            case fesql::node::kInsertStmt: {
+
             }
             case fesql::node::kSelectStmt: {
                 if (!table_sdk) {

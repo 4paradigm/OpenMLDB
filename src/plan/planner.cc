@@ -198,6 +198,15 @@ int SimplePlanner::CreatePlanTree(
                 plan_trees.push_back(cmd_plan);
                 break;
             }
+            case node::kInsertStmt: {
+                node::PlanNode *insert_plan =
+                    node_manager_->MakePlanNode(node::kPlanTypeInsert);
+                CreateInsertPlan(
+                    parser_tree,
+                    dynamic_cast<node::InsertPlanNode *>(insert_plan), status);
+                plan_trees.push_back(insert_plan);
+                break;
+            }
             case ::fesql::node::kFnList: {
                 break;
             }
@@ -211,6 +220,25 @@ int SimplePlanner::CreatePlanTree(
     }
     return status.code;
 }
+
+void Planner::CreateInsertPlan(const node::SQLNode* root,
+                               node::InsertPlanNode*plan, Status &status) {
+    if (nullptr == root) {
+        status.msg = "fail to create cmd plan node: query tree node it null";
+        status.code = error::kPlanErrorNullNode;
+        return;
+    }
+
+    if (root->GetType() != node::kInsertStmt) {
+        status.msg =
+            "fail to create cmd plan node: query tree node it not cmd type";
+        status.code = error::kPlanErrorUnSupport;
+        return;
+    }
+
+    plan->SetInsertNode(dynamic_cast<const node::InsertStmt*>(root));
+}
+
 void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
                             Status &status) {
     if (nullptr == root) {

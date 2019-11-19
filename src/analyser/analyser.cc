@@ -48,6 +48,9 @@ void FeSQLAnalyser::Analyse(SQLNode *parser_tree,
         case node::kCmdStmt:
             return TransformCmdNode(dynamic_cast<node::CmdNode *>(parser_tree),
                                     status);
+        case node::kInsertStmt:
+            return TransformInsertNode(
+                dynamic_cast<node::InsertStmt *>(parser_tree), status);
         default: {
             status.msg = "can not support " +
                          node::NameOfSQLNodeType(parser_tree->GetType());
@@ -348,6 +351,11 @@ void FeSQLAnalyser::TransformCreateNode(
         status.code = error::kAnalyserErrorTableAlreadyExist;
         return;
     }
+}
+void FeSQLAnalyser::TransformInsertNode(
+    node::InsertStmt *node_ptr, Status &status  // NOLINT (runtime/references)
+) {
+    // nothing to do
 }
 void FeSQLAnalyser::TransformCmdNode(
     node::CmdNode *node_ptr, Status &status) {  // NOLINT (runtime/references)

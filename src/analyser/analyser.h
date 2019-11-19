@@ -101,6 +101,8 @@ class FeSQLAnalyser {
     void TransformExprNode(SQLNode *node, const std::string &table_name,
                            Status &status);  // NOLINT (runtime/references)
     std::string GenerateName(const std::string prefix, int id);
+    void TransformInsertNode(node::InsertStmt *pNode,
+                             Status &status);  // NOLINT (runtime/references)
     void TransformCmdNode(node::CmdNode *pNode,
                           Status &status);  // NOLINT (runtime/references)
 };

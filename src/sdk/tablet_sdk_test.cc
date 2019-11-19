@@ -18,16 +18,17 @@
 #include "sdk/tablet_sdk.h"
 #include "sdk/dbms_sdk.h"
 
-#include "dbms/dbms_server_impl.h"
-#include "tablet/tablet_server_impl.h"
-#include "tablet/tablet_internal_sdk.h"
-#include "storage/codec.h"
-#include "gtest/gtest.h"
 #include "base/strings.h"
 #include "brpc/server.h"
+#include "dbms/dbms_server_impl.h"
+#include "gtest/gtest.h"
+#include "storage/codec.h"
+#include "tablet/tablet_internal_sdk.h"
+#include "tablet/tablet_server_impl.h"
 
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
+#include "tablet_sdk.h"
 
 using namespace llvm;
 using namespace llvm::orc;
@@ -86,27 +87,27 @@ TEST_F(TabletSdkTest, test_normal) {
     std::unique_ptr<TabletSdk> sdk = CreateTabletSdk("127.0.0.1:8121");
     if (sdk) {
         ASSERT_TRUE(true);
-    }else {
+    } else {
         ASSERT_FALSE(true);
     }
 
     Insert insert;
-    insert.row.resize(28);
-    char* str_buf = reinterpret_cast<char*>(&((insert.row)[0]));
-    storage::RowBuilder rbuilder(&table_def->columns(), (int8_t*)str_buf, 28);
-    ASSERT_TRUE(rbuilder.AppendInt32(1));
-    ASSERT_TRUE(rbuilder.AppendInt16(2));
-    ASSERT_TRUE(rbuilder.AppendFloat(3.1f));
-    ASSERT_TRUE(rbuilder.AppendDouble(4.1));
-    ASSERT_TRUE(rbuilder.AppendInt64(5));
-    std::cout << base::DebugString(str_buf, 28) << std::endl;
-    std::cout << base::DebugString(insert.row.c_str(), 28) << std::endl;
+
+    insert.values.push_back(fesql::sdk::Value(static_cast<int32_t>(1)));
+    insert.values.push_back(fesql::sdk::Value(static_cast<int16_t>(2)));
+    insert.values.push_back(fesql::sdk::Value(static_cast<float>(3.1)));
+    insert.values.push_back(fesql::sdk::Value(static_cast<double>(4.1)));
+    insert.values.push_back(fesql::sdk::Value(static_cast<int64_t>(5)));
+
     insert.db = "db1";
     insert.table = "t1";
-    insert.key ="k";
+    insert.key = "k";
     insert.ts = 1024;
-    ASSERT_TRUE(sdk->SyncInsert(insert));
 
+    ::fesql::base::Status insert_status;
+    sdk->SyncInsert(insert, insert_status);
+
+    ASSERT_EQ(0, static_cast<int>(insert_status.code));
     Query query;
     query.db = "db1";
     query.sql = "select col1, col2 from t1 limit 1;";
@@ -133,22 +134,23 @@ TEST_F(TabletSdkTest, test_normal) {
 }
 
 TEST_F(TabletSdkTest, test_create_and_query) {
-    //prepare servive
+    // prepare servive
     brpc::Server server;
     brpc::Server tablet_server;
     int tablet_port = 8300;
     int port = 9500;
 
-    tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
+    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
     ASSERT_TRUE(tablet->Init());
     brpc::ServerOptions options;
-    if (0 != tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+    if (0 !=
+        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
         LOG(WARNING) << "Fail to add tablet service";
         exit(1);
     }
     tablet_server.Start(tablet_port, &options);
 
-    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
+    ::fesql::dbms::DBMSServerImpl* dbms = new ::fesql::dbms::DBMSServerImpl();
     if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG(WARNING) << "Fail to add dbms service";
         exit(1);
@@ -157,7 +159,7 @@ TEST_F(TabletSdkTest, test_create_and_query) {
     dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
 
     const std::string endpoint = "127.0.0.1:" + std::to_string(port);
-    ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
 
     // create database db1
@@ -190,12 +192,20 @@ TEST_F(TabletSdkTest, test_create_and_query) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
-    std::unique_ptr<TabletSdk> sdk = CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
+    std::unique_ptr<TabletSdk> sdk =
+        CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
     if (sdk) {
         ASSERT_TRUE(true);
-    }else {
+    } else {
         ASSERT_FALSE(true);
     }
+
+    ::fesql::base::Status insert_status;
+    sdk->SyncInsert("db_1", "insert into t1 values(1, 4.1, 3.1, 5);", insert_status);
+//    sdk->SyncInsert("db_1", "insert into t1 values(2, 5.1, 4.1, 6);", insert_status);
+
+    ASSERT_EQ(0, static_cast<int>(insert_status.code));
+
     Query query;
     query.db = "db_1";
     query.sql = "select column1, column2 from t1 limit 1;";
@@ -204,13 +214,37 @@ TEST_F(TabletSdkTest, test_create_and_query) {
         ASSERT_EQ(2u, rs->GetColumnCnt());
         ASSERT_EQ("column1", rs->GetColumnName(0));
         ASSERT_EQ("column2", rs->GetColumnName(1));
-        ASSERT_EQ(0u, rs->GetRowCnt());
+//        ASSERT_EQ(2u, rs->GetRowCnt());
+        std::unique_ptr<ResultSetIterator> it = rs->Iterator();
+        ASSERT_TRUE(it->HasNext());
+        it->Next();
+        {
+            int32_t val = 0;
+            ASSERT_TRUE(it->GetInt32(0, &val));
+            ASSERT_EQ(val, 1);
+        }
+        {
+            double val = 0;
+            ASSERT_TRUE(it->GetDouble(1, &val));
+            ASSERT_EQ(val, 4.1);
+        }
+
+//        it->Next();
+//        {
+//            int32_t val = 0;
+//            ASSERT_TRUE(it->GetInt32(0, &val));
+//            ASSERT_EQ(val, 2);
+//        }
+//        {
+//            double val = 0;
+//            ASSERT_TRUE(it->GetDouble(1, &val));
+//            ASSERT_EQ(val, 5.1);
+//        }
     }
+//
     delete dbms;
     delete dbms_sdk;
     delete tablet;
-
-
 }
 }  // namespace sdk
 }  // namespace fesql
@@ -222,4 +256,3 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-
