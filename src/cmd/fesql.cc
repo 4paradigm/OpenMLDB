@@ -347,6 +347,7 @@ void HandleSQLScript(
                     return;
                 }
                 std::cout << "Insert success";
+                return;
             }
             case fesql::node::kSelectStmt: {
                 if (!table_sdk) {
