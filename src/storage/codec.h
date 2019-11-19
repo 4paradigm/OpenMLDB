@@ -57,6 +57,7 @@ class RowView {
 
     RowView(const Schema* schema,
             const int8_t* row,
+            const std::vector<uint32_t>* offsets,
             uint32_t size);
 
     ~RowView();
@@ -71,7 +72,7 @@ class RowView {
     const Schema* schema_;
     const int8_t* row_;
     uint32_t size_;
-    std::vector<uint32_t> offsets_;
+    const std::vector<uint32_t>* offsets_;
 };
 
 

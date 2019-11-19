@@ -16,6 +16,7 @@
  */
 
 #include "tablet/tablet_server_impl.h"
+#include "base/strings.h"
 
 namespace fesql {
 namespace tablet {
@@ -102,7 +103,7 @@ void TabletServerImpl::Insert(RpcController* ctrl,
         status->set_msg("table is not found");
         return;
     }
-
+    DLOG(INFO) << "put key " << request->key() << " value " << base::DebugString(request->row());
     bool ok = table->table->Put(request->key(), request->ts(),
             request->row().c_str(), request->row().size());
     if (!ok) {
@@ -228,6 +229,7 @@ void TabletServerImpl::Query(RpcController* ctrl,
         return;
     }
 
+    DLOG(INFO) << "buf size " << buf.size();
     // TODO(wangtaize) opt the result buf
     std::vector<int8_t*>::iterator it = buf.begin();
     for (; it != buf.end(); ++it) {
@@ -235,7 +237,6 @@ void TabletServerImpl::Query(RpcController* ctrl,
         response->add_result_set(ptr, session.GetRowSize());
         free(ptr);
     }
-
     // TODO(wangtaize) opt the schema
     std::vector<::fesql::type::ColumnDef>::const_iterator sit = session.GetSchema().begin();
     for (; sit != session.GetSchema().end(); ++sit) {

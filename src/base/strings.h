@@ -86,7 +86,7 @@ static inline char ToHex(uint8_t i) {
     return j;
 }
 
-static inline std::string DebugCharArray(const char* data, uint32_t size) {
+static inline std::string DebugString(const char* data, uint32_t size) {
     std::string dst;
     dst.resize(size << 2);
     uint32_t j = 0;

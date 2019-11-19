@@ -112,16 +112,15 @@ TEST_F(EngineTest, test_normal) {
     ASSERT_TRUE(ok);
     const uint32_t length = session.GetRowSize();
     std::vector<int8_t*> output;
-    uint32_t row_cnt = 0;
     int32_t ret = session.Run(output, 2);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(2, output.size());
-    ASSERT_EQ(length, 6);
+    ASSERT_EQ(length, 8);
     int8_t* output1 = output[0];
     int8_t* output2 = output[1];
-    ASSERT_EQ(3, *((int32_t*)output1));
-    ASSERT_EQ(2, *((int16_t*)(output1 + 4)));
-    ASSERT_EQ(3, *((int32_t*)output2));
+    ASSERT_EQ(3, *((int32_t*)(output1 + 2)));
+    ASSERT_EQ(2, *((int16_t*)(output1 + 6)));
+    ASSERT_EQ(3, *((int32_t*)(output2 + 2)));
     free(output1);
     free(output2);
 }

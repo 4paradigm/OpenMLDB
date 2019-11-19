@@ -25,12 +25,12 @@ namespace storage {
 RowBuilder::RowBuilder(const Schema* schema, 
                        int8_t* buf, uint32_t size):
                        schema_(schema), buf_(buf), 
-                       size_(size), offset_(0){}
+                       size_(size), offset_(2){}
 
 RowBuilder::~RowBuilder() {}
 
 bool RowBuilder::Check(uint32_t delta) {
-    if (offset_ + delta < size_) return true;
+    if (offset_ + delta <= size_) return true;
     return false;
 }
 
@@ -77,37 +77,10 @@ bool RowBuilder::AppendDouble(double val) {
 }
 
 RowView::RowView(const Schema* schema,
-        const int8_t* row, uint32_t size):
-    schema_(schema), row_(row), size_(size), offsets_(schema->size()) {
-    uint32_t offset = 0;
-    for (int32_t i = 0; i < schema_->size(); i++) {
-        offsets_[i] = offset;
-        const ::fesql::type::ColumnDef& column = schema_->Get(i);
-        switch (column.type()) {
-            case ::fesql::type::kInt16:
-                {
-                    offset += 2;
-                    break;
-                }
-            case ::fesql::type::kInt32:
-            case ::fesql::type::kFloat:
-                {
-                    offset += 4;
-                    break;
-                }
-            case ::fesql::type::kInt64:
-            case ::fesql::type::kDouble:
-                {
-                    offset += 8;
-                    break;
-                }
-            default:
-                {
-                    LOG(WARNING) << ::fesql::type::Type_Name(column.type())  << " is not supported";
-                    break;
-                }
-        }
-    }
+                 const int8_t* row,
+                 const std::vector<uint32_t>* offsets,
+                 uint32_t size):
+    schema_(schema), row_(row), size_(size), offsets_(offsets) {
 }
 
 RowView::~RowView() {}
@@ -125,9 +98,10 @@ bool RowView::GetInt32(uint32_t idx, int32_t* val) {
         return false;
     }
 
-    uint32_t offset = offsets_[idx];
+    uint32_t offset = offsets_->at(idx);
     const int8_t* ptr = row_ + offset;
     *val = *((const int32_t*)ptr);
+    DLOG(INFO) << "idx " << idx << " with offset " << offset << ", val " << *val;
     return true;
 }
 
@@ -144,9 +118,10 @@ bool RowView::GetInt64(uint32_t idx, int64_t* val) {
         return false;
     }
 
-    uint32_t offset = offsets_[idx];
+    uint32_t offset = offsets_->at(idx);
     const int8_t* ptr = row_ + offset;
     *val = *((const int64_t*)ptr);
+    DLOG(INFO) << "idx " << idx << " with offset " << offset << ", val " << *val;
     return true;
 }
 
@@ -164,7 +139,7 @@ bool RowView::GetInt16(uint32_t idx, int16_t* val) {
         return false;
     }
 
-    uint32_t offset = offsets_[idx];
+    uint32_t offset = offsets_->at(idx);
     const int8_t* ptr = row_ + offset;
     *val = *((const int16_t*)ptr);
     return true;
@@ -184,7 +159,7 @@ bool RowView::GetFloat(uint32_t idx, float* val) {
         return false;
     }
 
-    uint32_t offset = offsets_[idx];
+    uint32_t offset = offsets_->at(idx);
     const int8_t* ptr = row_ + offset;
     *val = *((const float*)ptr);
     return true;
@@ -204,7 +179,7 @@ bool RowView::GetDouble(uint32_t idx, double* val) {
         return false;
     }
 
-    uint32_t offset = offsets_[idx];
+    uint32_t offset = offsets_->at(idx);
     const int8_t* ptr = row_ + offset;
     *val = *((const double*)ptr);
     return true;
