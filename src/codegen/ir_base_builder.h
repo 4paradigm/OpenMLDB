@@ -49,7 +49,6 @@ bool BuildStoreOffset(::llvm::IRBuilder<>& builder,
         ::llvm::Value* offset,
         ::llvm::Value* value);
 
-
 }  // namespace codegen
 }  // namespace fesql
 #endif  // SRC_CODEGEN_IR_BASE_BUILDER_H_

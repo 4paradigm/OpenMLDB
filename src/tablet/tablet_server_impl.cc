@@ -95,6 +95,7 @@ void TabletServerImpl::Insert(RpcController* ctrl,
         status->set_msg("db or table name is empty");
         return;
     }
+
     std::shared_ptr<vm::TableStatus> table = GetTableDef(request->db(),
             request->table());
 
@@ -103,7 +104,8 @@ void TabletServerImpl::Insert(RpcController* ctrl,
         status->set_msg("table is not found");
         return;
     }
-    DLOG(INFO) << "put key " << request->key() << " value " << base::DebugString(request->row());
+    DLOG(INFO) << "put key " << request->key() << " ts " 
+               << request->ts() << " value " << base::DebugString(request->row());
     bool ok = table->table->Put(request->key(), request->ts(),
             request->row().c_str(), request->row().size());
     if (!ok) {

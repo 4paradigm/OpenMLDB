@@ -34,13 +34,31 @@ class BufIRBuilder {
  public:
 
     BufIRBuilder(::fesql::type::TableDef* table, 
-            ::llvm::BasicBlock* block,
-             ScopeVar* scope_var);
+                 ::llvm::BasicBlock* block,
+                 ScopeVar* scope_var);
 
     ~BufIRBuilder();
 
-    bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
+    bool BuildGetField(const std::string& name, 
+                       ::llvm::Value* row_ptr,
+                       ::llvm::Value* row_size,
                        ::llvm::Value** output);
+
+ private:
+
+    bool BuildGetString(const std::string& name, ::llvm::Value* row_ptr,
+            ::llvm::Value** output);
+
+    bool GetFieldOffset(const std::string& name,
+            ::llvm::Value* row_ptr,
+            ::llvm::Value* row_size,
+            ::llvm::Value** output);
+
+    bool GetNextOffset(const std::string& name,
+            ::llvm::Value* row_ptr,
+            ::llvm::Value* row_size,
+            ::llvm::Value** output);
+
  private:
     ::fesql::type::TableDef* const table_;
     ::llvm::BasicBlock* block_;

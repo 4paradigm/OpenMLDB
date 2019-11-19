@@ -10,7 +10,7 @@ enum Type {
     kInt64 = 5;
     kFloat = 7;
     kDouble = 8;
-    kString = 9;
+    kVarchar = 9;
     kDate = 10;
     kTimestamp = 11;
 }
@@ -49,7 +49,6 @@ message Group {
     optional uint64 ctime = 3;
     optional uint64 owner = 4;
 }
-
 
 message CataLog {
     optional string name = 1;
