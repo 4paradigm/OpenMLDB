@@ -9,6 +9,7 @@
 
 #include "node/node_manager.h"
 #include <string>
+#include <vector>
 
 namespace fesql {
 namespace node {
@@ -263,7 +264,7 @@ SQLNodeList *NodeManager::MakeNodeList() {
     return new_list_ptr;
 }
 
-SQLNodeList *NodeManager::MakeNodeList(SQLNode* node) {
+SQLNodeList *NodeManager::MakeNodeList(SQLNode *node) {
     SQLNodeList *new_list_ptr = new SQLNodeList();
     new_list_ptr->PushBack(node);
     RegisterNode(new_list_ptr);
@@ -271,12 +272,12 @@ SQLNodeList *NodeManager::MakeNodeList(SQLNode* node) {
 }
 
 ExprListNode *NodeManager::MakeExprList() {
-    ExprListNode* new_list_ptr = new ExprListNode();
+    ExprListNode *new_list_ptr = new ExprListNode();
     RegisterNode(new_list_ptr);
     return new_list_ptr;
 }
-ExprListNode *NodeManager::MakeExprList(ExprNode * expr_node) {
-    ExprListNode* new_list_ptr = new ExprListNode();
+ExprListNode *NodeManager::MakeExprList(ExprNode *expr_node) {
+    ExprListNode *new_list_ptr = new ExprListNode();
     new_list_ptr->AddChild(expr_node);
     RegisterNode(new_list_ptr);
     return new_list_ptr;
@@ -434,27 +435,30 @@ ExprNode *NodeManager::MakeAllNode(const std::string &relation_name) {
     return RegisterNode(node_ptr);
 }
 SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
-                                          const ExprListNode* columns_expr,
-                                          const ExprListNode* values) {
-
+                                          const ExprListNode *columns_expr,
+                                          const ExprListNode *values) {
     if (nullptr == columns_expr) {
         InsertStmt *node_ptr = new InsertStmt(table_name, values->children);
         return RegisterNode(node_ptr);
     } else {
         std::vector<std::string> column_names;
-        for(auto expr: columns_expr->children) {
+        for (auto expr : columns_expr->children) {
             switch (expr->GetExprType()) {
                 case kExprColumnRef: {
-                    ColumnRefNode *column_ref = dynamic_cast<ColumnRefNode*>(expr);
+                    ColumnRefNode *column_ref =
+                        dynamic_cast<ColumnRefNode *>(expr);
                     column_names.push_back(column_ref->GetColumnName());
                     break;
                 }
-                default:{
-                    LOG(WARNING) << "Can't not handle insert column name with type" << ExprTypeName(expr->GetExprType());
+                default: {
+                    LOG(WARNING)
+                        << "Can't not handle insert column name with type"
+                        << ExprTypeName(expr->GetExprType());
                 }
             }
         }
-        InsertStmt *node_ptr = new InsertStmt(table_name, column_names, values->children);
+        InsertStmt *node_ptr =
+            new InsertStmt(table_name, column_names, values->children);
         return RegisterNode(node_ptr);
     }
 }

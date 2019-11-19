@@ -886,8 +886,8 @@ void PrintSQLVector(std::ostream &output, const std::string &tab,
                     const NodePointVector &vec, const std::string &vector_name,
                     bool last_item);
 void PrintSQLVector(std::ostream &output, const std::string &tab,
-                     const std::vector<ExprNode*> &vec, const std::string &vector_name,
-                     bool last_item);
+                    const std::vector<ExprNode *> &vec,
+                    const std::string &vector_name, bool last_item);
 void PrintValue(std::ostream &output, const std::string &org_tab,
                 const std::string &value, const std::string &item_name,
                 bool last_child);

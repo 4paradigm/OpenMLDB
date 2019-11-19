@@ -185,9 +185,11 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ASSERT_EQ(std::vector<std::string>({"col1", "col2", "col3"}),
               insert_stmt->columns_);
 
-    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[0])->GetInt(), 1);
-    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[1])->GetFloat(), 2.3f);
-    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[2])->GetDouble(), 2.3);
+    ASSERT_EQ(dynamic_cast<ConstNode *>(insert_stmt->values_[0])->GetInt(), 1);
+    ASSERT_EQ(dynamic_cast<ConstNode *>(insert_stmt->values_[1])->GetFloat(),
+              2.3f);
+    ASSERT_EQ(dynamic_cast<ConstNode *>(insert_stmt->values_[2])->GetDouble(),
+              2.3);
 }
 
 }  // namespace node

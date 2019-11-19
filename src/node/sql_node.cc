@@ -312,8 +312,8 @@ void PrintSQLNode(std::ostream &output, const std::string &org_tab,
 }
 
 void PrintSQLVector(std::ostream &output, const std::string &tab,
-                    const std::vector<ExprNode*> &vec, const std::string &vector_name,
-                    bool last_item) {
+                    const std::vector<ExprNode *> &vec,
+                    const std::string &vector_name, bool last_item) {
     if (0 == vec.size()) {
         output << tab << SPACE_ST << vector_name << ": []";
         return;
@@ -435,7 +435,6 @@ void InsertStmt::Print(std::ostream &output, const std::string &org_tab) const {
     }
 
     PrintSQLVector(output, tab, values_, "values", false);
-
 }
 }  // namespace node
 }  // namespace fesql

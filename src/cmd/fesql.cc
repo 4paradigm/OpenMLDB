@@ -45,15 +45,20 @@ DECLARE_int32(thread_pool_size);
 
 DEFINE_string(role, "tablet | dbms | client ", "Set the fesql role");
 
+namespace fesql {
+namespace cmd {
+
 static ::fesql::sdk::DBMSSdk *dbms_sdk = NULL;
 static std::unique_ptr<::fesql::sdk::TabletSdk> table_sdk;
-static ::std::string cmd_client_db = "";
+static ::fesql::sdk::DatabaseDef cmd_client_db;
 
-void HandleSQLScript(std::string basicString, fesql::base::Status &status);
-void HandleCreateSchema(std::string str, ::fesql::base::Status &status);
+void HandleSQLScript(
+    const std::string &script,
+    fesql::base::Status &status);  // NOLINT (runtime/references)
 
-void HandleEnterDatabase(std::string &db_name);
-void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status);
+void HandleEnterDatabase(const std::string &db_name);
+void handleCmd(const fesql::node::CmdNode *cmd_node,
+               fesql::base::Status &status);  // NOLINT (runtime/references)
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
 
 void StartTablet(int argc, char *argv[]) {
@@ -124,7 +129,7 @@ void StartClient(char *argv[]) {
     std::cout << "Welcome to FeSQL " << FESQL_VERSION_MAJOR << "."
               << FESQL_VERSION_MEDIUM << "." << FESQL_VERSION_MINOR << "."
               << FESQL_VERSION_BUG << std::endl;
-    cmd_client_db = "";
+    cmd_client_db.name = "";
     std::string display_prefix = ">";
     std::string continue_prefix = "...";
     std::string cmd_str;
@@ -132,7 +137,7 @@ void StartClient(char *argv[]) {
     while (true) {
         std::string buf;
         char *line = ::fesql::base::linenoise(
-            cmd_mode ? (cmd_client_db + display_prefix).c_str()
+            cmd_mode ? (cmd_client_db.name + display_prefix).c_str()
                      : continue_prefix.c_str());
         if (line == NULL) {
             return;
@@ -162,28 +167,6 @@ void StartClient(char *argv[]) {
         } else {
             cmd_mode = false;
         }
-    }
-}
-void HandleEnterDatabase(std::string &db_name) {
-    if (dbms_sdk == NULL) {
-        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
-        if (dbms_sdk == NULL) {
-            std::cout << "Fail to connect to dbms" << std::endl;
-            return;
-        }
-    }
-    ::fesql::base::Status status;
-    ::fesql::sdk::DatabaseDef database;
-    database.name = db_name;
-    bool exist = dbms_sdk->IsExistDatabase(database, status);
-    if (status.code == 0) {
-        if (exist) {
-            cmd_client_db = db_name;
-        } else {
-            std::cout << "ERROR : Database " << db_name << " doesn't exist";
-        }
-    } else {
-        std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
     }
 }
 
@@ -247,7 +230,9 @@ void PrintItems(std::ostream &stream, const std::string &head,
         stream << items_size << " row in set" << std::endl;
     }
 }
-void HandleSQLScript(std::string script, fesql::base::Status &status) {
+void HandleSQLScript(
+    const std::string &script,
+    fesql::base::Status &status) {  // NOLINT (runtime/references)
     if (dbms_sdk == NULL) {
         dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
         if (dbms_sdk == NULL) {
@@ -289,7 +274,7 @@ void HandleSQLScript(std::string script, fesql::base::Status &status) {
             case fesql::node::kCreateStmt: {
                 fesql::sdk::ExecuteRequst request;
                 ::fesql::sdk::ExecuteResult result;
-                request.database.name = cmd_client_db;
+                request.database.name = cmd_client_db.name;
                 request.sql = script;
                 dbms_sdk->ExecuteScript(request, result, status);
                 return;
@@ -306,12 +291,13 @@ void HandleSQLScript(std::string script, fesql::base::Status &status) {
                     return;
                 }
                 ::fesql::sdk::Query query;
-                query.db = cmd_client_db;
+                query.db = cmd_client_db.name;
                 query.sql = script;
                 std::unique_ptr<::fesql::sdk::ResultSet> rs =
                     table_sdk->SyncQuery(query);
                 if (!rs) {
-                    std::cout << "Fail to query sql: " << status.msg << std::endl;
+                    std::cout << "Fail to query sql: " << status.msg
+                              << std::endl;
                 } else {
                     PrintResultSet(std::cout, rs.get());
                 }
@@ -326,7 +312,8 @@ void HandleSQLScript(std::string script, fesql::base::Status &status) {
         }
     }
 }
-void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
+void handleCmd(const fesql::node::CmdNode *cmd_node,
+               fesql::base::Status &status) {  // NOLINT (runtime/references)
     if (dbms_sdk == NULL) {
         dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
         if (dbms_sdk == NULL) {
@@ -335,7 +322,7 @@ void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
         }
     }
     ::fesql::sdk::DatabaseDef db;
-    db.name = cmd_client_db;
+    db.name = cmd_client_db.name;
     switch (cmd_node->GetCmdType()) {
         case fesql::node::kCmdShowDatabases: {
             std::vector<std::string> names;
@@ -350,7 +337,7 @@ void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
             dbms_sdk->GetTables(db, names, status);
             if (status.code == 0) {
                 std::ostringstream oss;
-                PrintItems(std::cout, "Tables_In_" + cmd_client_db, names);
+                PrintItems(std::cout, "Tables_In_" + cmd_client_db.name, names);
             }
             return;
         }
@@ -397,7 +384,7 @@ void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
             ::fesql::sdk::ExecuteRequst requst;
             ::fesql::sdk::ExecuteResult result;
 
-            requst.database.name = cmd_client_db;
+            requst.database.name = cmd_client_db.name;
             requst.sql = str;
             dbms_sdk->ExecuteScript(requst, result, status);
             if (0 == status.code) {
@@ -410,7 +397,7 @@ void handleCmd(fesql::node::CmdNode *cmd_node, fesql::base::Status &status) {
             usedb.name = cmd_node->GetArgs()[0];
             if (0 == status.code) {
                 if (dbms_sdk->IsExistDatabase(usedb, status)) {
-                    cmd_client_db = usedb.name;
+                    cmd_client_db.name = usedb.name;
                     std::cout << "Database changed" << std::endl;
                 } else {
                     std::cout << "Database '" << usedb.name << "' not exists"
@@ -443,3 +430,5 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
+}  // namespace cmd
+}  // namespace fesql
