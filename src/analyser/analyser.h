@@ -55,8 +55,8 @@ class FeSQLAnalyser {
     }
 
     int Analyse(NodePointVector &parser_trees,  // NOLINT (runtime/references)
-                NodePointVector &query_tree,
-                Status &status);  // NOLINT (runtime/references)
+                NodePointVector &query_tree,    // NOLINT (runtime/references)
+                Status &status);                // NOLINT (runtime/references)
     void Analyse(SQLNode *parser_tree,
                  Status &status);  // NOLINT (runtime/references)
 

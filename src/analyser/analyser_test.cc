@@ -167,7 +167,7 @@ TEST_P(AnalyserTest, RunAnalyseTest) {
     base::Status status;
     int ret = parser_->parse(param.second, list, manager_, status);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, list.size());
+    ASSERT_EQ(1u, list.size());
 
     NodePointVector query_tree;
     ret = analyser->Analyse(list, query_tree, status);
@@ -175,7 +175,7 @@ TEST_P(AnalyserTest, RunAnalyseTest) {
         std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(param.first, ret);
-    if (query_tree.size() > 0) {
+    if (query_tree.size() > 0u) {
         std::cout << *query_tree[0] << std::endl;
     }
 }

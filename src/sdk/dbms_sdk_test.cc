@@ -32,7 +32,8 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
     tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
     ASSERT_TRUE(tablet->Init());
     brpc::ServerOptions options;
-    if (0 != tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+    if (0 !=
+        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
         LOG(WARNING) << "Fail to add tablet service";
         exit(1);
     }
@@ -57,7 +58,7 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
         dbms_sdk->GetDatabases(names, status);
         std::cout << status.msg << std::endl;
         ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_EQ(0, names.size());
+        ASSERT_EQ(0u, names.size());
     }
 
     // create database db1
@@ -93,7 +94,7 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
         Status status;
         dbms_sdk->GetDatabases(names, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_EQ(3, names.size());
+        ASSERT_EQ(3u, names.size());
     }
 
     {
@@ -111,7 +112,7 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
         db.name = "db_not_exist";
         Status status;
         ASSERT_EQ(false, dbms_sdk->IsExistDatabase(db, status));
-        ASSERT_EQ(0, status.code);
+        ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     delete tablet;
@@ -127,7 +128,8 @@ TEST_F(DBMSSdkTest, GroupAPITest) {
     tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
     ASSERT_TRUE(tablet->Init());
     brpc::ServerOptions options;
-    if (0 != tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+    if (0 !=
+        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
         LOG(WARNING) << "Fail to add tablet service";
         exit(1);
     }
@@ -167,7 +169,8 @@ TEST_F(DBMSSdkTest, TableAPITest) {
     tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
     ASSERT_TRUE(tablet->Init());
     brpc::ServerOptions options;
-    if (0 != tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+    if (0 !=
+        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
         LOG(WARNING) << "Fail to add tablet service";
         exit(1);
     }
@@ -279,7 +282,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
 
         dbms_sdk->GetTables(db, names, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_EQ(3, names.size());
+        ASSERT_EQ(3u, names.size());
     }
 
     {
@@ -298,7 +301,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         Status status;
         dbms_sdk->GetTables(db, names, status);
         ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_EQ(0, names.size());
+        ASSERT_EQ(0u, names.size());
     }
     delete dbms;
     delete dbms_sdk;
@@ -314,7 +317,8 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
     tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
     ASSERT_TRUE(tablet->Init());
     brpc::ServerOptions options;
-    if (0 != tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+    if (0 !=
+        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
         LOG(WARNING) << "Fail to add tablet service";
         exit(1);
     }

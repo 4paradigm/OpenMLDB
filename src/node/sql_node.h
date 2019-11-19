@@ -194,13 +194,14 @@ class SQLNodeList {
 };
 class ExprNode : public SQLNode {
  public:
-    ExprNode(ExprType expr_type)
+    explicit ExprNode(ExprType expr_type)
         : SQLNode(kExpr, 0, 0), expr_type_(expr_type) {}
     ~ExprNode() {}
     void AddChild(ExprNode *expr) { children.push_back(expr); }
     const ExprType GetExprType() const { return expr_type_; }
 
     std::vector<ExprNode *> children;
+
  private:
     ExprType expr_type_;
 };
@@ -545,7 +546,6 @@ class ColumnRefNode : public ExprNode {
     std::string relation_name_;
 };
 
-
 class ResTarget : public SQLNode {
  public:
     ResTarget() : SQLNode(kResTarget, 0, 0), name_(""), val_(nullptr) {}
@@ -557,13 +557,13 @@ class ResTarget : public SQLNode {
 
     std::string GetName() const { return name_; }
 
-    ExprNode* GetVal() const { return val_; }
+    ExprNode *GetVal() const { return val_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     std::string name_; /* column name or NULL */
-    ExprNode *val_;     /* the value expression to compute or assign */
+    ExprNode *val_;    /* the value expression to compute or assign */
     NodePointVector indirection_; /* subscripts, field names, and '*', or NIL */
 };
 class SelectStmt : public SQLNode {
@@ -751,7 +751,7 @@ class ColumnIndexNode : public SQLNode {
     void SetVersionCount(int count) { version_count_ = count; }
 
     int64_t GetTTL() const { return ttl_; }
-    void SetTTL(ExprNode* ttl_node) {
+    void SetTTL(ExprNode *ttl_node) {
         if (nullptr == ttl_node) {
             ttl_ = -1l;
         } else {
@@ -784,7 +784,8 @@ class ColumnIndexNode : public SQLNode {
                     break;
                 }
                 default: {
-                    LOG(WARNING) << "can't set ttl with expr type " << ExprTypeName(ttl_node->GetExprType());
+                    LOG(WARNING) << "can't set ttl with expr type "
+                                 << ExprTypeName(ttl_node->GetExprType());
                 }
             }
         }
@@ -864,11 +865,11 @@ class FnAssignNode : public FnNode {
 };
 class FnReturnStmt : public FnNode {
  public:
-    FnReturnStmt(ExprNode *return_expr)
+    explicit FnReturnStmt(ExprNode *return_expr)
         : FnNode(kFnReturnStmt), return_expr_(return_expr) {}
     const ExprNode *return_expr_;
 };
-std::string WindowOfExpression(ExprNode*node_ptr);
+std::string WindowOfExpression(ExprNode *node_ptr);
 void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,
     std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)

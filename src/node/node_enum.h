@@ -42,7 +42,6 @@ enum SQLNodeType {
     kList,
     kOrderBy,
 
-
     kDesc,
     kAsc,
 
@@ -189,7 +188,7 @@ enum ErrorType {
     kCmdErrorUnSupport,
     kCmdErrorNullNode,
     kCmdErrorPathError,
-    
+
     kRpcErrorUnknow = 6001,
     kRpcErrorConnection,
 };

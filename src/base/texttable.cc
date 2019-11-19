@@ -16,7 +16,7 @@ std::ostream& operator<<(std::ostream& stream, const TextTable& table) {
     }
     table.setup();
     stream << table.ruler() << "\n";
-    int line = 0;
+    unsigned line = 0;
     for (auto rowIterator = table.rows().begin();
          rowIterator != table.rows().end(); ++rowIterator) {
         TextTable::Row const& row = *rowIterator;
@@ -47,7 +47,7 @@ void base::TextTable::determineWidths() const {
             _width[i] = _width[i] > row[i].size() ? _width[i] : row[i].size();
         }
     }
-    for (int j = 0; j < _width.size(); ++j) {
+    for (unsigned j = 0; j < _width.size(); ++j) {
         _width[j] += 2;
     }
 }
@@ -72,4 +72,4 @@ std::string TextTable::ruler() const {
 }
 
 }  // namespace base
-} // namespace fesql
+}  // namespace fesql

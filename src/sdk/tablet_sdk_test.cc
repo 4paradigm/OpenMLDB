@@ -112,7 +112,7 @@ TEST_F(TabletSdkTest, test_normal) {
     query.sql = "select col1, col2 from t1 limit 1;";
     std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
     if (rs) {
-        ASSERT_EQ(2, rs->GetColumnCnt());
+        ASSERT_EQ(2u, rs->GetColumnCnt());
         ASSERT_EQ("col1", rs->GetColumnName(0));
         ASSERT_EQ("col2", rs->GetColumnName(1));
         ASSERT_EQ(1, rs->GetRowCnt());
@@ -201,10 +201,10 @@ TEST_F(TabletSdkTest, test_create_and_query) {
     query.sql = "select column1, column2 from t1 limit 1;";
     std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
     if (rs) {
-        ASSERT_EQ(2, rs->GetColumnCnt());
+        ASSERT_EQ(2u, rs->GetColumnCnt());
         ASSERT_EQ("column1", rs->GetColumnName(0));
         ASSERT_EQ("column2", rs->GetColumnName(1));
-        ASSERT_EQ(0, rs->GetRowCnt());
+        ASSERT_EQ(0u, rs->GetRowCnt());
     }
     delete dbms;
     delete dbms_sdk;

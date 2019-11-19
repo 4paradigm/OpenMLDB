@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #include "node/sql_node.h"
-#include <strstream>
 #include "gtest/gtest.h"
 #include "node/node_manager.h"
 
@@ -153,7 +152,8 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
     ASSERT_EQ(kPreceding, end->GetBoundType());
 
     ASSERT_EQ(kExpr, end->GetOffset()->GetType());
-    ASSERT_EQ(kExprPrimary, dynamic_cast<ExprNode*>(end->GetOffset())->GetExprType());
+    ASSERT_EQ(kExprPrimary,
+              dynamic_cast<ExprNode *>(end->GetOffset())->GetExprType());
     ConstNode *const_ptr = dynamic_cast<ConstNode *>(end->GetOffset());
     ASSERT_EQ(kTypeInt64, const_ptr->GetDataType());
     ASSERT_EQ(86400000, const_ptr->GetLong());
