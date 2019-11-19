@@ -159,6 +159,37 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
     ASSERT_EQ(86400000, const_ptr->GetLong());
 }
 
+TEST_F(SqlNodeTest, MakeInsertNodeTest) {
+    ExprListNode *column_expr_list = node_manager_->MakeExprList();
+    ExprNode *ptr1 = node_manager_->MakeColumnRefNode("col1", "");
+    column_expr_list->PushBack(ptr1);
+
+    ExprNode *ptr2 = node_manager_->MakeColumnRefNode("col2", "");
+    column_expr_list->PushBack(ptr2);
+
+    ExprNode *ptr3 = node_manager_->MakeColumnRefNode("col3", "");
+    column_expr_list->PushBack(ptr3);
+    ExprListNode *value_expr_list = node_manager_->MakeExprList();
+    ExprNode *value1 = node_manager_->MakeConstNode(1);
+    ExprNode *value2 = node_manager_->MakeConstNode(2.3f);
+    ExprNode *value3 = node_manager_->MakeConstNode(2.3);
+    value_expr_list->PushBack(value1);
+    value_expr_list->PushBack(value2);
+    value_expr_list->PushBack(value3);
+    SQLNode *node_ptr = node_manager_->MakeInsertTableNode(
+        "t1", column_expr_list, value_expr_list);
+
+    ASSERT_EQ(kInsertStmt, node_ptr->GetType());
+    InsertStmt *insert_stmt = dynamic_cast<InsertStmt *>(node_ptr);
+    ASSERT_EQ(false, insert_stmt->is_all_);
+    ASSERT_EQ(std::vector<std::string>({"col1", "col2", "col3"}),
+              insert_stmt->columns_);
+
+    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[0])->GetInt(), 1);
+    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[1])->GetFloat(), 2.3f);
+    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[2])->GetDouble(), 2.3);
+}
+
 }  // namespace node
 }  // namespace fesql
 

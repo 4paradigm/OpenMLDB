@@ -53,6 +53,7 @@ typedef void* yyscan_t;
 	::fesql::node::ExprNode* expr;
 	::fesql::node::DataType type;
 	::fesql::node::FnNodeList* fnlist;
+	::fesql::node::ExprListNode* exprlist;
 	::fesql::node::SQLNodeList* list;
 }
 
@@ -357,6 +358,11 @@ typedef void* yyscan_t;
               window_definition window_specification over_clause
               limit_clause
 
+ /* insert table */
+%type<node> insert_stmt
+%type<exprlist> insert_expr_list column_ref_list
+%type<expr> insert_expr
+
  /* create table */
 %type <node>  create_stmt column_desc column_index_item column_index_key
 %type <node>  cmd_stmt
@@ -559,10 +565,10 @@ stmt:   select_stmt
         {
             $$ = $1;
         }
-//        |insert_stmt
-//        {
-//        	$$ = $1;
-//        }
+        |insert_stmt
+        {
+        	$$ = $1;
+        }
         |cmd_stmt
         {
         	$$ = $1;
@@ -585,12 +591,41 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                 }
                 ;
 
-//%type<node> insert_stmt
-//$type<list> insert_value_list
-//insert_stmt:	INSERT INTO table_reference VALUES '(' insert_value_list ')'
-//				{
-//
-//				}
+
+insert_stmt:	INSERT INTO table_name VALUES '(' insert_expr_list ')'
+				{
+					$$ = node_manager->MakeInsertTableNode($3, NULL, $6);
+				}
+				|INSERT INTO table_name '(' column_ref_list ')' VALUES '(' insert_expr_list ')'
+				{
+
+					$$ = node_manager->MakeInsertTableNode($3, $5, $9);
+				}
+				;
+
+column_ref_list:	column_ref
+					{
+						$$ = node_manager->MakeExprList($1);
+					}
+					|column_ref_list',' column_ref
+					{
+						$$ = $1;
+						$$->AddChild($3);
+					}
+					;
+
+insert_expr_list:	insert_expr
+					{
+						$$ = node_manager->MakeExprList($1);
+					}
+					| insert_expr_list ',' insert_expr
+					{
+						$$ = $1;
+						$$->PushBack($3);
+					}
+					;
+insert_expr:	expr_const
+				;
 cmd_stmt:
 			CREATE GROUP group_name
 			{

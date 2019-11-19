@@ -312,6 +312,24 @@ void PrintSQLNode(std::ostream &output, const std::string &org_tab,
 }
 
 void PrintSQLVector(std::ostream &output, const std::string &tab,
+                    const std::vector<ExprNode*> &vec, const std::string &vector_name,
+                    bool last_item) {
+    if (0 == vec.size()) {
+        output << tab << SPACE_ST << vector_name << ": []";
+        return;
+    }
+    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int count = vec.size();
+    int i = 0;
+    for (i = 0; i < count - 1; ++i) {
+        PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
+        output << "\n";
+    }
+    PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
+}
+
+void PrintSQLVector(std::ostream &output, const std::string &tab,
                     const NodePointVector &vec, const std::string &vector_name,
                     bool last_item) {
     if (0 == vec.size()) {
@@ -404,5 +422,20 @@ void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, args_, "args", true);
 }
 
+void InsertStmt::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, table_name_, "table_name", false);
+    output << "\n";
+    if (is_all_) {
+        PrintValue(output, tab, "all", "columns", false);
+    } else {
+        PrintValue(output, tab, columns_, "columns", false);
+    }
+
+    PrintSQLVector(output, tab, values_, "values", false);
+
+}
 }  // namespace node
 }  // namespace fesql

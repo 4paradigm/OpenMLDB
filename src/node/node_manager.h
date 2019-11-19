@@ -83,6 +83,9 @@ class NodeManager {
     SQLNode *MakeLimitNode(int count);
 
     SQLNode *MakeNameNode(const std::string &name);
+    SQLNode *MakeInsertTableNode(const std::string &table_name,
+                                 const ExprListNode* column_names,
+                                 const ExprListNode* values);
     SQLNode *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &table_name,
                                  SQLNodeList *column_desc_list);
@@ -133,6 +136,9 @@ class NodeManager {
     // Make NodeList
     SQLNodeList *MakeNodeList(SQLNode *node_ptr);
     SQLNodeList *MakeNodeList();
+
+    ExprListNode *MakeExprList(ExprNode *node_ptr);
+    ExprListNode *MakeExprList();
 
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {
