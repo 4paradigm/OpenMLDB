@@ -172,7 +172,7 @@ class ResultSetImpl : public ResultSet {
         return response_.schema(i).name();
     }
 
-    const DataType& GetColumnType(uint32_t i) const {
+    const DataType GetColumnType(uint32_t i) const {
         switch (response_.schema(i).type()) {
             case fesql::type::kBool:
                 return kTypeBool;
@@ -292,7 +292,6 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, base::Status& status) {
             }
         }
     }
-    std::cout << base::DebugString(str_buf, row_size) << std::endl;
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::InsertRequest req;
     req.set_db(insert.db);
