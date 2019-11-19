@@ -415,14 +415,17 @@ void handleCmd(const fesql::node::CmdNode *cmd_node,
     }
 }
 
+}  // namespace cmd
+}  // namespace fesql
+
 int main(int argc, char *argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "dbms") {
-        StartDBMS(argv);
+        ::fesql::cmd::StartDBMS(argv);
     } else if (FLAGS_role == "tablet") {
-        StartTablet(argc, argv);
+        ::fesql::cmd::StartTablet(argc, argv);
     } else if (FLAGS_role == "client") {
-        StartClient(argv);
+        ::fesql::cmd::StartClient(argv);
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, dbms"
                   << std::endl;
@@ -430,5 +433,3 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
-}  // namespace cmd
-}  // namespace fesql
