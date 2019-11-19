@@ -67,6 +67,7 @@ enum OPType {
     kUpdatePartitionStatusOP = 13;
     kRecoverTableOP = 14;
     kCreateTableForReplicaClusterOP = 15;
+    kDropTableForReplicaClusterOP = 16;
 }
 
 enum TaskType {
@@ -89,6 +90,7 @@ enum TaskType {
     kRecoverTable = 17;
     kCheckBinlogSyncProgress = 18;
     kCreateTableForReplicaCluster = 19;
+    kDropTableForReplicaCluster = 20;
 }
 
 enum TaskStatus {

@@ -76,6 +76,7 @@ message CreateTableRequest {
 
 message DropTableRequest {
     required string name = 1;
+    optional ReplicaClusterByNsRequest zone_info = 2;
 }
 
 message ShowTableRequest {

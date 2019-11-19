@@ -59,6 +59,8 @@ public:
     int Init(std::string& msg);
 
     bool CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info); 
+
+    bool DropTableForReplicaCluster(const std::string& name, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info); 
    
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
 
@@ -274,6 +276,8 @@ public:
     void CheckClusterInfo();
 
     bool CreateTableForReplicaCluster(const ::rtidb::nameserver::TableInfo& table_info, const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info);
+    
+    bool DropTableForReplicaCluster(const std::string& name, const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info);
 
 private:
 
@@ -325,6 +329,11 @@ private:
     int CreateTableForReplicaClusterTask(const ::rtidb::nameserver::TableInfo& table_info,
             const std::string& alias,
             std::shared_ptr<OPData> op_data);
+    
+    int DropTableForReplicaClusterTask(const std::string& name,
+            const std::string& alias,
+            std::shared_ptr<OPData> op_data);
+
     // Get the lock
     void OnLocked();
     // Lost the lock
@@ -425,6 +434,11 @@ private:
             uint64_t op_index,
             ::rtidb::api::OPType op_type);
 
+    std::shared_ptr<Task> DropTableForReplicaClusterTask(const std::string& name,
+            const std::string& alias,
+            uint64_t op_index,
+            ::rtidb::api::OPType op_type);
+
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
@@ -464,6 +478,10 @@ private:
     int CreateOfflineReplicaOP(const std::string& name, uint32_t pid, 
                     const std::string& endpoint, uint32_t concurrency = FLAGS_name_server_task_concurrency);
     int CreateTableForReplicaClusterOP(const ::rtidb::nameserver::TableInfo& table_info,
+            const std::string& alias,
+            uint64_t parent_id = INVALID_PARENT_ID,
+            uint32_t concurrencyi = FLAGS_name_server_task_concurrency);
+    int DropTableForReplicaClusterOP(const std::string& name,
             const std::string& alias,
             uint64_t parent_id = INVALID_PARENT_ID,
             uint32_t concurrencyi = FLAGS_name_server_task_concurrency);
