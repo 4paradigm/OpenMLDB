@@ -215,18 +215,24 @@ class TabletSdkImpl : public TabletSdk {
 
     bool Init();
 
-    std::unique_ptr<ResultSet> SyncQuery(const Query& query);
+    std::unique_ptr<ResultSet> SyncQuery(
+        const Query& query,
+        base::Status& status);  // NOLINT (runtime/references)
 
-    void SyncInsert(const Insert& insert, base::Status& status);
+    void SyncInsert(const Insert& insert,
+                    base::Status& status);  // NOLINT (runtime/references)
 
     void SyncInsert(const std::string& db, const std::string& sql,
-                    base::Status& status);
+                    base::Status& status);  // NOLINT (runtime/references)
     bool GetSchema(const std::string& db, const std::string& table,
-                   type::TableDef& schema, base::Status& status);
+                   type::TableDef& schema,  // NOLINT (runtime/references)
+                   base::Status& status);   // NOLINT (runtime/references)
 
-    void GetSqlPlan(const std::string& db, const std::string& sql,
-                    node::NodeManager& node_manager,
-                    node::PlanNodeList& plan_trees, base::Status& status);
+    void GetSqlPlan(
+        const std::string& db, const std::string& sql,
+        node::NodeManager& node_manager,  // NOLINT (runtime/references)
+        node::PlanNodeList& plan_trees,   // NOLINT (runtime/references)
+        base::Status& status);            // NOLINT (runtime/references)
 
  private:
     std::string endpoint_;
@@ -310,7 +316,8 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, base::Status& status) {
     }
 }
 
-std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(const Query& query) {
+std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(
+    const Query& query, base::Status& status) {  // NOLINT (runtime/references)
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::QueryRequest request;
     request.set_sql(query.sql);
@@ -318,7 +325,15 @@ std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(const Query& query) {
     brpc::Controller cntl;
     ResultSetImpl* rs = new ResultSetImpl();
     stub.Query(&cntl, &request, &(rs->response_), NULL);
-    if (cntl.Failed() || rs->response_.status().code() != common::kOk) {
+    if (cntl.Failed()){
+        status.code = common::kConnError;
+        status.msg = "Rpc control error";
+        delete rs;
+        return std::unique_ptr<ResultSet>();
+    }
+    if(rs->response_.status().code() != common::kOk) {
+        status.code = rs->response_.status().code();
+        status.msg = rs->response_.status().msg();
         delete rs;
         return std::unique_ptr<ResultSet>();
     }

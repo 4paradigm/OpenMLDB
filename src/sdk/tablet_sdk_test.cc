@@ -111,7 +111,8 @@ TEST_F(TabletSdkTest, test_normal) {
         Query query;
         query.db = "db1";
         query.sql = "select col1, col2, col3, col4, col5 from t1 limit 1;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        base::Status query_status;
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
             ASSERT_EQ(5u, rs->GetColumnCnt());
             ASSERT_EQ("col1", rs->GetColumnName(0));
@@ -155,9 +156,10 @@ TEST_F(TabletSdkTest, test_normal) {
 
     {
         Query query;
+        base::Status query_status;
         query.db = "db1";
         query.sql = "select col1, col5 from t1 limit 1;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
             ASSERT_EQ(2u, rs->GetColumnCnt());
             ASSERT_EQ("col1", rs->GetColumnName(0));
@@ -256,9 +258,10 @@ TEST_F(TabletSdkTest, test_create_and_query) {
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
     {
         Query query;
+        base::Status query_status;
         query.db = "db_1";
         query.sql = "select column1, column2 from t1 limit 1;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
             ASSERT_EQ(2u, rs->GetColumnCnt());
             ASSERT_EQ("column1", rs->GetColumnName(0));
@@ -283,9 +286,10 @@ TEST_F(TabletSdkTest, test_create_and_query) {
 
     {
         Query query;
+        base::Status query_status;
         query.db = "db_1";
         query.sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT column1, column2, test(column1,column5) FROM t1 limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
             ASSERT_EQ(3u, rs->GetColumnCnt());
             ASSERT_EQ("column1", rs->GetColumnName(0));
@@ -305,8 +309,8 @@ TEST_F(TabletSdkTest, test_create_and_query) {
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
-                ASSERT_EQ(val, 6);
+                ASSERT_TRUE(it->GetInt32(2, &val));
+                ASSERT_EQ(val, 7);
             }
         }else {
             ASSERT_TRUE(false);
@@ -315,9 +319,10 @@ TEST_F(TabletSdkTest, test_create_and_query) {
 
     {
         Query query;
+        base::Status query_status;
         query.db = "db_1";
         query.sql = "select column1, column2, column3, column4, column5 from t1 limit 1;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
             ASSERT_EQ(5u, rs->GetColumnCnt());
             ASSERT_EQ("column1", rs->GetColumnName(0));
@@ -439,9 +444,10 @@ TEST_F(TabletSdkTest, test_udf_query) {
 
     {
         Query query;
+        base::Status query_status;
         query.db = "db_1";
         query.sql = "select column1, column2, column3, column4, column5 from t1 limit 1;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
             ASSERT_EQ(5u, rs->GetColumnCnt());
             ASSERT_EQ("column1", rs->GetColumnName(0));
@@ -483,9 +489,10 @@ TEST_F(TabletSdkTest, test_udf_query) {
     }
     {
         Query query;
+        base::Status query_status;
         query.db = "db_1";
         query.sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT column1, column2, test(column1,column5) FROM t1 limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
             ASSERT_EQ(3u, rs->GetColumnCnt());
             ASSERT_EQ("column1", rs->GetColumnName(0));

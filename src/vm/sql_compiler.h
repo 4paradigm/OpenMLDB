@@ -23,10 +23,11 @@
 #include "vm/op_generator.h"
 #include "parser/parser.h"
 #include "llvm/IR/Module.h"
-
+#include "proto/common.pb.h"
 namespace fesql {
 namespace vm {
 
+using fesql::common::Status;
 struct SQLContext {
     // the sql content
     std::string sql;
@@ -49,13 +50,13 @@ class SQLCompiler {
 
     ~SQLCompiler();
 
-    bool Compile(SQLContext& ctx);//NOLINT
+    bool Compile(SQLContext& ctx, Status &status);//NOLINT
 
  private:
 
     bool Parse(const std::string& sql,
                ::fesql::node::NodeManager& node_mgr,
-               ::fesql::node::NodePointVector& trees);
+               ::fesql::node::NodePointVector& trees, Status &status);
 
 
  private:

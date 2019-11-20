@@ -350,6 +350,7 @@ void HandleSQLScript(
                 std::cout << "Insert success";
                 return;
             }
+            case fesql::node::kFnList:
             case fesql::node::kSelectStmt: {
                 if (!table_sdk) {
                     table_sdk =
@@ -365,7 +366,7 @@ void HandleSQLScript(
                 query.db = cmd_client_db.name;
                 query.sql = script;
                 std::unique_ptr<::fesql::sdk::ResultSet> rs =
-                    table_sdk->SyncQuery(query);
+                    table_sdk->SyncQuery(query, status);
                 if (!rs) {
                     std::cout << "Fail to query sql: " << status.msg
                               << std::endl;

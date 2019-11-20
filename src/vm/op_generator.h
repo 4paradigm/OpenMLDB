@@ -18,11 +18,12 @@
 #ifndef SRC_VM_OP_GENERATOR_H_
 #define SRC_VM_OP_GENERATOR_H_
 
+#include "llvm/IR/Module.h"
+#include "node/plan_node.h"
+#include "node/sql_node.h"
+#include "proto/common.pb.h"
 #include "vm/op.h"
 #include "vm/table_mgr.h"
-#include "node/sql_node.h"
-#include "node/plan_node.h"
-#include "llvm/IR/Module.h"
 
 namespace fesql {
 namespace vm {
@@ -30,49 +31,37 @@ namespace vm {
 struct OpVector {
     std::string sql;
     // TOD(wangtaize) add free logic
-    std::vector<OpNode* > ops;
+    std::vector<OpNode*> ops;
 };
 
 class OpGenerator {
-
  public:
-
     OpGenerator(TableMgr* table_mgr);
     ~OpGenerator();
 
-    bool Gen(const ::fesql::node::NodePointVector& trees,
-             const std::string& db,
-             ::llvm::Module* module,
-             OpVector* ops);
- private:
+    bool Gen(const ::fesql::node::NodePointVector& trees, const std::string& db,
+             ::llvm::Module* module, OpVector* ops, common::Status& status);
 
+ private:
     bool GenFnDef(::llvm::Module* module,
-            const ::fesql::node::FnNodeList* node);
+                  const ::fesql::node::FnNodeList* node);
 
     bool GenSQL(const ::fesql::node::NodePointVector& node,
-                const std::string& db,
-                ::llvm::Module* module,
-                OpVector* ops);
+                const std::string& db, ::llvm::Module* module, OpVector* ops,
+                common::Status& status);
 
     bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
-            const std::string& db,
-            ::llvm::Module* module, 
-            OpVector* ops);
+                    const std::string& db, ::llvm::Module* module,
+                    OpVector* ops);
 
-    bool GenScan(const ::fesql::node::ScanPlanNode* node,
-            const std::string& db,
-            ::llvm::Module* module,
-            OpVector* ops);
+    bool GenScan(const ::fesql::node::ScanPlanNode* node, const std::string& db,
+                 ::llvm::Module* module, OpVector* ops);
 
     bool GenLimit(const ::fesql::node::LimitPlanNode* node,
-            const std::string& db,
-            ::llvm::Module* module,
-            OpVector* ops);
+                  const std::string& db, ::llvm::Module* module, OpVector* ops);
 
-    bool RoutingNode(const ::fesql::node::PlanNode* node,
-            const std::string& db,
-            ::llvm::Module* module,
-            OpVector* ops);
+    bool RoutingNode(const ::fesql::node::PlanNode* node, const std::string& db,
+                     ::llvm::Module* module, OpVector* ops);
 
  private:
     TableMgr* table_mgr_;

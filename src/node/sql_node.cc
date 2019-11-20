@@ -242,6 +242,9 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kLimit:
             output = "kLimit";
             break;
+        case kFnList:
+            output = "kFnList";
+            break;
         default:
             output = "unknown";
     }

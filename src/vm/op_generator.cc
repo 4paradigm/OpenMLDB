@@ -16,6 +16,7 @@
  */
 
 #include "vm/op_generator.h"
+#include <proto/common.pb.h>
 
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
@@ -31,7 +32,7 @@ OpGenerator::~OpGenerator() {}
 
 bool OpGenerator::Gen(const ::fesql::node::NodePointVector& trees,
                       const std::string& db, ::llvm::Module* module,
-                      OpVector* ops) {
+                      OpVector* ops, common::Status &status) {
     if (module == NULL || ops == NULL) {
         LOG(WARNING) << "module or ops is null";
         return false;
@@ -46,13 +47,17 @@ bool OpGenerator::Gen(const ::fesql::node::NodePointVector& trees,
                     (const ::fesql::node::FnNodeList*)node;
                 bool ok = GenFnDef(module, fn_node_list);
                 if (!ok) {
+                    status.set_code(common::kFunError);
+                    status.set_msg("Fail to handle function");
                     return false;
                 }
                 break;
             }
             case ::fesql::node::kSelectStmt: {
-                bool ok = GenSQL(trees, db, module, ops);
+                bool ok = GenSQL(trees, db, module, ops, status);
                 if (!ok) {
+                    status.set_code(common::kFunError);
+                    status.set_msg("Fail to handle function");
                     return false;
                 }
                 break;
@@ -68,7 +73,7 @@ bool OpGenerator::Gen(const ::fesql::node::NodePointVector& trees,
 
 bool OpGenerator::GenSQL(const ::fesql::node::NodePointVector& trees,
                          const std::string& db, ::llvm::Module* module,
-                         OpVector* ops) {
+                         OpVector* ops, common::Status &status) {
     if (module == NULL || ops == NULL) {
         LOG(WARNING) << "input args has null";
         return false;
@@ -76,16 +81,20 @@ bool OpGenerator::GenSQL(const ::fesql::node::NodePointVector& trees,
 
     ::fesql::node::NodeManager nm;
     ::fesql::plan::SimplePlanner planer(&nm);
-    ::fesql::base::Status status;
+    ::fesql::base::Status sql_status;
     ::fesql::node::PlanNodeList pnl;
-    int ret = planer.CreatePlanTree(trees, pnl, status);
+    int ret = planer.CreatePlanTree(trees, pnl, sql_status);
     if (ret != 0) {
-        LOG(WARNING) << "Fail create sql plan: " << status.msg;
+        LOG(WARNING) << "Fail create sql plan: " << sql_status.msg;
+        status.set_msg(sql_status.msg);
+        status.set_code(common::kSQLError);
         return false;
     }
     bool ok = RoutingNode(pnl[0]->GetChildren()[0], db, module, ops);
     if (!ok) {
         LOG(WARNING) << "Fail to gen op";
+        status.set_msg("Internal CodeGen Error");
+        status.set_code(common::kCodegenError);
     }
     return ok;
 }

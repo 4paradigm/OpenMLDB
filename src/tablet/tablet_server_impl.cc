@@ -202,14 +202,17 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
                              QueryResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     common::Status* status = response->mutable_status();
+    status->set_code(common::kOk);
+    status->set_msg("ok");
     vm::RunSession session;
 
-    bool ok = engine_->Get(request->sql(), request->db(), session);
-    if (!ok) {
-        status->set_code(common::kSQLError);
-        status->set_msg("fail to build sql");
-        return;
+    {
+        bool ok = engine_->Get(request->sql(), request->db(), session, *status);
+        if (!ok) {
+            return;
+        }
     }
+
 
     std::vector<int8_t*> buf;
     buf.reserve(100);

@@ -232,7 +232,7 @@ class TabletSdk {
     virtual void SyncInsert(const Insert& insert, base::Status& status) = 0;
     virtual void SyncInsert(const std::string& db, const std::string& sql,
                             base::Status& status) = 0;
-    virtual std::unique_ptr<ResultSet> SyncQuery(const Query& query) = 0;
+    virtual std::unique_ptr<ResultSet> SyncQuery(const Query& query, base::Status& status) = 0;
 };
 
 // create a new dbms sdk with a endpoint

@@ -21,13 +21,13 @@
 #include "vm/table_mgr.h"
 #include "vm/sql_compiler.h"
 #include "base/spin_lock.h"
+#include "proto/common.pb.h"
 #include <memory>
 #include <mutex>
 #include <map>
 
 namespace fesql {
 namespace vm {
-
 
 class Engine;
 
@@ -81,7 +81,8 @@ class Engine {
 
     bool Get(const std::string& db,
              const std::string& sql, 
-             RunSession& session);
+             RunSession& session,
+             common::Status &status);
 
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
             const std::string& sql);
