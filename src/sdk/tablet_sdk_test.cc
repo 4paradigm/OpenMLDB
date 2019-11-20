@@ -362,6 +362,163 @@ TEST_F(TabletSdkTest, test_create_and_query) {
     delete dbms_sdk;
     delete tablet;
 }
+
+TEST_F(TabletSdkTest, test_udf_query) {
+    // prepare servive
+    brpc::Server server;
+    brpc::Server tablet_server;
+    int tablet_port = 8301;
+    int port = 9501;
+
+    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
+    ASSERT_TRUE(tablet->Init());
+    brpc::ServerOptions options;
+    if (0 !=
+        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
+        LOG(WARNING) << "Fail to add tablet service";
+        exit(1);
+    }
+    tablet_server.Start(tablet_port, &options);
+
+    ::fesql::dbms::DBMSServerImpl* dbms = new ::fesql::dbms::DBMSServerImpl();
+    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        LOG(WARNING) << "Fail to add dbms service";
+        exit(1);
+    }
+    server.Start(port, &options);
+    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
+
+    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    ASSERT_TRUE(nullptr != dbms_sdk);
+
+    // create database db1
+    {
+        fesql::base::Status status;
+        DatabaseDef db;
+        db.name = "db_1";
+        dbms_sdk->CreateDatabase(db, status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    {
+        // create table db1
+        DatabaseDef db;
+        std::string sql =
+            "create table t1(\n"
+            "    column1 int NOT NULL,\n"
+            "    column2 int NOT NULL,\n"
+            "    column3 float NOT NULL,\n"
+            "    column4 bigint NOT NULL,\n"
+            "    column5 int NOT NULL\n"
+            ");";
+
+        db.name = "db_1";
+        fesql::base::Status status;
+        fesql::sdk::ExecuteResult result;
+        fesql::sdk::ExecuteRequst request;
+        request.database = db;
+        request.sql = sql;
+        dbms_sdk->ExecuteScript(request, result, status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    std::unique_ptr<TabletSdk> sdk =
+        CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
+    if (sdk) {
+        ASSERT_TRUE(true);
+    } else {
+        ASSERT_FALSE(true);
+    }
+
+    ::fesql::base::Status insert_status;
+    sdk->SyncInsert("db_1", "insert into t1 values(1, 2, 3.3, 4, 5);", insert_status);
+    ASSERT_EQ(0, static_cast<int>(insert_status.code));
+
+
+
+    {
+        Query query;
+        query.db = "db_1";
+        query.sql = "select column1, column2, column3, column4, column5 from t1 limit 1;";
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        if (rs) {
+            ASSERT_EQ(5u, rs->GetColumnCnt());
+            ASSERT_EQ("column1", rs->GetColumnName(0));
+            ASSERT_EQ("column2", rs->GetColumnName(1));
+            ASSERT_EQ("column3", rs->GetColumnName(2));
+            ASSERT_EQ("column4", rs->GetColumnName(3));
+            ASSERT_EQ("column5", rs->GetColumnName(4));
+            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 2);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.3f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_EQ(val, 4L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_EQ(val, 5);
+            }
+        }else {
+            ASSERT_TRUE(false);
+        }
+    }
+    {
+        Query query;
+        query.db = "db_1";
+        query.sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT column1, column2, test(column1,column5) FROM t1 limit 10;";
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        if (rs) {
+            ASSERT_EQ(3u, rs->GetColumnCnt());
+            ASSERT_EQ("column1", rs->GetColumnName(0));
+            ASSERT_EQ("column2", rs->GetColumnName(1));
+            std::cout << rs->GetColumnName(2) << std::endl;
+            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 2);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(2, &val));
+                ASSERT_EQ(val, 7);
+            }
+        }else {
+            ASSERT_TRUE(false);
+        }
+    }
+//
+    delete dbms;
+    delete dbms_sdk;
+    delete tablet;
+}
+
 }  // namespace sdk
 }  // namespace fesql
 

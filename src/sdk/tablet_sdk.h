@@ -100,6 +100,9 @@ class Value {
                 return static_cast<int64_t>(val_.vfloat);
             case kTypeDouble:
                 return static_cast<int64_t>(val_.vdouble);
+            default:{
+                return 0;
+            }
         }
     }
 
@@ -115,6 +118,9 @@ class Value {
                 return static_cast<int16_t>(val_.vfloat);
             case kTypeDouble:
                 return static_cast<int16_t>(val_.vdouble);
+            default:{
+                return 0;
+            }
         }
     }
 
@@ -130,6 +136,9 @@ class Value {
                 return static_cast<int64_t>(val_.vfloat);
             case kTypeDouble:
                 return static_cast<int64_t>(val_.vdouble);
+            default:{
+                return 0;
+            }
         }
     }
 
@@ -145,6 +154,9 @@ class Value {
                 return static_cast<float>(val_.vfloat);
             case kTypeDouble:
                 return static_cast<float>(val_.vdouble);
+            default:{
+                return 0.0;
+            }
         }
     }
 
@@ -159,6 +171,9 @@ class Value {
                 return static_cast<double>(val_.vfloat);
             case kTypeDouble:
                 return static_cast<double>(val_.vdouble);
+            default:{
+                return 0.0;
+            }
         } }
 
     const char* GetStr() const { return val_.vstr; }

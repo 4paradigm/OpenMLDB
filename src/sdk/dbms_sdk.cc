@@ -161,6 +161,8 @@ void DBMSSdkImpl::ExecuteScript(
     analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
 
+    DLOG(INFO) <<"start to execute script from dbms:\n"
+    << request.sql;
     // TODO(chenjing): init with db
     node::NodePointVector parser_trees;
     parser.parse(request.sql, parser_trees, &node_manager, status);
