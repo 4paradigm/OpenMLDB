@@ -8,6 +8,7 @@
 #define RTIDB_NAME_SERVER_H
 
 #include "client/tablet_client.h"
+#include "client/ns_client.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
@@ -23,6 +24,7 @@
 #include "base/schema_codec.h"
 
 DECLARE_uint32(name_server_task_concurrency);
+DECLARE_int32(zk_keep_alive_check_interval);
 
 namespace rtidb {
 namespace nameserver {
@@ -41,8 +43,38 @@ struct TabletInfo {
     // tablet state
     TabletState state_;
     // tablet rpc handle
-    std::shared_ptr<TabletClient> client_; 
+    std::shared_ptr<TabletClient> client_;
     // the date create
+    uint64_t ctime_;
+};
+
+class ClusterInfo {
+public:
+    ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cdp);
+
+    void CheckZkClient();
+
+    void UpdateNSClient(const std::vector<std::string>& children);
+
+    int Init(std::string& msg);
+
+    bool AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
+
+    bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, int& code, std::string& msg);
+
+    const ::rtidb::nameserver::ClusterAddress& ReturnAdd() {
+        return cluster_add_;
+    }
+    const uint64_t& ReturnCt() {
+        return ctime_;
+    }
+private:
+    std::shared_ptr<::rtidb::client::NsClient> client_;
+    std::shared_ptr<ZkClient> zk_client_;
+    std::mutex mu_;
+    ::rtidb::nameserver::ClusterAddress cluster_add_;
+    uint64_t session_term_;
+    int64_t task_id_;
     uint64_t ctime_;
 };
 
@@ -198,6 +230,31 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void AddReplicaCluster(RpcController* controller,
+            const ClusterAddress* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void AddReplicaClusterByNs(RpcController* controller,
+            const ReplicaClusterByNsRequest* request,
+            AddReplicaClusterByNsResponse* response,
+            Closure* done);
+
+    void ShowReplicaCluster(RpcController* controller,
+            const GeneralRequest* request,
+            ShowReplicaClusterResponse* response,
+            Closure* done);
+
+    void RemoveReplicaCluster(RpcController* controller,
+            const RemoveReplicaOfRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void RemoveReplicaClusterByNs(RpcController* controller,
+            const ReplicaClusterByNsRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);
@@ -212,6 +269,8 @@ public:
 
     int UpdateZKTaskStatus();
 
+    void CheckClusterInfo();
+
 private:
 
     // Recover all memory status, the steps
@@ -220,6 +279,8 @@ private:
     bool Recover();
 
     bool RecoverTableInfo();
+
+    void RecoverClusterInfo();
 
     bool RecoverOPTask();
 
@@ -415,6 +476,8 @@ private:
     std::mutex mu_;
     Tablets tablets_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
+    ReplicaClusterByNsRequest zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;
@@ -426,6 +489,7 @@ private:
     std::string zk_auto_recover_table_node_;
     std::string zk_table_changed_notify_node_;
     std::string zk_offline_endpoint_lock_node_;
+    std::string zk_zone_data_path_;
     uint32_t table_index_;
     uint64_t term_;
     std::string zk_op_index_node_;
@@ -436,6 +500,7 @@ private:
     std::vector<std::list<std::shared_ptr<OPData>>> task_vec_;
     std::condition_variable cv_;
     std::atomic<bool> auto_failover_;
+    std::atomic<bool> follower_;
     std::map<std::string, uint64_t> offline_endpoint_map_;
     ::rtidb::base::Random rand_;
     uint64_t session_term_;
