@@ -63,7 +63,9 @@ bool SQLExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
 }
 
 bool SQLExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
-                                   ::llvm::Value** output, ::fesql::common::Status &status) {
+                                   ::llvm::Value** output) {
+    //TODO(chenjing): return status;
+    common::Status status;
     if (call_fn == NULL || output == NULL) {
         LOG(WARNING) << "call fn or output is null";
         status.set_code(common::kNullPointer);
