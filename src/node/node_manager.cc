@@ -25,7 +25,7 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
         case kTable:
             return RegisterNode(new TableNode());
         case kWindowFunc:
-            return RegisterNode(new FuncNode());
+            return RegisterNode(new CallExprNode());
         case kWindowDef:
             return RegisterNode(new WindowDefNode());
         case kFrameBound:
@@ -134,7 +134,7 @@ ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
 
 ExprNode *NodeManager::MakeFuncNode(const std::string &name,
                                     SQLNodeList *list_ptr, SQLNode *over) {
-    FuncNode *node_ptr = new FuncNode(name);
+    CallExprNode *node_ptr = new CallExprNode(name);
     FillSQLNodeList2NodeVector(list_ptr, node_ptr->GetArgs());
     node_ptr->SetOver(dynamic_cast<WindowDefNode *>(over));
     return RegisterNode(node_ptr);

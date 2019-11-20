@@ -124,8 +124,8 @@ void FeSQLAnalyser::TransformSingleTableSelectNode(
                                    table_ref->GetOrgTableName(), status);
                 break;
             }
-            case node::kExprFunc: {
-                TransformFuncNode((node::FuncNode *)target->GetVal(),
+            case node::kExprCall: {
+                TransformFuncNode((node::CallExprNode *)target->GetVal(),
                                   table_ref->GetOrgTableName(), status);
                 break;
             }
@@ -163,7 +163,7 @@ bool FeSQLAnalyser::IsColumnExistInTable(const std::string &column_name,
 }
 
 void FeSQLAnalyser::TransformFuncNode(
-    node::FuncNode *node_ptr, const std::string &table_name,
+    node::CallExprNode *node_ptr, const std::string &table_name,
     Status &status) {  // NOLINT (runtime/references)
     // TODO(chenjing): 细化参数校验
     // TODO(chenjing): 表达式节点修改：需要带上DataType属性
@@ -275,7 +275,7 @@ void FeSQLAnalyser::TransformAllRef(
     status.code = error::kAnalyserErrorTableNotExist;
 }
 
-FuncDefType FeSQLAnalyser::GetAggFunDefType(node::FuncNode *node_ptr) {
+FuncDefType FeSQLAnalyser::GetAggFunDefType(node::CallExprNode *node_ptr) {
     if (func_defs.find(node_ptr->GetFunctionName()) == func_defs.end()) {
         return kFuncTypeUnknow;
     }
@@ -327,8 +327,8 @@ void FeSQLAnalyser::TransformExprNode(
         case node::kExprColumnRef:
             return TransformColumnRef((node::ColumnRefNode *)node_ptr,
                                       table_name, status);
-        case node::kExprFunc:
-            return TransformFuncNode((node::FuncNode *)node_ptr, table_name,
+        case node::kExprCall:
+            return TransformFuncNode((node::CallExprNode *)node_ptr, table_name,
                                      status);
         case node::kExprPrimary:
         default: {

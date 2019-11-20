@@ -167,6 +167,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     }
 
     // deeping first
+    // TODO(wangtaize): move to Routing Node
     std::vector<::fesql::node::PlanNode*>::const_iterator it =
         node->GetChildren().begin();
     for (; it != node->GetChildren().end(); ++it) {

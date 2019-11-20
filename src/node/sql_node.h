@@ -61,7 +61,7 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "binary expr";
         case kExprUnary:
             return "unary expr";
-        case kExprFunc:
+        case kExprCall:
             return "function expr";
         case kExprCase:
             return "case expr";
@@ -379,20 +379,20 @@ class AllNode : public ExprNode {
  private:
     std::string relation_name_;
 };
-class FuncNode : public ExprNode {
+class CallExprNode : public ExprNode {
  public:
-    FuncNode()
-        : ExprNode(kExprFunc),
+    CallExprNode()
+        : ExprNode(kExprCall),
           is_agg_(true),
           function_name_(""),
           over_(nullptr) {}
-    explicit FuncNode(const std::string &function_name)
-        : ExprNode(kExprFunc),
+    explicit CallExprNode(const std::string &function_name)
+        : ExprNode(kExprCall),
           is_agg_(true),
           function_name_(function_name),
           over_(nullptr) {}
 
-    ~FuncNode() {}
+    ~CallExprNode() {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -407,6 +407,10 @@ class FuncNode : public ExprNode {
     void SetAgg(bool is_agg) { is_agg_ = is_agg; }
     NodePointVector &GetArgs() { return args_; }
     const NodePointVector &GetArgs() const { return args_; }
+
+    const int GetArgsSize() const {
+        return args_.size();
+    }
 
  private:
     bool is_agg_;

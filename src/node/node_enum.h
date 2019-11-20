@@ -69,7 +69,7 @@ enum ExprType {
     kExprBinary,
     kExprUnary,
     kExprIn,
-    kExprFunc,
+    kExprCall,
     kExprCase,
     kExprCast,
     kExprId,

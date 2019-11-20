@@ -113,7 +113,7 @@ void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
     }
 }
 
-void FuncNode::Print(std::ostream &output, const std::string &org_tab) const {
+void CallExprNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     output << "\n";
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -274,8 +274,8 @@ void FillSQLNodeList2NodeVector(
 
 std::string WindowOfExpression(ExprNode *node_ptr) {
     switch (node_ptr->GetExprType()) {
-        case kExprFunc: {
-            FuncNode *func_node_ptr = dynamic_cast<FuncNode *>(node_ptr);
+        case kExprCall: {
+            CallExprNode *func_node_ptr = dynamic_cast<CallExprNode *>(node_ptr);
             if (nullptr != func_node_ptr->GetOver()) {
                 return func_node_ptr->GetOver()->GetName();
             }
