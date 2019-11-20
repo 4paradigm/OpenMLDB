@@ -79,7 +79,7 @@ TEST_F(TabletSdkTest, test_normal) {
     {
         ::fesql::type::ColumnDef* column = table_def->add_columns();
         column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
+        column->set_name("col5");
     }
     common::Status status;
     interal_sdk.CreateTable(&req, status);
@@ -110,12 +110,12 @@ TEST_F(TabletSdkTest, test_normal) {
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
     Query query;
     query.db = "db1";
-    query.sql = "select col1, col2 from t1 limit 1;";
+    query.sql = "select col1,col4 from t1 limit 1;";
     std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
     if (rs) {
         ASSERT_EQ(2u, rs->GetColumnCnt());
         ASSERT_EQ("col1", rs->GetColumnName(0));
-        ASSERT_EQ("col2", rs->GetColumnName(1));
+        ASSERT_EQ("col4", rs->GetColumnName(1));
         ASSERT_EQ(1, rs->GetRowCnt());
         std::unique_ptr<ResultSetIterator> it = rs->Iterator();
         ASSERT_TRUE(it->HasNext());
@@ -126,10 +126,12 @@ TEST_F(TabletSdkTest, test_normal) {
             ASSERT_EQ(val, 1);
         }
         {
-            int16_t val = 0;
-            ASSERT_TRUE(it->GetInt16(1, &val));
-            ASSERT_EQ(val, 2);
+            double val = 0;
+            ASSERT_TRUE(it->GetDouble(1, &val));
+            ASSERT_EQ(val, 4.1);
         }
+    }else {
+        ASSERT_TRUE(false);
     }
 }
 
@@ -240,7 +242,10 @@ TEST_F(TabletSdkTest, test_create_and_query) {
 //            ASSERT_TRUE(it->GetDouble(1, &val));
 //            ASSERT_EQ(val, 5.1);
 //        }
+    }else {
+        ASSERT_TRUE(false);
     }
+
 //
     delete dbms;
     delete dbms_sdk;

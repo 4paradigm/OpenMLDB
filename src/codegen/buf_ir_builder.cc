@@ -35,6 +35,8 @@ BufIRBuilder::BufIRBuilder(::fesql::type::TableDef* table,
         const ::fesql::type::ColumnDef& column = table_->columns(i);
         types_.insert(std::make_pair(column.name(),
                     std::make_pair(column.type(), offset)));
+        DLOG(INFO) << "add column " << column.name() << " with type " 
+            << ::fesql::type::Type_Name(column.type()) << " offset " << offset;
         switch (column.type()) {
             case ::fesql::type::kInt16:
                 {

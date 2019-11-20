@@ -292,7 +292,6 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, base::Status& status) {
             }
         }
     }
-    std::cout << base::DebugString(str_buf, row_size) << std::endl;
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::InsertRequest req;
     req.set_db(insert.db);
@@ -306,9 +305,7 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, base::Status& status) {
     if (cntl.Failed()) {
         status.code = -1;
         status.msg = "Rpc Control error";
-        return;
     }
-    return;
 }
 
 std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(const Query& query) {
