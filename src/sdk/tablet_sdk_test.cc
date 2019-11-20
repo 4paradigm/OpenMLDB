@@ -204,8 +204,6 @@ TEST_F(TabletSdkTest, test_create_and_query) {
 
     ::fesql::base::Status insert_status;
     sdk->SyncInsert("db_1", "insert into t1 values(1, 4.1, 3.1, 5);", insert_status);
-//    sdk->SyncInsert("db_1", "insert into t1 values(2, 5.1, 4.1, 6);", insert_status);
-
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
 
     Query query;
@@ -216,7 +214,6 @@ TEST_F(TabletSdkTest, test_create_and_query) {
         ASSERT_EQ(2u, rs->GetColumnCnt());
         ASSERT_EQ("column1", rs->GetColumnName(0));
         ASSERT_EQ("column2", rs->GetColumnName(1));
-//        ASSERT_EQ(2u, rs->GetRowCnt());
         std::unique_ptr<ResultSetIterator> it = rs->Iterator();
         ASSERT_TRUE(it->HasNext());
         it->Next();

@@ -187,7 +187,9 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     while (it->HasNext()) {
         it->Next();
         for (unsigned i = 0; i < result_set->GetColumnCnt(); i++) {
-            switch (result_set->GetColumnType(i)) {
+            fesql:sdk::DataType  data_type = result_set->GetColumnType(i);
+
+            switch (data_type) {
                 case fesql::sdk::kTypeInt16: {
                     int16_t value;
                     it->GetInt16(i, &value);
@@ -328,7 +330,24 @@ void HandleSQLScript(
                 return;
             }
             case fesql::node::kInsertStmt: {
+                if (!table_sdk) {
+                    table_sdk =
+                        ::fesql::sdk::CreateTabletSdk(FLAGS_tablet_endpoint);
+                }
 
+                if (!table_sdk) {
+                    status.code = fesql::error::kCmdErrorNullNode;
+                    status.msg = " Fail to create tablet sdk";
+                    return;
+                }
+
+                table_sdk->SyncInsert(cmd_client_db.name, "insert into t1 values(1, 4.1, 3.1, 5);", status);
+
+                if (0 != status.code) {
+                    return;
+                }
+                std::cout << "Insert success";
+                return;
             }
             case fesql::node::kSelectStmt: {
                 if (!table_sdk) {

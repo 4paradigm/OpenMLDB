@@ -489,7 +489,9 @@ class ConstNode : public ExprNode {
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    int16_t GetSmallInt() const { return val_.vsmallint; }
+    int16_t GetSmallInt() const {
+        return val_.vsmallint;
+    }
 
     int GetInt() const { return val_.vint; }
 

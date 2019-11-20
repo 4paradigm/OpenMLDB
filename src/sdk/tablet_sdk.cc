@@ -172,7 +172,7 @@ class ResultSetImpl : public ResultSet {
         return response_.schema(i).name();
     }
 
-    const DataType& GetColumnType(uint32_t i) const {
+    const DataType GetColumnType(uint32_t i) const {
         switch (response_.schema(i).type()) {
             case fesql::type::kBool:
                 return kTypeBool;
