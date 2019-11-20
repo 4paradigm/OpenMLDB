@@ -259,10 +259,11 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, base::Status& status) {
         return;
     }
     std::string row;
-    row.resize(row_size);
+    DLOG(INFO) << "row size: " << row_size;
+    row.resize(row_size+2);
     char* str_buf = reinterpret_cast<char*>(&(row[0]));
     storage::RowBuilder rbuilder(&(schema.columns()), (int8_t*)str_buf,
-                                 row_size);
+                                 row_size+2);
 
     // TODO(chenjing): handle insert into table(col1, col2, col3) values(1, 2.1,
     // 3);

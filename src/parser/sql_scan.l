@@ -340,7 +340,6 @@ ZEROFILL	{ return ZEROFILL; }
 
 
 <FUN>{newline} { columnpos = 1; return NEWLINE;}
-<FUN>{space} {return SPACE;}
 
 <FUN>{indent} {
         yylval->intval = strlen(yytext);

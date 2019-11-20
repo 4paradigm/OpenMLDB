@@ -165,6 +165,7 @@ void StartClient(char *argv[]) {
             cmd_str.clear();
             cmd_mode = true;
         } else {
+            cmd_str.append("\n");
             cmd_mode = false;
         }
     }
@@ -191,31 +192,31 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
 
             switch (data_type) {
                 case fesql::sdk::kTypeInt16: {
-                    int16_t value;
+                    int16_t value = 0;
                     it->GetInt16(i, &value);
                     t.add(std::to_string(value));
                     break;
                 }
                 case fesql::sdk::kTypeInt32: {
-                    int32_t value;
+                    int32_t value = 0;
                     it->GetInt32(i, &value);
                     t.add(std::to_string(value));
                     break;
                 }
                 case fesql::sdk::kTypeInt64: {
-                    int64_t value;
+                    int64_t value = 0;
                     it->GetInt64(i, &value);
                     t.add(std::to_string(value));
                     break;
                 }
                 case fesql::sdk::kTypeFloat: {
-                    float value;
+                    float value = 0;
                     it->GetFloat(i, &value);
                     t.add(std::to_string(value));
                     break;
                 }
                 case fesql::sdk::kTypeDouble: {
-                    double value;
+                    double value = 0;
                     it->GetDouble(i, &value);
                     t.add(std::to_string(value));
                     break;
@@ -341,7 +342,7 @@ void HandleSQLScript(
                     return;
                 }
 
-                table_sdk->SyncInsert(cmd_client_db.name, "insert into t1 values(1, 4.1, 3.1, 5);", status);
+                table_sdk->SyncInsert(cmd_client_db.name, script, status);
 
                 if (0 != status.code) {
                     return;

@@ -94,7 +94,6 @@ typedef void* yyscan_t;
 %token <strval> NEWLINE
 %token <intval> INDENT
 %token <strval> DEF
-%token <strval> SPACE
 
 %token ADD
 %token ALL
@@ -471,7 +470,7 @@ func_stmt:
          ;
 
 fn_def :
-       DEF SPACE  NAME'(' plist ')' ':' types {
+       DEF INDENT  NAME'(' plist ')' ':' types {
             $$ = node_manager->MakeFnDefNode($3, $5, $8);
        };
 
@@ -480,7 +479,7 @@ assign_stmt: NAME '=' fn_expr {
            };
 
 return_stmt:
-           RETURN SPACE fn_expr {
+           RETURN INDENT fn_expr {
             $$ = node_manager->MakeReturnStmtNode($3);
            };
 

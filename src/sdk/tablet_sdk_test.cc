@@ -93,11 +93,11 @@ TEST_F(TabletSdkTest, test_normal) {
 
     Insert insert;
 
-    insert.values.push_back(fesql::sdk::Value(static_cast<int32_t>(1)));
-    insert.values.push_back(fesql::sdk::Value(static_cast<int16_t>(2)));
-    insert.values.push_back(fesql::sdk::Value(static_cast<float>(3.1)));
-    insert.values.push_back(fesql::sdk::Value(static_cast<double>(4.1)));
-    insert.values.push_back(fesql::sdk::Value(static_cast<int64_t>(5)));
+    insert.values.push_back(fesql::sdk::Value(1));
+    insert.values.push_back(fesql::sdk::Value(2));
+    insert.values.push_back(fesql::sdk::Value(3.1));
+    insert.values.push_back(fesql::sdk::Value(4.1));
+    insert.values.push_back(fesql::sdk::Value(5));
 
     insert.db = "db1";
     insert.table = "t1";
@@ -106,33 +106,81 @@ TEST_F(TabletSdkTest, test_normal) {
 
     ::fesql::base::Status insert_status;
     sdk->SyncInsert(insert, insert_status);
-
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
-    Query query;
-    query.db = "db1";
-    query.sql = "select col1,col4 from t1 limit 1;";
-    std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
-    if (rs) {
-        ASSERT_EQ(2u, rs->GetColumnCnt());
-        ASSERT_EQ("col1", rs->GetColumnName(0));
-        ASSERT_EQ("col4", rs->GetColumnName(1));
-        ASSERT_EQ(1, rs->GetRowCnt());
-        std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-        ASSERT_TRUE(it->HasNext());
-        it->Next();
-        {
-            int32_t val = 0;
-            ASSERT_TRUE(it->GetInt32(0, &val));
-            ASSERT_EQ(val, 1);
+    {
+        Query query;
+        query.db = "db1";
+        query.sql = "select col1, col2, col3, col4, col5 from t1 limit 1;";
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        if (rs) {
+            ASSERT_EQ(5u, rs->GetColumnCnt());
+            ASSERT_EQ("col1", rs->GetColumnName(0));
+            ASSERT_EQ("col2", rs->GetColumnName(1));
+            ASSERT_EQ("col3", rs->GetColumnName(2));
+            ASSERT_EQ("col4", rs->GetColumnName(3));
+            ASSERT_EQ("col5", rs->GetColumnName(4));
+            ASSERT_EQ(1, rs->GetRowCnt());
+            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                int16_t val = 0;
+                ASSERT_TRUE(it->GetInt16(1, &val));
+                ASSERT_EQ(val, 2u);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_EQ(val, static_cast<float>(3.1));
+            }
+            {
+                double val = 0;
+                ASSERT_TRUE(it->GetDouble(3, &val));
+                ASSERT_EQ(val, 4.1);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(it->GetInt64(4, &val));
+                ASSERT_EQ(val, 5L);
+            }
+        }else {
+            ASSERT_TRUE(false);
         }
-        {
-            double val = 0;
-            ASSERT_TRUE(it->GetDouble(1, &val));
-            ASSERT_EQ(val, 4.1);
-        }
-    }else {
-        ASSERT_TRUE(false);
     }
+
+    {
+        Query query;
+        query.db = "db1";
+        query.sql = "select col1, col5 from t1 limit 1;";
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        if (rs) {
+            ASSERT_EQ(2u, rs->GetColumnCnt());
+            ASSERT_EQ("col1", rs->GetColumnName(0));
+            ASSERT_EQ("col5", rs->GetColumnName(1));
+            ASSERT_EQ(1, rs->GetRowCnt());
+            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(it->GetInt64(1, &val));
+                ASSERT_EQ(val, 5L);
+            }
+        }else {
+            ASSERT_TRUE(false);
+        }
+    }
+
 }
 
 TEST_F(TabletSdkTest, test_create_and_query) {
@@ -181,7 +229,8 @@ TEST_F(TabletSdkTest, test_create_and_query) {
             "    column1 int NOT NULL,\n"
             "    column2 double NOT NULL,\n"
             "    column3 float NOT NULL,\n"
-            "    column4 bigint NOT NULL\n"
+            "    column4 bigint NOT NULL,\n"
+            "    column5 int NOT NULL\n"
             ");";
 
         db.name = "db_1";
@@ -203,46 +252,111 @@ TEST_F(TabletSdkTest, test_create_and_query) {
     }
 
     ::fesql::base::Status insert_status;
-    sdk->SyncInsert("db_1", "insert into t1 values(1, 4.1, 3.1, 5);", insert_status);
+    sdk->SyncInsert("db_1", "insert into t1 values(1, 2.2, 3.3, 4, 5);", insert_status);
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
-
-    Query query;
-    query.db = "db_1";
-    query.sql = "select column1, column2 from t1 limit 1;";
-    std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
-    if (rs) {
-        ASSERT_EQ(2u, rs->GetColumnCnt());
-        ASSERT_EQ("column1", rs->GetColumnName(0));
-        ASSERT_EQ("column2", rs->GetColumnName(1));
-        std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-        ASSERT_TRUE(it->HasNext());
-        it->Next();
-        {
-            int32_t val = 0;
-            ASSERT_TRUE(it->GetInt32(0, &val));
-            ASSERT_EQ(val, 1);
+    {
+        Query query;
+        query.db = "db_1";
+        query.sql = "select column1, column2 from t1 limit 1;";
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        if (rs) {
+            ASSERT_EQ(2u, rs->GetColumnCnt());
+            ASSERT_EQ("column1", rs->GetColumnName(0));
+            ASSERT_EQ("column2", rs->GetColumnName(1));
+            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                double val = 0;
+                ASSERT_TRUE(it->GetDouble(1, &val));
+                ASSERT_EQ(val, 2.2);
+            }
+        }else {
+            ASSERT_TRUE(false);
         }
-        {
-            double val = 0;
-            ASSERT_TRUE(it->GetDouble(1, &val));
-            ASSERT_EQ(val, 4.1);
-        }
-
-//        it->Next();
-//        {
-//            int32_t val = 0;
-//            ASSERT_TRUE(it->GetInt32(0, &val));
-//            ASSERT_EQ(val, 2);
-//        }
-//        {
-//            double val = 0;
-//            ASSERT_TRUE(it->GetDouble(1, &val));
-//            ASSERT_EQ(val, 5.1);
-//        }
-    }else {
-        ASSERT_TRUE(false);
     }
 
+    {
+        Query query;
+        query.db = "db_1";
+        query.sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT column1, column2, test(column1,column5) FROM t1 limit 10;";
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        if (rs) {
+            ASSERT_EQ(3u, rs->GetColumnCnt());
+            ASSERT_EQ("column1", rs->GetColumnName(0));
+            ASSERT_EQ("column2", rs->GetColumnName(1));
+            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                double val = 0;
+                ASSERT_TRUE(it->GetDouble(1, &val));
+                ASSERT_EQ(val, 2.2);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 6);
+            }
+        }else {
+            ASSERT_TRUE(false);
+        }
+    }
+
+    {
+        Query query;
+        query.db = "db_1";
+        query.sql = "select column1, column2, column3, column4, column5 from t1 limit 1;";
+        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query);
+        if (rs) {
+            ASSERT_EQ(5u, rs->GetColumnCnt());
+            ASSERT_EQ("column1", rs->GetColumnName(0));
+            ASSERT_EQ("column2", rs->GetColumnName(1));
+            ASSERT_EQ("column3", rs->GetColumnName(2));
+            ASSERT_EQ("column4", rs->GetColumnName(3));
+            ASSERT_EQ("column5", rs->GetColumnName(4));
+            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                double val = 0;
+                ASSERT_TRUE(it->GetDouble(1, &val));
+                ASSERT_EQ(val, 2.2);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.3f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_EQ(val, 4L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_EQ(val, 5);
+            }
+        }else {
+            ASSERT_TRUE(false);
+        }
+    }
 //
     delete dbms;
     delete dbms_sdk;
