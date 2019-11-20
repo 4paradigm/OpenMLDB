@@ -18,21 +18,20 @@ const char SPACE_ST[] = "+-";
 const char SPACE_ED[] = "";
 const char OR_INDENT[] = "|\t";
 const char INDENT[] = " \t";
+
 enum SQLNodeType {
     // SQL
     kSelectStmt = 0,
     kCreateStmt,
+    kInsertStmt,
     kCmdStmt,
     kExpr,
     kResTarget,
     kTable,
-    kFunc,
-    kType,
     kWindowFunc,
     kWindowDef,
     kFrameBound,
     kFrames,
-    kColumnRef,
     kColumnDesc,
     kColumnIndex,
     kIndexKey,
@@ -42,11 +41,8 @@ enum SQLNodeType {
     kName,
     kConst,
     kLimit,
-    kAll,
     kList,
     kOrderBy,
-
-    kPrimary,
 
     kDesc,
     kAsc,
@@ -58,20 +54,31 @@ enum SQLNodeType {
     kFollowing,
     kCurrent,
 
+    kFn,
     kFnDef,
     kFnValue,
-    kFnId,
     kFnAssignStmt,
     kFnReturnStmt,
-    kFnExpr,
-    kFnExprBinary,
-    kFnExprUnary,
     kFnPara,
     kFnParaList,
     kFnList,
     kUnknow
 };
 
+enum ExprType {
+    kExprBinary,
+    kExprUnary,
+    kExprIn,
+    kExprFunc,
+    kExprCase,
+    kExprCast,
+    kExprId,
+    kExprColumnRef,
+    kExprPrimary,
+    kExprList,
+    kExprAll,
+    kExprUnknow
+};
 enum DataType {
     kTypeBool,
     kTypeInt16,
@@ -122,6 +129,7 @@ enum PlanType {
     kPlanTypeCmd,
     kPlanTypeSelect,
     kPlanTypeCreate,
+    kPlanTypeInsert,
     kPlanTypeScan,
     kPlanTypeLimit,
     kPlanTypeFilter,
@@ -184,7 +192,7 @@ enum ErrorType {
     kCmdErrorUnSupport,
     kCmdErrorNullNode,
     kCmdErrorPathError,
-    
+
     kRpcErrorUnknow = 6001,
     kRpcErrorConnection,
 };

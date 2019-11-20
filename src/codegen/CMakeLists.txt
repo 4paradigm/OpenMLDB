@@ -2,7 +2,6 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
 
 add_library(fesql_codegen STATIC scope_var.cc expr_ir_builder.cc
     fn_ir_builder.cc buf_ir_builder.cc ir_base_builder.cc

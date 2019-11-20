@@ -30,9 +30,8 @@ FnIRBuilder::FnIRBuilder(::llvm::Module *module) : module_(module) {}
 
 FnIRBuilder::~FnIRBuilder() {}
 
-bool FnIRBuilder::Build(const ::fesql::node::FnNode *root) {
-    if (root == NULL
-            || root->GetType() != ::fesql::node::kFnList) {
+bool FnIRBuilder::Build(const ::fesql::node::FnNodeList *root) {
+    if (root == NULL || root->GetType() != ::fesql::node::kFnList) {
         LOG(WARNING) << "node is null";
         return false;
     }
@@ -53,7 +52,7 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNode *root) {
                 indent_stack.pop();
                 sv_.Exit();
             }
-            sv_.Enter(fn_def->GetName());
+            sv_.Enter(fn_def->name_);
             indent_stack.push(fn_def->indent);
             fn = NULL;
             block = NULL;
@@ -91,7 +90,7 @@ bool FnIRBuilder::BuildStmt(int32_t pindent, const ::fesql::node::FnNode *node,
             return BuildAssignStmt((::fesql::node::FnAssignNode *)node, block);
         }
         case ::fesql::node::kFnReturnStmt: {
-            return BuildReturnStmt(node, block);
+            return BuildReturnStmt((::fesql::node::FnReturnStmt *)node, block);
         }
         default: {
             return false;
@@ -99,16 +98,16 @@ bool FnIRBuilder::BuildStmt(int32_t pindent, const ::fesql::node::FnNode *node,
     }
 }
 
-bool FnIRBuilder::BuildReturnStmt(const ::fesql::node::FnNode *node,
+bool FnIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
                                   ::llvm::BasicBlock *block) {
-    if (node == NULL || block == NULL || node->children.size() == 0) {
-        LOG(WARNING) << "node or block is null";
+    if (node == nullptr || block == nullptr || node->return_expr_ == nullptr) {
+        LOG(WARNING) << "node or block or return expr is null";
         return true;
     }
 
     ExprIRBuilder builder(block, &sv_);
     ::llvm::Value *value = NULL;
-    bool ok = builder.Build(node->children[0], &value);
+    bool ok = builder.Build(node->return_expr_, &value);
     if (!ok) {
         LOG(WARNING) << "fail to build expr ";
         return false;
@@ -120,18 +119,18 @@ bool FnIRBuilder::BuildReturnStmt(const ::fesql::node::FnNode *node,
 
 bool FnIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
                                   ::llvm::BasicBlock *block) {
-    if (node == NULL || block == NULL || node->children.size() == 0) {
+    if (node == NULL || block == NULL || node->expression_ == nullptr) {
         LOG(WARNING) << "node or block is null";
         return true;
     }
     ExprIRBuilder builder(block, &sv_);
     ::llvm::Value *value = NULL;
-    bool ok = builder.Build(node->children[0], &value);
+    bool ok = builder.Build(node->expression_, &value);
     if (!ok) {
         LOG(WARNING) << "fail to build expr ";
         return false;
     }
-    return sv_.AddVar(node->GetName(), value);
+    return sv_.AddVar(node->name_, value);
 }
 
 bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnDef *fn_def,
@@ -142,16 +141,15 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnDef *fn_def,
     }
 
     ::llvm::Type *ret_type = NULL;
-    bool ok = MapLLVMType(fn_def->GetRetType(), &ret_type);
+    bool ok = MapLLVMType(fn_def->ret_type_, &ret_type);
     if (!ok) {
         LOG(WARNING) << "fail to get llvm type";
         return false;
     }
 
     std::vector<::llvm::Type *> paras;
-    if (fn_def->children.size() == 1) {
-        ::fesql::node::FnNode *pnode = fn_def->children[0];
-        bool ok = BuildParas(pnode, paras);
+    if (nullptr != fn_def->parameters_) {
+        bool ok = BuildParas(fn_def->parameters_, paras);
         if (!ok) {
             return false;
         }
@@ -161,21 +159,20 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnDef *fn_def,
     ::llvm::FunctionType *fnt =
         ::llvm::FunctionType::get(ret_type, array_ref, false);
     *fn = ::llvm::Function::Create(fnt, ::llvm::Function::ExternalLinkage,
-                                   fn_def->GetName(), module_);
-    if (fn_def->children.size() == 1) {
-        ::fesql::node::FnNode *pnode = fn_def->children[0];
-        bool ok = FillArgs(pnode, *fn);
+                                   fn_def->name_, module_);
+    if (fn_def->parameters_) {
+        bool ok = FillArgs(fn_def->parameters_, *fn);
         if (!ok) {
             return false;
         }
     }
-    LOG(INFO) << "build fn " << fn_def->GetName() << " header done";
+    LOG(INFO) << "build fn " << fn_def->name_ << " header done";
     return true;
 }
 
-bool FnIRBuilder::FillArgs(const ::fesql::node::FnNode *node,
+bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node,
                            ::llvm::Function *fn) {
-    if (node == NULL || node->GetType() != ::fesql::node::kFnParaList) {
+    if (node == NULL) {
         LOG(WARNING) << "node is null or node type mismatch";
         return false;
     }
@@ -196,9 +193,9 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNode *node,
     return true;
 }
 
-bool FnIRBuilder::BuildParas(const ::fesql::node::FnNode *node,
+bool FnIRBuilder::BuildParas(const ::fesql::node::FnNodeList *node,
                              std::vector<::llvm::Type *> &paras) {
-    if (node == NULL || node->GetType() != ::fesql::node::kFnParaList) {
+    if (node == NULL) {
         LOG(WARNING) << "node is null or node type mismatch";
         return false;
     }

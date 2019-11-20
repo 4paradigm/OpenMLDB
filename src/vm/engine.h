@@ -20,13 +20,14 @@
 
 #include "vm/table_mgr.h"
 #include "vm/sql_compiler.h"
+#include "base/spin_lock.h"
+#include "proto/common.pb.h"
 #include <memory>
 #include <mutex>
 #include <map>
 
 namespace fesql {
 namespace vm {
-
 
 class Engine;
 
@@ -37,6 +38,7 @@ struct CompileInfo {
 
 class RunSession {
  public:
+
     RunSession();
 
     ~RunSession();
@@ -49,8 +51,7 @@ class RunSession {
         return compile_info_->sql_ctx.schema;
     }
 
-    int32_t Run(std::vector<int8_t*>& buf, uint32_t length,
-                uint32_t* row_cnt);
+    int32_t Run(std::vector<int8_t*>& buf, uint32_t limit);
 
  private:
 
@@ -69,18 +70,27 @@ class RunSession {
 
 
 
+typedef std::map<std::string,
+                 std::map<std::string, std::shared_ptr<CompileInfo>>> EngineCache;
 class Engine {
  public:
 
     Engine(TableMgr* table_mgr);
+
     ~Engine();
 
-    bool Get(const std::string& sql, RunSession& session);
+    bool Get(const std::string& db,
+             const std::string& sql, 
+             RunSession& session,
+             common::Status &status);
+
+    std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
+            const std::string& sql);
 
  private:
     TableMgr* table_mgr_;
-    std::mutex mu_;
-    std::map<std::string, std::shared_ptr<CompileInfo> > cache_;
+    base::SpinMutex mu_;
+    EngineCache cache_;
 };
 
 }  // namespace vm

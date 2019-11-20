@@ -1,8 +1,7 @@
 /*
  * dbms_sdk.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License")
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -15,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FESQL_DBMS_SDK_H_
-#define FESQL_DBMS_SDK_H_
+#ifndef SRC_SDK_DBMS_SDK_H_
+#define SRC_SDK_DBMS_SDK_H_
 #include <node/node_enum.h>
 #include <proto/type.pb.h>
 #include <string>
@@ -33,26 +32,42 @@ struct DatabaseDef {
     std::string name;
 };
 
+struct ExecuteRequst {
+    DatabaseDef database;
+    std::string sql;
+};
+struct ExecuteResult {
+    DatabaseDef database;
+    std::string result;
+};
+
 class DBMSSdk {
  public:
-    virtual ~DBMSSdk(){};
-    virtual void CreateGroup(const GroupDef &group, base::Status &status) = 0;
-    virtual void CreateDatabase(const DatabaseDef &database,
-                                base::Status &status) = 0;
-    virtual void EnterDatabase(const DatabaseDef &database,
-                                base::Status &status) = 0;
-    virtual void CreateTable(const std::string &sql_str,
-                             base::Status &status) = 0;
-    virtual void ShowSchema(const std::string &name, type::TableDef &table,
-                            base::Status &status) = 0;
-    virtual void ShowTables(std::vector<std::string> &names,
-                            base::Status &status) = 0;
-    virtual void ShowDatabases(std::vector<std::string> &names,
-                               base::Status &status) = 0;
-    virtual void ExecuteScript(const std::string &sql_str,
-                               base::Status &status) = 0;
-    virtual void PrintTableSchema(fesql::type::TableDef def) = 0;
-    virtual void PrintItems(std::vector<std::string> items) = 0;
+    virtual ~DBMSSdk(){}
+    virtual void CreateGroup(
+        const GroupDef &group,
+        base::Status &status) = 0;  // NOLINT (runtime/references)
+    virtual void CreateDatabase(
+        const DatabaseDef &database,
+        base::Status &status) = 0;  // NOLINT (runtime/references)
+    virtual bool IsExistDatabase(
+        const DatabaseDef &database,
+        base::Status &status) = 0;  // NOLINT (runtime/references)
+    virtual void GetSchema(
+        const DatabaseDef &database, const std::string &name,
+        type::TableDef &table,      // NOLINT (runtime/references)
+        base::Status &status) = 0;  // NOLINT (runtime/references)
+    virtual void GetTables(
+        const DatabaseDef &database,
+        std::vector<std::string> &names,  // NOLINT (runtime/references)
+        base::Status &status) = 0;        // NOLINT (runtime/references)
+    virtual void GetDatabases(
+        std::vector<std::string> &names,  // NOLINT (runtime/references)
+        base::Status &status) = 0;        // NOLINT (runtime/references)
+    virtual void ExecuteScript(
+        const ExecuteRequst &request,
+        ExecuteResult &result,      // NOLINT (runtime/references)
+        base::Status &status) = 0;  // NOLINT (runtime/references)
 };
 
 // create a new dbms sdk with a endpoint
@@ -61,4 +76,4 @@ DBMSSdk *CreateDBMSSdk(const std::string &endpoint);
 
 }  // namespace sdk
 }  // namespace fesql
-#endif /* !FESQL_DBMS_SDK_H_ */
+#endif  // SRC_SDK_DBMS_SDK_H_

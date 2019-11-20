@@ -50,17 +50,17 @@ class ExprIRBuilderTest : public ::testing::Test {
     node::NodeManager *manager_;
 };
 
-void GenAddExpr(node::NodeManager *manager, ::fesql::node::FnNode **expr) {
+void GenAddExpr(node::NodeManager *manager, ::fesql::node::ExprNode **expr) {
     // TODO free
-    new ::fesql::node::FnBinaryExpr(::fesql::node::kFnOpAdd);
+    new ::fesql::node::BinaryExpr(::fesql::node::kFnOpAdd);
 
-    ::fesql::node::FnNode *i32_node =
-        (node::FnNode *)(manager->MakeConstNode(1));
-    ::fesql::node::FnNode *id_node =
-        (node::FnNode *)(manager->MakeFnIdNode("a"));
-    ::fesql::node::FnNode *bexpr = (node::FnNode *)(manager->MakeBinaryExprNode(
+    ::fesql::node::ExprNode *i32_node =
+        (manager->MakeConstNode(1));
+    ::fesql::node::ExprNode *id_node =
+        (manager->MakeFnIdNode("a"));
+    ::fesql::node::ExprNode *bexpr = (manager->MakeBinaryExprNode(
         i32_node, id_node, fesql::node::kFnOpAdd));
-    *expr = (::fesql::node::FnNode *)bexpr;
+    *expr = bexpr;
 }
 
 TEST_F(ExprIRBuilderTest, test_add_int32) {
@@ -80,7 +80,7 @@ TEST_F(ExprIRBuilderTest, test_add_int32) {
     scope_var.Enter("fn_base");
     scope_var.AddVar("a", arg0);
     ExprIRBuilder expr_builder(entry_block, &scope_var);
-    ::fesql::node::FnNode *node = NULL;
+    ::fesql::node::ExprNode *node = NULL;
     GenAddExpr(manager_, &node);
     llvm::Value *output;
     bool ok = expr_builder.Build(node, &output);

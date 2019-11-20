@@ -50,7 +50,10 @@ typedef void* yyscan_t;
 	bool flag;
 	::fesql::node::SQLNode* node;
 	::fesql::node::FnNode* fnnode;
+	::fesql::node::ExprNode* expr;
 	::fesql::node::DataType type;
+	::fesql::node::FnNodeList* fnlist;
+	::fesql::node::ExprListNode* exprlist;
 	::fesql::node::SQLNodeList* list;
 }
 
@@ -91,7 +94,6 @@ typedef void* yyscan_t;
 %token <strval> NEWLINE
 %token <intval> INDENT
 %token <strval> DEF
-%token <strval> SPACE
 
 %token ADD
 %token ALL
@@ -339,20 +341,26 @@ typedef void* yyscan_t;
 
  /* udf */
 %type <type> types
-%type <fnnode> grammar line_list primary var
-             fn_def return_stmt assign_stmt para plist fn_expr
-             fun_def_block fn_def_indent_op stmt_block func_stmts func_stmt
+%type <fnnode> grammar line_list
+			   fun_def_block fn_def_indent_op  func_stmt
+               fn_def return_stmt assign_stmt para
+%type<fnlist> plist stmt_block func_stmts
 
-%type <node> primary_time column_ref
+%type <expr> var primary fn_expr primary_time column_ref expr simple_expr func_expr expr_const
  /* select stmt */
-%type <node>  sql_stmt stmt select_stmt expr
+%type <node>  sql_stmt stmt select_stmt
               opt_all_clause
               table_factor table_reference
               projection
-              simple_expr func_expr expr_const
+
               sortby opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
               limit_clause
+
+ /* insert table */
+%type<node> insert_stmt
+%type<exprlist> insert_expr_list column_ref_list
+%type<expr> insert_expr
 
  /* create table */
 %type <node>  create_stmt column_desc column_index_item column_index_key
@@ -407,11 +415,10 @@ line_list:
 NEWLINES: NEWLINE {}
 	| NEWLINES NEWLINE {}
 fun_def_block : fn_def_indent_op NEWLINES stmt_block {
-            emit("enter fun_def_block");
-            $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
-            $$->AddChildren($1);
-            for (auto item: $3->children) {
-                $$->AddChildren(item);
+            $$ = node_manager->MakeFnListNode();
+            ((::fesql::node::FnNodeList*)$$)->AddChild($1);
+            for (auto item: ((::fesql::node::FnNodeList*)$3)->GetChildren()) {
+                ((::fesql::node::FnNodeList*)$$)->AddChild(item);
             }
         }
         ;
@@ -433,15 +440,13 @@ stmt_block:
         ;
 func_stmts:
         func_stmt {
-
-            emit("enter func stmt");
-            $$ = node_manager->MakeFnNode(::fesql::node::kFnList);
-                        $$->AddChildren($1);
+			$$ = node_manager->MakeFnListNode();
+            $$->AddChild($1);
         }
         |func_stmts NEWLINES func_stmt {
             emit("enter func stmts");
             $$ = $1;
-            $$->AddChildren($3);
+            $$->AddChild($3);
         }
         ;
 func_stmt:
@@ -465,7 +470,7 @@ func_stmt:
          ;
 
 fn_def :
-       DEF SPACE  NAME'(' plist ')' ':' types {
+       DEF INDENT  NAME'(' plist ')' ':' types {
             $$ = node_manager->MakeFnDefNode($3, $5, $8);
        };
 
@@ -474,7 +479,7 @@ assign_stmt: NAME '=' fn_expr {
            };
 
 return_stmt:
-           RETURN SPACE fn_expr {
+           RETURN INDENT fn_expr {
             $$ = node_manager->MakeReturnStmtNode($3);
            };
 
@@ -510,10 +515,10 @@ types:  I32
 
 plist:
      para {
-        $$ = node_manager->MakeFnNode(::fesql::node::kFnParaList);
-        $$->AddChildren($1);
+        $$ = node_manager->MakeFnListNode();
+        $$->AddChild($1);
      } | para ',' plist  {
-        $3->AddChildren($1);
+        $3->AddChild($1);
         $$ = $3;
      };
 
@@ -523,21 +528,21 @@ para: NAME ':' types {
 
 primary:
     INTNUM {
-        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1);
+        $$ = node_manager->MakeConstNode($1);
     };
 
 primary_time:
     DAYNUM {
-        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeDay);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeDay);
     }
     |HOURNUM {
-        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeHour);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeHour);
     }
     |MINUTENUM {
-        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeMinute);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeMinute);
     }
     |SECONDNUM{
-        $$ = (::fesql::node::FnNode*)node_manager->MakeConstNode($1, fesql::node::kTypeSecond);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeSecond);
     }
 var: NAME {
         $$ = node_manager->MakeFnIdNode($1);
@@ -558,6 +563,10 @@ stmt:   select_stmt
         |create_stmt
         {
             $$ = $1;
+        }
+        |insert_stmt
+        {
+        	$$ = $1;
         }
         |cmd_stmt
         {
@@ -581,6 +590,41 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                 }
                 ;
 
+
+insert_stmt:	INSERT INTO table_name VALUES '(' insert_expr_list ')'
+				{
+					$$ = node_manager->MakeInsertTableNode($3, NULL, $6);
+				}
+				|INSERT INTO table_name '(' column_ref_list ')' VALUES '(' insert_expr_list ')'
+				{
+
+					$$ = node_manager->MakeInsertTableNode($3, $5, $9);
+				}
+				;
+
+column_ref_list:	column_ref
+					{
+						$$ = node_manager->MakeExprList($1);
+					}
+					|column_ref_list',' column_ref
+					{
+						$$ = $1;
+						$$->AddChild($3);
+					}
+					;
+
+insert_expr_list:	insert_expr
+					{
+						$$ = node_manager->MakeExprList($1);
+					}
+					| insert_expr_list ',' insert_expr
+					{
+						$$ = $1;
+						$$->PushBack($3);
+					}
+					;
+insert_expr:	expr_const
+				;
 cmd_stmt:
 			CREATE GROUP group_name
 			{
@@ -627,11 +671,10 @@ column_desc_list:   column_desc
                     {
                         $$ = node_manager->MakeNodeList($1);
                     }
-                    | column_desc ',' column_desc_list
+                    | column_desc_list ',' column_desc
                     {
-                        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-                        new_list->AppendNodeList($3);
-                        $$ = new_list;
+                    	$$ = $1;
+                        $$->PushBack($3);
                     }
                     ;
 
@@ -649,11 +692,10 @@ column_index_item_list:    column_index_item
                     {
                         $$ = node_manager->MakeNodeList($1);
                     }
-                    | column_index_item ',' column_index_item_list
+                    |  column_index_item_list ',' column_index_item
                     {
-                        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-                        new_list->AppendNodeList($3);
-                        $$ = new_list;
+                        $$ = $1;
+                        $$->PushBack($3);
                     }
                     ;
 
@@ -671,7 +713,7 @@ column_index_item:  KEY '=' column_name
                     }
                     | TTL '=' primary_time
                     {
-                        $$ = $3;
+                        $$ = node_manager->MakeIndexTTLNode($3);
                     }
                     | VERSION '=' column_name
                     {
@@ -733,11 +775,10 @@ opt_target_list: select_projection_list						{ $$ = $1; }
 select_projection_list: projection {
                             $$ = node_manager->MakeNodeList($1);
                        }
-    | projection ',' select_projection_list
+    | select_projection_list ',' projection
     {
-        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-        new_list->AppendNodeList($3);
-        $$ = new_list;
+        $$ = $1;
+        $$->PushBack($3);
     }
     ;
 
@@ -758,7 +799,7 @@ projection:
     }
     | '*'
         {
-            ::fesql::node::SQLNode *pNode = node_manager->MakeSQLNode(::fesql::node::kAll);
+            ::fesql::node::ExprNode* pNode = node_manager->MakeAllNode("");
             $$ = node_manager->MakeResTargetNode(pNode, "");
         }
     ;
@@ -775,11 +816,10 @@ over_clause: OVER window_specification
 		;
 
 table_references:    table_reference { $$ = node_manager->MakeNodeList($1); }
-    | table_reference ',' table_references
+    |  table_references ',' table_reference
     {
-        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-        new_list->AppendNodeList($3);
-        $$ = new_list;
+     	$$ = $1;
+        $$->PushBack($3);
     }
     ;
 
@@ -813,13 +853,12 @@ expr_list:
     {
       $$ = node_manager->MakeNodeList($1);
     }
-  | expr ',' expr_list
+  	| expr_list ',' expr
     {
-        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-        new_list->AppendNodeList($3);
-        $$ = new_list;
+        $$ = $1;
+        $$->PushBack($3);
     }
-  ;
+  	;
 
 expr : simple_expr   { $$ = $1; }
      | func_expr  { $$ = $1; }
@@ -857,17 +896,17 @@ simple_expr:
 expr_const:
     STRING
         {
-        	$$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1));
+        	$$ = node_manager->MakeConstNode($1);
 			free($1);
         }
   	| INTNUM
-        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
+        { $$ = (node_manager->MakeConstNode($1)); }
   	| APPROXNUM
-        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
+        { $$ = (node_manager->MakeConstNode($1)); }
   	| BOOL
-        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode($1)); }
+        { $$ = (node_manager->MakeConstNode($1)); }
   	| NULLX
-        { $$ = (::fesql::node::SQLNode*)(node_manager->MakeConstNode()); }
+        { $$ = (node_manager->MakeConstNode()); }
   	;
 
 func_expr:
@@ -900,11 +939,10 @@ window_definition_list:
     {
         $$ = node_manager->MakeNodeList($1);
     }
-	| window_definition ',' window_definition_list
+	| window_definition_list ',' window_definition
 	{
-        ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-        new_list->AppendNodeList($3);
-        $$ = new_list;
+	 	$$ = $1;
+        $$->PushBack($3);
 	}
 	;
 
@@ -926,8 +964,10 @@ window_specification: '(' opt_existing_window_name opt_partition_clause
 
 opt_existing_window_name:
 						NAME { $$ = $1; }
-                        | /*EMPTY*/		%prec Op    { $$ = NULL; }
+						| /*EMPTY*/		{ $$ = NULL; }
+
                         ;
+
 opt_partition_clause: PARTITION BY expr_list		{ $$ = $3; }
 			            | /*EMPTY*/					{ $$ = NULL; }
 
@@ -960,11 +1000,10 @@ sortby_list:
 			{
 			     $$ = node_manager->MakeNodeList($1);
 			}
-			|sortby ',' sortby_list
-			{
-			    ::fesql::node::SQLNodeList *new_list = node_manager->MakeNodeList($1);
-                new_list->AppendNodeList($3);
-                $$ = new_list;
+			|sortby_list ',' sortby 			{
+				$$ = $1;
+                $$->PushBack($3);
+
 			}
 		    ;
 

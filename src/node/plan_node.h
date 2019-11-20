@@ -30,13 +30,9 @@ class PlanNode {
 
     PlanType GetType() const { return type_; }
 
-    const std::vector<PlanNode *> &GetChildren()  const {
-        return children_;
-    }
+    const std::vector<PlanNode *> &GetChildren() const { return children_; }
 
-    int GetChildrenSize() const {
-        return children_.size();
-    }
+    int GetChildrenSize() const { return children_.size(); }
     friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
 
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -102,25 +98,17 @@ class ScanPlanNode : public UnaryPlanNode {
 
     PlanType GetScanType() { return scan_type_; }
 
-    const int GetLimit() const {
-        return limit_cnt;
-    }
+    const int GetLimit() const { return limit_cnt; }
 
-    const std::string& GetTable() const  {
-        return table_name_;
-    }
+    const std::string &GetTable() const { return table_name_; }
 
-    void SetLimit(int limit) {
-        limit_cnt = limit;
-    }
+    void SetLimit(int limit) { limit_cnt = limit; }
     SQLNode *GetCondition() const { return condition; }
 
  private:
     // TODO(chenjing): OP tid
     PlanType scan_type_;
     std::string table_name_;
-    //TODO: M2
-
     SQLNode *condition;
     int limit_cnt;
 };
@@ -133,9 +121,7 @@ class LimitPlanNode : public MultiChildPlanNode {
 
     ~LimitPlanNode() {}
 
-    const int GetLimitCnt() const {
-        return limit_cnt_;
-    }
+    const int GetLimitCnt() const { return limit_cnt_; }
 
     void SetLimitCnt(int limit_cnt) { limit_cnt_ = limit_cnt; }
 
@@ -181,14 +167,14 @@ class ProjectPlanNode : public LeafPlanNode {
 
     void SetName(const std::string name) { name_ = name; }
 
-    node::SQLNode *GetExpression() const { return expression_; }
+    node::ExprNode *GetExpression() const { return expression_; }
 
-    void SetExpression(node::SQLNode *expression) { expression_ = expression; }
+    void SetExpression(node::ExprNode *expression) { expression_ = expression; }
 
     bool IsWindowProject() { return !w_.empty(); }
 
  private:
-    node::SQLNode *expression_;
+    node::ExprNode *expression_;
     std::string name_;
     std::string table_;
     std::string w_;
@@ -202,16 +188,10 @@ class ProjectListPlanNode : public MultiChildPlanNode {
     ~ProjectListPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    const PlanNodeList &GetProjects() const {
-        return projects;
-    }
-    void AddProject(ProjectPlanNode *project) {
-        projects.push_back((PlanNode *) project);
-    }
+    const PlanNodeList &GetProjects() const { return projects; }
+    void AddProject(ProjectPlanNode *project) { projects.push_back(project); }
 
-    const std::string GetTable() const {
-        return table_;
-    }
+    const std::string GetTable() const { return table_; }
 
     std::string GetW() const { return w_; }
 
@@ -252,7 +232,7 @@ class CmdPlanNode : public LeafPlanNode {
  public:
     CmdPlanNode() : LeafPlanNode(kPlanTypeCmd) {}
     ~CmdPlanNode() {}
-    
+
     void SetCmdNode(const CmdNode *node) {
         cmd_type_ = node->GetCmdType();
         args_ = node->GetArgs();
@@ -264,6 +244,22 @@ class CmdPlanNode : public LeafPlanNode {
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
+};
+
+class InsertPlanNode : public LeafPlanNode {
+ public:
+    InsertPlanNode() : LeafPlanNode(kPlanTypeInsert), insert_node_(nullptr) {}
+    ~InsertPlanNode() {}
+    void SetInsertNode(const InsertStmt* node) {
+        insert_node_ = node;
+    }
+
+    const InsertStmt* GetInsertNode() const {
+        return insert_node_;
+    }
+
+ private:
+    const InsertStmt *insert_node_;
 };
 void PrintPlanVector(std::ostream &output, const std::string &tab,
                      PlanNodeList vec, const std::string vector_name,

@@ -1,3 +1,4 @@
+import "type.proto";
 import "common.proto";
 
 package fesql.tablet;
@@ -12,10 +13,46 @@ message QueryRequest {
 
 message QueryResponse {
     optional common.Status status = 1;
-    optional bytes result_set = 2;
-    optional bytes schema = 3;
+    repeated bytes result_set = 2;
+    repeated type.ColumnDef schema = 3;
+}
+
+message CreateTableRequest {
+    optional type.TableDef table = 1;
+    optional uint32 tid = 2;
+    repeated uint32 pids = 3;
+    optional string db = 4;
+}
+
+message CreateTableResponse {
+    optional common.Status status = 1;
+}
+
+message GetTablesSchemaRequest {
+    optional string db = 1;
+    optional string name = 2;
+}
+
+message GetTableSchemaReponse {
+    optional string name = 1;
+    optional type.TableDef schema = 2;
+    optional common.Status status = 3;
+}
+message InsertRequest {
+    optional string db = 1;
+    optional string table = 2;
+    optional bytes row = 3;
+    optional string key = 4;
+    optional uint64 ts = 5;
+}
+
+message InsertResponse {
+    optional common.Status status = 1;
 }
 
 service TabletServer {
-    rpc Query(QueryRequest) returns(QueryResponse);
+    rpc GetTableSchema (GetTablesSchemaRequest) returns (GetTableSchemaReponse);
+    rpc CreateTable (CreateTableRequest) returns (CreateTableResponse);
+    rpc Query (QueryRequest) returns (QueryResponse);
+    rpc Insert (InsertRequest) returns (InsertResponse);
 }

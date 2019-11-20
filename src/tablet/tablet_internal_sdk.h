@@ -1,5 +1,5 @@
 /*
- * flags.cc
+ * tablet_internal_sdk.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,9 +15,27 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
-// cluster config
-DEFINE_string(endpoint, "", "config the ip and port that fesql serves for");
-DEFINE_int32(port, 0, "config the port that fesql serves for");
-DEFINE_int32(thread_pool_size, 8, "config the thread pool for dbms and tablet");
-DEFINE_string(tablet_endpoint, "", "config the ip and port that fesql tablet for");
+#ifndef SRC_TABLET_TABLET_INTERNAL_SDK_H_
+#define SRC_TABLET_TABLET_INTERNAL_SDK_H_
+
+#include "brpc/channel.h"
+#include "proto/tablet.pb.h"
+
+namespace fesql{
+namespace tablet {
+
+class TabletInternalSDK {
+ public:
+    TabletInternalSDK(const std::string& endpoint);
+    ~TabletInternalSDK();
+    bool Init();
+    void CreateTable(CreateTableRequest* request,
+            common::Status& status);
+ private:
+    std::string endpoint_;
+    ::brpc::Channel *channel_;
+};
+
+}  // namespace tablet
+}  // namespace fesql
+#endif  // SRC_TABLET_TABLET_INTERNAL_SDK_H_

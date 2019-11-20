@@ -19,47 +19,7 @@ void SQLNode::Print(std::ostream &output, const std::string &tab) const {
 }
 
 void SQLNodeList::Print(std::ostream &output, const std::string &tab) const {
-    if (0 == size_ || NULL == head_) {
-        output << tab << "[]";
-        return;
-    }
-    output << tab << "[\n";
-    SQLLinkedNode *p = head_;
-    const std::string space = tab + "\t";
-    p->node_ptr_->Print(output, space);
-    output << "\n";
-    p = p->next_;
-    while (NULL != p) {
-        p->node_ptr_->Print(output, space);
-        p = p->next_;
-        output << "\n";
-    }
-    output << tab << "]";
-}
-
-void SQLNodeList::PushFront(SQLLinkedNode *linked_node_ptr) {
-    linked_node_ptr->next_ = head_;
-    head_ = linked_node_ptr;
-    size_ += 1;
-    if (NULL == tail_) {
-        tail_ = head_;
-    }
-}
-void SQLNodeList::AppendNodeList(SQLNodeList *node_list_ptr) {
-    if (NULL == node_list_ptr) {
-        return;
-    }
-
-    if (NULL == tail_) {
-        head_ = node_list_ptr->head_;
-        tail_ = head_;
-        size_ = node_list_ptr->size_;
-        return;
-    }
-
-    tail_->next_ = node_list_ptr->head_;
-    tail_ = node_list_ptr->tail_;
-    size_ += node_list_ptr->size_;
+    PrintSQLVector(output, tab, list_, "list", true);
 }
 
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -240,9 +200,6 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kTable:
             output = "kTable";
             break;
-        case kColumnRef:
-            output = "kColumnRef";
-            break;
         case kColumnDesc:
             output = "kColumnDesc";
             break;
@@ -251,9 +208,6 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kExpr:
             output = "kExpr";
-            break;
-        case kFunc:
-            output = "kFunc";
             break;
         case kWindowDef:
             output = "kWindowDef";
@@ -288,8 +242,8 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kLimit:
             output = "kLimit";
             break;
-        case kAll:
-            output = "kAll";
+        case kFnList:
+            output = "kFnList";
             break;
         default:
             output = "unknown";
@@ -312,17 +266,15 @@ void FillSQLNodeList2NodeVector(
     std::vector<SQLNode *> &node_list  // NOLINT (runtime/references)
 ) {
     if (nullptr != node_list_ptr) {
-        SQLLinkedNode *ptr = node_list_ptr->GetHead();
-        while (nullptr != ptr && nullptr != ptr->node_ptr_) {
-            node_list.push_back(ptr->node_ptr_);
-            ptr = ptr->next_;
+        for (auto item : node_list_ptr->GetList()) {
+            node_list.push_back(item);
         }
     }
 }
 
-std::string WindowOfExpression(SQLNode *node_ptr) {
-    switch (node_ptr->GetType()) {
-        case kFunc: {
+std::string WindowOfExpression(ExprNode *node_ptr) {
+    switch (node_ptr->GetExprType()) {
+        case kExprFunc: {
             FuncNode *func_node_ptr = dynamic_cast<FuncNode *>(node_ptr);
             if (nullptr != func_node_ptr->GetOver()) {
                 return func_node_ptr->GetOver()->GetName();
@@ -331,9 +283,9 @@ std::string WindowOfExpression(SQLNode *node_ptr) {
             if (func_node_ptr->GetArgs().empty()) {
                 return "";
             }
-
             for (auto arg : func_node_ptr->GetArgs()) {
-                std::string arg_w = WindowOfExpression(arg);
+                std::string arg_w =
+                    WindowOfExpression(dynamic_cast<ExprNode *>(arg));
                 if (false == arg_w.empty()) {
                     return arg_w;
                 }
@@ -363,7 +315,25 @@ void PrintSQLNode(std::ostream &output, const std::string &org_tab,
 }
 
 void PrintSQLVector(std::ostream &output, const std::string &tab,
-                    NodePointVector vec, const std::string &vector_name,
+                    const std::vector<ExprNode *> &vec,
+                    const std::string &vector_name, bool last_item) {
+    if (0 == vec.size()) {
+        output << tab << SPACE_ST << vector_name << ": []";
+        return;
+    }
+    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int count = vec.size();
+    int i = 0;
+    for (i = 0; i < count - 1; ++i) {
+        PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
+        output << "\n";
+    }
+    PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
+}
+
+void PrintSQLVector(std::ostream &output, const std::string &tab,
+                    const NodePointVector &vec, const std::string &vector_name,
                     bool last_item) {
     if (0 == vec.size()) {
         output << tab << SPACE_ST << vector_name << ": []";
@@ -455,5 +425,19 @@ void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, args_, "args", true);
 }
 
+void InsertStmt::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, table_name_, "table_name", false);
+    output << "\n";
+    if (is_all_) {
+        PrintValue(output, tab, "all", "columns", false);
+    } else {
+        PrintValue(output, tab, columns_, "columns", false);
+    }
+
+    PrintSQLVector(output, tab, values_, "values", false);
+}
 }  // namespace node
 }  // namespace fesql

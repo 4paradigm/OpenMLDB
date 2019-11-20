@@ -21,8 +21,11 @@
 #include <unistd.h>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
+#include "analyser/analyser.h"
+#include "base/texttable.h"
+#include "plan/planner.h"
+#include "sdk/tablet_sdk.h"
 
 #include "base/linenoise.h"
 #include "base/strings.h"
@@ -30,27 +33,74 @@
 #include "cmd/version.h"
 #include "dbms/dbms_server_impl.h"
 #include "glog/logging.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/TargetSelect.h"
 #include "sdk/dbms_sdk.h"
+#include "tablet/tablet_server_impl.h"
 
 DECLARE_string(endpoint);
+DECLARE_string(tablet_endpoint);
 DECLARE_int32(port);
 DECLARE_int32(thread_pool_size);
 
 DEFINE_string(role, "tablet | dbms | client ", "Set the fesql role");
 
+namespace fesql {
+namespace cmd {
+
 static ::fesql::sdk::DBMSSdk *dbms_sdk = NULL;
+static std::unique_ptr<::fesql::sdk::TabletSdk> table_sdk;
+static ::fesql::sdk::DatabaseDef cmd_client_db;
 
+void HandleSQLScript(
+    const std::string &script,
+    fesql::base::Status &status);  // NOLINT (runtime/references)
 
-
-void HandleSQLScript(std::string basicString);
-void HandleCreateSchema(std::string str, ::fesql::base::Status &status);
-
-void HandleEnterDatabase(std::string &db_name);
+void HandleEnterDatabase(const std::string &db_name);
+void handleCmd(const fesql::node::CmdNode *cmd_node,
+               fesql::base::Status &status);  // NOLINT (runtime/references)
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
+
+void StartTablet(int argc, char *argv[]) {
+    SetupLogging(argv);
+    ::llvm::InitLLVM X(argc, argv);
+    ::llvm::InitializeNativeTarget();
+    ::llvm::InitializeNativeTargetAsmPrinter();
+    ::fesql::tablet::TabletServerImpl *tablet =
+        new ::fesql::tablet::TabletServerImpl();
+    bool ok = tablet->Init();
+    if (!ok) {
+        LOG(WARNING) << "Fail to init tablet service";
+        exit(1);
+    }
+
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+
+    if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        LOG(WARNING) << "Fail to add tablet service";
+        exit(1);
+    }
+
+    if (server.Start(FLAGS_port, &options) != 0) {
+        LOG(WARNING) << "Fail to start tablet server";
+        exit(1);
+    }
+
+    std::ostringstream oss;
+    oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
+        << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
+    LOG(INFO) << "start tablet on port " << FLAGS_port << " with version "
+              << oss.str();
+    server.set_version(oss.str());
+    server.RunUntilAskedToQuit();
+}
 
 void StartDBMS(char *argv[]) {
     SetupLogging(argv);
     ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
+    dbms->SetTabletEndpoint(FLAGS_tablet_endpoint);
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
@@ -74,151 +124,12 @@ void StartDBMS(char *argv[]) {
     server.RunUntilAskedToQuit();
 }
 
-void HandleCreateGroup(const std::vector<std::string> &args) {
-    if (args.size() < 3) {
-        std::cout << "invalid input args" << std::endl;
-        return;
-    }
-
-    if (dbms_sdk == NULL) {
-        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
-        if (dbms_sdk == NULL) {
-            std::cout << "Fail to connect to dbms" << std::endl;
-            return;
-        }
-    }
-
-    ::fesql::sdk::GroupDef group;
-    group.name = args[2];
-    ::fesql::base::Status status;
-    dbms_sdk->CreateGroup(group, status);
-    if (status.code == 0) {
-        std::cout << "Create group " << args[2] << " success" << std::endl;
-    } else {
-        std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
-    }
-}
-
-void HandleCreateDatabase(std::vector<std::string> &args) {
-    if (args.size() != 3) {
-        std::cout << "invalid input args: require create database db_name"
-                  << std::endl;
-    }
-
-    if (dbms_sdk == NULL) {
-        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
-        if (dbms_sdk == NULL) {
-            std::cout << "Fail to connect to dbms" << std::endl;
-            return;
-        }
-    }
-
-    ::fesql::sdk::DatabaseDef database;
-    database.name = args[2];
-    ::fesql::base::Status status;
-    dbms_sdk->CreateDatabase(database, status);
-    if (status.code == 0) {
-        std::cout << "Create database" << args[2] << " success" << std::endl;
-    } else {
-        std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
-    }
-}
-void HandleCreateSchema(std::vector<std::string> &args) {
-    if (args.size() != 3) {
-        std::cout
-            << "invalid input args: require create table path_to/schema.sql"
-            << std::endl;
-    }
-
-    std::ifstream in;
-    in.open(args[2]);  // open the input file
-    if (!in.is_open()) {
-        std::cout << "Error! Incorrect file." << std::endl;
-        return;
-    }
-    std::stringstream str_stream;
-    str_stream << in.rdbuf();            // read the file
-    std::string str = str_stream.str();  // str holds the content of the file
-    std::cout << str << "\n";  // you can do anything with the string!!!
-    ::fesql::base::Status status;
-    HandleCreateSchema(str, status);
-    if (status.code == 0) {
-        std::cout << "create table " << args[2] << " sucess" << std::endl;
-    } else {
-        std::cout << "create table fail with error " << status.msg << std::endl;
-    }
-}
-
-void HandleCreateSchema(std::string str, ::fesql::base::Status &status) {
-    if (dbms_sdk == NULL) {
-        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
-        if (dbms_sdk == NULL) {
-            std::cout << "Fail to connect to dbms" << std::endl;
-            return;
-        }
-    }
-    dbms_sdk->CreateTable(str, status);
-}
-
-void HandleShowDatabases() {
-    if (dbms_sdk == NULL) {
-        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
-        if (dbms_sdk == NULL) {
-            std::cout << "Fail to connect to dbms" << std::endl;
-            return;
-        }
-    }
-    ::fesql::base::Status status;
-    std::vector<std::string> items;
-    dbms_sdk->ShowDatabases(items, status);
-    if (status.code == 0) {
-        dbms_sdk->PrintItems(items);
-    } else {
-        std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
-    }
-}
-void HandleShowTables() {
-    if (dbms_sdk == NULL) {
-        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
-        if (dbms_sdk == NULL) {
-            std::cout << "Fail to connect to dbms" << std::endl;
-            return;
-        }
-    }
-    ::fesql::base::Status status;
-    std::vector<std::string> items;
-    dbms_sdk->ShowTables(items, status);
-    if (status.code == 0) {
-        dbms_sdk->PrintItems(items);
-    } else {
-        std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
-    }
-}
-
-void HandleShowSchema(std::string table_name) {
-    if (dbms_sdk == NULL) {
-        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
-        if (dbms_sdk == NULL) {
-            std::cout << "Fail to connect to dbms" << std::endl;
-            return;
-        }
-    }
-    ::fesql::base::Status status;
-    ::fesql::type::TableDef table;
-    dbms_sdk->ShowSchema(table_name, table, status);
-    if (status.code == 0) {
-        dbms_sdk->PrintTableSchema(table);
-    } else {
-        std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
-    }
-}
-
-
 void StartClient(char *argv[]) {
     SetupLogging(argv);
     std::cout << "Welcome to FeSQL " << FESQL_VERSION_MAJOR << "."
               << FESQL_VERSION_MEDIUM << "." << FESQL_VERSION_MINOR << "."
               << FESQL_VERSION_BUG << std::endl;
+    cmd_client_db.name = "";
     std::string display_prefix = ">";
     std::string continue_prefix = "...";
     std::string cmd_str;
@@ -226,7 +137,8 @@ void StartClient(char *argv[]) {
     while (true) {
         std::string buf;
         char *line = ::fesql::base::linenoise(
-            cmd_mode ? display_prefix.c_str() : continue_prefix.c_str());
+            cmd_mode ? (cmd_client_db.name + display_prefix).c_str()
+                     : continue_prefix.c_str());
         if (line == NULL) {
             return;
         }
@@ -242,82 +154,238 @@ void StartClient(char *argv[]) {
         }
 
         cmd_str.append(buf);
-        //TODO(CHENJING) remove
-        if (cmd_mode && cmd_str[0] == '.') {
-            cmd_mode = true;
-            std::vector<std::string> parts;
-            ::fesql::base::SplitString(cmd_str, " ", parts);
-            if (parts[0] == ".create") {
-                if (parts.size() < 3) {
-                    std::cout << "invalid input args: require\n"
-                              << ".create group group_name \n"
-                              << ".create database db_name\n"
-                              << "| .create table table_schema_path\n";
-                }
-                if (parts[1] == "group") {
-                    HandleCreateGroup(parts);
-                } else if (parts[1] == "schema") {
-                    HandleCreateSchema(parts);
-                } else if (parts[1] == "database") {
-                    HandleCreateDatabase(parts);
-                }
-            } else if (parts[0] == ".use") {
-                if (parts.size() != 2) {
-                    std::cout << "invalid input args: require"
-                              << " .use db_name\n";
-                } else {
-                    HandleEnterDatabase(parts[1]);
-                }
-            } else if (parts[0] == ".show") {
-                if (parts.size() < 2) {
-                    std::cout << "invalid input args: require\n"
-                              << ".show tables\n"
-                              << "| .show databases\n"
-                              << "| .show table table_name\n";
-                } else {
-                    if (parts[1] == "table") {
-                        if (parts.size() != 3) {
-                            std::cout << "invalid input args: require"
-                                      << " .show table table_name";
-                        } else {
-                            HandleShowSchema(parts[2]);
-                        }
-                    } else if (parts[1] == "tables") {
-                        if (parts.size() != 2) {
-                            std::cout << "invalid input args: require"
-                                      << ".show tables\n";
-                        } else {
-                            HandleShowTables();
-                        }
-                    } else if (parts[1] == "databases") {
-                        if (parts.size() != 2) {
-                            std::cout << "invalid input args: require"
-                                      << " .show databases\n";
-                        } else {
-                            HandleShowDatabases();
-                        }
-                    } else {
-                        std::cout << "invalid input args: require\n"
-                                  << ".show tables\n"
-                                  << "| .show databases\n"
-                                  << "| .show table table_name\n";
-                    }
-                }
-            } else {
-                std::cout << "Invalid command" << std::endl;
+        // TODO(CHENJING) remove
+        if (cmd_str.back() == ';') {
+            ::fesql::base::Status status;
+            HandleSQLScript(cmd_str, status);
+            if (0 != status.code) {
+                std::cout << "ERROR " << status.code << ":" << status.msg
+                          << std::endl;
             }
             cmd_str.clear();
+            cmd_mode = true;
         } else {
+            cmd_str.append("\n");
             cmd_mode = false;
-            if (cmd_str.back() == ';') {
-                HandleSQLScript(cmd_str);
-                cmd_str.clear();
-                cmd_mode = true;
+        }
+    }
+}
+
+void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
+    if (nullptr == result_set || result_set->GetRowCnt() == 0) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+    ::fesql::base::TextTable t('-', '|', '+');
+
+    // Add Header
+    for (unsigned i = 0; i < result_set->GetColumnCnt(); i++) {
+        t.add(result_set->GetColumnName(i));
+    }
+    t.endOfRow();
+
+    std::unique_ptr<fesql::sdk::ResultSetIterator> it = result_set->Iterator();
+    while (it->HasNext()) {
+        it->Next();
+        for (unsigned i = 0; i < result_set->GetColumnCnt(); i++) {
+            fesql:sdk::DataType  data_type = result_set->GetColumnType(i);
+
+            switch (data_type) {
+                case fesql::sdk::kTypeInt16: {
+                    int16_t value = 0;
+                    it->GetInt16(i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case fesql::sdk::kTypeInt32: {
+                    int32_t value = 0;
+                    it->GetInt32(i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case fesql::sdk::kTypeInt64: {
+                    int64_t value = 0;
+                    it->GetInt64(i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case fesql::sdk::kTypeFloat: {
+                    float value = 0;
+                    it->GetFloat(i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case fesql::sdk::kTypeDouble: {
+                    double value = 0;
+                    it->GetDouble(i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                default: {
+                    t.add("NA");
+                }
+            }
+        }
+        t.endOfRow();
+    }
+    stream << t << std::endl;
+    if (result_set->GetRowCnt() > 1) {
+        stream << result_set->GetRowCnt() << " rows in set" << std::endl;
+    } else {
+        stream << result_set->GetRowCnt() << " row in set" << std::endl;
+    }
+}
+void PrintTableSchema(std::ostream &stream,
+                      const fesql::type::TableDef &table) {
+    ::fesql::base::TextTable t('-', '|', '+');
+
+    t.add("Field");
+    t.add("Type");
+    t.add("Null");
+    t.endOfRow();
+
+    for (auto column : table.columns()) {
+        t.add(column.name());
+        t.add(fesql::type::Type_Name(column.type()));
+        t.add(column.is_null() ? "YES" : "NO");
+        t.endOfRow();
+    }
+    stream << t;
+    unsigned items_size = table.columns().size();
+    if (items_size > 1) {
+        stream << items_size << " rows in set" << std::endl;
+    } else {
+        stream << items_size << " row in set" << std::endl;
+    }
+}
+
+void PrintItems(std::ostream &stream, const std::string &head,
+                const std::vector<std::string> &items) {
+    if (items.empty()) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+
+    ::fesql::base::TextTable t('-', '|', '+');
+    t.add(head);
+    t.endOfRow();
+    for (auto item : items) {
+        t.add(item);
+        t.endOfRow();
+    }
+    stream << t;
+    unsigned items_size = items.size();
+    if (items_size > 1) {
+        stream << items_size << " rows in set" << std::endl;
+    } else {
+        stream << items_size << " row in set" << std::endl;
+    }
+}
+void HandleSQLScript(
+    const std::string &script,
+    fesql::base::Status &status) {  // NOLINT (runtime/references)
+    if (dbms_sdk == NULL) {
+        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
+        if (dbms_sdk == NULL) {
+            status.code = fesql::error::kRpcErrorConnection;
+            status.msg = "Fail to connect to dbms";
+            return;
+        }
+    }
+
+    {
+        fesql::node::NodeManager node_manager;
+        fesql::parser::FeSQLParser parser;
+        fesql::analyser::FeSQLAnalyser analyser(&node_manager);
+        fesql::plan::SimplePlanner planner(&node_manager);
+
+        // TODO(chenjing): init with db
+        fesql::node::NodePointVector parser_trees;
+        parser.parse(script, parser_trees, &node_manager, status);
+        if (0 != status.code) {
+            LOG(WARNING) << status.msg;
+            return;
+        }
+
+        fesql::node::SQLNode *node = parser_trees[0];
+
+        if (nullptr == node) {
+            status.msg = "fail to execute cmd: parser tree is null";
+            status.code = fesql::error::kCmdErrorNullNode;
+            LOG(WARNING) << status.msg;
+            return;
+        }
+        switch (node->GetType()) {
+            case fesql::node::kCmdStmt: {
+                fesql::node::CmdNode *cmd =
+                    dynamic_cast<fesql::node::CmdNode *>(node);
+                handleCmd(cmd, status);
+                return;
+            }
+            case fesql::node::kCreateStmt: {
+                fesql::sdk::ExecuteRequst request;
+                ::fesql::sdk::ExecuteResult result;
+                request.database.name = cmd_client_db.name;
+                request.sql = script;
+                dbms_sdk->ExecuteScript(request, result, status);
+                return;
+            }
+            case fesql::node::kInsertStmt: {
+                if (!table_sdk) {
+                    table_sdk =
+                        ::fesql::sdk::CreateTabletSdk(FLAGS_tablet_endpoint);
+                }
+
+                if (!table_sdk) {
+                    status.code = fesql::error::kCmdErrorNullNode;
+                    status.msg = " Fail to create tablet sdk";
+                    return;
+                }
+
+                table_sdk->SyncInsert(cmd_client_db.name, script, status);
+
+                if (0 != status.code) {
+                    return;
+                }
+                std::cout << "Insert success";
+                return;
+            }
+            case fesql::node::kFnList:
+            case fesql::node::kSelectStmt: {
+                if (!table_sdk) {
+                    table_sdk =
+                        ::fesql::sdk::CreateTabletSdk(FLAGS_tablet_endpoint);
+                }
+
+                if (!table_sdk) {
+                    status.code = fesql::error::kCmdErrorNullNode;
+                    status.msg = " Fail to create tablet sdk";
+                    return;
+                }
+                ::fesql::sdk::Query query;
+                query.db = cmd_client_db.name;
+                query.sql = script;
+                std::unique_ptr<::fesql::sdk::ResultSet> rs =
+                    table_sdk->SyncQuery(query, status);
+                if (!rs) {
+                    std::cout << "Fail to query sql: " << status.msg
+                              << std::endl;
+                } else {
+                    PrintResultSet(std::cout, rs.get());
+                }
+                return;
+            }
+            default: {
+                status.msg = "Fail to execute script with unSuppurt type" +
+                             fesql::node::NameOfSQLNodeType(node->GetType());
+                status.code = fesql::error::kExecuteErrorUnSupport;
+                return;
             }
         }
     }
 }
-void HandleEnterDatabase(std::string &db_name) {
+void handleCmd(const fesql::node::CmdNode *cmd_node,
+               fesql::base::Status &status) {  // NOLINT (runtime/references)
     if (dbms_sdk == NULL) {
         dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
         if (dbms_sdk == NULL) {
@@ -325,37 +393,111 @@ void HandleEnterDatabase(std::string &db_name) {
             return;
         }
     }
-    ::fesql::base::Status status;
-    ::fesql::sdk::DatabaseDef database;
-    database.name = db_name;
-    dbms_sdk->EnterDatabase(database, status);
-    if (status.code == 0) {
-        std::cout << "sucess" << std::endl;
-    } else {
-        std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
-    }
-}
-void HandleSQLScript(std::string script) {
-    if (dbms_sdk == NULL) {
-        dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
-        if (dbms_sdk == NULL) {
-            std::cout << "Fail to connect to dbms" << std::endl;
+    ::fesql::sdk::DatabaseDef db;
+    db.name = cmd_client_db.name;
+    switch (cmd_node->GetCmdType()) {
+        case fesql::node::kCmdShowDatabases: {
+            std::vector<std::string> names;
+            dbms_sdk->GetDatabases(names, status);
+            if (status.code == 0) {
+                PrintItems(std::cout, "Databases", names);
+            }
             return;
         }
-    }
-    ::fesql::base::Status status;
-    dbms_sdk->ExecuteScript(script, status);
-    if (status.code != 0) {
-        std::cout << "ERROR " << status.code << ":" << status.msg << std::endl;
+        case fesql::node::kCmdShowTables: {
+            std::vector<std::string> names;
+            dbms_sdk->GetTables(db, names, status);
+            if (status.code == 0) {
+                std::ostringstream oss;
+                PrintItems(std::cout, "Tables_In_" + cmd_client_db.name, names);
+            }
+            return;
+        }
+        case fesql::node::kCmdDescTable: {
+            fesql::type::TableDef table;
+            dbms_sdk->GetSchema(db, cmd_node->GetArgs()[0], table, status);
+            if (status.code == 0) {
+                std::ostringstream oss;
+                PrintTableSchema(std::cout, table);
+            }
+            break;
+        }
+        case fesql::node::kCmdCreateGroup: {
+            fesql::sdk::GroupDef group;
+            group.name = cmd_node->GetArgs()[0];
+            dbms_sdk->CreateGroup(group, status);
+            if (0 == status.code) {
+                std::cout << "Create group success" << std::endl;
+            }
+            break;
+        }
+        case fesql::node::kCmdCreateDatabase: {
+            fesql::sdk::DatabaseDef new_db;
+            new_db.name = cmd_node->GetArgs()[0];
+            dbms_sdk->CreateDatabase(new_db, status);
+            if (0 == status.code) {
+                std::cout << "Create database success" << std::endl;
+            }
+            break;
+        }
+        case fesql::node::kCmdCreateTable: {
+            std::ifstream in;
+            in.open(cmd_node->GetArgs()[0]);  // open the input file
+            if (!in.is_open()) {
+                status.code = fesql::error::kCmdErrorPathError;
+                status.msg = "Incorrect file path";
+                return;
+            }
+            std::stringstream str_stream;
+            str_stream << in.rdbuf();  // read the file
+            std::string str =
+                str_stream.str();  // str holds the content of the file
+            ::fesql::base::Status status;
+            ::fesql::sdk::ExecuteRequst requst;
+            ::fesql::sdk::ExecuteResult result;
+
+            requst.database.name = cmd_client_db.name;
+            requst.sql = str;
+            dbms_sdk->ExecuteScript(requst, result, status);
+            if (0 == status.code) {
+                std::cout << "Create table success" << std::endl;
+            }
+            break;
+        }
+        case fesql::node::kCmdUseDatabase: {
+            fesql::sdk::DatabaseDef usedb;
+            usedb.name = cmd_node->GetArgs()[0];
+            if (0 == status.code) {
+                if (dbms_sdk->IsExistDatabase(usedb, status)) {
+                    cmd_client_db.name = usedb.name;
+                    std::cout << "Database changed" << std::endl;
+                } else {
+                    std::cout << "Database '" << usedb.name << "' not exists"
+                              << std::endl;
+                }
+            }
+
+            break;
+        }
+        default: {
+            status.code = fesql::error::kCmdErrorUnSupport;
+            status.msg = "UnSupport Cmd " +
+                         fesql::node::CmdTypeName(cmd_node->GetCmdType());
+        }
     }
 }
+
+}  // namespace cmd
+}  // namespace fesql
 
 int main(int argc, char *argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "dbms") {
-        StartDBMS(argv);
+        ::fesql::cmd::StartDBMS(argv);
+    } else if (FLAGS_role == "tablet") {
+        ::fesql::cmd::StartTablet(argc, argv);
     } else if (FLAGS_role == "client") {
-        StartClient(argv);
+        ::fesql::cmd::StartClient(argv);
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, dbms"
                   << std::endl;

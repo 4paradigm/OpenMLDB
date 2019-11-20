@@ -23,6 +23,7 @@ namespace fesql {
 namespace analyser {
 
 using base::Status;
+using node::ExprNode;
 using node::NodeManager;
 using node::NodePointVector;
 using node::SQLNode;
@@ -54,8 +55,8 @@ class FeSQLAnalyser {
     }
 
     int Analyse(NodePointVector &parser_trees,  // NOLINT (runtime/references)
-                NodePointVector &query_tree,
-                Status &status);  // NOLINT (runtime/references)
+                NodePointVector &query_tree,    // NOLINT (runtime/references)
+                Status &status);                // NOLINT (runtime/references)
     void Analyse(SQLNode *parser_tree,
                  Status &status);  // NOLINT (runtime/references)
 
@@ -100,6 +101,8 @@ class FeSQLAnalyser {
     void TransformExprNode(SQLNode *node, const std::string &table_name,
                            Status &status);  // NOLINT (runtime/references)
     std::string GenerateName(const std::string prefix, int id);
+    void TransformInsertNode(node::InsertStmt *pNode,
+                             Status &status);  // NOLINT (runtime/references)
     void TransformCmdNode(node::CmdNode *pNode,
                           Status &status);  // NOLINT (runtime/references)
 };

@@ -91,7 +91,8 @@ public:
 };
 
 class Segment {
-public:
+
+ public:
     Segment();
     Segment(uint8_t height);
     ~Segment();
@@ -107,7 +108,8 @@ public:
     KeyEntries* GetKeyEntries() {
         return entries_;
     }
-private:
+ private:
+
     uint8_t key_entry_max_height_;
     KeyEntries* entries_;
     std::mutex mu_;

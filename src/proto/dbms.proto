@@ -22,36 +22,40 @@ message AddDatabaseResponse {
     optional common.Status status = 1;
 }
 
-message EnterDatabaseRequest {
+message IsExistRequest {
     optional string name = 1;
 }
 
-message EnterDatabaseResponse {
+message IsExistResponse {
     optional common.Status status = 1;
+    optional bool exist = 2;
 }
 
 message AddTableRequest {
     optional type.TableDef table = 1;
+    optional string db_name = 2;
 }
 
 message AddTableResponse {
     optional common.Status status = 1;
 }
 
-message ShowSchemaRequest {
+message GetSchemaRequest {
     optional string name = 1;
+    optional string db_name = 2;
 }
 
-message ShowSchemaResponse {
+message GetSchemaResponse {
     optional common.Status status = 1;
     optional type.TableDef table = 2;
 }
 
-message ShowItemsRequest {
-    optional string name = 1;
+message GetItemsRequest {
+    optional string table_name = 1;
+    optional string db_name = 2;
 }
 
-message ShowItemsResponse {
+message GetItemsResponse {
     optional common.Status status = 1;
     repeated string items = 2;
 }
@@ -59,9 +63,9 @@ message ShowItemsResponse {
 service DBMSServer {
     rpc AddGroup (AddGroupRequest) returns (AddGroupResponse);
     rpc AddDatabase (AddDatabaseRequest) returns (AddDatabaseResponse);
-    rpc EnterDatabase (EnterDatabaseRequest) returns (EnterDatabaseResponse);
+    rpc IsExistDatabase (IsExistRequest) returns (IsExistResponse);
     rpc AddTable (AddTableRequest) returns (AddTableResponse);
-    rpc ShowSchema (ShowSchemaRequest) returns (ShowSchemaResponse);
-    rpc ShowDatabases (ShowItemsRequest) returns (ShowItemsResponse);
-    rpc ShowTables (ShowItemsRequest) returns (ShowItemsResponse);
+    rpc GetSchema (GetSchemaRequest) returns (GetSchemaResponse);
+    rpc GetDatabases (GetItemsRequest) returns (GetItemsResponse);
+    rpc GetTables (GetItemsRequest) returns (GetItemsResponse);
 }

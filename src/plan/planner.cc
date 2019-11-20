@@ -31,25 +31,22 @@ namespace plan {
  *          + project_node
  *          + ..
  *      + limit_count
- *
  * @param root
  * @return select plan node
  */
-
-int Planner::CreateSelectPlan(const node::SQLNode *select_tree, PlanNode *plan_tree,
+int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
+                              PlanNode *plan_tree,
                               Status &status) {  // NOLINT (runtime/references)
     const node::SelectStmt *root = (const node::SelectStmt *)select_tree;
     node::SelectPlanNode *select_plan = (node::SelectPlanNode *)plan_tree;
 
-    const node::NodePointVector& table_ref_list = root->GetTableRefList();
-
+    const node::NodePointVector &table_ref_list = root->GetTableRefList();
     if (table_ref_list.empty()) {
         status.msg =
             "can not create select plan node with empty table references";
         status.code = error::kPlanErrorTableRefIsEmpty;
         return status.code;
     }
-
     if (table_ref_list.size() > 1) {
         status.msg =
             "can not create select plan node based on more than 2 tables";
@@ -57,10 +54,9 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree, PlanNode *plan_t
         return status.code;
     }
 
-    const node::TableNode *table_node_ptr = (const node::TableNode *)table_ref_list.at(0);
-
+    const node::TableNode *table_node_ptr =
+        (const node::TableNode *)table_ref_list.at(0);
     node::PlanNode *current_node = select_plan;
-
     std::map<std::string, node::ProjectListPlanNode *> project_list_map;
     // set limit
     if (nullptr != root->GetLimit()) {
@@ -74,7 +70,7 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree, PlanNode *plan_t
     }
 
     // prepare project list plan node
-    const node::NodePointVector& select_expr_list = root->GetSelectList();
+    const node::NodePointVector &select_expr_list = root->GetSelectList();
 
     if (false == select_expr_list.empty()) {
         for (auto expr : select_expr_list) {
@@ -87,7 +83,6 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree, PlanNode *plan_t
             if (0 != status.code) {
                 return status.code;
             }
-
             std::string key = project_node_ptr->GetW().empty()
                                   ? project_node_ptr->GetTable()
                                   : project_node_ptr->GetW();
@@ -113,7 +108,8 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree, PlanNode *plan_t
 }
 
 void Planner::CreateProjectPlanNode(
-    const SQLNode *root, const std::string& table_name, node::ProjectPlanNode *plan_tree,
+    const SQLNode *root, const std::string &table_name,
+    node::ProjectPlanNode *plan_tree,
     Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create project node: query tree node it null";
@@ -123,7 +119,7 @@ void Planner::CreateProjectPlanNode(
 
     switch (root->GetType()) {
         case node::kResTarget: {
-            const node::ResTarget *target_ptr = (const node::ResTarget *) root;
+            const node::ResTarget *target_ptr = (const node::ResTarget *)root;
             std::string w = node::WindowOfExpression(target_ptr->GetVal());
             plan_tree->SetW(w);
             plan_tree->SetName(target_ptr->GetName());
@@ -139,7 +135,6 @@ void Planner::CreateProjectPlanNode(
         }
     }
 }
-
 
 void Planner::CreateDataProviderPlanNode(
     const SQLNode *root, PlanNode *plan_tree,
@@ -203,10 +198,18 @@ int SimplePlanner::CreatePlanTree(
                 plan_trees.push_back(cmd_plan);
                 break;
             }
-            case ::fesql::node::kFnList:
-             {
-                 break;
-             }
+            case node::kInsertStmt: {
+                node::PlanNode *insert_plan =
+                    node_manager_->MakePlanNode(node::kPlanTypeInsert);
+                CreateInsertPlan(
+                    parser_tree,
+                    dynamic_cast<node::InsertPlanNode *>(insert_plan), status);
+                plan_trees.push_back(insert_plan);
+                break;
+            }
+            case ::fesql::node::kFnList: {
+                break;
+            }
             default: {
                 status.msg = "can not handle tree type " +
                              node::NameOfSQLNodeType(parser_tree->GetType());
@@ -217,8 +220,27 @@ int SimplePlanner::CreatePlanTree(
     }
     return status.code;
 }
+
+void Planner::CreateInsertPlan(const node::SQLNode* root,
+                               node::InsertPlanNode*plan, Status &status) {
+    if (nullptr == root) {
+        status.msg = "fail to create cmd plan node: query tree node it null";
+        status.code = error::kPlanErrorNullNode;
+        return;
+    }
+
+    if (root->GetType() != node::kInsertStmt) {
+        status.msg =
+            "fail to create cmd plan node: query tree node it not cmd type";
+        status.code = error::kPlanErrorUnSupport;
+        return;
+    }
+
+    plan->SetInsertNode(dynamic_cast<const node::InsertStmt*>(root));
+}
+
 void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
-                                  Status &status) {
+                            Status &status) {
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = error::kPlanErrorNullNode;
@@ -226,9 +248,10 @@ void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
     }
 
     if (root->GetType() != node::kCmdStmt) {
-        status.msg = "fail to create cmd plan node: query tree node it not cmd type";
+        status.msg =
+            "fail to create cmd plan node: query tree node it not cmd type";
         status.code = error::kPlanErrorUnSupport;
-        return; 
+        return;
     }
 
     plan->SetCmdNode(dynamic_cast<const node::CmdNode *>(root));

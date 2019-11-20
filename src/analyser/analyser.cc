@@ -40,13 +40,17 @@ void FeSQLAnalyser::Analyse(SQLNode *parser_tree,
     }
     switch (parser_tree->GetType()) {
         case node::kSelectStmt:
-            return TransformSelectNode(dynamic_cast<node::SelectStmt *>(parser_tree), status);
+            return TransformSelectNode(
+                dynamic_cast<node::SelectStmt *>(parser_tree), status);
         case node::kCreateStmt:
             return TransformCreateNode(
                 dynamic_cast<node::CreateStmt *>(parser_tree), status);
         case node::kCmdStmt:
             return TransformCmdNode(dynamic_cast<node::CmdNode *>(parser_tree),
                                     status);
+        case node::kInsertStmt:
+            return TransformInsertNode(
+                dynamic_cast<node::InsertStmt *>(parser_tree), status);
         default: {
             status.msg = "can not support " +
                          node::NameOfSQLNodeType(parser_tree->GetType());
@@ -101,19 +105,31 @@ void FeSQLAnalyser::TransformSingleTableSelectNode(
     }
 
     for (auto node : parser_tree->GetSelectList()) {
+        if (node::kResTarget != node->GetType()) {
+            status.msg = "Fail to handle select list node type " +
+                         node::NameOfSQLNodeType(node->GetType());
+            status.code = error::kAnalyserErrorUnSupport;
+            LOG(WARNING) << status.msg;
+        }
         node::ResTarget *target = (node::ResTarget *)node;
-        switch (target->GetVal()->GetType()) {
-            case node::kColumnRef: {
+
+        if (nullptr == target->GetVal()) {
+            status.msg = "Fail to handle select list node null";
+            status.code = error::kAnalyserErrorTargetIsNull;
+            LOG(WARNING) << status.msg;
+        }
+        switch (target->GetVal()->GetExprType()) {
+            case node::kExprColumnRef: {
                 TransformColumnRef((node::ColumnRefNode *)target->GetVal(),
                                    table_ref->GetOrgTableName(), status);
                 break;
             }
-            case node::kFunc: {
+            case node::kExprFunc: {
                 TransformFuncNode((node::FuncNode *)target->GetVal(),
                                   table_ref->GetOrgTableName(), status);
                 break;
             }
-            case node::kAll: {
+            case node::kExprAll: {
                 TransformAllRef((node::AllNode *)target->GetVal(),
                                 table_ref->GetOrgTableName(), status);
                 break;
@@ -123,6 +139,7 @@ void FeSQLAnalyser::TransformSingleTableSelectNode(
                     "SELECT error: can not handle " +
                     node::NameOfSQLNodeType(target->GetVal()->GetType());
                 status.code = error::kAnalyserErrorSQLTypeNotSupport;
+                LOG(WARNING) << status.msg;
             }
         }
         if (0 != status.code) {
@@ -298,15 +315,22 @@ void FeSQLAnalyser::TransformPartition(
 void FeSQLAnalyser::TransformExprNode(
     SQLNode *node_ptr, const std::string &table_name,
     Status &status) {  // NOLINT (runtime/references)
-    switch (node_ptr->GetType()) {
-        case node::kColumnRef:
+
+    if (node_ptr == nullptr) {
+        status.msg = "Fail to transform null node";
+        status.code = error::kExecuteErrorNullNode;
+        LOG(WARNING) << status.msg;
+        return;
+    }
+    node::ExprNode *expr = dynamic_cast<node::ExprNode *>(node_ptr);
+    switch (expr->GetExprType()) {
+        case node::kExprColumnRef:
             return TransformColumnRef((node::ColumnRefNode *)node_ptr,
                                       table_name, status);
-        case node::kFunc:
+        case node::kExprFunc:
             return TransformFuncNode((node::FuncNode *)node_ptr, table_name,
                                      status);
-        case node::kPrimary:
-        case node::kExpr:
+        case node::kExprPrimary:
         default: {
             status.code = error::kAnalyserErrorSQLTypeNotSupport;
             status.msg = "can not support " +
@@ -328,10 +352,14 @@ void FeSQLAnalyser::TransformCreateNode(
         return;
     }
 }
+void FeSQLAnalyser::TransformInsertNode(
+    node::InsertStmt *node_ptr, Status &status  // NOLINT (runtime/references)
+) {
+    // nothing to do
+}
 void FeSQLAnalyser::TransformCmdNode(
     node::CmdNode *node_ptr, Status &status) {  // NOLINT (runtime/references)
     // no nothing
-
 }
 
 }  // namespace analyser

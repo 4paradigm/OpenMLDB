@@ -61,7 +61,7 @@ void AddFunc(const std::string& fn,
     int ret = parser.parse(fn, trees, &manager, status);
     ASSERT_EQ(0, ret);
     FnIRBuilder fn_ir_builder(m);
-    bool ok = fn_ir_builder.Build((node::FnNode *) trees[0]);
+    bool ok = fn_ir_builder.Build((node::FnNodeList *) trees[0]);
     ASSERT_TRUE(ok);
 }
 
@@ -108,7 +108,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     AddFunc(test, m.get());
     int ret = parser.parse("SELECT test(col1,col1) FROM t1 limit 10;", list, &manager, status);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, list.size());
+    ASSERT_EQ(1u, list.size());
     ::fesql::plan::SimplePlanner planner(&manager);
     ::fesql::node::PlanNodeList trees;
     ret = planner.CreatePlanTree(list, trees, status);
@@ -121,7 +121,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(1, schema.size());
+    ASSERT_EQ(1u, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
@@ -135,8 +135,8 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     *((double*)(ptr +2+ 4 + 2 + 4)) = 4.1;
     *((int64_t*)(ptr +2+ 4 + 2 + 4 + 8)) = 5;
     int32_t ret2 = decode(ptr, (int8_t*)&i);
-    ASSERT_EQ(ret2, 0);
-    ASSERT_EQ(i, 3);
+    ASSERT_EQ(ret2, 0u);
+    ASSERT_EQ(i, 3u);
 }
 
 
@@ -179,7 +179,7 @@ TEST_F(FnLetIRBuilderTest, test_project) {
     ::fesql::base::Status status;
     int ret = parser.parse("SELECT col1 FROM t1 limit 10;", list, &manager, status);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, list.size());
+    ASSERT_EQ(1u, list.size());
     ::fesql::plan::SimplePlanner planner(&manager);
 
     ::fesql::node::PlanNodeList plan;
@@ -197,7 +197,7 @@ TEST_F(FnLetIRBuilderTest, test_project) {
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(1, schema.size());
+    ASSERT_EQ(1u, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
@@ -214,8 +214,8 @@ TEST_F(FnLetIRBuilderTest, test_project) {
     *((double*)(ptr +2+ 4 + 2 + 4)) = 4.1;
     *((int64_t*)(ptr +2+ 4 + 2 + 4 + 8)) = 5;
     int32_t ret2 = decode(ptr, (int8_t*)&i);
-    ASSERT_EQ(ret2, 0);
-    ASSERT_EQ(i, 1);
+    ASSERT_EQ(ret2, 0u);
+    ASSERT_EQ(i, 1u);
 }
 
 } // namespace of codegen

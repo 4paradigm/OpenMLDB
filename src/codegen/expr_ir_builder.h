@@ -39,7 +39,7 @@ class SQLExprIRBuilder {
 
     ~SQLExprIRBuilder();
 
-    bool Build(const ::fesql::node::SQLNode* node,
+    bool Build(const ::fesql::node::ExprNode* node,
             ::llvm::Value** output,
             std::string& col_name);
 
@@ -65,12 +65,12 @@ class ExprIRBuilder {
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~ExprIRBuilder();
 
-    bool Build(const ::fesql::node::FnNode* node, ::llvm::Value** output);
+    bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
 
-    bool BuildBinaryExpr(const ::fesql::node::FnBinaryExpr* node,
+    bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                          ::llvm::Value** output);
 
-    bool BuildUnaryExpr(const ::fesql::node::FnNode* node,
+    bool BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
                         ::llvm::Value** output);
 
  private:

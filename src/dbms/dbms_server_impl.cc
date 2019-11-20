@@ -22,8 +22,9 @@
 namespace fesql {
 namespace dbms {
 
-DBMSServerImpl::DBMSServerImpl() : db_(nullptr) {}
-DBMSServerImpl::~DBMSServerImpl() {}
+DBMSServerImpl::DBMSServerImpl()
+    : tablet_endpoint_(""), tablet_sdk(nullptr), tid_(0) {}
+DBMSServerImpl::~DBMSServerImpl() { delete tablet_sdk; }
 
 void DBMSServerImpl::AddGroup(RpcController* ctr,
                               const AddGroupRequest* request,
@@ -59,13 +60,6 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
                               const AddTableRequest* request,
                               AddTableResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (nullptr == db_) {
-        ::fesql::common::Status* status = response->mutable_status();
-        status->set_code(::fesql::common::kNoDatabase);
-        status->set_msg("No database selected");
-        LOG(WARNING) << "create table failed for out of database";
-        return;
-    }
     if (request->table().name().empty()) {
         ::fesql::common::Status* status = response->mutable_status();
         status->set_code(::fesql::common::kBadRequest);
@@ -73,17 +67,85 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
         LOG(WARNING) << "create table failed for table name is empty";
         return;
     }
+
+    type::Database* db;
+    {
+        common::Status get_db_status;
+        db = GetDatabase(request->db_name(), get_db_status);
+        if (0 != get_db_status.code()) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(get_db_status.code());
+            status->set_msg(get_db_status.msg());
+            return;
+        }
+        if (nullptr == db) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(fesql::common::kNoDatabase);
+            status->set_msg("Database doesn't exist");
+            return;
+        }
+    }
+
     std::lock_guard<std::mutex> lock(mu_);
 
-    if (tables_.find(request->table().name()) != tables_.end()) {
-        ::fesql::common::Status* status = response->mutable_status();
-        status->set_code(::fesql::common::kTableExists);
-        status->set_msg("table already exists");
-        LOG(WARNING) << "create table failed for table exists";
-        return;
+    for (auto table : db->tables()) {
+        if (table.name() == request->table().name()) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(::fesql::common::kTableExists);
+            status->set_msg("table already exists");
+            LOG(WARNING) << "create table failed for table exists";
+            return;
+        }
     }
-    ::fesql::type::TableDef* table = db_->add_tables();
-    // TODO(chenjing):add create time
+
+    if (nullptr == tablet_sdk) {
+        if (tablet_endpoint_.empty()) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(::fesql::common::kConnError);
+            status->set_msg("can't connect tablet endpoint is empty");
+            LOG(WARNING) << status->msg();
+            return;
+        }
+        tablet_sdk = new fesql::tablet::TabletInternalSDK(tablet_endpoint_);
+        if (tablet_sdk == NULL) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(::fesql::common::kConnError);
+            status->set_msg(
+                "Fail to connect to tablet (maybe you should check "
+                "tablet_endpoint");
+            LOG(WARNING) << status->msg();
+            return;
+        }
+        if (false == tablet_sdk->Init()) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(::fesql::common::kConnError);
+            status->set_msg(
+                "Fail to init tablet (maybe you should check tablet_endpoint");
+            LOG(WARNING) << status->msg();
+            return;
+        }
+    }
+
+    // TODO(chenjing): 后续是否需要从tablet同步表schema数据
+    {
+        fesql::common::Status create_table_status;
+        fesql::tablet::CreateTableRequest create_table_request;
+        create_table_request.set_db(request->db_name());
+        create_table_request.set_tid(tid_ + 1);
+        // TODO(chenjing): pid setting
+        create_table_request.add_pids(0);
+        *(create_table_request.mutable_table()) = request->table();
+        tablet_sdk->CreateTable(&create_table_request, create_table_status);
+        if (0 != create_table_status.code()) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(create_table_status.code());
+            status->set_msg(create_table_status.msg());
+            return;
+        }
+    }
+
+    ::fesql::type::TableDef* table = db->add_tables();
+    // TODO(chenjing): add create time
     table->set_name(request->table().name());
     for (auto column : request->table().columns()) {
         *(table->add_columns()) = column;
@@ -91,30 +153,58 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
     for (auto index : request->table().indexes()) {
         *(table->add_indexes()) = index;
     }
-    tables_[table->name()] = table;
     ::fesql::common::Status* status = response->mutable_status();
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
+    tid_ += 1;
     LOG(INFO) << "create table " << request->table().name() << " done";
 }
-void DBMSServerImpl::ShowSchema(RpcController* ctr,
-                                const ShowSchemaRequest* request,
-                                ShowSchemaResponse* response, Closure* done) {
+void DBMSServerImpl::GetSchema(RpcController* ctr,
+                               const GetSchemaRequest* request,
+                               GetSchemaResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::lock_guard<std::mutex> lock(mu_);
-    if (tables_.find(request->name()) == tables_.end()) {
+    if (request->name().empty()) {
         ::fesql::common::Status* status = response->mutable_status();
-        status->set_code(::fesql::common::kTableExists);
-        status->set_msg("table doesn't exist");
-        LOG(WARNING) << "show table failed for table doesn't exist";
+        status->set_code(::fesql::common::kBadRequest);
+        status->set_msg("table name is empty");
+        LOG(WARNING) << "create table failed for table name is empty";
         return;
     }
 
-    *(response->mutable_table()) = *(tables_.at(request->name()));
+    type::Database* db;
+    {
+        common::Status get_db_status;
+        db = GetDatabase(request->db_name(), get_db_status);
+        if (0 != get_db_status.code()) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(get_db_status.code());
+            status->set_msg(get_db_status.msg());
+            return;
+        }
+        if (nullptr == db) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(fesql::common::kNoDatabase);
+            status->set_msg("Database doesn't exist");
+            return;
+        }
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto table : db->tables()) {
+        if (table.name() == request->name()) {
+            *(response->mutable_table()) = table;
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(::fesql::common::kOk);
+            status->set_msg("ok");
+            LOG(INFO) << "show table " << request->name() << " done";
+            return;
+        }
+    }
+
     ::fesql::common::Status* status = response->mutable_status();
-    status->set_code(::fesql::common::kOk);
-    status->set_msg("ok");
-    LOG(INFO) << "show table " << request->name() << " done";
+    status->set_code(::fesql::common::kTableExists);
+    status->set_msg("table doesn't exist");
+    LOG(WARNING) << "show table failed for table doesn't exist";
+    return;
 }
 void DBMSServerImpl::AddDatabase(RpcController* ctr,
                                  const AddDatabaseRequest* request,
@@ -145,10 +235,10 @@ void DBMSServerImpl::AddDatabase(RpcController* ctr,
     status->set_msg("ok");
     LOG(INFO) << "create database " << request->name() << " done";
 }
-void DBMSServerImpl::EnterDatabase(RpcController* ctr,
-                                   const EnterDatabaseRequest* request,
-                                   EnterDatabaseResponse* response,
-                                   Closure* done) {
+
+void DBMSServerImpl::IsExistDatabase(RpcController* ctr,
+                                     const IsExistRequest* request,
+                                     IsExistResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (request->name().empty()) {
         ::fesql::common::Status* status = response->mutable_status();
@@ -160,32 +250,22 @@ void DBMSServerImpl::EnterDatabase(RpcController* ctr,
 
     // TODO(chenjing): case intensive
     ::fesql::common::Status* status = response->mutable_status();
-    if (nullptr != db_ && 0 == db_->name().compare(request->name())) {
-        status->set_code(::fesql::common::kOk);
-        status->set_msg("ok");
-        return;
-    }
-
     std::lock_guard<std::mutex> lock(mu_);
     Databases::iterator it = databases_.find(request->name());
     if (it == databases_.end()) {
         ::fesql::common::Status* status = response->mutable_status();
-        status->set_code(::fesql::common::kNameExists);
-        status->set_msg("database doesn't exist");
-        LOG(WARNING) << "enter database failed for database doesn't exist";
+        status->set_code(::fesql::common::kOk);
+        response->set_exist(false);
         return;
+    } else {
+        status->set_code(::fesql::common::kOk);
+        response->set_exist(true);
     }
-
-    db_ = &(databases_[request->name()]);
-    InitTable(db_, tables_);
-    status->set_code(::fesql::common::kOk);
-    status->set_msg("ok");
-    LOG(INFO) << "create database " << request->name() << " done";
 }
 
-void DBMSServerImpl::ShowDatabases(RpcController* controller,
-                                   const ShowItemsRequest* request,
-                                   ShowItemsResponse* response, Closure* done) {
+void DBMSServerImpl::GetDatabases(RpcController* controller,
+                                  const GetItemsRequest* request,
+                                  GetItemsResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     // TODO(chenjing): case intensive
     ::fesql::common::Status* status = response->mutable_status();
@@ -198,21 +278,33 @@ void DBMSServerImpl::ShowDatabases(RpcController* controller,
     status->set_msg("ok");
 }
 
-void DBMSServerImpl::ShowTables(RpcController* controller,
-                                const ShowItemsRequest* request,
-                                ShowItemsResponse* response, Closure* done) {
+void DBMSServerImpl::GetTables(RpcController* controller,
+                               const GetItemsRequest* request,
+                               GetItemsResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (nullptr == db_) {
-        ::fesql::common::Status* status = response->mutable_status();
-        status->set_code(::fesql::common::kNoDatabase);
-        status->set_msg("No database selected");
-        LOG(WARNING) << "show tables failed for out of database";
-        return;
+
+    type::Database* db;
+    {
+        common::Status get_db_status;
+        db = GetDatabase(request->db_name(), get_db_status);
+        if (0 != get_db_status.code()) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(get_db_status.code());
+            status->set_msg(get_db_status.msg());
+            return;
+        }
+        if (nullptr == db) {
+            ::fesql::common::Status* status = response->mutable_status();
+            status->set_code(fesql::common::kNoDatabase);
+            status->set_msg("Database doesn't exist");
+            return;
+        }
     }
+
     ::fesql::common::Status* status = response->mutable_status();
     std::lock_guard<std::mutex> lock(mu_);
-    for (auto entry: tables_) {
-        response->add_items(entry.first);
+    for (auto table : db->tables()) {
+        response->add_items(table.name());
     }
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
@@ -223,6 +315,25 @@ void DBMSServerImpl::InitTable(type::Database* db, Tables& tables) {
     for (auto table : db->tables()) {
         tables[table.name()] = &table;
     }
+}
+
+type::Database* DBMSServerImpl::GetDatabase(const std::string db_name,
+                                            common::Status& status) {
+    if (db_name.empty()) {
+        status.set_code(::fesql::common::kNoDatabase);
+        status.set_msg("Database name is empty");
+        LOG(WARNING) << "get database failed for database name is empty";
+        return nullptr;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    Databases::iterator it = databases_.find(db_name);
+    if (it == databases_.end()) {
+        status.set_code(::fesql::common::kNameExists);
+        status.set_msg("Database doesn't exist");
+        LOG(WARNING) << "get database failed for database doesn't exist";
+        return nullptr;
+    }
+    return &it->second;
 }
 }  // namespace dbms
 }  // namespace fesql

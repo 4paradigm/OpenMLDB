@@ -35,6 +35,7 @@ struct OpNode {
 
 struct ScanOp {
     OpType type;
+    std::string db;
     uint32_t tid;
     uint32_t pid;
     std::vector<::fesql::type::ColumnDef> input_schema;

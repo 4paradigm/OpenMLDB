@@ -27,8 +27,19 @@ namespace vm {
 struct TableStatus {
     uint32_t tid;
     uint32_t pid;
+    std::string db;
     ::fesql::type::TableDef table_def;
-    ::fesql::storage::Table* table;
+    std::unique_ptr<::fesql::storage::Table> table;
+
+    TableStatus(){}
+    TableStatus(uint32_t tid, uint32_t pid,
+            const std::string& db,
+             const ::fesql::type::TableDef& table_def):
+        tid(tid), pid(pid), db(db), table_def(table_def){}
+
+    ~TableStatus() {
+    }
+
 };
 
 class TableMgr {
@@ -36,13 +47,11 @@ class TableMgr {
  public:
     virtual ~TableMgr() {}
 
-    virtual bool GetTableDef(const std::string& db,
-                             const std::string& name,
-                             TableStatus** table) = 0;
+    virtual std::shared_ptr<TableStatus> GetTableDef(const std::string& db,
+                                              const std::string& name) = 0;
 
-    virtual bool GetTableDef(const uint64_t catalog_id,
-                             const uint64_t tid,
-                             TableStatus** table) = 0;
+    virtual std::shared_ptr<TableStatus> GetTableDef(const std::string& db,
+                             const uint32_t tid) = 0;
 };
 
 }  // namespace vm
