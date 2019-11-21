@@ -1344,12 +1344,12 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             try {
                 st = boost::lexical_cast<uint64_t>(parts[4]);
                 et = boost::lexical_cast<uint64_t>(parts[5]);
-            } catch(boost::bad_lexical_cast) {
-                std::cout << "scan format error. eg: scan table_name key col_name start_time end_time [limit]" << std::endl;
+                if (parts.size() > 6) {
+                    limit = boost::lexical_cast<uint32_t>(parts[6]);
+                }
+            } catch (std::exception const& e) {
+                printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
                 return;
-            }
-            if (parts.size() > 6) {
-                limit = boost::lexical_cast<uint32_t>(parts[6]);
             }
         }
         it = tablet_client->Scan(tid, pid, key,  
