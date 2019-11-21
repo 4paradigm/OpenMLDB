@@ -19,6 +19,7 @@ DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task st
 DEFINE_uint32(get_table_status_interval, 2000, "config the interval of get task status");
 DEFINE_int32(name_server_task_pool_size, 8, "config the size of name server task pool");
 DEFINE_uint32(name_server_task_concurrency, 2, "config the concurrency of name_server_task");
+DEFINE_uint32(name_server_task_concurrency_for_replica_cluster, 2, "config the concurrency of name_server_task for replica cluster");
 DEFINE_uint32(name_server_task_max_concurrency, 8, "config the max concurrency of name_server_task");
 DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
 DEFINE_uint32(name_server_op_execute_timeout, 2*60*60*1000, "config the timeout of nameserver op");
