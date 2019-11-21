@@ -63,7 +63,7 @@ class FeSQLAnalyser {
     bool IsTableExist(std::string basic_string);
     bool IsColumnExistInTable(const std::string &oolumn_name,
                               const std::string &table_name);
-    FuncDefType GetAggFunDefType(node::FuncNode *func_node);
+    FuncDefType GetAggFunDefType(node::CallExprNode *func_node);
 
  private:
     NodeManager *node_manager_;
@@ -85,7 +85,7 @@ class FeSQLAnalyser {
     void TransformColumnRef(node::ColumnRefNode *node_ptr,
                             const std::string &table_name,
                             Status &status);  // NOLINT (runtime/references)
-    void TransformFuncNode(node::FuncNode *node_ptr,
+    void TransformFuncNode(node::CallExprNode *node_ptr,
                            const std::string &table_name,
                            Status &status);  // NOLINT (runtime/references)
     void TransformWindowDef(node::WindowDefNode *node_ptr,

@@ -48,7 +48,7 @@ class SQLExprIRBuilder {
     bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
             ::llvm::Value** output);
 
-    bool BuildCallFn(const ::fesql::node::FuncNode* fn,
+    bool BuildCallFn(const ::fesql::node::CallExprNode* fn,
             ::llvm::Value** output);
 
  private:
