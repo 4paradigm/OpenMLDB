@@ -105,7 +105,7 @@ bool FnIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
         return true;
     }
 
-    ExprIRBuilder builder(block, &sv_);
+    SQLExprIRBuilder builder(block, &sv_);
     ::llvm::Value *value = NULL;
     bool ok = builder.Build(node->return_expr_, &value);
     if (!ok) {
@@ -123,7 +123,7 @@ bool FnIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
         LOG(WARNING) << "node or block is null";
         return true;
     }
-    ExprIRBuilder builder(block, &sv_);
+    SQLExprIRBuilder builder(block, &sv_);
     ::llvm::Value *value = NULL;
     bool ok = builder.Build(node->expression_, &value);
     if (!ok) {

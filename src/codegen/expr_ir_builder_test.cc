@@ -79,7 +79,7 @@ TEST_F(ExprIRBuilderTest, test_add_int32) {
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
     scope_var.AddVar("a", arg0);
-    ExprIRBuilder expr_builder(entry_block, &scope_var);
+    SQLExprIRBuilder expr_builder(entry_block, &scope_var);
     ::fesql::node::ExprNode *node = NULL;
     GenAddExpr(manager_, &node);
     llvm::Value *output;
