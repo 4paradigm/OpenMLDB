@@ -54,11 +54,11 @@ static ::fesql::sdk::DatabaseDef cmd_client_db;
 
 void HandleSQLScript(
     const std::string &script,
-    fesql::base::Status &status);  // NOLINT (runtime/references)
+    fesql::sdk::Status &status);  // NOLINT (runtime/references)
 
 void HandleEnterDatabase(const std::string &db_name);
 void handleCmd(const fesql::node::CmdNode *cmd_node,
-               fesql::base::Status &status);  // NOLINT (runtime/references)
+               fesql::sdk::Status &status);  // NOLINT (runtime/references)
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
 
 void StartTablet(int argc, char *argv[]) {
@@ -156,7 +156,7 @@ void StartClient(char *argv[]) {
         cmd_str.append(buf);
         // TODO(CHENJING) remove
         if (cmd_str.back() == ';') {
-            ::fesql::base::Status status;
+            ::fesql::sdk::Status status;
             HandleSQLScript(cmd_str, status);
             if (0 != status.code) {
                 std::cout << "ERROR " << status.code << ":" << status.msg
@@ -188,8 +188,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     while (it->HasNext()) {
         it->Next();
         for (unsigned i = 0; i < result_set->GetColumnCnt(); i++) {
-            fesql:sdk::DataType  data_type = result_set->GetColumnType(i);
-
+            sdk::DataType data_type = result_set->GetColumnType(i);
             switch (data_type) {
                 case fesql::sdk::kTypeInt16: {
                     int16_t value = 0;
@@ -283,11 +282,11 @@ void PrintItems(std::ostream &stream, const std::string &head,
 }
 void HandleSQLScript(
     const std::string &script,
-    fesql::base::Status &status) {  // NOLINT (runtime/references)
+    fesql::sdk::Status &status) {  // NOLINT (runtime/references)
     if (dbms_sdk == NULL) {
         dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
         if (dbms_sdk == NULL) {
-            status.code = fesql::error::kRpcErrorConnection;
+            status.code = fesql::common::kRpcError;
             status.msg = "Fail to connect to dbms";
             return;
         }
@@ -298,11 +297,14 @@ void HandleSQLScript(
         fesql::parser::FeSQLParser parser;
         fesql::analyser::FeSQLAnalyser analyser(&node_manager);
         fesql::plan::SimplePlanner planner(&node_manager);
+        fesql::base::Status sql_status;
 
         // TODO(chenjing): init with db
         fesql::node::NodePointVector parser_trees;
-        parser.parse(script, parser_trees, &node_manager, status);
-        if (0 != status.code) {
+        parser.parse(script, parser_trees, &node_manager, sql_status);
+        if (0 != sql_status.code) {
+            status.code = sql_status.code;
+            status.msg = sql_status.msg;
             LOG(WARNING) << status.msg;
             return;
         }
@@ -311,7 +313,7 @@ void HandleSQLScript(
 
         if (nullptr == node) {
             status.msg = "fail to execute cmd: parser tree is null";
-            status.code = fesql::error::kCmdErrorNullNode;
+            status.code = fesql::common::kPlanError;
             LOG(WARNING) << status.msg;
             return;
         }
@@ -337,7 +339,7 @@ void HandleSQLScript(
                 }
 
                 if (!table_sdk) {
-                    status.code = fesql::error::kCmdErrorNullNode;
+                    status.code = fesql::common::kConnError;
                     status.msg = " Fail to create tablet sdk";
                     return;
                 }
@@ -358,7 +360,7 @@ void HandleSQLScript(
                 }
 
                 if (!table_sdk) {
-                    status.code = fesql::error::kCmdErrorNullNode;
+                    status.code = fesql::common::kConnError;
                     status.msg = " Fail to create tablet sdk";
                     return;
                 }
@@ -378,14 +380,14 @@ void HandleSQLScript(
             default: {
                 status.msg = "Fail to execute script with unSuppurt type" +
                              fesql::node::NameOfSQLNodeType(node->GetType());
-                status.code = fesql::error::kExecuteErrorUnSupport;
+                status.code = fesql::common::kUnSupport;
                 return;
             }
         }
     }
 }
 void handleCmd(const fesql::node::CmdNode *cmd_node,
-               fesql::base::Status &status) {  // NOLINT (runtime/references)
+               fesql::sdk::Status &status) {  // NOLINT (runtime/references)
     if (dbms_sdk == NULL) {
         dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
         if (dbms_sdk == NULL) {
@@ -444,7 +446,7 @@ void handleCmd(const fesql::node::CmdNode *cmd_node,
             std::ifstream in;
             in.open(cmd_node->GetArgs()[0]);  // open the input file
             if (!in.is_open()) {
-                status.code = fesql::error::kCmdErrorPathError;
+                status.code = fesql::common::kFileIOError;
                 status.msg = "Incorrect file path";
                 return;
             }
@@ -452,7 +454,6 @@ void handleCmd(const fesql::node::CmdNode *cmd_node,
             str_stream << in.rdbuf();  // read the file
             std::string str =
                 str_stream.str();  // str holds the content of the file
-            ::fesql::base::Status status;
             ::fesql::sdk::ExecuteRequst requst;
             ::fesql::sdk::ExecuteResult result;
 
@@ -461,26 +462,27 @@ void handleCmd(const fesql::node::CmdNode *cmd_node,
             dbms_sdk->ExecuteScript(requst, result, status);
             if (0 == status.code) {
                 std::cout << "Create table success" << std::endl;
+                return;
             }
             break;
         }
         case fesql::node::kCmdUseDatabase: {
             fesql::sdk::DatabaseDef usedb;
             usedb.name = cmd_node->GetArgs()[0];
-            if (0 == status.code) {
-                if (dbms_sdk->IsExistDatabase(usedb, status)) {
-                    cmd_client_db.name = usedb.name;
-                    std::cout << "Database changed" << std::endl;
-                } else {
-                    std::cout << "Database '" << usedb.name << "' not exists"
-                              << std::endl;
-                }
+            if (0 != status.code) {
+                return;
             }
-
+            if (dbms_sdk->IsExistDatabase(usedb, status)) {
+                cmd_client_db.name = usedb.name;
+                std::cout << "Database changed" << std::endl;
+            } else {
+                std::cout << "Database '" << usedb.name << "' not exists"
+                          << std::endl;
+            }
             break;
         }
         default: {
-            status.code = fesql::error::kCmdErrorUnSupport;
+            status.code = fesql::common::kUnSupport;
             status.msg = "UnSupport Cmd " +
                          fesql::node::CmdTypeName(cmd_node->GetCmdType());
         }

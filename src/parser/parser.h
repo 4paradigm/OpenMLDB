@@ -21,6 +21,7 @@
 #include <iostream>
 #include <list>
 #include <string>
+#include "base/status.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "parser/sql_parser.gen.h"

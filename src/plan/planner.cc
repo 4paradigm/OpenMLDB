@@ -7,6 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "plan/planner.h"
+#include <proto/common.pb.h>
 #include <map>
 #include <set>
 #include <string>
@@ -44,13 +45,13 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
     if (table_ref_list.empty()) {
         status.msg =
             "can not create select plan node with empty table references";
-        status.code = error::kPlanErrorTableRefIsEmpty;
+        status.code = common::kSQLError;
         return status.code;
     }
     if (table_ref_list.size() > 1) {
         status.msg =
             "can not create select plan node based on more than 2 tables";
-        status.code = error::kPlanErrorQueryMultiTable;
+        status.code = common::kUnSupport;
         return status.code;
     }
 
@@ -113,7 +114,7 @@ void Planner::CreateProjectPlanNode(
     Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create project node: query tree node it null";
-        status.code = error::kPlanErrorNullNode;
+        status.code = common::kPlanError;
         return;
     }
 
@@ -130,7 +131,7 @@ void Planner::CreateProjectPlanNode(
         default: {
             status.msg = "can not create project plan node with type " +
                          node::NameOfSQLNodeType(root->GetType());
-            status.code = error::kPlanErrorUnSupport;
+            status.code = common::kPlanError;
             return;
         }
     }
@@ -158,7 +159,7 @@ int SimplePlanner::CreatePlanTree(
     Status &status) {  // NOLINT (runtime/references)
     if (parser_trees.empty()) {
         status.msg = "fail to create plan tree: parser trees is empty";
-        status.code = error::kPlanErrorQueryTreeIsEmpty;
+        status.code = common::kPlanError;
         return status.code;
     }
 
@@ -213,7 +214,7 @@ int SimplePlanner::CreatePlanTree(
             default: {
                 status.msg = "can not handle tree type " +
                              node::NameOfSQLNodeType(parser_tree->GetType());
-                status.code = error::kPlanErrorUnSupport;
+                status.code = common::kPlanError;
                 return status.code;
             }
         }
@@ -225,14 +226,14 @@ void Planner::CreateInsertPlan(const node::SQLNode* root,
                                node::InsertPlanNode*plan, Status &status) {
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
-        status.code = error::kPlanErrorNullNode;
+        status.code = common::kSQLError;
         return;
     }
 
     if (root->GetType() != node::kInsertStmt) {
         status.msg =
-            "fail to create cmd plan node: query tree node it not cmd type";
-        status.code = error::kPlanErrorUnSupport;
+            "fail to create cmd plan node: query tree node it not insert type";
+        status.code = common::kSQLError;
         return;
     }
 
@@ -243,14 +244,14 @@ void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
                             Status &status) {
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
-        status.code = error::kPlanErrorNullNode;
+        status.code = common::kPlanError;
         return;
     }
 
     if (root->GetType() != node::kCmdStmt) {
         status.msg =
             "fail to create cmd plan node: query tree node it not cmd type";
-        status.code = error::kPlanErrorUnSupport;
+        status.code = common::kPlanError;
         return;
     }
 
@@ -273,9 +274,9 @@ void TransformTableDef(const std::string &table_name,
 
                 if (column_names.find(column_def->GetColumnName()) !=
                     column_names.end()) {
-                    status.msg = "CREATE error: COLUMN NAME " +
+                    status.msg = "CREATE common: COLUMN NAME " +
                                  column_def->GetColumnName() + " duplicate";
-                    status.code = error::kCreateErrorDuplicationColumnName;
+                    status.code = common::kSQLError;
                     return;
                 }
                 column->set_name(column_def->GetColumnName());
@@ -305,10 +306,10 @@ void TransformTableDef(const std::string &table_name,
                         break;
                     default: {
                         status.msg =
-                            "CREATE error: column type " +
+                            "CREATE common: column type " +
                             node::DataTypeName(column_def->GetColumnType()) +
                             " is not supported";
-                        status.code = error::kCreateErrorUnSupportColumnType;
+                        status.code = common::kSQLError;
                         return;
                     }
                 }
@@ -325,9 +326,9 @@ void TransformTableDef(const std::string &table_name,
                 }
                 if (index_names.find(column_index->GetName()) !=
                     index_names.end()) {
-                    status.msg = "CREATE error: INDEX NAME " +
+                    status.msg = "CREATE common: INDEX NAME " +
                                  column_index->GetName() + " duplicate";
-                    status.code = error::kCreateErrorDuplicationIndexName;
+                    status.code = common::kSQLError;
                     return;
                 }
                 index_names.insert(column_index->GetName());
@@ -352,7 +353,7 @@ void TransformTableDef(const std::string &table_name,
                 status.msg = "can not support " +
                              node::NameOfSQLNodeType(column_desc->GetType()) +
                              " when CREATE TABLE";
-                status.code = error::kAnalyserErrorUnSupport;
+                status.code = common::kSQLError;
                 return;
             }
         }

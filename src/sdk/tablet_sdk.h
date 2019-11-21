@@ -18,7 +18,7 @@
 #ifndef SRC_SDK_TABLET_SDK_H_
 #define SRC_SDK_TABLET_SDK_H_
 
-#include <node/node_enum.h>
+#include "sdk/base_struct.h"
 #include <stdint-gcc.h>
 #include <string.h>
 #include <memory>
@@ -229,10 +229,10 @@ class TabletSdk {
  public:
     TabletSdk() = default;
     virtual ~TabletSdk() {}
-    virtual void SyncInsert(const Insert& insert, base::Status& status) = 0;
+    virtual void SyncInsert(const Insert& insert, sdk::Status& status) = 0;
     virtual void SyncInsert(const std::string& db, const std::string& sql,
-                            base::Status& status) = 0;
-    virtual std::unique_ptr<ResultSet> SyncQuery(const Query& query, base::Status& status) = 0;
+                            sdk::Status& status) = 0;
+    virtual std::unique_ptr<ResultSet> SyncQuery(const Query& query, sdk::Status& status) = 0;
 };
 
 // create a new dbms sdk with a endpoint

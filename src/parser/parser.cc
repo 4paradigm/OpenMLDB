@@ -21,6 +21,7 @@
 //
 #include "parser/parser.h"
 #include "node/sql_node.h"
+#include "proto/common.pb.h"
 
 /**
  * FeSQL command parser

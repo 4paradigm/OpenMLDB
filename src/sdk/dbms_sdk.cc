@@ -32,27 +32,27 @@ class DBMSSdkImpl : public DBMSSdk {
     ~DBMSSdkImpl();
     bool Init();
     void CreateGroup(const GroupDef &group,
-                     base::Status &status)  // NOLINT (runtime/references)
+                     sdk::Status &status)  // NOLINT (runtime/references)
         override;
     void CreateDatabase(const DatabaseDef &database,
-                        base::Status &status);  // NOLINT (runtime/references)
+                        sdk::Status &status);  // NOLINT (runtime/references)
     bool IsExistDatabase(const DatabaseDef &database,
-                         base::Status &status);  // NOLINT (runtime/references)
+                         sdk::Status &status);  // NOLINT (runtime/references)
 
     void GetSchema(const DatabaseDef &database, const std::string &name,
                    type::TableDef &table,
-                   base::Status &status)  // NOLINT (runtime/references)
+                   sdk::Status &status)  // NOLINT (runtime/references)
         override;
     void GetTables(
         const DatabaseDef &database,
         std::vector<std::string> &names,  // NOLINT (runtime/references)
-        base::Status &status);            // NOLINT (runtime/references)
+        sdk::Status &status);             // NOLINT (runtime/references)
     void GetDatabases(
         std::vector<std::string> &names,  // NOLINT (runtime/references)
-        base::Status &status);            // NOLINT (runtime/references)
+        sdk::Status &status);             // NOLINT (runtime/references)
     void ExecuteScript(
         const ExecuteRequst &request, ExecuteResult &result,
-        base::Status &status) override;  // NOLINT (runtime/references)
+        sdk::Status &status) override;  // NOLINT (runtime/references)
 
  private:
     ::brpc::Channel *channel_;
@@ -76,7 +76,7 @@ bool DBMSSdkImpl::Init() {
 
 void DBMSSdkImpl::CreateGroup(
     const GroupDef &group,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::AddGroupRequest request;
     request.set_name(group.name);
@@ -93,7 +93,7 @@ void DBMSSdkImpl::CreateGroup(
 }
 void DBMSSdkImpl::GetTables(
     const DatabaseDef &db, std::vector<std::string> &names,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetItemsRequest request;
     ::fesql::dbms::GetItemsResponse response;
@@ -102,7 +102,7 @@ void DBMSSdkImpl::GetTables(
     request.set_db_name(db.name);
     stub.GetTables(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
-        status.code = error::kRpcErrorUnknow;
+        status.code = common::kRpcError;
         status.msg = "fail to call remote";
     } else {
         for (auto item : response.items()) {
@@ -115,14 +115,14 @@ void DBMSSdkImpl::GetTables(
 
 void DBMSSdkImpl::GetDatabases(
     std::vector<std::string> &names,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetItemsRequest request;
     ::fesql::dbms::GetItemsResponse response;
     brpc::Controller cntl;
     stub.GetDatabases(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
-        status.code = error::kRpcErrorUnknow;
+        status.code = common::kRpcError;
         status.msg = "fail to call remote";
     } else {
         for (auto item : response.items()) {
@@ -135,7 +135,7 @@ void DBMSSdkImpl::GetDatabases(
 
 void DBMSSdkImpl::GetSchema(
     const DatabaseDef &database, const std::string &name, type::TableDef &table,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetSchemaRequest request;
     request.set_db_name(database.name);
@@ -144,7 +144,7 @@ void DBMSSdkImpl::GetSchema(
     brpc::Controller cntl;
     stub.GetSchema(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
-        status.code = error::kRpcErrorUnknow;
+        status.code = common::kRpcError;
         status.msg = "fail to call remote";
     } else {
         table = response.table();
@@ -155,32 +155,39 @@ void DBMSSdkImpl::GetSchema(
 
 void DBMSSdkImpl::ExecuteScript(
     const ExecuteRequst &request, ExecuteResult &result,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     node::NodeManager node_manager;
     parser::FeSQLParser parser;
     analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
 
-    DLOG(INFO) <<"start to execute script from dbms:\n"
-    << request.sql;
+    DLOG(INFO) << "start to execute script from dbms:\n" << request.sql;
     // TODO(chenjing): init with db
+
+    base::Status sql_status;
     node::NodePointVector parser_trees;
-    parser.parse(request.sql, parser_trees, &node_manager, status);
-    if (0 != status.code) {
+    parser.parse(request.sql, parser_trees, &node_manager, sql_status);
+    if (0 != sql_status.code) {
         LOG(WARNING) << status.msg;
+        status.code = sql_status.code;
+        status.msg = sql_status.msg;
         return;
     }
     node::NodePointVector query_trees;
-    analyser.Analyse(parser_trees, query_trees, status);
-    if (0 != status.code) {
+    analyser.Analyse(parser_trees, query_trees, sql_status);
+    if (0 != sql_status.code) {
         LOG(WARNING) << status.msg;
+        status.code = sql_status.code;
+        status.msg = sql_status.msg;
         return;
     }
     node::PlanNodeList plan_trees;
-    planner.CreatePlanTree(query_trees, plan_trees, status);
+    planner.CreatePlanTree(query_trees, plan_trees, sql_status);
 
-    if (0 != status.code) {
+    if (0 != sql_status.code) {
         LOG(WARNING) << status.msg;
+        status.code = sql_status.code;
+        status.msg = sql_status.msg;
         return;
     }
 
@@ -188,7 +195,7 @@ void DBMSSdkImpl::ExecuteScript(
 
     if (nullptr == plan) {
         status.msg = "fail to execute plan : plan null";
-        status.code = error::kExecuteErrorNullNode;
+        status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
         return;
     }
@@ -205,8 +212,11 @@ void DBMSSdkImpl::ExecuteScript(
 
             ::fesql::type::TableDef *table = add_table_request.mutable_table();
             plan::TransformTableDef(create->GetTableName(),
-                                    create->GetColumnDescList(), table, status);
-            if (0 != status.code) {
+                                    create->GetColumnDescList(), table,
+                                    sql_status);
+            if (0 != sql_status.code) {
+                status.code = sql_status.code;
+                status.msg = sql_status.msg;
                 LOG(WARNING) << status.msg;
                 return;
             }
@@ -225,14 +235,14 @@ void DBMSSdkImpl::ExecuteScript(
         default: {
             status.msg = "fail to execute script with unSuppurt type" +
                          node::NameOfPlanNodeType(plan->GetType());
-            status.code = fesql::error::kExecuteErrorUnSupport;
+            status.code = fesql::common::kUnSupport;
             return;
         }
     }
 }
 void DBMSSdkImpl::CreateDatabase(
     const DatabaseDef &database,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::AddDatabaseRequest request;
     request.set_name(database.name);
@@ -249,7 +259,7 @@ void DBMSSdkImpl::CreateDatabase(
 }
 bool DBMSSdkImpl::IsExistDatabase(
     const DatabaseDef &database,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::IsExistRequest request;
     request.set_name(database.name);

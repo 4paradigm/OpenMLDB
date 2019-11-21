@@ -16,6 +16,7 @@
 #include <utility>
 #include "node/sql_node.h"
 #include "node/node_manager.h"
+#include "base/status.h"
 #include "parser/sql_parser.gen.h"
 
 extern int yylex(YYSTYPE* yylvalp, 
@@ -24,17 +25,18 @@ extern int yylex(YYSTYPE* yylvalp,
 void emit(const char *s, ...);
 void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &trees,
 	::fesql::node::NodeManager *node_manager, ::fesql::base::Status &status, const char* msg) {
-	status.code = ::fesql::error::kParserErrorSyntax;
+	status.code=::fesql::common::kSQLError;
 	std::ostringstream s;
         s << "line: "<< yyllocp->last_line << ", column: "
        	<< yyllocp->first_column << ": " <<
        	msg;
-	status.msg = s.str();
+	status.msg=(s.str());
 }
 %}
 
 %code requires {
 #include "node/sql_node.h"
+#include "base/status.h"
 #include <sstream>
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T

@@ -15,7 +15,6 @@
 
 namespace fesql {
 namespace sdk {
-using fesql::base::Status;
 
 class DBMSSdkTest : public ::testing::Test {
  public:

@@ -217,22 +217,22 @@ class TabletSdkImpl : public TabletSdk {
 
     std::unique_ptr<ResultSet> SyncQuery(
         const Query& query,
-        base::Status& status);  // NOLINT (runtime/references)
+        sdk::Status& status);  // NOLINT (runtime/references)
 
     void SyncInsert(const Insert& insert,
-                    base::Status& status);  // NOLINT (runtime/references)
+                    sdk::Status& status);  // NOLINT (runtime/references)
 
     void SyncInsert(const std::string& db, const std::string& sql,
-                    base::Status& status);  // NOLINT (runtime/references)
+                    sdk::Status& status);  // NOLINT (runtime/references)
     bool GetSchema(const std::string& db, const std::string& table,
                    type::TableDef& schema,  // NOLINT (runtime/references)
-                   base::Status& status);   // NOLINT (runtime/references)
+                   sdk::Status& status);    // NOLINT (runtime/references)
 
     void GetSqlPlan(
         const std::string& db, const std::string& sql,
         node::NodeManager& node_manager,  // NOLINT (runtime/references)
         node::PlanNodeList& plan_trees,   // NOLINT (runtime/references)
-        base::Status& status);            // NOLINT (runtime/references)
+        sdk::Status& status);             // NOLINT (runtime/references)
 
  private:
     std::string endpoint_;
@@ -249,7 +249,7 @@ bool TabletSdkImpl::Init() {
     return true;
 }
 
-void TabletSdkImpl::SyncInsert(const Insert& insert, base::Status& status) {
+void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
     size_t row_size = 0;
     for (auto item : insert.values) {
         row_size += item.GetSize();
@@ -295,7 +295,7 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, base::Status& status) {
             default: {
                 status.msg =
                     "UnSupport data type " + DataTypeName(value.GetDataType());
-                status.code = error::kExecuteErrorUnSupport;
+                status.code = common::kUnSupport;
                 return;
             }
         }
@@ -317,7 +317,7 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, base::Status& status) {
 }
 
 std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(
-    const Query& query, base::Status& status) {  // NOLINT (runtime/references)
+    const Query& query, sdk::Status& status) {  // NOLINT (runtime/references)
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::QueryRequest request;
     request.set_sql(query.sql);
@@ -325,13 +325,13 @@ std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(
     brpc::Controller cntl;
     ResultSetImpl* rs = new ResultSetImpl();
     stub.Query(&cntl, &request, &(rs->response_), NULL);
-    if (cntl.Failed()){
+    if (cntl.Failed()) {
         status.code = common::kConnError;
         status.msg = "Rpc control error";
         delete rs;
         return std::unique_ptr<ResultSet>();
     }
-    if(rs->response_.status().code() != common::kOk) {
+    if (rs->response_.status().code() != common::kOk) {
         status.code = rs->response_.status().code();
         status.msg = rs->response_.status().msg();
         delete rs;
@@ -341,7 +341,7 @@ std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(
 }
 
 bool TabletSdkImpl::GetSchema(const std::string& db, const std::string& table,
-                              type::TableDef& schema, base::Status& status) {
+                              type::TableDef& schema, sdk::Status& status) {
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::GetTablesSchemaRequest request;
     ::fesql::tablet::GetTableSchemaReponse response;
@@ -366,33 +366,40 @@ bool TabletSdkImpl::GetSchema(const std::string& db, const std::string& table,
 void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
                                node::NodeManager& node_manager,
                                node::PlanNodeList& plan_trees,
-                               base::Status& status) {
+                               sdk::Status& status) {
     parser::FeSQLParser parser;
     analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
+    base::Status sql_status;
 
     // TODO(chenjing): init with db
     node::NodePointVector parser_trees;
-    parser.parse(sql, parser_trees, &node_manager, status);
-    if (0 != status.code) {
+    parser.parse(sql, parser_trees, &node_manager, sql_status);
+    if (0 != sql_status.code) {
+        status.code = sql_status.code;
+        status.msg = sql_status.msg;
         LOG(WARNING) << status.msg;
         return;
     }
     node::NodePointVector query_trees;
-    analyser.Analyse(parser_trees, query_trees, status);
-    if (0 != status.code) {
+    analyser.Analyse(parser_trees, query_trees, sql_status);
+    if (0 != sql_status.code) {
+        status.code = sql_status.code;
+        status.msg = sql_status.msg;
         LOG(WARNING) << status.msg;
         return;
     }
-    planner.CreatePlanTree(query_trees, plan_trees, status);
+    planner.CreatePlanTree(query_trees, plan_trees, sql_status);
 
-    if (0 != status.code) {
+    if (0 != sql_status.code) {
+        status.code = sql_status.code;
+        status.msg = sql_status.msg;
         LOG(WARNING) << status.msg;
         return;
     }
 }
 void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
-                               base::Status& status) {
+                               sdk::Status& status) {
     node::PlanNodeList plan_trees;
     node::NodeManager node_manager;
     GetSqlPlan(db, sql, node_manager, plan_trees, status);
@@ -402,7 +409,7 @@ void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
 
     if (plan_trees.empty() || nullptr == plan_trees[0]) {
         status.msg = "fail to execute plan : plan tree is empty or null";
-        status.code = error::kExecuteErrorNullNode;
+        status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
         return;
     }
@@ -413,7 +420,7 @@ void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
                 dynamic_cast<node::InsertPlanNode*>(plan);
             const node::InsertStmt* insert_stmt = insert_plan->GetInsertNode();
             if (nullptr == insert_stmt) {
-                status.code = error::kExecuteErrorNullNode;
+                status.code = common::kNullPointer;
                 status.msg = "fail to execute insert statement with null node";
                 return;
             }
@@ -470,13 +477,20 @@ void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
                                 break;
                             }
                             default: {
-                                status.code = error::kExecuteErrorUnSupport;
+                                status.code = common::kTypeError;
                                 status.msg =
                                     "can not handle data type " +
                                     node::DataTypeName(primary->GetDataType());
                                 return;
                             }
                         }
+                        break;
+                    }
+                    default: {
+                        status.code = common::kTypeError;
+                        status.msg = "can not insert value with type " +
+                                     node::ExprTypeName(value->GetExprType());
+                        return;
                     }
                 }
             }
@@ -484,7 +498,7 @@ void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
             return;
         }
         default: {
-            status.code = error::kExecuteErrorUnSupport;
+            status.code = common::kUnSupport;
             status.msg = "can not execute plan type " +
                          node::NameOfPlanNodeType(plan->GetType());
             return;

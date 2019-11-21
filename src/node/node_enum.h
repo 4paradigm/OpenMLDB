@@ -11,6 +11,7 @@
 #define SRC_NODE_NODE_ENUM_H_
 
 #include <string>
+#include "proto/common.pb.h"
 namespace fesql {
 namespace node {
 
@@ -146,67 +147,6 @@ enum PlanType {
 };
 
 }  // namespace node
-
-namespace error {
-enum ErrorType {
-    kSucess = 0,
-
-    kNodeErrorUnknow = 1001,
-    kNodeErrorMakeNodeFail,
-
-    kParserErrorUnknow = 2001,
-    kParserErrorSyntax,
-    kParserErrorAbort,
-
-    kAnalyserErrorUnknow = 3001,
-    kAnalyserErrorUnSupport,
-    kAnalyserErrorSQLTypeNotSupport,
-    kAnalyserErrorInitialize,
-    kAnalyserErrorParserTreeEmpty,
-    kAnalyserErrorFromListEmpty,
-    kAnalyserErrorQueryMultiTable,
-    kAnalyserErrorTableRefIsNull,
-    kAnalyserErrorTableNotExist,
-    kAnalyserErrorTableAlreadyExist,
-    kAnalyserErrorColumnNameIsEmpty,
-    kAnalyserErrorColumnNotExist,
-    kAnalyserErrorTargetIsNull,
-    kAnalyserErrorGlobalAggFunction,
-    kAnalyserErrorUnSupportFunction,
-    kCreateErrorUnSupportColumnType,
-    kCreateErrorDuplicationColumnName,
-    kCreateErrorDuplicationIndexName,
-
-    kPlanErrorUnknow = 4001,
-    kPlanErrorUnSupport,
-    kPlanErrorNullNode,
-    kPlanErrorQueryTreeIsEmpty,
-    kPlanErrorTableRefIsEmpty,
-    kPlanErrorQueryMultiTable,
-
-    kExecuteErrorUnknow = 4001,
-    kExecuteErrorUnSupport,
-    kExecuteErrorNullNode,
-
-    kCmdErrorUnknow = 5001,
-    kCmdErrorUnSupport,
-    kCmdErrorNullNode,
-    kCmdErrorPathError,
-
-    kRpcErrorUnknow = 6001,
-    kRpcErrorConnection,
-};
-}  // namespace error
-
-namespace base {
-struct Status {
-    Status() : code(0), msg("ok") {}
-    Status(int32_t status_code, const std::string &msg_str)
-        : code(status_code), msg(msg_str) {}
-    int32_t code;
-    std::string msg;
-};
-}  // namespace base
 
 }  // namespace fesql
 

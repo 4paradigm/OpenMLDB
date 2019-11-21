@@ -18,6 +18,7 @@
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "proto/type.pb.h"
+#include "base/status.h"
 
 namespace fesql {
 namespace analyser {

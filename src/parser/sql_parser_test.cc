@@ -347,7 +347,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
 }
 
 class SqlParserErrorTest : public ::testing::TestWithParam<
-                               std::pair<error::ErrorType, std::string>> {
+                               std::pair<common::StatusCode, std::string>> {
  public:
     SqlParserErrorTest() {
         manager_ = new NodeManager();
@@ -380,23 +380,23 @@ TEST_P(SqlParserErrorTest, ParserErrorStatusTest) {
 
 INSTANTIATE_TEST_CASE_P(
     SQLErrorParse, SqlParserErrorTest,
-    testing::Values(std::make_pair(error::kParserErrorSyntax,
+    testing::Values(std::make_pair(common::kSQLError,
                                    "SELECT SUM(*) FROM t1;"),
-                    std::make_pair(error::kParserErrorSyntax, "SELECT t1;")));
+                    std::make_pair(common::kSQLError, "SELECT t1;")));
 
 INSTANTIATE_TEST_CASE_P(
     UDFErrorParse, SqlParserErrorTest,
     testing::Values(
-        std::make_pair(error::kParserErrorSyntax,
+        std::make_pair(common::kSQLError,
                        "%%fun\ndefine test(x:i32,y:i32):i32\n    c=x+y\n    "
                        "return c\nend"),
-        std::make_pair(error::kParserErrorSyntax,
+        std::make_pair(common::kSQLError,
                        "%%fun\ndef 123test(x:i32,y:i32):i32\n    c=x+y\n    "
                        "return c\nend"),
         std::make_pair(
-            error::kParserErrorSyntax,
+            common::kSQLError,
             "%%fun\ndef test(x:i32,y:i32):i32\n    c=x)(y\n    return c\nend"),
-        std::make_pair(error::kParserErrorSyntax, "SELECT t1;")));
+        std::make_pair(common::kSQLError, "SELECT t1;")));
 
 }  // namespace parser
 }  // namespace fesql
