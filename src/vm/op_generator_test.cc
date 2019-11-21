@@ -16,7 +16,6 @@
  */
 
 #include "vm/op_generator.h"
-#include "parser/parser.h"
 #include "plan/planner.h"
 #include "gtest/gtest.h"
 #include "vm/table_mgr.h"
@@ -95,22 +94,31 @@ TEST_F(OpGeneratorTest, test_normal) {
     OpGenerator generator(&table_mgr);
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    ::fesql::node::NodePointVector list;
-    ::fesql::parser::FeSQLParser parser;
-    ::fesql::node::NodeManager manager;
     const std::string sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
-    ::fesql::base::Status parse_status;
-    int ret = parser.parse(sql, list, &manager, parse_status);
-    ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, list.size());
+
+    ::fesql::node::NodeManager manager;
+    ::fesql::node::PlanNodeList plan_trees;
+    ::fesql::base::Status base_status;
+    {
+
+        ::fesql::plan::SimplePlanner planner(&manager);
+        ::fesql::parser::FeSQLParser parser;
+        ::fesql::node::NodePointVector parser_trees;
+        parser.parse(sql, parser_trees, &manager, base_status);
+        ASSERT_EQ(0, base_status.code);
+        planner.CreatePlanTree(parser_trees, plan_trees, base_status);
+        ASSERT_EQ(0, base_status.code);
+    }
+
+    ASSERT_EQ(2, plan_trees.size());
 
     OpVector op;
-    common::Status op_status;
-    bool ok = generator.Gen(list, "db", m.get(), &op, op_status);
+    bool ok = generator.Gen(plan_trees, "db", m.get(), &op, base_status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
     ASSERT_EQ(3, op.ops.size());
 }
+
 
 }  // namespace vm
 }  // namespace fesql

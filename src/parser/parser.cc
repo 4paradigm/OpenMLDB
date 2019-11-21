@@ -43,6 +43,10 @@ int FeSQLParser::parse(
     yyset_column(1, scanner);
     int ret = yyparse(scanner, trees, manager, status);
     yylex_destroy(scanner);
+
+    if (0 != status.code) {
+        LOG(WARNING) << status.msg;
+    }
     return ret;
 }
 

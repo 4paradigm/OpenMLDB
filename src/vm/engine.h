@@ -82,7 +82,7 @@ class Engine {
     bool Get(const std::string& db,
              const std::string& sql, 
              RunSession& session,
-             common::Status &status);
+             base::Status &status);
 
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
             const std::string& sql);

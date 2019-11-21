@@ -151,27 +151,9 @@ class ResultSetImpl : public ResultSet {
     }
 
     const DataType GetColumnType(uint32_t i) const {
-        switch (response_.schema(i).type()) {
-            case fesql::type::kBool:
-                return kTypeBool;
-            case fesql::type::kInt16:
-                return kTypeInt16;
-            case fesql::type::kInt32:
-                return kTypeInt32;
-            case fesql::type::kInt64:
-                return kTypeInt64;
-            case fesql::type::kFloat:
-                return kTypeFloat;
-            case fesql::type::kDouble:
-                return kTypeDouble;
-            case fesql::type::kString:
-                return kTypeString;
-            case fesql::type::kDate:
-                return kTypeDate;
-            case fesql::type::kTimestamp:
-                return kTypeTimestamp;
-        }
+        return DataTypeFromProtoType(response_.schema(i).type());
     }
+    
     const uint32_t GetRowCnt() const { return response_.result_set_size(); }
 
     std::unique_ptr<ResultSetIterator> Iterator() {

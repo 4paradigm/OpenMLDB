@@ -38,7 +38,7 @@ class SchemaImpl : public Schema {
     }
     const std::string &GetColumnName(uint32_t i) const {
         // TODO check i out of index
-        if (i >= response_.table().columns_size()) {
+        if (static_cast<int>(i) >= response_.table().columns_size()) {
             LOG(WARNING) << "Array Invalid Access";
             return "";
         }
@@ -46,7 +46,7 @@ class SchemaImpl : public Schema {
     }
 
     const DataType GetColumnType(uint32_t i) const {
-        if (i >= response_.table().columns_size()) {
+        if (static_cast<int>(i) >= response_.table().columns_size()) {
             LOG(WARNING) << "Array Invalid Access";
             return kTypeUnknow;
         }
@@ -55,9 +55,9 @@ class SchemaImpl : public Schema {
     }
 
     const bool IsColumnNotNull(uint32_t i) const {
-        if (i >= response_.table().columns_size()) {
+        if (static_cast<int>(i) >= response_.table().columns_size()) {
             LOG(WARNING) << "Array Invalid Access";
-            return kTypeUnknow;
+            return false;
         }
         return response_.table().columns(i).is_not_null();
     }

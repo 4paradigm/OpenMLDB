@@ -21,9 +21,9 @@
 #include "llvm/IR/Module.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
-#include "proto/common.pb.h"
 #include "vm/op.h"
 #include "vm/table_mgr.h"
+#include "base/status.h"
 
 namespace fesql {
 namespace vm {
@@ -39,16 +39,16 @@ class OpGenerator {
     OpGenerator(TableMgr* table_mgr);
     ~OpGenerator();
 
-    bool Gen(const ::fesql::node::NodePointVector& trees, const std::string& db,
-             ::llvm::Module* module, OpVector* ops, common::Status& status);
+    bool Gen(const ::fesql::node::PlanNodeList& trees, const std::string& db,
+             ::llvm::Module* module, OpVector* ops, base::Status& status);
 
  private:
     bool GenFnDef(::llvm::Module* module,
-                  const ::fesql::node::FnNodeList* node);
+                  const ::fesql::node::FuncDefPlanNode* plan);
 
-    bool GenSQL(const ::fesql::node::NodePointVector& node,
+    bool GenSQL(const ::fesql::node::SelectPlanNode* node,
                 const std::string& db, ::llvm::Module* module, OpVector* ops,
-                common::Status& status);
+                base::Status& status);
 
     bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
                     const std::string& db, ::llvm::Module* module,

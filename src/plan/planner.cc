@@ -115,6 +115,7 @@ void Planner::CreateProjectPlanNode(
     if (nullptr == root) {
         status.msg = "fail to create project node: query tree node it null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return;
     }
 
@@ -132,6 +133,7 @@ void Planner::CreateProjectPlanNode(
             status.msg = "can not create project plan node with type " +
                          node::NameOfSQLNodeType(root->GetType());
             status.code = common::kPlanError;
+            LOG(WARNING) << status.msg;
             return;
         }
     }
@@ -160,6 +162,7 @@ int SimplePlanner::CreatePlanTree(
     if (parser_trees.empty()) {
         status.msg = "fail to create plan tree: parser trees is empty";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return status.code;
     }
 
@@ -209,24 +212,51 @@ int SimplePlanner::CreatePlanTree(
                 break;
             }
             case ::fesql::node::kFnList: {
+                node::PlanNode *fn_plan =
+                    node_manager_->MakePlanNode(node::kPlanTypeFuncDef);
+                CreateFuncDefPlan(
+                    parser_tree,
+                    dynamic_cast<node::FuncDefPlanNode*>(fn_plan), status);
+                plan_trees.push_back(fn_plan);
                 break;
             }
             default: {
                 status.msg = "can not handle tree type " +
                              node::NameOfSQLNodeType(parser_tree->GetType());
                 status.code = common::kPlanError;
+                LOG(WARNING) << status.msg;
                 return status.code;
             }
         }
     }
     return status.code;
 }
+void Planner::CreateFuncDefPlan(const SQLNode *root,
+                                      node::FuncDefPlanNode *plan,
+                                      Status &status) {
+    if (nullptr == root) {
+        status.msg = "fail to create func def plan node: query tree node it null";
+        status.code = common::kSQLError;
+        LOG(WARNING) << status.msg;
+        return;
+    }
+
+    if (root->GetType() != node::kFnList) {
+        status.code = common::kSQLError;
+        status.msg = "fail to create cmd plan node: query tree node it not function def type";
+        LOG(WARNING) << status.msg;
+        return;
+    }
+    plan->SetFuNodeList(dynamic_cast<const node::FnNodeList*>(root));
+}
+
 
 void Planner::CreateInsertPlan(const node::SQLNode* root,
                                node::InsertPlanNode*plan, Status &status) {
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kSQLError;
+        LOG(WARNING) << status.msg;
         return;
     }
 
@@ -245,6 +275,7 @@ void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return;
     }
 
@@ -277,6 +308,7 @@ void TransformTableDef(const std::string &table_name,
                     status.msg = "CREATE common: COLUMN NAME " +
                                  column_def->GetColumnName() + " duplicate";
                     status.code = common::kSQLError;
+                    LOG(WARNING) << status.msg;
                     return;
                 }
                 column->set_name(column_def->GetColumnName());
@@ -330,6 +362,7 @@ void TransformTableDef(const std::string &table_name,
                     status.msg = "CREATE common: INDEX NAME " +
                                  column_index->GetName() + " duplicate";
                     status.code = common::kSQLError;
+                    LOG(WARNING) << status.msg;
                     return;
                 }
                 index_names.insert(column_index->GetName());
@@ -355,6 +388,7 @@ void TransformTableDef(const std::string &table_name,
                              node::NameOfSQLNodeType(column_desc->GetType()) +
                              " when CREATE TABLE";
                 status.code = common::kSQLError;
+                LOG(WARNING) << status.msg;
                 return;
             }
         }
@@ -369,6 +403,9 @@ std::string GenerateName(const std::string prefix, int id) {
         prefix + "_" + std::to_string(id) + "_" + std::to_string(t);
     return name;
 }
+
+
+
 
 }  // namespace  plan
 }  // namespace fesql

@@ -128,6 +128,7 @@ enum CmdType {
  */
 enum PlanType {
     kPlanTypeCmd,
+    kPlanTypeFuncDef,
     kPlanTypeSelect,
     kPlanTypeCreate,
     kPlanTypeInsert,

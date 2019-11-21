@@ -8,13 +8,12 @@
  **/
 #include "analyser/analyser.h"
 #include <string>
-#include "../node/node_enum.h"
 namespace fesql {
 namespace analyser {
 
-int FeSQLAnalyser::Analyse(NodePointVector &parser_trees,
-                           NodePointVector &query_trees,
-                           Status &status) {  // NOLINT (runtime/references)
+int FeSQLAnalyser::Analyse(
+    NodePointVector &parser_trees, NodePointVector &query_trees,
+    base::Status &status) {  // NOLINT (runtime/references)
     if (parser_trees.empty()) {
         status.code = (common::kSQLError);
         status.msg = ("fail to analyse: parser trees is empty");
@@ -51,12 +50,16 @@ void FeSQLAnalyser::Analyse(SQLNode *parser_tree,
         case node::kInsertStmt:
             return TransformInsertNode(
                 dynamic_cast<node::InsertStmt *>(parser_tree), status);
+        case node::kFnList:
+            return TransformFnDefListNode(
+                dynamic_cast<node::FnNodeList *>(parser_tree), status);
         default: {
-            status.msg = ("can not support " +
-                          node::NameOfSQLNodeType(parser_tree->GetType()));
-            status.code = (common::kSQLError);
-            return;
-        }
+                    status.msg =
+                        ("can not support " +
+                         node::NameOfSQLNodeType(parser_tree->GetType()));
+                    status.code = (common::kSQLError);
+                    return;
+                }
     }
 }
 
@@ -361,6 +364,11 @@ void FeSQLAnalyser::TransformCmdNode(
     node::CmdNode *node_ptr, Status &status) {  // NOLINT (runtime/references)
     // no nothing
 }
+void FeSQLAnalyser::TransformFnDefListNode(node::FnNodeList *node_ptr,
+                                           Status &status) { // NOLINT (runtime/references)
+    // TODO(chenjing): check function name, args size, parameter list
+}
+
 
 }  // namespace analyser
 }  // namespace fesql

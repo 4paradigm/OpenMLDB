@@ -16,25 +16,26 @@
  */
 
 #include "vm/sql_compiler.h"
-
-#include "parser/parser.h"
+#include "analyser/analyser.h"
 #include "glog/logging.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
+#include "analyser/analyser.h"
 #include "vm/op_generator.h"
 
 namespace fesql {
 namespace vm {
-using ::fesql::common::Status;
+using ::fesql::base::Status;
 
-SQLCompiler::SQLCompiler(TableMgr* table_mgr):
-    table_mgr_(table_mgr){}
+SQLCompiler::SQLCompiler(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
 
 SQLCompiler::~SQLCompiler() {}
 
-bool SQLCompiler::Compile(SQLContext& ctx, Status &status) { //NOLINT
+bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     LOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::NodeManager nm;
-    ::fesql::node::NodePointVector  trees;
-    bool ok = Parse(ctx.sql, nm, trees, status);
+    ::fesql::node::PlanNodeList trees;
+    bool ok = Parse(ctx, nm, trees, status);
     if (!ok) {
         return false;
     }
@@ -49,7 +50,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status &status) { //NOLINT
         return false;
     }
 
-    ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(FeSQLJITBuilder().create());
+    ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
+        FeSQLJITBuilder().create());
     if (jit_expected.takeError()) {
         LOG(WARNING) << "fail to init jit let";
         return false;
@@ -57,21 +59,26 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status &status) { //NOLINT
     ctx.jit = std::move(*jit_expected);
     ::llvm::orc::JITDylib& jd = ctx.jit->createJITDylib("sql");
     ::llvm::orc::VModuleKey key = ctx.jit->CreateVModule();
-    ::llvm::Error e = ctx.jit->AddIRModule(jd, std::move(::llvm::orc::ThreadSafeModule(std::move(m),
-                    std::move(llvm_ctx))), key);
+    ::llvm::Error e =
+        ctx.jit->AddIRModule(jd,
+                             std::move(::llvm::orc::ThreadSafeModule(
+                                 std::move(m), std::move(llvm_ctx))),
+                             key);
     if (e) {
         LOG(WARNING) << "fail to add ir module  for sql " << ctx.sql;
         return false;
     }
 
-    std::vector<OpNode* >::iterator it = ctx.ops.ops.begin();
+    std::vector<OpNode*>::iterator it = ctx.ops.ops.begin();
     for (; it != ctx.ops.ops.end(); ++it) {
         OpNode* op_node = *it;
         if (op_node->type == kOpProject) {
             ProjectOp* pop = (ProjectOp*)op_node;
-            ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(ctx.jit->lookup(jd, pop->fn_name));
+            ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
+                ctx.jit->lookup(jd, pop->fn_name));
             if (symbol.takeError()) {
-                LOG(WARNING) << "fail to find fn with name  " << pop->fn_name << " for sql" << ctx.sql;
+                LOG(WARNING) << "fail to find fn with name  " << pop->fn_name
+                             << " for sql" << ctx.sql;
             }
             pop->fn = (int8_t*)symbol->getAddress();
             ctx.schema = pop->output_schema;
@@ -81,18 +88,28 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status &status) { //NOLINT
     return true;
 }
 
-bool SQLCompiler::Parse(const std::string& sql,
-        ::fesql::node::NodeManager& node_mgr,
-        ::fesql::node::NodePointVector& trees, Status &status) {
+bool SQLCompiler::Parse(SQLContext &ctx,
+                        ::fesql::node::NodeManager& node_mgr,
+                        ::fesql::node::PlanNodeList& plan_trees,  // NOLINT
+                        ::fesql::base::Status& status) {          // NOLINT
+    ::fesql::node::NodePointVector parser_trees;
     ::fesql::parser::FeSQLParser parser;
-    ::fesql::base::Status parse_status;
-    int ret = parser.parse(sql, trees, &node_mgr, parse_status);
+    ::fesql::plan::SimplePlanner planer(&node_mgr);
+
+    int ret = parser.parse(ctx.sql, parser_trees, &node_mgr, status);
     if (ret != 0) {
-        LOG(WARNING) << "fail to parse sql " << sql << " with error " << parse_status.msg;
-        status.set_msg(parse_status.msg);
-        status.set_code(common::kSQLError);
+        LOG(WARNING) << "fail to parse sql " << ctx.sql << " with error "
+                     << status.msg;
         return false;
     }
+
+    //TODO(chenjing): ADD analyser
+    ret = planer.CreatePlanTree(parser_trees, plan_trees, status);
+    if (ret != 0) {
+        LOG(WARNING) << "Fail create sql plan: " << status.msg;
+        return false;
+    }
+
     return true;
 }
 

@@ -350,6 +350,9 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
         case kPlanTypeInsert:
             node_ptr = new InsertPlanNode();
             break;
+        case kPlanTypeFuncDef:
+            node_ptr = new FuncDefPlanNode();
+            break;
         default:
             node_ptr = new LeafPlanNode(kUnknowPlan);
     }
