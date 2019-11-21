@@ -21,7 +21,7 @@
 
 namespace fesql {
 namespace codegen {
-SQLExprIRBuilder::SQLExprIRBuilder(::llvm::BasicBlock* block,
+ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block,
                                    ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
@@ -29,7 +29,7 @@ SQLExprIRBuilder::SQLExprIRBuilder(::llvm::BasicBlock* block,
       output_ptr_name_(""),
       buf_ir_builder_(nullptr),
       module_(nullptr) {}
-SQLExprIRBuilder::SQLExprIRBuilder(::llvm::BasicBlock* block,
+ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block,
                                    ScopeVar* scope_var,
                                    BufIRBuilder* buf_ir_builder,
                                    const std::string& row_ptr_name,
@@ -42,15 +42,11 @@ SQLExprIRBuilder::SQLExprIRBuilder(::llvm::BasicBlock* block,
       buf_ir_builder_(buf_ir_builder),
       module_(module) {}
 
-SQLExprIRBuilder::~SQLExprIRBuilder() {}
+ExprIRBuilder::~ExprIRBuilder() {}
 
-bool SQLExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
+
+bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                              ::llvm::Value** output) {
-    std::string column_name;
-    return Build(node, output, column_name);
-}
-bool SQLExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
-                             ::llvm::Value** output, std::string& col_name) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "node or output is null";
         return false;
@@ -60,7 +56,6 @@ bool SQLExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprColumnRef: {
             const ::fesql::node::ColumnRefNode* n =
                 (const ::fesql::node::ColumnRefNode*)node;
-            col_name.assign(n->GetColumnName());
             return BuildColumnRef(n, output);
         }
         case ::fesql::node::kExprCall: {
@@ -112,7 +107,7 @@ bool SQLExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
     }
 }
 
-bool SQLExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
+bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
                                    ::llvm::Value** output) {
     // TODO(chenjing): return status;
     common::Status status;
@@ -149,8 +144,7 @@ bool SQLExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
         ::llvm::Value* llvm_arg = NULL;
         // TODO(chenjing): remove out_name
-        std::string out_name;
-        Build(arg, &llvm_arg, out_name);
+        Build(arg, &llvm_arg);
         llvm_args.push_back(llvm_arg);
     }
     // TODO(wangtaize) args type check
@@ -160,7 +154,7 @@ bool SQLExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     return true;
 }
 
-bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
+bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
                                       ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "column ref node is null";
@@ -199,7 +193,7 @@ bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
     return true;
 }
 
-bool SQLExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
+bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
                                       ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
@@ -222,7 +216,8 @@ bool SQLExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
     LOG(WARNING) << "can't support unary yet";
     return false;
 }
-bool SQLExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
+
+bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                                        ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";

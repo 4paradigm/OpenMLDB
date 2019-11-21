@@ -124,7 +124,13 @@ void Planner::CreateProjectPlanNode(
             const node::ResTarget *target_ptr = (const node::ResTarget *)root;
             std::string w = node::WindowOfExpression(target_ptr->GetVal());
             plan_tree->SetW(w);
-            plan_tree->SetName(target_ptr->GetName());
+            if (target_ptr->GetName().empty()) {
+                if (target_ptr->GetVal()->GetExprType() == node::kExprColumnRef) {
+                    plan_tree->SetName(dynamic_cast<node::ColumnRefNode*>(target_ptr->GetVal())->GetColumnName());
+                }
+            } else {
+                plan_tree->SetName(target_ptr->GetName());
+            }
             plan_tree->SetExpression(target_ptr->GetVal());
             plan_tree->SetTable(table_name);
             return;

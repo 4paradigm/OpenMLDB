@@ -785,11 +785,7 @@ select_projection_list: projection {
     ;
 
 projection:
-    expr
-    {
-        $$ = node_manager->MakeResTargetNode($1, "");
-    }
-    | expr NAME
+    expr NAME
     {
         $$ = node_manager->MakeResTargetNode($1, $2);
 		free($2);

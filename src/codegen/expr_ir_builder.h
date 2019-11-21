@@ -26,19 +26,17 @@
 namespace fesql {
 namespace codegen {
 
-class SQLExprIRBuilder {
+class ExprIRBuilder {
  public:
-    SQLExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
-    SQLExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
+    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
+    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                      BufIRBuilder* buf_ir_builder,
                      const std::string& row_ptr_name,
                      const std::string& output_ptr_name,
                      ::llvm::Module* module);
 
-    ~SQLExprIRBuilder();
+    ~ExprIRBuilder();
 
-    bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output,
-               std::string& col_name);
     bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
 
  private:

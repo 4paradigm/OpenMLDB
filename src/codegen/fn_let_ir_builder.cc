@@ -70,7 +70,7 @@ bool RowFnLetIRBuilder::Build(
 
     // TODO(wangtaize) 
     BufIRBuilder buf_ir_builder(table_, block, &sv);
-    SQLExprIRBuilder sql_expr_ir_builder(block, &sv, 
+    ExprIRBuilder sql_expr_ir_builder(block, &sv,
             &buf_ir_builder, row_ptr_name,
             output_ptr_name, module_);
 
@@ -93,11 +93,11 @@ bool RowFnLetIRBuilder::Build(
         (const ::fesql::node::ProjectPlanNode*)pn;
         const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
 
+
         ::llvm::Value* expr_out_val = NULL;
-        std::string col_name;
+        std::string col_name = pp_node->GetName();
         ok = sql_expr_ir_builder.Build(sql_node, 
-                &expr_out_val,
-                col_name);
+                &expr_out_val);
 
         if (!ok) {
             return false;
