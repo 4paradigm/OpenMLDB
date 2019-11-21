@@ -113,6 +113,7 @@ void FeSQLAnalyser::TransformSingleTableSelectNode(
                          node::NameOfSQLNodeType(node->GetType());
             status.code = common::kSQLError;
             LOG(WARNING) << status.msg;
+            return;
         }
         node::ResTarget *target = (node::ResTarget *)node;
 
@@ -120,6 +121,7 @@ void FeSQLAnalyser::TransformSingleTableSelectNode(
             status.msg = "Fail to handle select list node null";
             status.code = common::kSQLError;
             LOG(WARNING) << status.msg;
+            return;
         }
         switch (target->GetVal()->GetExprType()) {
             case node::kExprColumnRef: {
@@ -333,7 +335,9 @@ void FeSQLAnalyser::TransformExprNode(
         case node::kExprCall:
             return TransformFuncNode((node::CallExprNode *)node_ptr, table_name,
                                      status);
+        case node::kExprId:
         case node::kExprPrimary:
+            break;
         default: {
             status.code = common::kSQLError;
             status.msg = "can not support " +

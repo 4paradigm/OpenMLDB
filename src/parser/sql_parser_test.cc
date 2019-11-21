@@ -63,6 +63,10 @@ INSTANTIATE_TEST_CASE_P(
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",
+        "SELECT COL1 + COL2 as col12 FROM t1;",
+        "SELECT COL1 - COL2 as col12 FROM t1;",
+        "SELECT COL1 * COL2 as col12 FROM t1;",
+        "SELECT COL1 / COL2 as col12 FROM t1;",
         "SELECT COUNT(*) FROM t1;"));
 
 INSTANTIATE_TEST_CASE_P(
@@ -328,8 +332,9 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ(node::kTypeInt32,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
                   ->GetColumnType());
-    ASSERT_EQ(false, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
-                        ->GetIsNotNull());
+    ASSERT_EQ(false,
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
+                  ->GetIsNotNull());
 
     ASSERT_EQ(node::kColumnIndex,
               (createStmt->GetColumnDefList()[5])->GetType());
@@ -380,8 +385,7 @@ TEST_P(SqlParserErrorTest, ParserErrorStatusTest) {
 
 INSTANTIATE_TEST_CASE_P(
     SQLErrorParse, SqlParserErrorTest,
-    testing::Values(std::make_pair(common::kSQLError,
-                                   "SELECT SUM(*) FROM t1;"),
+    testing::Values(std::make_pair(common::kSQLError, "SELECT SUM(*) FROM t1;"),
                     std::make_pair(common::kSQLError, "SELECT t1;")));
 
 INSTANTIATE_TEST_CASE_P(

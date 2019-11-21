@@ -166,9 +166,10 @@ TEST_P(AnalyserTest, RunAnalyseTest) {
     NodePointVector list;
     base::Status status;
     int ret = parser_->parse(param.second, list, manager_, status);
+    std::cout << param.second << std::endl;
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
-
+    std::cout << *list[0] << std::endl;
     NodePointVector query_tree;
     ret = analyser->Analyse(list, query_tree, status);
     if (0 != status.code) {

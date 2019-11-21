@@ -288,12 +288,14 @@ TEST_F(TabletSdkTest, test_create_and_query) {
         Query query;
         sdk::Status query_status;
         query.db = "db_1";
-        query.sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT column1, column2, test(column1,column5) as f1 FROM t1 limit 10;";
+        query.sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT column1, column2, test(column1,column5) as f1, column1 + column5 as f2 FROM t1 limit 10;";
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
-            ASSERT_EQ(3u, rs->GetColumnCnt());
+            ASSERT_EQ(4u, rs->GetColumnCnt());
             ASSERT_EQ("column1", rs->GetColumnName(0));
             ASSERT_EQ("column2", rs->GetColumnName(1));
+            ASSERT_EQ("f1", rs->GetColumnName(2));
+            ASSERT_EQ("f2", rs->GetColumnName(3));
             std::unique_ptr<ResultSetIterator> it = rs->Iterator();
             ASSERT_TRUE(it->HasNext());
             it->Next();
@@ -311,6 +313,11 @@ TEST_F(TabletSdkTest, test_create_and_query) {
                 int val = 0;
                 ASSERT_TRUE(it->GetInt32(2, &val));
                 ASSERT_EQ(val, 7);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(3, &val));
+                ASSERT_EQ(val, 6);
             }
         }else {
             ASSERT_TRUE(false);
