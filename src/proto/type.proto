@@ -25,7 +25,7 @@ message ColumnDef {
     optional string name = 1;
     optional Type type = 2;
     optional uint32 offset = 3;
-    optional bool is_null = 4;
+    optional bool is_not_null = 4;
 }
 
 message IndexDef {

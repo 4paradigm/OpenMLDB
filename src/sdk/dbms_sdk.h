@@ -24,21 +24,12 @@
 namespace fesql {
 namespace sdk {
 
-struct GroupDef {
-    std::string name;
-};
-
-struct DatabaseDef {
-    std::string name;
-};
-
-struct ExecuteRequst {
-    DatabaseDef database;
-    std::string sql;
-};
-struct ExecuteResult {
-    DatabaseDef database;
-    std::string result;
+class Schema {
+ public:
+    virtual const uint32_t GetColumnCnt() const = 0;
+    virtual const std::string& GetColumnName(uint32_t i) const = 0;
+    virtual const DataType GetColumnType(uint32_t i) const = 0;
+    virtual const bool IsColumnNotNull(uint32_t i) const = 0;
 };
 
 class DBMSSdk {
@@ -53,9 +44,8 @@ class DBMSSdk {
     virtual bool IsExistDatabase(
         const DatabaseDef &database,
         sdk::Status &status) = 0;  // NOLINT (runtime/references)
-    virtual void GetSchema(
+    virtual std::unique_ptr<Schema> GetSchema(
         const DatabaseDef &database, const std::string &name,
-        type::TableDef &table,     // NOLINT (runtime/references)
         sdk::Status &status) = 0;  // NOLINT (runtime/references)
     virtual void GetTables(
         const DatabaseDef &database,

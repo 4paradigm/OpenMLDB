@@ -25,6 +25,47 @@
 #include "proto/dbms.pb.h"
 namespace fesql {
 namespace sdk {
+class DBMSSdkImpl;
+class SchemaImpl;
+
+class SchemaImpl : public Schema {
+ public:
+    SchemaImpl() : response_() {}
+    ~SchemaImpl() {}
+
+    const uint32_t GetColumnCnt() const {
+        return response_.table().columns_size();
+    }
+    const std::string &GetColumnName(uint32_t i) const {
+        // TODO check i out of index
+        if (i >= response_.table().columns_size()) {
+            LOG(WARNING) << "Array Invalid Access";
+            return "";
+        }
+        return response_.table().columns(i).name();
+    }
+
+    const DataType GetColumnType(uint32_t i) const {
+        if (i >= response_.table().columns_size()) {
+            LOG(WARNING) << "Array Invalid Access";
+            return kTypeUnknow;
+        }
+
+        return DataTypeFromProtoType(response_.table().columns(i).type());
+    }
+
+    const bool IsColumnNotNull(uint32_t i) const {
+        if (i >= response_.table().columns_size()) {
+            LOG(WARNING) << "Array Invalid Access";
+            return kTypeUnknow;
+        }
+        return response_.table().columns(i).is_not_null();
+    }
+
+ private:
+    friend DBMSSdkImpl;
+    dbms::GetSchemaResponse response_;
+};
 
 class DBMSSdkImpl : public DBMSSdk {
  public:
@@ -39,9 +80,9 @@ class DBMSSdkImpl : public DBMSSdk {
     bool IsExistDatabase(const DatabaseDef &database,
                          sdk::Status &status);  // NOLINT (runtime/references)
 
-    void GetSchema(const DatabaseDef &database, const std::string &name,
-                   type::TableDef &table,
-                   sdk::Status &status)  // NOLINT (runtime/references)
+    std::unique_ptr<Schema> GetSchema(
+        const DatabaseDef &database, const std::string &name,
+        sdk::Status &status)  // NOLINT (runtime/references)
         override;
     void GetTables(
         const DatabaseDef &database,
@@ -133,24 +174,31 @@ void DBMSSdkImpl::GetDatabases(
     }
 }
 
-void DBMSSdkImpl::GetSchema(
-    const DatabaseDef &database, const std::string &name, type::TableDef &table,
+std::unique_ptr<Schema> DBMSSdkImpl::GetSchema(
+    const DatabaseDef &database, const std::string &name,
     sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetSchemaRequest request;
     request.set_db_name(database.name);
     request.set_name(name);
     ::fesql::dbms::GetSchemaResponse response;
+
+    SchemaImpl *schema = new SchemaImpl();
     brpc::Controller cntl;
-    stub.GetSchema(&cntl, &request, &response, NULL);
+    stub.GetSchema(&cntl, &request, &schema->response_, NULL);
     if (cntl.Failed()) {
+        delete schema;
         status.code = common::kRpcError;
         status.msg = "fail to call remote";
-    } else {
-        table = response.table();
-        status.code = response.status().code();
-        status.msg = response.status().msg();
+        return std::unique_ptr<Schema>();
     }
+    status.code = response.status().code();
+    status.msg = response.status().msg();
+    if (0 != status.code) {
+        delete schema;
+        return std::unique_ptr<Schema>();
+    }
+    return std::move(std::unique_ptr<Schema>(schema));
 }
 
 void DBMSSdkImpl::ExecuteScript(

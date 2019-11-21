@@ -34,28 +34,6 @@ class TabletSdkImpl;
 class ResultSetImpl;
 class ResultSetIteratorImpl;
 
-inline const std::string DataTypeName(const DataType& type) {
-    switch (type) {
-        case kTypeBool:
-            return "bool";
-        case kTypeInt16:
-            return "int16";
-        case kTypeInt32:
-            return "int32";
-        case kTypeInt64:
-            return "int64";
-        case kTypeFloat:
-            return "float";
-        case kTypeDouble:
-            return "double";
-        case kTypeString:
-            return "string";
-        case kTypeTimestamp:
-            return "timestamp";
-        default:
-            return "unknownType";
-    }
-}
 
 class ResultSetIteratorImpl : public ResultSetIterator {
  public:

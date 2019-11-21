@@ -235,22 +235,26 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     }
 }
 void PrintTableSchema(std::ostream &stream,
-                      const fesql::type::TableDef &table) {
-    ::fesql::base::TextTable t('-', '|', '+');
+                      const fesql::sdk::Schema *schema) {
+    if (nullptr == schema || schema->GetColumnCnt() == 0) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+    unsigned items_size = schema->GetColumnCnt();
 
+    ::fesql::base::TextTable t('-', '|', '+');
     t.add("Field");
     t.add("Type");
     t.add("Null");
     t.endOfRow();
 
-    for (auto column : table.columns()) {
-        t.add(column.name());
-        t.add(fesql::type::Type_Name(column.type()));
-        t.add(column.is_null() ? "YES" : "NO");
+    for (int i = 0; i < items_size; i++) {
+        t.add(schema->GetColumnName(i));
+        t.add(fesql::sdk::DataTypeName(schema->GetColumnType(i)));
+        t.add(schema->IsColumnNotNull(i) ? "YES" : "NO");
         t.endOfRow();
     }
     stream << t;
-    unsigned items_size = table.columns().size();
     if (items_size > 1) {
         stream << items_size << " rows in set" << std::endl;
     } else {
@@ -417,10 +421,12 @@ void handleCmd(const fesql::node::CmdNode *cmd_node,
         }
         case fesql::node::kCmdDescTable: {
             fesql::type::TableDef table;
-            dbms_sdk->GetSchema(db, cmd_node->GetArgs()[0], table, status);
-            if (status.code == 0) {
-                std::ostringstream oss;
-                PrintTableSchema(std::cout, table);
+            std::unique_ptr<::fesql::sdk::Schema> rs =
+                dbms_sdk->GetSchema(db, cmd_node->GetArgs()[0], status);
+            if (!rs) {
+                return;
+            } else {
+                PrintTableSchema(std::cout, rs.get());
             }
             break;
         }

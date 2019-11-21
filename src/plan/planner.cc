@@ -280,6 +280,7 @@ void TransformTableDef(const std::string &table_name,
                     return;
                 }
                 column->set_name(column_def->GetColumnName());
+                column->set_is_not_null(column_def->GetIsNotNull());
                 column_names.insert(column_def->GetColumnName());
                 switch (column_def->GetColumnType()) {
                     case node::kTypeBool:

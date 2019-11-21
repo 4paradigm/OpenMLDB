@@ -266,7 +266,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
         "    column2 timestamp NOT NULL,\n"
         "    column3 int NOT NULL,\n"
         "    column4 string NOT NULL,\n"
-        "    column5 int NOT NULL,\n"
+        "    column5 int,\n"
         "    index(key=(column4, column3), version=(column5, 3), ts=column2, "
         "ttl=60d)\n"
         ");";
@@ -328,7 +328,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ(node::kTypeInt32,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
                   ->GetColumnType());
-    ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
+    ASSERT_EQ(false, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
                         ->GetIsNotNull());
 
     ASSERT_EQ(node::kColumnIndex,
