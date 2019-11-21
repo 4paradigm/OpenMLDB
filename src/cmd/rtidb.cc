@@ -1301,25 +1301,30 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         return;
     }
     if (tables[0].column_desc_size() == 0 && tables[0].column_desc_v1_size() == 0) {
-        try {
-            if (parts.size() > 5) {
-                limit = boost::lexical_cast<uint32_t>(parts[5]);
-            }
-            std::string msg;
-            ::rtidb::base::KvIterator* it = tablet_client->Scan(tid, pid, key,  
+        ::rtidb::base::KvIterator* it;
+        std::string msg;
+        if(is_pair_format) {
+            it = tablet_client->Scan(tid, pid, key, st, et, limit, msg);
+        } else {
+            try {
+                if (parts.size() > 5) {
+                    limit = boost::lexical_cast<uint32_t>(parts[5]);
+                }
+                it = tablet_client->Scan(tid, pid, key,  
                     boost::lexical_cast<uint64_t>(parts[3]), 
                     boost::lexical_cast<uint64_t>(parts[4]),
                     limit, msg);
-            if (it == NULL) {
-                std::cout << "Fail to scan table. error msg: " << msg << std::endl;
-            } else {
-                ::rtidb::base::ShowTableRows(key, it, tables[0].compress_type());
-                delete it;
-            }
-        } catch (std::exception const& e) {
-            printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
-            return;
-        } 
+            } catch (std::exception const& e) {
+                printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
+                return;
+            } 
+        }
+        if (it == NULL) {
+            std::cout << "Fail to scan table. error msg: " << msg << std::endl;
+        } else {
+            ::rtidb::base::ShowTableRows(key, it, tables[0].compress_type());
+             delete it;
+        }
     } else {
         if (parts.size() < 6) {
             std::cout << "scan format error. eg: scan table_name key col_name start_time end_time [limit]" << std::endl;
