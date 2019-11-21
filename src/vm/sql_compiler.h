@@ -18,11 +18,11 @@
 #ifndef SRC_VM_SQL_COMPILER_H_
 #define SRC_VM_SQL_COMPILER_H_
 
-#include "vm/jit.h"
-#include "vm/table_mgr.h"
-#include "vm/op_generator.h"
-#include "parser/parser.h"
 #include "llvm/IR/Module.h"
+#include "parser/parser.h"
+#include "vm/jit.h"
+#include "vm/op_generator.h"
+#include "vm/table_mgr.h"
 
 namespace fesql {
 namespace vm {
@@ -34,29 +34,24 @@ struct SQLContext {
     std::string db;
     // the operators
     OpVector ops;
-    // TODO(wangtaize) add a light jit engine 
-    // eg using bthead to compile ir 
+    // TODO(wangtaize) add a light jit engine
+    // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
     std::vector<::fesql::type::ColumnDef> schema;
     uint32_t row_size;
 };
 
 class SQLCompiler {
-
  public:
-
     SQLCompiler(TableMgr* table_mgr);
 
     ~SQLCompiler();
 
-    bool Compile(SQLContext& ctx);//NOLINT
+    bool Compile(SQLContext& ctx);  // NOLINT
 
  private:
-
-    bool Parse(const std::string& sql,
-               ::fesql::node::NodeManager& node_mgr,
+    bool Parse(const std::string& sql, ::fesql::node::NodeManager& node_mgr,
                ::fesql::node::NodePointVector& trees);
-
 
  private:
     TableMgr* table_mgr_;

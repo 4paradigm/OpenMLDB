@@ -18,16 +18,16 @@
 #ifndef SRC_VM_ENGINE_H_
 #define SRC_VM_ENGINE_H_
 
-#include "vm/table_mgr.h"
-#include "vm/sql_compiler.h"
-#include "base/spin_lock.h"
-#include <memory>
-#include <mutex>
 #include <map>
+#include <memory>
+#include <vector>
+#include <string>
+#include "base/spin_lock.h"
+#include "vm/sql_compiler.h"
+#include "vm/table_mgr.h"
 
 namespace fesql {
 namespace vm {
-
 
 class Engine;
 
@@ -38,53 +38,45 @@ struct CompileInfo {
 
 class RunSession {
  public:
-
     RunSession();
 
     ~RunSession();
 
-    inline const uint32_t GetRowSize() const {
-        return compile_info_->row_size;
-    }
+    inline const uint32_t GetRowSize() const { return compile_info_->row_size; }
 
     inline const std::vector<::fesql::type::ColumnDef>& GetSchema() const {
         return compile_info_->sql_ctx.schema;
     }
 
-    int32_t Run(std::vector<int8_t*>& buf, uint32_t limit);
+    int32_t Run(std::vector<int8_t*>& buf, uint32_t limit);  // NOLINT
 
  private:
-
     inline void SetCompileInfo(std::shared_ptr<CompileInfo> compile_info) {
         compile_info_ = compile_info;
     }
 
-    inline void SetTableMgr(TableMgr* table_mgr) {
-        table_mgr_ = table_mgr;
-    }
+    inline void SetTableMgr(TableMgr* table_mgr) { table_mgr_ = table_mgr; }
+
  private:
     std::shared_ptr<CompileInfo> compile_info_;
     TableMgr* table_mgr_;
     friend Engine;
 };
 
-
-
 typedef std::map<std::string,
-                 std::map<std::string, std::shared_ptr<CompileInfo>>> EngineCache;
+                 std::map<std::string, std::shared_ptr<CompileInfo>>>
+    EngineCache;
 class Engine {
  public:
-
-    Engine(TableMgr* table_mgr);
+    explicit Engine(TableMgr* table_mgr);
 
     ~Engine();
 
-    bool Get(const std::string& db,
-             const std::string& sql, 
-             RunSession& session);
+    bool Get(const std::string& db, const std::string& sql,
+             RunSession& session);  // NOLINT
 
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
-            const std::string& sql);
+                                                const std::string& sql);
 
  private:
     TableMgr* table_mgr_;
@@ -95,4 +87,3 @@ class Engine {
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_ENGINE_H_
-

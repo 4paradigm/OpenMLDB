@@ -17,22 +17,21 @@
 
 #include "vm/sql_compiler.h"
 
-#include "parser/parser.h"
 #include "glog/logging.h"
+#include "parser/parser.h"
 #include "vm/op_generator.h"
 
 namespace fesql {
 namespace vm {
 
-SQLCompiler::SQLCompiler(TableMgr* table_mgr):
-    table_mgr_(table_mgr){}
+SQLCompiler::SQLCompiler(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
 
 SQLCompiler::~SQLCompiler() {}
 
-bool SQLCompiler::Compile(SQLContext& ctx) { //NOLINT
+bool SQLCompiler::Compile(SQLContext& ctx) {  // NOLINT
     LOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::NodeManager nm;
-    ::fesql::node::NodePointVector  trees;
+    ::fesql::node::NodePointVector trees;
     bool ok = Parse(ctx.sql, nm, trees);
     if (!ok) {
         return false;
@@ -48,7 +47,8 @@ bool SQLCompiler::Compile(SQLContext& ctx) { //NOLINT
         return false;
     }
 
-    ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(FeSQLJITBuilder().create());
+    ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
+        FeSQLJITBuilder().create());
     if (jit_expected.takeError()) {
         LOG(WARNING) << "fail to init jit let";
         return false;
@@ -56,21 +56,26 @@ bool SQLCompiler::Compile(SQLContext& ctx) { //NOLINT
     ctx.jit = std::move(*jit_expected);
     ::llvm::orc::JITDylib& jd = ctx.jit->createJITDylib("sql");
     ::llvm::orc::VModuleKey key = ctx.jit->CreateVModule();
-    ::llvm::Error e = ctx.jit->AddIRModule(jd, std::move(::llvm::orc::ThreadSafeModule(std::move(m),
-                    std::move(llvm_ctx))), key);
+    ::llvm::Error e =
+        ctx.jit->AddIRModule(jd,
+                             std::move(::llvm::orc::ThreadSafeModule(
+                                 std::move(m), std::move(llvm_ctx))),
+                             key);
     if (e) {
         LOG(WARNING) << "fail to add ir module  for sql " << ctx.sql;
         return false;
     }
 
-    std::vector<OpNode* >::iterator it = ctx.ops.ops.begin();
+    std::vector<OpNode*>::iterator it = ctx.ops.ops.begin();
     for (; it != ctx.ops.ops.end(); ++it) {
         OpNode* op_node = *it;
         if (op_node->type == kOpProject) {
             ProjectOp* pop = (ProjectOp*)op_node;
-            ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(ctx.jit->lookup(jd, pop->fn_name));
+            ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
+                ctx.jit->lookup(jd, pop->fn_name));
             if (symbol.takeError()) {
-                LOG(WARNING) << "fail to find fn with name  " << pop->fn_name << " for sql" << ctx.sql;
+                LOG(WARNING) << "fail to find fn with name  " << pop->fn_name
+                             << " for sql" << ctx.sql;
             }
             pop->fn = (int8_t*)symbol->getAddress();
             ctx.schema = pop->output_schema;
@@ -81,13 +86,14 @@ bool SQLCompiler::Compile(SQLContext& ctx) { //NOLINT
 }
 
 bool SQLCompiler::Parse(const std::string& sql,
-        ::fesql::node::NodeManager& node_mgr,
-        ::fesql::node::NodePointVector& trees) {
+                        ::fesql::node::NodeManager& node_mgr,
+                        ::fesql::node::NodePointVector& trees) {
     ::fesql::parser::FeSQLParser parser;
     ::fesql::base::Status status;
     int ret = parser.parse(sql, trees, &node_mgr, status);
     if (ret != 0) {
-        LOG(WARNING) << "fail to parse sql " << sql << " with error " << status.msg;
+        LOG(WARNING) << "fail to parse sql " << sql << " with error "
+                     << status.msg;
         return false;
     }
     return true;
