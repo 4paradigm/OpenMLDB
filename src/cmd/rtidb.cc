@@ -1321,6 +1321,10 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             return;
         } 
     } else {
+        if (parts.size() < 6) {
+            std::cout << "scan format error. eg: scan table_name key col_name start_time end_time [limit]" << std::endl;
+            return;
+        }
         std::vector<::rtidb::base::ColumnDesc> columns;
         if (tables[0].added_column_desc_size() > 0) {
             if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns, tables[0].added_column_desc_size()) < 0) {
@@ -1337,8 +1341,13 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         std::string msg;
         if (!is_pair_format) {
             index_name = parts[3];
-            st = boost::lexical_cast<uint64_t>(parts[4]);
-            et = boost::lexical_cast<uint64_t>(parts[5]);
+            try {
+                st = boost::lexical_cast<uint64_t>(parts[4]);
+                et = boost::lexical_cast<uint64_t>(parts[5]);
+            } catch(boost::bad_lexical_cast) {
+                std::cout << "scan format error. eg: scan table_name key col_name start_time end_time [limit]" << std::endl;
+                return;
+            }
             if (parts.size() > 6) {
                 limit = boost::lexical_cast<uint32_t>(parts[6]);
             }
