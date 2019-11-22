@@ -18,10 +18,12 @@ const char SPACE_ST[] = "+-";
 const char SPACE_ED[] = "";
 const char OR_INDENT[] = "|\t";
 const char INDENT[] = " \t";
+
 enum SQLNodeType {
     // SQL
     kSelectStmt = 0,
     kCreateStmt,
+    kInsertStmt,
     kCmdStmt,
     kExpr,
     kResTarget,
@@ -67,12 +69,13 @@ enum ExprType {
     kExprBinary,
     kExprUnary,
     kExprIn,
-    kExprFunc,
+    kExprCall,
     kExprCase,
     kExprCast,
     kExprId,
     kExprColumnRef,
     kExprPrimary,
+    kExprList,
     kExprAll,
     kExprUnknow
 };
@@ -126,6 +129,7 @@ enum PlanType {
     kPlanTypeCmd,
     kPlanTypeSelect,
     kPlanTypeCreate,
+    kPlanTypeInsert,
     kPlanTypeScan,
     kPlanTypeLimit,
     kPlanTypeFilter,

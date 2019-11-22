@@ -36,12 +36,6 @@ class NodeManager {
             plan_node_ite = plan_node_list_.erase(plan_node_ite);
         }
 
-        for (auto linked_node_ite = linked_node_list_.begin();
-             linked_node_ite != linked_node_list_.end(); ++linked_node_ite) {
-            delete (*linked_node_ite);
-            linked_node_ite = linked_node_list_.erase(linked_node_ite);
-        }
-
         for (auto sql_node_list_iter = sql_node_list_list_.begin();
              sql_node_list_iter != sql_node_list_list_.end();
              ++sql_node_list_iter) {
@@ -89,6 +83,9 @@ class NodeManager {
     SQLNode *MakeLimitNode(int count);
 
     SQLNode *MakeNameNode(const std::string &name);
+    SQLNode *MakeInsertTableNode(const std::string &table_name,
+                                 const ExprListNode* column_names,
+                                 const ExprListNode* values);
     SQLNode *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &table_name,
                                  SQLNodeList *column_desc_list);
@@ -139,9 +136,9 @@ class NodeManager {
     // Make NodeList
     SQLNodeList *MakeNodeList(SQLNode *node_ptr);
     SQLNodeList *MakeNodeList();
-    // Make Linked Node
-    SQLLinkedNode *MakeLinkedNode(SQLNode *node_ptr);
-    SQLNode *MakeNode(SQLNodeType type);
+
+    ExprListNode *MakeExprList(ExprNode *node_ptr);
+    ExprListNode *MakeExprList();
 
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {
@@ -168,14 +165,8 @@ class NodeManager {
         return node_ptr;
     }
 
-    SQLLinkedNode *RegisterNode(SQLLinkedNode *node_ptr) {
-        linked_node_list_.push_back(node_ptr);
-        return node_ptr;
-    }
-
     std::list<SQLNode *> parser_node_list_;
     std::list<SQLNodeList *> sql_node_list_list_;
-    std::list<SQLLinkedNode *> linked_node_list_;
     std::list<node::PlanNode *> plan_node_list_;
 };
 

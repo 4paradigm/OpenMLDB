@@ -11,8 +11,12 @@ enum StatusCode {
     kNoDatabase = 14;
     kTableNotFound = 15;
     kTablePutFailed = 16;
+    kNullPointer = 17;
     kConnError = 20;
     kSQLError = 30;
+    kCallMethodError = 31;
+    kFunError = 40;
+    kCodegenError = 50;
 }
 
 message Status {

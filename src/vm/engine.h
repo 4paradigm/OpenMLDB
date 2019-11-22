@@ -18,6 +18,15 @@
 #ifndef SRC_VM_ENGINE_H_
 #define SRC_VM_ENGINE_H_
 
+<<<<<<< HEAD
+=======
+#include "vm/table_mgr.h"
+#include "vm/sql_compiler.h"
+#include "base/spin_lock.h"
+#include "proto/common.pb.h"
+#include <memory>
+#include <mutex>
+>>>>>>> origin/develop
 #include <map>
 #include <memory>
 #include <vector>
@@ -72,8 +81,10 @@ class Engine {
 
     ~Engine();
 
-    bool Get(const std::string& db, const std::string& sql,
-             RunSession& session);  // NOLINT
+    bool Get(const std::string& db,
+             const std::string& sql, 
+             RunSession& session,  // NOLINT
+             common::Status &status);  // NOLINT
 
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);

@@ -47,6 +47,8 @@ class Planner {
                                Status &status);  // NOLINT (runtime/references)
     void CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan_tree,
                        Status &status);  // NOLINT (runtime/references)
+    void CreateInsertPlan(const SQLNode *root, node::InsertPlanNode*plan_tree,
+                       Status &status);  // NOLINT (runtime/references)
     void CreateDataProviderPlanNode(
         const node::SQLNode *root, PlanNode *plan_tree,
         Status &status);  // NOLINT (runtime/references)

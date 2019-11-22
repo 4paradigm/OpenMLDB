@@ -15,12 +15,6 @@ target_link_libraries(sql_node_test fesql_node ${COMMON_LIBS} gtest pthread)
 add_test(sql_node_test sql_node_test --gtest_output=xml:${CMAKE_BINARY_DIR}/sql_node_test.xml)
 list(APPEND test_list sql_node_test)
 
-add_executable(sql_list_node_test sql_list_node_test.cc)
-target_link_libraries(sql_list_node_test fesql_node ${COMMON_LIBS} gtest pthread)
-add_test(sql_list_node_test sql_list_node_test --gtest_output=xml:${CMAKE_BINARY_DIR}/sql_list_node_test.xml)
-list(APPEND test_list sql_list_node_test)
-
-
 add_executable(plan_node_test plan_node_test.cc)
 target_link_libraries(plan_node_test fesql_node gtest ${COMMON_LIBS} pthread)
 add_test(plan_node_test plan_node_test --gtest_output=xml:${CMAKE_BINARY_DIR}/plan_node_test.xml)

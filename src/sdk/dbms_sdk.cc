@@ -31,7 +31,8 @@ class DBMSSdkImpl : public DBMSSdk {
     explicit DBMSSdkImpl(const std::string &endpoint);
     ~DBMSSdkImpl();
     bool Init();
-    void CreateGroup(const GroupDef &group, base::Status &status) // NOLINT (runtime/references)
+    void CreateGroup(const GroupDef &group,
+                     base::Status &status)  // NOLINT (runtime/references)
         override;
     void CreateDatabase(const DatabaseDef &database,
                         base::Status &status);  // NOLINT (runtime/references)
@@ -39,12 +40,16 @@ class DBMSSdkImpl : public DBMSSdk {
                          base::Status &status);  // NOLINT (runtime/references)
 
     void GetSchema(const DatabaseDef &database, const std::string &name,
-                   type::TableDef &table, base::Status &status) // NOLINT (runtime/references)
+                   type::TableDef &table,
+                   base::Status &status)  // NOLINT (runtime/references)
         override;
-    void GetTables(const DatabaseDef &database, std::vector<std::string> &names, // NOLINT (runtime/references)
-                   base::Status &status);  // NOLINT (runtime/references)
-    void GetDatabases(std::vector<std::string> &names, // NOLINT (runtime/references)
-                      base::Status &status);  // NOLINT (runtime/references)
+    void GetTables(
+        const DatabaseDef &database,
+        std::vector<std::string> &names,  // NOLINT (runtime/references)
+        base::Status &status);            // NOLINT (runtime/references)
+    void GetDatabases(
+        std::vector<std::string> &names,  // NOLINT (runtime/references)
+        base::Status &status);            // NOLINT (runtime/references)
     void ExecuteScript(
         const ExecuteRequst &request, ExecuteResult &result,
         base::Status &status) override;  // NOLINT (runtime/references)
@@ -156,6 +161,8 @@ void DBMSSdkImpl::ExecuteScript(
     analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
 
+    DLOG(INFO) <<"start to execute script from dbms:\n"
+    << request.sql;
     // TODO(chenjing): init with db
     node::NodePointVector parser_trees;
     parser.parse(request.sql, parser_trees, &node_manager, status);
@@ -214,6 +221,7 @@ void DBMSSdkImpl::ExecuteScript(
             }
             return;
         }
+
         default: {
             status.msg = "fail to execute script with unSuppurt type" +
                          node::NameOfPlanNodeType(plan->GetType());

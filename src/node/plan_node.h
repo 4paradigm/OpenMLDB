@@ -245,6 +245,22 @@ class CmdPlanNode : public LeafPlanNode {
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
 };
+
+class InsertPlanNode : public LeafPlanNode {
+ public:
+    InsertPlanNode() : LeafPlanNode(kPlanTypeInsert), insert_node_(nullptr) {}
+    ~InsertPlanNode() {}
+    void SetInsertNode(const InsertStmt* node) {
+        insert_node_ = node;
+    }
+
+    const InsertStmt* GetInsertNode() const {
+        return insert_node_;
+    }
+
+ private:
+    const InsertStmt *insert_node_;
+};
 void PrintPlanVector(std::ostream &output, const std::string &tab,
                      PlanNodeList vec, const std::string vector_name,
                      bool last_item);

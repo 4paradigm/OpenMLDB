@@ -16,6 +16,7 @@
  */
 
 #include "codegen/expr_ir_builder.h"
+#include <proto/common.pb.h>
 #include "glog/logging.h"
 
 namespace fesql {
@@ -51,9 +52,9 @@ bool SQLExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             col_name.assign(n->GetColumnName());
             return BuildColumnRef(n, output);
         }
-        case ::fesql::node::kExprFunc: {
-            const ::fesql::node::FuncNode* fn =
-                (const ::fesql::node::FuncNode*)node;
+        case ::fesql::node::kExprCall: {
+            const ::fesql::node::CallExprNode* fn =
+                (const ::fesql::node::CallExprNode*)node;
             return BuildCallFn(fn, output);
         }
         default: {
@@ -63,10 +64,14 @@ bool SQLExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
     }
 }
 
-bool SQLExprIRBuilder::BuildCallFn(const ::fesql::node::FuncNode* call_fn,
+bool SQLExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
                                    ::llvm::Value** output) {
+    //TODO(chenjing): return status;
+    common::Status status;
     if (call_fn == NULL || output == NULL) {
         LOG(WARNING) << "call fn or output is null";
+        status.set_code(common::kNullPointer);
+        status.set_msg("null pointer");
         return false;
     }
 
@@ -75,12 +80,19 @@ bool SQLExprIRBuilder::BuildCallFn(const ::fesql::node::FuncNode* call_fn,
     ::llvm::Function* fn = module_->getFunction(name);
 
     if (fn == NULL) {
-        LOG(WARNING) << "fail to find func with name "
-                     << call_fn->GetFunctionName();
-        return true;
+        status.set_code(common::kCallMethodError);
+        status.set_msg("fail to find func with name " + call_fn->GetFunctionName());
+        LOG(WARNING) << status.msg();
+        return false;
     }
 
     const std::vector<::fesql::node::SQLNode*>& args = call_fn->GetArgs();
+    if (args.size() != fn->arg_size()) {
+        status.set_msg("Incorrect arguments passed");
+        status.set_code(common::kCallMethodError);
+        return false;
+    }
+
     std::vector<::fesql::node::SQLNode*>::const_iterator it = args.begin();
     std::vector<::llvm::Value*> llvm_args;
 

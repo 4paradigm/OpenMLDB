@@ -28,6 +28,16 @@ message CreateTableResponse {
     optional common.Status status = 1;
 }
 
+message GetTablesSchemaRequest {
+    optional string db = 1;
+    optional string name = 2;
+}
+
+message GetTableSchemaReponse {
+    optional string name = 1;
+    optional type.TableDef schema = 2;
+    optional common.Status status = 3;
+}
 message InsertRequest {
     optional string db = 1;
     optional string table = 2;
@@ -41,7 +51,8 @@ message InsertResponse {
 }
 
 service TabletServer {
-    rpc CreateTable(CreateTableRequest) returns(CreateTableResponse);
-    rpc Query(QueryRequest) returns(QueryResponse);
-    rpc Insert(InsertRequest) returns(InsertResponse);
+    rpc GetTableSchema (GetTablesSchemaRequest) returns (GetTableSchemaReponse);
+    rpc CreateTable (CreateTableRequest) returns (CreateTableResponse);
+    rpc Query (QueryRequest) returns (QueryResponse);
+    rpc Insert (InsertRequest) returns (InsertResponse);
 }

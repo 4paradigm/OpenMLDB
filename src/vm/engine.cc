@@ -30,7 +30,8 @@ Engine::Engine(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
 Engine::~Engine() {}
 
 bool Engine::Get(const std::string& sql, const std::string& db,
-                 RunSession& session) {
+                 RunSession& session,
+                 common::Status& status) {  // NOLINT (runtime/references)
     {
         std::shared_ptr<CompileInfo> info = GetCacheLocked(db, sql);
         if (info) {
@@ -44,8 +45,8 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     info->sql_ctx.sql = sql;
     info->sql_ctx.db = db;
     SQLCompiler compiler(table_mgr_);
-    bool ok = compiler.Compile(info->sql_ctx);
-    if (!ok) {
+    bool ok = compiler.Compile(info->sql_ctx, status);
+    if (!ok || 0 != status.code()) {
         // do clean
         return false;
     }
@@ -117,6 +118,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                    << 2 + project_op->output_size;
         int8_t* output =
             reinterpret_cast<int8_t*>(malloc(2 + project_op->output_size));
+
         int8_t* row =
             reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
         uint32_t ret = udf(row, output + 2);

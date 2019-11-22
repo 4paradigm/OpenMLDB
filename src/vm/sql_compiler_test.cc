@@ -95,7 +95,8 @@ TEST_F(SQLCompilerTest, test_normal) {
     SQLCompiler sql_compiler(&table_mgr);
     SQLContext sql_context;
     sql_context.sql = sql;
-    bool ok = sql_compiler.Compile(sql_context);
+    common::Status compile_status;
+    bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
 }
 

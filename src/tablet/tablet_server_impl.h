@@ -66,6 +66,10 @@ class TabletServerImpl : public TabletServer, public vm::TableMgr {
                 const InsertRequest* request,
                 InsertResponse* response,
                 Closure* done);
+    void GetTableSchema(RpcController* ctrl,
+                const GetTablesSchemaRequest* request,
+                GetTableSchemaReponse* response,
+                Closure* done);
 
    std::shared_ptr<vm::TableStatus> GetTableDef(const std::string& db,
                                             const std::string& name) ;

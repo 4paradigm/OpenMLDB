@@ -23,6 +23,7 @@
 #include "llvm/IR/Module.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "proto/common.pb.h"
 #include "vm/op.h"
 #include "vm/table_mgr.h"
 
@@ -41,14 +42,16 @@ class OpGenerator {
     ~OpGenerator();
 
     bool Gen(const ::fesql::node::NodePointVector& trees, const std::string& db,
-             ::llvm::Module* module, OpVector* ops);
+             ::llvm::Module* module, OpVector* ops, common::Status& status);
 
  private:
+
     bool GenFnDef(::llvm::Module* module,
                   const ::fesql::node::FnNodeList* node);
 
     bool GenSQL(const ::fesql::node::NodePointVector& node,
-                const std::string& db, ::llvm::Module* module, OpVector* ops);
+                const std::string& db, ::llvm::Module* module, OpVector* ops,
+                common::Status& status);
 
     bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
                     const std::string& db, ::llvm::Module* module,

@@ -23,24 +23,24 @@
 
 namespace fesql {
 namespace vm {
+using ::fesql::common::Status;
 
 SQLCompiler::SQLCompiler(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
 
 SQLCompiler::~SQLCompiler() {}
 
-bool SQLCompiler::Compile(SQLContext& ctx) {  // NOLINT
+bool SQLCompiler::Compile(SQLContext& ctx, Status &status) { //NOLINT
     LOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::NodeManager nm;
-    ::fesql::node::NodePointVector trees;
-    bool ok = Parse(ctx.sql, nm, trees);
+    ::fesql::node::NodePointVector  trees;
+    bool ok = Parse(ctx.sql, nm, trees, status);
     if (!ok) {
         return false;
     }
-
     OpGenerator op_generator(table_mgr_);
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
-    ok = op_generator.Gen(trees, ctx.db, m.get(), &ctx.ops);
+    ok = op_generator.Gen(trees, ctx.db, m.get(), &ctx.ops, status);
     // TODO(wangtaize) clean ctx
     if (!ok) {
         LOG(WARNING) << "fail to generate operators for sql " << ctx.sql;
@@ -53,6 +53,7 @@ bool SQLCompiler::Compile(SQLContext& ctx) {  // NOLINT
         LOG(WARNING) << "fail to init jit let";
         return false;
     }
+
     ctx.jit = std::move(*jit_expected);
     ::llvm::orc::JITDylib& jd = ctx.jit->createJITDylib("sql");
     ::llvm::orc::VModuleKey key = ctx.jit->CreateVModule();
@@ -86,14 +87,15 @@ bool SQLCompiler::Compile(SQLContext& ctx) {  // NOLINT
 }
 
 bool SQLCompiler::Parse(const std::string& sql,
-                        ::fesql::node::NodeManager& node_mgr,
-                        ::fesql::node::NodePointVector& trees) {
+        ::fesql::node::NodeManager& node_mgr,
+        ::fesql::node::NodePointVector& trees, Status &status) {
     ::fesql::parser::FeSQLParser parser;
-    ::fesql::base::Status status;
-    int ret = parser.parse(sql, trees, &node_mgr, status);
+    ::fesql::base::Status parse_status;
+    int ret = parser.parse(sql, trees, &node_mgr, parse_status);
     if (ret != 0) {
-        LOG(WARNING) << "fail to parse sql " << sql << " with error "
-                     << status.msg;
+        LOG(WARNING) << "fail to parse sql " << sql << " with error " << parse_status.msg;
+        status.set_msg(parse_status.msg);
+        status.set_code(common::kSQLError);
         return false;
     }
     return true;

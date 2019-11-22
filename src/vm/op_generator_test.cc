@@ -105,7 +105,8 @@ TEST_F(OpGeneratorTest, test_normal) {
     ASSERT_EQ(2, list.size());
 
     OpVector op;
-    bool ok = generator.Gen(list, "db", m.get(), &op);
+    common::Status op_status;
+    bool ok = generator.Gen(list, "db", m.get(), &op, op_status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
     ASSERT_EQ(3, op.ops.size());

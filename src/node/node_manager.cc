@@ -9,6 +9,7 @@
 
 #include "node/node_manager.h"
 #include <string>
+#include <vector>
 
 namespace fesql {
 namespace node {
@@ -24,7 +25,7 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
         case kTable:
             return RegisterNode(new TableNode());
         case kWindowFunc:
-            return RegisterNode(new FuncNode());
+            return RegisterNode(new CallExprNode());
         case kWindowDef:
             return RegisterNode(new WindowDefNode());
         case kFrameBound:
@@ -133,7 +134,7 @@ ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
 
 ExprNode *NodeManager::MakeFuncNode(const std::string &name,
                                     SQLNodeList *list_ptr, SQLNode *over) {
-    FuncNode *node_ptr = new FuncNode(name);
+    CallExprNode *node_ptr = new CallExprNode(name);
     FillSQLNodeList2NodeVector(list_ptr, node_ptr->GetArgs());
     node_ptr->SetOver(dynamic_cast<WindowDefNode *>(over));
     return RegisterNode(node_ptr);
@@ -208,44 +209,41 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
 }
 
 SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *index_item_list) {
-    ColumnIndexNode *node_ptr = new ColumnIndexNode();
+    ColumnIndexNode *index_ptr = new ColumnIndexNode();
     if (nullptr != index_item_list && 0 != index_item_list->GetSize()) {
-        SQLLinkedNode *cur = index_item_list->GetHead();
-        while (nullptr != cur && nullptr != cur->node_ptr_) {
-            switch (cur->node_ptr_->GetType()) {
+        for (auto node_ptr : index_item_list->GetList()) {
+            switch (node_ptr->GetType()) {
                 case kIndexKey:
-                    node_ptr->SetKey(
-                        dynamic_cast<IndexKeyNode *>(cur->node_ptr_)->GetKey());
+                    index_ptr->SetKey(
+                        dynamic_cast<IndexKeyNode *>(node_ptr)->GetKey());
                     break;
                 case kIndexTs:
-                    node_ptr->SetTs(dynamic_cast<IndexTsNode *>(cur->node_ptr_)
-                                        ->GetColumnName());
+                    index_ptr->SetTs(
+                        dynamic_cast<IndexTsNode *>(node_ptr)->GetColumnName());
                     break;
                 case kIndexVersion:
-                    node_ptr->SetVersion(
-                        dynamic_cast<IndexVersionNode *>(cur->node_ptr_)
+                    index_ptr->SetVersion(
+                        dynamic_cast<IndexVersionNode *>(node_ptr)
                             ->GetColumnName());
 
-                    node_ptr->SetVersionCount(
-                        dynamic_cast<IndexVersionNode *>(cur->node_ptr_)
-                            ->GetCount());
+                    index_ptr->SetVersionCount(
+                        dynamic_cast<IndexVersionNode *>(node_ptr)->GetCount());
                     break;
                 case kIndexTTL: {
                     IndexTTLNode *ttl_node =
-                        dynamic_cast<IndexTTLNode *>(cur->node_ptr_);
-                    node_ptr->SetTTL(ttl_node->GetTTLExpr());
+                        dynamic_cast<IndexTTLNode *>(node_ptr);
+                    index_ptr->SetTTL(ttl_node->GetTTLExpr());
                     break;
                 }
                 default: {
                     LOG(WARNING) << "can not handle type "
-                                 << NameOfSQLNodeType(cur->node_ptr_->GetType())
+                                 << NameOfSQLNodeType(node_ptr->GetType())
                                  << " for column index";
                 }
             }
-            cur = cur->next_;
         }
     }
-    return RegisterNode(node_ptr);
+    return RegisterNode(index_ptr);
 }
 SQLNode *NodeManager::MakeColumnIndexNode(SQLNodeList *keys, SQLNode *ts,
                                           SQLNode *ttl, SQLNode *version) {
@@ -266,18 +264,23 @@ SQLNodeList *NodeManager::MakeNodeList() {
     return new_list_ptr;
 }
 
-SQLNodeList *NodeManager::MakeNodeList(SQLNode *node_ptr) {
-    SQLLinkedNode *linked_node_ptr = MakeLinkedNode(node_ptr);
-    SQLNodeList *new_list_ptr =
-        new SQLNodeList(linked_node_ptr, linked_node_ptr, 1);
+SQLNodeList *NodeManager::MakeNodeList(SQLNode *node) {
+    SQLNodeList *new_list_ptr = new SQLNodeList();
+    new_list_ptr->PushBack(node);
     RegisterNode(new_list_ptr);
     return new_list_ptr;
 }
 
-SQLLinkedNode *NodeManager::MakeLinkedNode(SQLNode *node_ptr) {
-    SQLLinkedNode *linked_node_ptr = new SQLLinkedNode(node_ptr);
-    RegisterNode(linked_node_ptr);
-    return linked_node_ptr;
+ExprListNode *NodeManager::MakeExprList() {
+    ExprListNode *new_list_ptr = new ExprListNode();
+    RegisterNode(new_list_ptr);
+    return new_list_ptr;
+}
+ExprListNode *NodeManager::MakeExprList(ExprNode *expr_node) {
+    ExprListNode *new_list_ptr = new ExprListNode();
+    new_list_ptr->AddChild(expr_node);
+    RegisterNode(new_list_ptr);
+    return new_list_ptr;
 }
 
 PlanNode *NodeManager::MakeLeafPlanNode(const PlanType &type) {
@@ -343,6 +346,9 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
             break;
         case kPlanTypeCmd:
             node_ptr = new CmdPlanNode();
+            break;
+        case kPlanTypeInsert:
+            node_ptr = new InsertPlanNode();
             break;
         default:
             node_ptr = new LeafPlanNode(kUnknowPlan);
@@ -428,8 +434,36 @@ SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
     return RegisterNode(node_ptr);
 }
 ExprNode *NodeManager::MakeAllNode(const std::string &relation_name) {
-    ExprNode * node_ptr = new AllNode(relation_name);
+    ExprNode *node_ptr = new AllNode(relation_name);
     return RegisterNode(node_ptr);
+}
+SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
+                                          const ExprListNode *columns_expr,
+                                          const ExprListNode *values) {
+    if (nullptr == columns_expr) {
+        InsertStmt *node_ptr = new InsertStmt(table_name, values->children);
+        return RegisterNode(node_ptr);
+    } else {
+        std::vector<std::string> column_names;
+        for (auto expr : columns_expr->children) {
+            switch (expr->GetExprType()) {
+                case kExprColumnRef: {
+                    ColumnRefNode *column_ref =
+                        dynamic_cast<ColumnRefNode *>(expr);
+                    column_names.push_back(column_ref->GetColumnName());
+                    break;
+                }
+                default: {
+                    LOG(WARNING)
+                        << "Can't not handle insert column name with type"
+                        << ExprTypeName(expr->GetExprType());
+                }
+            }
+        }
+        InsertStmt *node_ptr =
+            new InsertStmt(table_name, column_names, values->children);
+        return RegisterNode(node_ptr);
+    }
 }
 
 }  // namespace node

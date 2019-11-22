@@ -144,13 +144,16 @@ INSTANTIATE_TEST_CASE_P(
                     ");"));
 
 INSTANTIATE_TEST_CASE_P(
-    SQLCmdParserTest, SqlParserTest,
-    testing::Values("CREATE DATABASE db1;",
-                    "CREATE TABLE \"schema.sql\";",
-                    "CREATE GROUP group1;",
-                    "DESC t1;",
-                    "SHOW TABLES;",
-                    "SHOW DATABASES;"));
+    SQLInsert, SqlParserTest,
+    testing::Values("insert into t1 values(1, 2, 3.1, \"string\");",
+                    "insert into t1 (col1, col2, col3, col4) values(1, 2, 3.1, "
+                    "\"string\");"));
+
+INSTANTIATE_TEST_CASE_P(SQLCmdParserTest, SqlParserTest,
+                        testing::Values("CREATE DATABASE db1;",
+                                        "CREATE TABLE \"schema.sql\";",
+                                        "CREATE GROUP group1;", "DESC t1;",
+                                        "SHOW TABLES;", "SHOW DATABASES;"));
 
 INSTANTIATE_TEST_CASE_P(
     SQLAndUDFParse, SqlParserTest,
@@ -174,11 +177,86 @@ TEST_P(SqlParserTest, Parser_Select_Expr_List) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     if (0 != status.code) {
-        std::cout<< status.msg << std::endl;
+        std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(0, ret);
     //    ASSERT_EQ(1, trees.size());
     std::cout << *(trees.front()) << std::endl;
+}
+
+TEST_F(SqlParserTest, Parser_Insert_ALL_Stmt) {
+    const std::string sqlstr =
+        "insert into t1 values(1, 2.3, 3.1, \"string\");";
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
+
+    if (0 != ret) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, trees.size());
+    std::cout << *(trees.front()) << std::endl;
+    ASSERT_EQ(node::kInsertStmt, trees[0]->GetType());
+    node::InsertStmt *insert_stmt = dynamic_cast<node::InsertStmt *>(trees[0]);
+
+    ASSERT_EQ(true, insert_stmt->is_all_);
+    ASSERT_EQ(
+        dynamic_cast<node::ConstNode *>(insert_stmt->values_[0])->GetInt(), 1);
+    ASSERT_EQ(
+        dynamic_cast<node::ConstNode *>(insert_stmt->values_[1])->GetDouble(),
+        2.3);
+    ASSERT_EQ(
+        dynamic_cast<node::ConstNode *>(insert_stmt->values_[2])->GetDouble(),
+        3.1);
+    ASSERT_STREQ(
+        dynamic_cast<node::ConstNode *>(insert_stmt->values_[3])->GetStr(),
+        "string");
+}
+
+TEST_F(SqlParserTest, Parser_Insert_Stmt) {
+    const std::string sqlstr =
+        "insert into t1(col1, c2, column3, item4) values(1, 2.3, 3.1, "
+        "\"string\");";
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
+
+    if (0 != ret) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, trees.size());
+    std::cout << *(trees.front()) << std::endl;
+    ASSERT_EQ(node::kInsertStmt, trees[0]->GetType());
+    node::InsertStmt *insert_stmt = dynamic_cast<node::InsertStmt *>(trees[0]);
+
+    ASSERT_EQ(false, insert_stmt->is_all_);
+    ASSERT_EQ(std::vector<std::string>({"col1", "c2", "column3", "item4"}),
+              insert_stmt->columns_);
+    ASSERT_EQ(
+        dynamic_cast<node::ConstNode *>(insert_stmt->values_[0])->GetInt(), 1);
+    ASSERT_EQ(
+        dynamic_cast<node::ConstNode *>(insert_stmt->values_[1])->GetDouble(),
+        2.3);
+    ASSERT_EQ(
+        dynamic_cast<node::ConstNode *>(insert_stmt->values_[2])->GetDouble(),
+        3.1);
+    ASSERT_STREQ(
+        dynamic_cast<node::ConstNode *>(insert_stmt->values_[3])->GetStr(),
+        "string");
+    //
+    //
+    //    ASSERT_EQ(false, insert_stmt->is_all_);
+    //    ASSERT_EQ(std::vector<std::string>({"col1", "col2", "col3"}),
+    //              insert_stmt->columns_);
+    //
+    //    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[0])->GetInt(),
+    //    1);
+    //    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[1])->GetFloat(),
+    //    2.3f);
+    //    ASSERT_EQ(dynamic_cast<ConstNode*>(insert_stmt->values_[2])->GetDouble(),
+    //    2.3);
 }
 
 TEST_F(SqlParserTest, Parser_Create_Stmt) {
