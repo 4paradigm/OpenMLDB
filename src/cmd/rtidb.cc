@@ -1301,19 +1301,18 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         return;
     }
     if (tables[0].column_desc_size() == 0 && tables[0].column_desc_v1_size() == 0) {
-        ::rtidb::base::KvIterator* it;
+        ::rtidb::base::KvIterator* it = NULL;
         std::string msg;
         if(is_pair_format) {
             it = tablet_client->Scan(tid, pid, key, st, et, limit, msg);
         } else {
             try {
+                st = boost::lexical_cast<uint64_t>(parts[3]);
+                et = boost::lexical_cast<uint64_t>(parts[4]);
                 if (parts.size() > 5) {
                     limit = boost::lexical_cast<uint32_t>(parts[5]);
                 }
-                it = tablet_client->Scan(tid, pid, key,  
-                    boost::lexical_cast<uint64_t>(parts[3]), 
-                    boost::lexical_cast<uint64_t>(parts[4]),
-                    limit, msg);
+                it = tablet_client->Scan(tid, pid, key, st, et, limit, msg);
             } catch (std::exception const& e) {
                 printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
                 return;
