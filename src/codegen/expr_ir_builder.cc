@@ -25,11 +25,13 @@ SQLExprIRBuilder::SQLExprIRBuilder(::llvm::BasicBlock* block,
                                    ScopeVar* scope_var,
                                    BufIRBuilder* buf_ir_builder,
                                    const std::string& row_ptr_name,
+                                   const std::string& row_size_name,
                                    const std::string& output_ptr_name,
                                    ::llvm::Module* module)
     : block_(block),
       sv_(scope_var),
       row_ptr_name_(row_ptr_name),
+      row_size_name_(row_size_name),
       output_ptr_name_(output_ptr_name),
       buf_ir_builder_(buf_ir_builder),
       module_(module) {}
@@ -123,14 +125,20 @@ bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
         LOG(WARNING) << "fail to find row ptr with name " << row_ptr_name_;
         return false;
     }
-
+    ::llvm::Value* row_size = NULL;
+    ok = sv_->FindVar(row_size_name_, &row_size);
+    if (!ok || row_size == NULL) {
+        LOG(WARNING) << "fail to find row size with name " << row_size_name_;
+        return false;
+    }
     ::llvm::Value* value = NULL;
     ok = sv_->FindVar(node->GetColumnName(), &value);
     LOG(INFO) << "get table column " << node->GetColumnName();
     // not found
     if (!ok) {
-        // TODO(wangtaize) buf ir builder add build get field ptr
-        ok = buf_ir_builder_->BuildGetField(node->GetColumnName(), row_ptr,
+        ok = buf_ir_builder_->BuildGetField(node->GetColumnName(),
+                                            row_ptr,
+                                            row_size,
                                             &value);
         if (!ok || value == NULL) {
             LOG(WARNING) << "fail to find column " << node->GetColumnName();
@@ -141,6 +149,7 @@ bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
         if (ok) {
             *output = value;
         }
+
         return ok;
     } else {
         *output = value;

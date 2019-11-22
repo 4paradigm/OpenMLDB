@@ -34,6 +34,7 @@ class SQLExprIRBuilder {
             ScopeVar* scope_var,
             BufIRBuilder* buf_ir_builder,
             const std::string& row_ptr_name,
+            const std::string& row_size_name,
             const std::string& output_ptr_name,
             ::llvm::Module* module);
 
@@ -58,6 +59,7 @@ class SQLExprIRBuilder {
     std::string output_ptr_name_;
     BufIRBuilder* buf_ir_builder_;
     ::llvm::Module* module_;
+    std::string row_size_name_;
 };
 
 class ExprIRBuilder {

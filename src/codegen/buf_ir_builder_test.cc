@@ -113,12 +113,6 @@ TEST_F(BufIRBuilderTest, test_load_int32) {
     *((float*)(ptr +2+ 4 + 2)) = 3.1f;
     *((double*)(ptr +2+ 4 + 2 + 4)) = 4.1;
     *((int64_t*)(ptr +2+ 4 + 2 + 4 + 8)) = 5;
-    std::cout << *(int16_t*)(ptr) << std::endl;
-    std::cout << *(int32_t*)(ptr + 2) << std::endl;
-    std::cout << *(int16_t*)(ptr + 2 + 4) << std::endl;
-    std::cout << *(float*)(ptr + 2 + 4 + 2) << std::endl;
-    std::cout << *(double*)(ptr + 2 + 4 + 2+4) << std::endl;
-    std::cout << *(int64_t*)(ptr + 2 + 4 + 2 +4+8) << std::endl;
     int32_t ret = decode(ptr);
     ASSERT_EQ(ret, 1);
 }
