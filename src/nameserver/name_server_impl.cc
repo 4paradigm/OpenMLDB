@@ -2355,6 +2355,7 @@ void NameServerImpl::DropTable(RpcController* controller,
         return;
     }
     if (follower_.load(std::memory_order_acquire)) {
+        std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
             response->set_msg("nameserver is follower");
@@ -2661,6 +2662,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         return;
     }
     if (follower_.load(std::memory_order_acquire)) {
+        std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
             response->set_msg("nameserver is follower");
