@@ -920,50 +920,16 @@ int NameServerImpl::UpdateTaskStatusForReplicaCluster(bool is_recover_op) {
                 PDLOG(DEBUG, "task_rpc_version mismatch");
                 break;
             }
+            std::string endpoint = iter->first;
             uint32_t index = 0;
             for (const auto& op_list : task_vec_) {
                 index++;
                 if (index <= FLAGS_name_server_task_max_concurrency) {
                     continue;
                 }
-                if (op_list.empty()) {
+                std::string msg = "replica cluster";
+                if (UpdateTask(op_list, endpoint, msg, is_recover_op, response) < 0) {
                     continue;
-                }
-                std::shared_ptr<OPData> op_data = op_list.front();
-                if (op_data->task_list_.empty()) {
-                    continue;
-                }
-                // update task status
-                std::shared_ptr<Task> task = op_data->task_list_.front();
-                if (task->task_info_->status() != ::rtidb::api::kDoing) {
-                    continue;
-                }
-                bool has_op_task = false;
-                for (int idx = 0; idx < response.task_size(); idx++) {
-                    if (op_data->op_info_.op_id() == response.task(idx).op_id() &&
-                           task->task_info_->task_type() == response.task(idx).task_type()) {
-                        has_op_task = true;
-                        if (response.task(idx).status() != ::rtidb::api::kInited &&
-                                task->task_info_->status() != response.task(idx).status()) {
-                            PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
-                                        ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
-                                        ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
-                                        response.task(idx).op_id(), 
-                                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-                            task->task_info_->set_status(response.task(idx).status());
-                        }
-                        break;
-                    }
-                }
-                if (!has_op_task && (is_recover_op || task->task_info_->is_rpc_send())) {
-                    if (task->task_info_->has_endpoint() && task->task_info_->endpoint() == iter->first) {
-                        PDLOG(WARNING, "not found op in replica cluster ns leader. update task status from[kDoing] to[kFailed]. " 
-                                       "op_id[%lu], task_type[%s] endpoint[%s]", 
-                                        op_data->op_info_.op_id(),
-                                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
-                                        iter->first.c_str());
-                        task->task_info_->set_status(::rtidb::api::kFailed);
-                    }
                 }
             }
         } else {
@@ -1028,46 +994,17 @@ int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
             if (last_task_rpc_version != task_rpc_version_.load(std::memory_order_acquire)) {
                 break;
             }
+            std::string endpoint = iter->first;
+            uint32_t index = 0;
             for (const auto& op_list : task_vec_) {
-                if (op_list.empty()) {
+                index++;
+                if (index > FLAGS_name_server_task_max_concurrency) {
                     continue;
                 }
-                std::shared_ptr<OPData> op_data = op_list.front();
-                if (op_data->task_list_.empty()) {
+                std::string msg = "tablet";
+                if (UpdateTask(op_list, endpoint, msg, is_recover_op, response) < 0) {
                     continue;
-                }
-                // update task status
-                std::shared_ptr<Task> task = op_data->task_list_.front();
-                if (task->task_info_->status() != ::rtidb::api::kDoing) {
-                    continue;
-                }
-                bool has_op_task = false;
-                for (int idx = 0; idx < response.task_size(); idx++) {
-                    if (op_data->op_info_.op_id() == response.task(idx).op_id() &&
-                           task->task_info_->task_type() == response.task(idx).task_type()) {
-                        has_op_task = true;
-                        if (response.task(idx).status() != ::rtidb::api::kInited &&
-                                task->task_info_->status() != response.task(idx).status()) {
-                            PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
-                                        ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
-                                        ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
-                                        response.task(idx).op_id(), 
-                                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-                            task->task_info_->set_status(response.task(idx).status());
-                        }
-                        break;
-                    }
-                }
-                if (!has_op_task && (is_recover_op || task->task_info_->is_rpc_send())) {
-                    if (task->task_info_->has_endpoint() && task->task_info_->endpoint() == iter->first) {
-                        PDLOG(WARNING, "not found op in tablet. update task status from[kDoing] to[kFailed]. " 
-                                       "op_id[%lu], task_type[%s] endpoint[%s]", 
-                                        op_data->op_info_.op_id(),
-                                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
-                                        iter->first.c_str());
-                        task->task_info_->set_status(::rtidb::api::kFailed);
-                    }
-                }
+                }                
             }
         }
     }
@@ -1075,6 +1012,54 @@ int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
         task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this, false));
     }
     return 0;
+}
+
+int NameServerImpl::UpdateTask(const std::list<std::shared_ptr<OPData>>& op_list, 
+        const std::string& endpoint, 
+        const std::string& msg,
+        bool is_recover_op, 
+        ::rtidb::api::TaskStatusResponse& response) {
+    if (op_list.empty()) {
+        return -1;
+    }
+    std::shared_ptr<OPData> op_data = op_list.front();
+    if (op_data->task_list_.empty()) {
+        return -1;
+    }
+    // update task status
+    std::shared_ptr<Task> task = op_data->task_list_.front();
+    if (task->task_info_->status() != ::rtidb::api::kDoing) {
+        return -1;
+    }
+    bool has_op_task = false;
+    for (int idx = 0; idx < response.task_size(); idx++) {
+        if (op_data->op_info_.op_id() == response.task(idx).op_id() &&
+                task->task_info_->task_type() == response.task(idx).task_type()) {
+            has_op_task = true;
+            if (response.task(idx).status() != ::rtidb::api::kInited &&
+                    task->task_info_->status() != response.task(idx).status()) {
+                PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
+                        ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
+                        ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
+                        response.task(idx).op_id(), 
+                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
+                task->task_info_->set_status(response.task(idx).status());
+            }
+            break;
+        }
+    }
+    if (!has_op_task && (is_recover_op || task->task_info_->is_rpc_send())) {
+        if (task->task_info_->has_endpoint() && task->task_info_->endpoint() == endpoint) {
+            PDLOG(WARNING, "not found op in [%s]. update task status from[kDoing] to[kFailed]. " 
+                    "op_id[%lu], task_type[%s] endpoint[%s]", 
+                    msg.c_str(),
+                    op_data->op_info_.op_id(),
+                    ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
+                    endpoint.c_str());
+            task->task_info_->set_status(::rtidb::api::kFailed);
+        }
+    }
+    return 1;
 }
 
 int NameServerImpl::UpdateZKTaskStatus() {
@@ -1157,57 +1142,7 @@ int NameServerImpl::DeleteTask() {
         PDLOG(DEBUG, "tablet[%s] delete op success", (*iter)->GetEndpoint().c_str()); 
     }
     if (!has_failed) {
-        std::lock_guard<std::mutex> lock(mu_);
-        for (auto op_id : done_task_vec) {
-            std::shared_ptr<OPData> op_data;
-            uint32_t index = 0;
-            for (uint32_t idx = 0; idx < task_vec_.size(); idx++) {
-                if (task_vec_[idx].empty()) {
-                    continue;
-                }
-                if (task_vec_[idx].front()->op_info_.op_id() == op_id) {
-                    op_data = task_vec_[idx].front();
-                    index = idx;
-                    break;
-                }
-            }    
-            if (!op_data) {
-                PDLOG(WARNING, "has not found op[%lu] in running op", op_id); 
-                continue;
-            }
-            std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
-            if (!op_data->task_list_.empty() && 
-                    op_data->task_list_.front()->task_info_->status() == ::rtidb::api::kFailed) {
-                op_data->op_info_.set_task_status(::rtidb::api::kFailed);
-                op_data->op_info_.set_end_time(::baidu::common::timer::now_time());
-                PDLOG(WARNING, "set op[%s] status failed. op_id[%lu]",
-                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
-                                op_id);
-                std::string value;
-                op_data->op_info_.SerializeToString(&value);
-                if (!zk_client_->SetNodeValue(node, value)) {
-                    PDLOG(WARNING, "set zk status value failed. node[%s] value[%s]",
-                                node.c_str(), value.c_str());
-                }
-                done_op_list_.push_back(op_data);
-                task_vec_[index].pop_front();
-                PDLOG(INFO, "delete op[%lu] in running op", op_id); 
-            } else {
-                if (zk_client_->DeleteNode(node)) {
-                    PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
-                    op_data->op_info_.set_end_time(::baidu::common::timer::now_time());
-                    if (op_data->op_info_.task_status() == ::rtidb::api::kDoing) {
-                        op_data->op_info_.set_task_status(::rtidb::api::kDone);
-                        op_data->task_list_.clear();
-                    }
-                    done_op_list_.push_back(op_data);
-                    task_vec_[index].pop_front();
-                    PDLOG(INFO, "delete op[%lu] in running op", op_id); 
-                } else {
-                    PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
-                }
-            }
-        }
+        DeleteTask(done_task_vec);        
     }
     return 0;
 }
@@ -1254,59 +1189,63 @@ int NameServerImpl::DeleteTaskForReplicaCluster() {
         PDLOG(DEBUG, "replica cluster[%s] delete op success", (*iter)->GetEndpoint().c_str()); 
     }
     if (!has_failed) {
-        std::lock_guard<std::mutex> lock(mu_);
-        for (auto op_id : done_task_vec) {
-            std::shared_ptr<OPData> op_data;
-            uint32_t index = 0;
-            for (uint32_t idx = 0; idx < task_vec_.size(); idx++) {
-                if (task_vec_[idx].empty()) {
-                    continue;
-                }
-                if (task_vec_[idx].front()->op_info_.op_id() == op_id) {
-                    op_data = task_vec_[idx].front();
-                    index = idx;
-                    break;
-                }
-            }    
-            if (!op_data) {
-                PDLOG(WARNING, "has not found op[%lu] in running op", op_id); 
+        DeleteTask(done_task_vec);        
+    }
+    return 0;
+}
+
+void NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto op_id : done_task_vec) {
+        std::shared_ptr<OPData> op_data;
+        uint32_t index = 0;
+        for (uint32_t idx = 0; idx < task_vec_.size(); idx++) {
+            if (task_vec_[idx].empty()) {
                 continue;
             }
-            std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
-            if (!op_data->task_list_.empty() && 
-                    op_data->task_list_.front()->task_info_->status() == ::rtidb::api::kFailed) {
-                op_data->op_info_.set_task_status(::rtidb::api::kFailed);
+            if (task_vec_[idx].front()->op_info_.op_id() == op_id) {
+                op_data = task_vec_[idx].front();
+                index = idx;
+                break;
+            }
+        }    
+        if (!op_data) {
+            PDLOG(WARNING, "has not found op[%lu] in running op", op_id); 
+            continue;
+        }
+        std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
+        if (!op_data->task_list_.empty() && 
+                op_data->task_list_.front()->task_info_->status() == ::rtidb::api::kFailed) {
+            op_data->op_info_.set_task_status(::rtidb::api::kFailed);
+            op_data->op_info_.set_end_time(::baidu::common::timer::now_time());
+            PDLOG(WARNING, "set op[%s] status failed. op_id[%lu]",
+                    ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                    op_id);
+            std::string value;
+            op_data->op_info_.SerializeToString(&value);
+            if (!zk_client_->SetNodeValue(node, value)) {
+                PDLOG(WARNING, "set zk status value failed. node[%s] value[%s]",
+                        node.c_str(), value.c_str());
+            }
+            done_op_list_.push_back(op_data);
+            task_vec_[index].pop_front();
+            PDLOG(INFO, "delete op[%lu] in running op", op_id); 
+        } else {
+            if (zk_client_->DeleteNode(node)) {
+                PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
                 op_data->op_info_.set_end_time(::baidu::common::timer::now_time());
-                PDLOG(WARNING, "set op[%s] status failed. op_id[%lu]",
-                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
-                                op_id);
-                std::string value;
-                op_data->op_info_.SerializeToString(&value);
-                if (!zk_client_->SetNodeValue(node, value)) {
-                    PDLOG(WARNING, "set zk status value failed. node[%s] value[%s]",
-                                node.c_str(), value.c_str());
+                if (op_data->op_info_.task_status() == ::rtidb::api::kDoing) {
+                    op_data->op_info_.set_task_status(::rtidb::api::kDone);
+                    op_data->task_list_.clear();
                 }
                 done_op_list_.push_back(op_data);
                 task_vec_[index].pop_front();
                 PDLOG(INFO, "delete op[%lu] in running op", op_id); 
             } else {
-                if (zk_client_->DeleteNode(node)) {
-                    PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
-                    op_data->op_info_.set_end_time(::baidu::common::timer::now_time());
-                    if (op_data->op_info_.task_status() == ::rtidb::api::kDoing) {
-                        op_data->op_info_.set_task_status(::rtidb::api::kDone);
-                        op_data->task_list_.clear();
-                    }
-                    done_op_list_.push_back(op_data);
-                    task_vec_[index].pop_front();
-                    PDLOG(INFO, "delete op[%lu] in running op", op_id); 
-                } else {
-                    PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
-                }
+                PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
             }
         }
     }
-    return 0;
 }
 
 void NameServerImpl::ProcessTask() {
