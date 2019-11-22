@@ -231,6 +231,7 @@ message OPStatus {
     required string task_type = 6;
     optional string name = 7;
     optional uint32 pid = 8;
+    optional bool for_replica_cluster = 9 [default = false];   
 }
 
 message GetTablePartitionRequest {

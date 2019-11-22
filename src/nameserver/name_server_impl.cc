@@ -545,7 +545,7 @@ bool NameServerImpl::RecoverOPTask() {
         } else {
             uint32_t idx = 0;
             if (op_data->for_replica_cluster) {
-                idx = FLAGS_name_server_task_max_concurrency + op_data->op_info_.pid() % FLAGS_name_server_task_concurrency_for_replica_cluster; 
+                idx = op_data->op_info_.vec_idx();
                 PDLOG(INFO, "current task is for replica cluster, op_index [%lu] op_type[%s]", 
                         op_data->op_info_.op_id(), ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
             } else {
@@ -555,9 +555,9 @@ bool NameServerImpl::RecoverOPTask() {
                 }
             }
             task_vec_[idx].push_back(op_data);
-            PDLOG(INFO, "recover op[%s] success. op_id[%lu]",
-                    ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
         }
+        PDLOG(INFO, "recover op[%s] success. op_id[%lu]",
+                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
     }
     for (auto& op_list : task_vec_) {
         op_list.sort([](const std::shared_ptr<OPData>& a, const std::shared_ptr<OPData>& b) {
@@ -921,7 +921,6 @@ int NameServerImpl::UpdateTaskStatusForReplicaCluster(bool is_recover_op) {
                 break;
             }
             uint32_t index = 0;
-            PDLOG(DEBUG, "task_vec_ size [%u]", task_vec_.size());
             for (const auto& op_list : task_vec_) {
                 index++;
                 if (index <= FLAGS_name_server_task_max_concurrency) {
@@ -2307,6 +2306,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         op_status->set_name(kv.second->op_info_.name());
         op_status->set_pid(kv.second->op_info_.pid());
         op_status->set_status(::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
+        op_status->set_for_replica_cluster(kv.second->for_replica_cluster);
         if (kv.second->task_list_.empty() || kv.second->op_info_.task_status() == ::rtidb::api::kInited) {
             op_status->set_task_type("-");
         } else {
@@ -2450,7 +2450,6 @@ void NameServerImpl::DropTable(RpcController* controller,
     }
     if (code == 0) {
         if (task_ptr) {
-            std::lock_guard<std::mutex> lock(mu_);
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
             PDLOG(INFO, "set task type success, op_id [%lu] task_tpye [%s] task_status [%s]" , 
                     task_ptr->op_id(), ::rtidb::api::TaskType_Name(task_ptr->task_type()).c_str(),
@@ -3431,7 +3430,7 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data,
         uint32_t concurrency) {
     uint32_t idx = 0;
     if (op_data->for_replica_cluster) {
-        idx = FLAGS_name_server_task_max_concurrency + op_data->op_info_.pid() % concurrency; 
+        idx = FLAGS_name_server_task_max_concurrency + rand_.Next() % concurrency; 
         PDLOG(INFO, "current task is for replica cluster, op_index [%lu] op_type[%s]", 
                 op_data->op_info_.op_id(), ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
     } else {

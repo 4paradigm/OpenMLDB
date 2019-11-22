@@ -2655,6 +2655,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     row.push_back("execute_time");
     row.push_back("end_time");
     row.push_back("cur_task");
+    row.push_back("for_replica_cluster");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     ::rtidb::nameserver::ShowOPStatusResponse response;
@@ -2681,11 +2682,14 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
         std::vector<std::string> row;
         row.push_back(std::to_string(response.op_status(idx).op_id()));
         row.push_back(response.op_status(idx).op_type());
-        if (response.op_status(idx).has_name() && response.op_status(idx).has_pid()) {
+        if (response.op_status(idx).has_name()) {
             row.push_back(response.op_status(idx).name());
-            row.push_back(std::to_string(response.op_status(idx).pid()));
         } else {
             row.push_back("-");
+        }
+        if (response.op_status(idx).has_pid() && (response.op_status(idx).pid() != ::rtidb::client::INVALID_PID)) {
+            row.push_back(std::to_string(response.op_status(idx).pid()));
+        } else {
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).status());
@@ -2713,6 +2717,11 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).task_type());
+        if (response.op_status(idx).for_replica_cluster()) {
+            row.push_back("true");
+        } else {
+            row.push_back("false");
+        }
         tp.AddRow(row);
     }
     tp.Print(true);
