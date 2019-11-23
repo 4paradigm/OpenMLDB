@@ -63,6 +63,10 @@ INSTANTIATE_TEST_CASE_P(
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",
+        "SELECT COL1 + COL2 as col12 FROM t1;",
+        "SELECT COL1 - COL2 as col12 FROM t1;",
+        "SELECT COL1 * COL2 as col12 FROM t1;",
+        "SELECT COL1 / COL2 as col12 FROM t1;",
         "SELECT COUNT(*) FROM t1;"));
 
 INSTANTIATE_TEST_CASE_P(
@@ -266,7 +270,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
         "    column2 timestamp NOT NULL,\n"
         "    column3 int NOT NULL,\n"
         "    column4 string NOT NULL,\n"
-        "    column5 int NOT NULL,\n"
+        "    column5 int,\n"
         "    index(key=(column4, column3), version=(column5, 3), ts=column2, "
         "ttl=60d)\n"
         ");";
@@ -328,8 +332,9 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ(node::kTypeInt32,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
                   ->GetColumnType());
-    ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
-                        ->GetIsNotNull());
+    ASSERT_EQ(false,
+              ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
+                  ->GetIsNotNull());
 
     ASSERT_EQ(node::kColumnIndex,
               (createStmt->GetColumnDefList()[5])->GetType());
@@ -347,7 +352,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
 }
 
 class SqlParserErrorTest : public ::testing::TestWithParam<
-                               std::pair<error::ErrorType, std::string>> {
+                               std::pair<common::StatusCode, std::string>> {
  public:
     SqlParserErrorTest() {
         manager_ = new NodeManager();
@@ -380,23 +385,22 @@ TEST_P(SqlParserErrorTest, ParserErrorStatusTest) {
 
 INSTANTIATE_TEST_CASE_P(
     SQLErrorParse, SqlParserErrorTest,
-    testing::Values(std::make_pair(error::kParserErrorSyntax,
-                                   "SELECT SUM(*) FROM t1;"),
-                    std::make_pair(error::kParserErrorSyntax, "SELECT t1;")));
+    testing::Values(std::make_pair(common::kSQLError, "SELECT SUM(*) FROM t1;"),
+                    std::make_pair(common::kSQLError, "SELECT t1;")));
 
 INSTANTIATE_TEST_CASE_P(
     UDFErrorParse, SqlParserErrorTest,
     testing::Values(
-        std::make_pair(error::kParserErrorSyntax,
+        std::make_pair(common::kSQLError,
                        "%%fun\ndefine test(x:i32,y:i32):i32\n    c=x+y\n    "
                        "return c\nend"),
-        std::make_pair(error::kParserErrorSyntax,
+        std::make_pair(common::kSQLError,
                        "%%fun\ndef 123test(x:i32,y:i32):i32\n    c=x+y\n    "
                        "return c\nend"),
         std::make_pair(
-            error::kParserErrorSyntax,
+            common::kSQLError,
             "%%fun\ndef test(x:i32,y:i32):i32\n    c=x)(y\n    return c\nend"),
-        std::make_pair(error::kParserErrorSyntax, "SELECT t1;")));
+        std::make_pair(common::kSQLError, "SELECT t1;")));
 
 }  // namespace parser
 }  // namespace fesql

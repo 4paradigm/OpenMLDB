@@ -18,54 +18,34 @@
 #ifndef CODEGEN_EXPR_IR_BUILDER_H_
 #define CODEGEN_EXPR_IR_BUILDER_H_
 
-#include "codegen/scope_var.h"
 #include "codegen/buf_ir_builder.h"
+#include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
 namespace fesql {
 namespace codegen {
 
-class SQLExprIRBuilder {
-
- public:
-
-    SQLExprIRBuilder(::llvm::BasicBlock* block, 
-            ScopeVar* scope_var,
-            BufIRBuilder* buf_ir_builder,
-            const std::string& row_ptr_name,
-            const std::string& output_ptr_name,
-            ::llvm::Module* module);
-
-    ~SQLExprIRBuilder();
-
-    bool Build(const ::fesql::node::ExprNode* node,
-            ::llvm::Value** output,
-            std::string& col_name);
-
- private:
-
-    bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
-            ::llvm::Value** output);
-
-    bool BuildCallFn(const ::fesql::node::CallExprNode* fn,
-            ::llvm::Value** output);
-
- private:
-    ::llvm::BasicBlock* block_;
-    ScopeVar* sv_;
-    std::string row_ptr_name_;
-    std::string output_ptr_name_;
-    BufIRBuilder* buf_ir_builder_;
-    ::llvm::Module* module_;
-};
-
 class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
+    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
+                     BufIRBuilder* buf_ir_builder,
+                     const std::string& row_ptr_name,
+                     const std::string& output_ptr_name,
+                     ::llvm::Module* module);
+
     ~ExprIRBuilder();
 
     bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
+
+ private:
+    bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
+                        ::llvm::Value** output);
+
+    bool BuildCallFn(const ::fesql::node::CallExprNode* fn,
+                     ::llvm::Value** output);
+
 
     bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                          ::llvm::Value** output);
@@ -75,9 +55,12 @@ class ExprIRBuilder {
 
  private:
     ::llvm::BasicBlock* block_;
-    ScopeVar* scope_var_;
+    ScopeVar* sv_;
+    std::string row_ptr_name_;
+    std::string output_ptr_name_;
+    BufIRBuilder* buf_ir_builder_;
+    ::llvm::Module* module_;
 };
-
 
 }  // namespace codegen
 }  // namespace fesql

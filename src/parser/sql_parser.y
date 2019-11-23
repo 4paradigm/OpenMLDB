@@ -16,6 +16,7 @@
 #include <utility>
 #include "node/sql_node.h"
 #include "node/node_manager.h"
+#include "base/status.h"
 #include "parser/sql_parser.gen.h"
 
 extern int yylex(YYSTYPE* yylvalp, 
@@ -24,17 +25,18 @@ extern int yylex(YYSTYPE* yylvalp,
 void emit(const char *s, ...);
 void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &trees,
 	::fesql::node::NodeManager *node_manager, ::fesql::base::Status &status, const char* msg) {
-	status.code = ::fesql::error::kParserErrorSyntax;
+	status.code=::fesql::common::kSQLError;
 	std::ostringstream s;
         s << "line: "<< yyllocp->last_line << ", column: "
        	<< yyllocp->first_column << ": " <<
        	msg;
-	status.msg = s.str();
+	status.msg=(s.str());
 }
 %}
 
 %code requires {
 #include "node/sql_node.h"
+#include "base/status.h"
 #include <sstream>
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
@@ -71,6 +73,7 @@ typedef void* yyscan_t;
 /* user @abc names */
 
 %token <strval> USERVAR
+%token <strval> VARNAME
 
 /* operators and precedence levels */
 
@@ -346,7 +349,7 @@ typedef void* yyscan_t;
                fn_def return_stmt assign_stmt para
 %type<fnlist> plist stmt_block func_stmts
 
-%type <expr> var primary fn_expr primary_time column_ref expr simple_expr func_expr expr_const
+%type <expr> var expr primary_time column_ref call_expr expr_const
  /* select stmt */
 %type <node>  sql_stmt stmt select_stmt
               opt_all_clause
@@ -470,16 +473,16 @@ func_stmt:
          ;
 
 fn_def :
-       DEF INDENT  NAME'(' plist ')' ':' types {
+       DEF INDENT  VARNAME'(' plist ')' ':' types {
             $$ = node_manager->MakeFnDefNode($3, $5, $8);
        };
 
-assign_stmt: NAME '=' fn_expr {
+assign_stmt: VARNAME '=' expr {
             $$ = node_manager->MakeAssignNode($1, $3);
            };
 
 return_stmt:
-           RETURN INDENT fn_expr {
+           RETURN INDENT expr {
             $$ = node_manager->MakeReturnStmtNode($3);
            };
 
@@ -522,14 +525,10 @@ plist:
         $$ = $3;
      };
 
-para: NAME ':' types {
+para: VARNAME ':' types {
         $$ = node_manager->MakeFnParaNode($1, $3);
     };
 
-primary:
-    INTNUM {
-        $$ = node_manager->MakeConstNode($1);
-    };
 
 primary_time:
     DAYNUM {
@@ -544,7 +543,7 @@ primary_time:
     |SECONDNUM{
         $$ = node_manager->MakeConstNode($1, fesql::node::kTypeSecond);
     }
-var: NAME {
+var: VARNAME {
         $$ = node_manager->MakeFnIdNode($1);
      };
 
@@ -782,27 +781,26 @@ select_projection_list: projection {
     }
     ;
 
-projection:
-    expr
-    {
-        $$ = node_manager->MakeResTargetNode($1, "");
-    }
-    | expr NAME
-    {
-        $$ = node_manager->MakeResTargetNode($1, $2);
-		free($2);
-    }
-    | expr AS NAME
-    {
-        $$ = node_manager->MakeResTargetNode($1, $3);
-		free($3);
-    }
-    | '*'
-        {
-            ::fesql::node::ExprNode* pNode = node_manager->MakeAllNode("");
-            $$ = node_manager->MakeResTargetNode(pNode, "");
-        }
-    ;
+projection:	expr
+			{
+				$$ = node_manager->MakeResTargetNode($1, "");
+			}
+			|expr NAME
+			{
+        		$$ = node_manager->MakeResTargetNode($1, $2);
+				free($2);
+    		}
+    		| expr AS NAME
+    		{
+    			$$ = node_manager->MakeResTargetNode($1, $3);
+    			free($3);
+    		}
+    		| '*'
+        	{
+            	::fesql::node::ExprNode* pNode = node_manager->MakeAllNode("");
+            	$$ = node_manager->MakeResTargetNode(pNode, "");
+        	}
+    		;
 
 over_clause: OVER window_specification
 				{ $$ = $2; }
@@ -860,38 +858,31 @@ expr_list:
     }
   	;
 
-expr : simple_expr   { $$ = $1; }
-     | func_expr  { $$ = $1; }
-     ;
-
-fn_expr:
-    fn_expr '+' fn_expr {
-            $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAdd);
-        }
-    | fn_expr '-' fn_expr {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMinus);
-        }
-    | fn_expr '*' fn_expr {
+expr : column_ref   { $$ = $1; }
+     | call_expr  { $$ = $1; }
+     | expr_const
+     | var
+     | expr '+' expr
+     {
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAdd);
+     }
+     | expr '-' expr
+     {
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMinus);
+     }
+     | expr '*' expr
+     {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMulti);
-        }
-    | fn_expr '/' fn_expr {
+     }
+     | expr '/' expr
+     {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpDiv);
-        }
-    | '(' fn_expr ')' {
+     }
+     | '(' expr ')'
+     {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpBracket);
-        }
-    | primary
-    | var
-    ;
-
-
-simple_expr:
-    column_ref
-        { $$ = $1; }
-    | expr_const
-        { $$ = $1; }
-    ;
-
+     }
+     ;
 
 expr_const:
     STRING
@@ -909,7 +900,7 @@ expr_const:
         { $$ = (node_manager->MakeConstNode()); }
   	;
 
-func_expr:
+call_expr:
     function_name '(' '*' ')' over_clause
     {
           if (strcasecmp($1, "count") != 0)

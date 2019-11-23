@@ -207,8 +207,12 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
     vm::RunSession session;
 
     {
-        bool ok = engine_->Get(request->sql(), request->db(), session, *status);
+        base::Status base_status;
+        bool ok = engine_->Get(request->sql(), request->db(), session, base_status);
         if (!ok) {
+            status->set_msg(base_status.msg);
+            status->set_code(base_status.code);
+            LOG(WARNING) << status->msg();
             return;
         }
     }

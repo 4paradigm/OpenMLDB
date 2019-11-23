@@ -15,6 +15,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "base/status.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "proto/type.pb.h"
@@ -105,6 +106,7 @@ class FeSQLAnalyser {
                              Status &status);  // NOLINT (runtime/references)
     void TransformCmdNode(node::CmdNode *pNode,
                           Status &status);  // NOLINT (runtime/references)
+    void TransformFnDefListNode(node::FnNodeList *node_ptr, Status &status);
 };
 
 }  // namespace analyser

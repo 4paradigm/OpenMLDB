@@ -21,6 +21,7 @@
 //
 #include "parser/parser.h"
 #include "node/sql_node.h"
+#include "proto/common.pb.h"
 
 /**
  * FeSQL command parser
@@ -42,6 +43,10 @@ int FeSQLParser::parse(
     yyset_column(1, scanner);
     int ret = yyparse(scanner, trees, manager, status);
     yylex_destroy(scanner);
+
+    if (0 != status.code) {
+        LOG(WARNING) << status.msg;
+    }
     return ret;
 }
 

@@ -311,6 +311,7 @@ UTC_DATE	{ return UTC_DATE; }
 UTC_TIME	{ return UTC_TIME; }
 UTC_TIMESTAMP	{ return UTC_TIMESTAMP; }
 VALUES?	{ return VALUES; }
+VARNAME     { return VARNAME; }
 VARBINARY	{ return VARBINARY; }
 VARCHAR(ACTER)?	{ return VARCHAR; }
 VARYING	{ return VARYING; }
@@ -394,6 +395,13 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 [-+&~|^/%*(),.;!]   { return yytext[0]; }
 
 
+<FUN>[A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
+                          return VARNAME; }
+
+<FUN>`[^`/\\.\n]+`           { yylval->strval = strdup(yytext+1);
+                          yylval->strval[yyleng-2] = 0;
+                          return VARNAME; }
+
 [A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
                           return NAME; }
 `[^`/\\.\n]+`           { yylval->strval = strdup(yytext+1);
@@ -415,7 +423,7 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 <FUN>{identifier} {
             yylval->strval = strdup(yytext);
-            return NAME;
+            return VARNAME;
     }
 
 {self} {

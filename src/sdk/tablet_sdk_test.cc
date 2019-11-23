@@ -104,14 +104,14 @@ TEST_F(TabletSdkTest, test_normal) {
     insert.key = "k";
     insert.ts = 1024;
 
-    ::fesql::base::Status insert_status;
+    ::fesql::sdk::Status insert_status;
     sdk->SyncInsert(insert, insert_status);
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
     {
         Query query;
         query.db = "db1";
         query.sql = "select col1, col2, col3, col4, col5 from t1 limit 1;";
-        base::Status query_status;
+        sdk::Status query_status;
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
             ASSERT_EQ(5u, rs->GetColumnCnt());
@@ -156,7 +156,7 @@ TEST_F(TabletSdkTest, test_normal) {
 
     {
         Query query;
-        base::Status query_status;
+        sdk::Status query_status;
         query.db = "db1";
         query.sql = "select col1, col5 from t1 limit 1;";
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
@@ -216,7 +216,7 @@ TEST_F(TabletSdkTest, test_create_and_query) {
 
     // create database db1
     {
-        fesql::base::Status status;
+        fesql::sdk::Status status;
         DatabaseDef db;
         db.name = "db_1";
         dbms_sdk->CreateDatabase(db, status);
@@ -236,7 +236,7 @@ TEST_F(TabletSdkTest, test_create_and_query) {
             ");";
 
         db.name = "db_1";
-        fesql::base::Status status;
+        fesql::sdk::Status status;
         fesql::sdk::ExecuteResult result;
         fesql::sdk::ExecuteRequst request;
         request.database = db;
@@ -253,12 +253,12 @@ TEST_F(TabletSdkTest, test_create_and_query) {
         ASSERT_FALSE(true);
     }
 
-    ::fesql::base::Status insert_status;
+    ::fesql::sdk::Status insert_status;
     sdk->SyncInsert("db_1", "insert into t1 values(1, 2.2, 3.3, 4, 5);", insert_status);
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
     {
         Query query;
-        base::Status query_status;
+        sdk::Status query_status;
         query.db = "db_1";
         query.sql = "select column1, column2 from t1 limit 1;";
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
@@ -286,14 +286,16 @@ TEST_F(TabletSdkTest, test_create_and_query) {
 
     {
         Query query;
-        base::Status query_status;
+        sdk::Status query_status;
         query.db = "db_1";
-        query.sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT column1, column2, test(column1,column5) FROM t1 limit 10;";
+        query.sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT column1, column2, test(column1,column5) as f1, column1 + column5 as f2 FROM t1 limit 10;";
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
-            ASSERT_EQ(3u, rs->GetColumnCnt());
+            ASSERT_EQ(4u, rs->GetColumnCnt());
             ASSERT_EQ("column1", rs->GetColumnName(0));
             ASSERT_EQ("column2", rs->GetColumnName(1));
+            ASSERT_EQ("f1", rs->GetColumnName(2));
+            ASSERT_EQ("f2", rs->GetColumnName(3));
             std::unique_ptr<ResultSetIterator> it = rs->Iterator();
             ASSERT_TRUE(it->HasNext());
             it->Next();
@@ -312,6 +314,11 @@ TEST_F(TabletSdkTest, test_create_and_query) {
                 ASSERT_TRUE(it->GetInt32(2, &val));
                 ASSERT_EQ(val, 7);
             }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(3, &val));
+                ASSERT_EQ(val, 6);
+            }
         }else {
             ASSERT_TRUE(false);
         }
@@ -319,7 +326,7 @@ TEST_F(TabletSdkTest, test_create_and_query) {
 
     {
         Query query;
-        base::Status query_status;
+        sdk::Status query_status;
         query.db = "db_1";
         query.sql = "select column1, column2, column3, column4, column5 from t1 limit 1;";
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
@@ -399,7 +406,7 @@ TEST_F(TabletSdkTest, test_udf_query) {
 
     // create database db1
     {
-        fesql::base::Status status;
+        fesql::sdk::Status status;
         DatabaseDef db;
         db.name = "db_1";
         dbms_sdk->CreateDatabase(db, status);
@@ -419,7 +426,7 @@ TEST_F(TabletSdkTest, test_udf_query) {
             ");";
 
         db.name = "db_1";
-        fesql::base::Status status;
+        fesql::sdk::Status status;
         fesql::sdk::ExecuteResult result;
         fesql::sdk::ExecuteRequst request;
         request.database = db;
@@ -436,15 +443,18 @@ TEST_F(TabletSdkTest, test_udf_query) {
         ASSERT_FALSE(true);
     }
 
-    ::fesql::base::Status insert_status;
+    ::fesql::sdk::Status insert_status;
     sdk->SyncInsert("db_1", "insert into t1 values(1, 2, 3.3, 4, 5);", insert_status);
+    if (0 != insert_status.code) {
+        std::cout << insert_status.msg << std::endl;
+    }
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
 
 
 
     {
         Query query;
-        base::Status query_status;
+        sdk::Status query_status;
         query.db = "db_1";
         query.sql = "select column1, column2, column3, column4, column5 from t1 limit 1;";
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
@@ -489,9 +499,10 @@ TEST_F(TabletSdkTest, test_udf_query) {
     }
     {
         Query query;
-        base::Status query_status;
+        sdk::Status query_status;
         query.db = "db_1";
-        query.sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT column1, column2, test(column1,column5) FROM t1 limit 10;";
+        query.sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT column1, column2, test(column1,column5) as f1 FROM t1 limit 10;";
+
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
             ASSERT_EQ(3u, rs->GetColumnCnt());
