@@ -90,6 +90,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "cast";
         case kExprAll:
             return "all";
+        case kExprStruct:
+            return "struct";
         case kExprUnknow:
             return "unknow";
         default:
@@ -115,6 +117,8 @@ inline const std::string DataTypeName(const DataType &type) {
             return "string";
         case kTypeTimestamp:
             return "timestamp";
+        case kTypeRow:
+            return "row";
         case kTypeNull:
             return "null";
         default:
@@ -212,7 +216,6 @@ class FnNodeList : public FnNode {
 
     void AddChild(FnNode *child) { children.push_back(child); }
     void Print(std::ostream &output, const std::string &org_tab) const;
-
     std::vector<FnNode *> children;
 };
 class NameNode : public SQLNode {
@@ -428,9 +431,7 @@ class CallExprNode : public ExprNode {
     NodePointVector &GetArgs() { return args_; }
     const NodePointVector &GetArgs() const { return args_; }
 
-    const int GetArgsSize() const {
-        return args_.size();
-    }
+    const int GetArgsSize() const { return args_.size(); }
 
  private:
     bool is_agg_;
@@ -516,9 +517,7 @@ class ConstNode : public ExprNode {
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    int16_t GetSmallInt() const {
-        return val_.vsmallint;
-    }
+    int16_t GetSmallInt() const { return val_.vsmallint; }
 
     int GetInt() const { return val_.vint; }
 
@@ -915,6 +914,27 @@ class FnReturnStmt : public FnNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     const ExprNode *return_expr_;
 };
+class StructExpr : public ExprNode {
+ public:
+    explicit StructExpr(const std::string &name)
+        : ExprNode(kExprStruct), class_name_(name) {}
+    void SetFileds(FnNodeList *fileds) {
+        fileds_ = fileds;
+    }
+    void SetMethod(FnNodeList *methods) { methods_ = methods; }
+
+    const FnNodeList* GetMethods() const { return methods_; }
+
+    const FnNodeList* GetFileds() const {
+        return fileds_;
+    }
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+ private:
+    const std::string class_name_;
+    FnNodeList *fileds_;
+    FnNodeList *methods_;
+};
+
 std::string WindowOfExpression(ExprNode *node_ptr);
 void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,

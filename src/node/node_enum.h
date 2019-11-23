@@ -78,6 +78,7 @@ enum ExprType {
     kExprPrimary,
     kExprList,
     kExprAll,
+    kExprStruct,
     kExprUnknow
 };
 enum DataType {
@@ -93,6 +94,7 @@ enum DataType {
     kTypeDay,
     kTypeMinute,
     kTypeSecond,
+    kTypeRow,
     kTypeNull
 };
 
