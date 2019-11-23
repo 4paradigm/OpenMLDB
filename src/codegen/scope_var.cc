@@ -31,6 +31,7 @@ bool ScopeVar::Enter(const std::string& name) {
         scopes_.push_back(scope);
         return true;
     }
+    // TODO(wangtaize): scope redifine check all scope names
     Scope& exist_scope = scopes_.back();
     if (exist_scope.name.compare(name) == 0) {
         LOG(WARNING) << "redefine scope " << name;

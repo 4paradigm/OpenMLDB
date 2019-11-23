@@ -368,6 +368,24 @@ void PrintSQLVector(std::ostream &output, const std::string &tab,
 }
 
 void PrintSQLVector(std::ostream &output, const std::string &tab,
+                    const std::vector<std::pair<std::string, DataType>> &vec,
+                    const std::string &vector_name, bool last_item) {
+    if (0 == vec.size()) {
+        output << tab << SPACE_ST << vector_name << ": []";
+        return;
+    }
+    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int count = vec.size();
+    int i = 0;
+    for (i = 0; i < count - 1; ++i) {
+        PrintValue(output, space, DataTypeName(vec[i].second), "" + vec[i].first, false);
+        output << "\n";
+    }
+    PrintValue(output, space, DataTypeName(vec[i].second), "" + vec[i].first, true);
+}
+
+void PrintSQLVector(std::ostream &output, const std::string &tab,
                     const NodePointVector &vec, const std::string &vector_name,
                     bool last_item) {
     if (0 == vec.size()) {
@@ -505,7 +523,7 @@ void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, name_, DataTypeName(para_type_), true);
+    PrintValue(output, tab, DataTypeName(para_type_), name_, true);
 }
 void FnNodeFnDef::Print(std::ostream &output,
                         const std::string &org_tab) const {
@@ -538,6 +556,16 @@ void FnReturnStmt::Print(std::ostream &output,
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintSQLNode(output, tab, (SQLNode*)return_expr_, "return", true);
+}
+void StructExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    PrintValue(output, tab, class_name_, "name", false);
+    output << "\n";
+    PrintSQLNode(output, tab, fileds_, "fileds", false);
+    output << "\n";
+    PrintSQLNode(output, tab, methods_, "methods", true);
+
 }
 }  // namespace node
 }  // namespace fesql

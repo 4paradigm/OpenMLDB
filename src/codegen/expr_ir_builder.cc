@@ -100,6 +100,9 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprUnary: {
             return Build(node->children[0], output);
         }
+        case ::fesql::node::kExprStruct: {
+            return BuildStructExpr(::fesql::node::StructExpr*)node, output);
+        }
         default: {
             LOG(WARNING) << "not supported";
             return false;
@@ -270,5 +273,9 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
     }
 }
 
+bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExprNode* node,
+    ::llvm::Value** output) {
+
+};
 }  // namespace codegen
 }  // namespace fesql
