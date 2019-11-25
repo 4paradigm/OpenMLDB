@@ -46,11 +46,50 @@ namespace fesql {
 namespace codegen {
 
 static node::NodeManager manager;
+
+
+void GetSchema(::fesql::type::TableDef& table) {
+    table.set_name("t1");
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col1");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col2");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kFloat);
+        column->set_name("col3");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kDouble);
+        column->set_name("col4");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col5");
+    }
+}
+
 class FnLetIRBuilderTest : public ::testing::Test {
 
 public:
-     FnLetIRBuilderTest() {}
+     FnLetIRBuilderTest() {
+         GetSchema(table);
+     }
     ~FnLetIRBuilderTest() {}
+
+ protected:
+    ::fesql::type::TableDef table;
 };
 
 void AddFunc(const std::string& fn,
@@ -67,36 +106,6 @@ void AddFunc(const std::string& fn,
 
 TEST_F(FnLetIRBuilderTest, test_udf) {
 
-
-    ::fesql::type::TableDef table;
-    table.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_project", *ctx);
@@ -143,36 +152,6 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
 
 TEST_F(FnLetIRBuilderTest, test_project) {
 
-    ::fesql::type::TableDef table;
-    table.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
     ::fesql::node::NodePointVector list;
     ::fesql::parser::FeSQLParser parser;
     ::fesql::node::NodeManager manager;
@@ -219,74 +198,53 @@ TEST_F(FnLetIRBuilderTest, test_project) {
 }
 
 
-TEST_F(FnLetIRBuilderTest, test_column_get) {
+TEST_F(FnLetIRBuilderTest, test_window_agg_project) {
 
-    ::fesql::type::TableDef table;
-    // prepare schema
-    table.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
+    ::fesql::node::NodePointVector list;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::node::NodeManager manager;
+    ::fesql::base::Status status;
+    int ret = parser.parse("SELECT col1 FROM t1 limit 10;", list, &manager, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+    ::fesql::plan::SimplePlanner planner(&manager);
 
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
+    ::fesql::node::PlanNodeList plan;
+    ret = planner.CreatePlanTree(list, plan, status);
+    ASSERT_EQ(0, ret);
+    ::fesql::node::ProjectListPlanNode* pp_node_ptr
+        = (::fesql::node::ProjectListPlanNode*)(plan[0]->GetChildren()[0]->GetChildren()[0]);
 
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_project", *ctx);
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "int" and take an argument of "int".
+    RowFnLetIRBuilder ir_builder(&table, m.get());
+    std::vector<::fesql::type::ColumnDef> schema;
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(1u, schema.size());
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
 
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
+    int32_t (*decode)(int8_t*, int8_t*) = (int32_t (*)(int8_t*, int8_t*))load_fn_jit.getAddress();
+    std::cout << decode << std::endl;
 
-    // prepare row buf
     int8_t* ptr = static_cast<int8_t*>(malloc(28));
+    int32_t i = 0;
     *((int32_t*)(ptr + 2)) = 1;
     *((int16_t*)(ptr +2+4)) = 2;
     *((float*)(ptr +2+ 4 + 2)) = 3.1f;
     *((double*)(ptr +2+ 4 + 2 + 4)) = 4.1;
     *((int64_t*)(ptr +2+ 4 + 2 + 4 + 8)) = 5;
-
-    // Create an LLJIT instance.
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("test_get_col", *ctx);
-    RowFnLetIRBuilder ir_builder(&table, m.get());
-
-    // Create the get_col1_fn function entry and insert this entry into module M.  The
-    // function will have a return type of "int" and take two arguments.
-    {
-        ::fesql::type::Type col_type;
-        const std::string fn_name = "test_get_col1_fn";
-        bool ok = ir_builder.Build(fn_name, "col1", col_type);
-        ASSERT_TRUE(ok);
-        ASSERT_EQ(::fesql::type::Type::kInt32, col_type);
-        m->print(::llvm::errs(), NULL);
-        auto J = ExitOnErr(LLJITBuilder().create());
-        ExitOnErr(J->addIRModule(std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
-        auto load_fn_jit = ExitOnErr(J->lookup(fn_name));
-        int32_t (*decode)(int8_t*, int8_t*) = (int32_t (*)(int8_t*, int8_t*))load_fn_jit.getAddress();
-        std::cout << decode << std::endl;
-        int32_t i = 0;
-        int32_t ret2 = decode(ptr, (int8_t*)&i);
-        ASSERT_EQ(ret2, 0u);
-        ASSERT_EQ(i, 1u);
-    }
-
+    int32_t ret2 = decode(ptr, (int8_t*)&i);
+    ASSERT_EQ(ret2, 0u);
+    ASSERT_EQ(i, 1u);
 }
+
 
 } // namespace of codegen
 } // namespace of fesql

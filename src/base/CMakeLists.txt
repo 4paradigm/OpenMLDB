@@ -20,3 +20,8 @@ list(APPEND test_list texttable_test)
 
 add_executable(slice_test slice_test.cc)
 target_link_libraries(slice_test gflags gtest pthread)
+
+add_executable(window_test window_test.cc)
+target_link_libraries(window_test fesql_base gflags gtest pthread)
+add_test(window_test window_test --gtest_output=xml:${CMAKE_BINARY_DIR}/hash_test.xml)
+list(APPEND test_list window_test)

@@ -47,7 +47,7 @@ class RowFnLetIRBuilder {
                std::vector<::fesql::type::ColumnDef>& schema);
  private:
 
-    bool BuildFnHeader(const std::string& name, 
+    bool BuildFnHeader(const std::string& name,
             ::llvm::Function **fn);
 
     bool BuildFnHeader(const std::string& name,
@@ -59,7 +59,7 @@ class RowFnLetIRBuilder {
             ::llvm::Function *fn,
             ScopeVar& sv);
 
-    bool StoreColumn(int64_t offset, ::llvm::Value* value, 
+    bool StoreColumn(int64_t offset, ::llvm::Value* value,
             ScopeVar& sv, const std::string& output_ptr_name,
             ::llvm::BasicBlock* block);
 

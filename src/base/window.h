@@ -7,22 +7,25 @@
  *--------------------------------------------------------------------------
  **/
 
-#ifndef SRC_CODEGEN_WINDOW_H
-#define SRC_CODEGEN_WINDOW_H
+#ifndef SRC_BASE_WINDOW_H
+#define SRC_BASE_WINDOW_H
+#include "stdint.h"
 namespace fesql {
-namespace codegen {
+namespace base {
 template <class V>
-class Iterator{
+class Iterator {
  public:
     Iterator() {}
-    Iterator(const Iterator&) = delete;
-    Iterator& operator=(const Iterator&) = delete;
     virtual ~Iterator() {}
     virtual bool Valid() const = 0;
     virtual V Next() = 0;
     virtual void reset() = 0;
 };
-}  // namespace codegen
+
+struct Row {
+    int8_t *buf;
+};
+}  // namespace base
 }  // namespace fesql
 
-#endif  // SRC_CODEGEN_WINDOW_H
+#endif  // SRC_BASE_WINDOW_H
