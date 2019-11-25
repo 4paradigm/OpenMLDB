@@ -35,5 +35,5 @@ class Iterator {
     virtual bool IsSeekable() const = 0;
 };
 
-}  // namespace storage
+}  // namespace base
 }  // namespace fesql

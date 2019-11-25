@@ -928,6 +928,10 @@ class StructExpr : public ExprNode {
     const FnNodeList* GetFileds() const {
         return fileds_;
     }
+
+    const std::string& GetName() const {
+        return class_name_;
+    }
     void Print(std::ostream &output, const std::string &org_tab) const override;
  private:
     const std::string class_name_;

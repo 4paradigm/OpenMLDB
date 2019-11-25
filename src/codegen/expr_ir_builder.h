@@ -53,7 +53,7 @@ class ExprIRBuilder {
     bool BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
                         ::llvm::Value** output);
 
-    bool BuildStructExpr(const ::fesql::node::StructExprNode* node,
+    bool BuildStructExpr(const ::fesql::node::StructExpr* node,
                                         ::llvm::Value** output);
  private:
     ::llvm::BasicBlock* block_;

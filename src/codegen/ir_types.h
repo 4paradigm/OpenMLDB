@@ -26,6 +26,30 @@ struct IRString {
     char* data;
 };
 
+inline const bool ConvertFeSQLType2LLVMType (const node::DataType &data_type, ::llvm::LLVMContext &ctx, ::llvm::Type **llvm_type){
+    switch (data_type) {
+        case node::kTypeInt16:
+            *llvm_type = (::llvm::Type::getInt16Ty(ctx));
+            break;
+        case node::kTypeInt32:
+            *llvm_type = (::llvm::Type::getInt32Ty(ctx));
+            break;
+        case node::kTypeInt64:
+            *llvm_type = (::llvm::Type::getInt64Ty(ctx));
+            break;
+        case node::kTypeFloat:
+            *llvm_type = (::llvm::Type::getFloatTy(ctx));
+            break;
+        case node::kTypeDouble:
+            *llvm_type = (::llvm::Type::getDoubleTy(ctx));
+            break;
+        default: {
+            return false;
+        }
+    }
+    return true;
+};
+
 }  // namespace codegen
 }  // namespace fesql
 #endif  // SRC_CODEGEN_IR_TYPES_H_

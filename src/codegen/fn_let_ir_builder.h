@@ -39,7 +39,10 @@ class RowFnLetIRBuilder {
 
     ~RowFnLetIRBuilder();
 
-    bool Build(const std::string& name, 
+    bool Build(const std::string& name,
+               const std::string& col,
+               ::fesql::type::Type &);
+    bool Build(const std::string& name,
                const ::fesql::node::ProjectListPlanNode* node,
                std::vector<::fesql::type::ColumnDef>& schema);
  private:
@@ -47,6 +50,10 @@ class RowFnLetIRBuilder {
     bool BuildFnHeader(const std::string& name, 
             ::llvm::Function **fn);
 
+    bool BuildFnHeader(const std::string& name,
+                                          std::vector<::llvm::Type*> &args_type,
+                                          ::llvm::Type* ret_type,
+                                          ::llvm::Function** fn);
     bool FillArgs(const std::string& row_ptr_name,
             const std::string& output_ptr_name,
             ::llvm::Function *fn,

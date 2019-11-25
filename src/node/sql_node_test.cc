@@ -36,8 +36,8 @@ class SqlNodeTest : public ::testing::Test {
 
 TEST_F(SqlNodeTest, StructExprNodeTest) {
     StructExpr struct_expr("window");
-    FnParaNode filed1 ("idx", DataType::kTypeInt32);
-    FnParaNode filed2 ("rows_ptr", DataType::kTypeInt32);
+    FnParaNode filed1("idx", DataType::kTypeInt32);
+    FnParaNode filed2("rows_ptr", DataType::kTypeInt32);
     FnNodeList fileds;
     fileds.AddChild(&filed1);
     fileds.AddChild(&filed2);
@@ -50,11 +50,11 @@ TEST_F(SqlNodeTest, StructExprNodeTest) {
     struct_expr.SetMethod(&methods);
 
     std::cout << struct_expr << std::endl;
-//    ASSERT_EQ(kExprStruct, struct_expr.GetExprType());
-//    ASSERT_EQ(std::vector<FnNodeFnDef *>({&iterator}),
-//              struct_expr.GetMethods());
-//    ASSERT_EQ(std::vector<FnNode*>({(FnNode*)(&filed1), (FnNode*)(&filed2)}), struct_expr.GetFileds()->GetChildren());
+    ASSERT_EQ(kExprStruct, struct_expr.GetExprType());
+    ASSERT_EQ(&methods, struct_expr.GetMethods());
+    ASSERT_EQ(&fileds, struct_expr.GetFileds());
 }
+
 TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
     SQLNode *node = node_manager_->MakeColumnRefNode("col", "t");
     ColumnRefNode *columnnode = dynamic_cast<ColumnRefNode *>(node);

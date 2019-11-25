@@ -140,11 +140,7 @@ void FeSQLAnalyser::TransformSingleTableSelectNode(
                 break;
             }
             default: {
-                status.msg =
-                    "SELECT common: can not handle " +
-                    node::NameOfSQLNodeType(target->GetVal()->GetType());
-                status.code = common::kSQLError;
-                LOG(WARNING) << status.msg;
+                // do nothing
             }
         }
         if (0 != status.code) {

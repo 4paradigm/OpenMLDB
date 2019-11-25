@@ -17,24 +17,24 @@
 
 #include "codegen/expr_ir_builder.h"
 #include <proto/common.pb.h>
+#include "codegen/fn_ir_builder.h"
+#include "codegen/ir_types.h"
 #include "glog/logging.h"
 
 namespace fesql {
 namespace codegen {
-ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block,
-                                   ScopeVar* scope_var)
+ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
       row_ptr_name_(""),
       output_ptr_name_(""),
       buf_ir_builder_(nullptr),
       module_(nullptr) {}
-ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block,
-                                   ScopeVar* scope_var,
-                                   BufIRBuilder* buf_ir_builder,
-                                   const std::string& row_ptr_name,
-                                   const std::string& output_ptr_name,
-                                   ::llvm::Module* module)
+ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
+                             BufIRBuilder* buf_ir_builder,
+                             const std::string& row_ptr_name,
+                             const std::string& output_ptr_name,
+                             ::llvm::Module* module)
     : block_(block),
       sv_(scope_var),
       row_ptr_name_(row_ptr_name),
@@ -44,9 +44,8 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block,
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
-
 bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
-                             ::llvm::Value** output) {
+                          ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "node or output is null";
         return false;
@@ -101,7 +100,7 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             return Build(node->children[0], output);
         }
         case ::fesql::node::kExprStruct: {
-            return BuildStructExpr(::fesql::node::StructExpr*)node, output);
+            return BuildStructExpr((fesql::node::StructExpr*)node, output);
         }
         default: {
             LOG(WARNING) << "not supported";
@@ -111,7 +110,7 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
 }
 
 bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
-                                   ::llvm::Value** output) {
+                                ::llvm::Value** output) {
     // TODO(chenjing): return status;
     common::Status status;
     if (call_fn == NULL || output == NULL) {
@@ -157,8 +156,41 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     return true;
 }
 
+/**
+ * Build Struct Expr IR:
+ * TODO(chenjing): support method memeber
+ * @param node
+ * @param output
+ * @return
+ */
+bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
+                                    ::llvm::Value** output) {
+    std::vector<::llvm::Type*> members;
+    if (nullptr != node->GetFileds() && !node->GetFileds()->children.empty()) {
+        for (auto each : node->GetFileds()->children) {
+            node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
+            ::llvm::Type* type;
+            if (ConvertFeSQLType2LLVMType(field->GetParaType(),
+                                          module_->getContext(), &type)) {
+                members.push_back(type);
+            } else {
+                LOG(WARNING)
+                    << "Invalid struct with unacceptable field type: " +
+                           ::fesql::node::DataTypeName(field->GetParaType());
+                return false;
+            }
+        }
+    }
+    ::llvm::StringRef name(node->GetName());
+    ::llvm::StructType* llvm_struct =
+        ::llvm::StructType::create(module_->getContext(), name);
+    ::llvm::ArrayRef<::llvm::Type*> array_ref(members);
+    llvm_struct->setBody(array_ref);
+    *output = (::llvm::Value*)llvm_struct;
+    return true;
+}
 bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
-                                      ::llvm::Value** output) {
+                                   ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "column ref node is null";
         return false;
@@ -197,7 +229,7 @@ bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
 }
 
 bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
-                                      ::llvm::Value** output) {
+                                   ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
@@ -221,7 +253,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
 }
 
 bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
-                                       ::llvm::Value** output) {
+                                    ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
@@ -273,9 +305,6 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
     }
 }
 
-bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExprNode* node,
-    ::llvm::Value** output) {
-
-};
+;
 }  // namespace codegen
 }  // namespace fesql
