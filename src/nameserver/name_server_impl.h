@@ -68,8 +68,8 @@ public:
     const uint64_t& ReturnCt() {
         return ctime_;
     }
-private:
     std::shared_ptr<::rtidb::client::NsClient> client_;
+private:
     std::shared_ptr<ZkClient> zk_client_;
     std::mutex mu_;
     ::rtidb::nameserver::ClusterAddress cluster_add_;
@@ -472,11 +472,16 @@ private:
                            const ::rtidb::api::TTLType& type, 
                            uint64_t ttl, const std::string& ts_name);
 
+    bool CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo>& tables);
+
+    void CheckTableInfo(std::string &alias, std::vector<::rtidb::nameserver::TableInfo> &tables);
+
 private:
     std::mutex mu_;
     Tablets tablets_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
+    std::map<std::string, std::map<std::string, std::vector<::rtidb::nameserver::TablePartition>>> rep_table_map_;
     ReplicaClusterByNsRequest zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;

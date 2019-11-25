@@ -42,9 +42,9 @@ namespace nameserver {
 const std::string OFFLINE_LEADER_ENDPOINT = "OFFLINE_LEADER_ENDPOINT";
 const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
-ClusterInfo::ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd): mu_() {
+ClusterInfo::ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd) : mu_() {
     cluster_add_.CopyFrom(cd);
-    ctime_ = ::baidu::common::timer::get_micros()/1000;
+    ctime_ = ::baidu::common::timer::get_micros() / 1000;
 }
 
 void ClusterInfo::CheckZkClient() {
@@ -115,24 +115,118 @@ int ClusterInfo::Init(std::string& msg) {
         PDLOG(WARNING, "connect ns failed, replica cluster ns");
         return 403;
     }
-    /*
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string rpc_msg;
-    if (!client.ShowTable("", tables, rpc_msg)) {
-        code = 300;
-        break;
+    if (!client_->ShowTable("", tables, rpc_msg)) {
+        msg = "connect ns failed";
+        return 403;
     }
-    if (tables.size() > 0) {
-        code = 300;
-        rpc_msg = "remote cluster already has table, cann't add replica cluster";
-        break;
+    for (const auto& table : tables) {
+        auto iter =
+            table.name();
     }
-    */
     zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
     zk_client_->WatchNodes();
     return 0;
 }
-bool ClusterInfo::AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg) {
+void NameServerImpl::CheckTableInfo(std::string& alias, std::vector<::rtidb::nameserver::TableInfo>& tables) {
+
+    auto rep_iter = rep_table_map_.find(alias);
+    if (rep_iter == rep_table_map_.end()) {
+        rep_table_map_.insert(std::make_pair(alias, std::map<std::string, std::vector<::rtidb::nameserver::TablePartition>>()));
+    }
+    rep_iter = rep_table_map_.find(alias);
+    for (const auto& table : tables) {
+        auto table_iter = rep_iter->second.find(table.name());
+        if (table_iter == rep_iter->second.end()) {
+            rep_iter->second.insert(std::make_pair(table.name(), std::vector<::rtidb::nameserver::TablePartition>()));
+            table_iter = rep_iter->second.find(table.name());
+            for (auto& temp_part : table.table_partition()) {
+                ::rtidb::nameserver::TablePartition tb;
+                tb.set_pid(temp_part.pid());
+                tb.set_record_byte_size(temp_part.record_byte_size());
+                tb.set_record_cnt(temp_part.record_cnt());
+                for (auto& to : temp_part.term_offset()) {
+                    tb.add_term_offset()->CopyFrom(to);
+                }
+                for (auto& meta : temp_part.partition_meta()) {
+                    if (meta.is_leader() && meta.is_alive()) {
+                        tb.add_partition_meta()->CopyFrom(meta);
+                        break;
+                    }
+                }
+                table_iter->second.push_back(tb);
+            }
+            continue;
+        }
+        for (int i = 0; i < table.table_partition_size(); i++) {
+            auto& temp_part = table.table_partition(i);
+            auto part_iter = std::find(table_iter->second.begin(), table_iter->second.end(), temp_part.pid());
+            part_iter->term_offset_size();
+            if (temp_part.term_offset_size() > part_iter->term_offset_size()) {
+                for (int z = part_iter->term_offset_size(); z < temp_part.term_offset_size(); z++) {
+                    part_iter->add_term_offset()->CopyFrom(temp_part.term_offset(z));
+                }
+            }
+            int j = 0;
+            for (; j < temp_part.partition_meta_size(); j++) {
+                auto &temp_meta = temp_part.partition_meta(j);
+                if (temp_meta.is_alive() && temp_meta.is_leader()) {
+                    if (part_iter->partition_meta(0).endpoint() != temp_meta.endpoint()) {
+                        part_iter->clear_partition_meta();
+                        part_iter->add_partition_meta()->CopyFrom(temp_meta);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+
+bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo>& tables) {
+    for (auto &table : tables) {
+        auto iter = table_info_.find(table.name());
+        if (iter == table_info_.end()) {
+            return false;
+        }
+        if (table.ttl() != iter->second->ttl()) {
+            return false;
+        }
+        if (table.ttl_type() != iter->second->ttl_type()) {
+            return false;
+        }
+        if (table.partition_num() != iter->second->partition_num()) {
+            return false;
+        }
+        if (table.compress_type() != iter->second->compress_type()) {
+            return false;
+        }
+        for (int i = 0; i < table.column_desc_size(); i++) {
+            if (table.column_desc(i).SerializeAsString() != iter->second->column_desc(i).SerializeAsString()) {
+                return false;
+            }
+        }
+        for (int i = 0; i < table.column_desc_v1_size(); i++) {
+            if (table.column_desc_v1(i).SerializeAsString() != iter->second->column_desc(i).SerializeAsString()) {
+                return false;
+            }
+        }
+        for (int i = 0; i < table.column_key_size(); i++) {
+            if (table.column_key(i).SerializeAsString() != iter->second->column_key(i).SerializeAsString()) {
+                return false;
+            }
+        }
+        for (int i = 0; i < table.added_column_desc_size(); i++) {
+            if (table.added_column_desc(i).SerializeAsString()
+                != iter->second->added_column_desc(i).SerializeAsString()) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+bool ClusterInfo::AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term,
+        std::string& msg) {
     if (!client_->AddReplicaClusterByNs(alias, zone_name, term, msg)) {
         PDLOG(WARNING, "send MakeReplicaCluster request failed");
         return false;
@@ -140,9 +234,8 @@ bool ClusterInfo::AddReplicaClusterByNs(const std::string& alias, const std::str
     return true;
 }
 
-bool ClusterInfo::RemoveReplicaClusterByNs(const std::string &alias,
-    const std::string &zone_name, const uint64_t term, int& code,
-    std::string &msg) {
+bool ClusterInfo::RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name,
+    const uint64_t term, int& code, std::string& msg) {
     return client_->RemoveReplicaClusterByNs(alias, zone_name, term, code, msg);
   }
 
@@ -243,7 +336,7 @@ bool NameServerImpl::Recover() {
             PDLOG(INFO, "set zk_auto_failover_node[%s]", value.c_str());
         } else {
             value == "true" ? auto_failover_.store(true, std::memory_order_release) :
-                           auto_failover_.store(false, std::memory_order_release);
+                auto_failover_.store(false, std::memory_order_release);
             PDLOG(INFO, "get zk_auto_failover_node[%s]", value.c_str());
         }
         value.clear();
@@ -273,7 +366,7 @@ bool NameServerImpl::Recover() {
 
 void NameServerImpl::RecoverOfflineTablet() {
     offline_endpoint_map_.clear();
-    for(const auto& tablet : tablets_) {
+    for (const auto& tablet : tablets_) {
         if (tablet.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
             offline_endpoint_map_.insert(std::make_pair(tablet.first, tablet.second->ctime_));
             thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, tablet.first, false));
@@ -636,8 +729,8 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     }
     // handle offline tablet
     Tablets::iterator tit = tablets_.begin();
-    for (; tit !=  tablets_.end(); ++tit) {
-        if (alive.find(tit->first) == alive.end() 
+    for (; tit != tablets_.end(); ++tit) {
+        if (alive.find(tit->first) == alive.end()
                 && tit->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
             // tablet offline
             PDLOG(INFO, "offline tablet with endpoint[%s]", tit->first.c_str());
@@ -766,8 +859,8 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
                     if (need_restore && is_leader) {
                         PDLOG(INFO, "restore table[%s] pid[%u] endpoint[%s]", kv.first.c_str(), pid, endpoint.c_str());
                         CreateChangeLeaderOP(kv.first, pid, endpoint, need_restore, concurrency);
-                        CreateRecoverTableOP(kv.first, pid, OFFLINE_LEADER_ENDPOINT, true, 
-                                FLAGS_check_binlog_sync_progress_delta, concurrency);
+                        CreateRecoverTableOP(kv.first, pid, OFFLINE_LEADER_ENDPOINT, true,
+                                             FLAGS_check_binlog_sync_progress_delta, concurrency);
                     }
                     break;
                 }
@@ -1209,7 +1302,7 @@ void NameServerImpl::GetTablePartition(RpcController* controller,
         if (iter->second->table_partition(idx).pid() != pid) {
             continue;
         }
-        ::rtidb::nameserver::TablePartition* table_partition = response->mutable_table_partition();
+        ::rtidb::nameserver::TablePartition *table_partition = response->mutable_table_partition();
         table_partition->CopyFrom(iter->second->table_partition(idx));
         break;
     }
@@ -2912,7 +3005,7 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
         return;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
-    if (*(pid_group.rbegin()) > (uint32_t)table_info->table_partition_size() - 1) {
+    if (*(pid_group.rbegin()) > (uint32_t) table_info->table_partition_size() - 1) {
         response->set_code(307);
         response->set_msg("max pid is greater than partition size");
         PDLOG(WARNING, "max pid is greater than partition size. table[%s]", request->name().c_str());
@@ -3238,7 +3331,7 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "no alive leader for table %s pid %u", name.c_str(), pid);
         return -1;
-    }else {
+    } else {
         if (leader_endpoint == endpoint) {
             PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
             return -1;
@@ -3276,6 +3369,7 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
     uint32_t tid = iter->second->tid();
     //TODO use get healthy follower method
     std::vector<std::string> follower_endpoint;
+    std::vector<std::string> remote_follower_endpoint;
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
         if (iter->second->table_partition(idx).pid() != pid) {
             continue;
@@ -3293,6 +3387,12 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
                                         endpoint.c_str(), name.c_str(), pid);
                     }
                 }
+            }
+        }
+        for (int i = 0; i < iter->second->table_partition(idx).remote_partition_meta_size(); i++) {
+            if (iter->second->table_partition(idx).remote_partition_meta(i).is_alive()) {
+                std::string endpoint = iter->second->table_partition(idx).remote_partition_meta(i).endpoint();
+                remote_follower_endpoint.push_back(endpoint);
             }
         }
         break;
@@ -3317,6 +3417,9 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
     change_leader_data.set_pid(pid);
     for (const auto& endpoint : follower_endpoint) {
         change_leader_data.add_follower(endpoint);
+    }
+    for (const auto &endpoint : remote_follower_endpoint) {
+        change_leader_data.add_remote_follower(endpoint);
     }
     if (!candidate_leader.empty()) {
         change_leader_data.set_candidate_leader(candidate_leader);
@@ -3802,7 +3905,7 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
     return 0;
 }
 
-int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_data) { 
+int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_data) {
     RecoverTableData recover_table_data;
     if (!recover_table_data.ParseFromString(op_data->op_info_.data())) {
         PDLOG(WARNING, "parse recover_table_data failed. data[%s]", op_data->op_info_.data().c_str());
@@ -4199,7 +4302,7 @@ int NameServerImpl::CreateUpdatePartitionStatusOP(const std::string& name, uint3
     return 0;
 }
 
-int NameServerImpl::CreateUpdatePartitionStatusOPTask(std::shared_ptr<OPData> op_data) { 
+int NameServerImpl::CreateUpdatePartitionStatusOPTask(std::shared_ptr<OPData> op_data) {
     EndpointStatusData endpoint_status_data;
     if (!endpoint_status_data.ParseFromString(op_data->op_info_.data())) {
         PDLOG(WARNING, "parse endpont_status_data failed. data[%s]", op_data->op_info_.data().c_str());
@@ -5114,10 +5217,13 @@ void NameServerImpl::ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_i
         follower_endpoint.erase(std::find(follower_endpoint.begin(), follower_endpoint.end(), leader_endpoint));
         tablet_ptr = iter->second;
     }
-    if (!tablet_ptr->client_->ChangeRole(change_leader_data.tid(), change_leader_data.pid(), true, 
-                        follower_endpoint, cur_term)) {
-        PDLOG(WARNING, "change leader failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
-                        change_leader_data.name().c_str(), change_leader_data.tid(), 
+    for (int i = 0; i < change_leader_data.remote_follower_size(); i++) {
+        follower_endpoint.push_back(change_leader_data.remote_follower(i));
+    }
+    if (!tablet_ptr->client_->ChangeRole(change_leader_data.tid(), change_leader_data.pid(), true,
+                                         follower_endpoint, cur_term)) {
+        PDLOG(WARNING, "change leader failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]",
+                        change_leader_data.name().c_str(), change_leader_data.tid(),
                         change_leader_data.pid(), leader_endpoint.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
@@ -5364,7 +5470,7 @@ bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
     bool ok = tablet->client_->UpdateTTL(tid, pid, type, ttl, ts_name);
     if (!ok) {
         PDLOG(WARNING, "fail to update ttl with tid %d, pid %d, ttl %lu, endpoint %s", tid, pid, ttl, endpoint.c_str());
-    }else {
+    } else {
         PDLOG(INFO, "update ttl with tid %d pid %d ttl %lu endpoint %s ok", tid, pid, ttl, endpoint.c_str());
     }
     return ok;
@@ -5394,11 +5500,22 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             PDLOG(WARNING, "%s init failed, error: %s", request->alias().c_str(), rpc_msg.c_str());
             break;
         }
+        std::vector<::rtidb::nameserver::TableInfo> tables;
+        if (!cluster_info->client_->ShowTable("", tablest, rpc_msg)) {
+            rpc_msg = "show remote replica nameserver error";
+            code = 566;
+            break;
+        }
+        if ((tables.size() > 0) && !CompareTableInfo(tabless)) {
+            rpc_msg = "compare table info error";
+            code = 567;
+            break;
+        }
         std::lock_guard<std::mutex> lock(mu_);
         std::string cluster_value, value;
         request->SerializeToString(&cluster_value);
         if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), value)) {
-            if(!zk_client_->SetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
+            if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), cluster_value)) {
                 PDLOG(WARNING, "write replica cluster to zk failed, alias: %s", request->alias().c_str());
                 code = 304;
                 rpc_msg = "set zk failed";
@@ -5417,7 +5534,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             break;
         }
         nsc_.insert(std::make_pair(request->alias(), cluster_info));
-    } while(0);
+    } while (0);
 
     response->set_code(code);
     response->set_msg(rpc_msg);
@@ -5474,7 +5591,7 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
         }
         follower_.store(request->follower(), std::memory_order_release);
         zone_info_.CopyFrom(*request);
-    } while(0);
+    } while (0);
     response->set_code(code);
     response->set_msg(rpc_msg);
 }
@@ -5492,7 +5609,7 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
 
     auto it = nsc_.begin();
-    for(; it != nsc_.end(); ++it) {
+    for (; it != nsc_.end(); ++it) {
         auto* status = response->add_replicas();
         auto replica = status->mutable_replica();
         replica->set_alias(it->first);
@@ -5503,6 +5620,7 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
     response->set_code(0);
     response->set_msg("ok");
 }
+
 void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
         const ::rtidb::nameserver::RemoveReplicaOfRequest* request,
         ::rtidb::nameserver::GeneralResponse* response,
@@ -5586,7 +5704,7 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
         }
         follower_.store(request->follower(), std::memory_order_release);
         zone_info_.CopyFrom(*request);
-    } while(0);
+    } while (0);
     response->set_code(code);
     response->set_msg(rpc_msg);
     return;
