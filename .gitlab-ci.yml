@@ -1,8 +1,8 @@
 image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.7
 stages:
     - build
-    - ut
-    - it-tablet
+    # - ut
+    # - it-tablet
     - it-ns
 
 build_rtidb_and_case:
@@ -77,7 +77,7 @@ ns_one_demension:
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - bash steps/integration_test.sh 0 "ns_client"
+        - bash steps/integration_test.sh 0 "ssd"
     artifacts:
         reports:
             junit:
@@ -91,7 +91,7 @@ ns_multi_demension:
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - bash steps/integration_test.sh 1 "ns_client"
+        - bash steps/integration_test.sh 1 "hdd"
     artifacts:
         reports:
             junit:
