@@ -75,7 +75,7 @@ class TestAutoFailover(TestCaseBase):
             self.start_client(self.leader)
         elif failover_reason == 'network_failure':
             self.connectzk(self.leader)
-        time.sleep(2)
+        time.sleep(5)
         self.wait_op_done(name)
         self.assertIn('kTabletOffline', rs2[self.leader])
         self.confset(self.ns_leader, 'auto_failover', 'false')
