@@ -137,12 +137,14 @@ bool SQLExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
         LOG(WARNING) << "fail to find row ptr with name " << row_ptr_name_;
         return false;
     }
+
     ::llvm::Value* row_size = NULL;
     ok = sv_->FindVar(row_size_name_, &row_size);
     if (!ok || row_size == NULL) {
         LOG(WARNING) << "fail to find row size with name " << row_size_name_;
         return false;
     }
+
     ::llvm::Value* value = NULL;
     ok = sv_->FindVar(node->GetColumnName(), &value);
     LOG(INFO) << "get table column " << node->GetColumnName();

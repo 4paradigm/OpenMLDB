@@ -18,15 +18,6 @@
 #ifndef SRC_VM_ENGINE_H_
 #define SRC_VM_ENGINE_H_
 
-<<<<<<< HEAD
-=======
-#include "vm/table_mgr.h"
-#include "vm/sql_compiler.h"
-#include "base/spin_lock.h"
-#include "proto/common.pb.h"
-#include <memory>
-#include <mutex>
->>>>>>> origin/develop
 #include <map>
 #include <memory>
 #include <vector>
@@ -34,6 +25,7 @@
 #include "base/spin_lock.h"
 #include "vm/sql_compiler.h"
 #include "vm/table_mgr.h"
+#include "proto/common.pb.h"
 
 namespace fesql {
 namespace vm {

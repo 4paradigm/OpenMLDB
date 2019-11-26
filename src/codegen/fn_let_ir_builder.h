@@ -48,6 +48,7 @@ class RowFnLetIRBuilder {
             ::llvm::Function **fn);
 
     bool FillArgs(const std::string& row_ptr_name,
+            const std::string& row_size_name,
             const std::string& output_ptr_name,
             ::llvm::Function *fn,
             ScopeVar& sv);

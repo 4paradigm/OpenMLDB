@@ -113,12 +113,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
     uint32_t count = 0;
     while (it->Valid() && count < min) {
         ::fesql::storage::Slice value = it->GetValue();
-        DLOG(INFO) << "value " << base::DebugString(value.data(), value.size());
-        DLOG(INFO) << "key " << it->GetKey() << " row size "
-                   << 2 + project_op->output_size;
         int8_t* output =
             reinterpret_cast<int8_t*>(malloc(2 + project_op->output_size));
-
         int8_t* row =
             reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
         uint32_t ret = udf(row, output + 2);

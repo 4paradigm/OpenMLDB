@@ -38,6 +38,7 @@ message GetTableSchemaReponse {
     optional type.TableDef schema = 2;
     optional common.Status status = 3;
 }
+
 message InsertRequest {
     optional string db = 1;
     optional string table = 2;

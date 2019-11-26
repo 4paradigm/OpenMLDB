@@ -19,12 +19,11 @@
 #define SRC_CODEGEN_BUF_IR_BUILDER_H_
 
 #include <map>
-#include <utility>
 #include <string>
-#include "proto/type.pb.h"
-#include "llvm/IR/IRBuilder.h"
+#include <utility>
 #include "codegen/scope_var.h"
-
+#include "llvm/IR/IRBuilder.h"
+#include "proto/type.pb.h"
 
 namespace fesql {
 namespace codegen {
@@ -32,32 +31,25 @@ namespace codegen {
 // the table row access builder refer to fesql-docs/schema.md
 class BufIRBuilder {
  public:
-
-    BufIRBuilder(::fesql::type::TableDef* table, 
-                 ::llvm::BasicBlock* block,
+    BufIRBuilder(::fesql::type::TableDef* table, ::llvm::BasicBlock* block,
                  ScopeVar* scope_var);
 
     ~BufIRBuilder();
 
-    bool BuildGetField(const std::string& name, 
-                       ::llvm::Value* row_ptr,
-                       ::llvm::Value* row_size,
-                       ::llvm::Value** output);
+    bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
+                       ::llvm::Value* row_size, ::llvm::Value** output);
 
  private:
-
     bool BuildGetString(const std::string& name, ::llvm::Value* row_ptr,
-            ::llvm::Value** output);
+                        ::llvm::Value* row_size, ::llvm::Value** output);
 
-    bool GetFieldOffset(const std::string& name,
-            ::llvm::Value* row_ptr,
-            ::llvm::Value* row_size,
-            ::llvm::Value** output);
+    // get field offset
+    bool GetFieldOffset(const std::string& name, ::llvm::Value* row_ptr,
+                        ::llvm::Value* row_size, ::llvm::Value** output);
 
-    bool GetNextOffset(const std::string& name,
-            ::llvm::Value* row_ptr,
-            ::llvm::Value* row_size,
-            ::llvm::Value** output);
+    // get the next field offset from some field
+    bool GetNextOffset(const std::string& name, ::llvm::Value* row_ptr,
+                       ::llvm::Value* row_size, ::llvm::Value** output);
 
  private:
     ::fesql::type::TableDef* const table_;

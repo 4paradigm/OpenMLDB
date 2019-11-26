@@ -56,6 +56,19 @@ bool GetLLVMType(::llvm::IRBuilder<>& builder,
                 *output = builder.getDoubleTy();
                 return true;
             }
+        case ::fesql::type::kVarchar:
+            {
+                ::llvm::StructType* type =
+                ::llvm::StructType::create(builder.getContext(), "fe.string_ref");
+                ::llvm::Type* size_ty = builder.getInt32Ty();
+                ::llvm::Type* data_ptr_ty = builder.getInt8PtrTy();
+                std::vector<::llvm::Type*> elements;
+                elements.push_back(size_ty);
+                elements.push_back(data_ptr_ty);
+                type->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
+                *output = type;
+                return true;
+            }
         default:
             {
                 LOG(WARNING) << "not supported type " << ::fesql::type::Type_Name(type);
@@ -99,6 +112,7 @@ bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,
 
 bool GetTableType(::llvm::Type* type,
         ::fesql::type::Type* output) {
+
     if (type == NULL || output == NULL) {
         LOG(WARNING) << "type or output is null";
         return false;

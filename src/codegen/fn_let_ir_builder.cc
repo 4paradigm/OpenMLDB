@@ -43,6 +43,7 @@ bool RowFnLetIRBuilder::Build(
     ::llvm::Function *fn = NULL;
     std::string row_ptr_name = "row_ptr_name";
     std::string output_ptr_name =  "output_ptr_name";
+    std::string row_size_name = "row_size_name";
     ::llvm::StringRef name_ref(name);
     if (module_->getFunction(name_ref) != NULL) {
         LOG(WARNING) << "function with name " << name << " exist";
@@ -58,7 +59,8 @@ bool RowFnLetIRBuilder::Build(
     ScopeVar sv;
     sv.Enter(name);
 
-    ok = FillArgs(row_ptr_name, output_ptr_name, fn, sv);
+    ok = FillArgs(row_ptr_name, row_size_name, 
+            output_ptr_name, fn, sv);
 
     if (!ok) {
         LOG(WARNING) << "fail to fill args ";
@@ -68,10 +70,9 @@ bool RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock *block = ::llvm::BasicBlock::Create(module_->getContext(),
             "entry", fn);
 
-    // TODO(wangtaize) 
     BufIRBuilder buf_ir_builder(table_, block, &sv);
     SQLExprIRBuilder sql_expr_ir_builder(block, &sv, 
-            &buf_ir_builder, row_ptr_name,
+            &buf_ir_builder, row_ptr_name, row_size_name,
             output_ptr_name, module_);
 
     const ::fesql::node::PlanNodeList& children = node->GetProjects();
@@ -120,6 +121,7 @@ bool RowFnLetIRBuilder::Build(
         }
         switch (cdef.type()) {
             case ::fesql::type::kInt16:
+            case ::fesql::type::kVarchar:
                 {
                     offset += 2;
                     break;
@@ -179,9 +181,9 @@ bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
         return false;
     }
 
-    // the function input args is two int8 ptr
     std::vector<::llvm::Type*> args_type;
     args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
+    args_type.push_back(::llvm::Type::getInt32Ty(module_->getContext()));
     args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
     ::llvm::ArrayRef<::llvm::Type *> array_ref(args_type);
     ::llvm::FunctionType *fnt = ::llvm::FunctionType::get(::llvm::Type::getInt32Ty(module_->getContext()),
@@ -190,11 +192,12 @@ bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
      *fn = ::llvm::Function::Create(fnt, 
              ::llvm::Function::ExternalLinkage,
              name, module_);
-     LOG(INFO) << "create fn header " << name  << " done";
+     DLOG(INFO) << "create fn header " << name  << " done";
      return true;
 }
 
 bool RowFnLetIRBuilder::FillArgs(const std::string& row_ptr_name,
+        const std::string& row_size_name,
         const std::string& output_ptr_name,
         ::llvm::Function *fn,
         ScopeVar& sv) {
@@ -206,6 +209,8 @@ bool RowFnLetIRBuilder::FillArgs(const std::string& row_ptr_name,
 
     ::llvm::Function::arg_iterator it = fn->arg_begin();
     sv.AddVar(row_ptr_name, &*it);
+    ++it;
+    sv.AddVar(row_size_name, &*it);
     ++it;
     sv.AddVar(output_ptr_name, &*it);
     return true;
