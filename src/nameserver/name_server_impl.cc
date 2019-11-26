@@ -115,21 +115,11 @@ int ClusterInfo::Init(std::string& msg) {
         PDLOG(WARNING, "connect ns failed, replica cluster ns");
         return 403;
     }
-    std::vector<::rtidb::nameserver::TableInfo> tables;
-    std::string rpc_msg;
-    if (!client_->ShowTable("", tables, rpc_msg)) {
-        msg = "connect ns failed";
-        return 403;
-    }
-    for (const auto& table : tables) {
-        auto iter =
-            table.name();
-    }
     zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
     zk_client_->WatchNodes();
     return 0;
 }
-void NameServerImpl::CheckTableInfo(std::string& alias, std::vector<::rtidb::nameserver::TableInfo>& tables) {
+void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtidb::nameserver::TableInfo>& tables) {
 
     auto rep_iter = rep_table_map_.find(alias);
     if (rep_iter == rep_table_map_.end()) {
@@ -5501,12 +5491,12 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             break;
         }
         std::vector<::rtidb::nameserver::TableInfo> tables;
-        if (!cluster_info->client_->ShowTable("", tablest, rpc_msg)) {
+        if (!cluster_info->client_->ShowTable("", tables, rpc_msg)) {
             rpc_msg = "show remote replica nameserver error";
             code = 566;
             break;
         }
-        if ((tables.size() > 0) && !CompareTableInfo(tabless)) {
+        if ((tables.size() > 0) && !CompareTableInfo(tables)) {
             rpc_msg = "compare table info error";
             code = 567;
             break;
@@ -5723,6 +5713,19 @@ void NameServerImpl::CheckClusterInfo() {
         }
         for (auto i : tmp_nsc) {
            i.second->CheckZkClient();
+        }
+        std::string msg;
+        for (auto i : tmp_nsc) {
+            std::vector<::rtidb::nameserver::TableInfo> tables;
+            if (!i.second->client_->ShowTable("", tables, msg)) {
+                PDLOG(WARNING, "check %s showtable has error: %s", i.first.c_str(), msg.c_str());
+                continue;
+            }
+            if ((tables.size() > 0) && !CompareTableInfo(tables)) {
+                PDLOG(WARNING, "compare %s table info has error", i.first.c_str());
+                continue;
+            }
+            CheckTableInfo(i.first, tables);
         }
     } while(0);
 

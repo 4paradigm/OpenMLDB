@@ -474,7 +474,7 @@ private:
 
     bool CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo>& tables);
 
-    void CheckTableInfo(std::string &alias, std::vector<::rtidb::nameserver::TableInfo> &tables);
+    void CheckTableInfo(const std::string &alias, std::vector<::rtidb::nameserver::TableInfo> &tables);
 
 private:
     std::mutex mu_;
