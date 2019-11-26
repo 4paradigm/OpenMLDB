@@ -28,10 +28,9 @@ RowBuilder::RowBuilder(const Schema& schema,
                        schema_(schema), buf_(buf), 
                        size_(size), offset_(0), 
                        str_addr_length_(0), str_start_offset_(0), str_offset_(0) {
-    *buf_ = 1;
-    *(buf_ + 1) = 1;
+    *buf_ = 1; //FVersion
+    *(buf_ + 1) = 1; //SVersion
     if (size <= UINT8_MAX) {
-        *(buf_ + 2) = 1;
         str_addr_length_ = 1;
     } else if (size <= UINT16_MAX) {
         str_addr_length_ = 2;
@@ -70,8 +69,6 @@ RowBuilder::RowBuilder(const Schema& schema,
     }
     str_offset_ = str_start_offset_;
 }
-
-RowBuilder::~RowBuilder() {}
 
 uint32_t RowBuilder::CalTotalLength(const Schema& schema, uint32_t string_length) {
     if (schema.size() == 0) {
@@ -124,23 +121,19 @@ bool RowBuilder::Check(uint32_t delta) {
 }
 
 bool RowBuilder::AppendBool(bool val) {
-    if (Check(1)) {
-        int8_t* ptr = buf_ + offset_;
-        (*(int8_t*)ptr) = val ? 1 : 0;
-        offset_ += 1;
-        return true;
-    }
-    return false;
+    if (!Check(1)) return false;
+    int8_t* ptr = buf_ + offset_;
+    (*(int8_t*)ptr) = val ? 1 : 0;
+    offset_ += 1;
+    return true;
 }
 
 bool RowBuilder::AppendInt32(int32_t val) {
-    if (Check(4)) {
-        int8_t* ptr = buf_ + offset_;
-        (*(int32_t*)ptr) = val;
-        offset_ += 4;
-        return true;
-    }
-    return false;
+    if (!Check(4)) return false;
+    int8_t* ptr = buf_ + offset_;
+    (*(int32_t*)ptr) = val;
+    offset_ += 4;
+    return true;
 }
 
 bool RowBuilder::AppendInt16(int16_t val) {

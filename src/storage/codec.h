@@ -33,7 +33,7 @@ class RowBuilder {
               int8_t* buf,
               uint32_t size);
 
-    ~RowBuilder(); 
+    ~RowBuilder() = default; 
     static uint32_t CalTotalLength(const Schema& schema, uint32_t string_length);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
