@@ -35,7 +35,7 @@ RowBuilder::RowBuilder(const Schema& schema,
         str_addr_length_ = 1;
     } else if (size <= UINT16_MAX) {
         str_addr_length_ = 2;
-    } else if (size <= 2 << 24) {
+    } else if (size <= 1 << 24) {
         str_addr_length_ = 3;
     } else {
         str_addr_length_ = 4;
@@ -110,9 +110,9 @@ uint32_t RowBuilder::CalTotalLength(const Schema& schema, uint32_t string_length
         return total_length + string_filed_cnt;
     } else if (total_length + string_filed_cnt * 2 <= UINT16_MAX) {
         return total_length + string_filed_cnt * 2;
-    } else if (total_length + string_filed_cnt * 3 <= 2 << 24) {
+    } else if (total_length + string_filed_cnt * 3 <= 1 << 24) {
         return total_length + string_filed_cnt * 3;
-    } else if (total_length + string_filed_cnt * 3 <= UINT32_MAX) {
+    } else {
         return total_length + string_filed_cnt * 4;
     }
     return 0;
