@@ -35,6 +35,7 @@ class RowBuilder {
 
     ~RowBuilder(); 
     static uint32_t CalTotalLength(const Schema& schema, uint32_t string_length);
+    bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
     bool AppendInt64(int64_t val);
@@ -60,16 +61,18 @@ class RowView {
     RowView(const Schema& schema,
             const int8_t* row,
             uint32_t size);
+    ~RowView() = default;
 
-    ~RowView();
-    bool IsValid();
-
+    bool GetBool(uint32_t idx, bool* val);
     bool GetInt32(uint32_t idx, int32_t* val);
     bool GetInt64(uint32_t idx, int64_t* val);
     bool GetInt16(uint32_t idx, int16_t* val);
     bool GetFloat(uint32_t idx, float* val);
     bool GetDouble(uint32_t idx, double* val);
     bool GetString(uint32_t idx, char** val, uint32_t* length);
+
+ private:    
+    bool CheckValid(uint32_t idx, ::fesql::type::Type type);
 
  private:
     uint8_t str_addr_length_;

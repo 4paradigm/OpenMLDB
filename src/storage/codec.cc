@@ -46,6 +46,9 @@ RowBuilder::RowBuilder(const Schema& schema,
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema.Get(idx);
         switch (column.type()) {
+            case ::fesql::type::kBool:
+                str_start_offset_ += 1;
+                break;
             case ::fesql::type::kInt16:
                 str_start_offset_ += 2;
                 break;
@@ -79,6 +82,9 @@ uint32_t RowBuilder::CalTotalLength(const Schema& schema, uint32_t string_length
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema.Get(idx);
         switch (column.type()) {
+            case ::fesql::type::kBool:
+                total_length += 1;
+                break;
             case ::fesql::type::kInt16:
                 total_length += 2;
                 break;
@@ -114,6 +120,16 @@ uint32_t RowBuilder::CalTotalLength(const Schema& schema, uint32_t string_length
 
 bool RowBuilder::Check(uint32_t delta) {
     if (offset_ + delta <= str_start_offset_ && str_offset_ <= size_) return true;
+    return false;
+}
+
+bool RowBuilder::AppendBool(bool val) {
+    if (Check(1)) {
+        int8_t* ptr = buf_ + offset_;
+        (*(int8_t*)ptr) = val ? 1 : 0;
+        offset_ += 1;
+        return true;
+    }
     return false;
 }
 
@@ -195,6 +211,10 @@ RowView::RowView(const Schema& schema,
     for (int idx = 0; idx < schema_.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(idx);
         switch (column.type()) {
+            case ::fesql::type::kBool:
+                offset_vec_.push_back(offset);
+                offset += 1;
+                break;
             case ::fesql::type::kInt16: {
                 offset_vec_.push_back(offset);
                 offset += 2;
@@ -257,74 +277,75 @@ RowView::RowView(const Schema& schema,
     }
 }
 
-bool RowView::IsValid() {
-    return is_valid_;
-}
-
-RowView::~RowView() {}
-
-bool RowView::GetInt32(uint32_t idx, int32_t* val) {
-    if (val == NULL || (int32_t)idx >= schema_.size()) {
-        LOG(WARNING) << "output val is null or idx out of index";
-        return false;
-    }
-    if (!IsValid()) {
+bool RowView::CheckValid(uint32_t idx, ::fesql::type::Type type) {
+    if (!is_valid_) {
         LOG(WARNING) << "row is invalid";
         return false;
     }
-
+    if ((int32_t)idx >= schema_.size()) {
+        LOG(WARNING) << "idx out of index";
+        return false;
+    }
     const ::fesql::type::ColumnDef& column = schema_.Get(idx);
-    if (column.type() != ::fesql::type::kInt32) {
-        LOG(WARNING) << "type mismatch required is " << ::fesql::type::Type_Name(::fesql::type::kInt32)
+    if (column.type() != type) {
+        LOG(WARNING) << "type mismatch required is " << ::fesql::type::Type_Name(type)
             << " but is " << fesql::type::Type_Name(column.type());
         return false;
     }
+    return true;
+}
 
+bool RowView::GetBool(uint32_t idx, bool* val) {
+    if (val == NULL) {
+        LOG(WARNING) << "output val is null";
+        return false;
+    }
+    if (!CheckValid(idx, ::fesql::type::kBool)) {
+        return false;
+    }    
+    uint32_t offset = offset_vec_.at(idx);
+    const int8_t* ptr = row_ + offset;
+    uint8_t value = *((uint8_t*)ptr);
+    value == 1 ? *val = true : *val = false;
+    return true;
+}
+
+bool RowView::GetInt32(uint32_t idx, int32_t* val) {
+    if (val == NULL) {
+        LOG(WARNING) << "output val is null";
+        return false;
+    }
+    if (!CheckValid(idx, ::fesql::type::kInt32)) {
+        return false;
+    }    
     uint32_t offset = offset_vec_.at(idx);
     const int8_t* ptr = row_ + offset;
     *val = *((const int32_t*)ptr);
-    DLOG(INFO) << "idx " << idx << " with offset " << offset << ", val " << *val;
     return true;
 }
 
 bool RowView::GetInt64(uint32_t idx, int64_t* val) {
-    if (val == NULL || (int32_t)idx >= schema_.size()) {
-        LOG(WARNING) << "output val is null or idx out of index";
+    if (val == NULL) {
+        LOG(WARNING) << "output val is null";
         return false;
     }
-    if (!IsValid()) {
-        LOG(WARNING) << "row is invalid";
+    if (!CheckValid(idx, ::fesql::type::kInt64)) {
         return false;
     }
-
-    const ::fesql::type::ColumnDef& column = schema_.Get(idx);
-    if (column.type() != ::fesql::type::kInt64) {
-        LOG(WARNING) << "type mismatch required is " << ::fesql::type::Type_Name(::fesql::type::kInt64)
-            << " but is " << fesql::type::Type_Name(column.type());
-        return false;
-    }
-
     uint32_t offset = offset_vec_.at(idx);
     const int8_t* ptr = row_ + offset;
     *val = *((const int64_t*)ptr);
-    DLOG(INFO) << "idx " << idx << " with offset " << offset << ", val " << *val;
     return true;
 }
 
 bool RowView::GetInt16(uint32_t idx, int16_t* val) {
-
-    if (val == NULL || (int32_t)idx >= schema_.size()) {
-        LOG(WARNING) << "output val is null or idx out of index";
+    if (val == NULL) {
+        LOG(WARNING) << "output val is null";
         return false;
     }
-
-    const ::fesql::type::ColumnDef& column = schema_.Get(idx);
-    if (column.type() != ::fesql::type::kInt16) {
-        LOG(WARNING) << "type mismatch required is " << ::fesql::type::Type_Name(::fesql::type::kInt16)
-            << " but is " << fesql::type::Type_Name(column.type());
+    if (!CheckValid(idx, ::fesql::type::kInt16)) {
         return false;
     }
-
     uint32_t offset = offset_vec_.at(idx);
     const int8_t* ptr = row_ + offset;
     *val = *((const int16_t*)ptr);
@@ -332,23 +353,13 @@ bool RowView::GetInt16(uint32_t idx, int16_t* val) {
 }
 
 bool RowView::GetFloat(uint32_t idx, float* val) {
-
-    if (val == NULL || (int32_t)idx >= schema_.size()) {
-        LOG(WARNING) << "output val is null or idx out of index";
+    if (val == NULL) {
+        LOG(WARNING) << "output val is null";
         return false;
     }
-    if (!IsValid()) {
-        LOG(WARNING) << "row is invalid";
+    if (!CheckValid(idx, ::fesql::type::kFloat)) {
         return false;
     }
-
-    const ::fesql::type::ColumnDef& column = schema_.Get(idx);
-    if (column.type() != ::fesql::type::kFloat) {
-        LOG(WARNING) << "type mismatch required is " << ::fesql::type::Type_Name(::fesql::type::kFloat)
-            << " but is " << fesql::type::Type_Name(column.type());
-        return false;
-    }
-
     uint32_t offset = offset_vec_.at(idx);
     const int8_t* ptr = row_ + offset;
     *val = *((const float*)ptr);
@@ -356,23 +367,13 @@ bool RowView::GetFloat(uint32_t idx, float* val) {
 }
 
 bool RowView::GetDouble(uint32_t idx, double* val) {
-
-    if (val == NULL || (int32_t)idx >= schema_.size()) {
-        LOG(WARNING) << "output val is null or idx out of index";
+    if (val == NULL) {
+        LOG(WARNING) << "output val is null";
         return false;
     }
-    if (!IsValid()) {
-        LOG(WARNING) << "row is invalid";
+    if (!CheckValid(idx, ::fesql::type::kDouble)) {
         return false;
     }
-
-    const ::fesql::type::ColumnDef& column = schema_.Get(idx);
-    if (column.type() != ::fesql::type::kDouble) {
-        LOG(WARNING) << "type mismatch required is " << ::fesql::type::Type_Name(::fesql::type::kDouble)
-            << " but is " << fesql::type::Type_Name(column.type());
-        return false;
-    }
-
     uint32_t offset = offset_vec_.at(idx);
     const int8_t* ptr = row_ + offset;
     *val = *((const double*)ptr);
@@ -380,22 +381,13 @@ bool RowView::GetDouble(uint32_t idx, double* val) {
 }
 
 bool RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
-    if (val == NULL || length == NULL || (int32_t)idx >= schema_.size()) {
-        LOG(WARNING) << "output val is null or idx out of index";
+    if (val == NULL || length == 0) {
+        LOG(WARNING) << "output val is null or lenght is zero";
         return false;
     }
-    if (!IsValid()) {
-        LOG(WARNING) << "row is invalid";
+    if (!CheckValid(idx, ::fesql::type::kString)) {
         return false;
     }
-
-    const ::fesql::type::ColumnDef& column = schema_.Get(idx);
-    if (column.type() != ::fesql::type::kString) {
-        LOG(WARNING) << "type mismatch required is " << ::fesql::type::Type_Name(::fesql::type::kString)
-            << " but is " << fesql::type::Type_Name(column.type());
-        return false;
-    }
-
     uint32_t offset = offset_vec_.at(idx);
     const int8_t* ptr = row_ + offset;
     *val = (char*)ptr;
