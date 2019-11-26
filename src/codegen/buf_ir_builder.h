@@ -39,6 +39,8 @@ class BufIRBuilder {
 
     ~BufIRBuilder();
 
+    bool GetFieldOffset(const std::string& name,
+        uint32_t &offset, ::fesql::type::Type &type);
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
                        ::llvm::Value** output);
  private:

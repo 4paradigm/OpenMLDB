@@ -23,6 +23,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 
+#include "buf_ir_builder.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -128,6 +129,40 @@ class WindowFnLetIRBuilderTest : public ::testing::TestWithParam<Param> {
         }
     }
 
+    template <class T>
+    void Check(base::WindowIteratorImpl& impl,
+               uint32_t offset, ::fesql::type::Type type,
+               std::vector<UnionData> vals) {
+        base::ColumnIteratorImpl<T>* column_iter =
+            new base::ColumnIteratorImpl<T>(impl, offset);
+        ASSERT_TRUE(nullptr != column_iter);
+        for (auto val : vals) {
+            ASSERT_TRUE(column_iter->Valid());
+            switch (type) {
+                case ::fesql::type::kInt16: {
+                    ASSERT_EQ(val.vsmallint, column_iter->Next());
+                    break;
+                }
+                case ::fesql::type::kInt32: {
+                    ASSERT_EQ(val.vint, column_iter->Next());
+                    break;
+                }
+                case ::fesql::type::kInt64: {
+                    ASSERT_EQ(val.vlong, column_iter->Next());
+                    break;
+                }
+                case ::fesql::type::kFloat: {
+                    ASSERT_EQ(val.vfloat, column_iter->Next());
+                    break;
+                }
+                case ::fesql::type::kDouble: {
+                    ASSERT_EQ(val.vdouble, column_iter->Next());
+                    break;
+                }
+            }
+        }
+    }
+
  protected:
     ::fesql::type::TableDef table;
 };
@@ -151,7 +186,7 @@ INSTANTIATE_TEST_CASE_P(
               std::vector<UnionData>(
                   {{.vlong = 5}, {.vlong = 55}, {.vlong = 555}})}));
 
-TEST_P(WindowFnLetIRBuilderTest, WindowIteratorImplTest) {
+TEST_P(WindowFnLetIRBuilderTest, WindowIteratorImplWithGetFieldMethodTest) {
     // prepare row buf
     std::vector<base::Row> rows;
     {
@@ -237,6 +272,86 @@ TEST_P(WindowFnLetIRBuilderTest, WindowIteratorImplTest) {
         }
     }
 }
+
+TEST_P(WindowFnLetIRBuilderTest, WindowIteratorImplWithOffsetTest) {
+    // prepare row buf
+    std::vector<base::Row> rows;
+    {
+        int8_t* ptr = static_cast<int8_t*>(malloc(28));
+        *((int32_t*)(ptr + 2)) = 1;
+        *((int16_t*)(ptr + 2 + 4)) = 2;
+        *((float*)(ptr + 2 + 4 + 2)) = 3.1f;
+        *((double*)(ptr + 2 + 4 + 2 + 4)) = 4.1;
+        *((int64_t*)(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
+        rows.push_back(base::Row{.buf = ptr});
+    }
+
+    {
+        int8_t* ptr = static_cast<int8_t*>(malloc(28));
+        *((int32_t*)(ptr + 2)) = 11;
+        *((int16_t*)(ptr + 2 + 4)) = 22;
+        *((float*)(ptr + 2 + 4 + 2)) = 33.1f;
+        *((double*)(ptr + 2 + 4 + 2 + 4)) = 44.1;
+        *((int64_t*)(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
+        rows.push_back(base::Row{.buf = ptr});
+    }
+
+    {
+        int8_t* ptr = static_cast<int8_t*>(malloc(28));
+        *((int32_t*)(ptr + 2)) = 111;
+        *((int16_t*)(ptr + 2 + 4)) = 222;
+        *((float*)(ptr + 2 + 4 + 2)) = 333.1f;
+        *((double*)(ptr + 2 + 4 + 2 + 4)) = 444.1;
+        *((int64_t*)(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
+        rows.push_back(base::Row{.buf = ptr});
+    }
+
+    base::WindowIteratorImpl impl(rows);
+    ASSERT_TRUE(impl.Valid());
+    ASSERT_TRUE(impl.Valid());
+    ASSERT_TRUE(impl.Valid());
+    ASSERT_TRUE(impl.Valid());
+    ASSERT_TRUE(impl.Valid());
+    impl.reset();
+
+    Param param = GetParam();
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_get_col", *ctx);
+    RowFnLetIRBuilder ir_builder(&table, m.get());
+
+    BufIRBuilder buf_ir_builder(&table, NULL, NULL);
+    uint32_t offset;
+    fesql::type::Type col_type;
+    ASSERT_TRUE(buf_ir_builder.GetFieldOffset(param.col, offset, col_type));
+    ASSERT_EQ(param.type, col_type);
+    switch (col_type) {
+        case ::fesql::type::kInt32: {
+            Check<int32_t>(impl, offset, param.type, param.vals);
+            break;
+        }
+        case ::fesql::type::kInt64: {
+            Check<int64_t>(impl, offset, param.type, param.vals);
+            break;
+        }
+        case ::fesql::type::kInt16: {
+            Check<int16_t>(impl, offset, param.type, param.vals);
+            break;
+        }
+        case ::fesql::type::kFloat: {
+            Check<float>(impl, offset, param.type, param.vals);
+            break;
+        }
+        case ::fesql::type::kDouble: {
+            Check<double>(impl, offset, param.type, param.vals);
+            break;
+        }
+        default: {
+            FAIL();
+        }
+    }
+}
+
 }  // namespace codegen
 }  // namespace fesql
 

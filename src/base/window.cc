@@ -88,13 +88,22 @@ class ColumnIteratorImpl : public WrapIteratorImpl<V, Row> {
                        int32_t (*get_filed)(int8_t *, int8_t *))
         : WrapIteratorImpl<V, Row>(impl), get_filed_(get_filed) {}
 
+    ColumnIteratorImpl(IteratorImpl<Row> &impl, uint32_t offset)
+        : WrapIteratorImpl<V, Row>(impl), offset_(offset), get_filed_(nullptr) {}
     V GetField(Row row) {
         V value;
-        get_filed_(row.buf, (int8_t *)(&value));
-        return value;
-    }
+        if (get_filed_ != nullptr) {
+            get_filed_(row.buf, (int8_t *)(&value));
+            return value;
+        } else {
+            const int8_t* ptr = row.buf + offset_;
+            value = *((const V*)ptr);
+            return value;
+        }
 
+    }
  private:
+    uint32_t offset_;
     int32_t (*get_filed_)(int8_t *, int8_t *);
 };
 
