@@ -521,12 +521,12 @@ class TestAutoFailover(TestCaseBase):
         self.stop_client(self.slave1)
         time.sleep(5)
         self.start_client(self.slave1)
-        time.sleep(1)
+        time.sleep(5)
         self.wait_op_done(name)
         self.stop_client(self.slave1)
         time.sleep(5)
         self.start_client(self.slave1)
-        time.sleep(1)
+        time.sleep(5)
         self.wait_op_done(name)
 
         for i in range(number):
