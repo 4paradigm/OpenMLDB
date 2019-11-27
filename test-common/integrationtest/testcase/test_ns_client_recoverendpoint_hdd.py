@@ -383,6 +383,7 @@ class TestRecoverEndpoint(TestCaseBase):
         time.sleep(3)
         self.recoverendpoint(self.ns_leader, self.leader, 'true')
         time.sleep(10)
+        self.wait_op_done(name)
 
         rs5 = self.showtable(self.ns_leader, name)
         self.assertEqual(rs5[(name, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
