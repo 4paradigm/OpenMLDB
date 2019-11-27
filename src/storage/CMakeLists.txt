@@ -3,8 +3,8 @@ include_directories(${INCLUDE_DIRECTORIES}
     ${PROJECT_BINARY_DIR}/src)
 add_library(fesql_storage STATIC table.cc segment.cc codec.cc)
 
-add_executable(codec_test codec_test.cc codec.cc ${PROJECT_BINARY_DIR}/src/proto/type.pb.cc)
-target_link_libraries(codec_test glog gflags gtest protobuf pthread unwind)
+add_executable(codec_test codec_test.cc codec.cc)
+target_link_libraries(codec_test fesql_proto glog gflags gtest protobuf pthread unwind)
 
 add_executable(list_test list_test.cc)
 target_link_libraries(list_test gflags gtest pthread)
