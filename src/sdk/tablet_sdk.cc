@@ -81,35 +81,35 @@ bool ResultSetIteratorImpl::GetInt16(uint32_t idx, int16_t* val) {
     if (!row_view_) {
         return false;
     }
-    return row_view_->GetInt16(idx, val);
+    return row_view_->GetInt16(idx, val) == 0;
 }
 
 bool ResultSetIteratorImpl::GetInt32(uint32_t idx, int32_t* val) {
     if (!row_view_) {
         return false;
     }
-    return row_view_->GetInt32(idx, val);
+    return row_view_->GetInt32(idx, val) == 0;
 }
 
 bool ResultSetIteratorImpl::GetInt64(uint32_t idx, int64_t* val) {
     if (!row_view_) {
         return false;
     }
-    return row_view_->GetInt64(idx, val);
+    return row_view_->GetInt64(idx, val) == 0;
 }
 
 bool ResultSetIteratorImpl::GetFloat(uint32_t idx, float* val) {
     if (!row_view_) {
         return false;
     }
-    return row_view_->GetFloat(idx, val);
+    return row_view_->GetFloat(idx, val) == 0;
 }
 
 bool ResultSetIteratorImpl::GetDouble(uint32_t idx, double* val) {
     if (!row_view_) {
         return false;
     }
-    return row_view_->GetDouble(idx, val);
+    return row_view_->GetDouble(idx, val) == 0;
 }
 
 class ResultSetImpl : public ResultSet {

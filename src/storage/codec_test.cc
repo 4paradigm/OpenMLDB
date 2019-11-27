@@ -8,7 +8,42 @@ namespace storage {
 class CodecTest : public ::testing::Test {
 };
 
-TEST_F(CodecTest, encode) {
+TEST_F(CodecTest, Normal) {
+    Schema schema;
+    ::fesql::type::ColumnDef* col = schema.Add();
+    col->set_name("col1");
+    col->set_type(::fesql::type::kInt32);
+    col = schema.Add();
+    col->set_name("col2");
+    col->set_type(::fesql::type::kInt16);
+    col = schema.Add();
+    col->set_name("col3");
+    col->set_type(::fesql::type::kFloat);
+    col = schema.Add();
+    col->set_name("col4");
+    col->set_type(::fesql::type::kDouble);
+    col = schema.Add();
+    col->set_name("col5");
+    col->set_type(::fesql::type::kInt64);
+    uint32_t size = RowBuilder::CalTotalLength(schema, 0);
+    std::string row;
+    row.resize(size);
+    RowBuilder builder(schema, (int8_t*)(&(row[0])), size);
+    ASSERT_TRUE(builder.AppendInt32(1));
+    ASSERT_TRUE(builder.AppendInt16(2));
+    ASSERT_TRUE(builder.AppendFloat(3.1));
+    ASSERT_TRUE(builder.AppendDouble(4.1));
+    ASSERT_TRUE(builder.AppendInt64(5));
+    RowView view(schema, (int8_t*)(&(row[0])), size);
+    int32_t val = 0;
+    ASSERT_EQ(view.GetInt32(0, &val), 0);
+    ASSERT_EQ(val, 1);
+    int16_t val1 = 0;
+    ASSERT_EQ(view.GetInt16(1, &val1), 0);
+    ASSERT_EQ(val1, 2);
+}    
+
+TEST_F(CodecTest, Encode) {
     Schema schema;
     for (int i = 0; i < 10; i++) {
         ::fesql::type::ColumnDef* col = schema.Add();
