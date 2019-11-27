@@ -558,6 +558,8 @@ class TestAutoFailover(TestCaseBase):
             rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
             if '{}'.format(rs_after) == 'gettablestatus failed':
                 continue
+            print(rs_before.keys()[0][2])
+            print(rs_after.keys()[0][2])
             if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
                 self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
                 break
