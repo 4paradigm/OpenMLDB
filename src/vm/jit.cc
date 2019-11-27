@@ -50,6 +50,35 @@ void FeSQLJIT::ReleaseVModule(::llvm::orc::VModuleKey key) {
     LOG(INFO) << "release module with key " <<  key;
     ES->releaseVModule(key);
 }
+bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
+        const std::string& name, void* fn_ptr) {
+    if (fn_ptr == NULL) {
+        LOG(WARNING) << "fn ptr is null";
+        return false;
+    }
+    ::llvm::orc::MangleAndInterner mi(getExecutionSession(), 
+            getDataLayout());
+    ::llvm::StringRef symbol(name);
+    ::llvm::orc::SymbolMap  symbol_map;
+    ::llvm::JITEvaluatedSymbol jit_symbol(::llvm::pointerToJITTargetAddress(fn_ptr),
+            ::llvm::JITSymbolFlags());
+    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
+    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
+    if (err) {
+        LOG(WARNING) << "fail to add symbol " << name;
+        return false;
+    }
+    return true;
+}
+ 
+bool FeSQLJIT::AddSymbol(const std::string& name, void* fn_ptr) {
+    if (fn_ptr == NULL) {
+        LOG(WARNING) << "fn ptr is null";
+        return false;
+    }
+    auto& jd = getMainJITDylib();
+    return AddSymbol(jd, name, fn_ptr);
+}
 
 }  // namespace vm
 }  // namespace fesql

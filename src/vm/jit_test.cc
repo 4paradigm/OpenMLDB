@@ -38,6 +38,11 @@ using namespace ::llvm;
 using namespace ::llvm::orc;
 
 
+int32_t test_fn(int32_t a) {
+    return a +1;
+}
+
+
 namespace fesql {
 namespace vm {
 
@@ -62,7 +67,6 @@ TEST_F(JITTest, test_release_module) {
     auto jit = FeCheck((FeSQLJITBuilder().create()));
     ::llvm::orc::JITDylib& jd = jit->createJITDylib("test");
     ::llvm::orc::VModuleKey m1 = jit->CreateVModule();
-    ::llvm::orc::VModuleKey m2 = jit->CreateVModule();
     int (*Add1)(int) = NULL;
     {
         auto ct2 = llvm::make_unique<LLVMContext>();
@@ -78,50 +82,24 @@ TEST_F(JITTest, test_release_module) {
 		Argument *ArgX = &*Add1F->arg_begin();          // Get the arg
 		ArgX->setName("AnArg"); // Give it a nice symbolic name for fun.
 		Value *Add = builder.CreateAdd(One, ArgX);
-		builder.CreateRet(Add);
+        ::llvm::Type* i32_ty = builder.getInt32Ty();
+        ::llvm::FunctionCallee callee = m->getOrInsertFunction("test_fn", i32_ty, i32_ty);
+        std::vector<Value*> call_args;
+        call_args.push_back(Add);
+        ::llvm::ArrayRef<Value*> call_args_ref(call_args);
+        ::llvm::Value* ret = builder.CreateCall(callee, call_args_ref);
+		builder.CreateRet(ret);
         ::llvm::Error e = jit->AddIRModule(jd,
 			  	std::move(::llvm::orc::ThreadSafeModule(std::move(m), std::move(ct2))),
                   m1);
+        jit->AddSymbol(jd, "test_fn", reinterpret_cast<void*>(&test_fn));
         if (e) {}
 	 	auto Add1Sym = FeCheck((jit->lookup(jd, "add1")));
         jit->getExecutionSession().dump(::llvm::errs());
         Add1 = (int (*)(int))Add1Sym.getAddress();
-        ASSERT_EQ(Add1(1), 2);
-        Add1 = NULL;
-        jit->ReleaseVModule(m1);
-     }
-	{
-        auto ct2 = llvm::make_unique<LLVMContext>();
-        auto m = make_unique<Module>("custom_fn", *ct2);
-		Function *Add1F =
-			  Function::Create(FunctionType::get(Type::getInt32Ty(*ct2),
-												 {Type::getInt32Ty(*ct2)}, false),
-							   Function::ExternalLinkage, "add1", m.get());
-	    BasicBlock *BB = BasicBlock::Create(*ct2, "EntryBlock", Add1F);
-		IRBuilder<> builder(BB);
-		Value *One = builder.getInt32(2);
-		assert(Add1F->arg_begin() != Add1F->arg_end()); // Make sure there's an arg
-		Argument *ArgX = &*Add1F->arg_begin();          // Get the arg
-		ArgX->setName("AnArg"); // Give it a nice symbolic name for fun.
-		Value *Add = builder.CreateAdd(One, ArgX);
-		builder.CreateRet(Add);
-        ::llvm::StringRef str_ref("add1");
-        ::llvm::orc::SymbolStringPtr ssp = jit->getExecutionSession().intern(str_ref);
-        ::llvm::DenseSet<SymbolStringPtr> ds;
-        ds.insert(ssp);
-        ::llvm::Error e = jd.remove(ds);
-        if (e) {}
-        e = jit->AddIRModule(jd,
-			  	std::move(::llvm::orc::ThreadSafeModule(std::move(m), std::move(ct2))),
-                  m2);
-        if (e) {}
-	 	auto Add1Sym = FeCheck((jit->lookup(jd, "add1")));
-        Add1 = (int (*)(int))Add1Sym.getAddress();
-        jit->getExecutionSession().dump(::llvm::errs());
         ASSERT_EQ(Add1(1), 3);
         Add1 = NULL;
      }
-
 }
 
 }  // namespace vm
