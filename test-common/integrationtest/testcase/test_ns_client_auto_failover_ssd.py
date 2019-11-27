@@ -612,7 +612,7 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(1)
         rs = self.disconnectzk(self.leader)
         self.assertIn('disconnect zk ok', rs)
-        time.sleep(1)
+        time.sleep(10)
         flag_yes = 0
         flag_no = 0
         for repeat in range(10):
