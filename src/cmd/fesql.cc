@@ -248,7 +248,7 @@ void PrintTableSchema(std::ostream &stream,
     t.add("Null");
     t.endOfRow();
 
-    for (int i = 0; i < items_size; i++) {
+    for (uint32_t i = 0; i < items_size; i++) {
         t.add(schema->GetColumnName(i));
         t.add(fesql::sdk::DataTypeName(schema->GetColumnType(i)));
         t.add(schema->IsColumnNotNull(i) ? "YES" : "NO");

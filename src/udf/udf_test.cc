@@ -63,33 +63,9 @@ class UDFTest : public ::testing::Test {
 
 TEST_F(UDFTest, UDF_sum_test) {
     WindowIteratorImpl impl(rows);
-    ColumnIteratorImpl<int32_t>* col_iter =
-        new ColumnIteratorImpl<int32_t>(impl, 2);
-    ASSERT_EQ(1 + 11 + 111, fesql_sum(((int8_t*)(col_iter))));
-}
-
-TEST_F(UDFTest, UDF_sum_ddl_find_test) {
-    void* dllHandle = NULL;
-    dllHandle = dlopen("./libfesql_udf.so", RTLD_LAZY);
-    ASSERT_TRUE(nullptr != dllHandle);
-    int32_t (*udf)(int8_t*) = NULL;
-    udf = (int32_t(*)(int8_t*))dlsym(dllHandle, "fesql_sum");
-    ASSERT_TRUE(nullptr != udf);
-
-    WindowIteratorImpl impl(rows);
-    ColumnIteratorImpl<int32_t>* col_iter =
-        new ColumnIteratorImpl<int32_t>(impl, 2);
-    ASSERT_EQ(1 + 11 + 111, udf(((int8_t*)(col_iter))));
-}
-
-TEST_F(UDFTest, UDF_llvm_invoke_udf_test) {
-    void* dllHandle = NULL;
-    dllHandle = dlopen("./libfesql_udf.so", RTLD_LAZY);
-    ASSERT_TRUE(nullptr != dllHandle);
-    int32_t (*udf)()= NULL;
-    udf = (int32_t(*)())dlsym(dllHandle, "fesql_get5");
-    ASSERT_TRUE(nullptr != udf);
-    ASSERT_EQ(5, udf());
+    int8_t* col =
+        (int8_t*)(::fesql::udf::col((int8_t*)(&impl), 2, fesql::type::kInt32));
+    ASSERT_EQ(1 + 11 + 111, fesql::udf::sum_int32(col));
 }
 
 }  // namespace udf

@@ -5,7 +5,7 @@ include_directories(${INCLUDE_DIRECTORIES}
 add_library(fesql_vm STATIC jit.cc op_generator.cc sql_compiler.cc engine.cc)
 add_dependencies(fesql_vm fesql_node fesql_parser fesql_proto fesql_planner fesql_analyser)
 add_executable(jit_test jit_test.cc)
-target_link_libraries(jit_test fesql_vm  ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+target_link_libraries(jit_test fesql_udf fesql_vm  ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(jit_test jit_test --gtest_output=xml:${CMAKE_BINARY_DIR}/jit_test.xml)
 list(APPEND test_list jit_test)
 

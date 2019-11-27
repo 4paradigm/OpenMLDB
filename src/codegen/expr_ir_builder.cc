@@ -27,7 +27,6 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
       row_ptr_name_(""),
-      output_ptr_name_(""),
       buf_ir_builder_(nullptr),
       module_(nullptr) {}
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
@@ -38,7 +37,6 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
     : block_(block),
       sv_(scope_var),
       row_ptr_name_(row_ptr_name),
-      output_ptr_name_(output_ptr_name),
       buf_ir_builder_(buf_ir_builder),
       module_(module) {}
 

@@ -30,7 +30,7 @@ add_test(buf_ir_builder_test buf_ir_builder_test
 list(APPEND test_list buf_ir_builder_test)
 
 add_executable(fn_let_ir_builder_test fn_let_ir_builder_test.cc)
-target_link_libraries(fn_let_ir_builder_test fesql_codegen ${FESQL_PLAN_LIBS} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+target_link_libraries(fn_let_ir_builder_test fesql_udf fesql_codegen ${FESQL_PLAN_LIBS} protobuf fesql_vm ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(fn_let_ir_builder_test fn_let_ir_builder_test
     --gtest_output=xml:${CMAKE_BINARY_DIR}/fn_let_ir_builder_test.xml)
 list(APPEND test_list fn_let_ir_builder_test)

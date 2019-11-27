@@ -16,7 +16,7 @@
  */
 
 #include "vm/jit.h"
-
+#include "udf/udf.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -100,6 +100,45 @@ TEST_F(JITTest, test_release_module) {
         ASSERT_EQ(Add1(1), 3);
         Add1 = NULL;
      }
+}
+
+TEST_F(JITTest, test_udf_invoke_module) {
+    auto jit = FeCheck((FeSQLJITBuilder().create()));
+    ::llvm::orc::JITDylib& jd = jit->createJITDylib("test");
+    ::llvm::orc::VModuleKey m1 = jit->CreateVModule();
+    int (*Add1)(int) = NULL;
+    {
+        auto ct2 = llvm::make_unique<LLVMContext>();
+        auto m = make_unique<Module>("custom_fn", *ct2);
+        Function *Add1F =
+            Function::Create(FunctionType::get(Type::getInt32Ty(*ct2),
+                                               {Type::getInt32Ty(*ct2)}, false),
+                             Function::ExternalLinkage, "add1", m.get());
+        BasicBlock *BB = BasicBlock::Create(*ct2, "EntryBlock", Add1F);
+        IRBuilder<> builder(BB);
+        Value *One = builder.getInt32(1);
+        assert(Add1F->arg_begin() != Add1F->arg_end()); // Make sure there's an arg
+        Argument *ArgX = &*Add1F->arg_begin();          // Get the arg
+        ArgX->setName("AnArg"); // Give it a nice symbolic name for fun.
+        Value *Add = builder.CreateAdd(One, ArgX);
+        ::llvm::Type* i32_ty = builder.getInt32Ty();
+        // int32 inc_int32(int32)
+        ::llvm::FunctionCallee callee = m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
+        std::vector<Value*> call_args;
+        call_args.push_back(Add);
+        ::llvm::ArrayRef<Value*> call_args_ref(call_args);
+        ::llvm::Value* ret = builder.CreateCall(callee, call_args_ref);
+        builder.CreateRet(ret);
+        ::llvm::Error e = jit->AddIRModule(jd,
+                                           std::move(::llvm::orc::ThreadSafeModule(std::move(m), std::move(ct2))),
+                                           m1);
+        jit->AddSymbol(jd, "inc_int32", reinterpret_cast<void*>(&fesql::udf::inc_int32));
+        if (e) {}
+        auto Add1Sym = FeCheck((jit->lookup(jd, "add1")));
+        jit->getExecutionSession().dump(::llvm::errs());
+        Add1 = (int (*)(int))Add1Sym.getAddress();
+        ASSERT_EQ(Add1(1), 3);
+    }
 }
 
 }  // namespace vm
