@@ -618,7 +618,7 @@ class TestAutoFailover(TestCaseBase):
         for repeat in range(10):
             time.sleep(2)
             result = ['']
-            rs_show = self.showtable(self.ns_leader)
+            rs_show = self.showtable(self.ns_leader, name)
             row = 0
             for i in rs_show:
                 result.append(rs_show.values()[row][2])
