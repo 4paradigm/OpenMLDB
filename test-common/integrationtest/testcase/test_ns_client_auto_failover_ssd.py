@@ -552,10 +552,8 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(5)
         self.start_client(self.slave1)
         time.sleep(10)
-        rs_after = self.gettablestatus(self.slave1, tid, pid)
-        rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
         for i in range(20):
-            time.sleep(2)
+            time.sleep(3)
             rs_after = self.gettablestatus(self.slave1, tid, pid)
             rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
             if '{}'.format(rs_after) == 'gettablestatus failed':
