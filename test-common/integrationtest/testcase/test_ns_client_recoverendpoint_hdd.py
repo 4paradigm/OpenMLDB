@@ -138,7 +138,7 @@ class TestRecoverEndpoint(TestCaseBase):
         (1, 3, -2, 26, -1, 38, 6, 8, 12, 15, -2, 25, -1, 38, 33, 19, 23),
         (1, 12, -2, 2, -1, 38, 26, -1, 38, 6, 12, -1, 13, -2, 25, -1, 38, 33, 18, 22),
         (1, 2, -2, 26, -1, 38, 6, 13, -2, 25, -1, 38, 33, 17, 21),
-        (1, 4, -2, 27, -1, 38, 14, -2, 34, -1, 38, 33, 17),  # 从节点挂掉后恢复，手动恢复后重新加为从节点
+        (1, 4, -1, 27, -1, 38, 14, -1, 34, 0, 38, 33, 17),  # 从节点挂掉后恢复，手动恢复后重新加为从节点
     )
     @ddt.unpack
     def test_recover_endpoint(self, *steps):
@@ -152,10 +152,10 @@ class TestRecoverEndpoint(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
+        time.sleep(2)
         rs = self.showtable(self.ns_leader, self.tname)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-2] for k, v in rs.items()]
-        print self.showopstatus(self.ns_leader)
         self.assertEqual(role_x.count('leader'), 4)
         self.assertEqual(role_x.count('follower'), 6)
         self.assertEqual(is_alive_x.count('yes'), 10)
