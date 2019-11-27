@@ -38,6 +38,7 @@ message TablePartition {
     repeated TermPair term_offset = 3;
     optional uint64 record_cnt = 4;
     optional uint64 record_byte_size = 5;
+    repeated PartitionMeta remote_partition_meta = 6;
 }
 
 message UpdateTTLRequest {
@@ -108,6 +109,7 @@ message AddReplicaNSRequest {
     required uint32 pid = 2;
     required string endpoint = 3;
     repeated uint32 pid_group = 4;
+    optional PartitionMeta partition_meta = 5; //for remote
 }
 
 message Pair {

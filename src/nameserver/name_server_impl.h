@@ -161,11 +161,19 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void AddReplicaNode(const std::string& name, 
+            const ::rtidb::nameserver::PartitionMeta& partition_meta,
+            uint32_t pid); 
+
     void AddReplicaNS(RpcController* controller,
             const AddReplicaNSRequest* request,
             GeneralResponse* response,
             Closure* done);
 
+    int DelReplicaNode(const std::string& endpoint,
+            const std::string name,
+            uint32_t pid); 
+    
     void DelReplicaNS(RpcController* controller,
             const DelReplicaNSRequest* request,
             GeneralResponse* response,
@@ -324,6 +332,8 @@ private:
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
+    int CreateAddReplicaNodeOPTask(std::shared_ptr<OPData> op_data);
+
     int CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data);
@@ -331,6 +341,8 @@ private:
     int CreateMigrateTask(std::shared_ptr<OPData> op_data);
 
     int CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data);
+
+    int CreateDelReplicaNodeOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data);
 
@@ -377,7 +389,10 @@ private:
     void DelTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
-    void UpdatePartitionStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
+    void DelTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
+            std::shared_ptr<::rtidb::api::TaskInfo> task_info, uint32_t flag);
+
+   void UpdatePartitionStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
                     bool is_leader, bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
@@ -402,10 +417,15 @@ private:
 
     std::shared_ptr<Task> CreateAddReplicaTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
-					const std::string& des_endpoint);
+                    const std::string& des_endpoint);
+
+    std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& endpoint, const std::string& name, uint32_t pid, const ::rtidb::nameserver::PartitionMeta& partition_meta, uint64_t op_index, ::rtidb::api::OPType op_type); 
+ 
 
     std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& name,  uint32_t pid,
-                    const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
+            const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
+
+    void AddTableInfo(const std::string& endpoint, const std::string& name, uint32_t pid, const ::rtidb::nameserver::PartitionMeta& partition_meta, std::shared_ptr<::rtidb::api::TaskInfo> task_info); 
 
     void AddTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
@@ -416,6 +436,9 @@ private:
 
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
+
+    std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
+            const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t flag);
 
     std::shared_ptr<Task> CreateUpdateTableInfoTask(const std::string& src_endpoint, 
                     const std::string& name, uint32_t pid, const std::string& des_endpoint,
@@ -534,6 +557,7 @@ private:
     Tablets tablets_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
+    std::map<std::string, std::map<std::string, std::vector<::rtidb::nameserver::TablePartition>>> rep_table_map_;
     ReplicaClusterByNsRequest zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
