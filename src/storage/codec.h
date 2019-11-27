@@ -42,12 +42,14 @@ class RowBuilder {
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const char* val, uint32_t length);
+    bool AppendNULL();
 
  private:
-    inline bool Check(uint32_t delta);
+    bool Check(::fesql::type::Type type);
  private:
     const Schema& schema_;
     int8_t* buf_;
+    uint32_t cnt_;
     uint32_t size_;
     uint32_t offset_;
     uint32_t str_addr_length_;
@@ -63,13 +65,14 @@ class RowView {
             uint32_t size);
     ~RowView() = default;
 
-    bool GetBool(uint32_t idx, bool* val);
-    bool GetInt32(uint32_t idx, int32_t* val);
-    bool GetInt64(uint32_t idx, int64_t* val);
-    bool GetInt16(uint32_t idx, int16_t* val);
-    bool GetFloat(uint32_t idx, float* val);
-    bool GetDouble(uint32_t idx, double* val);
-    bool GetString(uint32_t idx, char** val, uint32_t* length);
+    int GetBool(uint32_t idx, bool* val);
+    int GetInt32(uint32_t idx, int32_t* val);
+    int GetInt64(uint32_t idx, int64_t* val);
+    int GetInt16(uint32_t idx, int16_t* val);
+    int GetFloat(uint32_t idx, float* val);
+    int GetDouble(uint32_t idx, double* val);
+    int GetString(uint32_t idx, char** val, uint32_t* length);
+    bool IsNULL(uint32_t idx);
 
  private:    
     bool CheckValid(uint32_t idx, ::fesql::type::Type type);
