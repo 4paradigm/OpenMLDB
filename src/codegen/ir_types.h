@@ -28,6 +28,9 @@ struct IRString {
 
 inline const bool ConvertFeSQLType2LLVMType (const node::DataType &data_type, ::llvm::LLVMContext &ctx, ::llvm::Type **llvm_type){
     switch (data_type) {
+        case node::kTypeVoid:
+            *llvm_type = (::llvm::Type::getVoidTy(ctx));
+            break;
         case node::kTypeInt16:
             *llvm_type = (::llvm::Type::getInt16Ty(ctx));
             break;
@@ -42,6 +45,9 @@ inline const bool ConvertFeSQLType2LLVMType (const node::DataType &data_type, ::
             break;
         case node::kTypeDouble:
             *llvm_type = (::llvm::Type::getDoubleTy(ctx));
+            break;
+        case node::kTypeInt8Ptr:
+            *llvm_type = (::llvm::Type::getInt8PtrTy(ctx));
             break;
         default: {
             return false;

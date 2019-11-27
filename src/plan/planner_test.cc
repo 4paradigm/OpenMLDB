@@ -9,9 +9,9 @@
 
 #include "plan/planner.h"
 #include <vector>
+#include "analyser/analyser.h"
 #include "gtest/gtest.h"
 #include "parser/parser.h"
-#include "analyser/analyser.h"
 namespace fesql {
 namespace plan {
 
@@ -74,8 +74,10 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
     node::PlanNodeList trees;
     base::Status status;
     int ret = parser_->parse(
-        "SELECT t1.COL1 c1,  trim(COL3) as trimCol3, COL2 , max(t1.age) "
-        "over w1 FROM t1 limit 10;",
+        "SELECT COL1, SUM(AMT) OVER w1 as w_amt_sum FROM t \n"
+        "WINDOW w1 AS (PARTITION BY COL2\n"
+        "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "FOLLOWING) limit 10;",
         list, manager_, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
@@ -103,12 +105,14 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
     ASSERT_EQ(2u, plan_vec.size());
     ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
     ASSERT_EQ(
-        3u,
+        1u,
         ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
+    ASSERT_EQ("", ((node::ProjectListPlanNode *)plan_vec.at(0))->GetW());
     ASSERT_EQ(node::kProjectList, plan_vec.at(1)->GetType());
     ASSERT_EQ(
         1u,
         ((node::ProjectListPlanNode *)plan_vec.at(1))->GetProjects().size());
+    ASSERT_EQ("w1", ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW());
     delete planner_ptr;
 }
 
@@ -253,19 +257,16 @@ TEST_F(PlannerTest, FunDefAndSelectPlanTest) {
         dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
     ASSERT_TRUE(nullptr != plan->GetFnNodeList());
 
-
     // validate select plan
     plan_ptr = trees[1];
     ASSERT_TRUE(NULL != plan_ptr);
     std::cout << *plan_ptr << std::endl;
     // validate fundef plan
     ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
-    node::SelectPlanNode* select_plan =
+    node::SelectPlanNode *select_plan =
         dynamic_cast<node::SelectPlanNode *>(plan_ptr);
-    ASSERT_EQ(1,  select_plan->GetChildrenSize());
-
+    ASSERT_EQ(1, select_plan->GetChildrenSize());
 }
-
 
 }  // namespace plan
 }  // namespace fesql

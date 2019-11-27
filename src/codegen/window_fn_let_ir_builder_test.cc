@@ -125,6 +125,9 @@ class WindowFnLetIRBuilderTest : public ::testing::TestWithParam<Param> {
                     ASSERT_EQ(val.vdouble, column_iter->Next());
                     break;
                 }
+                default:{
+                    FAIL();
+                }
             }
         }
     }
@@ -158,6 +161,9 @@ class WindowFnLetIRBuilderTest : public ::testing::TestWithParam<Param> {
                 case ::fesql::type::kDouble: {
                     ASSERT_EQ(val.vdouble, column_iter->Next());
                     break;
+                }
+                default:{
+                    FAIL();
                 }
             }
         }

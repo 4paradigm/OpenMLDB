@@ -95,7 +95,9 @@ enum DataType {
     kTypeMinute,
     kTypeSecond,
     kTypeRow,
-    kTypeNull
+    kTypeNull,
+    kTypeVoid,
+    kTypeInt8Ptr,
 };
 
 enum TimeUnit {

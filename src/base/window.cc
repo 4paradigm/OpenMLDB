@@ -7,8 +7,10 @@
  *--------------------------------------------------------------------------
  **/
 #include "base/window.h"
+#include <proto/type.pb.h>
 #include <string>
 #include "vector"
+#include <glog/logging.h>
 namespace fesql {
 namespace base {
 template <class V>
@@ -89,19 +91,21 @@ class ColumnIteratorImpl : public WrapIteratorImpl<V, Row> {
         : WrapIteratorImpl<V, Row>(impl), get_filed_(get_filed) {}
 
     ColumnIteratorImpl(IteratorImpl<Row> &impl, uint32_t offset)
-        : WrapIteratorImpl<V, Row>(impl), offset_(offset), get_filed_(nullptr) {}
+        : WrapIteratorImpl<V, Row>(impl),
+          offset_(offset),
+          get_filed_(nullptr) {}
     V GetField(Row row) {
         V value;
         if (get_filed_ != nullptr) {
             get_filed_(row.buf, (int8_t *)(&value));
             return value;
         } else {
-            const int8_t* ptr = row.buf + offset_;
-            value = *((const V*)ptr);
+            const int8_t *ptr = row.buf + offset_;
+            value = *((const V *)ptr);
             return value;
         }
-
     }
+
  private:
     uint32_t offset_;
     int32_t (*get_filed_)(int8_t *, int8_t *);

@@ -63,6 +63,9 @@ INSTANTIATE_TEST_CASE_P(
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",
+        "SELECT COL1, SUM(AMT) OVER w as w_amt_sum FROM t \n"
+        "WINDOW w AS (PARTITION BY COL2\n"
+        "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 FOLLOWING);",
         "SELECT COL1 + COL2 as col12 FROM t1;",
         "SELECT COL1 - COL2 as col12 FROM t1;",
         "SELECT COL1 * COL2 as col12 FROM t1;",
