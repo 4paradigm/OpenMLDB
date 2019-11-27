@@ -134,7 +134,7 @@ class TestAutoRecoverTable(TestCaseBase):
             is_alive_x = [v[-2] for k, v in rs.items()]
             if role_x.count('leader') == 10 and role_x.count('follower') == 18 and is_alive_x.count('yes') == 28:
                 break
-            time.sleep(2)
+            time.sleep(3)
         self.assertEqual(role_x.count('leader'), 10)
         self.assertEqual(role_x.count('follower'), 18)
         self.assertEqual(is_alive_x.count('yes'), 28)
