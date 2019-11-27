@@ -40,7 +40,7 @@ int32_t sum_int32(int8_t *input) { return sum<int32_t>(input); }
 
 int64_t sum_int64(int8_t *input) { return sum<int64_t>(input); }
 
-int8_t *col(int8_t *input, uint32_t offset, uint32_t type_id) {
+int8_t *col(int8_t *input, int32_t offset, int32_t type_id) {
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     if (nullptr == input) {
         return nullptr;

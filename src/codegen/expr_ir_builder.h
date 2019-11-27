@@ -25,27 +25,25 @@
 
 namespace fesql {
 namespace codegen {
-
 class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                     BufIRBuilder* buf_ir_builder,
-                     const std::string& row_ptr_name,
-                     const std::string& output_ptr_name,
-                     ::llvm::Module* module);
+                  BufIRBuilder* buf_ir_builder, const bool row_mode,
+                  const std::string& row_ptr_name, ::llvm::Module* module);
 
     ~ExprIRBuilder();
 
     bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
 
  private:
+    bool BuildColumnIterator(const std::string& col, ::llvm::Value** output);
+    bool BuildColumnItem(const std::string& col, ::llvm::Value** output);
     bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
                         ::llvm::Value** output);
 
     bool BuildCallFn(const ::fesql::node::CallExprNode* fn,
                      ::llvm::Value** output);
-
 
     bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                          ::llvm::Value** output);
@@ -54,10 +52,14 @@ class ExprIRBuilder {
                         ::llvm::Value** output);
 
     bool BuildStructExpr(const ::fesql::node::StructExpr* node,
-                                        ::llvm::Value** output);
+                         ::llvm::Value** output);
+    ::llvm::Function* GetFuncion(const std::string &col);
+    ::llvm::Function* GetFuncion(const std::string &col, const ::fesql::node::DataType &type);
+
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
+    bool row_mode_;
     std::string row_ptr_name_;
     BufIRBuilder* buf_ir_builder_;
     ::llvm::Module* module_;

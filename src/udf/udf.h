@@ -21,7 +21,7 @@ int32_t sum_int32(int8_t *input);
 //int16_t sum_int16(int8_t *input);
 //float sum_float(int8_t *input);
 //double sum_double(int8_t *input);
-int8_t *col(int8_t *input, uint32_t offset, uint32_t type_id);
+int8_t *col(int8_t *input, int32_t offset, int32_t type_id);
 }
 
 #ifdef __cplusplus

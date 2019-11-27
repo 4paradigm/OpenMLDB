@@ -321,7 +321,7 @@ ScanPlanNode *NodeManager::MakeIndexScanPlanNode(const std::string &table) {
 
 ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(
     const std::string &table, const std::string &w) {
-    ProjectListPlanNode *node_ptr = new ProjectListPlanNode(table, w);
+    ProjectListPlanNode *node_ptr = new ProjectListPlanNode(table, w, !w.empty());
     RegisterNode(node_ptr);
     return node_ptr;
 }

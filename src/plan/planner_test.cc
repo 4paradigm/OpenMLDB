@@ -108,11 +108,13 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
         1u,
         ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
     ASSERT_EQ("", ((node::ProjectListPlanNode *)plan_vec.at(0))->GetW());
+    ASSERT_FALSE( ((node::ProjectListPlanNode *)plan_vec.at(0))->IsWindowAgg());
     ASSERT_EQ(node::kProjectList, plan_vec.at(1)->GetType());
     ASSERT_EQ(
         1u,
         ((node::ProjectListPlanNode *)plan_vec.at(1))->GetProjects().size());
     ASSERT_EQ("w1", ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW());
+    ASSERT_TRUE( ((node::ProjectListPlanNode *)plan_vec.at(1))->IsWindowAgg());
     delete planner_ptr;
 }
 

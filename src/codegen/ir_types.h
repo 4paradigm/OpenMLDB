@@ -26,6 +26,35 @@ struct IRString {
     char* data;
 };
 
+
+inline const bool ConvertFeSQLType2DataType (const fesql::type::Type proto_type, node::DataType &data_type){
+    switch (proto_type) {
+        case fesql::type::kInt16:
+            data_type = node::kTypeInt16;
+            break;
+        case fesql::type::kInt32:
+            data_type = node::kTypeInt32;
+            break;
+        case fesql::type::kInt64:
+            data_type = node::kTypeInt64;
+            break;
+        case fesql::type::kFloat:
+            data_type = node::kTypeFloat;
+            break;
+        case fesql::type::kDouble:
+            data_type = node::kTypeDouble;
+            break;
+        case fesql::type::kBool:
+            data_type = node::kTypeBool;
+            break;
+        case fesql::type::kString:
+            data_type = node::kTypeString;
+        default: {
+            return false;
+        }
+    }
+    return true;
+}
 inline const bool ConvertFeSQLType2LLVMType (const node::DataType &data_type, ::llvm::LLVMContext &ctx, ::llvm::Type **llvm_type){
     switch (data_type) {
         case node::kTypeVoid:

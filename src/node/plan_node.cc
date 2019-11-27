@@ -79,7 +79,7 @@ void ProjectListPlanNode::Print(std::ostream &output,
                                 const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    if (w_.empty()) {
+    if (!is_window_agg_) {
         PrintPlanVector(output, org_tab + INDENT, projects,
                         "projects on table " + table_, true);
     } else {
