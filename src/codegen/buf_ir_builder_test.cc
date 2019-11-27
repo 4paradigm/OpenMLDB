@@ -139,8 +139,22 @@ void RunCase(T expected, const ::fesql::type::Type& type,
     ASSERT_EQ(expected, decode(row, row_size));
 }
 
+TEST_F(BufIRBuilderTest, test_load_str) {
+    int8_t* ptr = static_cast<int8_t*>(malloc(35));
+    *reinterpret_cast<int32_t*>(ptr + 2) = 1;
+    *reinterpret_cast<int16_t*>(ptr + 2 + 4) = 2;
+    *reinterpret_cast<float*>(ptr + 2 + 4 + 2) = 3.1f;
+    *reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4) = 4.1;
+    *reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8) = 5;
+    *reinterpret_cast<int16_t*>(ptr + 2 + 4 + 2 + 4 + 8 + 8) = 30;
+    char* str = "hello";
+    memcpy(ptr + 30, static_cast<void*>(str), 5);
+    RunCase<int16_t>(2, ::fesql::type::kInt16, "col2", ptr, 35);
+    free(ptr);
+}
+
 TEST_F(BufIRBuilderTest, test_load_int16) {
-    int8_t* ptr = static_cast<int8_t*>(malloc(28));
+    int8_t* ptr = static_cast<int8_t*>(malloc(35));
     *reinterpret_cast<int32_t*>(ptr + 2) = 1;
     *reinterpret_cast<int16_t*>(ptr + 2 + 4) = 2;
     *reinterpret_cast<float*>(ptr + 2 + 4 + 2) = 3.1f;
