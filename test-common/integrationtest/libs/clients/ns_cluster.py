@@ -80,7 +80,7 @@ class NsCluster(object):
                 if 'rtidb' not in rs:
                     time.sleep(2)
                     subprocess.Popen(args,stdout=open('{}/info.log'.format(ns_path), 'a'),
-                                     stderr=open('{}/warning.log'.format(ns_path), 'a'))
+                                     stderr=open('{}/warning.log'.format(ns_path), 'a'), shell=True)
                 else:
                     started.append(True)
                     break
