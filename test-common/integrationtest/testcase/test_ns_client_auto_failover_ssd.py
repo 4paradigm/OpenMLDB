@@ -552,17 +552,14 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(5)
         self.start_client(self.slave1)
         time.sleep(10)
+        self.wait_op_done(name)
         for i in range(20):
             time.sleep(3)
             rs_after = self.gettablestatus(self.slave1, tid, pid)
             rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
-            if '{}'.format(rs_after) == 'gettablestatus failed':
-                continue
-            print(rs_before.keys()[0][2])
-            print(rs_after.keys()[0][2])
-            if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
-                self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
+            if '{}'.format(rs_after) != 'gettablestatus failed' and len(rs_before.keys())!=0 and rs_before.keys()[0][2] == rs_after.keys()[0][2]:
                 break
+        self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
         rs = self.ns_showopstatus(self.ns_slaver)
         if '{}'.format(rs_after) == 'gettablestatus failed':
             infoLogger.debug('{}'.format(rs))

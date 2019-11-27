@@ -73,6 +73,7 @@ class TestCaseBase(unittest.TestCase):
             self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
             self.tid = random.randint(1, 1000)
             self.pid = random.randint(1, 1000)
+            self.clear_ns_table(self.ns_leader)
             for edp in conf.tb_endpoints:
                 self.clear_tb_table(edp)
         except Exception as e:
