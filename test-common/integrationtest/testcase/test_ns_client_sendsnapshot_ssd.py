@@ -164,7 +164,7 @@ class TestSendSnapshot(TestCaseBase):
                 'self.sendsnapshot_concurrently(self.leader, self.tid, self.pid, self.slave1, self.slave2))), 2)',
             24: 'self.assertEqual(len(filter(lambda x:"SendSnapshot ok" in x,'
                 'self.sendsnapshot_concurrently(self.leader, self.tid, self.pid,'
-                'self.slave1, self.slave1, self.slave1, self.slave1, self.slave1))), 1)',
+                'self.slave1, self.slave1))), 1)',
             25: 'self.assert_init_fail_by_log()',
             100: 'None'
         }
@@ -191,7 +191,7 @@ class TestSendSnapshot(TestCaseBase):
         (1, 2, 12, 13, 15, 10, -2, 21),  # 主表sendsnapshot给不存在的目标endpoint，失败
         (1, 2, 12, 13, 15, 9, -2, 25),  # 主表sendsnapshot给不存在的目标endpoint，失败
         (1, 2, 12, 13, 23, -1, 3, 4, 17, 22),  # 并发sendsnapshot给两个从节点，成功
-        (1, 2, 12, 13, 24, -1, 3, 4, 17),  # 同一个snapshot，并发sendsnapshot给同一个从节点，只有1个成功
+        (1, 2, 12, -2, 13, 24, -1, 3, 4, 17),  # 同一个snapshot，并发sendsnapshot给同一个从节点，只有1个成功
     )
     @ddt.unpack
     def test_sendsnapshot_normal(self, *steps):
