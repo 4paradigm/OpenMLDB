@@ -2745,9 +2745,9 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
         }
         row.push_back(response.op_status(idx).task_type());
         if (response.op_status(idx).for_replica_cluster()) {
-            row.push_back("true");
+            row.push_back("yes");
         } else {
-            row.push_back("false");
+            row.push_back("no");
         }
         tp.AddRow(row);
     }
