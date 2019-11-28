@@ -18,6 +18,8 @@
 #ifndef SRC_STORAGE_CODEC_H_
 #define SRC_STORAGE_CODEC_H_
 
+#include <vector>
+#include <map>
 #include "proto/type.pb.h"
 
 namespace fesql {
@@ -26,15 +28,12 @@ namespace storage {
 using Schema = ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef>;
 
 class RowBuilder {
-
  public:
+    RowBuilder(const Schema& schema, int8_t* buf, uint32_t size);
 
-    RowBuilder(const Schema& schema, 
-              int8_t* buf,
-              uint32_t size);
-
-    ~RowBuilder() = default; 
-    static uint32_t CalTotalLength(const Schema& schema, uint32_t string_length);
+    ~RowBuilder() = default;
+    static uint32_t CalTotalLength(const Schema& schema,
+                                   uint32_t string_length);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
@@ -46,6 +45,7 @@ class RowBuilder {
 
  private:
     bool Check(::fesql::type::Type type);
+
  private:
     const Schema& schema_;
     int8_t* buf_;
@@ -59,10 +59,7 @@ class RowBuilder {
 
 class RowView {
  public:
-
-    RowView(const Schema& schema,
-            const int8_t* row,
-            uint32_t size);
+    RowView(const Schema& schema, const int8_t* row, uint32_t size);
     ~RowView() = default;
 
     int GetBool(uint32_t idx, bool* val);
@@ -74,7 +71,7 @@ class RowView {
     int GetString(uint32_t idx, char** val, uint32_t* length);
     bool IsNULL(uint32_t idx);
 
- private:    
+ private:
     bool CheckValid(uint32_t idx, ::fesql::type::Type type);
 
  private:
@@ -90,4 +87,3 @@ class RowView {
 }  // namespace storage
 }  // namespace fesql
 #endif  // SRC_STORAGE_CODEC_H_
-
