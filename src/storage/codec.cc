@@ -24,9 +24,9 @@ namespace storage {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size) & 0x07))
 
-static const uint8_t SIZE_LENGTH = 4;
 static const uint8_t VERSION_LENGTH = 2;
-static const uint8_t HEADER_LENGTH = SIZE_LENGTH + VERSION_LENGTH;
+static const uint8_t SIZE_LENGTH = 4;
+static const uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static const std::map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
         {::fesql::type::kBool, 1},
         {::fesql::type::kInt16, 2},
@@ -55,9 +55,9 @@ RowBuilder::RowBuilder(const Schema& schema,
                        cnt_(0), size_(size), offset_(0), 
                        str_addr_length_(0), str_start_offset_(0), str_offset_(0) {
                            
-    (*(int32_t*)buf_) = size;                       
-    *(buf_ + SIZE_LENGTH) = 1; //FVersion
-    *(buf_ + SIZE_LENGTH + 1) = 1; //SVersion
+    *(buf_) = 1; //FVersion
+    *(buf_ + 1) = 1; //SVersion
+    (*(int32_t*)(buf_ + VERSION_LENGTH)) = size;                       
     offset_ = HEADER_LENGTH;
     uint32_t bitmap_size = BitMapSize(schema.size());
     memset(buf_ + offset_, 0, bitmap_size);
@@ -259,7 +259,7 @@ RowView::RowView(const Schema& schema,
         str_addr_length_(0), is_valid_(true), size_(size), row_(row), schema_(schema),  
         offset_vec_(), str_length_map_() {
     if (schema_.size() == 0 || row_ == NULL || size <= HEADER_LENGTH ||
-            *((uint32_t*)row) != size) {
+            *((uint32_t*)(row + VERSION_LENGTH)) != size) {
         is_valid_ = false;
         return;
     }
