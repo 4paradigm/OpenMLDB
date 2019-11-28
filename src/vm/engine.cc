@@ -108,8 +108,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
     if (min > limit_op->limit) {
         min = limit_op->limit;
     }
-    int32_t (*udf)(int8_t*, int8_t*) =
-        (int32_t(*)(int8_t*, int8_t*))project_op->fn;
+    int32_t (*udf)(int8_t*, int32_t, int8_t*) =
+        (int32_t(*)(int8_t*, int32_t, int8_t*))project_op->fn;
     uint32_t count = 0;
     while (it->Valid() && count < min) {
         ::fesql::storage::Slice value = it->GetValue();
@@ -117,7 +117,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
             reinterpret_cast<int8_t*>(malloc(2 + project_op->output_size));
         int8_t* row =
             reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
-        uint32_t ret = udf(row, output + 2);
+        uint32_t ret = udf(row, value.size(), output + 2);
         if (ret != 0) {
             LOG(WARNING) << "fail to run udf " << ret;
             delete it;
