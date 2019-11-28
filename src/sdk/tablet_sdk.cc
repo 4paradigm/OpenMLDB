@@ -186,7 +186,7 @@ class ResultSetImpl : public ResultSet {
                 return kTypeFloat;
             case fesql::type::kDouble:
                 return kTypeDouble;
-            case fesql::type::kString:
+            case fesql::type::kVarchar:
                 return kTypeString;
             case fesql::type::kDate:
                 return kTypeDate;

@@ -86,7 +86,6 @@ bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,
     if (outptr == NULL) {
         LOG(WARNING) << "outptr is null";
         return false;
-    
     }
 
     if (!ptr->getType()->isPointerTy()) {
@@ -106,7 +105,7 @@ bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,
     ::llvm::Value* offset_int64 = builder.CreateIntCast(offset, int64_ty, true, "cast_32_to_64");
     ::llvm::Value* ptr_add_offset = builder.CreateAdd(ptr_int64_ty, offset_int64, "ptr_add_offset");
     // todo check the type
-    *outptr = builder.CreateIntToPtr(ptr_add_offset, type->getPointerTo());
+    *outptr = builder.CreateIntToPtr(ptr_add_offset, type);
     return true;
 }
 
@@ -200,8 +199,10 @@ bool BuildStoreOffset(::llvm::IRBuilder<>& builder,
         LOG(WARNING) << "ptr or offset or value is null";
         return false;
     }
+    // TODO check ptr type match value type
     ::llvm::Value* ptr_with_offset = NULL;
-    bool ok = BuildGetPtrOffset(builder, ptr, offset, value->getType(),
+    bool ok = BuildGetPtrOffset(builder, ptr, offset,
+            value->getType()->getPointerTo(),
             &ptr_with_offset);
     if (!ok || ptr_with_offset == NULL) {
         LOG(WARNING) << "fail to get offset ptr";

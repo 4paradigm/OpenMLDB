@@ -19,6 +19,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 
@@ -67,6 +68,7 @@ bool BufIRBuilder::BuildGetString(const std::string& name,
                                   ::llvm::Value* row_ptr,
                                   ::llvm::Value* row_size,
                                   ::llvm::Value** output) {
+    ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* field_offset = NULL;
     bool ok = GetFieldOffset(name, row_ptr, row_size, &field_offset);
 
@@ -76,21 +78,19 @@ bool BufIRBuilder::BuildGetString(const std::string& name,
         return false;
     }
 
-    ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* int16_ty = builder.getInt16Ty();
     ::llvm::Value* start_offset = NULL;
 
     ok = BuildLoadOffset(builder, row_ptr, field_offset, int16_ty,
                          &start_offset);
-
     if (!ok) {
         LOG(WARNING) << "fail to get string filed " << name
                      << " start offset from table " << table_->name();
         return false;
     }
-
     ::llvm::Value* next_str_field_offset = NULL;
     ok = GetNextOffset(name, row_ptr, row_size, &next_str_field_offset);
+
     ::llvm::StructType* type =
         ::llvm::StructType::create(block_->getContext(), "fe.string_ref");
     ::llvm::Type* size_ty = builder.getInt32Ty();
@@ -100,16 +100,20 @@ bool BufIRBuilder::BuildGetString(const std::string& name,
     elements.push_back(data_ptr_ty);
     type->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
     ::llvm::Value* string_ref = builder.CreateAlloca(type);
+
     ::llvm::Value* data_ptr = NULL;
     ::llvm::Value* size = NULL;
 
     // no next str field
     if (!ok) {
-        size = builder.CreateSub(row_size, start_offset, "str_sub");
+        ::llvm::Value* start_offset_i32 =
+            builder.CreateIntCast(start_offset, size_ty, true, "cast_16_to_32");
+        size = builder.CreateSub(row_size, start_offset_i32, "str_sub");
     } else {
         ::llvm::Value* end_offset = NULL;
         ok = BuildLoadOffset(builder, row_ptr, next_str_field_offset, int16_ty,
                              &end_offset);
+
         if (!ok) {
             LOG(WARNING) << "fail to load end offset for field " << name;
             return false;
@@ -119,17 +123,21 @@ bool BufIRBuilder::BuildGetString(const std::string& name,
 
     ok = BuildGetPtrOffset(builder, row_ptr, start_offset, data_ptr_ty,
                            &data_ptr);
+
     if (!ok) {
         LOG(WARNING) << "fail to get string data ptr for field " << name;
         return false;
     }
 
-    ::llvm::Value* data_ptr_ptr =
-        builder.CreateGEP(string_ref, builder.getInt32(1));
-    builder.CreateStore(data_ptr_ptr, data_ptr, false);
-    ::llvm::Value* size_ptr =
-        builder.CreateGEP(string_ref, builder.getInt32(0));
-    builder.CreateStore(size_ptr, size, false);
+    ::llvm::Value* data_ptr_ptr = builder.CreateStructGEP(type, string_ref, 1);
+    ::llvm::Value* cast_data_ptr_ptr = builder.CreatePointerCast(
+        data_ptr_ptr, data_ptr->getType()->getPointerTo());
+    builder.CreateStore(data_ptr, cast_data_ptr_ptr, false);
+
+    ::llvm::Value* size_ptr = builder.CreateStructGEP(type, string_ref, 0);
+    ::llvm::Value* cast_type_size_ptr =
+        builder.CreatePointerCast(size_ptr, size->getType()->getPointerTo());
+    builder.CreateStore(size, cast_type_size_ptr, false);
     *output = string_ref;
     return true;
 }
@@ -151,7 +159,7 @@ bool BufIRBuilder::GetNextOffset(const std::string& name,
         }
         last = column.name();
     }
-    DLOG(INFO) << "not next offset from " << name;
+    DLOG(INFO) << "no next string field offset for " << name;
     return false;
 }
 
@@ -177,7 +185,6 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
                                  ::llvm::Value* row_ptr,
                                  ::llvm::Value* row_size,
                                  ::llvm::Value** output) {
-
     if (output == NULL) {
         LOG(WARNING) << "output is null";
         return false;
@@ -190,6 +197,10 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
     }
 
     ::fesql::type::Type& fe_type = it->second.first;
+    if (fe_type == ::fesql::type::kVarchar) {
+        return BuildGetString(name, row_ptr, row_size, output);
+    }
+
     int32_t offset = it->second.second;
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* llvm_type = NULL;

@@ -16,6 +16,7 @@
  */
 
 #include <memory>
+#include <stdio.h>
 #include "codegen/buf_ir_builder.h"
 
 #include "gtest/gtest.h"
@@ -38,6 +39,33 @@ using namespace llvm;  // NOLINT
 using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
+
+struct TestString {
+    int32_t size;
+    char* data;
+};
+
+void PrintInt16(int16_t val) {
+    printf("int16_t %d\n", val);
+}
+
+void PrintInt32(int32_t val) {
+    printf("int32_t %d\n", val);
+}
+
+void PrintPtr(int8_t* ptr) {
+    printf("ptr %p\n", ptr);
+}
+
+
+void PrintString(int8_t* ptr) {
+    TestString* ts = reinterpret_cast<TestString*>(ptr);
+    printf("char* start %p\n", ts->data);
+    printf("char* size %d\n", ts->size);
+    std::string str(ts->data, ts->size);
+    std::cout << "content "<< str << std::endl;
+    printf("ptr %p\n", ptr);
+}
 
 namespace fesql {
 namespace codegen {
@@ -63,13 +91,11 @@ void RunCase(T expected, const ::fesql::type::Type& type,
         column->set_type(::fesql::type::kInt16);
         column->set_name("col2");
     }
-
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kFloat);
         column->set_name("col3");
     }
-
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kDouble);
@@ -87,11 +113,11 @@ void RunCase(T expected, const ::fesql::type::Type& type,
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col6");
     }
-
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_load_float", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
+    bool is_void = false;
     ::llvm::Type* retTy = NULL;
     switch (type) {
         case ::fesql::type::kInt16:
@@ -110,7 +136,8 @@ void RunCase(T expected, const ::fesql::type::Type& type,
             retTy = Type::getFloatTy(*ctx);
             break;
         default:
-            ASSERT_TRUE(false);
+            is_void = true;
+            retTy = Type::getVoidTy(*ctx);
     }
     Function* fn = Function::Create(
         FunctionType::get(
@@ -127,16 +154,74 @@ void RunCase(T expected, const ::fesql::type::Type& type,
     ::llvm::Value* val = NULL;
     bool ok = buf_builder.BuildGetField(col, arg0, arg1, &val);
     ASSERT_TRUE(ok);
-    builder.CreateRet(val);
+    if (type == ::fesql::type::kVarchar) {
+        ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+        
+        ::llvm::Value* i8_ptr = builder.CreatePointerCast(val, i8_ptr_ty);
+        ::llvm::Type* void_ty = builder.getVoidTy();
+        ::llvm::FunctionCallee callee = m->getOrInsertFunction("print_str",  
+                void_ty, i8_ptr_ty);
+        std::vector<Value*> call_args;
+        call_args.push_back(i8_ptr);
+        ::llvm::ArrayRef<Value*> call_args_ref(call_args);
+        builder.CreateCall(callee, call_args_ref);
+    }
+    if (!is_void) {
+        builder.CreateRet(val);
+    }else {
+        builder.CreateRetVoid();
+    }
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
+    auto& jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(), 
+                        J->getDataLayout());
+    ::llvm::StringRef symbol1("print_str");
+    ::llvm::StringRef symbol2("print_i16");
+    ::llvm::StringRef symbol3("print_i32");
+    ::llvm::StringRef symbol4("print_ptr");
+    ::llvm::orc::SymbolMap  symbol_map;
+    ::llvm::JITEvaluatedSymbol jit_symbol1(
+            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintString)),
+                           ::llvm::JITSymbolFlags());
+
+    ::llvm::JITEvaluatedSymbol jit_symbol2(
+            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintInt16)),
+                           ::llvm::JITSymbolFlags());
+
+    ::llvm::JITEvaluatedSymbol jit_symbol3(
+            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintInt32)),
+                           ::llvm::JITSymbolFlags());
+
+    ::llvm::JITEvaluatedSymbol jit_symbol4(
+            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintPtr)),
+                           ::llvm::JITSymbolFlags());
+
+
+    symbol_map.insert(std::make_pair(mi(symbol1), jit_symbol1));
+    symbol_map.insert(std::make_pair(mi(symbol2), jit_symbol2));
+    symbol_map.insert(std::make_pair(mi(symbol3), jit_symbol3));
+    symbol_map.insert(std::make_pair(mi(symbol4), jit_symbol4));
+
+    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
+    if (err) {
+        ASSERT_TRUE(false);
+    }
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
-    T(*decode)
+    if (!is_void) {
+        T(*decode)
     (int8_t*, int32_t) =
         reinterpret_cast<T (*)(int8_t*, int32_t)>(load_fn_jit.getAddress());
-    ASSERT_EQ(expected, decode(row, row_size));
+        ASSERT_EQ(expected, decode(row, row_size));
+
+    }else {
+        void(*decode)
+    (int8_t*, int32_t) =
+        reinterpret_cast<void (*)(int8_t*, int32_t)>(load_fn_jit.getAddress());
+        decode(row, row_size);
+    }
 }
 
 TEST_F(BufIRBuilderTest, test_load_str) {
@@ -149,7 +234,8 @@ TEST_F(BufIRBuilderTest, test_load_str) {
     *reinterpret_cast<int16_t*>(ptr + 2 + 4 + 2 + 4 + 8 + 8) = 30;
     char* str = "hello";
     memcpy(ptr + 30, static_cast<void*>(str), 5);
-    RunCase<int16_t>(2, ::fesql::type::kInt16, "col2", ptr, 35);
+    printf("char* start %p\n", ptr + 30);
+    RunCase<int16_t>(2, ::fesql::type::kVarchar, "col6", ptr, 35);
     free(ptr);
 }
 

@@ -212,7 +212,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
             }
             case ::fesql::type::kInt64:
             case ::fesql::type::kDouble:
-            case ::fesql::type::kString: {
+            case ::fesql::type::kVarchar: {
                 output_size += 8;
                 break;
             }

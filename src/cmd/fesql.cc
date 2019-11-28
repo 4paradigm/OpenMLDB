@@ -188,7 +188,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     while (it->HasNext()) {
         it->Next();
         for (unsigned i = 0; i < result_set->GetColumnCnt(); i++) {
-            fesql:sdk::DataType  data_type = result_set->GetColumnType(i);
+            ::fesql::sdk::DataType  data_type = result_set->GetColumnType(i);
 
             switch (data_type) {
                 case fesql::sdk::kTypeInt16: {

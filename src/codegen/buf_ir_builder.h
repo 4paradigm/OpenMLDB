@@ -31,11 +31,13 @@ namespace codegen {
 // the table row access builder refer to fesql-docs/schema.md
 class BufIRBuilder {
  public:
+
     BufIRBuilder(::fesql::type::TableDef* table, ::llvm::BasicBlock* block,
                  ScopeVar* scope_var);
 
     ~BufIRBuilder();
 
+    // get reference from row
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
                        ::llvm::Value* row_size, ::llvm::Value** output);
 

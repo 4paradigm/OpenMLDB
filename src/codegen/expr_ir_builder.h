@@ -56,10 +56,10 @@ class SQLExprIRBuilder {
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
     std::string row_ptr_name_;
+    std::string row_size_name_;
     std::string output_ptr_name_;
     BufIRBuilder* buf_ir_builder_;
     ::llvm::Module* module_;
-    std::string row_size_name_;
 };
 
 class ExprIRBuilder {

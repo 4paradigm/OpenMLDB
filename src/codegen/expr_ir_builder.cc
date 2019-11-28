@@ -182,7 +182,7 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         LOG(WARNING) << "input node or output is null";
         return false;
     }
-    LOG(INFO) << "build unary " << ::fesql::node::FnNodeName(node->GetType());
+    LOG(INFO) << "build unary " << ::fesql::node::ExprTypeName(node->GetExprType());
     // TODO support more node
     ::llvm::IRBuilder<> builder(block_);
     switch (node->GetExprType()) {
