@@ -59,7 +59,7 @@ struct DataBlock {
 };
 
 const static TimeComparator tcmp;
-typedef List<uint64_t, DataBlock* , TimeComparator> TimeEntries;
+typedef List<uint64_t, DataBlock*, TimeComparator> TimeEntries;
 typedef SkipList<Slice, void*, SliceComparator> KeyEntries;
 
 class TableIterator {

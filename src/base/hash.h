@@ -51,7 +51,7 @@ static inline uint32_t hash(const void* key, uint32_t len, uint32_t seed) {
     return h;
 }
 
-
+__attribute__((unused))
 static uint64_t MurmurHash64A(const void * key, 
 		              int len, 
 			      unsigned int seed) {
