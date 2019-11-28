@@ -51,6 +51,25 @@ inline const std::string CmdTypeName(const CmdType &type) {
     }
 }
 
+inline const std::string ExprOpTypeName(const FnOperator &op) {
+    switch (op) {
+        case kFnOpAdd:
+            return "ADD";
+        case kFnOpMinus:
+            return "Minus";
+        case kFnOpMulti:
+            return "Multi";
+        case kFnOpDiv:
+            return "DIV";
+        case kFnOpBracket:
+            return "()";
+        case kFnOpNone:
+            return "NONE";
+        default:
+            return "NONE";
+    }
+}
+
 inline const std::string ExprTypeName(const ExprType &type) {
     switch (type) {
         case kExprPrimary:
@@ -58,25 +77,25 @@ inline const std::string ExprTypeName(const ExprType &type) {
         case kExprId:
             return "id";
         case kExprBinary:
-            return "binary expr";
+            return "binary";
         case kExprUnary:
-            return "unary expr";
+            return "unary";
         case kExprCall:
-            return "function expr";
+            return "function";
         case kExprCase:
-            return "case expr";
+            return "case";
         case kExprIn:
-            return "in expr";
+            return "in";
         case kExprColumnRef:
-            return "column ref expr";
+            return "column ref";
         case kExprCast:
-            return "cast expr";
+            return "cast";
         case kExprAll:
-            return "all expr";
+            return "all";
         case kExprUnknow:
-            return "unknow expr";
+            return "unknow";
         default:
-            return "unknown cmd type";
+            return "unknown expr type";
     }
 }
 
@@ -174,6 +193,7 @@ class ExprNode : public SQLNode {
     void PushBack(ExprNode *node_ptr) { children.push_back(node_ptr); }
 
     std::vector<ExprNode *> children;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
 
  private:
     ExprType expr_type_;
@@ -193,6 +213,7 @@ class FnNodeList : public FnNode {
     const std::vector<FnNode *> &GetChildren() const { return children; }
 
     void AddChild(FnNode *child) { children.push_back(child); }
+    void Print(std::ostream &output, const std::string &org_tab) const;
 
     std::vector<FnNode *> children;
 };
@@ -361,6 +382,7 @@ class WindowDefNode : public SQLNode {
 class ExprListNode : public ExprNode {
  public:
     ExprListNode() : ExprNode(kExprList) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
 };
 
 class AllNode : public ExprNode {
@@ -423,6 +445,7 @@ class BinaryExpr : public ExprNode {
     BinaryExpr() : ExprNode(kExprBinary) {}
     explicit BinaryExpr(FnOperator op) : ExprNode(kExprBinary), op_(op) {}
     FnOperator GetOp() const { return op_; }
+    void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     FnOperator op_;
@@ -432,6 +455,7 @@ class UnaryExpr : public ExprNode {
     UnaryExpr() : ExprNode(kExprUnary) {}
     explicit UnaryExpr(FnOperator op) : ExprNode(kExprUnary), op_(op) {}
     FnOperator GetOp() const { return op_; }
+    void Print(std::ostream &output, const std::string &org_tab) const override;
 
  private:
     FnOperator op_;
@@ -442,6 +466,7 @@ class ExprIdNode : public ExprNode {
     explicit ExprIdNode(const std::string &name)
         : ExprNode(kExprId), name_(name) {}
     std::string GetName() const { return name_; }
+    void Print(std::ostream &output, const std::string &org_tab) const override;
 
  private:
     std::string name_;
@@ -856,6 +881,7 @@ class FnParaNode : public FnNode {
     std::string GetName() const { return name_; }
 
     DataType GetParaType() { return para_type_; }
+    void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     std::string name_;
@@ -870,6 +896,7 @@ class FnNodeFnDef : public FnNode {
           parameters_(parameters),
           ret_type_(ret_type) {}
 
+    void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string name_;
     const FnNodeList *parameters_;
     const DataType ret_type_;
@@ -879,6 +906,7 @@ class FnAssignNode : public FnNode {
     explicit FnAssignNode(const std::string &name, ExprNode *expression)
         : FnNode(kFnAssignStmt), name_(name), expression_(expression) {}
     std::string GetName() const { return name_; }
+    void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string name_;
     const ExprNode *expression_;
 };
@@ -886,6 +914,7 @@ class FnReturnStmt : public FnNode {
  public:
     explicit FnReturnStmt(ExprNode *return_expr)
         : FnNode(kFnReturnStmt), return_expr_(return_expr) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
     const ExprNode *return_expr_;
 };
 std::string WindowOfExpression(ExprNode *node_ptr);

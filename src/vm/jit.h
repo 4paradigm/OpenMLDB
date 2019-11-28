@@ -43,7 +43,16 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
 
     void ReleaseVModule(::llvm::orc::VModuleKey key);
 
+    // add to main module
+    bool AddSymbol(const std::string& name, void* fn_ptr);
+
+    // add to main module
+    bool AddSymbol(::llvm::orc::JITDylib& jd,
+            const std::string& name, void* fn_ptr);
+
+
     ~FeSQLJIT();
+
  protected:
     FeSQLJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e);
 };

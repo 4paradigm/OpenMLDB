@@ -12,8 +12,9 @@ set(FESQL_VERSION_BUG 0)
 set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
 set(COMMON_LIBS glog gflags unwind lzma)
-set(FESQL_LIBS fesql_sdk fesql_dbms fesql_tablet fesql_vm fesql_codegen fesql_parser
-    fesql_planner fesql_proto fesql_analyser fesql_node fesql_storage)
+set(FESQL_PLAN_LIBS fesql_planner fesql_analyser fesql_parser fesql_node fesql_proto)
+set(FESQL_LIBS fesql_sdk fesql_dbms fesql_tablet fesql_vm fesql_codegen fesql_parser fesql_analyser
+    fesql_planner fesql_proto  fesql_node fesql_storage)
 
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

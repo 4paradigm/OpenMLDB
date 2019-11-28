@@ -31,7 +31,7 @@ Engine::~Engine() {}
 
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
-                 common::Status& status) {  // NOLINT (runtime/references)
+                 base::Status& status) {  // NOLINT (runtime/references)
     {
         std::shared_ptr<CompileInfo> info = GetCacheLocked(db, sql);
         if (info) {
@@ -46,7 +46,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     info->sql_ctx.db = db;
     SQLCompiler compiler(table_mgr_);
     bool ok = compiler.Compile(info->sql_ctx, status);
-    if (!ok || 0 != status.code()) {
+    if (!ok || 0 != status.code) {
         // do clean
         return false;
     }

@@ -16,58 +16,50 @@
 
 #ifndef SRC_SDK_DBMS_SDK_H_
 #define SRC_SDK_DBMS_SDK_H_
-#include <node/node_enum.h>
 #include <proto/type.pb.h>
 #include <string>
 #include <vector>
+#include "sdk/base_struct.h"
 
 namespace fesql {
 namespace sdk {
 
-struct GroupDef {
-    std::string name;
-};
-
-struct DatabaseDef {
-    std::string name;
-};
-
-struct ExecuteRequst {
-    DatabaseDef database;
-    std::string sql;
-};
-struct ExecuteResult {
-    DatabaseDef database;
-    std::string result;
+class Schema {
+ public:
+    Schema() {}
+    virtual ~Schema() {};
+    virtual const uint32_t GetColumnCnt() const = 0;
+    virtual const std::string& GetColumnName(uint32_t i) const = 0;
+    virtual const DataType GetColumnType(uint32_t i) const = 0;
+    virtual const bool IsColumnNotNull(uint32_t i) const = 0;
 };
 
 class DBMSSdk {
  public:
-    virtual ~DBMSSdk(){}
+    virtual ~DBMSSdk() {}
     virtual void CreateGroup(
         const GroupDef &group,
-        base::Status &status) = 0;  // NOLINT (runtime/references)
+        sdk::Status &status) = 0;  // NOLINT (runtime/references)
     virtual void CreateDatabase(
         const DatabaseDef &database,
-        base::Status &status) = 0;  // NOLINT (runtime/references)
+        sdk::Status &status) = 0;  // NOLINT (runtime/references)
     virtual bool IsExistDatabase(
         const DatabaseDef &database,
-        base::Status &status) = 0;  // NOLINT (runtime/references)
-    virtual void GetSchema(
+        sdk::Status &status) = 0;  // NOLINT (runtime/references)
+    virtual std::unique_ptr<Schema> GetSchema(
         const DatabaseDef &database, const std::string &name,
-        type::TableDef &table,      // NOLINT (runtime/references)
-        base::Status &status) = 0;  // NOLINT (runtime/references)
+        sdk::Status &status) = 0;  // NOLINT (runtime/references)
     virtual void GetTables(
         const DatabaseDef &database,
         std::vector<std::string> &names,  // NOLINT (runtime/references)
-        base::Status &status) = 0;        // NOLINT (runtime/references)
+        sdk::Status &status) = 0;         // NOLINT (runtime/references)
     virtual void GetDatabases(
         std::vector<std::string> &names,  // NOLINT (runtime/references)
-        base::Status &status) = 0;        // NOLINT (runtime/references)
+        sdk::Status &status) = 0;         // NOLINT (runtime/references)
     virtual void ExecuteScript(
         const ExecuteRequst &request,
-        ExecuteResult &result,      // NOLINT (runtime/references)
-        base::Status &status) = 0;  // NOLINT (runtime/references)
+        ExecuteResult &result,     // NOLINT (runtime/references)
+        sdk::Status &status) = 0;  // NOLINT (runtime/references)
 };
 
 // create a new dbms sdk with a endpoint

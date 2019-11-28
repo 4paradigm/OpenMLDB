@@ -22,9 +22,13 @@ void SQLNodeList::Print(std::ostream &output, const std::string &tab) const {
     PrintSQLVector(output, tab, list_, "list", true);
 }
 
+void ExprNode::Print(std::ostream &output, const std::string &org_tab) const {
+    output << org_tab << SPACE_ST << "expr[" << ExprTypeName(expr_type_) << "]";
+}
+
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
     {
-        SQLNode::Print(output, org_tab);
+        ExprNode::Print(output, org_tab);
         output << "\n";
         const std::string tab = org_tab + INDENT + SPACE_ED;
         output << tab << SPACE_ST;
@@ -71,7 +75,7 @@ void TableNode::Print(std::ostream &output, const std::string &org_tab) const {
 
 void ColumnRefNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
-    SQLNode::Print(output, org_tab);
+    ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, relation_name_, "relation_name", false);
@@ -114,7 +118,7 @@ void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
 }
 
 void CallExprNode::Print(std::ostream &output, const std::string &org_tab) const {
-    SQLNode::Print(output, org_tab);
+    ExprNode::Print(output, org_tab);
     output << "\n";
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << tab << "function_name: " << function_name_;
@@ -245,6 +249,21 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kFnList:
             output = "kFnList";
             break;
+        case kFnDef:
+            output = "kFnDef";
+            break;
+        case kFnPara:
+            output = "kFnPara";
+            break;
+        case kFnReturnStmt:
+            output = "kFnReturnStmt";
+            break;
+        case kFnAssignStmt:
+            output = "kFnAssignStmt";
+            break;
+        case kFnValue:
+            output = "kFnValue";
+            break;
         default:
             output = "unknown";
     }
@@ -313,7 +332,23 @@ void PrintSQLNode(std::ostream &output, const std::string &org_tab,
         node_ptr->Print(output, org_tab + OR_INDENT);
     }
 }
-
+void PrintSQLVector(std::ostream &output, const std::string &tab,
+                   const std::vector<FnNode *> &vec,
+                   const std::string &vector_name, bool last_item) {
+    if (0 == vec.size()) {
+        output << tab << SPACE_ST << vector_name << ": []";
+        return;
+    }
+    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int count = vec.size();
+    int i = 0;
+    for (i = 0; i < count - 1; ++i) {
+        PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
+        output << "\n";
+    }
+    PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
+}
 void PrintSQLVector(std::ostream &output, const std::string &tab,
                     const std::vector<ExprNode *> &vec,
                     const std::string &vector_name, bool last_item) {
@@ -438,6 +473,71 @@ void InsertStmt::Print(std::ostream &output, const std::string &org_tab) const {
     }
 
     PrintSQLVector(output, tab, values_, "values", false);
+}
+void BinaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLVector(output, tab, children, ExprOpTypeName(op_), true);
+}
+void UnaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLVector(output, tab, children, ExprOpTypeName(op_), true);
+}
+void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, name_, "var", true);
+}
+
+void ExprListNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLVector(output, tab, children, "list", true);
+
+}
+void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, name_, DataTypeName(para_type_), true);
+}
+void FnNodeFnDef::Print(std::ostream &output,
+                        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, this->name_, "func_name", true);
+    output << "\n";
+    PrintValue(output, tab, DataTypeName(this->ret_type_), "return_type", true);
+    output << "\n";
+    PrintSQLNode(output, tab, (SQLNode*)parameters_, "parameters", true);
+
+}
+void FnNodeList::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLVector(output, tab, children, "list", true);
+}
+void FnAssignNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, (SQLNode*)expression_, name_, true);
+}
+void FnReturnStmt::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, (SQLNode*)return_expr_, "return", true);
 }
 }  // namespace node
 }  // namespace fesql

@@ -18,19 +18,18 @@
 #ifndef CODEGEN_EXPR_IR_BUILDER_H_
 #define CODEGEN_EXPR_IR_BUILDER_H_
 
-#include "codegen/scope_var.h"
 #include "codegen/buf_ir_builder.h"
+#include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
 namespace fesql {
 namespace codegen {
 
-class SQLExprIRBuilder {
-
+class ExprIRBuilder {
  public:
-
-    SQLExprIRBuilder(::llvm::BasicBlock* block, 
+    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
+    ExprIRBuilder(::llvm::BasicBlock* block, 
             ScopeVar* scope_var,
             BufIRBuilder* buf_ir_builder,
             const std::string& row_ptr_name,
@@ -38,19 +37,23 @@ class SQLExprIRBuilder {
             const std::string& output_ptr_name,
             ::llvm::Module* module);
 
-    ~SQLExprIRBuilder();
+    ~ExprIRBuilder();
 
-    bool Build(const ::fesql::node::ExprNode* node,
-            ::llvm::Value** output,
-            std::string& col_name);
+    bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
 
  private:
-
     bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
-            ::llvm::Value** output);
+                        ::llvm::Value** output);
 
     bool BuildCallFn(const ::fesql::node::CallExprNode* fn,
-            ::llvm::Value** output);
+                     ::llvm::Value** output);
+
+
+    bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
+                         ::llvm::Value** output);
+
+    bool BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
+                        ::llvm::Value** output);
 
  private:
     ::llvm::BasicBlock* block_;
@@ -61,26 +64,6 @@ class SQLExprIRBuilder {
     BufIRBuilder* buf_ir_builder_;
     ::llvm::Module* module_;
 };
-
-class ExprIRBuilder {
- public:
-    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
-    ~ExprIRBuilder();
-
-    bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
-
-    bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
-                         ::llvm::Value** output);
-
-    bool BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
-                        ::llvm::Value** output);
-
- private:
-    ::llvm::BasicBlock* block_;
-    ScopeVar* scope_var_;
-};
-
-
 }  // namespace codegen
 }  // namespace fesql
 #endif  // CODEGEN_EXPR_IR_BUILDER_H_

@@ -25,6 +25,48 @@
 #include "proto/dbms.pb.h"
 namespace fesql {
 namespace sdk {
+class DBMSSdkImpl;
+class SchemaImpl;
+
+class SchemaImpl : public Schema {
+ public:
+    SchemaImpl() : response_(), empty_(){}
+    ~SchemaImpl() {}
+
+    const uint32_t GetColumnCnt() const {
+        return response_.table().columns_size();
+    }
+    const std::string &GetColumnName(uint32_t i) const {
+        // TODO check i out of index
+        if (static_cast<int>(i) >= response_.table().columns_size()) {
+            LOG(WARNING) << "Array Invalid Access";
+            return empty_;
+        }
+        return response_.table().columns(i).name();
+    }
+
+    const DataType GetColumnType(uint32_t i) const {
+        if (static_cast<int>(i) >= response_.table().columns_size()) {
+            LOG(WARNING) << "Array Invalid Access";
+            return kTypeUnknow;
+        }
+
+        return DataTypeFromProtoType(response_.table().columns(i).type());
+    }
+
+    const bool IsColumnNotNull(uint32_t i) const {
+        if (static_cast<int>(i) >= response_.table().columns_size()) {
+            LOG(WARNING) << "Array Invalid Access";
+            return false;
+        }
+        return response_.table().columns(i).is_not_null();
+    }
+
+ private:
+    friend DBMSSdkImpl;
+    dbms::GetSchemaResponse response_;
+    std::string empty_;
+};
 
 class DBMSSdkImpl : public DBMSSdk {
  public:
@@ -32,27 +74,27 @@ class DBMSSdkImpl : public DBMSSdk {
     ~DBMSSdkImpl();
     bool Init();
     void CreateGroup(const GroupDef &group,
-                     base::Status &status)  // NOLINT (runtime/references)
+                     sdk::Status &status)  // NOLINT (runtime/references)
         override;
     void CreateDatabase(const DatabaseDef &database,
-                        base::Status &status);  // NOLINT (runtime/references)
+                        sdk::Status &status);  // NOLINT (runtime/references)
     bool IsExistDatabase(const DatabaseDef &database,
-                         base::Status &status);  // NOLINT (runtime/references)
+                         sdk::Status &status);  // NOLINT (runtime/references)
 
-    void GetSchema(const DatabaseDef &database, const std::string &name,
-                   type::TableDef &table,
-                   base::Status &status)  // NOLINT (runtime/references)
+    std::unique_ptr<Schema> GetSchema(
+        const DatabaseDef &database, const std::string &name,
+        sdk::Status &status)  // NOLINT (runtime/references)
         override;
     void GetTables(
         const DatabaseDef &database,
         std::vector<std::string> &names,  // NOLINT (runtime/references)
-        base::Status &status);            // NOLINT (runtime/references)
+        sdk::Status &status);             // NOLINT (runtime/references)
     void GetDatabases(
         std::vector<std::string> &names,  // NOLINT (runtime/references)
-        base::Status &status);            // NOLINT (runtime/references)
+        sdk::Status &status);             // NOLINT (runtime/references)
     void ExecuteScript(
         const ExecuteRequst &request, ExecuteResult &result,
-        base::Status &status) override;  // NOLINT (runtime/references)
+        sdk::Status &status) override;  // NOLINT (runtime/references)
 
  private:
     ::brpc::Channel *channel_;
@@ -76,7 +118,7 @@ bool DBMSSdkImpl::Init() {
 
 void DBMSSdkImpl::CreateGroup(
     const GroupDef &group,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::AddGroupRequest request;
     request.set_name(group.name);
@@ -93,7 +135,7 @@ void DBMSSdkImpl::CreateGroup(
 }
 void DBMSSdkImpl::GetTables(
     const DatabaseDef &db, std::vector<std::string> &names,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetItemsRequest request;
     ::fesql::dbms::GetItemsResponse response;
@@ -102,7 +144,7 @@ void DBMSSdkImpl::GetTables(
     request.set_db_name(db.name);
     stub.GetTables(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
-        status.code = error::kRpcErrorUnknow;
+        status.code = common::kRpcError;
         status.msg = "fail to call remote";
     } else {
         for (auto item : response.items()) {
@@ -115,14 +157,14 @@ void DBMSSdkImpl::GetTables(
 
 void DBMSSdkImpl::GetDatabases(
     std::vector<std::string> &names,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetItemsRequest request;
     ::fesql::dbms::GetItemsResponse response;
     brpc::Controller cntl;
     stub.GetDatabases(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
-        status.code = error::kRpcErrorUnknow;
+        status.code = common::kRpcError;
         status.msg = "fail to call remote";
     } else {
         for (auto item : response.items()) {
@@ -133,54 +175,68 @@ void DBMSSdkImpl::GetDatabases(
     }
 }
 
-void DBMSSdkImpl::GetSchema(
-    const DatabaseDef &database, const std::string &name, type::TableDef &table,
-    base::Status &status) {  // NOLINT (runtime/references)
+std::unique_ptr<Schema> DBMSSdkImpl::GetSchema(
+    const DatabaseDef &database, const std::string &name,
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetSchemaRequest request;
     request.set_db_name(database.name);
     request.set_name(name);
     ::fesql::dbms::GetSchemaResponse response;
+
+    SchemaImpl *schema = new SchemaImpl();
     brpc::Controller cntl;
-    stub.GetSchema(&cntl, &request, &response, NULL);
+    stub.GetSchema(&cntl, &request, &schema->response_, NULL);
     if (cntl.Failed()) {
-        status.code = error::kRpcErrorUnknow;
+        delete schema;
+        status.code = common::kRpcError;
         status.msg = "fail to call remote";
-    } else {
-        table = response.table();
-        status.code = response.status().code();
-        status.msg = response.status().msg();
+        return std::unique_ptr<Schema>();
     }
+    status.code = response.status().code();
+    status.msg = response.status().msg();
+    if (0 != status.code) {
+        delete schema;
+        return std::unique_ptr<Schema>();
+    }
+    return std::move(std::unique_ptr<Schema>(schema));
 }
 
 void DBMSSdkImpl::ExecuteScript(
     const ExecuteRequst &request, ExecuteResult &result,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     node::NodeManager node_manager;
     parser::FeSQLParser parser;
     analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
 
-    DLOG(INFO) <<"start to execute script from dbms:\n"
-    << request.sql;
+    DLOG(INFO) << "start to execute script from dbms:\n" << request.sql;
     // TODO(chenjing): init with db
+
+    base::Status sql_status;
     node::NodePointVector parser_trees;
-    parser.parse(request.sql, parser_trees, &node_manager, status);
-    if (0 != status.code) {
+    parser.parse(request.sql, parser_trees, &node_manager, sql_status);
+    if (0 != sql_status.code) {
         LOG(WARNING) << status.msg;
+        status.code = sql_status.code;
+        status.msg = sql_status.msg;
         return;
     }
     node::NodePointVector query_trees;
-    analyser.Analyse(parser_trees, query_trees, status);
-    if (0 != status.code) {
+    analyser.Analyse(parser_trees, query_trees, sql_status);
+    if (0 != sql_status.code) {
         LOG(WARNING) << status.msg;
+        status.code = sql_status.code;
+        status.msg = sql_status.msg;
         return;
     }
     node::PlanNodeList plan_trees;
-    planner.CreatePlanTree(query_trees, plan_trees, status);
+    planner.CreatePlanTree(query_trees, plan_trees, sql_status);
 
-    if (0 != status.code) {
+    if (0 != sql_status.code) {
         LOG(WARNING) << status.msg;
+        status.code = sql_status.code;
+        status.msg = sql_status.msg;
         return;
     }
 
@@ -188,7 +244,7 @@ void DBMSSdkImpl::ExecuteScript(
 
     if (nullptr == plan) {
         status.msg = "fail to execute plan : plan null";
-        status.code = error::kExecuteErrorNullNode;
+        status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
         return;
     }
@@ -205,8 +261,11 @@ void DBMSSdkImpl::ExecuteScript(
 
             ::fesql::type::TableDef *table = add_table_request.mutable_table();
             plan::TransformTableDef(create->GetTableName(),
-                                    create->GetColumnDescList(), table, status);
-            if (0 != status.code) {
+                                    create->GetColumnDescList(), table,
+                                    sql_status);
+            if (0 != sql_status.code) {
+                status.code = sql_status.code;
+                status.msg = sql_status.msg;
                 LOG(WARNING) << status.msg;
                 return;
             }
@@ -225,14 +284,14 @@ void DBMSSdkImpl::ExecuteScript(
         default: {
             status.msg = "fail to execute script with unSuppurt type" +
                          node::NameOfPlanNodeType(plan->GetType());
-            status.code = fesql::error::kExecuteErrorUnSupport;
+            status.code = fesql::common::kUnSupport;
             return;
         }
     }
 }
 void DBMSSdkImpl::CreateDatabase(
     const DatabaseDef &database,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::AddDatabaseRequest request;
     request.set_name(database.name);
@@ -249,7 +308,7 @@ void DBMSSdkImpl::CreateDatabase(
 }
 bool DBMSSdkImpl::IsExistDatabase(
     const DatabaseDef &database,
-    base::Status &status) {  // NOLINT (runtime/references)
+    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::IsExistRequest request;
     request.set_name(database.name);

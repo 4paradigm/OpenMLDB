@@ -10,11 +10,15 @@
 #define SRC_PLAN_PLANNER_H_
 
 #include <string>
+#include "analyser/analyser.h"
+#include "base/status.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "parser/parser.h"
 #include "proto/type.pb.h"
+
 namespace fesql {
 namespace plan {
 
@@ -47,8 +51,12 @@ class Planner {
                                Status &status);  // NOLINT (runtime/references)
     void CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan_tree,
                        Status &status);  // NOLINT (runtime/references)
-    void CreateInsertPlan(const SQLNode *root, node::InsertPlanNode*plan_tree,
-                       Status &status);  // NOLINT (runtime/references)
+    void CreateInsertPlan(const SQLNode *root, node::InsertPlanNode *plan_tree,
+                          Status &status);  // NOLINT (runtime/references)
+
+    void CreateFuncDefPlan(const SQLNode *root,
+                           node::FuncDefPlanNode *plan_tree,
+                           Status &status);  // NOLINT (runtime/references)
     void CreateDataProviderPlanNode(
         const node::SQLNode *root, PlanNode *plan_tree,
         Status &status);  // NOLINT (runtime/references)

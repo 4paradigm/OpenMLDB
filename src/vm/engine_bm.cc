@@ -104,7 +104,7 @@ static void BM_EngineFn(benchmark::State& state) {
     const std::string sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT test(col1,col1), col2 FROM t1 limit 10;";
     Engine engine(&table_mgr);
     RunSession session;
-    common::Status query_status;
+    base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
         std::vector<int8_t*> output(2);

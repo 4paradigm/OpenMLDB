@@ -126,7 +126,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
-    int32_t (*decode)(int8_t*, int8_t*) = (int32_t (*)(int8_t*, int8_t*))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*,int32_t, int8_t*) = (int32_t (*)(int8_t*,int32_t, int8_t*))load_fn_jit.getAddress();
     int8_t* ptr = static_cast<int8_t*>(malloc(28));
     int32_t i = 0;
     *((int32_t*)(ptr + 2)) = 1;
@@ -134,9 +134,10 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     *((float*)(ptr +2+ 4 + 2)) = 3.1f;
     *((double*)(ptr +2+ 4 + 2 + 4)) = 4.1;
     *((int64_t*)(ptr +2+ 4 + 2 + 4 + 8)) = 5;
-    int32_t ret2 = decode(ptr, (int8_t*)&i);
+    int32_t ret2 = decode(ptr, 28, (int8_t*)&i);
     ASSERT_EQ(ret2, 0u);
     ASSERT_EQ(i, 3u);
+    free(ptr);
 }
 
 
@@ -203,7 +204,7 @@ TEST_F(FnLetIRBuilderTest, test_project) {
     ExitOnErr(J->addIRModule(std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
 
-    int32_t (*decode)(int8_t*, int8_t*) = (int32_t (*)(int8_t*, int8_t*))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int32_t, int8_t*) = (int32_t (*)(int8_t*, int32_t,  int8_t*))load_fn_jit.getAddress();
     std::cout << decode << std::endl;
 
     int8_t* ptr = static_cast<int8_t*>(malloc(28));
@@ -213,9 +214,10 @@ TEST_F(FnLetIRBuilderTest, test_project) {
     *((float*)(ptr +2+ 4 + 2)) = 3.1f;
     *((double*)(ptr +2+ 4 + 2 + 4)) = 4.1;
     *((int64_t*)(ptr +2+ 4 + 2 + 4 + 8)) = 5;
-    int32_t ret2 = decode(ptr, (int8_t*)&i);
+    int32_t ret2 = decode(ptr, 28, (int8_t*)&i);
     ASSERT_EQ(ret2, 0u);
     ASSERT_EQ(i, 1u);
+    free(ptr);
 }
 
 } // namespace of codegen

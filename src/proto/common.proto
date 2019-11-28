@@ -5,6 +5,9 @@ option java_outer_classname = "Common";
 
 enum StatusCode {
     kOk = 0;
+    kTypeError = 8;
+    kFileIOError = 9;
+    kUnSupport = 10;
     kBadRequest = 11;
     kNameExists = 12;
     kTableExists = 13;
@@ -13,8 +16,11 @@ enum StatusCode {
     kTablePutFailed = 16;
     kNullPointer = 17;
     kConnError = 20;
+    kRpcError = 21;
     kSQLError = 30;
-    kCallMethodError = 31;
+    kPlanError = 31;
+    kCallMethodError = 32;
+    kColumnNotFound = 33;
     kFunError = 40;
     kCodegenError = 50;
 }

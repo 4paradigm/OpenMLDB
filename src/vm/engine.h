@@ -25,7 +25,6 @@
 #include "base/spin_lock.h"
 #include "vm/sql_compiler.h"
 #include "vm/table_mgr.h"
-#include "proto/common.pb.h"
 
 namespace fesql {
 namespace vm {
@@ -76,7 +75,7 @@ class Engine {
     bool Get(const std::string& db,
              const std::string& sql, 
              RunSession& session,  // NOLINT
-             common::Status &status);  // NOLINT
+             base::Status &status);  // NOLINT
 
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);

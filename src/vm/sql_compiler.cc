@@ -17,23 +17,26 @@
 
 #include "vm/sql_compiler.h"
 
+#include "analyser/analyser.h"
 #include "glog/logging.h"
 #include "parser/parser.h"
+#include "plan/planner.h"
+#include "analyser/analyser.h"
 #include "vm/op_generator.h"
 
 namespace fesql {
 namespace vm {
-using ::fesql::common::Status;
+using ::fesql::base::Status;
 
 SQLCompiler::SQLCompiler(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
 
 SQLCompiler::~SQLCompiler() {}
 
-bool SQLCompiler::Compile(SQLContext& ctx, Status &status) { //NOLINT
+bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     LOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::NodeManager nm;
-    ::fesql::node::NodePointVector  trees;
-    bool ok = Parse(ctx.sql, nm, trees, status);
+    ::fesql::node::PlanNodeList trees;
+    bool ok = Parse(ctx, nm, trees, status);
     if (!ok) {
         return false;
     }
@@ -86,18 +89,28 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status &status) { //NOLINT
     return true;
 }
 
-bool SQLCompiler::Parse(const std::string& sql,
-        ::fesql::node::NodeManager& node_mgr,
-        ::fesql::node::NodePointVector& trees, Status &status) {
+bool SQLCompiler::Parse(SQLContext &ctx,
+                        ::fesql::node::NodeManager& node_mgr,
+                        ::fesql::node::PlanNodeList& plan_trees,  // NOLINT
+                        ::fesql::base::Status& status) {          // NOLINT
+    ::fesql::node::NodePointVector parser_trees;
     ::fesql::parser::FeSQLParser parser;
-    ::fesql::base::Status parse_status;
-    int ret = parser.parse(sql, trees, &node_mgr, parse_status);
+    ::fesql::plan::SimplePlanner planer(&node_mgr);
+
+    int ret = parser.parse(ctx.sql, parser_trees, &node_mgr, status);
     if (ret != 0) {
-        LOG(WARNING) << "fail to parse sql " << sql << " with error " << parse_status.msg;
-        status.set_msg(parse_status.msg);
-        status.set_code(common::kSQLError);
+        LOG(WARNING) << "fail to parse sql " << ctx.sql << " with error "
+                     << status.msg;
         return false;
     }
+
+    //TODO(chenjing): ADD analyser
+    ret = planer.CreatePlanTree(parser_trees, plan_trees, status);
+    if (ret != 0) {
+        LOG(WARNING) << "Fail create sql plan: " << status.msg;
+        return false;
+    }
+
     return true;
 }
 

@@ -51,7 +51,8 @@ bool RowFnLetIRBuilder::Build(
     }
 
     bool ok = BuildFnHeader(name, &fn);
-    if (!ok) {
+
+    if (!ok || fn == NULL) {
         LOG(WARNING) << "fail to build fn header for name " <<  name;
         return false;
     }
@@ -63,7 +64,6 @@ bool RowFnLetIRBuilder::Build(
             output_ptr_name, fn, sv);
 
     if (!ok) {
-        LOG(WARNING) << "fail to fill args ";
         return false;
     }
 
@@ -71,7 +71,7 @@ bool RowFnLetIRBuilder::Build(
             "entry", fn);
 
     BufIRBuilder buf_ir_builder(table_, block, &sv);
-    SQLExprIRBuilder sql_expr_ir_builder(block, &sv, 
+    ExprIRBuilder expr_ir_builder(block, &sv, 
             &buf_ir_builder, row_ptr_name, row_size_name,
             output_ptr_name, module_);
 
@@ -94,11 +94,11 @@ bool RowFnLetIRBuilder::Build(
         (const ::fesql::node::ProjectPlanNode*)pn;
         const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
 
+
         ::llvm::Value* expr_out_val = NULL;
-        std::string col_name;
-        ok = sql_expr_ir_builder.Build(sql_node, 
-                &expr_out_val,
-                col_name);
+        std::string col_name = pp_node->GetName();
+        ok = expr_ir_builder.Build(sql_node, 
+                &expr_out_val);
 
         if (!ok) {
             return false;
@@ -189,9 +189,17 @@ bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
     ::llvm::FunctionType *fnt = ::llvm::FunctionType::get(::llvm::Type::getInt32Ty(module_->getContext()),
             array_ref, 
             false);
-     *fn = ::llvm::Function::Create(fnt, 
+
+     ::llvm::Function* f = ::llvm::Function::Create(fnt, 
              ::llvm::Function::ExternalLinkage,
              name, module_);
+
+     if (f == NULL) {
+         LOG(WARNING) << "fail to create fn with name " << name;
+         return false;
+     }
+
+     *fn = f;
      DLOG(INFO) << "create fn header " << name  << " done";
      return true;
 }
@@ -202,8 +210,8 @@ bool RowFnLetIRBuilder::FillArgs(const std::string& row_ptr_name,
         ::llvm::Function *fn,
         ScopeVar& sv) {
 
-    if (fn == NULL || fn->arg_size() != 2) {
-        LOG(WARNING) << "fn is null";
+    if (fn == NULL || fn->arg_size() != 3) {
+        LOG(WARNING) << "fn is null or fn arg size mismatch";
         return false;
     }
 

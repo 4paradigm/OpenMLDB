@@ -53,7 +53,7 @@ void GetSchema(::fesql::type::TableDef &table) {  // NOLINT (runtime/references)
 }
 
 class AnalyserTest : public ::testing::TestWithParam<
-                         std::pair<error::ErrorType, std::string>> {
+                         std::pair<common::StatusCode , std::string>> {
  public:
     AnalyserTest() {
         parser_ = new parser::FeSQLParser();
@@ -80,22 +80,22 @@ INSTANTIATE_TEST_CASE_P(
     AnalyserValidate, AnalyserTest,
     testing::Values(
         std::make_pair(
-            error::kSucess,
+            common::kOk,
             "SELECT t1.col1 c1,  TRIM(col3) as trimCol3, col2 FROM t1"
             " limit 10;"),
-        std::make_pair(error::kAnalyserErrorTableNotExist,
+        std::make_pair(common::kTableNotFound,
                        "SELECT t2.COL1 c1 FROM t2 limit 10;"),
-        std::make_pair(error::kAnalyserErrorQueryMultiTable,
+        std::make_pair(common::kUnSupport,
                        "SELECT t2.col1 c1 "
                        "FROM t2, t1 limit 10;"),
-        std::make_pair(error::kAnalyserErrorColumnNotExist,
+        std::make_pair(common::kColumnNotFound,
                        "SELECT t1.col100 c1"
                        " FROM t1 limit 10;"),
         std::make_pair(
-            error::kAnalyserErrorGlobalAggFunction,
+            common::kSQLError,
             "SELECT t1.col1 c1,  MIN(col3) as trimCol3, col2 FROM t1 "
             "limit 10;"),
-        std::make_pair(error::kSucess,
+        std::make_pair(common::kOk,
                        "create table test(\n"
                        "    column1 int NOT NULL,\n"
                        "    column2 timestamp NOT NULL,\n"
@@ -103,7 +103,7 @@ INSTANTIATE_TEST_CASE_P(
                        "    column4 string NOT NULL,\n"
                        "    column5 int NOT NULL\n"
                        ");"),
-        std::make_pair(error::kSucess,
+        std::make_pair(common::kOk,
                        "create table IF NOT EXISTS test(\n"
                        "    column1 int NOT NULL,\n"
                        "    column2 timestamp NOT NULL,\n"
@@ -112,7 +112,7 @@ INSTANTIATE_TEST_CASE_P(
                        "    column5 int NOT NULL\n"
                        ");"),
 
-        std::make_pair(error::kSucess,
+        std::make_pair(common::kOk,
                        "create table test(\n"
                        "    column1 int NOT NULL,\n"
                        "    column2 timestamp NOT NULL,\n"
@@ -122,7 +122,7 @@ INSTANTIATE_TEST_CASE_P(
                        "    index(key=(column4))\n"
                        ");"),
 
-        std::make_pair(error::kSucess,
+        std::make_pair(common::kOk,
                        "create table test(\n"
                        "    column1 int NOT NULL,\n"
                        "    column2 timestamp NOT NULL,\n"
@@ -131,7 +131,7 @@ INSTANTIATE_TEST_CASE_P(
                        "    column5 int NOT NULL,\n"
                        "    index(key=(column4, column3))\n"
                        ");"),
-        std::make_pair(error::kSucess,
+        std::make_pair(common::kOk,
                        "create table test(\n"
                        "    column1 int NOT NULL,\n"
                        "    column2 timestamp NOT NULL,\n"
@@ -141,7 +141,7 @@ INSTANTIATE_TEST_CASE_P(
                        "    index(key=(column4, column3), ts=column5)\n"
                        ");"),
         std::make_pair(
-            error::kSucess,
+            common::kOk,
             "create table test(\n"
             "    column1 int NOT NULL,\n"
             "    column2 timestamp NOT NULL,\n"
@@ -150,7 +150,7 @@ INSTANTIATE_TEST_CASE_P(
             "    column5 int NOT NULL,\n"
             "    index(key=(column4, column3), ts=column2, ttl=60d)\n"
             ");"),
-        std::make_pair(error::kSucess,
+        std::make_pair(common::kOk,
                        "create table test(\n"
                        "    column1 int NOT NULL,\n"
                        "    column2 timestamp NOT NULL,\n"
@@ -166,9 +166,10 @@ TEST_P(AnalyserTest, RunAnalyseTest) {
     NodePointVector list;
     base::Status status;
     int ret = parser_->parse(param.second, list, manager_, status);
+    std::cout << param.second << std::endl;
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
-
+    std::cout << *list[0] << std::endl;
     NodePointVector query_tree;
     ret = analyser->Analyse(list, query_tree, status);
     if (0 != status.code) {

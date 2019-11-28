@@ -15,7 +15,6 @@
 
 namespace fesql {
 namespace sdk {
-using fesql::base::Status;
 
 class DBMSSdkTest : public ::testing::Test {
  public:
@@ -214,9 +213,9 @@ TEST_F(DBMSSdkTest, TableAPITest) {
             "create table test1(\n"
             "    column1 int NOT NULL,\n"
             "    column2 timestamp NOT NULL,\n"
-            "    column3 int NOT NULL,\n"
+            "    column3 int,\n"
             "    column4 string NOT NULL,\n"
-            "    column5 int NOT NULL,\n"
+            "    column5 int,\n"
             "    index(key=(column4, column3), ts=column2, ttl=60d)\n"
             ");";
         db.name = "db_1";
@@ -228,6 +227,35 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         dbms_sdk->ExecuteScript(request, result, status);
         std::cout << status.msg << std::endl;
         ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    // desc test1
+    {
+        DatabaseDef db;
+        db.name = "db_1";
+        Status status;
+        std::unique_ptr<::fesql::sdk::Schema> rs = dbms_sdk->GetSchema(db, "test1", status);
+        std::cout << status.msg << std::endl;
+        ASSERT_EQ(0, static_cast<int>(status.code));
+        ASSERT_TRUE(rs != 0);
+        ASSERT_EQ(5, rs.get()->GetColumnCnt());
+        ASSERT_EQ("column1", rs.get()->GetColumnName(0));
+        ASSERT_EQ("column2", rs.get()->GetColumnName(1));
+        ASSERT_EQ("column3", rs.get()->GetColumnName(2));
+        ASSERT_EQ("column4", rs.get()->GetColumnName(3));
+        ASSERT_EQ("column5", rs.get()->GetColumnName(4));
+
+        ASSERT_EQ(sdk::kTypeInt32, rs.get()->GetColumnType(0));
+        ASSERT_EQ(sdk::kTypeTimestamp, rs.get()->GetColumnType(1));
+        ASSERT_EQ(sdk::kTypeInt32, rs.get()->GetColumnType(2));
+        ASSERT_EQ(sdk::kTypeString, rs.get()->GetColumnType(3));
+        ASSERT_EQ(sdk::kTypeInt32, rs.get()->GetColumnType(4));
+
+        ASSERT_EQ(true, rs.get()->IsColumnNotNull(0));
+        ASSERT_EQ(true, rs.get()->IsColumnNotNull(1));
+        ASSERT_EQ(false, rs.get()->IsColumnNotNull(2));
+        ASSERT_EQ(true, rs.get()->IsColumnNotNull(3));
+        ASSERT_EQ(false, rs.get()->IsColumnNotNull(4));
     }
     {
         // create table test2
