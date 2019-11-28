@@ -115,13 +115,11 @@ bool RowFnLetIRBuilder::Build(
         cdef.set_type(ctype);
         schema.push_back(cdef);
         ok = StoreColumn(offset, expr_out_val, sv, output_ptr_name, block);
-
         if (!ok) {
             return false;
         }
         switch (cdef.type()) {
             case ::fesql::type::kInt16:
-            case ::fesql::type::kVarchar:
                 {
                     offset += 2;
                     break;
@@ -134,6 +132,7 @@ bool RowFnLetIRBuilder::Build(
                 }
             case ::fesql::type::kInt64:
             case ::fesql::type::kDouble:
+            case ::fesql::type::kVarchar:
                 {
                     offset += 8;
                     break;

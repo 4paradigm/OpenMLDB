@@ -197,7 +197,6 @@ bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
         if (ok) {
             *output = value;
         }
-
         return ok;
     } else {
         *output = value;
