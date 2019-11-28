@@ -24,8 +24,9 @@ namespace storage {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size) & 0x07))
 
-static const uint8_t VERSION_SIZE = 2;
-static const uint8_t ADDR_LENGTH_FIELD_SIZE = 1;
+static const uint8_t SIZE_LENGTH = 4;
+static const uint8_t VERSION_LENGTH = 2;
+static const uint8_t HEADER_LENGTH = SIZE_LENGTH + VERSION_LENGTH;
 static const std::map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
         {::fesql::type::kBool, 1},
         {::fesql::type::kInt16, 2},
@@ -35,29 +36,34 @@ static const std::map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
         {::fesql::type::kDouble, 8}
 };
 
+static uint8_t GetAddrLength(uint32_t size) {
+    if (size <= UINT8_MAX) {
+        return 1;
+    } else if (size <= UINT16_MAX) {
+        return 2;
+    } else if (size <= 1 << 24) {
+        return 3;
+    } else {
+        return 4;
+    }
+}
+
 // make sure buf is not NULL    
 RowBuilder::RowBuilder(const Schema& schema, 
                        int8_t* buf, uint32_t size):
                        schema_(schema), buf_(buf), 
                        cnt_(0), size_(size), offset_(0), 
                        str_addr_length_(0), str_start_offset_(0), str_offset_(0) {
-    *buf_ = 1; //FVersion
-    *(buf_ + 1) = 1; //SVersion
-    if (size <= UINT8_MAX) {
-        str_addr_length_ = 1;
-    } else if (size <= UINT16_MAX) {
-        str_addr_length_ = 2;
-    } else if (size <= 1 << 24) {
-        str_addr_length_ = 3;
-    } else {
-        str_addr_length_ = 4;
-    }
-    *(buf_ + VERSION_SIZE) = str_addr_length_;
-    offset_ = VERSION_SIZE + ADDR_LENGTH_FIELD_SIZE;
+                           
+    (*(int32_t*)buf_) = size;                       
+    *(buf_ + SIZE_LENGTH) = 1; //FVersion
+    *(buf_ + SIZE_LENGTH + 1) = 1; //SVersion
+    offset_ = HEADER_LENGTH;
     uint32_t bitmap_size = BitMapSize(schema.size());
     memset(buf_ + offset_, 0, bitmap_size);
     offset_ += bitmap_size; 
     str_start_offset_ = offset_;
+    str_addr_length_ = GetAddrLength(size);
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema.Get(idx);
         if (column.type() == ::fesql::type::kString) {
@@ -79,8 +85,7 @@ uint32_t RowBuilder::CalTotalLength(const Schema& schema, uint32_t string_length
     if (schema.size() == 0) {
         return 0;
     }
-    uint32_t total_length = 2 + 1;
-    total_length += BitMapSize(schema.size());
+    uint32_t total_length = HEADER_LENGTH + BitMapSize(schema.size());
     uint32_t string_field_cnt = 0;
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema.Get(idx);
@@ -139,7 +144,7 @@ bool RowBuilder::Check(::fesql::type::Type type) {
 }
 
 bool RowBuilder::AppendNULL() {
-    int8_t* ptr = buf_ + VERSION_SIZE + ADDR_LENGTH_FIELD_SIZE + (cnt_ >> 3);
+    int8_t* ptr = buf_ + HEADER_LENGTH + (cnt_ >> 3);
     *((uint8_t*)ptr) |= 1 << (cnt_ & 0x07); 
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);
     if (column.type() == ::fesql::type::kString) {
@@ -253,13 +258,13 @@ RowView::RowView(const Schema& schema,
                  uint32_t size):
         str_addr_length_(0), is_valid_(true), size_(size), row_(row), schema_(schema),  
         offset_vec_(), str_length_map_() {
-    if (schema_.size() == 0 || row_ == NULL || size <= 3) {
+    if (schema_.size() == 0 || row_ == NULL || size <= HEADER_LENGTH ||
+            *((uint32_t*)row) != size) {
         is_valid_ = false;
         return;
     }
-    uint32_t offset = VERSION_SIZE;
-    str_addr_length_ = (uint8_t)(*(row + offset));
-    offset += ADDR_LENGTH_FIELD_SIZE + BitMapSize(schema_.size());
+    uint32_t offset = HEADER_LENGTH + BitMapSize(schema_.size());
+    str_addr_length_ = GetAddrLength(size);
     for (int idx = 0; idx < schema_.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(idx);
         if (column.type() == ::fesql::type::kString) {
@@ -330,7 +335,7 @@ bool RowView::CheckValid(uint32_t idx, ::fesql::type::Type type) {
 }
 
 bool RowView::IsNULL(uint32_t idx) {
-    const int8_t* ptr = row_ + VERSION_SIZE + ADDR_LENGTH_FIELD_SIZE + (idx >> 3);
+    const int8_t* ptr = row_ + HEADER_LENGTH + (idx >> 3);
     return *((uint8_t*)ptr) & (1 << (idx & 0x07)); 
 }
 
