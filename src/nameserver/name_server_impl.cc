@@ -2286,7 +2286,28 @@ void NameServerImpl::DropTable(RpcController* controller,
         const DropTableRequest* request, 
         GeneralResponse* response, 
         Closure* done) {
-    brpc::ClosureGuard done_guard(done);    
+    brpc::ClosureGuard done_guard(done);
+    if (request->has_zone_info()) {
+        PDLOG(DEBUG, "zone name [%s], zone term [%u]", 
+                request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
+        std::shared_ptr<DropTableRequest> request_tmp = std::make_shared<DropTableRequest>(*(request->New()));
+        std::shared_ptr<GeneralResponse> response_tmp = std::make_shared<GeneralResponse>(*(response->New()));
+        request_tmp->CopyFrom(*request);
+        response_tmp->CopyFrom(*response);
+        task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTable, this, request_tmp, response_tmp));
+        response->set_code(0);
+        response->set_msg("ok");
+    } else {
+        const std::shared_ptr<DropTableRequest> request_tmp = std::make_shared<DropTableRequest>(*request);
+        std::shared_ptr<GeneralResponse> response_tmp = std::make_shared<GeneralResponse>(*response);
+        DropTable(request_tmp, response_tmp);
+        response->set_code(response_tmp->code());
+        response->set_msg(response_tmp->msg());
+    }
+}
+
+void NameServerImpl::DropTable(const std::shared_ptr<DropTableRequest> request, 
+        std::shared_ptr<GeneralResponse> response) {
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
@@ -2304,7 +2325,9 @@ void NameServerImpl::DropTable(RpcController* controller,
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
             response->set_code(502);
             response->set_msg("zone_info mismathch");
-            PDLOG(WARNING, "zone_info mismathch");
+            PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%u], but zone name [%s], zone term [%u]", 
+                   zone_info_.zone_name().c_str(), zone_info_.zone_term(),
+                   request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
             return;
         }
     }
@@ -2351,15 +2374,19 @@ void NameServerImpl::DropTable(RpcController* controller,
                     PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
                     continue;
                 }
-                if (!tablets_iter->second->client_->DropTable(iter->second->tid(),
-                                        iter->second->table_partition(idx).pid())) {
+                bool res = false;
+                if (!request->has_task_info()) {
+                    res = tablets_iter->second->client_->DropTable(iter->second->tid(),
+                                iter->second->table_partition(idx).pid());
+                } else {
+                    res = tablets_iter->second->client_->DropTable(iter->second->tid(),
+                                iter->second->table_partition(idx).pid(), task_ptr);
+                }
+                if (!res) {
                     PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", 
-                                    iter->second->tid(), iter->second->table_partition(idx).pid(),
-                                    endpoint.c_str());
+                            iter->second->tid(), iter->second->table_partition(idx).pid(),
+                            endpoint.c_str());
                     code = 313; // if drop table failed, return error                
-                    if (task_ptr) {
-                        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-                    }
                     break;
                 }
                 PDLOG(INFO, "drop table. tid[%u] pid[%u] endpoint[%s]", 
@@ -2386,14 +2413,6 @@ void NameServerImpl::DropTable(RpcController* controller,
                 PDLOG(WARNING, "drop table for replica cluster failed, table_name: %s, alias: %s", request->name().c_str(), kv.first.c_str());
                 break;
             }
-        }
-    }
-    if (code == 0) {
-        if (task_ptr) {
-            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-            PDLOG(INFO, "set task type success, op_id [%lu] task_tpye [%s] task_status [%s]" , 
-                    task_ptr->op_id(), ::rtidb::api::TaskType_Name(task_ptr->task_type()).c_str(),
-                    ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
     }
     response->set_code(code);
@@ -2594,6 +2613,31 @@ void NameServerImpl::CreateTable(RpcController* controller,
         GeneralResponse* response, 
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    if (request->has_zone_info()) {
+        PDLOG(DEBUG, "zone name [%s], zone term [%u]", 
+                request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
+        std::shared_ptr<CreateTableRequest> request_tmp = std::make_shared<CreateTableRequest>(*(request->New()));
+        std::shared_ptr<GeneralResponse> response_tmp = std::make_shared<GeneralResponse>(*(response->New()));
+        request_tmp->CopyFrom(*request);
+        response_tmp->CopyFrom(*response);
+        PDLOG(DEBUG, "tmp zone name [%s], zone term [%u]", 
+                request_tmp->zone_info().zone_name().c_str(), request_tmp->zone_info().zone_term());
+        //CreateTable(request_tmp.get(), response_tmp.get());
+        //task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::CreateTable, this, request_tmp.get(), response_tmp.get()));
+        task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CreateTable, this, request_tmp, response_tmp));
+        response->set_code(0);
+        response->set_msg("ok");
+    } else {
+        const std::shared_ptr<CreateTableRequest> request_tmp = std::make_shared<CreateTableRequest>(*request);
+        std::shared_ptr<GeneralResponse> response_tmp = std::make_shared<GeneralResponse>(*response);
+        CreateTable(request_tmp, response_tmp);
+        response->set_code(response_tmp->code());
+        response->set_msg(response_tmp->msg());
+    }
+}
+
+void NameServerImpl::CreateTable(const std::shared_ptr<CreateTableRequest> request, 
+        std::shared_ptr<GeneralResponse> response) {
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
@@ -2611,7 +2655,9 @@ void NameServerImpl::CreateTable(RpcController* controller,
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
             response->set_code(502);
             response->set_msg("zone_info mismathch");
-            PDLOG(WARNING, "zone_info mismathch");
+            PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%u], but zone name [%s], zone term [%u]", 
+                   zone_info_.zone_name().c_str(), zone_info_.zone_term(),
+                   request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
             return;
         }
     }
@@ -6067,6 +6113,7 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
     response->set_code(0);
     response->set_msg("ok");
 }
+
 void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
         const ::rtidb::nameserver::RemoveReplicaOfRequest* request,
         ::rtidb::nameserver::GeneralResponse* response,
@@ -6086,22 +6133,22 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
         if (it == nsc_.end()) {
             code = 404;
             rpc_msg = "replica name not found";
-                break;
-            }
-            if (!it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
-                break;
-            }
-            if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
-                code = 452;
-                rpc_msg = "del zk failed";
-                break;
-            }
-            nsc_.erase(it);
-        } while(0);
-        response->set_code(code);
-        response->set_msg(rpc_msg);
-        return;
-    }
+            break;
+        }
+        if (!it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
+            break;
+        }
+        if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
+            code = 452;
+            rpc_msg = "del zk failed";
+            break;
+        }
+        nsc_.erase(it);
+    } while(0);
+    response->set_code(code);
+    response->set_msg(rpc_msg);
+    return;
+}
 
 void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
         const ::rtidb::nameserver::ReplicaClusterByNsRequest* request,

@@ -131,10 +131,16 @@ public:
             ::rtidb::api::TaskStatusResponse* response,
             Closure* done);
 
+    void CreateTable(const std::shared_ptr<CreateTableRequest> request, 
+            std::shared_ptr<GeneralResponse> response);
+
     void CreateTable(RpcController* controller,
         const CreateTableRequest* request,
         GeneralResponse* response, 
         Closure* done);
+
+    void DropTable(const std::shared_ptr<DropTableRequest> request, 
+            std::shared_ptr<GeneralResponse> response); 
 
     void DropTable(RpcController* controller,
         const DropTableRequest* request,
