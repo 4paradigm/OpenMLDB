@@ -5,6 +5,7 @@
 // Date 2017-09-18
 //
 
+#include <nameserver/name_server_impl.h>
 #include "client/ns_client.h"
 #include "base/strings.h"
 
@@ -429,7 +430,7 @@ bool NsClient::AddReplicaClusterByNs(const std::string& alias, const std::string
     request.set_replica_alias(alias);
     request.set_zone_name(name);
     request.set_zone_term(term);
-    request.set_follower(true);
+    request.set_mode(::rtidb::nameserver::rFOLLOWER);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaClusterByNs,
                                     &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -498,7 +499,7 @@ bool NsClient::RemoveReplicaClusterByNs(const std::string& alias, const std::str
     request.set_replica_alias(alias);
     request.set_zone_term(term);
     request.set_zone_name(zone_name);
-    request.set_follower(false);
+    request.set_mode(::rtidb::nameserver::rNORMAL);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RemoveReplicaClusterByNs,
         &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();

@@ -569,6 +569,10 @@ message CheckFileRequest {
     optional rtidb.common.StorageMode storage_mode = 6 [default = kMemory];
 }
 
+message SetModeRequest {
+    optional bool follower = 1;
+}
+
 message ConnectZKRequest {}
 message DisConnectZKRequest {}
 
@@ -622,4 +626,5 @@ service TabletServer {
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
     rpc UpdateTableMetaForAddField (UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
+    rpc SetMode(SetModeRequest) returns (GeneralResponse);
 }

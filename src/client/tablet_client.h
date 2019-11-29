@@ -224,6 +224,8 @@ public:
 
     void ShowTp();
 
+    bool SetMode(const bool mode);
+
 private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> client_;

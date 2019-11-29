@@ -81,7 +81,9 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size),
     io_pool_(FLAGS_io_pool_size), snapshot_pool_(1), server_(NULL),
-    mode_root_paths_(), mode_recycle_root_paths_(){}
+    mode_root_paths_(), mode_recycle_root_paths_(){
+    follower_.store(false);
+}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -3834,6 +3836,15 @@ bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
         }
     }
     return true;
+}
+
+void TabletImpl::SetMode(RpcController* controller,
+        const ::rtidb::api::SetModeRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    follower_.store(request->follower(), std::memory_order_acquire);
+    response->set_code(0);
 }
 
 }

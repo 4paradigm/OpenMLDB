@@ -151,20 +151,25 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
         }
         for (int i = 0; i < table.table_partition_size(); i++) {
             auto& temp_part = table.table_partition(i);
-            auto part_iter = std::find(table_iter->second.begin(), table_iter->second.end(), temp_part.pid());
-            part_iter->term_offset_size();
-            if (temp_part.term_offset_size() > part_iter->term_offset_size()) {
-                for (int z = part_iter->term_offset_size(); z < temp_part.term_offset_size(); z++) {
-                    part_iter->add_term_offset()->CopyFrom(temp_part.term_offset(z));
+            TablePartition* part_p = &table_iter->second[0];
+            for (uint64_t j = 0; j < table_iter->second.size(); j++) {
+                if (table_iter->second[j].pid() == temp_part.pid()) {
+                    part_p = &table_iter->second[j];
+                    break;
+                }
+            }
+            if (temp_part.term_offset_size() > part_p->term_offset_size()) {
+                for (int z = part_p->term_offset_size(); z < temp_part.term_offset_size(); z++) {
+                    part_p->add_term_offset()->CopyFrom(temp_part.term_offset(z));
                 }
             }
             int j = 0;
             for (; j < temp_part.partition_meta_size(); j++) {
                 auto &temp_meta = temp_part.partition_meta(j);
                 if (temp_meta.is_alive() && temp_meta.is_leader()) {
-                    if (part_iter->partition_meta(0).endpoint() != temp_meta.endpoint()) {
-                        part_iter->clear_partition_meta();
-                        part_iter->add_partition_meta()->CopyFrom(temp_meta);
+                    if (part_p->partition_meta(0).endpoint() != temp_meta.endpoint()) {
+                        part_p->clear_partition_meta();
+                        part_p->add_partition_meta()->CopyFrom(temp_meta);
                     }
                     break;
                 }
@@ -212,8 +217,8 @@ bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo
                 return false;
             }
         }
-        return true;
     }
+    return true;
 }
 bool ClusterInfo::AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term,
         std::string& msg) {
@@ -246,10 +251,10 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     zk_auto_failover_node_ = zk_config_path + "/auto_failover";
     zk_table_changed_notify_node_ = zk_table_path + "/notify";
     running_.store(false, std::memory_order_release);
-    follower_.store(false, std::memory_order_release);
+    mode_.store(rNORMAL, std::memory_order_release);
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
     task_rpc_version_.store(0, std::memory_order_relaxed);
-    zone_info_.set_follower(false);
+    zone_info_.set_mode(rNORMAL);
     zone_info_.set_zone_name(FLAGS_endpoint + FLAGS_zk_root_path);
     zone_info_.set_replica_alias("");
     zone_info_.set_zone_term(1);
@@ -332,7 +337,7 @@ bool NameServerImpl::Recover() {
         value.clear();
         if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/follower", value)) {
             zone_info_.ParseFromString(value);
-            follower_.store(zone_info_.follower(), std::memory_order_release);
+            mode_.store(zone_info_.mode(), std::memory_order_release);
             PDLOG(WARNING, "recover zone info : %s", value.c_str());
         }
         if (!RecoverTableInfo()) {
@@ -736,6 +741,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             }
         }
     }
+    thread_pool_.AddTask(boost::bind(&NameServerImpl::DistributeTabletMode, this));
 }
 
 void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_flag) {
@@ -1305,7 +1311,7 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -2197,7 +2203,7 @@ void NameServerImpl::DropTable(RpcController* controller,
         GeneralResponse* response, 
         Closure* done) {
     brpc::ClosureGuard done_guard(done);    
-    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -2264,7 +2270,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -2412,7 +2418,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         GeneralResponse* response, 
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -5232,7 +5238,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         ::rtidb::nameserver::UpdateTTLResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);    
-    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -5471,7 +5477,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_relaxed)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_relaxed) == rFOLLOWER)) {
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -5545,10 +5551,10 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
-    PDLOG(DEBUG, "request zone name is: %s, term is: %u %d,", request->zone_name().c_str(), request->zone_term(), zone_info_.follower());
+    PDLOG(DEBUG, "request zone name is: %s, term is: %u %d,", request->zone_name().c_str(), request->zone_term(), zone_info_.mode());
     PDLOG(DEBUG, "cur zone name is: %s", zone_info_.zone_name().c_str());
     do {
-        if (follower_.load(std::memory_order_acquire)) {
+        if ((mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
             if (request->replica_alias() != zone_info_.replica_alias()) {
                 code = 402;
                 rpc_msg = "not same replica name";
@@ -5579,7 +5585,7 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
             PDLOG(WARNING, "set zk failed, save follower value failed");
             break;
         }
-        follower_.store(request->follower(), std::memory_order_release);
+        mode_.store(request->mode(), std::memory_order_release);
         zone_info_.CopyFrom(*request);
     } while (0);
     response->set_code(code);
@@ -5590,7 +5596,7 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
        ShowReplicaClusterResponse* response,
        Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_acquire)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -5616,7 +5622,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
         ::rtidb::nameserver::GeneralResponse* response,
         ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || follower_.load(std::memory_order_relaxed)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_relaxed) == rFOLLOWER)) {
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -5661,7 +5667,7 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (!follower_.load(std::memory_order_acquire)) {
+    if (mode_.load(std::memory_order_acquire) != rFOLLOWER) {
         response->set_code(405);
         response->set_msg("this is not follower");
         return;
@@ -5685,15 +5691,21 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
             break;
         }
         std::string value;
-        request->SerializeToString(&value);
+        ReplicaClusterByNsRequest zone_info;
+        zone_info.CopyFrom(*request);
+        zone_info.set_mode(rNORMAL);
+        zone_info.set_zone_name(FLAGS_endpoint + FLAGS_zk_root_path);
+        zone_info.set_replica_alias("");
+        zone_info.set_zone_term(1);
+        zone_info.SerializeToString(&value);
         if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", value)) {
             code = 304;
             rpc_msg = "set zk failed";
             PDLOG(WARNING, "set zk failed, save follower value failed");
             break;
         }
-        follower_.store(request->follower(), std::memory_order_release);
-        zone_info_.CopyFrom(*request);
+        mode_.store(zone_info.mode(), std::memory_order_release);
+        zone_info_.CopyFrom(zone_info);
     } while (0);
     response->set_code(code);
     response->set_msg(rpc_msg);
@@ -5730,6 +5742,77 @@ void NameServerImpl::CheckClusterInfo() {
     } while(0);
 
     thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
+}
+
+void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
+        const ::rtidb::nameserver::SwitchModeRequest* request,
+        ::rtidb::nameserver::GeneralResponse* response,
+        ::google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(300);
+        response->set_msg("cur nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not header");
+        return;
+    }
+    if (request->sm() >= rFOLLOWER) { // request->sm() > rFOLLOWER
+        response->set_code(505);
+        response->set_msg("unkown server status");
+        return;
+    }
+    /*
+    if (request->sm() == rFOLLOWER) {
+        response->set_code(506);
+        response->set_msg("only switch NORMAL or LEADER mode");
+        return;
+    }
+     */
+    if (mode_.load(std::memory_order_acquire) == request->sm()) {
+        response->set_code(0);
+        return;
+    }
+    if (mode_.load(std::memory_order_acquire) == rLEADER) {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (nsc_.size() > 0) {
+            response->set_code(555);
+            response->set_msg("zone not empty");
+        }
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    if (mode_.load(std::memory_order_acquire) == rFOLLOWER) {
+        // notify table leave follower mode, leader table will be writeable.
+    }
+    decltype(zone_info_) zone_info = zone_info_;
+    zone_info.set_mode(request->sm());
+    std::string value;
+    zone_info.SerializeToString(&value);
+    if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower",value)) {
+        response->set_code(304);
+        response->set_msg("set zk failed");
+        PDLOG(WARNING, "save zone info failed, write zk failed");
+        return;
+    }
+    zone_info_.set_mode(request->sm());
+    mode_.store(request->sm(), std::memory_order_acquire);
+    response->set_code(0);
+}
+
+void NameServerImpl::DistributeTabletMode() {
+    decltype(tablets_) tmp_tablets;
+    bool mode = mode_.load(std::memory_order_acquire) == rFOLLOWER;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        tmp_tablets = tablets_;
+    }
+    for (auto& i : tmp_tablets) {
+        if (i.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            continue;
+        }
+        if (!i.second->client_->SetMode(mode)) {
+            PDLOG(WARNING, "set tablet %s mode failed!", i.first.c_str());
+        }
+    }
+
 }
 }
 }

@@ -1043,5 +1043,17 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, ::rtidb::common::Sto
     return kv_it;
 }
 
+bool TabletClient::SetMode(const bool mode) {
+    ::rtidb::api::SetModeRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_follower(mode);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetMode,
+        &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
 }
 }
