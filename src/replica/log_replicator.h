@@ -74,6 +74,8 @@ public:
     // add replication
     int AddReplicateNode(const std::vector<std::string>& endpoint_vec);
 
+    int AddReplicateNode(const std::vector<std::string>& endpoint_vec, uint32_t tid);
+
     int DelReplicateNode(const std::string& endpoint);
 
     void GetReplicateInfo(std::map<std::string, uint64_t>& info_map);

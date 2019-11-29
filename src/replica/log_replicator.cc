@@ -350,6 +350,10 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
 }
 
 int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec) {
+    return AddReplicateNode(endpoint_vec, UINT32_MAX);
+}
+
+int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec, uint32_t tid) {
     if (endpoint_vec.empty()) {
         return 1;
     }
@@ -367,9 +371,16 @@ int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec
                 return 1;
             }
         }
-        std::shared_ptr<ReplicateNode> replicate_node = std::make_shared<ReplicateNode>(
-                            endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(),
-                            &term_, &log_offset_, &mu_, &cv_);
+        std::shared_ptr<ReplicateNode> replicate_node;
+        if (tid == UINT32_MAX) {
+            replicate_node = std::make_shared<ReplicateNode>(
+                    endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(),
+                    &term_, &log_offset_, &mu_, &cv_);
+        } else {
+            replicate_node = std::make_shared<ReplicateNode>(
+                    endpoint, logs_, log_path_, tid, table_->GetPid(),
+                    &term_, &log_offset_, &mu_, &cv_);
+        }
         if (replicate_node->Init() < 0) {
             PDLOG(WARNING, "init replicate node %s error", endpoint.c_str());
             return -1;

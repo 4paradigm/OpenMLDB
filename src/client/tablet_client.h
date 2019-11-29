@@ -159,6 +159,8 @@ public:
     bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
+    bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
+            uint32_t remote_tid, std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
     bool DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 

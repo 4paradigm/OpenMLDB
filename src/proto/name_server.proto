@@ -110,6 +110,7 @@ message AddReplicaNSRequest {
     required string endpoint = 3;
     repeated uint32 pid_group = 4;
     optional PartitionMeta partition_meta = 5; //for remote
+    optional uint32 remote_tid = 6; //for remote
 }
 
 message Pair {

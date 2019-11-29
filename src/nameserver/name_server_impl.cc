@@ -165,7 +165,7 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                 }
                 for (auto& meta : temp_part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
-                        AddReplicaNode(table.name(), meta, temp_part.pid());
+                        AddRemoteReplica(table.name(), meta, table.tid(), temp_part.pid());
                         tb.add_partition_meta()->CopyFrom(meta);
                         break;
                     }
@@ -2877,9 +2877,9 @@ void NameServerImpl::CreateTable(RpcController* controller,
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableOnTablet, this, table_info));
 }
 
-void NameServerImpl::AddReplicaNode(const std::string& name, 
+void NameServerImpl::AddRemoteReplica(const std::string& name, 
         const ::rtidb::nameserver::PartitionMeta& partition_meta,
-        uint32_t pid) {
+        uint32_t remote_tid, uint32_t pid) {
     if (!running_.load(std::memory_order_acquire)) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -2899,6 +2899,7 @@ void NameServerImpl::AddReplicaNode(const std::string& name,
     cur_request.set_endpoint(endpoint);
     ::rtidb::nameserver::PartitionMeta* partition_meta_ptr = cur_request.mutable_partition_meta();
     partition_meta_ptr->CopyFrom(partition_meta);
+    cur_request.set_remote_tid(remote_tid);
     std::string value;
     cur_request.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kAddReplicaOP, value, op_data, 
@@ -2907,7 +2908,7 @@ void NameServerImpl::AddReplicaNode(const std::string& name,
                 name.c_str(), pid);
         return;
     }
-    if (CreateAddReplicaNodeOPTask(op_data) < 0) {
+    if (CreateAddRemoteReplicaOPTask(op_data) < 0) {
         PDLOG(WARNING, "create AddReplicaOP task failed. table[%s] pid[%u] endpoint[%s]",
                 name.c_str(), pid, endpoint.c_str());
         return;
@@ -3015,7 +3016,7 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
     response->set_msg("ok");
 }
 
-int NameServerImpl::CreateAddReplicaNodeOPTask(std::shared_ptr<OPData> op_data) {
+int NameServerImpl::CreateAddRemoteReplicaOPTask(std::shared_ptr<OPData> op_data) {
     AddReplicaNSRequest request;
     if (!request.ParseFromString(op_data->op_info_.data())) {
         PDLOG(WARNING, "parse request failed. data[%s]", op_data->op_info_.data().c_str());
@@ -3034,6 +3035,8 @@ int NameServerImpl::CreateAddReplicaNodeOPTask(std::shared_ptr<OPData> op_data) 
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
+    std::shared_ptr<Task> task;
+    /**
     std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index, 
                 ::rtidb::api::OPType::kAddReplicaOP, tid, pid);
     if (!task) {
@@ -3048,13 +3051,16 @@ int NameServerImpl::CreateAddReplicaNodeOPTask(std::shared_ptr<OPData> op_data) 
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateAddReplicaTask(leader_endpoint, op_index, 
-                ::rtidb::api::OPType::kAddReplicaOP, tid, pid, request.endpoint());
+    */
+    task = CreateAddRemoteReplicaTask(leader_endpoint, op_index, 
+                ::rtidb::api::OPType::kAddReplicaOP, tid, request.remote_tid(), pid, request.endpoint());
     if (!task) {
-        PDLOG(WARNING, "create addreplica task failed. tid[%u] pid[%u]", tid, pid);
+        PDLOG(WARNING, "create addreplica task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
+                tid, request.remote_tid(), pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
+    /**
     task = CreateRecoverSnapshotTask(leader_endpoint, op_index, 
                 ::rtidb::api::OPType::kAddReplicaOP, tid, pid);
     if (!task) {
@@ -3062,6 +3068,7 @@ int NameServerImpl::CreateAddReplicaNodeOPTask(std::shared_ptr<OPData> op_data) 
         return -1;
     }
     op_data->task_list_.push_back(task);
+    */
     task = CreateAddTableInfoTask(request.endpoint(), request.name(), pid, request.partition_meta(),
             op_index, ::rtidb::api::OPType::kAddReplicaOP);
     if (!task) {
@@ -5209,6 +5216,25 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     return task;
 }
 
+std::shared_ptr<Task> NameServerImpl::CreateAddRemoteReplicaTask(const std::string& endpoint,
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t remote_tid,
+                    uint32_t pid, const std::string& des_endpoint) {
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
+    auto it = tablets_.find(endpoint);
+    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        return std::shared_ptr<Task>();
+    }
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kAddReplica);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
+    boost::function<bool ()> fun = boost::bind(&TabletClient::AddReplica, it->second->client_, tid, pid, 
+                des_endpoint, remote_tid, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+    return task;
+}
+
 std::shared_ptr<Task> NameServerImpl::CreateAddReplicaTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
                     const std::string& des_endpoint) {
@@ -5308,7 +5334,7 @@ void NameServerImpl::AddTableInfo(const std::string& endpoint,
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(iter->second->New());
     table_info->CopyFrom(*(iter->second));
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         if (table_info->table_partition(idx).pid() == pid) {

@@ -161,9 +161,9 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    void AddReplicaNode(const std::string& name, 
+    void AddRemoteReplica(const std::string& name, 
             const ::rtidb::nameserver::PartitionMeta& partition_meta,
-            uint32_t pid); 
+            uint32_t tid, uint32_t pid); 
 
     void AddReplicaNS(RpcController* controller,
             const AddReplicaNSRequest* request,
@@ -332,7 +332,7 @@ private:
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
-    int CreateAddReplicaNodeOPTask(std::shared_ptr<OPData> op_data);
+    int CreateAddRemoteReplicaOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data);
 
@@ -414,6 +414,11 @@ private:
                     uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name,
                     uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader,
                     ::rtidb::common::StorageMode storage_mode);
+
+std::shared_ptr<Task> CreateAddRemoteReplicaTask(const std::string& endpoint, 
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t remote_tid, uint32_t pid,
+                    const std::string& des_endpoint);
+
 
     std::shared_ptr<Task> CreateAddReplicaTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
