@@ -59,6 +59,33 @@ def write(strs, file_name, patt):
     return rst
 
 
+def gen_table_metadata_file(name, ttl_type, ttl, seg_cnt, filepath,*table_info):
+    metadata = ""
+    basic_info_schema = ('name', 'ttl_type', 'ttl', 'seg_cnt')
+    basic_info = zip(basic_info_schema, (name, ttl_type, ttl, seg_cnt))
+    for key in basic_info:
+        metadata += "{}:{}\n".format(key, basic_info[key])
+    if table_info[0] is not None:
+        for tp in table_info:
+            metadata += "{} {\n".format(tp[0])
+            for i in range(1, len(tp)):
+                metadata += "{} : {}\n".format(tp[i][0], tp[i][1])
+            metadata += "}\n"
+    write(metadata, filepath, 'w')
+    
+            
+    metadata.append([(i[0], i[1]) for i in basic_info if i[1] is not None])
+    if table_partitions[0] is not None:
+        for tp in table_partitions:
+            ele_schema = conf.table_meta_ele[tp[0]]
+            if tp is not None:
+                ele_info = zip(ele_schema, tp[1:])
+                infoLogger.info(ele_info)
+                metadata.append((tp[0], [(i[0], i[1]) for i in ele_info if i[1] is not None]))
+            else:
+                metadata.append({})
+    return metadata
+
 def gen_table_metadata(name, ttl_type, ttl, seg_cnt, *table_partitions):
     metadata = []
     basic_info_schema = ('name', 'ttl_type', 'ttl', 'seg_cnt')
@@ -74,7 +101,6 @@ def gen_table_metadata(name, ttl_type, ttl, seg_cnt, *table_partitions):
             else:
                 metadata.append({})
     return metadata
-
 
 def gen_table_metadata_file(metadata, filepath):
     s = ''
