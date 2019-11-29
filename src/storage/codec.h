@@ -60,15 +60,16 @@ class RowBuilder {
 class RowView {
  public:
     RowView(const Schema& schema, const int8_t* row, uint32_t size);
+    void Reset(const int8_t* row, uint32_t size);
     ~RowView() = default;
 
-    int GetBool(uint32_t idx, bool* val);
-    int GetInt32(uint32_t idx, int32_t* val);
-    int GetInt64(uint32_t idx, int64_t* val);
-    int GetInt16(uint32_t idx, int16_t* val);
-    int GetFloat(uint32_t idx, float* val);
-    int GetDouble(uint32_t idx, double* val);
-    int GetString(uint32_t idx, char** val, uint32_t* length);
+    int32_t GetBool(uint32_t idx, bool* val);
+    int32_t GetInt32(uint32_t idx, int32_t* val);
+    int32_t GetInt64(uint32_t idx, int64_t* val);
+    int32_t GetInt16(uint32_t idx, int16_t* val);
+    int32_t GetFloat(uint32_t idx, float* val);
+    int32_t GetDouble(uint32_t idx, double* val);
+    int32_t GetString(uint32_t idx, char** val, uint32_t* length);
     bool IsNULL(uint32_t idx);
 
  private:
@@ -77,11 +78,12 @@ class RowView {
  private:
     uint8_t str_addr_length_;
     bool is_valid_;
+    uint32_t str_field_start_offset_;
     uint32_t size_;
     const int8_t* row_;
     const Schema& schema_;
     std::vector<uint32_t> offset_vec_;
-    std::map<uint32_t, uint32_t> str_length_map_;
+    std::map<uint32_t, uint32_t> next_str_pos_;
 };
 
 }  // namespace storage
