@@ -29,7 +29,7 @@ using Schema = ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef>;
 
 class RowBuilder {
  public:
-    RowBuilder(const Schema& schema);
+    explicit RowBuilder(const Schema& schema);
     ~RowBuilder() = default;
 
     uint32_t CalTotalLength(uint32_t string_length);

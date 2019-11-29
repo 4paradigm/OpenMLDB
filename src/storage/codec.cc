@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-#include <utility>
 #include "storage/codec.h"
-#include "storage/type_ir_builder.h"
+#include <utility>
 #include "glog/logging.h"
+#include "storage/type_ir_builder.h"
 
 namespace fesql {
 namespace storage {
@@ -29,9 +29,12 @@ static const uint8_t VERSION_LENGTH = 2;
 static const uint8_t SIZE_LENGTH = 4;
 static const uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static const std::map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
-    {::fesql::type::kBool, sizeof(bool)},  {::fesql::type::kInt16, sizeof(int16_t)},
-    {::fesql::type::kInt32, sizeof(int32_t)}, {::fesql::type::kFloat, sizeof(float)},
-    {::fesql::type::kInt64, sizeof(int64_t)}, {::fesql::type::kDouble, sizeof(double)}};
+    {::fesql::type::kBool, sizeof(bool)},
+    {::fesql::type::kInt16, sizeof(int16_t)},
+    {::fesql::type::kInt32, sizeof(int32_t)},
+    {::fesql::type::kFloat, sizeof(float)},
+    {::fesql::type::kInt64, sizeof(int64_t)},
+    {::fesql::type::kDouble, sizeof(double)}};
 
 static uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
@@ -102,7 +105,7 @@ uint32_t RowBuilder::CalTotalLength(uint32_t string_length) {
         return total_length + str_field_cnt_ * 2;
     } else if (total_length + str_field_cnt_ * 3 <= 1 << 24) {
         return total_length + str_field_cnt_ * 3;
-    } else if (total_length + str_field_cnt_ * 4 <= UINT32_MAX){
+    } else if (total_length + str_field_cnt_ * 4 <= UINT32_MAX) {
         return total_length + str_field_cnt_ * 4;
     }
     return 0;
@@ -136,7 +139,8 @@ bool RowBuilder::AppendNULL() {
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);
     if (column.type() == ::fesql::type::kString) {
-        ptr = buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
+        ptr = buf_ + str_field_start_offset_ +
+              str_addr_length_ * offset_vec_[cnt_];
         if (str_addr_length_ == 1) {
             *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
         } else if (str_addr_length_ == 2) {
@@ -204,7 +208,8 @@ bool RowBuilder::AppendDouble(double val) {
 bool RowBuilder::AppendString(const char* val, uint32_t length) {
     if (val == NULL || !Check(::fesql::type::kString)) return false;
     if (str_offset_ + length > size_) return false;
-    int8_t* ptr = buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
+    int8_t* ptr =
+        buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
     if (str_addr_length_ == 1) {
         *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
     } else if (str_addr_length_ == 2) {
@@ -258,8 +263,8 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
         }
     }
     uint32_t next_pos = 0;
-    for (auto iter = next_str_pos_.rbegin();
-        iter != next_str_pos_.rend(); iter++) {
+    for (auto iter = next_str_pos_.rbegin(); iter != next_str_pos_.rend();
+         iter++) {
         uint32_t tmp = iter->second;
         iter->second = next_pos;
         next_pos = tmp;
@@ -404,9 +409,11 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     if (IsNULL(idx)) {
         return 1;
     }
-    uint32_t field_offset = str_field_start_offset_ + offset_vec_.at(idx) * str_addr_length_;
+    uint32_t field_offset =
+        str_field_start_offset_ + offset_vec_.at(idx) * str_addr_length_;
     uint32_t offset = 0;
-    if (v1::GetStrAddr(row_, field_offset, str_addr_length_, &offset) < 0 || offset > size_) {
+    if (v1::GetStrAddr(row_, field_offset, str_addr_length_, &offset) < 0 ||
+        offset > size_) {
         return -1;
     }
     *val = const_cast<char*>(reinterpret_cast<const char*>(row_ + offset));
@@ -417,12 +424,16 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     if (iter->second == 0) {
         *length = size_ - offset;
     } else {
-        uint32_t next_str_field_offset = str_field_start_offset_ + offset_vec_.at(iter->second) * str_addr_length_;
+        uint32_t next_str_field_offset =
+            str_field_start_offset_ +
+            offset_vec_.at(iter->second) * str_addr_length_;
         if (next_str_field_offset > size_) {
             return -1;
         }
         uint32_t next_offset = 0;
-        if (v1::GetStrAddr(row_, next_str_field_offset, str_addr_length_, &next_offset) < 0 || next_offset > size_) {
+        if (v1::GetStrAddr(row_, next_str_field_offset, str_addr_length_,
+                           &next_offset) < 0 ||
+            next_offset > size_) {
             return -1;
         }
         *length = next_offset - offset;
