@@ -3508,7 +3508,7 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
     response->set_msg("ok");
 }
 
-int NameServerImpl::DelReplicaNode(const std::string& endpoint,
+int NameServerImpl::DelRemoteReplicaNode(const std::string& endpoint,
         const std::string name,
         uint32_t pid) {
     std::string value = endpoint;
@@ -3517,7 +3517,7 @@ int NameServerImpl::DelReplicaNode(const std::string& endpoint,
         PDLOG(WARNING, "create op data error. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    if (CreateDelReplicaNodeOPTask(op_data) < 0) {
+    if (CreateDelRemoteReplicaOPTask(op_data) < 0) {
         PDLOG(WARNING, "create delreplica op task failed. name[%s] pid[%u] endpoint[%s]", 
                 name.c_str(), pid, endpoint.c_str());
         return -1;
@@ -3820,7 +3820,7 @@ int NameServerImpl::CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data) {
     return 0;
 }    
 
-int NameServerImpl::CreateDelReplicaNodeOPTask(std::shared_ptr<OPData> op_data) {
+int NameServerImpl::CreateDelRemoteReplicaOPTask(std::shared_ptr<OPData> op_data) {
     std::string name = op_data->op_info_.name();
     uint32_t pid = op_data->op_info_.pid();
     std::string endpoint = op_data->op_info_.data();
