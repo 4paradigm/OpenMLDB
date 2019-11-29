@@ -2384,7 +2384,7 @@ void NameServerImpl::DropTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (follower_.load(std::memory_order_acquire) == rFOLLOWER) {
+    if (mode_.load(std::memory_order_acquire) == rFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
@@ -2691,7 +2691,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (follower_.load(std::memory_order_acquire) == rFOLLOWER) {
+    if (mode_.load(std::memory_order_acquire) == rFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
