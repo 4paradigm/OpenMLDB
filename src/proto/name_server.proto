@@ -222,6 +222,7 @@ message ChangeLeaderData {
     optional string leader = 6;
     repeated string follower = 7;
     optional string candidate_leader = 8;
+    repeated string remote_follower = 9;
 }
 
 message OPStatus {

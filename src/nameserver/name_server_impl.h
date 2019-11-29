@@ -552,6 +552,10 @@ private:
                            const ::rtidb::api::TTLType& type, 
                            uint64_t ttl, const std::string& ts_name);
 
+    bool CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo>& tables);
+
+    void CheckTableInfo(const std::string &alias, std::vector<::rtidb::nameserver::TableInfo> &tables);
+
 private:
     std::mutex mu_;
     Tablets tablets_;
