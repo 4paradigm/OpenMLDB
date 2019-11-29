@@ -3851,7 +3851,7 @@ void TabletImpl::SetMode(RpcController* controller,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    follower_.store(request->follower(), std::memory_order_acquire);
+    follower_.store(request->follower(), std::memory_order_release);
     response->set_code(0);
 }
 

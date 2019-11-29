@@ -6685,7 +6685,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         return;
     }
     zone_info_.set_mode(request->sm());
-    mode_.store(request->sm(), std::memory_order_acquire);
+    mode_.store(request->sm(), std::memory_order_release);
     response->set_code(0);
 }
 
