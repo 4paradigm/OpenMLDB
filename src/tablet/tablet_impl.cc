@@ -1716,7 +1716,12 @@ void TabletImpl::AddReplica(RpcController* controller,
         }
         std::vector<std::string> vec;
         vec.push_back(request->endpoint());
-        int ret = replicator->AddReplicateNode(vec);
+        int ret = -1;
+        if (request->has_remote_tid()) {
+            ret = replicator->AddReplicateNode(vec, request->remote_tid());
+        } else {
+            ret = replicator->AddReplicateNode(vec);
+        }
         if (ret == 0) {
             response->set_code(0);
             response->set_msg("ok");
@@ -1817,12 +1822,14 @@ void TabletImpl::AppendEntries(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
+    /**
     if (table->IsLeader()) {
         PDLOG(WARNING, "table is leader. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(102);
         response->set_msg("table is leader");
         return;
     }
+    */
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         response->set_code(104);
         response->set_msg("table is loading");
@@ -3612,6 +3619,7 @@ int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api:
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
         return -1;
     }
+    PDLOG(DEBUG, "task status [%s]--------------", ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
     return 0;
 }
 

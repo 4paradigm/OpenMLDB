@@ -66,6 +66,8 @@ enum OPType {
     kReLoadTableOP = 12;
     kUpdatePartitionStatusOP = 13;
     kRecoverTableOP = 14;
+    kCreateTableForReplicaClusterOP = 15;
+    kDropTableForReplicaClusterOP = 16;
 }
 
 enum TaskType {
@@ -87,6 +89,8 @@ enum TaskType {
     kUpdateLeaderInfo = 16;
     kRecoverTable = 17;
     kCheckBinlogSyncProgress = 18;
+    kCreateTableForReplicaCluster = 19;
+    kDropTableForReplicaCluster = 20;
 }
 
 enum TaskStatus {
@@ -123,6 +127,7 @@ message OPInfo {
     optional uint32 pid = 9;
     optional uint64 parent_id = 10;
     optional uint32 vec_idx = 11;   // the index in task_vec
+    optional bool for_replica_cluster = 12 [default = false];   
 }
 
 message Manifest {
@@ -267,6 +272,7 @@ message ReplicaRequest {
     optional uint32 pid = 2;
     optional string endpoint = 3;
     optional TaskInfo task_info = 4;
+    optional uint32 remote_tid = 5;
 }
 
 message AddReplicaResponse {
