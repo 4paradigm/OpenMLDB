@@ -29,11 +29,11 @@ using Schema = ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef>;
 
 class RowBuilder {
  public:
-    RowBuilder(const Schema& schema, int8_t* buf, uint32_t size);
-
+    RowBuilder(const Schema& schema);
     ~RowBuilder() = default;
-    static uint32_t CalTotalLength(const Schema& schema,
-                                   uint32_t string_length);
+
+    uint32_t CalTotalLength(uint32_t string_length);
+    bool SetBuffer(int8_t* buf, uint32_t size);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
@@ -51,17 +51,18 @@ class RowBuilder {
     int8_t* buf_;
     uint32_t cnt_;
     uint32_t size_;
-    uint32_t offset_;
+    uint32_t str_field_cnt_;
     uint32_t str_addr_length_;
-    uint32_t str_start_offset_;
+    uint32_t str_field_start_offset_;
     uint32_t str_offset_;
+    std::vector<uint32_t> offset_vec_;
 };
 
 class RowView {
  public:
     RowView(const Schema& schema, const int8_t* row, uint32_t size);
-    void Reset(const int8_t* row, uint32_t size);
     ~RowView() = default;
+    void Reset(const int8_t* row, uint32_t size);
 
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
