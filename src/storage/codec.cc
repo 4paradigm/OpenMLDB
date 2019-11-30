@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-#include <utility>
 #include "storage/codec.h"
-#include "storage/type_ir_builder.h"
+#include <utility>
 #include "glog/logging.h"
+#include "storage/type_ir_builder.h"
 
 namespace fesql {
 namespace storage {
@@ -29,9 +29,12 @@ static const uint8_t VERSION_LENGTH = 2;
 static const uint8_t SIZE_LENGTH = 4;
 static const uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static const std::map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
-    {::fesql::type::kBool, sizeof(bool)},  {::fesql::type::kInt16, sizeof(int16_t)},
-    {::fesql::type::kInt32, sizeof(int32_t)}, {::fesql::type::kFloat, sizeof(float)},
-    {::fesql::type::kInt64, sizeof(int64_t)}, {::fesql::type::kDouble, sizeof(double)}};
+    {::fesql::type::kBool, sizeof(bool)},
+    {::fesql::type::kInt16, sizeof(int16_t)},
+    {::fesql::type::kInt32, sizeof(int32_t)},
+    {::fesql::type::kFloat, sizeof(float)},
+    {::fesql::type::kInt64, sizeof(int64_t)},
+    {::fesql::type::kDouble, sizeof(double)}};
 
 static uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
@@ -46,72 +49,64 @@ static uint8_t GetAddrLength(uint32_t size) {
 }
 
 // make sure buf is not NULL
-RowBuilder::RowBuilder(const Schema& schema, int8_t* buf, uint32_t size)
+RowBuilder::RowBuilder(const Schema& schema)
     : schema_(schema),
-      buf_(buf),
+      buf_(NULL),
       cnt_(0),
-      size_(size),
-      offset_(0),
+      size_(0),
+      str_field_cnt_(0),
       str_addr_length_(0),
-      str_start_offset_(0),
+      str_field_start_offset_(0),
       str_offset_(0) {
+    str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema.size());
+    for (int idx = 0; idx < schema.size(); idx++) {
+        const ::fesql::type::ColumnDef& column = schema.Get(idx);
+        if (column.type() == ::fesql::type::kString) {
+            offset_vec_.push_back(str_field_cnt_);
+            str_field_cnt_++;
+        } else {
+            auto iter = TYPE_SIZE_MAP.find(column.type());
+            if (iter == TYPE_SIZE_MAP.end()) {
+                LOG(WARNING) << ::fesql::type::Type_Name(column.type())
+                             << " is not supported";
+            } else {
+                offset_vec_.push_back(str_field_start_offset_);
+                str_field_start_offset_ += iter->second;
+            }
+        }
+    }
+}
+
+bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
+    if (size < str_field_start_offset_ + str_field_cnt_) {
+        return false;
+    }
+    buf_ = buf;
+    size_ = size;
     *(buf_) = 1;      // FVersion
     *(buf_ + 1) = 1;  // SVersion
     *(reinterpret_cast<uint32_t*>(buf_ + VERSION_LENGTH)) = size;
-    offset_ = HEADER_LENGTH;
-    uint32_t bitmap_size = BitMapSize(schema.size());
-    memset(buf_ + offset_, 0, bitmap_size);
-    offset_ += bitmap_size;
-    str_start_offset_ = offset_;
+    uint32_t bitmap_size = BitMapSize(schema_.size());
+    memset(buf_ + HEADER_LENGTH, 0, bitmap_size);
     str_addr_length_ = GetAddrLength(size);
-    for (int idx = 0; idx < schema.size(); idx++) {
-        const ::fesql::type::ColumnDef& column = schema.Get(idx);
-        if (column.type() == ::fesql::type::kString) {
-            str_start_offset_ += str_addr_length_;
-        } else {
-            auto iter = TYPE_SIZE_MAP.find(column.type());
-            if (iter == TYPE_SIZE_MAP.end()) {
-                LOG(WARNING) << ::fesql::type::Type_Name(column.type())
-                             << " is not supported";
-            } else {
-                str_start_offset_ += iter->second;
-            }
-        }
-    }
-    str_offset_ = str_start_offset_;
+    str_offset_ = str_field_start_offset_ + str_addr_length_ * str_field_cnt_;
+    return true;
 }
 
-uint32_t RowBuilder::CalTotalLength(const Schema& schema,
-                                    uint32_t string_length) {
-    if (schema.size() == 0) {
+uint32_t RowBuilder::CalTotalLength(uint32_t string_length) {
+    if (schema_.size() == 0) {
         return 0;
     }
-    uint32_t total_length = HEADER_LENGTH + BitMapSize(schema.size());
-    uint32_t string_field_cnt = 0;
-    for (int idx = 0; idx < schema.size(); idx++) {
-        const ::fesql::type::ColumnDef& column = schema.Get(idx);
-        if (column.type() == ::fesql::type::kString) {
-            string_field_cnt++;
-        } else {
-            auto iter = TYPE_SIZE_MAP.find(column.type());
-            if (iter == TYPE_SIZE_MAP.end()) {
-                LOG(WARNING) << ::fesql::type::Type_Name(column.type())
-                             << " is not supported";
-                return 0;
-            } else {
-                total_length += iter->second;
-            }
-        }
-    }
+    uint32_t total_length = str_field_start_offset_;
     total_length += string_length;
-    if (total_length + string_field_cnt <= UINT8_MAX) {
-        return total_length + string_field_cnt;
-    } else if (total_length + string_field_cnt * 2 <= UINT16_MAX) {
-        return total_length + string_field_cnt * 2;
-    } else if (total_length + string_field_cnt * 3 <= 1 << 24) {
-        return total_length + string_field_cnt * 3;
-    } else {
-        return total_length + string_field_cnt * 4;
+    if (total_length + str_field_cnt_ <= UINT8_MAX) {
+        return total_length + str_field_cnt_;
+    } else if (total_length + str_field_cnt_ * 2 <= UINT16_MAX) {
+        return total_length + str_field_cnt_ * 2;
+    } else if (total_length + str_field_cnt_ * 3 <= 1 << 24) {
+        return total_length + str_field_cnt_ * 3;
+    } else if (total_length + str_field_cnt_ * 4 <= UINT32_MAX) {
+        return total_length + str_field_cnt_ * 4;
     }
     return 0;
 }
@@ -128,23 +123,15 @@ bool RowBuilder::Check(::fesql::type::Type type) {
                      << fesql::type::Type_Name(column.type());
         return false;
     }
-    uint32_t delta = 0;
-    if (column.type() == ::fesql::type::kString) {
-        delta = str_addr_length_;
-    } else {
+    if (column.type() != ::fesql::type::kString) {
         auto iter = TYPE_SIZE_MAP.find(column.type());
         if (iter == TYPE_SIZE_MAP.end()) {
             LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                          << " is not supported";
             return false;
-        } else {
-            delta = iter->second;
         }
     }
-    if (offset_ + delta <= str_start_offset_ && str_offset_ <= size_) {
-        return true;
-    }
-    return false;
+    return true;
 }
 
 bool RowBuilder::AppendNULL() {
@@ -152,7 +139,8 @@ bool RowBuilder::AppendNULL() {
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);
     if (column.type() == ::fesql::type::kString) {
-        ptr = buf_ + offset_;
+        ptr = buf_ + str_field_start_offset_ +
+              str_addr_length_ * offset_vec_[cnt_];
         if (str_addr_length_ == 1) {
             *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
         } else if (str_addr_length_ == 2) {
@@ -164,16 +152,6 @@ bool RowBuilder::AppendNULL() {
         } else {
             *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
         }
-        offset_ += str_addr_length_;
-    } else {
-        auto iter = TYPE_SIZE_MAP.find(column.type());
-        if (iter == TYPE_SIZE_MAP.end()) {
-            LOG(WARNING) << ::fesql::type::Type_Name(column.type())
-                         << " is not supported";
-            return false;
-        } else {
-            offset_ += iter->second;
-        }
     }
     cnt_++;
     return true;
@@ -181,54 +159,48 @@ bool RowBuilder::AppendNULL() {
 
 bool RowBuilder::AppendBool(bool val) {
     if (!Check(::fesql::type::kBool)) return false;
-    int8_t* ptr = buf_ + offset_;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<uint8_t*>(ptr)) = val ? 1 : 0;
-    offset_ += 1;
     cnt_++;
     return true;
 }
 
 bool RowBuilder::AppendInt32(int32_t val) {
     if (!Check(::fesql::type::kInt32)) return false;
-    int8_t* ptr = buf_ + offset_;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int32_t*>(ptr)) = val;
-    offset_ += 4;
     cnt_++;
     return true;
 }
 
 bool RowBuilder::AppendInt16(int16_t val) {
     if (!Check(::fesql::type::kInt16)) return false;
-    int8_t* ptr = buf_ + offset_;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int16_t*>(ptr)) = val;
-    offset_ += 2;
     cnt_++;
     return true;
 }
 
 bool RowBuilder::AppendInt64(int64_t val) {
     if (!Check(::fesql::type::kInt64)) return false;
-    int8_t* ptr = buf_ + offset_;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
-    offset_ += 8;
     cnt_++;
     return true;
 }
 
 bool RowBuilder::AppendFloat(float val) {
     if (!Check(::fesql::type::kFloat)) return false;
-    int8_t* ptr = buf_ + offset_;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<float*>(ptr)) = val;
-    offset_ += 4;
     cnt_++;
     return true;
 }
 
 bool RowBuilder::AppendDouble(double val) {
     if (!Check(::fesql::type::kDouble)) return false;
-    int8_t* ptr = buf_ + offset_;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<double*>(ptr)) = val;
-    offset_ += 8;
     cnt_++;
     return true;
 }
@@ -236,7 +208,8 @@ bool RowBuilder::AppendDouble(double val) {
 bool RowBuilder::AppendString(const char* val, uint32_t length) {
     if (val == NULL || !Check(::fesql::type::kString)) return false;
     if (str_offset_ + length > size_) return false;
-    int8_t* ptr = buf_ + offset_;
+    int8_t* ptr =
+        buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
     if (str_addr_length_ == 1) {
         *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
     } else if (str_addr_length_ == 2) {
@@ -251,7 +224,6 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
     if (length != 0) {
         memcpy(reinterpret_cast<char*>(buf_ + str_offset_), val, length);
     }
-    offset_ += str_addr_length_;
     str_offset_ += length;
     cnt_++;
     return true;
@@ -291,8 +263,8 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
         }
     }
     uint32_t next_pos = 0;
-    for (auto iter = next_str_pos_.rbegin();
-        iter != next_str_pos_.rend(); iter++) {
+    for (auto iter = next_str_pos_.rbegin(); iter != next_str_pos_.rend();
+         iter++) {
         uint32_t tmp = iter->second;
         iter->second = next_pos;
         next_pos = tmp;
@@ -437,9 +409,11 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     if (IsNULL(idx)) {
         return 1;
     }
-    uint32_t field_offset = str_field_start_offset_ + offset_vec_.at(idx) * str_addr_length_;
+    uint32_t field_offset =
+        str_field_start_offset_ + offset_vec_.at(idx) * str_addr_length_;
     uint32_t offset = 0;
-    if (v1::GetStrAddr(row_ + field_offset, str_addr_length_, &offset) < 0 || offset > size_) {
+    if (v1::GetStrAddr(row_, field_offset, str_addr_length_, &offset) < 0 ||
+        offset > size_) {
         return -1;
     }
     *val = const_cast<char*>(reinterpret_cast<const char*>(row_ + offset));
@@ -450,12 +424,16 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     if (iter->second == 0) {
         *length = size_ - offset;
     } else {
-        uint32_t next_str_field_offset = str_field_start_offset_ + offset_vec_.at(iter->second) * str_addr_length_;
+        uint32_t next_str_field_offset =
+            str_field_start_offset_ +
+            offset_vec_.at(iter->second) * str_addr_length_;
         if (next_str_field_offset > size_) {
             return -1;
         }
         uint32_t next_offset = 0;
-        if (v1::GetStrAddr(row_ + next_str_field_offset, str_addr_length_, &next_offset) < 0 || next_offset > size_) {
+        if (v1::GetStrAddr(row_, next_str_field_offset, str_addr_length_,
+                           &next_offset) < 0 ||
+            next_offset > size_) {
             return -1;
         }
         *length = next_offset - offset;

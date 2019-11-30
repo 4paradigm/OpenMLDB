@@ -23,49 +23,50 @@ namespace storage {
 namespace v1 {
 
 int32_t GetBoolField(const int8_t* row, uint32_t offset, bool* val) {
-    int8_t value = *row;
+    int8_t value = *(row + offset);
     value == 1 ? *val = true : *val = false;
     return 0;
 }
 
 int32_t GetInt16Field(const int8_t* row, uint32_t offset, int16_t* val) {
-    *val = *(reinterpret_cast<const int16_t*>(row));
+    *val = *(reinterpret_cast<const int16_t*>(row + offset));
     return 0;
 }
 
 int32_t GetInt32Field(const int8_t* row, uint32_t offset, int32_t* val) {
-    *val = *(reinterpret_cast<const int16_t*>(row));
+    *val = *(reinterpret_cast<const int32_t*>(row + offset));
     return 0;
 }
 
 int32_t GetInt64Field(const int8_t* row, uint32_t offset, int64_t* val) {
-    *val = *(reinterpret_cast<const int64_t*>(row));
+    *val = *(reinterpret_cast<const int64_t*>(row + offset));
     return 0;
 }
 
 int32_t GetFloatField(const int8_t* row, uint32_t offset, float* val) {
-    *val = *(reinterpret_cast<const float*>(row));
+    *val = *(reinterpret_cast<const float*>(row + offset));
     return 0;
 }
 
 int32_t GetDoubleField(const int8_t* row, uint32_t offset, double* val) {
-    *val = *(reinterpret_cast<const double*>(row));
+    *val = *(reinterpret_cast<const double*>(row + offset));
     return 0;
 }
 
-int32_t GetStrAddr(const int8_t* row, uint8_t addr_space, uint32_t* offset) {
-	if (row == NULL || offset == NULL) return -1;
+int32_t GetStrAddr(const int8_t* row, uint32_t offset, uint8_t addr_space, uint32_t* val) {
+	if (row == NULL || val == NULL) return -1;
     if (addr_space == 1) {
-        *offset = *(reinterpret_cast<const uint8_t*>(row));
+        *val = *(reinterpret_cast<const uint8_t*>(row + offset));
     } else if (addr_space == 2) {
-        *offset = *(reinterpret_cast<const uint16_t*>(row));
+        *val = *(reinterpret_cast<const uint16_t*>(row + offset));
     } else if (addr_space == 3) {
-        uint32_t str_offset = *(reinterpret_cast<const uint8_t*>(row));
-        str_offset = (str_offset << 8) + *(reinterpret_cast<const uint8_t*>(row + 1));
-        str_offset = (str_offset << 8) + *(reinterpret_cast<const uint8_t*>(row + 2));
-        *offset = str_offset;
+        const int8_t* ptr = row + offset;
+        uint32_t str_offset = *(reinterpret_cast<const uint8_t*>(ptr));
+        str_offset = (str_offset << 8) + *(reinterpret_cast<const uint8_t*>(ptr + 1));
+        str_offset = (str_offset << 8) + *(reinterpret_cast<const uint8_t*>(ptr + 2));
+        *val = str_offset;
     } else if (addr_space == 4){
-        *offset = *(reinterpret_cast<const uint32_t*>(row));
+        *val = *(reinterpret_cast<const uint32_t*>(row + offset));
     } else {
 		return -1;
 	}

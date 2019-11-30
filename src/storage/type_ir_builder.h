@@ -52,7 +52,7 @@ int32_t GetFloatField(const int8_t* row, uint32_t offset, float* val);
 
 int32_t GetDoubleField(const int8_t* row, uint32_t offset, double* val);
 
-int32_t GetStrAddr(const int8_t* row, uint8_t addr_space, uint32_t* offset);
+int32_t GetStrAddr(const int8_t* row, uint32_t offset, uint8_t addr_space, uint32_t* val);
 
 // native get string field method
 int32_t GetStrField(const int8_t* row, 
