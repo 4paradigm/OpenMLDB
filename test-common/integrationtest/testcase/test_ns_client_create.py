@@ -705,6 +705,88 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(pid_map[self.slave1], 29)
         self.assertEqual(pid_map[self.slave2], 29)
         self.clear_ns_table(self.ns_leader);
+
+    @ddt.data(
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"'), ('add_ts_idx', 'true')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int"'), ('add_ts_idx', 'true')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"'), ('add_ts_idx', 'false')),),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"'), ('add_ts_idx', 'false')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int"'), ('add_ts_idx', 'true')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"'), ('add_ts_idx', 'false')),),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"'), ('add_ts_idx', 'true')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int"'), ('add_ts_idx', 'false')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"'), ('add_ts_idx', 'false')),),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"')),
+        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"')),
+        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"')),
+        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"')),
+        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"')),
+        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"'))),
+    )
+    @ddt.unpack
+    def test_create_column_key(self, exp_msg, *eles):
+        """
+        使用包含column_key的文件创建表
+        """
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata_file('"' + name + '"', '"kAbsoluteTime"', 144000, 8, metadata_path,  *eles)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        infoLogger.info(rs)
+        self.assertIn(exp_msg, rs)
+        self.ns_drop(self.ns_leader, name)
+
+    def test_create_column_key(self, exp_msg, *eles):
+        """
+        使用包含column_key的文件创建表, put数据之后showtable检查record_cnt
+        """
+        pass
         
 if __name__ == "__main__":
     load(TestCreateTableByNsClient)
