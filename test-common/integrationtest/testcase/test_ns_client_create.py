@@ -10,10 +10,99 @@ from libs.logger import infoLogger
 import collections
 
 
+
 @ddt.ddt
 class TestCreateTableByNsClient(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
+
+    @ddt.data(
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"'), ('add_ts_idx', 'true')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int32"'), ('add_ts_idx', 'true')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"'), ('add_ts_idx', 'false')),),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"'), ('add_ts_idx', 'false')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int32"'), ('add_ts_idx', 'true')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"'), ('add_ts_idx', 'false')),),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"'), ('add_ts_idx', 'true')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int32"'), ('add_ts_idx', 'false')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"'), ('add_ts_idx', 'false')),),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"')),
+        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"')),
+        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"')),
+        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"')),
+        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
+
+        ('Create table ok',
+        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
+        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
+        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
+        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"')),
+        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"'))),
+    )
+    @ddt.unpack
+    def test_create_showtable_record_cnt(self, exp_msg, *eles):
+        """
+        使用文件column_key创建表，put数据后showtable检查record的数量
+        """
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        utils.gen_metadata_file('"' + name + '"', '"kAbsoluteTime"', 0, 3, 3, metadata_path,  *eles)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        infoLogger.info(rs)
+        self.assertIn(exp_msg, rs)
+        self.ns_put_multi(self.ns_leader, name, 10, ['card0', '123', '1.1'])
+        self.ns_put_multi(self.ns_leader, name, 10, ['card1', '123', '2.2'])
+        self.ns_put_multi(self.ns_leader, name, 10, ['card1', '233', '3.3'])
+        self.ns_put_multi(self.ns_leader, name, 10, ['card0', '233', '4.4'])
+        time.sleep(2)
+        table_info = self.showtable_with_tablename(self.ns_leader, name)
+        table_info = self.parse_tb(table_info, ' ', [1,2,3], [9])
+        record_cnt = 0
+        for k, v in table_info.items():
+            record_cnt += int(v[0])
+        self.assertEqual(record_cnt, 12)
+        self.ns_drop(self.ns_leader, name)
+        
 
     @ddt.data(
         ('"t{}"'.format(time.time()), None, 144000, 8,
@@ -108,7 +197,7 @@ class TestCreateTableByNsClient(TestCaseBase):
             ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
             ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
-        rs = self.ns_create(self.ns_leader, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path) #todo
         self.assertIn('Create table ok', rs)
 
         table_info = self.showtable(self.ns_leader, name)
@@ -131,7 +220,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertNotIn('testvalue0', self.get(self.slave1, tid, pid, 'testkey0', 0))
         self.assertIn('testvalue1', self.get(self.slave1, tid, pid, 'testkey0', 0))
         self.ns_drop(self.ns_leader, name)
-
+        
 
     def test_create_name_repeat(self):
         """
