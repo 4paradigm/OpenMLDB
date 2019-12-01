@@ -24,6 +24,36 @@ namespace fesql {
 namespace storage {
 class CodecTest : public ::testing::Test {};
 
+TEST_F(CodecTest, NULL) {
+    Schema schema;
+    ::fesql::type::ColumnDef* col = schema.Add();
+    col->set_name("col1");
+    col->set_type(::fesql::type::kInt16);
+    col = schema.Add();
+    col->set_name("col2");
+    col->set_type(::fesql::type::kBool);
+    col = schema.Add();
+    col->set_name("col3");
+    col->set_type(::fesql::type::kString);
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(2);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    std::string st("1");
+    ASSERT_TRUE(builder.AppendNULL());
+    ASSERT_TRUE(builder.AppendBool(false));
+    ASSERT_TRUE(builder.AppendString(st.c_str(), 1));
+    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    ASSERT_TRUE(view.IsNULL(0));
+    char* ch = NULL;
+    uint32_t length = 0;
+    bool val1 = true;
+    ASSERT_EQ(view.GetBool(1, &val1), 0);
+    ASSERT_FALSE(val1);
+    ASSERT_EQ(view.GetString(2, &ch, &length), 0);
+}    
+
 TEST_F(CodecTest, Normal) {
     Schema schema;
     ::fesql::type::ColumnDef* col = schema.Add();
@@ -41,10 +71,11 @@ TEST_F(CodecTest, Normal) {
     col = schema.Add();
     col->set_name("col5");
     col->set_type(::fesql::type::kInt64);
-    uint32_t size = RowBuilder::CalTotalLength(schema, 0);
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(0);
     std::string row;
     row.resize(size);
-    RowBuilder builder(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
     ASSERT_TRUE(builder.AppendInt32(1));
     ASSERT_TRUE(builder.AppendInt16(2));
     ASSERT_TRUE(builder.AppendFloat(3.1));
@@ -72,10 +103,11 @@ TEST_F(CodecTest, Encode) {
             col->set_type(::fesql::type::kVarchar);
         }
     }
-    uint32_t size = RowBuilder::CalTotalLength(schema, 30);
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(30);
     std::string row;
     row.resize(size);
-    RowBuilder builder(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
     for (int i = 0; i < 10; i++) {
         if (i % 3 == 0) {
             ASSERT_TRUE(builder.AppendInt16(i));
@@ -122,10 +154,11 @@ TEST_F(CodecTest, AppendNULL) {
             col->set_type(::fesql::type::kVarchar);
         }
     }
-    uint32_t size = RowBuilder::CalTotalLength(schema, 30);
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(30);
     std::string row;
     row.resize(size);
-    RowBuilder builder(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
     for (int i = 0; i < 20; i++) {
         if (i % 2 == 0) {
             ASSERT_TRUE(builder.AppendNULL());
@@ -192,10 +225,11 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
             col->set_type(::fesql::type::kVarchar);
         }
     }
-    uint32_t size = RowBuilder::CalTotalLength(schema, 30);
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(30);
     std::string row;
     row.resize(size);
-    RowBuilder builder(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
     for (int i = 0; i < 20; i++) {
         if (i % 2 == 0) {
             if (i % 3 == 0) {

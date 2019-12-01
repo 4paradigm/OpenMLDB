@@ -199,12 +199,13 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
             string_length += strlen(value.GetStr());
         }    
     }        
-    uint32_t row_size = storage::RowBuilder::CalTotalLength(schema.columns(), string_length);
+    storage::RowBuilder rbuilder(schema.columns());
+    uint32_t row_size = rbuilder.CalTotalLength(string_length);
     std::string row;
     DLOG(INFO) << "row size: " << row_size;
     row.resize(row_size);
     char* str_buf = reinterpret_cast<char*>(&(row[0]));
-    storage::RowBuilder rbuilder(schema.columns(), (int8_t*)str_buf, row_size);
+    rbuilder.SetBuffer((int8_t*)str_buf, row_size);
 
     // TODO(chenjing): handle insert into table(col1, col2, col3) values(1, 2.1,
     // 3);
