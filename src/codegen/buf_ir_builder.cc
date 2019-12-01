@@ -215,5 +215,9 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
     return BuildLoadOffset(builder, row_ptr, llvm_offse, llvm_type, output);
 }
 
+BufNativeIRBuilder::BufNativeIRBuilder(::fesql::type::TableDef* table,
+                           ::llvm::BasicBlock* block, ScopeVar* scope_var)
+    : table_(table), block_(block), sv_(scope_var), types_() {}
+
 }  // namespace codegen
 }  // namespace fesql

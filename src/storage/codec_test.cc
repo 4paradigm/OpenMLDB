@@ -69,7 +69,7 @@ TEST_F(CodecTest, Encode) {
         } else if (i % 3 == 1) {
             col->set_type(::fesql::type::kDouble);
         } else {
-            col->set_type(::fesql::type::kString);
+            col->set_type(::fesql::type::kVarchar);
         }
     }
     uint32_t size = RowBuilder::CalTotalLength(schema, 30);
@@ -119,7 +119,7 @@ TEST_F(CodecTest, AppendNULL) {
         } else if (i % 3 == 1) {
             col->set_type(::fesql::type::kDouble);
         } else {
-            col->set_type(::fesql::type::kString);
+            col->set_type(::fesql::type::kVarchar);
         }
     }
     uint32_t size = RowBuilder::CalTotalLength(schema, 30);
@@ -189,7 +189,7 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
         if (i % 2 == 0) {
             col->set_type(::fesql::type::kInt16);
         } else {
-            col->set_type(::fesql::type::kString);
+            col->set_type(::fesql::type::kVarchar);
         }
     }
     uint32_t size = RowBuilder::CalTotalLength(schema, 30);

@@ -62,6 +62,27 @@ class BufIRBuilder {
     Types types_;
 };
 
+class BufNativeIRBuilder {
+
+ public:
+    BufNativeIRBuilder(::fesql::type::TableDef* table,
+            ::llvm::BasicBlock* block,
+            ScopeVar* scope_var);
+    ~BufNativeIRBuilder();
+
+    bool BuildGetField(const std::string& name,
+            ::llvm::Value* row_ptr,
+            ::llvm::Value* row_size,
+            ::llvm::Value** output);
+ private:
+    ::fesql::type::TableDef* const table_;
+    ::llvm::BasicBlock* block_;
+    ScopeVar* sv_;
+    typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
+        Types;
+    Types types_;
+};
+
 }  // namespace codegen
 }  // namespace fesql
 #endif  // SRC_CODEGEN_BUF_IR_BUILDER_H_

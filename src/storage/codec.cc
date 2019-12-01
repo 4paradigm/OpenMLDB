@@ -66,7 +66,7 @@ RowBuilder::RowBuilder(const Schema& schema, int8_t* buf, uint32_t size)
     str_addr_length_ = GetAddrLength(size);
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema.Get(idx);
-        if (column.type() == ::fesql::type::kString) {
+        if (column.type() == ::fesql::type::kVarchar) {
             str_start_offset_ += str_addr_length_;
         } else {
             auto iter = TYPE_SIZE_MAP.find(column.type());
@@ -90,7 +90,7 @@ uint32_t RowBuilder::CalTotalLength(const Schema& schema,
     uint32_t string_field_cnt = 0;
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema.Get(idx);
-        if (column.type() == ::fesql::type::kString) {
+        if (column.type() == ::fesql::type::kVarchar) {
             string_field_cnt++;
         } else {
             auto iter = TYPE_SIZE_MAP.find(column.type());
@@ -129,7 +129,7 @@ bool RowBuilder::Check(::fesql::type::Type type) {
         return false;
     }
     uint32_t delta = 0;
-    if (column.type() == ::fesql::type::kString) {
+    if (column.type() == ::fesql::type::kVarchar) {
         delta = str_addr_length_;
     } else {
         auto iter = TYPE_SIZE_MAP.find(column.type());
@@ -151,7 +151,7 @@ bool RowBuilder::AppendNULL() {
     int8_t* ptr = buf_ + HEADER_LENGTH + (cnt_ >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);
-    if (column.type() == ::fesql::type::kString) {
+    if (column.type() == ::fesql::type::kVarchar) {
         ptr = buf_ + offset_;
         if (str_addr_length_ == 1) {
             *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
@@ -234,7 +234,7 @@ bool RowBuilder::AppendDouble(double val) {
 }
 
 bool RowBuilder::AppendString(const char* val, uint32_t length) {
-    if (val == NULL || !Check(::fesql::type::kString)) return false;
+    if (val == NULL || !Check(::fesql::type::kVarchar)) return false;
     if (str_offset_ + length > size_) return false;
     int8_t* ptr = buf_ + offset_;
     if (str_addr_length_ == 1) {
@@ -273,7 +273,7 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
     uint32_t string_field_cnt = 0;
     for (int idx = 0; idx < schema_.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(idx);
-        if (column.type() == ::fesql::type::kString) {
+        if (column.type() == ::fesql::type::kVarchar) {
             offset_vec_.push_back(string_field_cnt);
             next_str_pos_.insert(std::make_pair(idx, idx));
             string_field_cnt++;
@@ -431,7 +431,7 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
         LOG(WARNING) << "output val or length is null";
         return -1;
     }
-    if (!CheckValid(idx, ::fesql::type::kString)) {
+    if (!CheckValid(idx, ::fesql::type::kVarchar)) {
         return -1;
     }
     if (IsNULL(idx)) {
