@@ -16,8 +16,10 @@
  */
 
 #include "sdk/dbms_sdk.h"
-#include <plan/planner.h>
+#include <utility>
 #include <iostream>
+#include <memory>
+#include "plan/planner.h"
 #include "analyser/analyser.h"
 #include "brpc/channel.h"
 #include "node/node_manager.h"
@@ -37,7 +39,7 @@ class SchemaImpl : public Schema {
         return response_.table().columns_size();
     }
     const std::string &GetColumnName(uint32_t i) const {
-        // TODO check i out of index
+        // TODO(wangtaize) check i out of index
         if (static_cast<int>(i) >= response_.table().columns_size()) {
             LOG(WARNING) << "Array Invalid Access";
             return empty_;
