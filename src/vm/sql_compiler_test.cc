@@ -15,27 +15,29 @@
  * limitations under the License.
  */
 
+#include <memory>
+#include <utility>
 #include "vm/sql_compiler.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
 #include "gtest/gtest.h"
-#include "vm/table_mgr.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
+#include "vm/table_mgr.h"
 
-using namespace llvm;
-using namespace llvm::orc;
+using namespace llvm;       // NOLINT
+using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
 
@@ -43,17 +45,19 @@ namespace fesql {
 namespace vm {
 
 class TableMgrImpl : public TableMgr {
-
  public:
-    TableMgrImpl(std::shared_ptr<TableStatus> status):status_(status) {}
+    explicit TableMgrImpl(std::shared_ptr<TableStatus> status)
+        : status_(status) {}
     ~TableMgrImpl() {}
     std::shared_ptr<TableStatus> GetTableDef(const std::string&,
-            const std::string&) {
-        return  status_;
-    }
-    std::shared_ptr<TableStatus> GetTableDef(const std::string&, const uint32_t) {
+                                             const std::string&) {
         return status_;
     }
+    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
+                                             const uint32_t) {
+        return status_;
+    }
+
  private:
     std::shared_ptr<TableStatus> status_;
 };
@@ -90,7 +94,9 @@ TEST_F(SQLCompilerTest, test_normal) {
         column->set_type(::fesql::type::kInt64);
         column->set_name("col15");
     }
-    const std::string sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
+    const std::string sql =
+        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
+        "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
     TableMgrImpl table_mgr(status);
     SQLCompiler sql_compiler(&table_mgr);
     SQLContext sql_context;

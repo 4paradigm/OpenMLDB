@@ -234,10 +234,11 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         DatabaseDef db;
         db.name = "db_1";
         Status status;
-        std::unique_ptr<::fesql::sdk::Schema> rs = dbms_sdk->GetSchema(db, "test1", status);
+        std::unique_ptr<::fesql::sdk::Schema> rs =
+            dbms_sdk->GetSchema(db, "test1", status);
         std::cout << status.msg << std::endl;
         ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_TRUE(rs != 0);
+        ASSERT_NE(rs, 0);
         ASSERT_EQ(5, rs.get()->GetColumnCnt());
         ASSERT_EQ("column1", rs.get()->GetColumnName(0));
         ASSERT_EQ("column2", rs.get()->GetColumnName(1));

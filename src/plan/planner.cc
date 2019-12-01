@@ -125,8 +125,11 @@ void Planner::CreateProjectPlanNode(
             std::string w = node::WindowOfExpression(target_ptr->GetVal());
             plan_tree->SetW(w);
             if (target_ptr->GetName().empty()) {
-                if (target_ptr->GetVal()->GetExprType() == node::kExprColumnRef) {
-                    plan_tree->SetName(dynamic_cast<node::ColumnRefNode*>(target_ptr->GetVal())->GetColumnName());
+                if (target_ptr->GetVal()->GetExprType() ==
+                    node::kExprColumnRef) {
+                    plan_tree->SetName(dynamic_cast<node::ColumnRefNode *>(
+                                           target_ptr->GetVal())
+                                           ->GetColumnName());
                 }
             } else {
                 plan_tree->SetName(target_ptr->GetName());
@@ -221,8 +224,8 @@ int SimplePlanner::CreatePlanTree(
                 node::PlanNode *fn_plan =
                     node_manager_->MakePlanNode(node::kPlanTypeFuncDef);
                 CreateFuncDefPlan(
-                    parser_tree,
-                    dynamic_cast<node::FuncDefPlanNode*>(fn_plan), status);
+                    parser_tree, dynamic_cast<node::FuncDefPlanNode *>(fn_plan),
+                    status);
                 plan_trees.push_back(fn_plan);
                 break;
             }
@@ -238,10 +241,10 @@ int SimplePlanner::CreatePlanTree(
     return status.code;
 }
 void Planner::CreateFuncDefPlan(const SQLNode *root,
-                                      node::FuncDefPlanNode *plan,
-                                      Status &status) {
+                                node::FuncDefPlanNode *plan, Status &status) {
     if (nullptr == root) {
-        status.msg = "fail to create func def plan node: query tree node it null";
+        status.msg =
+            "fail to create func def plan node: query tree node it null";
         status.code = common::kSQLError;
         LOG(WARNING) << status.msg;
         return;
@@ -249,16 +252,17 @@ void Planner::CreateFuncDefPlan(const SQLNode *root,
 
     if (root->GetType() != node::kFnList) {
         status.code = common::kSQLError;
-        status.msg = "fail to create cmd plan node: query tree node it not function def type";
+        status.msg =
+            "fail to create cmd plan node: query tree node it not function def "
+            "type";
         LOG(WARNING) << status.msg;
         return;
     }
-    plan->SetFuNodeList(dynamic_cast<const node::FnNodeList*>(root));
+    plan->SetFuNodeList(dynamic_cast<const node::FnNodeList *>(root));
 }
 
-
-void Planner::CreateInsertPlan(const node::SQLNode* root,
-                               node::InsertPlanNode*plan, Status &status) {
+void Planner::CreateInsertPlan(const node::SQLNode *root,
+                               node::InsertPlanNode *plan, Status &status) {
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kSQLError;
@@ -273,7 +277,7 @@ void Planner::CreateInsertPlan(const node::SQLNode* root,
         return;
     }
 
-    plan->SetInsertNode(dynamic_cast<const node::InsertStmt*>(root));
+    plan->SetInsertNode(dynamic_cast<const node::InsertStmt *>(root));
 }
 
 void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
@@ -409,9 +413,6 @@ std::string GenerateName(const std::string prefix, int id) {
         prefix + "_" + std::to_string(id) + "_" + std::to_string(t);
     return name;
 }
-
-
-
 
 }  // namespace  plan
 }  // namespace fesql
