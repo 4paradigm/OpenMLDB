@@ -18,6 +18,8 @@
 #ifndef SRC_VM_OP_GENERATOR_H_
 #define SRC_VM_OP_GENERATOR_H_
 
+#include <vector>
+#include <string>
 #include "llvm/IR/Module.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
@@ -36,19 +38,19 @@ struct OpVector {
 
 class OpGenerator {
  public:
-    OpGenerator(TableMgr* table_mgr);
+    explicit OpGenerator(TableMgr* table_mgr);
     ~OpGenerator();
 
     bool Gen(const ::fesql::node::PlanNodeList& trees, const std::string& db,
-             ::llvm::Module* module, OpVector* ops, base::Status& status);
+             ::llvm::Module* module, OpVector* ops, base::Status& status);  // NOLINT
 
  private:
     bool GenFnDef(::llvm::Module* module,
                   const ::fesql::node::FuncDefPlanNode* plan);
 
     bool GenSQL(const ::fesql::node::SelectPlanNode* node,
-                const std::string& db, ::llvm::Module* module, OpVector* ops,
-                base::Status& status);
+                const std::string& db, ::llvm::Module* module, OpVector* ops, // NOLINT
+                base::Status& status);  // NOLINT
 
     bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
                     const std::string& db, ::llvm::Module* module,

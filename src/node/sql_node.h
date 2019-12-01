@@ -65,6 +65,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "()";
         case kFnOpNone:
             return "NONE";
+        default:
+            return "unknown";
     }
 }
 

@@ -18,7 +18,10 @@
 #ifndef SRC_VM_OP_H_
 #define SRC_VM_OP_H_
 
+#include <vector>
+#include <string>
 #include "proto/type.pb.h"
+
 
 namespace fesql {
 namespace vm {
