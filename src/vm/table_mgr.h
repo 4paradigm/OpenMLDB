@@ -18,6 +18,8 @@
 #ifndef SRC_VM_TABLE_MGR_H_
 #define SRC_VM_TABLE_MGR_H_
 
+#include <string>
+#include <memory>
 #include "proto/type.pb.h"
 #include "storage/table.h"
 
@@ -31,29 +33,25 @@ struct TableStatus {
     ::fesql::type::TableDef table_def;
     std::unique_ptr<::fesql::storage::Table> table;
 
-    TableStatus(){}
-    TableStatus(uint32_t tid, uint32_t pid,
-            const std::string& db,
-             const ::fesql::type::TableDef& table_def):
-        tid(tid), pid(pid), db(db), table_def(table_def){}
+    TableStatus() {}
+    TableStatus(uint32_t tid, uint32_t pid, const std::string& db,
+                const ::fesql::type::TableDef& table_def)
+        : tid(tid), pid(pid), db(db), table_def(table_def) {}
 
-    ~TableStatus() {
-    }
-
+    ~TableStatus() {}
 };
 
 class TableMgr {
-
  public:
     virtual ~TableMgr() {}
 
-    virtual std::shared_ptr<TableStatus> GetTableDef(const std::string& db,
-                                              const std::string& name) = 0;
+    virtual std::shared_ptr<TableStatus> GetTableDef(
+        const std::string& db, const std::string& name) = 0;
 
     virtual std::shared_ptr<TableStatus> GetTableDef(const std::string& db,
-                             const uint32_t tid) = 0;
+                                                     const uint32_t tid) = 0;
 };
 
 }  // namespace vm
 }  // namespace fesql
-#endif  // TABLE_MGR_H 
+#endif  // SRC_VM_TABLE_MGR_H_

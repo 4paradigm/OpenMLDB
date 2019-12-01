@@ -7,10 +7,11 @@
 
 #pragma once
 
+#include <string>
 #include <atomic>
 #include <memory>
 #include "base/iterator.h"
-#include "segment.h"
+#include "storage/segment.h"
 
 namespace fesql {
 namespace storage {

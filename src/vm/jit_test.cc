@@ -53,7 +53,9 @@ class JITTest : public ::testing::Test {
 /// it's in a failure state log the error(s) and exit.
 template <typename T>
 T FeCheck(::llvm::Expected<T> &&E) {
-    E.takeError();
+    if (E.takeError()) {
+        // NOLINT
+    }
     return std::move(*E);
 }
 
