@@ -18,22 +18,23 @@
 #ifndef SRC_TABLET_TABLET_INTERNAL_SDK_H_
 #define SRC_TABLET_TABLET_INTERNAL_SDK_H_
 
+#include <string>
 #include "brpc/channel.h"
 #include "proto/tablet.pb.h"
 
-namespace fesql{
+namespace fesql {
 namespace tablet {
 
 class TabletInternalSDK {
  public:
-    TabletInternalSDK(const std::string& endpoint);
+    explicit TabletInternalSDK(const std::string& endpoint);
     ~TabletInternalSDK();
     bool Init();
-    void CreateTable(CreateTableRequest* request,
-            common::Status& status);
+    void CreateTable(CreateTableRequest* request, common::Status& status);  // NOLINT
+
  private:
     std::string endpoint_;
-    ::brpc::Channel *channel_;
+    ::brpc::Channel* channel_;
 };
 
 }  // namespace tablet

@@ -36,8 +36,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __LINENOISE_H
-#define __LINENOISE_H
+#ifndef SRC_BASE_LINENOISE_H_
+#define SRC_BASE_LINENOISE_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,4 +77,4 @@ void linenoisePrintKeyCodes(void);
 }
 #endif
 
-#endif /* __LINENOISE_H */
+#endif  // SRC_BASE_LINENOISE_H_
