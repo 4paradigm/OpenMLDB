@@ -320,7 +320,7 @@ std::string WindowOfExpression(ExprNode *node_ptr) {
 }
 
 void PrintSQLNode(std::ostream &output, const std::string &org_tab,
-                  SQLNode *node_ptr, const std::string &item_name,
+                  const SQLNode *node_ptr, const std::string &item_name,
                   bool last_child) {
     output << org_tab << SPACE_ST << item_name << ":";
 
@@ -517,7 +517,7 @@ void FnNodeFnDef::Print(std::ostream &output,
     output << "\n";
     PrintValue(output, tab, DataTypeName(this->ret_type_), "return_type", true);
     output << "\n";
-    PrintSQLNode(output, tab, reinterpret_cast<SQLNode *>(parameters_),
+    PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(parameters_),
                  "parameters", true);
 }
 void FnNodeList::Print(std::ostream &output, const std::string &org_tab) const {
@@ -531,7 +531,7 @@ void FnAssignNode::Print(std::ostream &output,
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSQLNode(output, tab, reinterpret_cast<SQLNode *>(expression_), name_,
+    PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(expression_), name_,
                  true);
 }
 void FnReturnStmt::Print(std::ostream &output,
@@ -539,7 +539,7 @@ void FnReturnStmt::Print(std::ostream &output,
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSQLNode(output, tab, reinterpret_cast<SQLNode *>(return_expr_),
+    PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(return_expr_),
                  "return", true);
 }
 }  // namespace node

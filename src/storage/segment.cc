@@ -38,7 +38,7 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
         entry = reinterpret_cast<void*>(new KeyEntry());
         entries_->Insert(skey, entry);
     }
-    ((KeyEntry*)entry)->entries.Insert(time, row);
+    (reinterpret_cast<KeyEntry*>(entry))->entries.Insert(time, row);
 }
 
 // Iterator
@@ -50,7 +50,8 @@ TableIterator* Segment::NewIterator(const Slice& key) {
     if (entries_->Get(key, entry) < 0 || entry == NULL) {
         return new TableIterator();
     }
-    return new TableIterator(NULL, (reinterpret_cast<KeyEntry*>(entry))->entries.NewIterator());
+    return new TableIterator(
+        NULL, (reinterpret_cast<KeyEntry*>(entry))->entries.NewIterator());
 }
 
 TableIterator* Segment::NewIterator() {
@@ -87,7 +88,8 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
         delete ts_it_;
         ts_it_ = NULL;
         while (pk_it_->Valid()) {
-            ts_it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
+            ts_it_ = (reinterpret_cast<KeyEntry*>(pk_it_->GetValue()))
+                         ->entries.NewIterator();
             ts_it_->SeekToFirst();
             if (ts_it_->Valid()) break;
             delete ts_it_;
@@ -117,7 +119,8 @@ void TableIterator::Next() {
         ts_it_ = NULL;
         pk_it_->Next();
         while (pk_it_->Valid()) {
-            ts_it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
+            ts_it_ = (reinterpret_cast<KeyEntry*>(pk_it_->GetValue()))
+                         ->entries.NewIterator();
             ts_it_->SeekToFirst();
             if (ts_it_->Valid()) break;
             delete ts_it_;
@@ -147,7 +150,8 @@ void TableIterator::SeekToFirst() {
         pk_it_->SeekToFirst();
         if (pk_it_->Valid()) {
             while (pk_it_->Valid()) {
-                ts_it_ = (reinterpret_cast<KeyEntry*>(pk_it_->GetValue()))->entries.NewIterator();
+                ts_it_ = (reinterpret_cast<KeyEntry*>(pk_it_->GetValue()))
+                             ->entries.NewIterator();
                 ts_it_->SeekToFirst();
                 if (ts_it_->Valid()) return;
                 delete ts_it_;
