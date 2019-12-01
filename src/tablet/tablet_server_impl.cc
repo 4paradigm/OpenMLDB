@@ -238,7 +238,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
     // TODO(wangtaize) opt the result buf
     std::vector<int8_t*>::iterator it = buf.begin();
     for (; it != buf.end(); ++it) {
-        void* ptr = reinterpret_case<void*>(*it);
+        void* ptr = reinterpret_cast<void*>(*it);
         response->add_result_set(ptr, session.GetRowSize());
         free(ptr);
     }
