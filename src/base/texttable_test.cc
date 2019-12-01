@@ -17,7 +17,7 @@ class TextTableTest : public ::testing::Test {
 };
 
 TEST_F(TextTableTest, TextTableFormatTest) {
-    base::TextTable t( '-', '|', '+' );
+    base::TextTable t('-', '|', '+');
     t.add("Field");
     t.add("Type");
     t.add("NULL");

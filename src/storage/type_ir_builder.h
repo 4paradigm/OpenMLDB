@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_TYPE_IR_BUILDER_H_
-#define SRC_CODEGEN_TYPE_IR_BUILDER_H_
+#ifndef SRC_STORAGE_TYPE_IR_BUILDER_H_
+#define SRC_STORAGE_TYPE_IR_BUILDER_H_
 
 #include <stdint.h>
 #include <cstddef>
@@ -52,16 +52,14 @@ int32_t GetFloatField(const int8_t* row, uint32_t offset, float* val);
 
 int32_t GetDoubleField(const int8_t* row, uint32_t offset, double* val);
 
-int32_t GetStrAddr(const int8_t* row, uint32_t offset, uint8_t addr_space, uint32_t* val);
+int32_t GetStrAddr(const int8_t* row, uint32_t offset, uint8_t addr_space,
+                   uint32_t* val);
 
 // native get string field method
-int32_t GetStrField(const int8_t* row, 
-        int32_t offset,
-        int32_t next_str_offset,
-        int32_t addr_space,
-        StringRef* sr); 
+int32_t GetStrField(const int8_t* row, int32_t offset, int32_t next_str_offset,
+                    int32_t addr_space, StringRef* sr);
 
 }  // namespace v1
 }  // namespace storage
 }  // namespace fesql
-#endif  // SRC_CODEGEN_TYPE_IR_BUILDER_H_
+#endif  // SRC_STORAGE_TYPE_IR_BUILDER_H_

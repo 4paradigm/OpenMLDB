@@ -16,6 +16,12 @@
  */
 
 #include "tablet/tablet_server_impl.h"
+
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+#include <utility>
 #include "base/strings.h"
 
 namespace fesql {
@@ -208,7 +214,8 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
 
     {
         base::Status base_status;
-        bool ok = engine_->Get(request->sql(), request->db(), session, base_status);
+        bool ok =
+            engine_->Get(request->sql(), request->db(), session, base_status);
         if (!ok) {
             status->set_msg(base_status.msg);
             status->set_code(base_status.code);
@@ -216,7 +223,6 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             return;
         }
     }
-
 
     std::vector<int8_t*> buf;
     buf.reserve(100);
@@ -232,7 +238,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
     // TODO(wangtaize) opt the result buf
     std::vector<int8_t*>::iterator it = buf.begin();
     for (; it != buf.end(); ++it) {
-        void* ptr = (void*)*it;
+        void* ptr = reinterpret_case<void*>(*it);
         response->add_result_set(ptr, session.GetRowSize());
         free(ptr);
     }

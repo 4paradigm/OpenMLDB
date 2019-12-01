@@ -2,7 +2,7 @@
 // slice_test.cc
 // Copyright 2017 4paradigm.com
 
-#include "slice.h"
+#include "base/slice.h"
 #include "gtest/gtest.h"
 
 namespace fesql {
@@ -31,7 +31,7 @@ TEST_F(SliceTest, Assign) {
     ASSERT_TRUE(true);
 }
 
-}  // namespace storage
+}  // namespace base
 }  // namespace fesql
 
 int main(int argc, char** argv) {

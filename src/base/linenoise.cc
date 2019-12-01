@@ -1,4 +1,5 @@
 /* linenoise.c -- guerrilla line editing library against the idea that a
+ * Copyright (c) 2010-2016, Salvatore Sanfilippo <antirez at gmail dot com>
  * line editing lib needs to be 20,000 lines of C code.
  *
  * You can find the latest source code at:
@@ -10,7 +11,6 @@
  *
  * ------------------------------------------------------------------------
  *
- * Copyright (c) 2010-2016, Salvatore Sanfilippo <antirez at gmail dot com>
  * Copyright (c) 2010-2013, Pieter Noordhuis <pcnoordhuis at gmail dot com>
  *
  * All rights reserved.
@@ -194,7 +194,7 @@ FILE *lndebug_fp = NULL;
                 "[%d %d %d] p: %d, rows: %d, rpos: %d, max: %d, oldmax: %d\n", \
                 static_cast<int>(l->len), static_cast<int>(l->pos),            \
                 static_cast<int>(l->oldpos), plen, rows, rpos,                 \
-                (int)l->maxrows, old_rows);                                    \
+                static_cast<int>(l->maxrows), old_rows);                       \
         }                                                                      \
         fprintf(lndebug_fp, ", " __VA_ARGS__);                                 \
         fflush(lndebug_fp);                                                    \
