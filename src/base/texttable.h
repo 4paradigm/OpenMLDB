@@ -20,7 +20,8 @@ class TextTable {
  public:
     enum class Alignment { LEFT, RIGHT };
     typedef std::vector<std::string> Row;
-    explicit TextTable(char horizontal = '-', char vertical = '|', char corner = '+')
+    explicit TextTable(char horizontal = '-', char vertical = '|',
+                       char corner = '+')
         : _horizontal(horizontal), _vertical(vertical), _corner(corner) {}
 
     void setAlignment(unsigned i, Alignment alignment) {
@@ -92,4 +93,4 @@ class TextTable {
 
 }  // namespace base
 }  // namespace fesql
-#endif /* !SRC_BASE_TEXTTABLE_H_ */
+#endif  // SRC_BASE_TEXTTABLE_H_

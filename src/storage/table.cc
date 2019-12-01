@@ -1,23 +1,26 @@
 //
 // table.cc
 // Copyright (C) 2017 4paradigm.com
-// Author denglong 
+// Author denglong
 // Date 2019-11-01
 //
 //
-#include "table.h"
-#include "../base/hash.h"
-#include "../base/slice.h"
+#include "storage/table.h"
+
+#include <string>
 #include <algorithm>
+#include "base/hash.h"
+#include "base/slice.h"
 
 
 namespace fesql {
 namespace storage {
 
-const static uint32_t SEED = 0xe17a1465;
+const static uint32_t SEED = 0xe17a1465;  // NOLINT
 
-Table::Table(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt) : 
-    name_(name), id_(id), pid_(pid), seg_cnt_(seg_cnt) {}
+Table::Table(const std::string& name, uint32_t id, uint32_t pid,
+             uint32_t seg_cnt)
+    : name_(name), id_(id), pid_(pid), seg_cnt_(seg_cnt) {}
 
 Table::~Table() {
     if (segments_ != NULL) {
@@ -36,9 +39,7 @@ bool Table::Init() {
     return true;
 }
 
-bool Table::Put(const std::string& pk, 
-                uint64_t time,
-                const char* data, 
+bool Table::Put(const std::string& pk, uint64_t time, const char* data,
                 uint32_t size) {
     uint32_t index = 0;
     if (seg_cnt_ > 1) {
@@ -49,7 +50,6 @@ bool Table::Put(const std::string& pk,
     segment->Put(spk, time, data, size);
     return true;
 }
-
 
 TableIterator* Table::NewIterator(const std::string& pk) {
     uint32_t seg_idx = 0;
@@ -66,5 +66,5 @@ TableIterator* Table::NewIterator() {
     return segment->NewIterator();
 }
 
-}
-}
+}  // namespace storage
+}  // namespace fesql

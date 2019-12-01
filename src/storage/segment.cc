@@ -7,29 +7,28 @@
 
 #include "storage/segment.h"
 
+#include <mutex>  //NOLINT
+
 namespace fesql {
 namespace storage {
 
 const uint8_t KEY_ENTRY_MAX_HEIGHT = 12;
 static const SliceComparator scmp;
-Segment::Segment():entries_(NULL),mu_() {
+Segment::Segment() : entries_(NULL), mu_() {
     entries_ = new KeyEntries(KEY_ENTRY_MAX_HEIGHT, 4, scmp);
 }
 
-Segment::~Segment() {
-}
+Segment::~Segment() {}
 
-void Segment::Put(const Slice& key,
-        uint64_t time,
-        const char* data,
-        uint32_t size) {
+void Segment::Put(const Slice& key, uint64_t time, const char* data,
+                  uint32_t size) {
     DataBlock* db = new DataBlock(1, data, size);
     Put(key, time, db);
 }
 
 void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     void* entry = NULL;
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<base::SpinMutex> lock(mu_);
     int ret = entries_->Get(key, entry);
     if (ret < 0 || entry == NULL) {
         char* pk = new char[key.size()];
@@ -41,7 +40,6 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     }
     ((KeyEntry*)entry)->entries.Insert(time, row);
 }
-
 
 // Iterator
 TableIterator* Segment::NewIterator(const Slice& key) {
@@ -63,8 +61,9 @@ TableIterator* Segment::NewIterator() {
     return new TableIterator(it, NULL);
 }
 
-TableIterator::TableIterator(Iterator<Slice, void*>* pk_it, Iterator<uint64_t, DataBlock*>* ts_it) : 
-        pk_it_(pk_it), ts_it_(ts_it) {}
+TableIterator::TableIterator(Iterator<Slice, void*>* pk_it,
+                             Iterator<uint64_t, DataBlock*>* ts_it)
+    : pk_it_(pk_it), ts_it_(ts_it) {}
 
 TableIterator::~TableIterator() {
     delete ts_it_;
@@ -132,9 +131,7 @@ Slice TableIterator::GetValue() const {
     return Slice(ts_it_->GetValue()->data, ts_it_->GetValue()->size);
 }
 
-uint64_t TableIterator::GetKey() const {
-    return ts_it_->GetKey();
-}
+uint64_t TableIterator::GetKey() const { return ts_it_->GetKey(); }
 
 std::string TableIterator::GetPK() const {
     if (pk_it_ == NULL) {
@@ -167,5 +164,5 @@ void TableIterator::SeekToFirst() {
     ts_it_->SeekToFirst();
 }
 
-}
-}
+}  // namespace storage
+}  // namespace fesql

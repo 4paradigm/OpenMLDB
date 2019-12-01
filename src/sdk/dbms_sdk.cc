@@ -30,7 +30,7 @@ class SchemaImpl;
 
 class SchemaImpl : public Schema {
  public:
-    SchemaImpl() : response_() {}
+    SchemaImpl() : response_(), empty_() {}
     ~SchemaImpl() {}
 
     const uint32_t GetColumnCnt() const {
@@ -40,7 +40,7 @@ class SchemaImpl : public Schema {
         // TODO check i out of index
         if (static_cast<int>(i) >= response_.table().columns_size()) {
             LOG(WARNING) << "Array Invalid Access";
-            return "";
+            return empty_;
         }
         return response_.table().columns(i).name();
     }
@@ -65,6 +65,7 @@ class SchemaImpl : public Schema {
  private:
     friend DBMSSdkImpl;
     dbms::GetSchemaResponse response_;
+    std::string empty_;
 };
 
 class DBMSSdkImpl : public DBMSSdk {

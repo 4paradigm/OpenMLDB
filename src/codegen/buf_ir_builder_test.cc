@@ -105,18 +105,12 @@ TEST_F(BufIRBuilderTest, test_load_int32) {
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     int32_t (*decode)(int8_t*) = (int32_t(*)(int8_t*))load_fn_jit.getAddress();
     int8_t* ptr = static_cast<int8_t*>(malloc(28));
-    *((int16_t*)ptr) = 1;
-    *((int32_t*)(ptr + 2)) = 1;
-    *((int16_t*)(ptr + 2 + 4)) = 2;
-    *((float*)(ptr + 2 + 4 + 2)) = 3.1f;
-    *((double*)(ptr + 2 + 4 + 2 + 4)) = 4.1;
-    *((int64_t*)(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-    std::cout << *(int16_t*)(ptr) << std::endl;
-    std::cout << *(int32_t*)(ptr + 2) << std::endl;
-    std::cout << *(int16_t*)(ptr + 2 + 4) << std::endl;
-    std::cout << *(float*)(ptr + 2 + 4 + 2) << std::endl;
-    std::cout << *(double*)(ptr + 2 + 4 + 2 + 4) << std::endl;
-    std::cout << *(int64_t*)(ptr + 2 + 4 + 2 + 4 + 8) << std::endl;
+    *(reinterpret_cast<int16_t*>(ptr)) = 1;
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 2;
+    *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
+    *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
     int32_t ret = decode(ptr);
     ASSERT_EQ(ret, 1);
 }
