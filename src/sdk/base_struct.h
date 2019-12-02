@@ -7,8 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 
-#ifndef SRC_SDK_BASE_STRUCT_H
-#define SRC_SDK_BASE_STRUCT_H
+#ifndef SRC_SDK_BASE_STRUCT_H_
+#define SRC_SDK_BASE_STRUCT_H_
 
 #include <proto/type.pb.h>
 #include <string.h>
@@ -64,7 +64,7 @@ struct Query {
 
 class Value {
  public:
-    explicit Value() {
+    Value() {
         type = kTypeString;
         size = 4;
         val_.vstr = nullptr;
@@ -223,7 +223,7 @@ struct Insert {
     std::vector<Value> values;
 };
 
-inline DataType DataTypeFromProtoType(const type::Type type) {
+inline DataType DataTypeFromProtoType(const type::Type& type) {
     switch (type) {
         case fesql::type::kBool:
             return kTypeBool;
@@ -246,7 +246,6 @@ inline DataType DataTypeFromProtoType(const type::Type type) {
         default:
             return kTypeUnknow;
     }
-
 }
 inline const std::string DataTypeName(const DataType& type) {
     switch (type) {
@@ -271,8 +270,6 @@ inline const std::string DataTypeName(const DataType& type) {
     }
 }
 
-
-
 }  // namespace sdk
 }  // namespace fesql
-#endif  // SRC_SDK_BASE_STRUCT_H
+#endif  // SRC_SDK_BASE_STRUCT_H_

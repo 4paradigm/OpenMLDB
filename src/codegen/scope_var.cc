@@ -16,6 +16,7 @@
  */
 
 #include "codegen/scope_var.h"
+#include <utility>
 #include "glog/logging.h"
 
 namespace fesql {

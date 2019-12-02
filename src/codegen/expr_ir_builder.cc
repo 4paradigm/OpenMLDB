@@ -16,7 +16,9 @@
  */
 
 #include "codegen/expr_ir_builder.h"
-#include <proto/common.pb.h>
+#include <vector>
+#include <string>
+#include "proto/common.pb.h"
 #include "glog/logging.h"
 
 namespace fesql {
@@ -257,7 +259,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
 
     if (right->getType()->isIntegerTy() && left->getType()->isIntegerTy()) {
         ::llvm::IRBuilder<> builder(block_);
-        // TODO type check
+        // TODO(wangtaize) type check
         switch (node->GetOp()) {
             case ::fesql::node::kFnOpAdd: {
                 *output = builder.CreateAdd(left, right, "expr_add");

@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-#include <memory>
-#include <stdio.h>
 #include "codegen/buf_ir_builder.h"
+#include <stdio.h>
+#include <memory>
 
 #include "gtest/gtest.h"
 
@@ -35,7 +35,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 
-using namespace llvm;  // NOLINT
+using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
@@ -45,25 +45,18 @@ struct TestString {
     char* data;
 };
 
-void PrintInt16(int16_t val) {
-    printf("int16_t %d\n", val);
-}
+void PrintInt16(int16_t val) { printf("int16_t %d\n", val); }
 
-void PrintInt32(int32_t val) {
-    printf("int32_t %d\n", val);
-}
+void PrintInt32(int32_t val) { printf("int32_t %d\n", val); }
 
-void PrintPtr(int8_t* ptr) {
-    printf("ptr %p\n", ptr);
-}
-
+void PrintPtr(int8_t* ptr) { printf("ptr %p\n", ptr); }
 
 void PrintString(int8_t* ptr) {
     TestString* ts = reinterpret_cast<TestString*>(ptr);
     printf("char* start %p\n", ts->data);
     printf("char* size %d\n", ts->size);
     std::string str(ts->data, ts->size);
-    std::cout << "content "<< str << std::endl;
+    std::cout << "content " << str << std::endl;
     printf("ptr %p\n", ptr);
 }
 
@@ -156,11 +149,10 @@ void RunCase(T expected, const ::fesql::type::Type& type,
     ASSERT_TRUE(ok);
     if (type == ::fesql::type::kVarchar) {
         ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-        
         ::llvm::Value* i8_ptr = builder.CreatePointerCast(val, i8_ptr_ty);
         ::llvm::Type* void_ty = builder.getVoidTy();
-        ::llvm::FunctionCallee callee = m->getOrInsertFunction("print_str",  
-                void_ty, i8_ptr_ty);
+        ::llvm::FunctionCallee callee =
+            m->getOrInsertFunction("print_str", void_ty, i8_ptr_ty);
         std::vector<Value*> call_args;
         call_args.push_back(i8_ptr);
         ::llvm::ArrayRef<Value*> call_args_ref(call_args);
@@ -168,35 +160,35 @@ void RunCase(T expected, const ::fesql::type::Type& type,
     }
     if (!is_void) {
         builder.CreateRet(val);
-    }else {
+    } else {
         builder.CreateRetVoid();
     }
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(), 
-                        J->getDataLayout());
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
     ::llvm::StringRef symbol1("print_str");
     ::llvm::StringRef symbol2("print_i16");
     ::llvm::StringRef symbol3("print_i32");
     ::llvm::StringRef symbol4("print_ptr");
-    ::llvm::orc::SymbolMap  symbol_map;
+    ::llvm::orc::SymbolMap symbol_map;
     ::llvm::JITEvaluatedSymbol jit_symbol1(
-            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintString)),
-                           ::llvm::JITSymbolFlags());
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&PrintString)),
+        ::llvm::JITSymbolFlags());
 
     ::llvm::JITEvaluatedSymbol jit_symbol2(
-            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintInt16)),
-                           ::llvm::JITSymbolFlags());
+        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintInt16)),
+        ::llvm::JITSymbolFlags());
 
     ::llvm::JITEvaluatedSymbol jit_symbol3(
-            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintInt32)),
-                           ::llvm::JITSymbolFlags());
+        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintInt32)),
+        ::llvm::JITSymbolFlags());
 
     ::llvm::JITEvaluatedSymbol jit_symbol4(
-            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintPtr)),
-                           ::llvm::JITSymbolFlags());
-
+        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintPtr)),
+        ::llvm::JITSymbolFlags());
 
     symbol_map.insert(std::make_pair(mi(symbol1), jit_symbol1));
     symbol_map.insert(std::make_pair(mi(symbol2), jit_symbol2));
@@ -212,14 +204,14 @@ void RunCase(T expected, const ::fesql::type::Type& type,
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
     if (!is_void) {
         T(*decode)
-    (int8_t*, int32_t) =
-        reinterpret_cast<T (*)(int8_t*, int32_t)>(load_fn_jit.getAddress());
+        (int8_t*, int32_t) =
+            reinterpret_cast<T (*)(int8_t*, int32_t)>(load_fn_jit.getAddress());
         ASSERT_EQ(expected, decode(row, row_size));
 
-    }else {
-        void(*decode)
-    (int8_t*, int32_t) =
-        reinterpret_cast<void (*)(int8_t*, int32_t)>(load_fn_jit.getAddress());
+    } else {
+        void (*decode)(int8_t*, int32_t) =
+            reinterpret_cast<void (*)(int8_t*, int32_t)>(
+                load_fn_jit.getAddress());
         decode(row, row_size);
     }
 }

@@ -9,9 +9,9 @@
 
 #include "plan/planner.h"
 #include <vector>
+#include "analyser/analyser.h"
 #include "gtest/gtest.h"
 #include "parser/parser.h"
-#include "analyser/analyser.h"
 namespace fesql {
 namespace plan {
 
@@ -253,19 +253,16 @@ TEST_F(PlannerTest, FunDefAndSelectPlanTest) {
         dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
     ASSERT_TRUE(nullptr != plan->GetFnNodeList());
 
-
     // validate select plan
     plan_ptr = trees[1];
     ASSERT_TRUE(NULL != plan_ptr);
     std::cout << *plan_ptr << std::endl;
     // validate fundef plan
     ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
-    node::SelectPlanNode* select_plan =
+    node::SelectPlanNode *select_plan =
         dynamic_cast<node::SelectPlanNode *>(plan_ptr);
-    ASSERT_EQ(1,  select_plan->GetChildrenSize());
-
+    ASSERT_EQ(1, select_plan->GetChildrenSize());
 }
-
 
 }  // namespace plan
 }  // namespace fesql

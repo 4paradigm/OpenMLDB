@@ -18,29 +18,28 @@
 #include "codegen/fn_let_ir_builder.h"
 
 #include "codegen/buf_ir_builder.h"
-#include "codegen/ir_base_builder.h"
 #include "codegen/expr_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 
 namespace fesql {
 namespace codegen {
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(::fesql::type::TableDef* table,
-        ::llvm::Module* module):table_(table), module_(module) {}
+                                     ::llvm::Module* module)
+    : table_(table), module_(module) {}
 
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
-bool RowFnLetIRBuilder::Build(
-        const std::string& name,
-        const ::fesql::node::ProjectListPlanNode* node,
-        std::vector<::fesql::type::ColumnDef>& schema) {
-
+bool RowFnLetIRBuilder::Build(const std::string& name,
+                              const ::fesql::node::ProjectListPlanNode* node,
+                              std::vector<::fesql::type::ColumnDef>& schema) {
     if (node == NULL) {
         LOG(WARNING) << "node is null";
         return false;
     }
 
-    ::llvm::Function *fn = NULL;
+    ::llvm::Function* fn = NULL;
     std::string row_ptr_name = "row_ptr_name";
     std::string output_ptr_name =  "output_ptr_name";
     std::string row_size_name = "row_size_name";
@@ -67,8 +66,8 @@ bool RowFnLetIRBuilder::Build(
         return false;
     }
 
-    ::llvm::BasicBlock *block = ::llvm::BasicBlock::Create(module_->getContext(),
-            "entry", fn);
+    ::llvm::BasicBlock* block =
+        ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
 
     BufIRBuilder buf_ir_builder(table_, block, &sv);
     ExprIRBuilder expr_ir_builder(block, &sv, 
@@ -86,20 +85,19 @@ bool RowFnLetIRBuilder::Build(
         }
 
         if (pn->GetType() != ::fesql::node::kProject) {
-            LOG(WARNING) << "project node is required but " << ::fesql::node::NameOfPlanNodeType(pn->GetType());
+            LOG(WARNING) << "project node is required but "
+                         << ::fesql::node::NameOfPlanNodeType(pn->GetType());
             continue;
         }
 
         const ::fesql::node::ProjectPlanNode* pp_node =
-        (const ::fesql::node::ProjectPlanNode*)pn;
+            (const ::fesql::node::ProjectPlanNode*)pn;
         const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
-
 
         ::llvm::Value* expr_out_val = NULL;
         std::string col_name = pp_node->GetName();
         ok = expr_ir_builder.Build(sql_node, 
                 &expr_out_val);
-
         if (!ok) {
             return false;
         }
@@ -119,17 +117,15 @@ bool RowFnLetIRBuilder::Build(
             return false;
         }
         switch (cdef.type()) {
-            case ::fesql::type::kInt16:
-                {
-                    offset += 2;
-                    break;
-                }
+            case ::fesql::type::kInt16: {
+                offset += 2;
+                break;
+            }
             case ::fesql::type::kInt32:
-            case ::fesql::type::kFloat:
-                {
-                    offset += 4;
-                    break;
-                }
+            case ::fesql::type::kFloat: {
+                offset += 4;
+                break;
+            }
             case ::fesql::type::kInt64:
             case ::fesql::type::kDouble:
             case ::fesql::type::kVarchar:
@@ -142,6 +138,7 @@ bool RowFnLetIRBuilder::Build(
                     LOG(WARNING) << "not supported type ";
                     return false;
                 }
+
         }
     }
     ::llvm::IRBuilder<> ir_builder(block);
@@ -150,10 +147,10 @@ bool RowFnLetIRBuilder::Build(
     return true;
 }
 
-bool RowFnLetIRBuilder::StoreColumn(int64_t offset, ::llvm::Value * value, ScopeVar& sv,
-        const std::string& output_ptr_name,
-        ::llvm::BasicBlock* block) {
-
+bool RowFnLetIRBuilder::StoreColumn(int64_t offset, ::llvm::Value* value,
+                                    ScopeVar& sv,
+                                    const std::string& output_ptr_name,
+                                    ::llvm::BasicBlock* block) {
     if (value == NULL || block == NULL) {
         LOG(WARNING) << "value is null";
         return true;
@@ -173,8 +170,7 @@ bool RowFnLetIRBuilder::StoreColumn(int64_t offset, ::llvm::Value * value, Scope
 }
 
 bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
-        ::llvm::Function **fn) {
-
+                                      ::llvm::Function** fn) {
     if (fn == NULL) {
         LOG(WARNING) << "fn is null";
         return false;
@@ -207,7 +203,7 @@ bool RowFnLetIRBuilder::FillArgs(const std::string& row_ptr_name,
         const std::string& row_size_name,
         const std::string& output_ptr_name,
         ::llvm::Function *fn,
-        ScopeVar& sv) {
+        ScopeVar& sv) {  // NOLINT
 
     if (fn == NULL || fn->arg_size() != 3) {
         LOG(WARNING) << "fn is null or fn arg size mismatch";

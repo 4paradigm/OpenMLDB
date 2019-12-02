@@ -15,10 +15,11 @@
  * limitations under the License.
  */
 
-#ifndef CODEGEN_SCOPE_VAR_H_
-#define CODEGEN_SCOPE_VAR_H_
+#ifndef SRC_CODEGEN_SCOPE_VAR_H_
+#define SRC_CODEGEN_SCOPE_VAR_H_
 
 #include <map>
+#include <string>
 #include <vector>
 #include "llvm/IR/IRBuilder.h"
 
@@ -50,4 +51,4 @@ class ScopeVar {
 
 }  // namespace codegen
 }  // namespace fesql
-#endif /* !CODEGEN_SCOPE_VAR_H_ */
+#endif  // SRC_CODEGEN_SCOPE_VAR_H_

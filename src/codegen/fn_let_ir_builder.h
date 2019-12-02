@@ -17,45 +17,45 @@
 
 #ifndef SRC_CODEGEN_FN_LET_IR_BUILDER_H_
 #define SRC_CODEGEN_FN_LET_IR_BUILDER_H_
-
+#include <vector>
+#include <string>
 #include <map>
 #include <utility>
-#include "node/plan_node.h"
-#include "llvm/IR/IRBuilder.h"
-#include "proto/type.pb.h"
 #include "codegen/scope_var.h"
-
+#include "llvm/IR/IRBuilder.h"
+#include "node/plan_node.h"
+#include "proto/type.pb.h"
 
 namespace fesql {
 namespace codegen {
 
-typedef std::map<std::string, std::pair<::fesql::type::ColumnDef, int32_t> > Schema;
+typedef std::map<std::string, std::pair<::fesql::type::ColumnDef, int32_t>>
+    Schema;
 
 class RowFnLetIRBuilder {
-
  public:
-    RowFnLetIRBuilder(::fesql::type::TableDef* table,
-            ::llvm::Module* module);
+    RowFnLetIRBuilder(::fesql::type::TableDef* table, ::llvm::Module* module);
 
     ~RowFnLetIRBuilder();
 
-    bool Build(const std::string& name, 
+    bool Build(const std::string& name,
                const ::fesql::node::ProjectListPlanNode* node,
-               std::vector<::fesql::type::ColumnDef>& schema);
- private:
+               std::vector<::fesql::type::ColumnDef>&
+                   schema);  // NOLINT (runtime/references)
 
-    bool BuildFnHeader(const std::string& name, 
-            ::llvm::Function **fn);
+ private:
+    bool BuildFnHeader(const std::string& name, ::llvm::Function** fn);
 
     bool FillArgs(const std::string& row_ptr_name,
             const std::string& row_size_name,
             const std::string& output_ptr_name,
             ::llvm::Function *fn,
-            ScopeVar& sv);
+            ScopeVar& sv); // NOLINT
 
-    bool StoreColumn(int64_t offset, ::llvm::Value* value, 
-            ScopeVar& sv, const std::string& output_ptr_name,
-            ::llvm::BasicBlock* block);
+    bool StoreColumn(int64_t offset, ::llvm::Value* value,
+                     ScopeVar& sv,  // NOLINT (runtime/references)
+                     const std::string& output_ptr_name,
+                     ::llvm::BasicBlock* block);
 
  private:
     // input schema
@@ -65,4 +65,4 @@ class RowFnLetIRBuilder {
 
 }  // namespace codegen
 }  // namespace fesql
-#endif  // SRC_CODGEN_FN_LET_IR_BUILDER_H 
+#endif  // SRC_CODEGEN_FN_LET_IR_BUILDER_H_

@@ -31,7 +31,6 @@ namespace codegen {
 // the table row access builder refer to fesql-docs/schema.md
 class BufIRBuilder {
  public:
-
     BufIRBuilder(::fesql::type::TableDef* table, ::llvm::BasicBlock* block,
                  ScopeVar* scope_var);
 

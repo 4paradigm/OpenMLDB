@@ -106,7 +106,7 @@ class FeSQLAnalyser {
                              Status &status);  // NOLINT (runtime/references)
     void TransformCmdNode(node::CmdNode *pNode,
                           Status &status);  // NOLINT (runtime/references)
-    void TransformFnDefListNode(node::FnNodeList *node_ptr, Status &status);
+    void TransformFnDefListNode(node::FnNodeList *node_ptr, Status &status);  // NOLINT
 };
 
 }  // namespace analyser

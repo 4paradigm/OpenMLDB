@@ -15,6 +15,7 @@
  */
 #include "base/hash.h"
 
+#include <string>
 #include "gtest/gtest.h"
 
 namespace fesql {

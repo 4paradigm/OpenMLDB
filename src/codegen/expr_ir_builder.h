@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
-#ifndef CODEGEN_EXPR_IR_BUILDER_H_
-#define CODEGEN_EXPR_IR_BUILDER_H_
+#ifndef SRC_CODEGEN_EXPR_IR_BUILDER_H_
+#define SRC_CODEGEN_EXPR_IR_BUILDER_H_
 
+#include <string>
 #include "codegen/buf_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
@@ -36,7 +37,6 @@ class ExprIRBuilder {
             const std::string& row_size_name,
             const std::string& output_ptr_name,
             ::llvm::Module* module);
-
     ~ExprIRBuilder();
 
     bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
@@ -47,7 +47,6 @@ class ExprIRBuilder {
 
     bool BuildCallFn(const ::fesql::node::CallExprNode* fn,
                      ::llvm::Value** output);
-
 
     bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                          ::llvm::Value** output);
@@ -66,4 +65,4 @@ class ExprIRBuilder {
 };
 }  // namespace codegen
 }  // namespace fesql
-#endif  // CODEGEN_EXPR_IR_BUILDER_H_
+#endif  // SRC_CODEGEN_EXPR_IR_BUILDER_H_

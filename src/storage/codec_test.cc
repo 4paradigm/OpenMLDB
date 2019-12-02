@@ -34,7 +34,7 @@ TEST_F(CodecTest, NULL) {
     col->set_type(::fesql::type::kBool);
     col = schema.Add();
     col->set_name("col3");
-    col->set_type(::fesql::type::kString);
+    col->set_type(::fesql::type::kVarchar);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(2);
     std::string row;
@@ -52,7 +52,7 @@ TEST_F(CodecTest, NULL) {
     ASSERT_EQ(view.GetBool(1, &val1), 0);
     ASSERT_FALSE(val1);
     ASSERT_EQ(view.GetString(2, &ch, &length), 0);
-}    
+}
 
 TEST_F(CodecTest, Normal) {
     Schema schema;

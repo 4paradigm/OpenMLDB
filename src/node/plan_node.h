@@ -250,34 +250,27 @@ class InsertPlanNode : public LeafPlanNode {
  public:
     InsertPlanNode() : LeafPlanNode(kPlanTypeInsert), insert_node_(nullptr) {}
     ~InsertPlanNode() {}
-    void SetInsertNode(const InsertStmt* node) {
-        insert_node_ = node;
-    }
+    void SetInsertNode(const InsertStmt *node) { insert_node_ = node; }
 
-    const InsertStmt* GetInsertNode() const {
-        return insert_node_;
-    }
+    const InsertStmt *GetInsertNode() const { return insert_node_; }
 
  private:
     const InsertStmt *insert_node_;
 };
 
-
 class FuncDefPlanNode : public LeafPlanNode {
  public:
     FuncDefPlanNode() : LeafPlanNode(kPlanTypeFuncDef) {}
     ~FuncDefPlanNode() {}
-    
+
     void SetFuNodeList(const FnNodeList *fn_node_list) {
-        fn_node_list_ = fn_node_list; 
+        fn_node_list_ = fn_node_list;
     }
-    
-    const FnNodeList *GetFnNodeList() const {
-        return fn_node_list_;
-    }
-    
+
+    const FnNodeList *GetFnNodeList() const { return fn_node_list_; }
+
  private:
-    const FnNodeList * fn_node_list_;
+    const FnNodeList *fn_node_list_;
 };
 void PrintPlanVector(std::ostream &output, const std::string &tab,
                      PlanNodeList vec, const std::string vector_name,

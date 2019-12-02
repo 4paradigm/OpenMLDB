@@ -19,6 +19,7 @@
 #include <proto/type.pb.h>
 #include <string>
 #include <vector>
+#include <memory>
 #include "sdk/base_struct.h"
 
 namespace fesql {
@@ -27,7 +28,7 @@ namespace sdk {
 class Schema {
  public:
     Schema() {}
-    virtual ~Schema() {};
+    virtual ~Schema() {}
     virtual const uint32_t GetColumnCnt() const = 0;
     virtual const std::string& GetColumnName(uint32_t i) const = 0;
     virtual const DataType GetColumnType(uint32_t i) const = 0;

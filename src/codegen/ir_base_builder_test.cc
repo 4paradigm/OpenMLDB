@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#include <memory>
+#include <utility>
 #include "codegen/ir_base_builder.h"
 #include "gtest/gtest.h"
 
@@ -32,8 +34,8 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 
-using namespace llvm;
-using namespace llvm::orc;
+using namespace llvm;  // NOLINT
+using namespace llvm::orc; // NOLINT
 
 ExitOnError ExitOnErr;
 
@@ -73,7 +75,7 @@ TEST_F(IRBaseBuilderTest, test_load_float) {
     float *test = new float[2];
     test[0] = 1.1f;
     test[1] = 2.1f;
-    int8_t *input_ptr = (int8_t *)test;
+    int8_t *input_ptr = reinterpret_cast<int8_t *>(test);
     float ret = decode(input_ptr);
     ASSERT_EQ(ret, 2.1f);
 }
@@ -107,7 +109,7 @@ TEST_F(IRBaseBuilderTest, test_load_int64) {
     int64_t *test = new int64_t[2];
     test[0] = 1;
     test[1] = 2;
-    int8_t *input_ptr = (int8_t *)test;
+    int8_t *input_ptr = reinterpret_cast<int8_t *>(test);
     int64_t ret = decode(input_ptr);
     ASSERT_EQ(ret, 2);
 }

@@ -21,8 +21,8 @@
 namespace fesql {
 namespace tablet {
 
-TabletInternalSDK::TabletInternalSDK(const std::string& endpoint):endpoint_(endpoint),
-    channel_(NULL){}
+TabletInternalSDK::TabletInternalSDK(const std::string& endpoint)
+    : endpoint_(endpoint), channel_(NULL) {}
 
 TabletInternalSDK::~TabletInternalSDK() {
     delete channel_;
@@ -42,7 +42,7 @@ bool TabletInternalSDK::Init() {
 }
 
 void TabletInternalSDK::CreateTable(CreateTableRequest* request,
-        common::Status& status) {
+                                    common::Status& status) {
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::CreateTableResponse response;
     brpc::Controller cntl;
@@ -50,13 +50,10 @@ void TabletInternalSDK::CreateTable(CreateTableRequest* request,
     if (cntl.Failed()) {
         status.set_code(common::kConnError);
         status.set_msg("connection error");
-    }else {
+    } else {
         status.CopyFrom(response.status());
     }
 }
 
 }  // namespace tablet
 }  // namespace fesql
-
-
-

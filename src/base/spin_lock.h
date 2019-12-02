@@ -19,9 +19,9 @@
 #ifndef SRC_BASE_SPIN_LOCK_H_
 #define SRC_BASE_SPIN_LOCK_H_
 
-#include <memory>
 #include <atomic>
-#include <thread>
+#include <memory>
+#include <thread>  //NOLINT
 
 namespace fesql {
 namespace base {

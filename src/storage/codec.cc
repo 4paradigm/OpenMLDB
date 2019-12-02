@@ -62,7 +62,7 @@ RowBuilder::RowBuilder(const Schema& schema)
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema.Get(idx);
         if (column.type() == ::fesql::type::kVarchar) {
-            str_start_offset_ += str_addr_length_;
+            str_field_start_offset_ += str_addr_length_;
         } else {
             auto iter = TYPE_SIZE_MAP.find(column.type());
             if (iter == TYPE_SIZE_MAP.end()) {
@@ -122,14 +122,7 @@ bool RowBuilder::Check(::fesql::type::Type type) {
                      << fesql::type::Type_Name(column.type());
         return false;
     }
-<<<<<<< HEAD
-    uint32_t delta = 0;
-    if (column.type() == ::fesql::type::kVarchar) {
-        delta = str_addr_length_;
-    } else {
-=======
-    if (column.type() != ::fesql::type::kString) {
->>>>>>> origin/develop
+    if (column.type() != ::fesql::type::kVarchar) {
         auto iter = TYPE_SIZE_MAP.find(column.type());
         if (iter == TYPE_SIZE_MAP.end()) {
             LOG(WARNING) << ::fesql::type::Type_Name(column.type())
@@ -144,14 +137,9 @@ bool RowBuilder::AppendNULL() {
     int8_t* ptr = buf_ + HEADER_LENGTH + (cnt_ >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);
-<<<<<<< HEAD
     if (column.type() == ::fesql::type::kVarchar) {
-        ptr = buf_ + offset_;
-=======
-    if (column.type() == ::fesql::type::kString) {
         ptr = buf_ + str_field_start_offset_ +
-              str_addr_length_ * offset_vec_[cnt_];
->>>>>>> origin/develop
+                          str_addr_length_ * offset_vec_[cnt_];
         if (str_addr_length_ == 1) {
             *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
         } else if (str_addr_length_ == 2) {

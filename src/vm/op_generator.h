@@ -42,7 +42,7 @@ class OpGenerator {
     ~OpGenerator();
 
     bool Gen(const ::fesql::node::PlanNodeList& trees, const std::string& db,
-             ::llvm::Module* module, OpVector* ops, base::Status& status);
+             ::llvm::Module* module, OpVector* ops, base::Status& status);  // NOLINT
 
  private:
 
@@ -50,8 +50,8 @@ class OpGenerator {
                   const ::fesql::node::FuncDefPlanNode* plan);
 
     bool GenSQL(const ::fesql::node::SelectPlanNode* node,
-                const std::string& db, ::llvm::Module* module, OpVector* ops,
-                base::Status& status);
+                const std::string& db, ::llvm::Module* module, OpVector* ops, // NOLINT
+                base::Status& status);  // NOLINT
 
     bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
                     const std::string& db, ::llvm::Module* module,

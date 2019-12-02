@@ -25,26 +25,26 @@
 namespace fesql {
 namespace codegen {
 
-bool GetLLVMType(::llvm::IRBuilder<>& builder,
+bool GetLLVMType(::llvm::IRBuilder<>& builder, // NOLINT
         const ::fesql::type::Type& type,
         ::llvm::Type** output);
 
 bool GetTableType(::llvm::Type* type,
         ::fesql::type::Type* output);
 
-bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,
+bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
         ::llvm::Value* ptr,
         ::llvm::Value* offset,
         ::llvm::Type* type,
         ::llvm::Value** outptr);
 
-bool BuildLoadOffset(::llvm::IRBuilder<>& builder,
+bool BuildLoadOffset(::llvm::IRBuilder<>& builder,  // NOLINT
         ::llvm::Value* ptr,
         ::llvm::Value* offset,
         ::llvm::Type* type,
         ::llvm::Value** output);
 
-bool BuildStoreOffset(::llvm::IRBuilder<>& builder,
+bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
         ::llvm::Value* ptr,
         ::llvm::Value* offset,
         ::llvm::Value* value);

@@ -185,6 +185,7 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
                                  ::llvm::Value* row_ptr,
                                  ::llvm::Value* row_size,
                                  ::llvm::Value** output) {
+
     if (output == NULL) {
         LOG(WARNING) << "output is null";
         return false;

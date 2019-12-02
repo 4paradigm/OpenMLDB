@@ -16,8 +16,9 @@
  */
 
 #include "vm/engine.h"
-
 #include <utility>
+#include <vector>
+
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -36,8 +37,9 @@
 #include "plan/planner.h"
 #include "vm/table_mgr.h"
 
-using namespace llvm;       // NOLINT
-using namespace llvm::orc;  // NOLINT
+
+using namespace llvm;       // NOLINT (build/namespaces)
+using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 namespace fesql {
 namespace vm {
@@ -66,6 +68,7 @@ TEST_F(EngineTest, test_normal) {
     std::unique_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table("t1", 1, 1, 1));
     ASSERT_TRUE(table->Init());
+
     int8_t* ptr = static_cast<int8_t*>(malloc(28));
     *reinterpret_cast<int32_t*>(ptr + 2) = 1;
     *reinterpret_cast<int16_t*>(ptr + 2 + 4) = 2;

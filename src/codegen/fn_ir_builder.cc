@@ -43,7 +43,7 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeList *root) {
         root->children.begin();
     for (; it != root->children.end(); ++it) {
         ::fesql::node::FnNode *node = *it;
-        // TODO use switch
+        // TODO(wangtaize) use switch
         if (node->GetType() == ::fesql::node::kFnDef) {
             const ::fesql::node::FnNodeFnDef *fn_def =
                 (const ::fesql::node::FnNodeFnDef *)node;
@@ -79,7 +79,7 @@ bool FnIRBuilder::BuildStmt(int32_t pindent, const ::fesql::node::FnNode *node,
         return false;
     }
 
-    // TODO check it before codegen
+    // TODO(wangtaize) check it before codegen
     if (node->indent - pindent != 4) {
         LOG(WARNING) << "syntax error indent mismatch";
         return false;
