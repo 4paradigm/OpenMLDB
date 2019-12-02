@@ -167,8 +167,12 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
         ::llvm::Value* llvm_arg = NULL;
         // TODO(chenjing): remove out_name
-        Build(arg, &llvm_arg);
-        llvm_args.push_back(llvm_arg);
+        if (Build(arg, &llvm_arg)) {
+            llvm_args.push_back(llvm_arg);
+        } else {
+            LOG(WARNING) << "faild to build args: " << *arg;
+            return false;
+        }
     }
 
     ::llvm::IRBuilder<> builder(block_);
@@ -275,13 +279,21 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
     if (!ok) {
         uint32_t offset;
         ::fesql::type::Type type;
-        buf_ir_builder_->GetFieldOffset(col, offset, type);
+        if (!buf_ir_builder_->GetFieldOffset(col, offset, type)) {
+            LOG(WARNING) << "can not find offset and type of column " << col;
+            return false;
+        }
 
         ::fesql::node::DataType data_type;
-        if (ConvertFeSQLType2DataType(type, data_type)) {
+        if (!ConvertFeSQLType2DataType(type, data_type)) {
             LOG(WARNING) << "unrecognized column type " << type;
+            return false;
         }
         ::llvm::Function* fn = GetFuncion("col", data_type);
+        if (nullptr == fn) {
+            LOG(WARNING) << "can not get iterator for column " << col;
+            return false;
+        }
         ::llvm::IRBuilder<> builder(block_);
 
         std::vector<::llvm::Value*> llvm_args(

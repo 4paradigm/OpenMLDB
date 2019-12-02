@@ -18,6 +18,7 @@
 #ifndef SRC_CODEGEN_IR_TYPES_H_
 #define SRC_CODEGEN_IR_TYPES_H_
 
+#include <node/node_enum.h>
 namespace fesql {
 namespace codegen {
 

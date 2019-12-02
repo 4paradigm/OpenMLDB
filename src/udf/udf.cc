@@ -45,7 +45,7 @@ int8_t *col(int8_t *input, int32_t offset, int32_t type_id) {
     if (nullptr == input) {
         return nullptr;
     }
-    WindowIteratorImpl *w = (WindowIteratorImpl *)input;
+    WindowIteratorImpl *w = reinterpret_cast<WindowIteratorImpl *>(input);
     switch (type) {
         case fesql::type::kInt32: {
             ColumnIteratorImpl<int> *impl =

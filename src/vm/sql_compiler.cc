@@ -16,11 +16,11 @@
  */
 
 #include "vm/sql_compiler.h"
+#include <udf/udf.h>
 #include "analyser/analyser.h"
 #include "glog/logging.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "analyser/analyser.h"
 #include "vm/op_generator.h"
 
 namespace fesql {
@@ -31,6 +31,19 @@ SQLCompiler::SQLCompiler(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
 
 SQLCompiler::~SQLCompiler() {}
 
+void SQLCompiler::RegisterUDF(::llvm::Module* m) {
+    ::llvm::Type* i32_ty = ::llvm::Type::getInt32Ty(m->getContext());
+    ::llvm::Type* i8_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
+    m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
+    m->getOrInsertFunction("sum_int32", i32_ty, i8_ptr_ty);
+    m->getOrInsertFunction("col", i8_ptr_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty);
+}
+void SQLCompiler::RegisterDyLib(FeSQLJIT *jit, ::llvm::orc::JITDylib &jd) {
+    jit->AddSymbol(jd, "inc_int32", reinterpret_cast<void*>(&fesql::udf::inc_int32));
+    jit->AddSymbol(jd, "sum_int32", reinterpret_cast<void*>(&fesql::udf::sum_int32));
+    jit->AddSymbol(jd, "sum_int64", reinterpret_cast<void*>(&fesql::udf::sum_int64));
+    jit->AddSymbol(jd, "col", reinterpret_cast<void*>(&fesql::udf::col));
+}
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     LOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::NodeManager nm;
@@ -43,10 +56,12 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     OpGenerator op_generator(table_mgr_);
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
+
+    RegisterUDF(m.get());
     ok = op_generator.Gen(trees, ctx.db, m.get(), &ctx.ops, status);
     // TODO(wangtaize) clean ctx
     if (!ok) {
-        LOG(WARNING) << "fail to generate operators for sql " << ctx.sql;
+        LOG(WARNING) << "fail to generate operators for sql: \n" << ctx.sql;
         return false;
     }
 
@@ -68,7 +83,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         LOG(WARNING) << "fail to add ir module  for sql " << ctx.sql;
         return false;
     }
-
+    RegisterDyLib(ctx.jit.get(), jd);
     std::vector<OpNode*>::iterator it = ctx.ops.ops.begin();
     for (; it != ctx.ops.ops.end(); ++it) {
         OpNode* op_node = *it;
@@ -78,7 +93,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
                 ctx.jit->lookup(jd, pop->fn_name));
             if (symbol.takeError()) {
                 LOG(WARNING) << "fail to find fn with name  " << pop->fn_name
-                             << " for sql" << ctx.sql;
+                             << " for sql:\n" << ctx.sql;
             }
             pop->fn = (int8_t*)symbol->getAddress();
             ctx.schema = pop->output_schema;

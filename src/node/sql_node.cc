@@ -14,6 +14,112 @@
 namespace fesql {
 namespace node {
 
+void PrintSQLNode(std::ostream &output, const std::string &org_tab,
+                  SQLNode *node_ptr, const std::string &item_name,
+                  bool last_child) {
+    output << org_tab << SPACE_ST << item_name << ":";
+
+    if (nullptr == node_ptr) {
+        output << " null";
+    } else if (last_child) {
+        output << "\n";
+        node_ptr->Print(output, org_tab + INDENT);
+    } else {
+        output << "\n";
+        node_ptr->Print(output, org_tab + OR_INDENT);
+    }
+}
+void PrintSQLVector(std::ostream &output, const std::string &tab,
+                    const std::vector<FnNode *> &vec,
+                    const std::string &vector_name, bool last_item) {
+    if (0 == vec.size()) {
+        output << tab << SPACE_ST << vector_name << ": []";
+        return;
+    }
+    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int count = vec.size();
+    int i = 0;
+    for (i = 0; i < count - 1; ++i) {
+        PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
+        output << "\n";
+    }
+    PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
+}
+void PrintSQLVector(std::ostream &output, const std::string &tab,
+                    const std::vector<ExprNode *> &vec,
+                    const std::string &vector_name, bool last_item) {
+    if (0 == vec.size()) {
+        output << tab << SPACE_ST << vector_name << ": []";
+        return;
+    }
+    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int count = vec.size();
+    int i = 0;
+    for (i = 0; i < count - 1; ++i) {
+        PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
+        output << "\n";
+    }
+    PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
+}
+
+void PrintSQLVector(std::ostream &output, const std::string &tab,
+                    const std::vector<std::pair<std::string, DataType>> &vec,
+                    const std::string &vector_name, bool last_item) {
+    if (0 == vec.size()) {
+        output << tab << SPACE_ST << vector_name << ": []";
+        return;
+    }
+    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int count = vec.size();
+    int i = 0;
+    for (i = 0; i < count - 1; ++i) {
+        PrintValue(output, space, DataTypeName(vec[i].second), "" + vec[i].first, false);
+        output << "\n";
+    }
+    PrintValue(output, space, DataTypeName(vec[i].second), "" + vec[i].first, true);
+}
+
+void PrintSQLVector(std::ostream &output, const std::string &tab,
+                    const NodePointVector &vec, const std::string &vector_name,
+                    bool last_item) {
+    if (0 == vec.size()) {
+        output << tab << SPACE_ST << vector_name << ": []";
+        return;
+    }
+    output << tab << SPACE_ST << vector_name << "[list]: \n";
+    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
+    int count = vec.size();
+    int i = 0;
+    for (i = 0; i < count - 1; ++i) {
+        PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
+        output << "\n";
+    }
+    PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
+}
+
+void PrintValue(std::ostream &output, const std::string &org_tab,
+                const std::string &value, const std::string &item_name,
+                bool last_child) {
+    output << org_tab << SPACE_ST << item_name << ": " << value;
+}
+
+void PrintValue(std::ostream &output, const std::string &org_tab,
+                const std::vector<std::string> &vec,
+                const std::string &item_name, bool last_child) {
+    std::string value = "";
+    for (auto item : vec) {
+        value.append(item).append(",");
+    }
+    if (vec.size() > 0) {
+        value.pop_back();
+    }
+    output << org_tab << SPACE_ST << item_name << ": " << value;
+}
+
+
 void SQLNode::Print(std::ostream &output, const std::string &tab) const {
     output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type_) << "]";
 }
@@ -136,10 +242,10 @@ void WindowDefNode::Print(std::ostream &output,
     PrintValue(output, tab, window_name_, "window_name", false);
 
     output << "\n";
-    PrintSQLVector(output, tab, partition_list_ptr_, "partitions", false);
+    PrintValue(output, tab, partitions_, "partitions", false);
 
     output << "\n";
-    PrintSQLVector(output, tab, order_list_ptr_, "orders", false);
+    PrintValue(output, tab, orders_, "orders", false);
 
     output << "\n";
     PrintSQLNode(output, tab, frame_ptr_, "frame", true);
@@ -291,135 +397,32 @@ void FillSQLNodeList2NodeVector(
     }
 }
 
-std::string WindowOfExpression(ExprNode *node_ptr) {
+WindowDefNode* WindowOfExpression(std::map<std::string, WindowDefNode*> windows, ExprNode *node_ptr) {
+    WindowDefNode * w_ptr = nullptr;
     switch (node_ptr->GetExprType()) {
         case kExprCall: {
             CallExprNode *func_node_ptr = dynamic_cast<CallExprNode *>(node_ptr);
             if (nullptr != func_node_ptr->GetOver()) {
-                return func_node_ptr->GetOver()->GetName();
+                return windows.at(func_node_ptr->GetOver()->GetName());
             }
 
             if (func_node_ptr->GetArgs().empty()) {
-                return "";
+                return nullptr;
             }
             for (auto arg : func_node_ptr->GetArgs()) {
-                std::string arg_w =
-                    WindowOfExpression(dynamic_cast<ExprNode *>(arg));
-                if (false == arg_w.empty()) {
-                    return arg_w;
+                WindowDefNode * ptr =
+                    WindowOfExpression(windows, dynamic_cast<ExprNode *>(arg));
+                if (nullptr != ptr && nullptr != w_ptr) {
+                    LOG(WARNING) << "Cannot handle more than 1 windows in an expression";
+                    return nullptr;
                 }
             }
 
-            return "";
+            return w_ptr;
         }
         default:
-            return "";
+            return w_ptr;
     }
-}
-
-void PrintSQLNode(std::ostream &output, const std::string &org_tab,
-                  SQLNode *node_ptr, const std::string &item_name,
-                  bool last_child) {
-    output << org_tab << SPACE_ST << item_name << ":";
-
-    if (nullptr == node_ptr) {
-        output << " null";
-    } else if (last_child) {
-        output << "\n";
-        node_ptr->Print(output, org_tab + INDENT);
-    } else {
-        output << "\n";
-        node_ptr->Print(output, org_tab + OR_INDENT);
-    }
-}
-void PrintSQLVector(std::ostream &output, const std::string &tab,
-                   const std::vector<FnNode *> &vec,
-                   const std::string &vector_name, bool last_item) {
-    if (0 == vec.size()) {
-        output << tab << SPACE_ST << vector_name << ": []";
-        return;
-    }
-    output << tab << SPACE_ST << vector_name << "[list]: \n";
-    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
-    int count = vec.size();
-    int i = 0;
-    for (i = 0; i < count - 1; ++i) {
-        PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
-        output << "\n";
-    }
-    PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
-}
-void PrintSQLVector(std::ostream &output, const std::string &tab,
-                    const std::vector<ExprNode *> &vec,
-                    const std::string &vector_name, bool last_item) {
-    if (0 == vec.size()) {
-        output << tab << SPACE_ST << vector_name << ": []";
-        return;
-    }
-    output << tab << SPACE_ST << vector_name << "[list]: \n";
-    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
-    int count = vec.size();
-    int i = 0;
-    for (i = 0; i < count - 1; ++i) {
-        PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
-        output << "\n";
-    }
-    PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
-}
-
-void PrintSQLVector(std::ostream &output, const std::string &tab,
-                    const std::vector<std::pair<std::string, DataType>> &vec,
-                    const std::string &vector_name, bool last_item) {
-    if (0 == vec.size()) {
-        output << tab << SPACE_ST << vector_name << ": []";
-        return;
-    }
-    output << tab << SPACE_ST << vector_name << "[list]: \n";
-    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
-    int count = vec.size();
-    int i = 0;
-    for (i = 0; i < count - 1; ++i) {
-        PrintValue(output, space, DataTypeName(vec[i].second), "" + vec[i].first, false);
-        output << "\n";
-    }
-    PrintValue(output, space, DataTypeName(vec[i].second), "" + vec[i].first, true);
-}
-
-void PrintSQLVector(std::ostream &output, const std::string &tab,
-                    const NodePointVector &vec, const std::string &vector_name,
-                    bool last_item) {
-    if (0 == vec.size()) {
-        output << tab << SPACE_ST << vector_name << ": []";
-        return;
-    }
-    output << tab << SPACE_ST << vector_name << "[list]: \n";
-    const std::string space = last_item ? (tab + INDENT) : tab + OR_INDENT;
-    int count = vec.size();
-    int i = 0;
-    for (i = 0; i < count - 1; ++i) {
-        PrintSQLNode(output, space, vec[i], "" + std::to_string(i), false);
-        output << "\n";
-    }
-    PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
-}
-
-void PrintValue(std::ostream &output, const std::string &org_tab,
-                const std::string &value, const std::string &item_name,
-                bool last_child) {
-    output << org_tab << SPACE_ST << item_name << ": " << value;
-}
-
-void PrintValue(std::ostream &output, const std::string &org_tab,
-                const std::vector<std::string> &vec,
-                const std::string &item_name, bool last_child) {
-    std::string value = "";
-    for (auto item : vec) {
-        value.append(item).append(",");
-    }
-    if (vec.size() > 0) {
-        value.pop_back();
-    }
-    output << org_tab << SPACE_ST << item_name << ": " << value;
 }
 
 void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {

@@ -79,12 +79,15 @@ void ProjectListPlanNode::Print(std::ostream &output,
                                 const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    if (!is_window_agg_) {
+    if (nullptr == w_ptr_) {
         PrintPlanVector(output, org_tab + INDENT, projects,
                         "projects on table " + table_, true);
     } else {
+        PrintSQLNode(output, org_tab,
+                     const_cast<SQLNode*>(dynamic_cast<const SQLNode*>(w_ptr_)), "window", false);
         PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on window " + w_, true);
+                        "projects on window " + w_ptr_->GetName(), true);
+        output << "\n";
     }
     output << "\n";
     PrintPlanVector(output, org_tab + INDENT, children_, "children", true);

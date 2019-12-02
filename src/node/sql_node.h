@@ -359,25 +359,25 @@ class WindowDefNode : public SQLNode {
 
     ~WindowDefNode() {}
 
-    std::string GetName() const { return window_name_; }
+    const std::string& GetName() const { return window_name_; }
 
     void SetName(const std::string &name) { window_name_ = name; }
 
-    NodePointVector &GetPartitions() { return partition_list_ptr_; }
+    std::vector<std::string> &GetPartitions() { return partitions_; }
 
-    NodePointVector &GetOrders() { return order_list_ptr_; }
+    std::vector<std::string> &GetOrders() { return orders_; }
 
     SQLNode *GetFrame() const { return frame_ptr_; }
 
-    void SetFrame(SQLNode *frame) { frame_ptr_ = frame; }
+    void SetFrame(FrameNode *frame) { frame_ptr_ = frame; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     std::string window_name_; /* window's own name */
-    SQLNode *frame_ptr_;      /* expression for starting bound, if any */
-    NodePointVector partition_list_ptr_; /* PARTITION BY expression list */
-    NodePointVector order_list_ptr_;     /* ORDER BY (list of SortBy) */
+    FrameNode *frame_ptr_;      /* expression for starting bound, if any */
+    std::vector<std::string> partitions_; /* PARTITION BY expression list */
+    std::vector<std::string> orders_;     /* ORDER BY (list of SortBy) */
 };
 
 class ExprListNode : public ExprNode {
@@ -939,7 +939,7 @@ class StructExpr : public ExprNode {
     FnNodeList *methods_;
 };
 
-std::string WindowOfExpression(ExprNode *node_ptr);
+WindowDefNode* WindowOfExpression(std::map<std::string, WindowDefNode*> windows, ExprNode *node_ptr);
 void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,
     std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)

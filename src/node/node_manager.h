@@ -55,7 +55,7 @@ class NodeManager {
     PlanNode *MakeBinaryPlanNode(const PlanType &type);
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     ProjectListPlanNode *MakeProjectListPlanNode(const std::string &table,
-                                                 const std::string &w);
+                                                 node::WindowDefNode *w);
     ScanPlanNode *MakeSeqScanPlanNode(const std::string &table);
     ScanPlanNode *MakeIndexScanPlanNode(const std::string &table);
     ProjectPlanNode *MakeProjectPlanNode(node::SQLNode *expression,
@@ -72,7 +72,7 @@ class NodeManager {
     ExprNode *MakeFuncNode(const std::string &name, SQLNodeList *args,
                            SQLNode *over);
     SQLNode *MakeWindowDefNode(const std::string &name);
-    SQLNode *MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList *orders,
+    SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprListNode *orders,
                                SQLNode *frame);
     SQLNode *MakeOrderByNode(SQLNode *node_ptr);
     SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);

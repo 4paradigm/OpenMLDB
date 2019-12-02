@@ -16,7 +16,9 @@
  */
 
 #include "vm/engine.h"
+#include <codegen/buf_ir_builder.h>
 #include "base/strings.h"
+#include "base/window.cc"
 
 namespace fesql {
 namespace vm {
@@ -83,7 +85,6 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 
 RunSession::RunSession() {}
 RunSession::~RunSession() {}
-
 int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
     // Simple op runner
     ScanOp* scan_op = (ScanOp*)(compile_info_->sql_ctx.ops.ops[0]);
@@ -95,14 +96,28 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
         LOG(WARNING) << "fail to find table with tid " << scan_op->tid;
         return -1;
     }
+
+    uint32_t key_offset;
+    ::fesql::type::Type key_type;
+    if (project_op->window_agg) {
+        codegen::BufIRBuilder buf_ir_builder(&status->table_def, nullptr,
+                                             nullptr);
+        if (!project_op->w.keys.empty())
+            if (!buf_ir_builder.GetFieldOffset(project_op->w.keys[0],
+                                               key_offset, key_type)) {
+                LOG(WARNING)
+                    << "can not find partition " << project_op->w.keys[0];
+                return 1;
+            }
+    }
+
     ::fesql::storage::TableIterator* it = status->table->NewIterator();
     it->SeekToFirst();
     uint32_t min = limit;
     if (min > limit_op->limit) {
         min = limit_op->limit;
     }
-    int32_t (*udf)(int8_t*, int8_t*) =
-        (int32_t(*)(int8_t*, int8_t*))project_op->fn;
+
     uint32_t count = 0;
     while (it->Valid() && count < min) {
         ::fesql::storage::Slice value = it->GetValue();
@@ -112,12 +127,60 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
         int8_t* output = (int8_t*)malloc(2 + project_op->output_size);
         int8_t* row =
             reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
-        uint32_t ret = udf(row, output + 2);
-        if (ret != 0) {
-            LOG(WARNING) << "fail to run udf " << ret;
-            delete it;
-            return 1;
+
+        int32_t (*udf)(int8_t*, int8_t*) =
+            (int32_t(*)(int8_t*, int8_t*))project_op->fn;
+
+        // handle window
+        if (project_op->window_agg) {
+            std::string key_name;
+            const int8_t* ptr = row + key_offset;
+            switch (key_type) {
+                case fesql::type::kInt32: {
+                    int32_t value = *((int64_t*)ptr);
+                    key_name = std::to_string(value);
+                    break;
+                }
+                case fesql::type::kInt64: {
+                    int64_t value = *((int64_t*)ptr);
+                    key_name = std::to_string(value);
+                    break;
+                }
+                default: {
+                }
+            }
+
+            // scan window with single key
+            ::fesql::storage::TableIterator* window_it =
+                status->table->NewIterator(key_name);
+            std::vector<::fesql::base::Row> window;
+            window_it->SeekToFirst();
+            while (window_it->Valid()) {
+                ::fesql::base::Row w_row;
+                ::fesql::storage::Slice value = window_it->GetValue();
+                w_row.buf =
+                    reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
+                window.push_back(w_row);
+                window_it->Next();
+            }
+            fesql::base::WindowIteratorImpl impl(window);
+            uint32_t ret = udf((int8_t*)(&impl), output + 2);
+            if (ret != 0) {
+                LOG(WARNING) << "fail to run udf " << ret;
+                delete it;
+                return 1;
+            }
+
+        } else {
+            uint32_t ret = udf(row, output + 2);
+
+            if (ret != 0) {
+                LOG(WARNING) << "fail to run udf " << ret;
+                delete it;
+                return 1;
+            }
         }
+
         buf.push_back(output);
         it->Next();
         count++;

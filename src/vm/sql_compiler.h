@@ -53,7 +53,8 @@ class SQLCompiler {
     bool Compile(SQLContext& ctx, Status &status);//NOLINT
 
  private:
-
+    void RegisterDyLib(FeSQLJIT *jit, ::llvm::orc::JITDylib &jd);
+    void RegisterUDF(::llvm::Module* m);
     bool Parse(SQLContext &ctx,
                ::fesql::node::NodeManager& node_mgr,
                ::fesql::node::PlanNodeList& trees, Status &status);

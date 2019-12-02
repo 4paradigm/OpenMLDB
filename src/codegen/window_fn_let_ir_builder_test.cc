@@ -237,7 +237,7 @@ TEST_P(WindowFnLetIRBuilderTest, WindowIteratorImplWithOffsetTest) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_get_col", *ctx);
-    RowFnLetIRBuilder ir_builder(&table, m.get());
+    RowFnLetIRBuilder ir_builder(&table, m.get(), true);
 
     BufIRBuilder buf_ir_builder(&table, NULL, NULL);
     uint32_t offset;

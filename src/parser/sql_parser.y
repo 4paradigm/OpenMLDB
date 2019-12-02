@@ -362,7 +362,7 @@ typedef void* yyscan_t;
 
  /* insert table */
 %type<node> insert_stmt
-%type<exprlist> insert_expr_list column_ref_list
+%type<exprlist> insert_expr_list column_ref_list opt_partition_clause sort_clause opt_sort_clause
 %type<expr> insert_expr
 
  /* create table */
@@ -374,8 +374,8 @@ typedef void* yyscan_t;
 %type <list> opt_target_list
             select_projection_list expr_list
             table_references
-            opt_sort_clause sort_clause sortby_list
-            window_clause window_definition_list opt_partition_clause
+
+            window_clause window_definition_list
 
 %type <strval> relation_name relation_factor
                column_name
@@ -959,7 +959,7 @@ opt_existing_window_name:
 
                         ;
 
-opt_partition_clause: PARTITION BY expr_list		{ $$ = $3; }
+opt_partition_clause: PARTITION BY column_ref_list		{ $$ = $3; }
 			            | /*EMPTY*/					{ $$ = NULL; }
 
 
@@ -983,28 +983,8 @@ opt_sort_clause:
 		    ;
 
 sort_clause:
-			ORDER BY sortby_list					{ $$ = $3; }
+			ORDER BY column_ref_list					{ $$ = $3; }
 		    ;
-
-sortby_list:
-			sortby
-			{
-			     $$ = node_manager->MakeNodeList($1);
-			}
-			|sortby_list ',' sortby 			{
-				$$ = $1;
-                $$->PushBack($3);
-
-			}
-		    ;
-
-sortby:	column_name
-		{
-		    ::fesql::node::SQLNode* node_ptr = node_manager->MakeColumnRefNode($1, "");
-		    $$ = node_manager->MakeOrderByNode(node_ptr);
-		}
-		;
-
 /*===========================================================
  *
  *	Frame Clasuse

@@ -52,6 +52,9 @@ class RunSession {
     }
 
     int32_t Run(std::vector<int8_t*>& buf, uint32_t limit);
+    int32_t RunProjectOp(ProjectOp* project_op,
+                                     std::shared_ptr<TableStatus> status,
+                                     int8_t* row, int8_t* output);
 
  private:
 

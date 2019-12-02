@@ -113,12 +113,13 @@ TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
 
 TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     int64_t val = 86400000L;
-    SQLNodeList *partitions = node_manager_->MakeNodeList();
-    SQLNode *ptr1 = node_manager_->MakeColumnRefNode("keycol", "");
+
+    ExprListNode *partitions = node_manager_->MakeExprList();
+    ExprNode *ptr1 = node_manager_->MakeColumnRefNode("keycol", "");
     partitions->PushBack(ptr1);
 
-    SQLNode *ptr2 = node_manager_->MakeColumnRefNode("col1", "");
-    SQLNodeList *orders = node_manager_->MakeNodeList();
+    ExprNode *ptr2 = node_manager_->MakeColumnRefNode("col1", "");
+    ExprListNode *orders = node_manager_->MakeExprList();
     orders->PushBack(ptr2);
 
     SQLNode *frame = node_manager_->MakeFrameNode(
@@ -130,12 +131,9 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     std::cout << *node_ptr << std::endl;
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
     //
-    NodePointVector vector1;
-    vector1.push_back(ptr1);
-    NodePointVector vector2;
-    vector2.push_back(ptr2);
-    ASSERT_EQ(vector1, node_ptr->GetPartitions());
-    ASSERT_EQ(vector2, node_ptr->GetOrders());
+
+    ASSERT_EQ(std::vector<std::string>({"keycol"}), node_ptr->GetPartitions());
+    ASSERT_EQ(std::vector<std::string>({"col1"}), node_ptr->GetOrders());
     ASSERT_EQ(frame, node_ptr->GetFrame());
     ASSERT_EQ("", node_ptr->GetName());
 }

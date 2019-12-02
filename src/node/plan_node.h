@@ -182,9 +182,9 @@ class ProjectPlanNode : public LeafPlanNode {
 
 class ProjectListPlanNode : public MultiChildPlanNode {
  public:
-    ProjectListPlanNode() : MultiChildPlanNode(kProjectList), is_window_agg_(false) {}
-    ProjectListPlanNode(const std::string &table, const std::string &w, const bool is_window_agg)
-        : MultiChildPlanNode(kProjectList), table_(table), w_(w), is_window_agg_(is_window_agg) {}
+    ProjectListPlanNode() : MultiChildPlanNode(kProjectList), w_ptr_(nullptr), is_window_agg_(false) {}
+    ProjectListPlanNode(const std::string &table, WindowDefNode* w_ptr, const bool is_window_agg)
+        : MultiChildPlanNode(kProjectList), table_(table), w_ptr_(w_ptr), is_window_agg_(is_window_agg) {}
     ~ProjectListPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -193,7 +193,7 @@ class ProjectListPlanNode : public MultiChildPlanNode {
 
     const std::string GetTable() const { return table_; }
 
-    const std::string& GetW() const { return w_; }
+    WindowDefNode* GetW() const { return w_ptr_; }
 
     const bool IsWindowAgg() const {
         return is_window_agg_;
@@ -201,7 +201,7 @@ class ProjectListPlanNode : public MultiChildPlanNode {
  private:
     PlanNodeList projects;
     std::string table_;
-    std::string w_;
+    WindowDefNode * w_ptr_;
     bool is_window_agg_;
 };
 

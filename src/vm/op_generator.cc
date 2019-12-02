@@ -16,6 +16,8 @@
  */
 
 #include "vm/op_generator.h"
+
+#include <codegen/buf_ir_builder.h>
 #include <proto/common.pb.h>
 
 #include "codegen/fn_ir_builder.h"
@@ -44,7 +46,7 @@ bool OpGenerator::Gen(const ::fesql::node::PlanNodeList& trees,
         switch (node->GetType()) {
             case ::fesql::node::kPlanTypeFuncDef: {
                 const ::fesql::node::FuncDefPlanNode* func_def_plan =
-                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*> (node);
+                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
                 bool ok = GenFnDef(module, func_def_plan);
                 if (!ok) {
                     status.code = (common::kCodegenError);
@@ -177,7 +179,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
 
     // TODO(wangtaize) use ops end op output schema
     ::fesql::codegen::RowFnLetIRBuilder builder(&table_status->table_def,
-                                                module);
+                                                module, node->IsWindowAgg());
     std::string fn_name = "__internal_sql_codegen";
     std::vector<::fesql::type::ColumnDef> output_schema;
     bool ok = builder.Build(fn_name, node, output_schema);
@@ -218,6 +220,20 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     pop->fn_name = fn_name;
     pop->fn = NULL;
     pop->output_size = output_size;
+    // handle window info
+    if (nullptr != node->GetW()) {
+        pop->window_agg = true;
+        pop->w.keys = node->GetW()->GetPartitions();
+        pop->w.orders = node->GetW()->GetOrders();
+        pop->w.tid = table_status->tid;
+        pop->w.db = table_status->db;
+        pop->w.pid = table_status->pid;
+        ::fesql::codegen::BufIRBuilder buf_if_builder(&table_status->table_def,
+                                                      nullptr, nullptr);
+
+    } else {
+        pop->window_agg = false;
+    }
     ops->ops.push_back((OpNode*)pop);
     DLOG(INFO) << "project output size " << output_size;
     return true;

@@ -82,12 +82,34 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *partitions,
-                                        SQLNodeList *orders, SQLNode *frame) {
+SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
+                                        ExprListNode *orders, SQLNode *frame) {
     WindowDefNode *node_ptr = new WindowDefNode();
-    FillSQLNodeList2NodeVector(partitions, node_ptr->GetPartitions());
-    FillSQLNodeList2NodeVector(orders, node_ptr->GetOrders());
-    node_ptr->SetFrame(frame);
+    for(auto expr: orders->children) {
+        switch (expr->GetExprType()) {
+            case kExprColumnRef:
+                node_ptr->GetOrders().push_back(dynamic_cast<ColumnRefNode*>(expr)->GetColumnName());
+                break;
+            default:{
+                LOG(WARNING) << "fail to create window node with invalid expr";
+                delete node_ptr;
+                return nullptr;
+            }
+        }
+    }
+    for(auto expr: partitions->children) {
+        switch (expr->GetExprType()) {
+            case kExprColumnRef:
+                node_ptr->GetPartitions().push_back(dynamic_cast<ColumnRefNode*>(expr)->GetColumnName());
+                break;
+            default:{
+                LOG(WARNING) << "fail to create window node with invalid expr";
+                delete node_ptr;
+                return nullptr;
+            }
+        }
+    }
+    node_ptr->SetFrame(dynamic_cast<FrameNode*>(frame));
     return RegisterNode(node_ptr);
 }
 
@@ -320,8 +342,8 @@ ScanPlanNode *NodeManager::MakeIndexScanPlanNode(const std::string &table) {
 }
 
 ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(
-    const std::string &table, const std::string &w) {
-    ProjectListPlanNode *node_ptr = new ProjectListPlanNode(table, w, !w.empty());
+    const std::string &table, WindowDefNode* w_ptr) {
+    ProjectListPlanNode *node_ptr = new ProjectListPlanNode(table, w_ptr, w_ptr != nullptr);
     RegisterNode(node_ptr);
     return node_ptr;
 }

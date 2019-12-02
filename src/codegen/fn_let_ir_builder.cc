@@ -26,8 +26,8 @@ namespace fesql {
 namespace codegen {
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(::fesql::type::TableDef* table,
-                                     ::llvm::Module* module)
-    : table_(table), module_(module) {}
+                                     ::llvm::Module* module, bool is_window_agg)
+    : table_(table), module_(module), is_window_agg_(is_window_agg) {}
 
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
@@ -144,7 +144,6 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
     ExprIRBuilder sql_expr_ir_builder(block, &sv, &buf_ir_builder,
                                       !node->IsWindowAgg(), row_ptr_name,
                                       module_);
-
     const ::fesql::node::PlanNodeList& children = node->GetProjects();
     ::fesql::node::PlanNodeList::const_iterator it = children.begin();
     int64_t offset = 0;
@@ -154,7 +153,6 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
             LOG(WARNING) << "plan node is null";
             continue;
         }
-
         if (pn->GetType() != ::fesql::node::kProject) {
             LOG(WARNING) << "project node is required but "
                          << ::fesql::node::NameOfPlanNodeType(pn->GetType());

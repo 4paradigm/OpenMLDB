@@ -13,10 +13,10 @@
 namespace fesql {
 namespace base {
 template <class V>
-class Iterator {
+class IteratorV {
  public:
-    Iterator() {}
-    virtual ~Iterator() {}
+    IteratorV() {}
+    virtual ~IteratorV() {}
     virtual bool Valid() const = 0;
     virtual V Next() = 0;
     virtual void reset() = 0;

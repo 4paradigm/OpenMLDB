@@ -287,31 +287,11 @@ void FeSQLAnalyser::TransformWindowDef(
     node::WindowDefNode *node_ptr, const std::string &table_name,
     Status &status) {  // NOLINT (runtime/references)
     // TODO(chenjing): window is exist
-    // TODO(chenjing): window is redefined
-    for (auto partition : node_ptr->GetPartitions()) {
-        TransformPartition(partition, table_name, status);
-        if (0 != status.code) {
-            return;
-        }
-    }
+    // TODO(chenjing): partions type is valid
+    // TODO(chenjing): order type is valid
 
-    for (auto order : node_ptr->GetOrders()) {
-        TransformOrder(order, table_name, status);
-        if (0 != status.code) {
-            return;
-        }
-    }
 }
 
-void FeSQLAnalyser::TransformOrder(
-    SQLNode *node_ptr, const std::string &table_name,
-    Status &status) {  // NOLINT (runtime/references)
-}
-
-void FeSQLAnalyser::TransformPartition(
-    SQLNode *node_ptr, const std::string &table_name,
-    Status &status) {  // NOLINT (runtime/references)
-}
 
 void FeSQLAnalyser::TransformExprNode(
     SQLNode *node_ptr, const std::string &table_name,

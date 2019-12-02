@@ -58,7 +58,7 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
     const node::TableNode *table_node_ptr =
         (const node::TableNode *)table_ref_list.at(0);
     node::PlanNode *current_node = select_plan;
-    std::map<std::string, node::ProjectListPlanNode *> project_list_map;
+    std::map<const node::WindowDefNode*, node::ProjectListPlanNode *> project_list_map;
     // set limit
     if (nullptr != root->GetLimit()) {
         const node::LimitNode *limit_ptr = (node::LimitNode *)root->GetLimit();
@@ -68,6 +68,15 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
         limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
         current_node->AddChild(limit_plan_ptr);
         current_node = limit_plan_ptr;
+    }
+
+    // prepare window def
+    std::map<std::string, node::WindowDefNode *> windows;
+    if (!root->GetWindowList().empty()) {
+        for (auto node : root->GetWindowList()) {
+            node::WindowDefNode *w = dynamic_cast<node::WindowDefNode *>(node);
+            windows[w->GetName()] = w;
+        }
     }
 
     // prepare project list plan node
@@ -84,17 +93,13 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
             if (0 != status.code) {
                 return status.code;
             }
-            std::string key = project_node_ptr->GetW().empty()
-                                  ? project_node_ptr->GetTable()
-                                  : project_node_ptr->GetW();
-            if (project_list_map.find(key) == project_list_map.end()) {
-                project_list_map[key] =
-                    project_node_ptr->GetW().empty()
-                        ? node_manager_->MakeProjectListPlanNode(key, "")
-                        : node_manager_->MakeProjectListPlanNode(
-                              project_node_ptr->GetTable(), key);
+            node::WindowDefNode * w_ptr = node::WindowOfExpression(windows, project_node_ptr->GetExpression());
+
+            if (project_list_map.find(w_ptr) == project_list_map.end()) {
+                project_list_map[w_ptr] =  node_manager_->MakeProjectListPlanNode(
+                              project_node_ptr->GetTable(), w_ptr);
             }
-            project_list_map[key]->AddProject(project_node_ptr);
+            project_list_map[w_ptr]->AddProject(project_node_ptr);
         }
 
         for (auto &v : project_list_map) {
@@ -122,11 +127,13 @@ void Planner::CreateProjectPlanNode(
     switch (root->GetType()) {
         case node::kResTarget: {
             const node::ResTarget *target_ptr = (const node::ResTarget *)root;
-            std::string w = node::WindowOfExpression(target_ptr->GetVal());
-            plan_tree->SetW(w);
+
             if (target_ptr->GetName().empty()) {
-                if (target_ptr->GetVal()->GetExprType() == node::kExprColumnRef) {
-                    plan_tree->SetName(dynamic_cast<node::ColumnRefNode*>(target_ptr->GetVal())->GetColumnName());
+                if (target_ptr->GetVal()->GetExprType() ==
+                    node::kExprColumnRef) {
+                    plan_tree->SetName(dynamic_cast<node::ColumnRefNode *>(
+                                           target_ptr->GetVal())
+                                           ->GetColumnName());
                 }
             } else {
                 plan_tree->SetName(target_ptr->GetName());
@@ -221,8 +228,8 @@ int SimplePlanner::CreatePlanTree(
                 node::PlanNode *fn_plan =
                     node_manager_->MakePlanNode(node::kPlanTypeFuncDef);
                 CreateFuncDefPlan(
-                    parser_tree,
-                    dynamic_cast<node::FuncDefPlanNode*>(fn_plan), status);
+                    parser_tree, dynamic_cast<node::FuncDefPlanNode *>(fn_plan),
+                    status);
                 plan_trees.push_back(fn_plan);
                 break;
             }
@@ -238,10 +245,10 @@ int SimplePlanner::CreatePlanTree(
     return status.code;
 }
 void Planner::CreateFuncDefPlan(const SQLNode *root,
-                                      node::FuncDefPlanNode *plan,
-                                      Status &status) {
+                                node::FuncDefPlanNode *plan, Status &status) {
     if (nullptr == root) {
-        status.msg = "fail to create func def plan node: query tree node it null";
+        status.msg =
+            "fail to create func def plan node: query tree node it null";
         status.code = common::kSQLError;
         LOG(WARNING) << status.msg;
         return;
@@ -249,16 +256,17 @@ void Planner::CreateFuncDefPlan(const SQLNode *root,
 
     if (root->GetType() != node::kFnList) {
         status.code = common::kSQLError;
-        status.msg = "fail to create cmd plan node: query tree node it not function def type";
+        status.msg =
+            "fail to create cmd plan node: query tree node it not function def "
+            "type";
         LOG(WARNING) << status.msg;
         return;
     }
-    plan->SetFuNodeList(dynamic_cast<const node::FnNodeList*>(root));
+    plan->SetFuNodeList(dynamic_cast<const node::FnNodeList *>(root));
 }
 
-
-void Planner::CreateInsertPlan(const node::SQLNode* root,
-                               node::InsertPlanNode*plan, Status &status) {
+void Planner::CreateInsertPlan(const node::SQLNode *root,
+                               node::InsertPlanNode *plan, Status &status) {
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kSQLError;
@@ -273,7 +281,7 @@ void Planner::CreateInsertPlan(const node::SQLNode* root,
         return;
     }
 
-    plan->SetInsertNode(dynamic_cast<const node::InsertStmt*>(root));
+    plan->SetInsertNode(dynamic_cast<const node::InsertStmt *>(root));
 }
 
 void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
@@ -409,9 +417,6 @@ std::string GenerateName(const std::string prefix, int id) {
         prefix + "_" + std::to_string(id) + "_" + std::to_string(t);
     return name;
 }
-
-
-
 
 }  // namespace  plan
 }  // namespace fesql

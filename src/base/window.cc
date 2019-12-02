@@ -20,7 +20,7 @@ class ColumnIteratorImpl;
 
 template <class V>
 
-class IteratorImpl : public Iterator<V> {
+class IteratorImpl : public IteratorV<V> {
  public:
     explicit IteratorImpl() : list_(), start_(0), end_(0), pos_(0) {}
     explicit IteratorImpl(IteratorImpl<V> &impl)

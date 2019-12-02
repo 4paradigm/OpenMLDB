@@ -34,7 +34,6 @@ class TabletSdkImpl;
 class ResultSetImpl;
 class ResultSetIteratorImpl;
 
-
 class ResultSetIteratorImpl : public ResultSetIterator {
  public:
     ResultSetIteratorImpl(tablet::QueryResponse* response);
@@ -153,7 +152,7 @@ class ResultSetImpl : public ResultSet {
     const DataType GetColumnType(uint32_t i) const {
         return DataTypeFromProtoType(response_.schema(i).type());
     }
-    
+
     const uint32_t GetRowCnt() const { return response_.result_set_size(); }
 
     std::unique_ptr<ResultSetIterator> Iterator() {

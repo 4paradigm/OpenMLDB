@@ -42,12 +42,26 @@ struct ScanOp {
     std::vector<::fesql::type::ColumnDef> output_schema;
 };
 
+//TODO(chenjing): WindowOp
+struct ScanInfo {
+    std::string db;
+    uint32_t tid;
+    uint32_t pid;
+    std::vector<std::string> keys;
+    std::vector<std::string> orders;
+    //todo(chenjing): start and end parse
+    int start_offset;
+    int end_offset;
+};
+
 struct ProjectOp {
     OpType type;
     std::vector<::fesql::type::ColumnDef> output_schema;
     uint32_t output_size;
     int8_t* fn;
     std::string fn_name;
+    bool window_agg;
+    ScanInfo w;
 };
 
 struct LimitOp {

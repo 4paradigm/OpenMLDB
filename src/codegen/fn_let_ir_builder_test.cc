@@ -134,7 +134,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
         = (::fesql::node::ProjectListPlanNode*)(trees[0]->GetChildren()[0]->GetChildren()[0]);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(&table, m.get());
+    RowFnLetIRBuilder ir_builder(&table, m.get(), false);
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
@@ -186,7 +186,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     auto m = make_unique<Module>("test_project", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(&table, m.get());
+    RowFnLetIRBuilder ir_builder(&table, m.get(), false);
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
@@ -235,7 +235,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     RegisterUDFToModule(m.get());
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(&table, m.get());
+    RowFnLetIRBuilder ir_builder(&table, m.get(), false);
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
@@ -325,7 +325,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_udf_project) {
     RegisterUDFToModule(m.get());
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(&table, m.get());
+    RowFnLetIRBuilder ir_builder(&table, m.get(), true);
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);

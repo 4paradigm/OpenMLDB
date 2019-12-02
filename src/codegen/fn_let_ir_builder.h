@@ -35,7 +35,7 @@ class RowFnLetIRBuilder {
 
  public:
     RowFnLetIRBuilder(::fesql::type::TableDef* table,
-            ::llvm::Module* module);
+            ::llvm::Module* module, bool is_window_agg);
 
     ~RowFnLetIRBuilder();
 
@@ -67,6 +67,7 @@ class RowFnLetIRBuilder {
     // input schema
     ::fesql::type::TableDef* table_;
     ::llvm::Module* module_;
+    bool is_window_agg_;
 };
 
 }  // namespace codegen
