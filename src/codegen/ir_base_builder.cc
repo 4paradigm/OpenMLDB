@@ -16,68 +16,63 @@
  */
 
 #include "codegen/ir_base_builder.h"
+#include <vector>
 #include "glog/logging.h"
 
 namespace fesql {
 namespace codegen {
 
-bool GetLLVMType(::llvm::IRBuilder<>& builder, const ::fesql::type::Type& type,  // NOLINT
-                 ::llvm::Type** output) {
+bool GetLLVMType(::llvm::IRBuilder<>& builder,  // NOLINT
+                 const ::fesql::type::Type& type, ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
     }
 
-    switch(type) {
-        case ::fesql::type::kInt16: 
-            {
-                *output = builder.getInt16Ty();
-                return true;
-            }
-        case ::fesql::type::kInt32:
-            {
-                *output = builder.getInt32Ty();
-                return true;
-            }
-        case ::fesql::type::kInt64:
-            {
-                *output = builder.getInt64Ty();
-                return true;
-            }
-        case ::fesql::type::kFloat:
-            {
-                *output = builder.getFloatTy();
-                return true;
-            }
-        case ::fesql::type::kDouble:
-            {
-                *output = builder.getDoubleTy();
-                return true;
-            }
-        case ::fesql::type::kVarchar:
-            {
-                ::llvm::StructType* type =
-                ::llvm::StructType::create(builder.getContext(), "fe.string_ref");
-                ::llvm::Type* size_ty = builder.getInt32Ty();
-                ::llvm::Type* data_ptr_ty = builder.getInt8PtrTy();
-                std::vector<::llvm::Type*> elements;
-                elements.push_back(size_ty);
-                elements.push_back(data_ptr_ty);
-                type->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
-                *output = type;
-                return true;
-            }
-        default:
-            {
-                LOG(WARNING) << "not supported type " << ::fesql::type::Type_Name(type);
-                return false;
-            }
+    switch (type) {
+        case ::fesql::type::kInt16: {
+            *output = builder.getInt16Ty();
+            return true;
+        }
+        case ::fesql::type::kInt32: {
+            *output = builder.getInt32Ty();
+            return true;
+        }
+        case ::fesql::type::kInt64: {
+            *output = builder.getInt64Ty();
+            return true;
+        }
+        case ::fesql::type::kFloat: {
+            *output = builder.getFloatTy();
+            return true;
+        }
+        case ::fesql::type::kDouble: {
+            *output = builder.getDoubleTy();
+            return true;
+        }
+        case ::fesql::type::kVarchar: {
+            ::llvm::StructType* type = ::llvm::StructType::create(
+                builder.getContext(), "fe.string_ref");
+            ::llvm::Type* size_ty = builder.getInt32Ty();
+            ::llvm::Type* data_ptr_ty = builder.getInt8PtrTy();
+            std::vector<::llvm::Type*> elements;
+            elements.push_back(size_ty);
+            elements.push_back(data_ptr_ty);
+            type->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
+            *output = type;
+            return true;
+        }
+        default: {
+            LOG(WARNING) << "not supported type "
+                         << ::fesql::type::Type_Name(type);
+            return false;
+        }
     }
 }
 
-bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder, ::llvm::Value* ptr,  // NOLINT
-                       ::llvm::Value* offset, ::llvm::Type* type,
-                       ::llvm::Value** outptr) {
+bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
+                       ::llvm::Value* ptr, ::llvm::Value* offset,
+                       ::llvm::Type* type, ::llvm::Value** outptr) {
     if (outptr == NULL) {
         LOG(WARNING) << "outptr is null";
         return false;
@@ -108,9 +103,7 @@ bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder, ::llvm::Value* ptr,  // NOL
     return true;
 }
 
-bool GetTableType(::llvm::Type* type,
-        ::fesql::type::Type* output) {
-
+bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
     if (type == NULL || output == NULL) {
         LOG(WARNING) << "type or output is null";
         return false;
@@ -152,9 +145,9 @@ bool GetTableType(::llvm::Type* type,
     }
 }
 
-bool BuildLoadOffset(::llvm::IRBuilder<>& builder, ::llvm::Value* ptr,  // NOLINT
-                     ::llvm::Value* offset, ::llvm::Type* type,
-                     ::llvm::Value** output) {
+bool BuildLoadOffset(::llvm::IRBuilder<>& builder,  // NOLINT
+                     ::llvm::Value* ptr, ::llvm::Value* offset,
+                     ::llvm::Type* type, ::llvm::Value** output) {
     if (!ptr->getType()->isPointerTy()) {
         LOG(WARNING) << "ptr should be pointer but "
                      << ptr->getType()->getTypeID();
@@ -182,17 +175,18 @@ bool BuildLoadOffset(::llvm::IRBuilder<>& builder, ::llvm::Value* ptr,  // NOLIN
     return true;
 }
 
-bool BuildStoreOffset(::llvm::IRBuilder<>& builder, ::llvm::Value* ptr,  // NOLINT
-                      ::llvm::Value* offset, ::llvm::Value* value) {
+bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
+                      ::llvm::Value* ptr, ::llvm::Value* offset,
+                      ::llvm::Value* value) {
     if (ptr == NULL || offset == NULL || value == NULL) {
         LOG(WARNING) << "ptr or offset or value is null";
         return false;
     }
-    // TODO check ptr type match value type
+    // TODO(wangtaize) check ptr type match value type
     ::llvm::Value* ptr_with_offset = NULL;
-    bool ok = BuildGetPtrOffset(builder, ptr, offset,
-            value->getType()->getPointerTo(),
-            &ptr_with_offset);
+    bool ok =
+        BuildGetPtrOffset(builder, ptr, offset,
+                          value->getType()->getPointerTo(), &ptr_with_offset);
     if (!ok || ptr_with_offset == NULL) {
         LOG(WARNING) << "fail to get offset ptr";
         return false;

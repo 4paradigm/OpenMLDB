@@ -30,13 +30,10 @@ namespace codegen {
 class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
-    ExprIRBuilder(::llvm::BasicBlock* block, 
-            ScopeVar* scope_var,
-            BufIRBuilder* buf_ir_builder,
-            const std::string& row_ptr_name,
-            const std::string& row_size_name,
-            const std::string& output_ptr_name,
-            ::llvm::Module* module);
+    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
+                  BufIRBuilder* buf_ir_builder, const std::string& row_ptr_name,
+                  const std::string& row_size_name,
+                  const std::string& output_ptr_name, ::llvm::Module* module);
     ~ExprIRBuilder();
 
     bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);

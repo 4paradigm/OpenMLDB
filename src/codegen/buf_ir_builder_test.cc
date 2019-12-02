@@ -18,7 +18,7 @@
 #include "codegen/buf_ir_builder.h"
 #include <stdio.h>
 #include <memory>
-
+#include <vector>
 #include "gtest/gtest.h"
 
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"

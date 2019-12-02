@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-#include <memory>
-#include <vector>
-#include <string>
 #include "codegen/fn_let_ir_builder.h"
+#include <memory>
+#include <string>
+#include <vector>
 #include "codegen/fn_ir_builder.h"
 #include "gtest/gtest.h"
 
@@ -39,8 +39,8 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 
-using namespace llvm;  //NOLINT
-using namespace llvm::orc;  //NOLINT
+using namespace llvm;       // NOLINT
+using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
 
@@ -210,8 +210,8 @@ TEST_F(FnLetIRBuilderTest, test_project) {
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
 
-    int32_t (*decode)(int8_t*, int32_t, int8_t*) = 
-    (int32_t (*)(int8_t*, int32_t,  int8_t*))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int32_t, int8_t*) =
+        (int32_t(*)(int8_t*, int32_t, int8_t*))load_fn_jit.getAddress();
 
     int8_t* ptr = static_cast<int8_t*>(malloc(28));
     int32_t i = 0;

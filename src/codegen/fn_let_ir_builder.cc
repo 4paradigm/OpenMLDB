@@ -41,7 +41,7 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
 
     ::llvm::Function* fn = NULL;
     std::string row_ptr_name = "row_ptr_name";
-    std::string output_ptr_name =  "output_ptr_name";
+    std::string output_ptr_name = "output_ptr_name";
     std::string row_size_name = "row_size_name";
     ::llvm::StringRef name_ref(name);
     if (module_->getFunction(name_ref) != NULL) {
@@ -52,15 +52,14 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
     bool ok = BuildFnHeader(name, &fn);
 
     if (!ok || fn == NULL) {
-        LOG(WARNING) << "fail to build fn header for name " <<  name;
+        LOG(WARNING) << "fail to build fn header for name " << name;
         return false;
     }
 
     ScopeVar sv;
     sv.Enter(name);
 
-    ok = FillArgs(row_ptr_name, row_size_name, 
-            output_ptr_name, fn, sv);
+    ok = FillArgs(row_ptr_name, row_size_name, output_ptr_name, fn, sv);
 
     if (!ok) {
         return false;
@@ -70,9 +69,8 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
 
     BufIRBuilder buf_ir_builder(table_, block, &sv);
-    ExprIRBuilder expr_ir_builder(block, &sv, 
-            &buf_ir_builder, row_ptr_name, row_size_name,
-            output_ptr_name, module_);
+    ExprIRBuilder expr_ir_builder(block, &sv, &buf_ir_builder, row_ptr_name,
+                                  row_size_name, output_ptr_name, module_);
 
     const ::fesql::node::PlanNodeList& children = node->GetProjects();
     ::fesql::node::PlanNodeList::const_iterator it = children.begin();
@@ -96,8 +94,7 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
 
         ::llvm::Value* expr_out_val = NULL;
         std::string col_name = pp_node->GetName();
-        ok = expr_ir_builder.Build(sql_node, 
-                &expr_out_val);
+        ok = expr_ir_builder.Build(sql_node, &expr_out_val);
         if (!ok) {
             return false;
         }
@@ -128,17 +125,14 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
             }
             case ::fesql::type::kInt64:
             case ::fesql::type::kDouble:
-            case ::fesql::type::kVarchar:
-                {
-                    offset += 8;
-                    break;
-                }
-            default:
-                {
-                    LOG(WARNING) << "not supported type ";
-                    return false;
-                }
-
+            case ::fesql::type::kVarchar: {
+                offset += 8;
+                break;
+            }
+            default: {
+                LOG(WARNING) << "not supported type ";
+                return false;
+            }
         }
     }
     ::llvm::IRBuilder<> ir_builder(block);
@@ -180,31 +174,28 @@ bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
     args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
     args_type.push_back(::llvm::Type::getInt32Ty(module_->getContext()));
     args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
-    ::llvm::ArrayRef<::llvm::Type *> array_ref(args_type);
-    ::llvm::FunctionType *fnt = ::llvm::FunctionType::get(::llvm::Type::getInt32Ty(module_->getContext()),
-            array_ref, 
-            false);
+    ::llvm::ArrayRef<::llvm::Type*> array_ref(args_type);
+    ::llvm::FunctionType* fnt = ::llvm::FunctionType::get(
+        ::llvm::Type::getInt32Ty(module_->getContext()), array_ref, false);
 
-     ::llvm::Function* f = ::llvm::Function::Create(fnt, 
-             ::llvm::Function::ExternalLinkage,
-             name, module_);
+    ::llvm::Function* f = ::llvm::Function::Create(
+        fnt, ::llvm::Function::ExternalLinkage, name, module_);
 
-     if (f == NULL) {
-         LOG(WARNING) << "fail to create fn with name " << name;
-         return false;
-     }
+    if (f == NULL) {
+        LOG(WARNING) << "fail to create fn with name " << name;
+        return false;
+    }
 
-     *fn = f;
-     DLOG(INFO) << "create fn header " << name  << " done";
-     return true;
+    *fn = f;
+    DLOG(INFO) << "create fn header " << name << " done";
+    return true;
 }
 
 bool RowFnLetIRBuilder::FillArgs(const std::string& row_ptr_name,
-        const std::string& row_size_name,
-        const std::string& output_ptr_name,
-        ::llvm::Function *fn,
-        ScopeVar& sv) {  // NOLINT
-
+                                 const std::string& row_size_name,
+                                 const std::string& output_ptr_name,
+                                 ::llvm::Function* fn,
+                                 ScopeVar& sv) {  // NOLINT
     if (fn == NULL || fn->arg_size() != 3) {
         LOG(WARNING) << "fn is null or fn arg size mismatch";
         return false;

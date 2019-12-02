@@ -18,8 +18,8 @@
 #ifndef SRC_VM_SQL_COMPILER_H_
 #define SRC_VM_SQL_COMPILER_H_
 
-#include <string>
 #include <memory>
+#include <string>
 #include <vector>
 #include "base/status.h"
 #include "llvm/IR/Module.h"
@@ -49,7 +49,6 @@ struct SQLContext {
 
 class SQLCompiler {
  public:
-
     explicit SQLCompiler(TableMgr* table_mgr);
 
     ~SQLCompiler();
@@ -57,9 +56,8 @@ class SQLCompiler {
     bool Compile(SQLContext& ctx, Status& status);  // NOLINT
 
  private:
-
-    bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr, // NOLINT
-               ::fesql::node::PlanNodeList& trees, Status& status);  // NOLINT
+    bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT
+               ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT
 
  private:
     TableMgr* table_mgr_;

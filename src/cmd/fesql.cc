@@ -234,8 +234,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
         stream << result_set->GetRowCnt() << " row in set" << std::endl;
     }
 }
-void PrintTableSchema(std::ostream &stream,
-                      const fesql::sdk::Schema *schema) {
+void PrintTableSchema(std::ostream &stream, const fesql::sdk::Schema *schema) {
     if (nullptr == schema || schema->GetColumnCnt() == 0) {
         stream << "Empty set" << std::endl;
         return;
@@ -266,7 +265,6 @@ void PrintTableSchema(std::ostream &stream,
 
 void PrintItems(std::ostream &stream, const std::string &head,
                 const std::vector<std::string> &items) {
-
     if (items.empty()) {
         stream << "Empty set" << std::endl;
         return;

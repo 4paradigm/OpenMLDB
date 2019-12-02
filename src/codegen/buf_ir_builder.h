@@ -62,17 +62,14 @@ class BufIRBuilder {
 };
 
 class BufNativeIRBuilder {
-
  public:
     BufNativeIRBuilder(::fesql::type::TableDef* table,
-            ::llvm::BasicBlock* block,
-            ScopeVar* scope_var);
+                       ::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~BufNativeIRBuilder();
 
-    bool BuildGetField(const std::string& name,
-            ::llvm::Value* row_ptr,
-            ::llvm::Value* row_size,
-            ::llvm::Value** output);
+    bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
+                       ::llvm::Value* row_size, ::llvm::Value** output);
+
  private:
     ::fesql::type::TableDef* const table_;
     ::llvm::BasicBlock* block_;
