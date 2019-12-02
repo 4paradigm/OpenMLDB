@@ -86,7 +86,7 @@ void ProjectListPlanNode::Print(std::ostream &output,
         PrintSQLNode(output, org_tab,
                      const_cast<SQLNode*>(dynamic_cast<const SQLNode*>(w_ptr_)), "window", false);
         PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on window " + w_ptr_->GetName(), true);
+                        "projects on window ", true);
         output << "\n";
     }
     output << "\n";

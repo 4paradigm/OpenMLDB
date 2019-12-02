@@ -140,6 +140,7 @@ enum PlanType {
     kPlanTypeLimit,
     kPlanTypeFilter,
     kProjectList,
+    kPlanTypeWindow,
     kProject,
     kScalarFunction,
     kOpExpr,

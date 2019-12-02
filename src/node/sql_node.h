@@ -292,7 +292,7 @@ class FrameBound : public SQLNode {
           bound_type_(bound_type),
           offset_(nullptr) {}
 
-    FrameBound(SQLNodeType bound_type, SQLNode *offset)
+    FrameBound(SQLNodeType bound_type, ExprNode *offset)
         : SQLNode(kFrameBound, 0, 0),
           bound_type_(bound_type),
           offset_(offset) {}
@@ -315,11 +315,11 @@ class FrameBound : public SQLNode {
 
     SQLNodeType GetBoundType() const { return bound_type_; }
 
-    SQLNode *GetOffset() const { return offset_; }
+    ExprNode *GetOffset() const { return offset_; }
 
  private:
     SQLNodeType bound_type_;
-    SQLNode *offset_;
+    ExprNode *offset_;
 };
 class FrameNode : public SQLNode {
  public:
@@ -329,7 +329,7 @@ class FrameNode : public SQLNode {
           start_(nullptr),
           end_(nullptr) {}
 
-    FrameNode(SQLNodeType frame_type, SQLNode *start, SQLNode *end)
+    FrameNode(SQLNodeType frame_type, FrameBound *start, FrameBound *end)
         : SQLNode(kFrames, 0, 0),
           frame_type_(frame_type),
           start_(start),
@@ -341,16 +341,16 @@ class FrameNode : public SQLNode {
 
     void SetFrameType(SQLNodeType frame_type) { frame_type_ = frame_type; }
 
-    SQLNode *GetStart() const { return start_; }
+    FrameBound *GetStart() const { return start_; }
 
-    SQLNode *GetEnd() const { return end_; }
+    FrameBound *GetEnd() const { return end_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     SQLNodeType frame_type_;
-    SQLNode *start_;
-    SQLNode *end_;
+    FrameBound *start_;
+    FrameBound *end_;
 };
 class WindowDefNode : public SQLNode {
  public:
@@ -359,7 +359,7 @@ class WindowDefNode : public SQLNode {
 
     ~WindowDefNode() {}
 
-    const std::string& GetName() const { return window_name_; }
+    const std::string &GetName() const { return window_name_; }
 
     void SetName(const std::string &name) { window_name_ = name; }
 
@@ -375,7 +375,7 @@ class WindowDefNode : public SQLNode {
 
  private:
     std::string window_name_; /* window's own name */
-    FrameNode *frame_ptr_;      /* expression for starting bound, if any */
+    FrameNode *frame_ptr_;    /* expression for starting bound, if any */
     std::vector<std::string> partitions_; /* PARTITION BY expression list */
     std::vector<std::string> orders_;     /* ORDER BY (list of SortBy) */
 };
@@ -530,6 +530,25 @@ class ConstNode : public ExprNode {
     double GetDouble() const { return val_.vdouble; }
 
     DataType GetDataType() const { return date_type_; }
+
+    int64_t GetMillis() const {
+        switch (date_type_) {
+            case kTypeDay:
+                return 86400000 * val_.vlong;
+            case kTypeHour:
+                return 3600000 * val_.vlong;
+            case kTypeMinute:
+                return 60000 * val_.vlong;
+            case kTypeSecond:
+                return 1000 * val_.vlong;
+            default: {
+                LOG(WARNING)
+                    << "error occur when get milli second from wrong type "
+                    << DataTypeName(date_type_);
+                return -1;
+            }
+        }
+    }
 
  private:
     DataType date_type_;
@@ -817,16 +836,10 @@ class ColumnIndexNode : public SQLNode {
                             ttl_ = ttl->GetLong();
                             break;
                         case kTypeDay:
-                            ttl_ = ttl->GetLong() * 86400000L;
-                            break;
                         case kTypeHour:
-                            ttl_ = ttl->GetLong() * 3600000L;
-                            break;
                         case kTypeMinute:
-                            ttl_ = ttl->GetLong() * 60000;
-                            break;
                         case kTypeSecond:
-                            ttl_ = ttl->GetLong() * 1000;
+                            ttl_ = ttl->GetMillis();
                             break;
                         default: {
                             ttl_ = -1;
@@ -918,28 +931,24 @@ class StructExpr : public ExprNode {
  public:
     explicit StructExpr(const std::string &name)
         : ExprNode(kExprStruct), class_name_(name) {}
-    void SetFileds(FnNodeList *fileds) {
-        fileds_ = fileds;
-    }
+    void SetFileds(FnNodeList *fileds) { fileds_ = fileds; }
     void SetMethod(FnNodeList *methods) { methods_ = methods; }
 
-    const FnNodeList* GetMethods() const { return methods_; }
+    const FnNodeList *GetMethods() const { return methods_; }
 
-    const FnNodeList* GetFileds() const {
-        return fileds_;
-    }
+    const FnNodeList *GetFileds() const { return fileds_; }
 
-    const std::string& GetName() const {
-        return class_name_;
-    }
+    const std::string &GetName() const { return class_name_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
+
  private:
     const std::string class_name_;
     FnNodeList *fileds_;
     FnNodeList *methods_;
 };
 
-WindowDefNode* WindowOfExpression(std::map<std::string, WindowDefNode*> windows, ExprNode *node_ptr);
+WindowDefNode *WindowOfExpression(
+    std::map<std::string, WindowDefNode *> windows, ExprNode *node_ptr);
 void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,
     std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)

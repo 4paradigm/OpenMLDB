@@ -58,7 +58,8 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
     const node::TableNode *table_node_ptr =
         (const node::TableNode *)table_ref_list.at(0);
     node::PlanNode *current_node = select_plan;
-    std::map<const node::WindowDefNode*, node::ProjectListPlanNode *> project_list_map;
+    std::map<const node::WindowDefNode *, node::ProjectListPlanNode *>
+        project_list_map;
     // set limit
     if (nullptr != root->GetLimit()) {
         const node::LimitNode *limit_ptr = (node::LimitNode *)root->GetLimit();
@@ -93,11 +94,26 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
             if (0 != status.code) {
                 return status.code;
             }
-            node::WindowDefNode * w_ptr = node::WindowOfExpression(windows, project_node_ptr->GetExpression());
+            node::WindowDefNode *w_ptr = node::WindowOfExpression(
+                windows, project_node_ptr->GetExpression());
 
             if (project_list_map.find(w_ptr) == project_list_map.end()) {
-                project_list_map[w_ptr] =  node_manager_->MakeProjectListPlanNode(
-                              project_node_ptr->GetTable(), w_ptr);
+                if (w_ptr == nullptr) {
+                    project_list_map[w_ptr] =
+                        node_manager_->MakeProjectListPlanNode(
+                            project_node_ptr->GetTable(), nullptr);
+                } else {
+                    node::WindowPlanNode *w_node_ptr =
+                        dynamic_cast<node::WindowPlanNode *>(
+                            node_manager_->MakePlanNode(node::kPlanTypeWindow));
+                    CreateWindowPlanNode(w_ptr, w_node_ptr, status);
+                    if (common::kOk != status.code) {
+                        return status.code;
+                    }
+                    project_list_map[w_ptr] =
+                        node_manager_->MakeProjectListPlanNode(
+                            project_node_ptr->GetTable(), w_node_ptr);
+                }
             }
             project_list_map[w_ptr]->AddProject(project_node_ptr);
         }
@@ -112,7 +128,115 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
 
     return 0;
 }
+int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
+                                   Status &status) {
+    bool negtive = false;
+    switch (bound->GetBoundType()) {
+        case node::kCurrent: {
+            return 0;
+        }
+        case node::kPreceding: {
+            negtive = true;
+            break;
+        }
+        case node::kFollowing: {
+            negtive = false;
+            break;
+        }
+        default: {
+            status.msg =
+                "cannot create window frame with unrecognized bound type, only "
+                "support CURRENT|PRECEDING|FOLLOWING";
+            status.code = common::kUnSupport;
+            return -1;
+        }
+    }
+    if (nullptr == bound->GetOffset()) {
+        return negtive ? INT64_MIN : INT64_MAX;
+    }
+    if (node::kExprPrimary != bound->GetOffset()->GetExprType()) {
+        status.msg =
+            "cannot create window frame, only support "
+            "primary frame";
+        status.code = common::kTypeError;
+        return 0;
+    }
 
+    int64_t offset = 0;
+    node::ConstNode *primary =
+        dynamic_cast<node::ConstNode *>(bound->GetOffset());
+    switch (primary->GetDataType()) {
+        case node::DataType::kTypeInt16:
+            offset = static_cast<int64_t>(primary->GetSmallInt());
+            break;
+        case node::DataType::kTypeInt32:
+            offset = static_cast<int64_t>(primary->GetInt());
+            break;
+        case node::DataType::kTypeInt64:
+            offset = (primary->GetLong());
+            break;
+        case node::DataType::kTypeDay:
+        case node::DataType::kTypeHour:
+        case node::DataType::kTypeMinute:
+        case node::DataType::kTypeSecond:
+            offset = (primary->GetMillis());
+            break;
+        default: {
+            status.msg =
+                "cannot create window frame, only support "
+                "smallint|int|bigint offset of frame";
+            status.code = common::kTypeError;
+            return 0;
+        }
+    }
+    return negtive ? -1 * offset : offset;
+}
+
+void Planner::CreateWindowPlanNode(
+    node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
+    Status &status) {  // NOLINT (runtime/references)
+
+    if (nullptr != w_ptr) {
+        int64_t start_offset = 0;
+        int64_t end_offset = 0;
+        if (nullptr != w_ptr->GetFrame()) {
+            node::FrameNode *frame =
+                dynamic_cast<node::FrameNode *>(w_ptr->GetFrame());
+            node::FrameBound *start = frame->GetStart();
+            node::FrameBound *end = frame->GetEnd();
+
+            start_offset = CreateFrameOffset(start, status);
+            if (common::kOk != status.code) {
+                LOG(WARNING)
+                    << "fail to create project list node: " << status.msg;
+                return;
+            }
+            end_offset = CreateFrameOffset(end, status);
+            if (common::kOk != status.code) {
+                LOG(WARNING)
+                    << "fail to create project list node: " << status.msg;
+                return;
+            }
+
+            if (end_offset == INT64_MAX) {
+                LOG(WARNING) << "fail to create project list node: end frame "
+                                "can't be unbound ";
+                return;
+            }
+
+            w_node_ptr->SetStartOffset(start_offset);
+            w_node_ptr->SetEndOffset(end_offset);
+            w_node_ptr->SetIsRangeBetween(node::kFrameRange ==
+                                          frame->GetFrameType());
+            w_node_ptr->SetKeys(w_ptr->GetPartitions());
+            w_node_ptr->SetOrders(w_ptr->GetOrders());
+        } else {
+            LOG(WARNING) << "fail to create project list node: right frame "
+                            "can't be unbound ";
+            return;
+        }
+    }
+}  // namespace plan
 void Planner::CreateProjectPlanNode(
     const SQLNode *root, const std::string &table_name,
     node::ProjectPlanNode *plan_tree,
@@ -418,5 +542,5 @@ std::string GenerateName(const std::string prefix, int id) {
     return name;
 }
 
-}  // namespace  plan
+}  // namespace plan
 }  // namespace fesql

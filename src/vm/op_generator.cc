@@ -223,14 +223,16 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     // handle window info
     if (nullptr != node->GetW()) {
         pop->window_agg = true;
-        pop->w.keys = node->GetW()->GetPartitions();
+        pop->w.keys = node->GetW()->GetKeys();
         pop->w.orders = node->GetW()->GetOrders();
+        pop->w.start_offset = node->GetW()->GetStartOffset();
+        pop->w.end_offset = node->GetW()->GetEndOffset();
+        pop->w.is_range_between = node->GetW()->IsRangeBetween();
         pop->w.tid = table_status->tid;
         pop->w.db = table_status->db;
         pop->w.pid = table_status->pid;
         ::fesql::codegen::BufIRBuilder buf_if_builder(&table_status->table_def,
                                                       nullptr, nullptr);
-
     } else {
         pop->window_agg = false;
     }

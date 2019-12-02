@@ -99,16 +99,21 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
 
     uint32_t key_offset;
     ::fesql::type::Type key_type;
+    uint32_t order_offset;
+    ::fesql::type::Type order_type;
     if (project_op->window_agg) {
         codegen::BufIRBuilder buf_ir_builder(&status->table_def, nullptr,
                                              nullptr);
-        if (!project_op->w.keys.empty())
-            if (!buf_ir_builder.GetFieldOffset(project_op->w.keys[0],
-                                               key_offset, key_type)) {
-                LOG(WARNING)
-                    << "can not find partition " << project_op->w.keys[0];
-                return 1;
-            }
+        if (!buf_ir_builder.GetFieldOffset(project_op->w.keys[0], key_offset,
+                                           key_type)) {
+            LOG(WARNING) << "can not find partition " << project_op->w.keys[0];
+            return 1;
+        }
+        if (!buf_ir_builder.GetFieldOffset(project_op->w.orders[0],
+                                           order_offset, order_type)) {
+            LOG(WARNING) << "can not find order " << project_op->w.orders[0];
+            return 1;
+        }
     }
 
     ::fesql::storage::TableIterator* it = status->table->NewIterator();
@@ -134,28 +139,50 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
         // handle window
         if (project_op->window_agg) {
             std::string key_name;
-            const int8_t* ptr = row + key_offset;
-            switch (key_type) {
-                case fesql::type::kInt32: {
-                    int32_t value = *((int64_t*)ptr);
-                    key_name = std::to_string(value);
-                    break;
-                }
-                case fesql::type::kInt64: {
-                    int64_t value = *((int64_t*)ptr);
-                    key_name = std::to_string(value);
-                    break;
-                }
-                default: {
+            {
+                const int8_t* ptr = row + key_offset;
+                switch (key_type) {
+                    case fesql::type::kInt32: {
+                        int32_t value = *((int64_t*)ptr);
+                        key_name = std::to_string(value);
+                        break;
+                    }
+                    case fesql::type::kInt64: {
+                        int64_t value = *((int64_t*)ptr);
+                        key_name = std::to_string(value);
+                        break;
+                    }
+                    case fesql::type::kInt16: {
+                        int16_t value = *((int16_t *)ptr);
+                        key_name = std::to_string(value);
+                        break;
+                    }
+                    default: {
+                    }
                 }
             }
-
+            int64_t ts;
+            {
+                // TODO(chenjing): handle null ts or timestamp/date ts
+                const int8_t* ptr = row + order_offset;
+                switch (order_type) {
+                    case fesql::type::kInt64: {
+                        ts = *((int64_t*)ptr);
+                        break;
+                    }
+                    default: {
+                    }
+                }
+            }
             // scan window with single key
             ::fesql::storage::TableIterator* window_it =
                 status->table->NewIterator(key_name);
             std::vector<::fesql::base::Row> window;
             window_it->SeekToFirst();
             while (window_it->Valid()) {
+//                if (window_it->GetKey() < ts + project_op->w.start_offset) {
+//                    break;
+//                }
                 ::fesql::base::Row w_row;
                 ::fesql::storage::Slice value = window_it->GetValue();
                 w_row.buf =

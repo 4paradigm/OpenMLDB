@@ -108,14 +108,22 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
         1u,
         ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
     ASSERT_EQ(nullptr, ((node::ProjectListPlanNode *)plan_vec.at(0))->GetW());
-    ASSERT_FALSE( ((node::ProjectListPlanNode *)plan_vec.at(0))->IsWindowAgg());
+    ASSERT_FALSE(((node::ProjectListPlanNode *)plan_vec.at(0))->IsWindowAgg());
     ASSERT_EQ(node::kProjectList, plan_vec.at(1)->GetType());
     ASSERT_EQ(
         1u,
         ((node::ProjectListPlanNode *)plan_vec.at(1))->GetProjects().size());
-    ASSERT_TRUE(nullptr != ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW());
-    ASSERT_EQ("w1",((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetName());
-    ASSERT_TRUE( ((node::ProjectListPlanNode *)plan_vec.at(1))->IsWindowAgg());
+    ASSERT_TRUE(nullptr !=
+                ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW());
+    ASSERT_EQ(-3, ((node::ProjectListPlanNode *)plan_vec.at(1))
+                      ->GetW()
+                      ->GetStartOffset());
+    ASSERT_EQ(
+        3,
+        ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetEndOffset());
+    ASSERT_EQ(std::vector<std::string>({"COL2"}),
+              ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetKeys());
+    ASSERT_TRUE(((node::ProjectListPlanNode *)plan_vec.at(1))->IsWindowAgg());
     delete planner_ptr;
 }
 

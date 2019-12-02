@@ -55,7 +55,8 @@ class NodeManager {
     PlanNode *MakeBinaryPlanNode(const PlanType &type);
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     ProjectListPlanNode *MakeProjectListPlanNode(const std::string &table,
-                                                 node::WindowDefNode *w);
+                                                 WindowPlanNode *w);
+    WindowPlanNode *MakeWindowPlanNode(int64_t start, int64_t end, bool is_range_between);
     ScanPlanNode *MakeSeqScanPlanNode(const std::string &table);
     ScanPlanNode *MakeIndexScanPlanNode(const std::string &table);
     ProjectPlanNode *MakeProjectPlanNode(node::SQLNode *expression,
@@ -77,7 +78,7 @@ class NodeManager {
     SQLNode *MakeOrderByNode(SQLNode *node_ptr);
     SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);
     SQLNode *MakeFrameBound(SQLNodeType bound_type);
-    SQLNode *MakeFrameBound(SQLNodeType bound_type, SQLNode *offset);
+    SQLNode *MakeFrameBound(SQLNodeType bound_type, ExprNode *offset);
     SQLNode *MakeRangeFrameNode(SQLNode *node_ptr);
     SQLNode *MakeRowsFrameNode(SQLNode *node_ptr);
     SQLNode *MakeLimitNode(int count);

@@ -349,14 +349,14 @@ typedef void* yyscan_t;
                fn_def return_stmt assign_stmt para
 %type<fnlist> plist stmt_block func_stmts
 
-%type <expr> var expr primary_time column_ref call_expr expr_const
+%type <expr> var expr primary_time column_ref call_expr expr_const frame_expr
  /* select stmt */
 %type <node>  sql_stmt stmt select_stmt
               opt_all_clause
               table_factor table_reference
               projection
 
-              sortby opt_frame_clause frame_bound frame_extent
+              opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
               limit_clause
 
@@ -858,7 +858,7 @@ expr_list:
     }
   	;
 
-expr : column_ref   { $$ = $1; }
+expr:	column_ref   { $$ = $1; }
      | call_expr  { $$ = $1; }
      | expr_const
      | var
@@ -1010,11 +1010,7 @@ opt_frame_clause:
 opt_window_exclusion_clause:
              /*EMPTY*/				{ $$ = 0; }
             ;
-frame_extent: frame_bound
-				{
-				    $$ = node_manager->MakeFrameNode($1, NULL);
-				}
-			| BETWEEN frame_bound AND frame_bound
+frame_extent: BETWEEN frame_bound AND frame_bound
 				{
 				    $$ = node_manager->MakeFrameNode($2, $4);
 				}
@@ -1034,16 +1030,19 @@ frame_bound:
 				{
 				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kCurrent));
 				}
-			| expr PRECEDING
+			| frame_expr PRECEDING
 				{
 				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kPreceding, $1));
 				}
-			| expr FOLLOWING
+			| frame_expr FOLLOWING
 				{
 				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kFollowing, $1));
 				}
 		;
 
+frame_expr: expr_const
+			|primary_time
+			;
 column_ref:
     column_name
     {

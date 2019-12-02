@@ -50,8 +50,9 @@ struct ScanInfo {
     std::vector<std::string> keys;
     std::vector<std::string> orders;
     //todo(chenjing): start and end parse
-    int start_offset;
-    int end_offset;
+    int64_t start_offset;
+    int64_t end_offset;
+    bool is_range_between;
 };
 
 struct ProjectOp {

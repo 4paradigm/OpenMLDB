@@ -180,11 +180,48 @@ class ProjectPlanNode : public LeafPlanNode {
     std::string w_;
 };
 
+class WindowPlanNode : public LeafPlanNode {
+ public:
+    WindowPlanNode()
+        : LeafPlanNode(kPlanTypeWindow),
+          start_offset_(0L),
+          end_offset_(0L),
+          is_range_between_(true),
+          keys_(),
+          orders_() {}
+    ~WindowPlanNode() {}
+    int64_t GetStartOffset() const { return start_offset_; }
+    void SetStartOffset(int64_t startOffset) { start_offset_ = startOffset; }
+    int64_t GetEndOffset() const { return end_offset_; }
+    void SetEndOffset(int64_t endOffset) { end_offset_ = endOffset; }
+    bool IsRangeBetween() const { return is_range_between_; }
+    void SetIsRangeBetween(bool isRangeBetween) {
+        is_range_between_ = isRangeBetween;
+    }
+    const std::vector<std::string> &GetKeys() const { return keys_; }
+    const std::vector<std::string> &GetOrders() const { return orders_; }
+    void SetKeys(const std::vector<std::string> &keys) { keys_ = keys; }
+    void SetOrders(const std::vector<std::string> &orders) { orders_ = orders; }
+
+ private:
+    int64_t start_offset_;
+    int64_t end_offset_;
+    bool is_range_between_;
+    std::vector<std::string> keys_;
+    std::vector<std::string> orders_;
+};
 class ProjectListPlanNode : public MultiChildPlanNode {
  public:
-    ProjectListPlanNode() : MultiChildPlanNode(kProjectList), w_ptr_(nullptr), is_window_agg_(false) {}
-    ProjectListPlanNode(const std::string &table, WindowDefNode* w_ptr, const bool is_window_agg)
-        : MultiChildPlanNode(kProjectList), table_(table), w_ptr_(w_ptr), is_window_agg_(is_window_agg) {}
+    ProjectListPlanNode()
+        : MultiChildPlanNode(kProjectList),
+          w_ptr_(nullptr),
+          is_window_agg_(false) {}
+    ProjectListPlanNode(const std::string &table, WindowPlanNode *w_ptr,
+                        const bool is_window_agg)
+        : MultiChildPlanNode(kProjectList),
+          table_(table),
+          w_ptr_(w_ptr),
+          is_window_agg_(is_window_agg) {}
     ~ProjectListPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -193,15 +230,14 @@ class ProjectListPlanNode : public MultiChildPlanNode {
 
     const std::string GetTable() const { return table_; }
 
-    WindowDefNode* GetW() const { return w_ptr_; }
+    WindowPlanNode *GetW() const { return w_ptr_; }
 
-    const bool IsWindowAgg() const {
-        return is_window_agg_;
-    }
+    const bool IsWindowAgg() const { return is_window_agg_; }
+
  private:
     PlanNodeList projects;
     std::string table_;
-    WindowDefNode * w_ptr_;
+    WindowPlanNode *w_ptr_;
     bool is_window_agg_;
 };
 
@@ -254,34 +290,27 @@ class InsertPlanNode : public LeafPlanNode {
  public:
     InsertPlanNode() : LeafPlanNode(kPlanTypeInsert), insert_node_(nullptr) {}
     ~InsertPlanNode() {}
-    void SetInsertNode(const InsertStmt* node) {
-        insert_node_ = node;
-    }
+    void SetInsertNode(const InsertStmt *node) { insert_node_ = node; }
 
-    const InsertStmt* GetInsertNode() const {
-        return insert_node_;
-    }
+    const InsertStmt *GetInsertNode() const { return insert_node_; }
 
  private:
     const InsertStmt *insert_node_;
 };
 
-
 class FuncDefPlanNode : public LeafPlanNode {
  public:
     FuncDefPlanNode() : LeafPlanNode(kPlanTypeFuncDef) {}
     ~FuncDefPlanNode() {}
-    
+
     void SetFuNodeList(const FnNodeList *fn_node_list) {
-        fn_node_list_ = fn_node_list; 
+        fn_node_list_ = fn_node_list;
     }
-    
-    const FnNodeList *GetFnNodeList() const {
-        return fn_node_list_;
-    }
-    
+
+    const FnNodeList *GetFnNodeList() const { return fn_node_list_; }
+
  private:
-    const FnNodeList * fn_node_list_;
+    const FnNodeList *fn_node_list_;
 };
 void PrintPlanVector(std::ostream &output, const std::string &tab,
                      PlanNodeList vec, const std::string vector_name,
