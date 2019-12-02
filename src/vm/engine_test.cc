@@ -225,9 +225,9 @@ TEST_F(EngineTest, test_window_agg) {
     int8_t* output1 = output[0];
     int8_t* output3 = output[2];
     ASSERT_EQ(1+11, *((int32_t*)(output1 + 2)));
-    ASSERT_EQ(1+11, *((int32_t*)(output1 + 4)));
+    ASSERT_EQ(1+11, *((int32_t*)(output1 + 2 + 4)));
     ASSERT_EQ(3+33+333, *((int32_t*)(output3 + 2)));
-    ASSERT_EQ(3+33+333, *((int32_t*)(output3 + 4)));
+    ASSERT_EQ(3+33+333, *((int32_t*)(output3 + 2 + 4)));
     for (auto ptr: output) {
         free(ptr);
     }
