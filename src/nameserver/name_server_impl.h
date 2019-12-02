@@ -170,7 +170,7 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    int DelRemoteReplicaNode(const std::string& endpoint,
+    int DelRemoteReplica(const std::string& endpoint,
             const std::string name,
             uint32_t pid); 
     

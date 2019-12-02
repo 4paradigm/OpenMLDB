@@ -68,6 +68,8 @@ enum OPType {
     kRecoverTableOP = 14;
     kCreateTableForReplicaClusterOP = 15;
     kDropTableForReplicaClusterOP = 16;
+    kAddReplicaForReplicaClusterOP = 17;
+    kDelReplicaForReplicaClusterOP = 18;
 }
 
 enum TaskType {
