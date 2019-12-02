@@ -144,13 +144,13 @@ bool ClusterInfo::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& tas
 }
 
 void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtidb::nameserver::TableInfo>& tables) {
-
     auto rep_iter = rep_table_map_.find(alias);
     if (rep_iter == rep_table_map_.end()) {
         rep_table_map_.insert(std::make_pair(alias, std::map<std::string, std::vector<::rtidb::nameserver::TablePartition>>()));
     }
     rep_iter = rep_table_map_.find(alias);
     for (const auto& table : tables) {
+        global_table_set_.insert(table.name());
         auto table_iter = rep_iter->second.find(table.name());
         if (table_iter == rep_iter->second.end()) {
             rep_iter->second.insert(std::make_pair(table.name(), std::vector<::rtidb::nameserver::TablePartition>()));
@@ -2709,7 +2709,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
     if (CheckTableMeta(*table_info) < 0) {
-        response->set_code(307);
+        response->set_code(307)氢燃料电池;
         response->set_msg("check TableMeta failed, index column type can not float or double");
         return;
     }
