@@ -14,13 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "sdk/tablet_sdk.h"
-#include <analyser/analyser.h>
-#include <base/strings.h>
-#include <node/node_enum.h>
-#include <parser/parser.h>
-#include <plan/planner.h>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include "analyser/analyser.h"
+#include "base/strings.h"
+#include "node/node_enum.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
 
 #include "brpc/channel.h"
 #include "glog/logging.h"
@@ -34,10 +37,9 @@ class TabletSdkImpl;
 class ResultSetImpl;
 class ResultSetIteratorImpl;
 
-
 class ResultSetIteratorImpl : public ResultSetIterator {
  public:
-    ResultSetIteratorImpl(tablet::QueryResponse* response);
+    explicit ResultSetIteratorImpl(tablet::QueryResponse* response);
 
     ~ResultSetIteratorImpl();
 
@@ -58,8 +60,7 @@ class ResultSetIteratorImpl : public ResultSetIterator {
 };
 
 ResultSetIteratorImpl::ResultSetIteratorImpl(tablet::QueryResponse* response)
-    : idx_(0), response_(response), row_view_() {
-}
+    : idx_(0), response_(response), row_view_() {}
 
 ResultSetIteratorImpl::~ResultSetIteratorImpl() {}
 
@@ -119,14 +120,14 @@ class ResultSetImpl : public ResultSet {
 
     const uint32_t GetColumnCnt() const { return response_.schema_size(); }
     const std::string& GetColumnName(uint32_t i) const {
-        // TODO check i out of index
+        // TODO(wangtaize) check i out of index
         return response_.schema(i).name();
     }
 
     const DataType GetColumnType(uint32_t i) const {
         return DataTypeFromProtoType(response_.schema(i).type());
     }
-    
+
     const uint32_t GetRowCnt() const { return response_.result_set_size(); }
 
     std::unique_ptr<ResultSetIterator> Iterator() {
@@ -142,7 +143,7 @@ class ResultSetImpl : public ResultSet {
 class TabletSdkImpl : public TabletSdk {
  public:
     TabletSdkImpl() {}
-    TabletSdkImpl(const std::string& endpoint)
+    explicit TabletSdkImpl(const std::string& endpoint)
         : endpoint_(endpoint), channel_(NULL) {}
     ~TabletSdkImpl() { delete channel_; }
 
@@ -197,15 +198,15 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
         const Value& value = insert.values[i];
         if (schema.columns(i).type() == ::fesql::type::kString) {
             string_length += strlen(value.GetStr());
-        }    
-    }        
+        }
+    }
     storage::RowBuilder rbuilder(schema.columns());
     uint32_t row_size = rbuilder.CalTotalLength(string_length);
     std::string row;
     DLOG(INFO) << "row size: " << row_size;
     row.resize(row_size);
     char* str_buf = reinterpret_cast<char*>(&(row[0]));
-    rbuilder.SetBuffer((int8_t*)str_buf, row_size);
+    rbuilder.SetBuffer(reinterpret_cast<int8_t*>(str_buf), row_size);
 
     // TODO(chenjing): handle insert into table(col1, col2, col3) values(1, 2.1,
     // 3);

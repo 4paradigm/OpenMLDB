@@ -240,7 +240,7 @@ void PrintTableSchema(std::ostream &stream,
         stream << "Empty set" << std::endl;
         return;
     }
-    unsigned items_size = schema->GetColumnCnt();
+    uint32_t items_size = schema->GetColumnCnt();
 
     ::fesql::base::TextTable t('-', '|', '+');
     t.add("Field");
@@ -248,7 +248,7 @@ void PrintTableSchema(std::ostream &stream,
     t.add("Null");
     t.endOfRow();
 
-    for (int i = 0; i < items_size; i++) {
+    for (uint32_t i = 0; i < items_size; i++) {
         t.add(schema->GetColumnName(i));
         t.add(fesql::sdk::DataTypeName(schema->GetColumnType(i)));
         t.add(schema->IsColumnNotNull(i) ? "YES" : "NO");

@@ -1,3 +1,5 @@
+// Copyright (C) 2019, 4paradigm
+
 #pragma once
 #include <assert.h>
 #include <stddef.h>
@@ -16,10 +18,11 @@ class Slice {
     Slice(const char* d, size_t n) : need_free_(false), size_(n), data_(d) {}
 
     // Create a slice that refers to the contents of "s"
-    Slice(const std::string& s)
+    explicit Slice(const std::string& s)
         : need_free_(false), size_(s.size()), data_(s.data()) {}
 
-    Slice(const char* s) : need_free_(false), size_(strlen(s)), data_(s) {}
+    explicit Slice(const char* s)
+        : need_free_(false), size_(strlen(s)), data_(s) {}
     Slice(const char* d, size_t n, bool need_free)
         : need_free_(need_free), size_(n), data_(d) {}
     // Return a pointer to the beginning of the referenced data
@@ -32,7 +35,7 @@ class Slice {
     bool empty() const { return size_ == 0; }
 
     void reset(const char* d, size_t size) {
-        // TODO if need free is true, reset is forbidden
+        // TODO(wangtaize) if need free is true, reset is forbidden
         data_ = d;
         size_ = size;
     }
@@ -106,5 +109,5 @@ inline int Slice::compare(const Slice& b) const {
     return r;
 }
 
-}  // namespace storage
+}  // namespace base
 }  // namespace fesql

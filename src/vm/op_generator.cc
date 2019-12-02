@@ -16,8 +16,8 @@
  */
 
 #include "vm/op_generator.h"
-#include <proto/common.pb.h>
-
+#include <memory>
+#include "proto/common.pb.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "node/node_manager.h"
@@ -44,7 +44,7 @@ bool OpGenerator::Gen(const ::fesql::node::PlanNodeList& trees,
         switch (node->GetType()) {
             case ::fesql::node::kPlanTypeFuncDef: {
                 const ::fesql::node::FuncDefPlanNode* func_def_plan =
-                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*> (node);
+                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
                 bool ok = GenFnDef(module, func_def_plan);
                 if (!ok) {
                     status.code = (common::kCodegenError);
@@ -156,7 +156,7 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
         sop->input_schema.push_back(table_status->table_def.columns(i));
         sop->output_schema.push_back(table_status->table_def.columns(i));
     }
-    ops->ops.push_back((OpNode*)sop);
+    ops->ops.push_back(reinterpret_cast<OpNode*>(sop));
     return true;
 }
 
@@ -218,7 +218,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     pop->fn_name = fn_name;
     pop->fn = NULL;
     pop->output_size = output_size;
-    ops->ops.push_back((OpNode*)pop);
+    ops->ops.push_back(reinterpret_cast<OpNode*>(pop));
     DLOG(INFO) << "project output size " << output_size;
     return true;
 }
@@ -242,7 +242,7 @@ bool OpGenerator::GenLimit(const ::fesql::node::LimitPlanNode* node,
     LimitOp* limit_op = new LimitOp();
     limit_op->type = kOpLimit;
     limit_op->limit = node->GetLimitCnt();
-    ops->ops.push_back((OpNode*)limit_op);
+    ops->ops.push_back(reinterpret_cast<OpNode*>(limit_op));
     return true;
 }
 

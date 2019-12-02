@@ -16,6 +16,8 @@
  */
 
 #include "vm/engine.h"
+#include <utility>
+#include <vector>
 #include "base/strings.h"
 
 namespace fesql {
@@ -60,7 +62,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             session.SetCompileInfo(info);
         } else {
             session.SetCompileInfo(it->second);
-            // TODO clean
+            // TODO(wtx): clean
         }
     }
     return true;
@@ -86,9 +88,12 @@ RunSession::~RunSession() {}
 
 int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
     // Simple op runner
-    ScanOp* scan_op = (ScanOp*)(compile_info_->sql_ctx.ops.ops[0]);
-    ProjectOp* project_op = (ProjectOp*)(compile_info_->sql_ctx.ops.ops[1]);
-    LimitOp* limit_op = (LimitOp*)(compile_info_->sql_ctx.ops.ops[2]);
+    ScanOp* scan_op =
+        reinterpret_cast<ScanOp*>(compile_info_->sql_ctx.ops.ops[0]);
+    ProjectOp* project_op =
+        reinterpret_cast<ProjectOp*>(compile_info_->sql_ctx.ops.ops[1]);
+    LimitOp* limit_op =
+        reinterpret_cast<LimitOp*>(compile_info_->sql_ctx.ops.ops[2]);
     std::shared_ptr<TableStatus> status =
         table_mgr_->GetTableDef(scan_op->db, scan_op->tid);
     if (!status) {
@@ -109,7 +114,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
         DLOG(INFO) << "value " << base::DebugString(value.data(), value.size());
         DLOG(INFO) << "key " << it->GetKey() << " row size "
                    << 2 + project_op->output_size;
-        int8_t* output = (int8_t*)malloc(2 + project_op->output_size);
+        int8_t* output =
+            reinterpret_cast<int8_t*>(malloc(2 + project_op->output_size));
         int8_t* row =
             reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
         uint32_t ret = udf(row, output + 2);

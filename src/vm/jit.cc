@@ -16,7 +16,7 @@
  */
 
 #include "vm/jit.h"
-
+#include <string>
 #include <utility>
 #include "glog/logging.h"
 
@@ -24,44 +24,39 @@ namespace fesql {
 namespace vm {
 using ::llvm::orc::LLJIT;
 
-FeSQLJIT::FeSQLJIT(::llvm::orc::LLJITBuilderState& s,
-        ::llvm::Error& e):LLJIT(s,e) {}
-FeSQLJIT::~FeSQLJIT() {
+FeSQLJIT::FeSQLJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e)
+    : LLJIT(s, e) {}
+FeSQLJIT::~FeSQLJIT() {}
 
-}
-
-::llvm::Error FeSQLJIT::AddIRModule(::llvm::orc::JITDylib& jd, // NOLINT
-            ::llvm::orc::ThreadSafeModule tsm,
-            ::llvm::orc::VModuleKey key) {
-
-    if (auto Err = applyDataLayout(*tsm.getModule()))
-        return Err;
+::llvm::Error FeSQLJIT::AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
+                                    ::llvm::orc::ThreadSafeModule tsm,
+                                    ::llvm::orc::VModuleKey key) {
+    if (auto Err = applyDataLayout(*tsm.getModule())) return Err;
     LOG(INFO) << "add a module with key " << key;
     return CompileLayer->add(jd, std::move(tsm), key);
 }
 
 ::llvm::orc::VModuleKey FeSQLJIT::CreateVModule() {
-    ::llvm::orc::VModuleKey key =  ES->allocateVModule();
-    LOG(INFO) << "allocate a new module key "<< key;
+    ::llvm::orc::VModuleKey key = ES->allocateVModule();
+    LOG(INFO) << "allocate a new module key " << key;
     return key;
 }
 
 void FeSQLJIT::ReleaseVModule(::llvm::orc::VModuleKey key) {
-    LOG(INFO) << "release module with key " <<  key;
+    LOG(INFO) << "release module with key " << key;
     ES->releaseVModule(key);
 }
-bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
-        const std::string& name, void* fn_ptr) {
+bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd, const std::string& name,
+                         void* fn_ptr) {
     if (fn_ptr == NULL) {
         LOG(WARNING) << "fn ptr is null";
         return false;
     }
-    ::llvm::orc::MangleAndInterner mi(getExecutionSession(), 
-            getDataLayout());
+    ::llvm::orc::MangleAndInterner mi(getExecutionSession(), getDataLayout());
     ::llvm::StringRef symbol(name);
-    ::llvm::orc::SymbolMap  symbol_map;
-    ::llvm::JITEvaluatedSymbol jit_symbol(::llvm::pointerToJITTargetAddress(fn_ptr),
-            ::llvm::JITSymbolFlags());
+    ::llvm::orc::SymbolMap symbol_map;
+    ::llvm::JITEvaluatedSymbol jit_symbol(
+        ::llvm::pointerToJITTargetAddress(fn_ptr), ::llvm::JITSymbolFlags());
     symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
     auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
     if (err) {
@@ -70,7 +65,7 @@ bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
     }
     return true;
 }
- 
+
 bool FeSQLJIT::AddSymbol(const std::string& name, void* fn_ptr) {
     if (fn_ptr == NULL) {
         LOG(WARNING) << "fn ptr is null";
@@ -82,4 +77,3 @@ bool FeSQLJIT::AddSymbol(const std::string& name, void* fn_ptr) {
 
 }  // namespace vm
 }  // namespace fesql
-

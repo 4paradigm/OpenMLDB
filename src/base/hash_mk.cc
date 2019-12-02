@@ -18,7 +18,7 @@
 #include "base/hash.h"
 #include "benchmark/benchmark.h"
 
-static void BM_HashFunction(benchmark::State& state) {
+static void BM_HashFunction(benchmark::State& state) { //NOLINT
     for (auto _ : state) {
         int32_t i = -1;
         benchmark::DoNotOptimize(

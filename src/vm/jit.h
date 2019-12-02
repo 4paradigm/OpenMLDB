@@ -29,15 +29,13 @@ struct JITString {
 };
 
 class FeSQLJIT : public ::llvm::orc::LLJIT {
-    template <typename,
-             typename,
-             typename> friend class ::llvm::orc::LLJITBuilderSetters;
+    template <typename, typename, typename>
+    friend class ::llvm::orc::LLJITBuilderSetters;
 
  public:
-
-    ::llvm::Error AddIRModule(::llvm::orc::JITDylib& jd, // NOLINT
-            ::llvm::orc::ThreadSafeModule tsm,
-            ::llvm::orc::VModuleKey key);
+    ::llvm::Error AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
+                              ::llvm::orc::ThreadSafeModule tsm,
+                              ::llvm::orc::VModuleKey key);
 
     ::llvm::orc::VModuleKey CreateVModule();
 
@@ -47,20 +45,20 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
     bool AddSymbol(const std::string& name, void* fn_ptr);
 
     // add to main module
-    bool AddSymbol(::llvm::orc::JITDylib& jd,
-            const std::string& name, void* fn_ptr);
-
+    bool AddSymbol(::llvm::orc::JITDylib& jd, const std::string& name, // NOLINT
+                   void* fn_ptr);
 
     ~FeSQLJIT();
 
  protected:
-    FeSQLJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e);
+    FeSQLJIT(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e);  // NOLINT
 };
 
 class FeSQLJITBuilder
     : public ::llvm::orc::LLJITBuilderState,
-      public ::llvm::orc::LLJITBuilderSetters<FeSQLJIT, 
-      FeSQLJITBuilder, ::llvm::orc::LLJITBuilderState> {};
+      public ::llvm::orc::LLJITBuilderSetters<FeSQLJIT, FeSQLJITBuilder,
+                                              ::llvm::orc::LLJITBuilderState> {
+};
 
 }  // namespace vm
 }  // namespace fesql

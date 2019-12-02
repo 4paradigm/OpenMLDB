@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef CODEGEN_FN_IR_BUILDER_H_
-#define CODEGEN_FN_IR_BUILDER_H_
+#ifndef SRC_CODEGEN_FN_IR_BUILDER_H_
+#define SRC_CODEGEN_FN_IR_BUILDER_H_
 
 #include <vector>
 #include "codegen/scope_var.h"
@@ -29,8 +29,8 @@ namespace codegen {
 // FnIRBuilder
 class FnIRBuilder {
  public:
-    // TODO provide a module manager
-    FnIRBuilder(::llvm::Module* module);
+    // TODO(wangtaize) provide a module manager
+    explicit FnIRBuilder(::llvm::Module* module);
     ~FnIRBuilder();
     bool Build(const ::fesql::node::FnNodeList* node);
 
@@ -47,12 +47,11 @@ class FnIRBuilder {
                          ::llvm::BasicBlock* block);
 
  private:
-
     bool MapLLVMType(const ::fesql::node::DataType& fn_type,
                      ::llvm::Type** type);
 
     bool BuildParas(const ::fesql::node::FnNodeList* node,
-                    std::vector<::llvm::Type*>& paras);
+                    std::vector<::llvm::Type*>& paras);  // NOLINT
 
     bool FillArgs(const ::fesql::node::FnNodeList* node, ::llvm::Function* fn);
 
@@ -63,4 +62,4 @@ class FnIRBuilder {
 
 }  // namespace codegen
 }  // namespace fesql
-#endif /* !CODEGEN_FN_IR_BUILDER_H_ */
+#endif  // SRC_CODEGEN_FN_IR_BUILDER_H_

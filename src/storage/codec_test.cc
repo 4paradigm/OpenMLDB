@@ -52,7 +52,7 @@ TEST_F(CodecTest, NULL) {
     ASSERT_EQ(view.GetBool(1, &val1), 0);
     ASSERT_FALSE(val1);
     ASSERT_EQ(view.GetString(2, &ch, &length), 0);
-}    
+}
 
 TEST_F(CodecTest, Normal) {
     Schema schema;

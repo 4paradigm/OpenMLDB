@@ -16,6 +16,8 @@
  */
 
 #include "codegen/expr_ir_builder.h"
+#include <memory>
+#include <utility>
 #include "gtest/gtest.h"
 
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -33,8 +35,8 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 
 #include "node/node_manager.h"
-using namespace llvm;
-using namespace llvm::orc;
+using namespace llvm;  // NOLINT
+using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
 
@@ -51,15 +53,13 @@ class ExprIRBuilderTest : public ::testing::Test {
 };
 
 void GenAddExpr(node::NodeManager *manager, ::fesql::node::ExprNode **expr) {
-    // TODO free
+    // TODO(wangtaize) free
     new ::fesql::node::BinaryExpr(::fesql::node::kFnOpAdd);
 
-    ::fesql::node::ExprNode *i32_node =
-        (manager->MakeConstNode(1));
-    ::fesql::node::ExprNode *id_node =
-        (manager->MakeFnIdNode("a"));
-    ::fesql::node::ExprNode *bexpr = (manager->MakeBinaryExprNode(
-        i32_node, id_node, fesql::node::kFnOpAdd));
+    ::fesql::node::ExprNode *i32_node = (manager->MakeConstNode(1));
+    ::fesql::node::ExprNode *id_node = (manager->MakeFnIdNode("a"));
+    ::fesql::node::ExprNode *bexpr =
+        (manager->MakeBinaryExprNode(i32_node, id_node, fesql::node::kFnOpAdd));
     *expr = bexpr;
 }
 

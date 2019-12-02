@@ -36,9 +36,8 @@
 #include "node/node_manager.h"
 #include "parser/parser.h"
 
-
-using namespace llvm;
-using namespace llvm::orc;
+using namespace llvm;       // NOLINT (build/namespaces)
+using namespace llvm::orc;  // NOLINT (build/namespaces)
 
 ExitOnError ExitOnErr;
 
@@ -73,7 +72,7 @@ TEST_F(FnIRBuilderTest, test_add_int32) {
     auto m = make_unique<Module>("custom_fn", *ctx);
     FnIRBuilder fn_ir_builder(m.get());
     std::cout << *trees[0] << std::endl;
-    bool ok = fn_ir_builder.Build((node::FnNodeList*)trees[0]);
+    bool ok = fn_ir_builder.Build((node::FnNodeList *)trees[0]);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());

@@ -65,6 +65,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "()";
         case kFnOpNone:
             return "NONE";
+        default:
+            return "unknown";
     }
 }
 
@@ -920,7 +922,7 @@ void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,
     std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)
 void PrintSQLNode(std::ostream &output, const std::string &org_tab,
-                  SQLNode *node_ptr, const std::string &item_name,
+                  const SQLNode *node_ptr, const std::string &item_name,
                   bool last_child);
 void PrintSQLVector(std::ostream &output, const std::string &tab,
                     const NodePointVector &vec, const std::string &vector_name,

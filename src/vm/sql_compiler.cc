@@ -16,11 +16,13 @@
  */
 
 #include "vm/sql_compiler.h"
+#include <memory>
+#include <vector>
+#include <utility>
 #include "analyser/analyser.h"
 #include "glog/logging.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "analyser/analyser.h"
 #include "vm/op_generator.h"
 
 namespace fesql {
@@ -73,14 +75,14 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     for (; it != ctx.ops.ops.end(); ++it) {
         OpNode* op_node = *it;
         if (op_node->type == kOpProject) {
-            ProjectOp* pop = (ProjectOp*)op_node;
+            ProjectOp* pop = reinterpret_cast<ProjectOp*>(op_node);
             ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
                 ctx.jit->lookup(jd, pop->fn_name));
             if (symbol.takeError()) {
                 LOG(WARNING) << "fail to find fn with name  " << pop->fn_name
                              << " for sql" << ctx.sql;
             }
-            pop->fn = (int8_t*)symbol->getAddress();
+            pop->fn = reinterpret_cast<int8_t*>(symbol->getAddress());
             ctx.schema = pop->output_schema;
             ctx.row_size = pop->output_size;
         }
@@ -88,8 +90,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     return true;
 }
 
-bool SQLCompiler::Parse(SQLContext &ctx,
-                        ::fesql::node::NodeManager& node_mgr,
+bool SQLCompiler::Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,
                         ::fesql::node::PlanNodeList& plan_trees,  // NOLINT
                         ::fesql::base::Status& status) {          // NOLINT
     ::fesql::node::NodePointVector parser_trees;
@@ -103,7 +104,7 @@ bool SQLCompiler::Parse(SQLContext &ctx,
         return false;
     }
 
-    //TODO(chenjing): ADD analyser
+    // TODO(chenjing): ADD analyser
     ret = planer.CreatePlanTree(parser_trees, plan_trees, status);
     if (ret != 0) {
         LOG(WARNING) << "Fail create sql plan: " << status.msg;
