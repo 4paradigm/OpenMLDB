@@ -14,9 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef FESQL_BASE_STRINGS_H_
-#define FESQL_BASE_STRINGS_H_
+#pragma once
 
 #include <sys/time.h>
 #include <time.h>
@@ -26,14 +24,14 @@
 
 namespace fesql {
 namespace base {
-const static char LABELS[10] = {'0', '1', '2', '3', '4',
+static const char LABELS[10] = {'0', '1', '2', '3', '4',
                                 '5', '6', '7', '8', '9'};
-const static uint32_t TIME_OFFSET[] = {1000, 60, 60, 24};
-const static char* TIME_LABEL[] = {"ms", "s", "m", "h", "d"};
+static const uint32_t TIME_OFFSET[] = {1000, 60, 60, 24};
+static const char* TIME_LABEL[] = {"ms", "s", "m", "h", "d"};
 
 static inline void SplitString(const std::string& full,
                                const std::string& delim,
-                               std::vector<std::string>& result) {
+                               std::vector<std::string>& result) {//NOLINT
     result.clear();
     if (full.empty()) {
         return;
@@ -163,9 +161,10 @@ static inline bool IsNumber(const std::string& str) {
 
 static inline std::string GetNowTime() {
     time_t rawtime = time(0);
-    tm* timeinfo = localtime(&rawtime);
+    tm timeinfo;
+    localtime_r(&rawtime, &timeinfo);
     char buf[20];
-    strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
+    strftime(buf, 20, "%Y%m%d%H%M%S", &timeinfo);
     return std::string(buf);
 }
 
@@ -180,4 +179,3 @@ static inline int GetNowHour() {
 
 }  // namespace base
 }  // namespace fesql
-#endif /* !FESQL_BASE_STRINGS_H_ */

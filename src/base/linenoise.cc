@@ -1,5 +1,9 @@
 /* linenoise.c -- guerrilla line editing library against the idea that a
  * Copyright (c) 2010-2016, Salvatore Sanfilippo <antirez at gmail dot com>
+ * Copyright (c) 2010-2013, Pieter Noordhuis <pcnoordhuis at gmail dot com>
+ *
+ * All rights reserved.
+ *
  * line editing lib needs to be 20,000 lines of C code.
  *
  * You can find the latest source code at:
@@ -10,10 +14,6 @@
  * the 2010 UNIX computers around.
  *
  * ------------------------------------------------------------------------
- *
- * Copyright (c) 2010-2013, Pieter Noordhuis <pcnoordhuis at gmail dot com>
- *
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -310,7 +310,7 @@ static int getColumns(int ifd, int ofd) {
         /* Restore position. */
         if (cols > start) {
             char seq[32];
-            snprintf(seq, 32, "\x1b[%dD", cols - start);
+            snprintf(seq, sizeof(seq), "\x1b[%dD", cols - start);
             if (write(ofd, seq, strlen(seq)) == -1) {
                 /* Can't recover... */
             }
@@ -437,10 +437,11 @@ void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str) {
     size_t len = strlen(str);
     char *copy, **cvec;
 
-    copy = (char *)malloc(len + 1);
+    copy = reinterpret_cast<char *>(malloc(len + 1));
     if (copy == NULL) return;
     memcpy(copy, str, len + 1);
-    cvec = (char **)realloc(lc->cvec, sizeof(char *) * (lc->len + 1));
+    cvec = reinterpret_cast<char **>(
+        realloc(lc->cvec, sizeof(char *) * (lc->len + 1)));
     if (cvec == NULL) {
         free(copy);
         return;
@@ -466,7 +467,7 @@ static void abInit(struct abuf *ab) {
 }
 
 static void abAppend(struct abuf *ab, const char *s, int len) {
-    char *new_buffer = (char *)realloc(ab->b, ab->len + len);
+    char *new_buffer = reinterpret_cast<char *>(realloc(ab->b, ab->len + len));
 
     if (new_buffer == NULL) return;
     memcpy(new_buffer + ab->len, s, len);
@@ -489,7 +490,7 @@ void refreshShowHints(struct abuf *ab, struct linenoiseState *l, int plen) {
             if (hintlen > hintmaxlen) hintlen = hintmaxlen;
             if (bold == 1 && color == -1) color = 37;
             if (color != -1 || bold != 0)
-                snprintf(seq, 64, "\033[%d;%d;49m", bold, color);
+                snprintf(seq, sizeof(seq), "\033[%d;%d;49m", bold, color);
             else
                 seq[0] = '\0';
             abAppend(ab, seq, strlen(seq));
@@ -525,7 +526,7 @@ static void refreshSingleLine(struct linenoiseState *l) {
 
     abInit(&ab);
     /* Cursor to left edge */
-    snprintf(seq, 64, "\r");
+    snprintf(seq, sizeof(seq), "\r");
     abAppend(&ab, seq, strlen(seq));
     /* Write the prompt and the current buffer content */
     abAppend(&ab, l->prompt, strlen(l->prompt));
@@ -533,13 +534,13 @@ static void refreshSingleLine(struct linenoiseState *l) {
     /* Show hits if any. */
     refreshShowHints(&ab, l, plen);
     /* Erase to right */
-    snprintf(seq, 64, "\x1b[0K");
+    snprintf(seq, sizeof(seq), "\x1b[0K");
     abAppend(&ab, seq, strlen(seq));
     /* Move cursor to original position. */
-    snprintf(seq, 64, "\r\x1b[%dC", (int)(pos + plen));
+    snprintf(seq, sizeof(seq), "\r\x1b[%dC", static_cast<int>(pos + plen));
     abAppend(&ab, seq, strlen(seq));
-    if (write(fd, ab.b, ab.len) == -1) {
-    } /* Can't recover from write error. */
+    write(fd, ab.b, ab.len);
+    /* Can't recover from write error. */
     abFree(&ab);
 }
 
@@ -561,27 +562,27 @@ static void refreshMultiLine(struct linenoiseState *l) {
     struct abuf ab;
 
     /* Update maxrows if needed. */
-    if (rows > (int)l->maxrows) l->maxrows = rows;
+    if (rows > static_cast<int>(l->maxrows)) l->maxrows = rows;
 
     /* First step: clear all the lines used before. To do so start by
      * going to the last row. */
     abInit(&ab);
     if (old_rows - rpos > 0) {
         lndebug("go down %d", old_rows - rpos);
-        snprintf(seq, 64, "\x1b[%dB", old_rows - rpos);
+        snprintf(seq, sizeof(seq), "\x1b[%dB", old_rows - rpos);
         abAppend(&ab, seq, strlen(seq));
     }
 
     /* Now for every row clear it, go up. */
     for (j = 0; j < old_rows - 1; j++) {
         lndebug("clear+up");
-        snprintf(seq, 64, "\r\x1b[0K\x1b[1A");
+        snprintf(seq, sizeof(seq), "\r\x1b[0K\x1b[1A");
         abAppend(&ab, seq, strlen(seq));
     }
 
     /* Clean the top line. */
     lndebug("clear");
-    snprintf(seq, 64, "\r\x1b[0K");
+    snprintf(seq, sizeof(seq), "\r\x1b[0K");
     abAppend(&ab, seq, strlen(seq));
 
     /* Write the prompt and the current buffer content */
@@ -596,10 +597,10 @@ static void refreshMultiLine(struct linenoiseState *l) {
     if (l->pos && l->pos == l->len && (l->pos + plen) % l->cols == 0) {
         lndebug("<newline>");
         abAppend(&ab, "\n", 1);
-        snprintf(seq, 64, "\r");
+        snprintf(seq, sizeof(seq), "\r");
         abAppend(&ab, seq, strlen(seq));
         rows++;
-        if (rows > (int)l->maxrows) l->maxrows = rows;
+        if (rows > static_cast<int>(l->maxrows)) l->maxrows = rows;
     }
 
     /* Move cursor to right position. */
@@ -610,24 +611,23 @@ static void refreshMultiLine(struct linenoiseState *l) {
     /* Go up till we reach the expected positon. */
     if (rows - rpos2 > 0) {
         lndebug("go-up %d", rows - rpos2);
-        snprintf(seq, 64, "\x1b[%dA", rows - rpos2);
+        snprintf(seq, sizeof(seq), "\x1b[%dA", rows - rpos2);
         abAppend(&ab, seq, strlen(seq));
     }
 
     /* Set column. */
-    col = (plen + (int)l->pos) % (int)l->cols;
+    col = (plen + static_cast<int>(l->pos)) % static_cast<int>(l->cols);
     lndebug("set col %d", 1 + col);
     if (col)
-        snprintf(seq, 64, "\r\x1b[%dC", col);
+        snprintf(seq, sizeof(seq), "\r\x1b[%dC", col);
     else
-        snprintf(seq, 64, "\r");
+        snprintf(seq, sizeof(seq), "\r");
     abAppend(&ab, seq, strlen(seq));
 
     lndebug("\n");
     l->oldpos = l->pos;
 
-    if (write(fd, ab.b, ab.len) == -1) {
-    } /* Can't recover from write error. */
+    write(fd, ab.b, ab.len); /* Can't recover from write error. */
     abFree(&ab);
 }
 
@@ -830,7 +830,7 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen,
                     refreshLine(&l);
                     hintsCallback = hc;
                 }
-                return (int)l.len;
+                return static_cast<int>(l.len);
             case CTRL_C: /* ctrl-c */
                 errno = EAGAIN;
                 return -1;
@@ -838,8 +838,9 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen,
             case 8:         /* ctrl-h */
                 linenoiseEditBackspace(&l);
                 break;
-            case CTRL_D: /* ctrl-d, remove char at right of cursor, or if the
-                            line is empty, act as end-of-file. */
+            case CTRL_D:
+                /* ctrl-d, remove char at right of cursor, or if the
+                line is empty, act as end-of-file. */
                 if (l.len > 0) {
                     linenoiseEditDelete(&l);
                 } else {
@@ -912,10 +913,7 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen,
                                 break;
                         }
                     }
-                }
-
-                /* ESC O sequences. */
-                else if (seq[0] == 'O') {
+                } else if (seq[0] == 'O') { /* ESC O sequences. */
                     switch (seq[1]) {
                         case 'H': /* Home */
                             linenoiseEditMoveHome(&l);
@@ -979,7 +977,7 @@ void linenoisePrintKeyCodes(void) {
         if (memcmp(quit, "quit", sizeof(quit)) == 0) break;
 
         printf("'%c' %02x (%d) (type quit to exit)\n", isprint(c) ? c : '?',
-               (int)c, (int)c);
+               static_cast<int>(c), static_cast<int>(c));
         printf("\r"); /* Go left edge manually, we are in raw mode. */
         fflush(stdout);
     }
@@ -1017,7 +1015,7 @@ static char *linenoiseNoTTY(void) {
             if (maxlen == 0) maxlen = 16;
             maxlen *= 2;
             char *oldval = line;
-            line = (char *)realloc(line, maxlen);
+            line = reinterpret_cast<char *>(realloc(line, maxlen));
             if (line == NULL) {
                 if (oldval) free(oldval);
                 return NULL;
@@ -1110,7 +1108,8 @@ int linenoiseHistoryAdd(const char *line) {
 
     /* Initialization on first call. */
     if (history == NULL) {
-        history = (char **)malloc(sizeof(char *) * history_max_len);
+        history =
+            reinterpret_cast<char **>(malloc(sizeof(char *) * history_max_len));
         if (history == NULL) return 0;
         memset(history, 0, (sizeof(char *) * history_max_len));
     }
@@ -1143,7 +1142,7 @@ int linenoiseHistorySetMaxLen(int len) {
     if (history) {
         int tocopy = history_len;
 
-        new_buffer = (char **)malloc(sizeof(char *) * len);
+        new_buffer = reinterpret_cast<char **>(malloc(sizeof(char *) * len));
         if (new_buffer == NULL) return 0;
 
         /* If we can't copy everything, free the elements we'll not use. */
