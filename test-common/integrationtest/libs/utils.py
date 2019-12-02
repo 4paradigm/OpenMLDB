@@ -59,21 +59,6 @@ def write(strs, file_name, patt):
     return rst
 
 
-
-def gen_metadata_file(name, ttl_type, ttl, partition_num, replica_num, filepath,*table_info):
-    metadata = ""
-    basic_info_schema = ('name', 'ttl_type', 'ttl', 'partition_num', 'replica_num')
-    basic_info = zip(basic_info_schema, (name, ttl_type, ttl, partition_num, replica_num))
-    for kv in basic_info:
-        metadata += "{}:{}\n".format(kv[0], kv[1])
-    if table_info[0] is not None:
-        for tp in table_info:
-            metadata += "%s {\n"%(tp[0])
-            for i in range(1, len(tp)):
-                metadata += "{} : {}\n".format(tp[i][0], tp[i][1])
-            metadata += "}\n"
-    write(metadata, filepath, 'w')
-
 def gen_table_metadata(name, ttl_type, ttl, seg_cnt, *table_partitions):
     metadata = []
     basic_info_schema = ('name', 'ttl_type', 'ttl', 'seg_cnt')

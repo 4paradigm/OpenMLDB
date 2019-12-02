@@ -621,66 +621,17 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     @ddt.data(
         ('Create table ok',
-        ('column_desc', ('name', '"k1"'), ('type', '"string"'), ('add_ts_idx', 'true')),
-        ('column_desc', ('name', '"k2"'), ('type', '"int32"'), ('add_ts_idx', 'true')),
-        ('column_desc', ('name', '"k3"'), ('type', '"double"'), ('add_ts_idx', 'false')),),
-
+        ('column_desc', {'name': 'k1', 'type': 'string', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k2', 'type': 'int32', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k3', 'type': 'double', 'add_ts_idx': 'false'}),
+        ),
+        
         ('Create table ok',
-        ('column_desc', ('name', '"k1"'), ('type', '"string"'), ('add_ts_idx', 'false')),
-        ('column_desc', ('name', '"k2"'), ('type', '"int32"'), ('add_ts_idx', 'true')),
-        ('column_desc', ('name', '"k3"'), ('type', '"double"'), ('add_ts_idx', 'false')),),
-
-        ('Create table ok',
-        ('column_desc', ('name', '"k1"'), ('type', '"string"'), ('add_ts_idx', 'true')),
-        ('column_desc', ('name', '"k2"'), ('type', '"int32"'), ('add_ts_idx', 'false')),
-        ('column_desc', ('name', '"k3"'), ('type', '"double"'), ('add_ts_idx', 'false')),),
-
-        ('Create table ok',
-        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
-        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
-        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
-        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"')),
-        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"')),
-        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
-
-        ('Create table ok',
-        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
-        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
-        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
-        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"'))),
-
-        ('Create table ok',
-        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
-        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
-        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
-        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"'))),
-
-        ('Create table ok',
-        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
-        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
-        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
-        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
-
-        ('Create table ok',
-        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
-        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
-        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
-        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"')),
-        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
-
-        ('Create table ok',
-        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
-        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
-        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
-        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"')),
-        ('column_key', ('index_name', '"k1_k2"'), ('col_name', '"k1"'), ('col_name', '"k2"'))),
-
-        ('Create table ok',
-        ('column_desc', ('name', '"k1"'), ('type', '"string"')),
-        ('column_desc', ('name', '"k2"'), ('type', '"int32"')),
-        ('column_desc', ('name', '"k3"'), ('type', '"double"')),
-        ('column_key', ('index_name', '"k1"'), ('col_name', '"k1"')),
-        ('column_key', ('index_name', '"k2"'), ('col_name', '"k2"'))),
+        ('column_desc', {'name': 'k1', 'type': 'string'}),
+        ('column_desc', {'name': 'k2', 'type': 'int32'}),
+        ('column_desc', {'name': 'k3', 'type': 'double'}),
+        ('column_key', {'index_name': 'k1', 'col_name': 'k1'}),
+        ('column_key', {'index_name': 'k2', 'col_name': 'k2'})),
     )
     @ddt.unpack
     def test_create_showtable_record_cnt(self, exp_msg, *eles):
@@ -689,7 +640,17 @@ class TestCreateTableByNsClient(TestCaseBase):
         """
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        utils.gen_metadata_file('"' + name + '"', '"kAbsoluteTime"', 0, 3, 3, metadata_path,  *eles)
+        table_meta = {
+            "name":name,
+            "ttl": 120,
+            "partition_num": 3,
+            "replica_num": 3,
+            "column_desc":[],
+            "column_key":[]
+        }
+        for item in eles:
+            table_meta[item[0]].append(item[1])
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         infoLogger.info(rs)
         self.assertIn(exp_msg, rs)
