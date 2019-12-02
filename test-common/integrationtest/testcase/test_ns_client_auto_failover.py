@@ -582,7 +582,7 @@ class TestAutoFailover(TestCaseBase):
         self.start_client(self.slave1)
         time.sleep(1)
         self.start_client(self.slave1)
-        time.sleep(3)
+        time.sleep(1)
         self.wait_op_done(name)
 
         # self.assertEqual(row, index)

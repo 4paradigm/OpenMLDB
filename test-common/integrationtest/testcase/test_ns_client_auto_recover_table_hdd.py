@@ -106,7 +106,7 @@ class TestAutoRecoverTable(TestCaseBase):
         (34, 1, 2, -1, 36, 6, 12, 13, -1, 36, 33, 17, 35),  # offset < manifest.offset
         (34, 1, 2, -1, 36, 6, 8, 13, -1, 36, 33, 17, 35),
         (34, 1, 2, -1, 36, 6, 10, 12, 13, -1, 36, 33, 17, 35),
-        (34, 1, 2, 0, 36, 6, 8, 12, 13, -1, 36, 33, 17, 35),
+        (34, 1, 2, -1, 36, 6, 8, 12, 13, -1, 36, 33, 17, 35),
         (34, 1, 2, -1, 36, 6, 8, 12, 8, 13, -1, 36, 33, 17, 35),  # 19 new leader makesnapshot and put data, ori leader recover
         (34, 1, 5, -1, 16, 0, 36, 33, 20, 35),
         (34, 1, 4, 0, 14, -1, 36, 33, 17, 35),  # RTIDB-213
@@ -128,13 +128,13 @@ class TestAutoRecoverTable(TestCaseBase):
         rs = self.showtable(self.ns_leader, self.tname)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-2] for k, v in rs.items()]
-        for repeat in range(20):
+        for repeat in range(10):
             rs = self.showtable(self.ns_leader, self.tname)
             role_x = [v[0] for k, v in rs.items()]
             is_alive_x = [v[-2] for k, v in rs.items()]
             if role_x.count('leader') == 10 and role_x.count('follower') == 18 and is_alive_x.count('yes') == 28:
                 break
-            time.sleep(2)
+            time.sleep(3)
         self.assertEqual(role_x.count('leader'), 10)
         self.assertEqual(role_x.count('follower'), 18)
         self.assertEqual(is_alive_x.count('yes'), 28)

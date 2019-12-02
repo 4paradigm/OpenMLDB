@@ -552,6 +552,7 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(5)
         self.start_client(self.slave1)
         time.sleep(10)
+        self.wait_op_down(name)
         for i in range(20):
             time.sleep(3)
             rs_after = self.gettablestatus(self.slave1, tid, pid)
