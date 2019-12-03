@@ -31,7 +31,7 @@ class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                  BufIRBuilder* buf_ir_builder, const std::string& row_ptr_name,
+                  BufNativeIRBuilder* buf_ir_builder, const std::string& row_ptr_name,
                   const std::string& row_size_name,
                   const std::string& output_ptr_name, ::llvm::Module* module);
     ~ExprIRBuilder();
@@ -57,7 +57,7 @@ class ExprIRBuilder {
     std::string row_ptr_name_;
     std::string row_size_name_;
     std::string output_ptr_name_;
-    BufIRBuilder* buf_ir_builder_;
+    BufNativeIRBuilder* buf_ir_builder_;
     ::llvm::Module* module_;
 };
 }  // namespace codegen

@@ -36,6 +36,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "vm/table_mgr.h"
+#include "storage/codec.h"
 
 
 using namespace llvm;       // NOLINT (build/namespaces)
@@ -64,20 +65,66 @@ class TableMgrImpl : public TableMgr {
 
 class EngineTest : public ::testing::Test {};
 
+void BuildBuf(int8_t** buf, uint32_t* size) {
+    ::fesql::type::TableDef table;
+    table.set_name("t1");
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col1");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col2");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kFloat);
+        column->set_name("col3");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kDouble);
+        column->set_name("col4");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col5");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col6");
+    }
+
+    storage::RowBuilder builder(table.columns());
+    uint32_t total_size = builder.CalTotalLength(1);
+    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+    builder.SetBuffer(ptr, total_size);
+    builder.AppendInt32(32);
+    builder.AppendInt16(16);
+    builder.AppendFloat(2.1f);
+    builder.AppendDouble(3.1);
+    builder.AppendInt64(64);
+    builder.AppendString("1", 1);
+    *buf = ptr;
+    *size = total_size;
+}
+
 TEST_F(EngineTest, test_normal) {
     std::unique_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table("t1", 1, 1, 1));
     ASSERT_TRUE(table->Init());
+    int8_t* row1 = NULL;
+    uint32_t size1 = 0;
+    BuildBuf(&row1, &size1);
 
-    int8_t* ptr = static_cast<int8_t*>(malloc(28));
-    *reinterpret_cast<int32_t*>(ptr + 2) = 1;
-    *reinterpret_cast<int16_t*>(ptr + 2 + 4) = 2;
-    *reinterpret_cast<float*>(ptr + 2 + 4 + 2) = 3.1f;
-    *reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4) = 4.1;
-    *reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8) = 5;
-
-    ASSERT_TRUE(table->Put("k1", 1, reinterpret_cast<char*>(ptr), 28));
-    ASSERT_TRUE(table->Put("k1", 2, reinterpret_cast<char*>(ptr), 28));
+    ASSERT_TRUE(table->Put("k1", 1, reinterpret_cast<char*>(row1), size1));
+    ASSERT_TRUE(table->Put("k1", 2, reinterpret_cast<char*>(row1), size1));
     std::shared_ptr<TableStatus> status(new TableStatus());
     status->table = std::move(table);
     status->table_def.set_name("t1");
@@ -108,7 +155,11 @@ TEST_F(EngineTest, test_normal) {
         column->set_type(::fesql::type::kInt64);
         column->set_name("col15");
     }
-
+    {
+        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col6");
+    }
     TableMgrImpl table_mgr(status);
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
@@ -126,9 +177,9 @@ TEST_F(EngineTest, test_normal) {
     ASSERT_EQ(length, 8);
     int8_t* output1 = output[0];
     int8_t* output2 = output[1];
-    ASSERT_EQ(3, *reinterpret_cast<int32_t*>(output1 + 2));
-    ASSERT_EQ(2, *reinterpret_cast<int16_t*>(output1 + 6));
-    ASSERT_EQ(3, *reinterpret_cast<int32_t*>(output2 + 2));
+    ASSERT_EQ(65, *reinterpret_cast<int32_t*>(output1 + 2));
+    ASSERT_EQ(16, *reinterpret_cast<int16_t*>(output1 + 6));
+    ASSERT_EQ(65, *reinterpret_cast<int32_t*>(output2 + 2));
     free(output1);
     free(output2);
 }

@@ -68,7 +68,7 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
 
-    BufIRBuilder buf_ir_builder(table_, block, &sv);
+    BufNativeIRBuilder buf_ir_builder(table_, block, &sv);
     ExprIRBuilder expr_ir_builder(block, &sv, &buf_ir_builder, row_ptr_name,
                                   row_size_name, output_ptr_name, module_);
 
@@ -145,6 +145,7 @@ bool RowFnLetIRBuilder::StoreColumn(int64_t offset, ::llvm::Value* value,
                                     ScopeVar& sv,
                                     const std::string& output_ptr_name,
                                     ::llvm::BasicBlock* block) {
+
     if (value == NULL || block == NULL) {
         LOG(WARNING) << "value is null";
         return true;

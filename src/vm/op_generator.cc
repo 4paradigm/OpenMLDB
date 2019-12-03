@@ -170,6 +170,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
 
     std::shared_ptr<TableStatus> table_status =
         table_mgr_->GetTableDef(db, node->GetTable());
+
     if (!table_status) {
         LOG(WARNING) << "fail to find table with name " << node->GetTable();
         return false;

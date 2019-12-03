@@ -20,9 +20,11 @@
 
 #include <stdint.h>
 #include <cstddef>
+#include "vm/jit.h"
 
 namespace fesql {
 namespace storage {
+
 
 struct StringRef {
     uint32_t size;
@@ -39,6 +41,18 @@ struct Timestamp {
 };
 
 namespace v1 {
+
+inline int8_t GetAddrSpace(uint32_t size) {
+    if (size <= UINT8_MAX) {
+        return 1;
+    } else if (size <= UINT16_MAX) {
+        return 2;
+    } else if (size <= 1 << 24) {
+        return 3;
+    } else {
+        return 4;
+    }
+}
 
 inline int8_t GetBoolField(const int8_t* row, uint32_t offset) {
     int8_t value = *(row + offset);
@@ -66,10 +80,21 @@ inline double GetDoubleField(const int8_t* row, uint32_t offset) {
 }
 
 // native get string field method
-int32_t GetStrField(const int8_t* row, uint32_t offset, uint32_t next_str_offset,
-                    uint32_t addr_space, int8_t** data, uint32_t* size);
+int32_t GetStrField(const int8_t* row, 
+        uint32_t str_field_offset,
+        uint32_t next_str_field_offset,
+        uint32_t str_start_offset,
+        uint32_t addr_space, 
+        int8_t** data, uint32_t* size);
+
 
 }  // namespace v1
+
+void InitCodecSymbol(::llvm::orc::JITDylib& jd, 
+        ::llvm::orc::MangleAndInterner& mi);
+
+void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
+
 }  // namespace storage
 }  // namespace fesql
 #endif  // SRC_STORAGE_TYPE_IR_BUILDER_H_

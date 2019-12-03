@@ -3,8 +3,8 @@ variables:
     GIT_SUBMODULE_STRATEGY: normal
 
 stages:
-    - build
     - style
+    - build
 
 style_check:
     stage: style
@@ -26,7 +26,6 @@ build_fesql_and_case:
             junit:
                 - build/*.xml
         paths: ["build/coverage"]
-
 
 
 

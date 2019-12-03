@@ -34,7 +34,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block,
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block,
                                    ScopeVar* scope_var,
-                                   BufIRBuilder* buf_ir_builder,
+                                   BufNativeIRBuilder* buf_ir_builder,
                                    const std::string& row_ptr_name,
                                    const std::string& row_size_name,
                                    const std::string& output_ptr_name,
