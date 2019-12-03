@@ -6702,10 +6702,10 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
     zone_info_.set_mode(request->sm());
     if (mode_.load(std::memory_order_acquire) == rFOLLOWER) {
         // notify table leave follower mode, leader table will be writeable.
-        mode_.store(request->sm(), std::memory_order_acquire);
+        mode_.store(request->sm(), std::memory_order_release);
         thread_pool_.AddTask(boost::bind(&NameServerImpl::DistributeTabletMode, this));
     } else {
-        mode_.store(request->sm(), std::memory_order_acquire);
+        mode_.store(request->sm(), std::memory_order_release);
     }
     response->set_code(0);
 }
