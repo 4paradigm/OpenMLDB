@@ -131,8 +131,7 @@ public:
             ::rtidb::api::TaskStatusResponse* response,
             Closure* done);
 
-    void CreateTableInternel(const std::shared_ptr<CreateTableRequest> request, 
-            std::shared_ptr<GeneralResponse> response, 
+    void CreateTableInternel(std::shared_ptr<GeneralResponse> response, 
             std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, 
             const std::vector<::rtidb::base::ColumnDesc>& columns,
             uint64_t cur_term,
@@ -144,7 +143,7 @@ public:
         GeneralResponse* response, 
         Closure* done);
 
-    void DropTableInternel(const std::shared_ptr<DropTableRequest> request, 
+    void DropTableInternel(const std::string name,
             std::shared_ptr<GeneralResponse> response,
             std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             std::shared_ptr<::rtidb::api::TaskInfo> task_ptr = std::make_shared<::rtidb::api::TaskInfo>()); 
