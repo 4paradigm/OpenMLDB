@@ -81,6 +81,7 @@ private:
     uint64_t session_term_;
     int64_t task_id_;
     uint64_t ctime_;
+    // todo :: add statsus variable show replicas status
 };
 
 // the container of tablet

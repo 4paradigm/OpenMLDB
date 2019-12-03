@@ -35,6 +35,7 @@ DECLARE_uint32(get_table_status_interval);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_uint32(check_binlog_sync_progress_delta);
 DECLARE_uint32(name_server_op_execute_timeout);
+DECLARE_uint32(get_replica_status_interval);
 
 namespace rtidb {
 namespace nameserver {
@@ -144,7 +145,6 @@ bool ClusterInfo::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& tas
 }
 
 void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtidb::nameserver::TableInfo>& tables) {
-
     auto rep_iter = rep_table_map_.find(alias);
     if (rep_iter == rep_table_map_.end()) {
         rep_table_map_.insert(std::make_pair(alias, std::map<std::string, std::vector<::rtidb::nameserver::TablePartition>>()));
@@ -425,6 +425,7 @@ void NameServerImpl::RecoverClusterInfo() {
 
         if (cluster_info->Init(rpc_msg) != 0) {
             PDLOG(WARNING, "%s init failed, error: %s", alias.c_str(), rpc_msg.c_str());
+            // todo :: add cluster status, need show in showreplica
             continue;
         }
         nsc_.insert(std::make_pair(alias, cluster_info));
@@ -965,7 +966,6 @@ bool NameServerImpl::Init() {
     session_term_ = zk_client_->GetSessionTerm();
 
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
-    thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
     dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_,
             boost::bind(&NameServerImpl::OnLocked, this), boost::bind(&NameServerImpl::OnLostLock, this),
             FLAGS_endpoint);
@@ -4061,8 +4061,10 @@ void NameServerImpl::OnLocked() {
     running_.store(true, std::memory_order_release);
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this, false));
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatusForReplicaCluster, this, false));
+    task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateTableStatus, this));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::ProcessTask, this));
+    task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CheckClusterInfo, this));
 }
 
 void NameServerImpl::OnLostLock() {
@@ -6345,10 +6347,16 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_relaxed) == rFOLLOWER)) {
+    if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (mode_.load(std::memory_order_relaxed) != rLEADER) {
+        response->set_code(568);
+        response->set_msg("cur nameserver is not leader cluster");
+        PDLOG(WARNING, "cur nameserver is not leader cluster");
         return;
     }
     int code = 0;
@@ -6394,6 +6402,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             }
         }
         if (!cluster_info->AddReplicaClusterByNs(request->alias(), zone_info_.zone_name(), zone_info_.zone_term(), rpc_msg)) {
+            zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias());
             code = 300;
             break;
         }
@@ -6431,6 +6440,12 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (mode_.load(std::memory_order_relaxed) == rLEADER) {
+        response->set_code(568);
+        response->set_msg("cur nameserver is leader cluster");
+        PDLOG(WARNING, "cur nameserver is leader cluster");
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
@@ -6626,6 +6641,7 @@ void NameServerImpl::CheckClusterInfo() {
                 continue;
             }
             if ((tables.size() > 0) && !CompareTableInfo(tables)) {
+                // todo :: add cluster statsu, need show in showreplica
                 PDLOG(WARNING, "compare %s table info has error", i.first.c_str());
                 continue;
             }
@@ -6633,7 +6649,9 @@ void NameServerImpl::CheckClusterInfo() {
         }
     } while(0);
 
-    thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
+    if (running_.load(std::memory_order_acquire) && (mode_.load(std::memory_order_acquire) == rLEADER)) {
+        thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
+    }
 }
 
 void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
@@ -6671,9 +6689,6 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         }
     }
     std::lock_guard<std::mutex> lock(mu_);
-    if (mode_.load(std::memory_order_acquire) == rFOLLOWER) {
-        // notify table leave follower mode, leader table will be writeable.
-    }
     decltype(zone_info_) zone_info = zone_info_;
     zone_info.set_mode(request->sm());
     std::string value;
@@ -6685,7 +6700,13 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         return;
     }
     zone_info_.set_mode(request->sm());
-    mode_.store(request->sm(), std::memory_order_release);
+    if (mode_.load(std::memory_order_acquire) == rFOLLOWER) {
+        // notify table leave follower mode, leader table will be writeable.
+        mode_.store(request->sm(), std::memory_order_acquire);
+        thread_pool_.AddTask(boost::bind(&NameServerImpl::DistributeTabletMode, this));
+    } else {
+        mode_.store(request->sm(), std::memory_order_acquire);
+    }
     response->set_code(0);
 }
 
