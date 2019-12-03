@@ -2378,27 +2378,6 @@ void NameServerImpl::DropTable(RpcController* controller,
         GeneralResponse* response, 
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (request->has_zone_info()) {
-        PDLOG(DEBUG, "zone name [%s], zone term [%u]", 
-                request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
-        std::shared_ptr<DropTableRequest> request_tmp = std::make_shared<DropTableRequest>(*(request->New()));
-        std::shared_ptr<GeneralResponse> response_tmp = std::make_shared<GeneralResponse>(*(response->New()));
-        request_tmp->CopyFrom(*request);
-        response_tmp->CopyFrom(*response);
-        task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTable, this, request_tmp, response_tmp));
-        response->set_code(0);
-        response->set_msg("ok");
-    } else {
-        const std::shared_ptr<DropTableRequest> request_tmp = std::make_shared<DropTableRequest>(*request);
-        std::shared_ptr<GeneralResponse> response_tmp = std::make_shared<GeneralResponse>(*response);
-        DropTable(request_tmp, response_tmp);
-        response->set_code(response_tmp->code());
-        response->set_msg(response_tmp->msg());
-    }
-}
-
-void NameServerImpl::DropTable(const std::shared_ptr<DropTableRequest> request, 
-        std::shared_ptr<GeneralResponse> response) {
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
@@ -2417,23 +2396,32 @@ void NameServerImpl::DropTable(const std::shared_ptr<DropTableRequest> request,
             response->set_code(502);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%u], but zone name [%s], zone term [%u]", 
-                   zone_info_.zone_name().c_str(), zone_info_.zone_term(),
-                   request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
+                    zone_info_.zone_name().c_str(), zone_info_.zone_term(),
+                    request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
             return;
         }
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    auto iter = table_info_.find(request->name());
-    if (iter == table_info_.end()) {
-        response->set_code(100);
-        response->set_msg("table is not exist!");
-        PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
-        return;
-    }
-    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     {
-        //replica cluster ns part start
-        if (request->has_task_info() && request->task_info().IsInitialized()) {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = table_info_.find(request->name());
+        if (iter == table_info_.end()) {
+            response->set_code(100);
+            response->set_msg("table is not exist!");
+            PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
+            return;
+        }
+        table_info = iter->second;
+    }
+
+    std::shared_ptr<DropTableRequest> request_tmp(request->New());
+    std::shared_ptr<GeneralResponse> response_tmp(response->New());
+    request_tmp->CopyFrom(*request);
+    response_tmp->CopyFrom(*response);
+    if (request->has_zone_info() && request->has_task_info() && request->task_info().IsInitialized()) {
+        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr(request->task_info().New());
+        {
+            std::lock_guard<std::mutex> lock(mu_);
             if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDropTableForReplicaCluster, task_ptr) < 0) {
                 response->set_code(504);
                 response->set_msg("add task in replica cluster ns failed");
@@ -2443,15 +2431,29 @@ void NameServerImpl::DropTable(const std::shared_ptr<DropTableRequest> request,
                     task_ptr->op_id(), ::rtidb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                     ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
+        task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableInternel, this, request_tmp, response_tmp, table_info, task_ptr));
+        response->set_code(0);
+        response->set_msg("ok");
+    } else {
+        DropTableInternel(request_tmp, response_tmp, table_info);
+        response->set_code(response_tmp->code());
+        response->set_msg(response_tmp->msg());
     }
+}
+
+void NameServerImpl::DropTableInternel(const std::shared_ptr<DropTableRequest> request, 
+        std::shared_ptr<GeneralResponse> response,
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
+    std::lock_guard<std::mutex> lock(mu_);
     int code = 0;
-    for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
-        for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
             do {
-                std::string endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                if (!iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+                if (!table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                     PDLOG(WARNING, "table[%s] is not alive. pid[%u] endpoint[%s]", 
-                                    request->name().c_str(), iter->second->table_partition(idx).pid(), endpoint.c_str());
+                                    request->name().c_str(), table_info->table_partition(idx).pid(), endpoint.c_str());
                     continue;
                 }
                 auto tablets_iter = tablets_.find(endpoint);
@@ -2465,25 +2467,17 @@ void NameServerImpl::DropTable(const std::shared_ptr<DropTableRequest> request,
                     PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
                     continue;
                 }
-                bool res = false;
-                if (!request->has_task_info()) {
-                    res = tablets_iter->second->client_->DropTable(iter->second->tid(),
-                                iter->second->table_partition(idx).pid());
-                } else {
-                    res = tablets_iter->second->client_->DropTable(iter->second->tid(),
-                                iter->second->table_partition(idx).pid(), task_ptr);
-                }
-                if (!res) {
+                if (!tablets_iter->second->client_->DropTable(table_info->tid(),
+                            table_info->table_partition(idx).pid())){
                     PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", 
-                            iter->second->tid(), iter->second->table_partition(idx).pid(),
+                            table_info->tid(), table_info->table_partition(idx).pid(),
                             endpoint.c_str());
                     code = 313; // if drop table failed, return error                
                     break;
                 }
                 PDLOG(INFO, "drop table. tid[%u] pid[%u] endpoint[%s]", 
-                                iter->second->tid(), iter->second->table_partition(idx).pid(),
+                                table_info->tid(), table_info->table_partition(idx).pid(),
                                 endpoint.c_str());
-                
             } while (0);
         }
     }
@@ -2491,9 +2485,6 @@ void NameServerImpl::DropTable(const std::shared_ptr<DropTableRequest> request,
         PDLOG(WARNING, "delete table node[%s/%s] failed!", 
                 zk_table_data_path_.c_str(), request->name().c_str());
         code = 304;
-        if (task_ptr) {
-            task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-        }
     } else {
         PDLOG(INFO, "delete table node[%s/%s]", zk_table_data_path_.c_str(), request->name().c_str());
         table_info_.erase(request->name());
@@ -2502,12 +2493,20 @@ void NameServerImpl::DropTable(const std::shared_ptr<DropTableRequest> request,
         for (auto kv : nsc_) {
             if(DropTableForReplicaClusterOP(request->name(), kv.first)) {
                 PDLOG(WARNING, "drop table for replica cluster failed, table_name: %s, alias: %s", request->name().c_str(), kv.first.c_str());
+                code = 505;
                 break;
             }
         }
     }
     response->set_code(code);
     code == 0 ?  response->set_msg("ok") : response->set_msg("drop table error");
+    if (task_ptr) {
+        if (code != 0) {
+            task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+        } else {
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        }
+    }
     NotifyTableChanged();
 }
 
@@ -2704,31 +2703,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
         GeneralResponse* response, 
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (request->has_zone_info()) {
-        PDLOG(DEBUG, "zone name [%s], zone term [%u]", 
-                request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
-        std::shared_ptr<CreateTableRequest> request_tmp = std::make_shared<CreateTableRequest>(*(request->New()));
-        std::shared_ptr<GeneralResponse> response_tmp = std::make_shared<GeneralResponse>(*(response->New()));
-        request_tmp->CopyFrom(*request);
-        response_tmp->CopyFrom(*response);
-        PDLOG(DEBUG, "tmp zone name [%s], zone term [%u]", 
-                request_tmp->zone_info().zone_name().c_str(), request_tmp->zone_info().zone_term());
-        //CreateTable(request_tmp.get(), response_tmp.get());
-        //task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::CreateTable, this, request_tmp.get(), response_tmp.get()));
-        task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CreateTable, this, request_tmp, response_tmp));
-        response->set_code(0);
-        response->set_msg("ok");
-    } else {
-        const std::shared_ptr<CreateTableRequest> request_tmp = std::make_shared<CreateTableRequest>(*request);
-        std::shared_ptr<GeneralResponse> response_tmp = std::make_shared<GeneralResponse>(*response);
-        CreateTable(request_tmp, response_tmp);
-        response->set_code(response_tmp->code());
-        response->set_msg(response_tmp->msg());
-    }
-}
-
-void NameServerImpl::CreateTable(const std::shared_ptr<CreateTableRequest> request, 
-        std::shared_ptr<GeneralResponse> response) {
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
@@ -2747,8 +2721,8 @@ void NameServerImpl::CreateTable(const std::shared_ptr<CreateTableRequest> reque
             response->set_code(502);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%u], but zone name [%s], zone term [%u]", 
-                   zone_info_.zone_name().c_str(), zone_info_.zone_term(),
-                   request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
+                    zone_info_.zone_name().c_str(), zone_info_.zone_term(),
+                    request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
             return;
         }
     }
@@ -2782,7 +2756,7 @@ void NameServerImpl::CreateTable(const std::shared_ptr<CreateTableRequest> reque
         uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
         response->set_msg("invalid parameter");
         PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
-                        table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
+                table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
         return;
     }
     if (request->has_zone_info()) {
@@ -2826,7 +2800,7 @@ void NameServerImpl::CreateTable(const std::shared_ptr<CreateTableRequest> reque
             return;
         }
     } else {
-        // 
+        //
         if (SetPartitionInfo(*table_info) < 0) {
             response->set_code(314);
             response->set_msg("set partition info failed");
@@ -2854,14 +2828,18 @@ void NameServerImpl::CreateTable(const std::shared_ptr<CreateTableRequest> reque
         response->set_code(315);
         response->set_msg("convert column desc failed");
         PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", 
-                        table_info->name().c_str(), tid);
+                table_info->name().c_str(), tid);
         return;
     }
-    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
-    {
-        //replica cluster ns part start
-        std::lock_guard<std::mutex> lock(mu_);
-        if (request->has_task_info() && request->task_info().IsInitialized()) {
+
+    std::shared_ptr<CreateTableRequest> request_tmp(request->New());
+    std::shared_ptr<GeneralResponse> response_tmp(response->New());
+    request_tmp->CopyFrom(*request);
+    response_tmp->CopyFrom(*response);
+    if (request->has_zone_info() && request->has_task_info() && request->task_info().IsInitialized()) {
+        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr(request->task_info().New());
+        {
+            std::lock_guard<std::mutex> lock(mu_);
             if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kCreateTableForReplicaCluster, task_ptr) < 0) {
                 response->set_code(504);
                 response->set_msg("add task in replica cluster ns failed");
@@ -2871,7 +2849,23 @@ void NameServerImpl::CreateTable(const std::shared_ptr<CreateTableRequest> reque
                     task_ptr->op_id(), ::rtidb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                     ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
+        task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CreateTableInternel, this, request_tmp, response_tmp, table_info, columns, cur_term, tid, task_ptr));
+        response->set_code(0);
+        response->set_msg("ok");
+    } else {
+        CreateTableInternel(request_tmp, response_tmp, table_info, columns, cur_term, tid);
+        response->set_code(response_tmp->code());
+        response->set_msg(response_tmp->msg());
     }
+}
+
+void NameServerImpl::CreateTableInternel(const std::shared_ptr<CreateTableRequest> request, 
+        std::shared_ptr<GeneralResponse> response,
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+        const std::vector<::rtidb::base::ColumnDesc>& columns,
+        uint64_t cur_term,
+        uint32_t tid,
+        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
     do {
         if (CreateTableOnTablet(table_info, false, columns, endpoint_map, cur_term) < 0 ||
@@ -2881,6 +2875,22 @@ void NameServerImpl::CreateTable(const std::shared_ptr<CreateTableRequest> reque
             PDLOG(WARNING, "create table failed. name[%s] tid[%u]", 
                             table_info->name().c_str(), tid);
             break;
+        }
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (!nsc_.empty()) {
+                for (auto kv : nsc_) {
+                    if(CreateTableForReplicaClusterOP(*table_info, kv.first)) {
+                        PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
+                        response->set_code(503);
+                        response->set_msg( "create table for replica cluster failed");
+                        break;
+                    }
+                }
+                if (response->code() != 0) {
+                    break;    
+                }
+            }
         }
         std::string table_value;
         table_info->SerializeToString(&table_value);
@@ -2897,15 +2907,8 @@ void NameServerImpl::CreateTable(const std::shared_ptr<CreateTableRequest> reque
             std::lock_guard<std::mutex> lock(mu_);
             table_info_.insert(std::make_pair(table_info->name(), table_info));
             NotifyTableChanged();
-            if (!nsc_.empty()) {
-                for (auto kv : nsc_) {
-                    if(CreateTableForReplicaClusterOP(*table_info, kv.first)) {
-                        PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
-                        break;
-                    }
-                }
-            }
         }
+        
         if (task_ptr) {
             std::lock_guard<std::mutex> lock(mu_);
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);

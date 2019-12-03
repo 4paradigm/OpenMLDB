@@ -132,16 +132,23 @@ public:
             ::rtidb::api::TaskStatusResponse* response,
             Closure* done);
 
-    void CreateTable(const std::shared_ptr<CreateTableRequest> request, 
-            std::shared_ptr<GeneralResponse> response);
+    void CreateTableInternel(const std::shared_ptr<CreateTableRequest> request, 
+            std::shared_ptr<GeneralResponse> response, 
+            std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, 
+            const std::vector<::rtidb::base::ColumnDesc>& columns,
+            uint64_t cur_term,
+            uint32_t tid,
+            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr = std::make_shared<::rtidb::api::TaskInfo>());
 
     void CreateTable(RpcController* controller,
         const CreateTableRequest* request,
         GeneralResponse* response,
         Closure* done);
 
-    void DropTable(const std::shared_ptr<DropTableRequest> request, 
-            std::shared_ptr<GeneralResponse> response); 
+    void DropTableInternel(const std::shared_ptr<DropTableRequest> request, 
+            std::shared_ptr<GeneralResponse> response,
+            std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr = std::make_shared<::rtidb::api::TaskInfo>()); 
 
     void DropTable(RpcController* controller,
         const DropTableRequest* request,
