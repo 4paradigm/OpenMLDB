@@ -623,6 +623,27 @@ void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts, ::rtidb
     std::cout << "kick ok" << std::endl;
 }
 
+void HandleNSSwitchMode(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+    }
+    if ((parts[1] != "normal") || (parts[1] != "leader")) {
+        std::cout << "invalid mode type"  << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ok;
+    if (parts[1] == "normal") {
+        ok = client->SwitchMode(::rtidb::nameserver::rNORMAL, msg);
+    } else if (parts[1] == "leader") {
+        ok = client->SwitchMode(::rtidb::nameserver::rLEADER, msg);
+    }
+    if (!ok) {
+        std::cout << "Fail to swith mode. error msg: " << msg << std::endl;
+    }
+    std::cout << "switchmode ok" << std::endl;
+}
+
 void HandleNSShowNameServer(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client,
         std::shared_ptr<ZkClient> zk_client) {
     if (FLAGS_zk_cluster.empty() || !zk_client) {
@@ -2317,6 +2338,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("addrepcluster - add remote replica cluster\n");
         printf("showrepcluster - show remote replica cluster\n");
         printf("removerepcluster - remove remote replica cluste \n");
+        printf("switchmode - switch cluster mode\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -2500,6 +2522,11 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("desc: remove remote replica cluster\n");
             printf("usage: removerepcluster cluster_alias\n");
             printf("ex: removerepcluster prod_dc01\n");
+        } else if (parts[1] == "switchmode") {
+            printf("desc: switch cluster mode\n");
+            printf("usage: switchmode normal|leader\n");
+            printf("ex: switchmode normal\n");
+            printf("ex: switchmode leader\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -4622,6 +4649,8 @@ void StartNsClient() {
             HandleShowReplicaCluster(parts, &client);
         } else if (parts[0] == "removerepcluster") {
             HandleNSRemoveReplicaCluster(parts, &client);
+        } else if (parts[0] == "switchmode") {
+            HandleNSSwitchMode(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

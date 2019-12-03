@@ -81,6 +81,7 @@ private:
     uint64_t session_term_;
     int64_t task_id_;
     uint64_t ctime_;
+    // todo :: add statsus variable show replicas status
 };
 
 // the container of tablet
@@ -603,7 +604,6 @@ private:
     uint64_t session_term_;
     std::atomic<uint64_t> task_rpc_version_;
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
-    std::set<std::string> global_table_set_;
 };
 
 }

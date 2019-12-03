@@ -592,6 +592,20 @@ bool NsClient::RemoveReplicaClusterByNs(const std::string& alias, const std::str
     return false;
 }
 
+bool NsClient::SwitchMode(const ::rtidb::nameserver::ServerMode mode, std::string& msg) {
+    ::rtidb::nameserver::SwitchModeRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_sm(mode);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::SwitchMode,
+        &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    int code = response.code();
+    if (ok && (code == 0)) {
+        return true;
+    }
+    return false;
+}
+
 }
 }
 

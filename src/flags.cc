@@ -107,3 +107,6 @@ DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");
 DEFINE_uint32(load_table_batch, 30, "set laod table batch size");
 DEFINE_uint32(load_table_thread_num, 3, "set load tabale thread pool size");
 DEFINE_uint32(load_table_queue_size, 1000, "set load tabale queue size");
+
+// multiple data center
+DEFINE_uint32(get_replica_status_interval, 10000, "config the interval to sync replica cluster status time");
