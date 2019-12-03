@@ -56,7 +56,8 @@ class NodeManager {
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     ProjectListPlanNode *MakeProjectListPlanNode(const std::string &table,
                                                  WindowPlanNode *w);
-    WindowPlanNode *MakeWindowPlanNode(int64_t start, int64_t end, bool is_range_between);
+    WindowPlanNode *MakeWindowPlanNode(int64_t start, int64_t end,
+                                       bool is_range_between);
     ScanPlanNode *MakeSeqScanPlanNode(const std::string &table);
     ScanPlanNode *MakeIndexScanPlanNode(const std::string &table);
     ProjectPlanNode *MakeProjectPlanNode(node::SQLNode *expression,
@@ -85,8 +86,8 @@ class NodeManager {
 
     SQLNode *MakeNameNode(const std::string &name);
     SQLNode *MakeInsertTableNode(const std::string &table_name,
-                                 const ExprListNode* column_names,
-                                 const ExprListNode* values);
+                                 const ExprListNode *column_names,
+                                 const ExprListNode *values);
     SQLNode *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &table_name,
                                  SQLNodeList *column_desc_list);

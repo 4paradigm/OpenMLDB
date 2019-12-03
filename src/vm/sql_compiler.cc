@@ -17,6 +17,9 @@
 
 #include "vm/sql_compiler.h"
 #include <udf/udf.h>
+#include <memory>
+#include <utility>
+#include <vector>
 #include "analyser/analyser.h"
 #include "glog/logging.h"
 #include "parser/parser.h"
@@ -38,10 +41,13 @@ void SQLCompiler::RegisterUDF(::llvm::Module* m) {
     m->getOrInsertFunction("sum_int32", i32_ty, i8_ptr_ty);
     m->getOrInsertFunction("col", i8_ptr_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty);
 }
-void SQLCompiler::RegisterDyLib(FeSQLJIT *jit, ::llvm::orc::JITDylib &jd) {
-    jit->AddSymbol(jd, "inc_int32", reinterpret_cast<void*>(&fesql::udf::inc_int32));
-    jit->AddSymbol(jd, "sum_int32", reinterpret_cast<void*>(&fesql::udf::sum_int32));
-    jit->AddSymbol(jd, "sum_int64", reinterpret_cast<void*>(&fesql::udf::sum_int64));
+void SQLCompiler::RegisterDyLib(FeSQLJIT* jit, ::llvm::orc::JITDylib& jd) {
+    jit->AddSymbol(jd, "inc_int32",
+                   reinterpret_cast<void*>(&fesql::udf::inc_int32));
+    jit->AddSymbol(jd, "sum_int32",
+                   reinterpret_cast<void*>(&fesql::udf::sum_int32));
+    jit->AddSymbol(jd, "sum_int64",
+                   reinterpret_cast<void*>(&fesql::udf::sum_int64));
     jit->AddSymbol(jd, "col", reinterpret_cast<void*>(&fesql::udf::col));
 }
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
@@ -88,14 +94,15 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     for (; it != ctx.ops.ops.end(); ++it) {
         OpNode* op_node = *it;
         if (op_node->type == kOpProject) {
-            ProjectOp* pop = (ProjectOp*)op_node;
+            ProjectOp* pop = reinterpret_cast<ProjectOp*>(op_node);
             ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
                 ctx.jit->lookup(jd, pop->fn_name));
             if (symbol.takeError()) {
                 LOG(WARNING) << "fail to find fn with name  " << pop->fn_name
-                             << " for sql:\n" << ctx.sql;
+                             << " for sql:\n"
+                             << ctx.sql;
             }
-            pop->fn = (int8_t*)symbol->getAddress();
+            pop->fn = reinterpret_cast<int8_t*>(symbol->getAddress());
             ctx.schema = pop->output_schema;
             ctx.row_size = pop->output_size;
         }
@@ -103,8 +110,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     return true;
 }
 
-bool SQLCompiler::Parse(SQLContext &ctx,
-                        ::fesql::node::NodeManager& node_mgr,
+bool SQLCompiler::Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,
                         ::fesql::node::PlanNodeList& plan_trees,  // NOLINT
                         ::fesql::base::Status& status) {          // NOLINT
     ::fesql::node::NodePointVector parser_trees;
@@ -118,7 +124,7 @@ bool SQLCompiler::Parse(SQLContext &ctx,
         return false;
     }
 
-    //TODO(chenjing): ADD analyser
+    // TODO(chenjing): ADD analyser
     ret = planer.CreatePlanTree(parser_trees, plan_trees, status);
     if (ret != 0) {
         LOG(WARNING) << "Fail create sql plan: " << status.msg;

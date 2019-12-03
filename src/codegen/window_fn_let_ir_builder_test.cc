@@ -15,15 +15,11 @@
  * limitations under the License.
  */
 
-#include "base/window.cc"
+#include "base/window.h"
+#include "codegen/buf_ir_builder.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "gtest/gtest.h"
-
-#include "parser/parser.h"
-#include "plan/planner.h"
-
-#include "buf_ir_builder.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -37,9 +33,11 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
 
-using namespace llvm;
-using namespace llvm::orc;
+using namespace llvm;       // NOLINT
+using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
 
@@ -59,7 +57,7 @@ typedef struct {
     std::vector<UnionData> vals;
 } Param;
 
-void GetSchema(::fesql::type::TableDef& table) {
+void GetSchema(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
@@ -96,9 +94,10 @@ class WindowFnLetIRBuilderTest : public ::testing::TestWithParam<Param> {
     ~WindowFnLetIRBuilderTest() {}
 
     template <class T>
-    void Check(base::WindowIteratorImpl& impl,
-               int32_t (*get_filed)(int8_t*, int8_t*), ::fesql::type::Type type,
-               std::vector<UnionData> vals) {
+    void Check(const base::WindowIteratorImpl& impl,
+               int32_t (*get_filed)(int8_t*, int8_t*),
+               const ::fesql::type::Type& type,
+               const std::vector<UnionData> vals) {
         base::ColumnIteratorImpl<T>* column_iter =
             new base::ColumnIteratorImpl<T>(impl, get_filed);
         ASSERT_TRUE(nullptr != column_iter);
@@ -125,7 +124,7 @@ class WindowFnLetIRBuilderTest : public ::testing::TestWithParam<Param> {
                     ASSERT_EQ(val.vdouble, column_iter->Next());
                     break;
                 }
-                default:{
+                default: {
                     FAIL();
                 }
             }
@@ -133,9 +132,9 @@ class WindowFnLetIRBuilderTest : public ::testing::TestWithParam<Param> {
     }
 
     template <class T>
-    void Check(base::WindowIteratorImpl& impl,
-               uint32_t offset, ::fesql::type::Type type,
-               std::vector<UnionData> vals) {
+    void Check(const base::WindowIteratorImpl& impl, uint32_t offset,
+               const ::fesql::type::Type& type,
+               const std::vector<UnionData> vals) {
         base::ColumnIteratorImpl<T>* column_iter =
             new base::ColumnIteratorImpl<T>(impl, offset);
         ASSERT_TRUE(nullptr != column_iter);
@@ -162,7 +161,7 @@ class WindowFnLetIRBuilderTest : public ::testing::TestWithParam<Param> {
                     ASSERT_EQ(val.vdouble, column_iter->Next());
                     break;
                 }
-                default:{
+                default: {
                     FAIL();
                 }
             }
@@ -196,32 +195,32 @@ TEST_P(WindowFnLetIRBuilderTest, WindowIteratorImplWithOffsetTest) {
     // prepare row buf
     std::vector<base::Row> rows;
     {
-        int8_t* ptr = static_cast<int8_t*>(malloc(28));
-        *((int32_t*)(ptr + 2)) = 1;
-        *((int16_t*)(ptr + 2 + 4)) = 2;
-        *((float*)(ptr + 2 + 4 + 2)) = 3.1f;
-        *((double*)(ptr + 2 + 4 + 2 + 4)) = 4.1;
-        *((int64_t*)(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
+        int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+        *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+        *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 2;
+        *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
+        *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
+        *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
         rows.push_back(base::Row{.buf = ptr});
     }
 
     {
         int8_t* ptr = static_cast<int8_t*>(malloc(28));
-        *((int32_t*)(ptr + 2)) = 11;
-        *((int16_t*)(ptr + 2 + 4)) = 22;
-        *((float*)(ptr + 2 + 4 + 2)) = 33.1f;
-        *((double*)(ptr + 2 + 4 + 2 + 4)) = 44.1;
-        *((int64_t*)(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
+        *(reinterpret_cast<int32_t*>(ptr + 2)) = 11;
+        *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 22;
+        *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
+        *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
+        *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
         rows.push_back(base::Row{.buf = ptr});
     }
 
     {
         int8_t* ptr = static_cast<int8_t*>(malloc(28));
-        *((int32_t*)(ptr + 2)) = 111;
-        *((int16_t*)(ptr + 2 + 4)) = 222;
-        *((float*)(ptr + 2 + 4 + 2)) = 333.1f;
-        *((double*)(ptr + 2 + 4 + 2 + 4)) = 444.1;
-        *((int64_t*)(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
+        *(reinterpret_cast<int32_t*>(ptr + 2)) = 111;
+        *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 222;
+        *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
+        *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
+        *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
         rows.push_back(base::Row{.buf = ptr});
     }
 

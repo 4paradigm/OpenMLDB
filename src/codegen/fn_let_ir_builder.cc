@@ -38,8 +38,9 @@ RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
  * @param type
  * @return
  */
-bool RowFnLetIRBuilder::Build(const std::string& name, const std::string& col,
-                              ::fesql::type::Type& type) {
+bool RowFnLetIRBuilder::Build(
+    const std::string& name, const std::string& col,
+    ::fesql::type::Type& type) {  // NOLINT (runtime/references)
     if (col.empty()) {
         LOG(WARNING) << "column name is empty";
         return false;
@@ -103,9 +104,11 @@ bool RowFnLetIRBuilder::Build(const std::string& name, const std::string& col,
     ir_builder.CreateRet(ret);
     return true;
 }
+
 bool RowFnLetIRBuilder::Build(const std::string& name,
                               const ::fesql::node::ProjectListPlanNode* node,
-                              std::vector<::fesql::type::ColumnDef>& schema) {
+                              std::vector<::fesql::type::ColumnDef>&
+                                  schema) {  // NOLINT (runtime/references)
     if (node == NULL) {
         LOG(WARNING) << "node is null";
         return false;
@@ -235,10 +238,9 @@ bool RowFnLetIRBuilder::StoreColumn(int64_t offset, ::llvm::Value* value,
     return BuildStoreOffset(builder, out_ptr, offset_val, value);
 }
 
-bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
-                                      std::vector<::llvm::Type*>& args_type,
-                                      ::llvm::Type* ret_type,
-                                      ::llvm::Function** fn) {
+bool RowFnLetIRBuilder::BuildFnHeader(
+    const std::string& name, const std::vector<::llvm::Type*>& args_type,
+    ::llvm::Type* ret_type, ::llvm::Function** fn) {
     if (fn == NULL) {
         LOG(WARNING) << "fn is null";
         return false;

@@ -11,7 +11,7 @@ llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
 add_executable(hash_mk hash_mk.cc)
 target_link_libraries(hash_mk gflags benchmark benchmark_main pthread)
 list(APPEND mk_list hash_mk)
-add_library(fesql_base STATIC linenoise.cc texttable.cc)
+add_library(fesql_base STATIC linenoise.cc texttable.cc )
 
 add_executable(texttable_test texttable_test.cc)
 target_link_libraries(texttable_test fesql_base gflags gtest pthread)

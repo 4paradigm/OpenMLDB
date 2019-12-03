@@ -54,12 +54,11 @@ void FeSQLAnalyser::Analyse(SQLNode *parser_tree,
             return TransformFnDefListNode(
                 dynamic_cast<node::FnNodeList *>(parser_tree), status);
         default: {
-                    status.msg =
-                        ("can not support " +
-                         node::NameOfSQLNodeType(parser_tree->GetType()));
-                    status.code = (common::kSQLError);
-                    return;
-                }
+            status.msg = ("can not support " +
+                          node::NameOfSQLNodeType(parser_tree->GetType()));
+            status.code = (common::kSQLError);
+            return;
+        }
     }
 }
 
@@ -289,9 +288,7 @@ void FeSQLAnalyser::TransformWindowDef(
     // TODO(chenjing): window is exist
     // TODO(chenjing): partions type is valid
     // TODO(chenjing): order type is valid
-
 }
-
 
 void FeSQLAnalyser::TransformExprNode(
     SQLNode *node_ptr, const std::string &table_name,
@@ -344,11 +341,11 @@ void FeSQLAnalyser::TransformCmdNode(
     node::CmdNode *node_ptr, Status &status) {  // NOLINT (runtime/references)
     // no nothing
 }
-void FeSQLAnalyser::TransformFnDefListNode(node::FnNodeList *node_ptr,
-                                           Status &status) { // NOLINT (runtime/references)
+void FeSQLAnalyser::TransformFnDefListNode(
+    node::FnNodeList *node_ptr,
+    Status &status) {  // NOLINT (runtime/references)
     // TODO(chenjing): check function name, args size, parameter list
 }
-
 
 }  // namespace analyser
 }  // namespace fesql

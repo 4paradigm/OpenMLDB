@@ -14,13 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "sdk/tablet_sdk.h"
-#include <analyser/analyser.h>
-#include <base/strings.h>
-#include <node/node_enum.h>
-#include <parser/parser.h>
-#include <plan/planner.h>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include "analyser/analyser.h"
+#include "base/strings.h"
+#include "node/node_enum.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
 
 #include "brpc/channel.h"
 #include "glog/logging.h"
@@ -36,7 +39,7 @@ class ResultSetIteratorImpl;
 
 class ResultSetIteratorImpl : public ResultSetIterator {
  public:
-    ResultSetIteratorImpl(tablet::QueryResponse* response);
+    explicit ResultSetIteratorImpl(tablet::QueryResponse* response);
 
     ~ResultSetIteratorImpl();
 
@@ -51,41 +54,13 @@ class ResultSetIteratorImpl : public ResultSetIterator {
     bool GetDouble(uint32_t idx, double* val);
 
  private:
-    std::vector<uint32_t> offsets_;
     uint32_t idx_;
     tablet::QueryResponse* response_;
     std::unique_ptr<storage::RowView> row_view_;
 };
 
 ResultSetIteratorImpl::ResultSetIteratorImpl(tablet::QueryResponse* response)
-    : offsets_(), idx_(0), response_(response), row_view_() {
-    uint32_t offset = 2;
-    for (int32_t i = 0; i < response_->schema_size(); i++) {
-        offsets_.push_back(offset);
-        const ::fesql::type::ColumnDef& column = response_->schema(i);
-        switch (column.type()) {
-            case ::fesql::type::kInt16: {
-                offset += 2;
-                break;
-            }
-            case ::fesql::type::kInt32:
-            case ::fesql::type::kFloat: {
-                offset += 4;
-                break;
-            }
-            case ::fesql::type::kInt64:
-            case ::fesql::type::kDouble: {
-                offset += 8;
-                break;
-            }
-            default: {
-                LOG(WARNING) << ::fesql::type::Type_Name(column.type())
-                             << " is not supported";
-                break;
-            }
-        }
-    }
-}
+    : idx_(0), response_(response), row_view_() {}
 
 ResultSetIteratorImpl::~ResultSetIteratorImpl() {}
 
@@ -99,7 +74,7 @@ void ResultSetIteratorImpl::Next() {
         reinterpret_cast<const int8_t*>(response_->result_set(idx_).c_str());
     uint32_t size = response_->result_set(idx_).size();
     row_view_ = std::move(std::unique_ptr<storage::RowView>(
-        new storage::RowView(&(response_->schema()), row, &offsets_, size)));
+        new storage::RowView(response_->schema(), row, size)));
     idx_ += 1;
 }
 
@@ -107,35 +82,35 @@ bool ResultSetIteratorImpl::GetInt16(uint32_t idx, int16_t* val) {
     if (!row_view_) {
         return false;
     }
-    return row_view_->GetInt16(idx, val);
+    return row_view_->GetInt16(idx, val) == 0;
 }
 
 bool ResultSetIteratorImpl::GetInt32(uint32_t idx, int32_t* val) {
     if (!row_view_) {
         return false;
     }
-    return row_view_->GetInt32(idx, val);
+    return row_view_->GetInt32(idx, val) == 0;
 }
 
 bool ResultSetIteratorImpl::GetInt64(uint32_t idx, int64_t* val) {
     if (!row_view_) {
         return false;
     }
-    return row_view_->GetInt64(idx, val);
+    return row_view_->GetInt64(idx, val) == 0;
 }
 
 bool ResultSetIteratorImpl::GetFloat(uint32_t idx, float* val) {
     if (!row_view_) {
         return false;
     }
-    return row_view_->GetFloat(idx, val);
+    return row_view_->GetFloat(idx, val) == 0;
 }
 
 bool ResultSetIteratorImpl::GetDouble(uint32_t idx, double* val) {
     if (!row_view_) {
         return false;
     }
-    return row_view_->GetDouble(idx, val);
+    return row_view_->GetDouble(idx, val) == 0;
 }
 
 class ResultSetImpl : public ResultSet {
@@ -145,7 +120,7 @@ class ResultSetImpl : public ResultSet {
 
     const uint32_t GetColumnCnt() const { return response_.schema_size(); }
     const std::string& GetColumnName(uint32_t i) const {
-        // TODO check i out of index
+        // TODO(wangtaize) check i out of index
         return response_.schema(i).name();
     }
 
@@ -168,7 +143,7 @@ class ResultSetImpl : public ResultSet {
 class TabletSdkImpl : public TabletSdk {
  public:
     TabletSdkImpl() {}
-    TabletSdkImpl(const std::string& endpoint)
+    explicit TabletSdkImpl(const std::string& endpoint)
         : endpoint_(endpoint), channel_(NULL) {}
     ~TabletSdkImpl() { delete channel_; }
 
@@ -209,11 +184,6 @@ bool TabletSdkImpl::Init() {
 }
 
 void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
-    size_t row_size = 0;
-    for (auto item : insert.values) {
-        row_size += item.GetSize();
-    }
-
     type::TableDef schema;
 
     if (false == GetSchema(insert.db, insert.table, schema, status)) {
@@ -223,17 +193,24 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
         }
         return;
     }
-    row_size += 2;
+    uint32_t string_length = 0;
+    for (int i = 0; i < schema.columns_size(); i++) {
+        const Value& value = insert.values[i];
+        if (schema.columns(i).type() == ::fesql::type::kString) {
+            string_length += strlen(value.GetStr());
+        }
+    }
+    storage::RowBuilder rbuilder(schema.columns());
+    uint32_t row_size = rbuilder.CalTotalLength(string_length);
     std::string row;
     DLOG(INFO) << "row size: " << row_size;
     row.resize(row_size);
     char* str_buf = reinterpret_cast<char*>(&(row[0]));
-    storage::RowBuilder rbuilder(&(schema.columns()), (int8_t*)str_buf,
-                                 row_size);
+    rbuilder.SetBuffer(reinterpret_cast<int8_t*>(str_buf), row_size);
 
     // TODO(chenjing): handle insert into table(col1, col2, col3) values(1, 2.1,
     // 3);
-    for (unsigned i = 0; i < schema.columns_size(); i++) {
+    for (int i = 0; i < schema.columns_size(); i++) {
         const Value& value = insert.values[i];
         switch (schema.columns(i).type()) {
             case type::kInt32:
@@ -250,6 +227,9 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
                 break;
             case type::kDouble:
                 rbuilder.AppendDouble(value.GetDouble());
+                break;
+            case type::kString:
+                rbuilder.AppendString(value.GetStr(), strlen(value.GetStr()));
                 break;
             default: {
                 status.msg =

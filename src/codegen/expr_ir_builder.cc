@@ -16,10 +16,12 @@
  */
 
 #include "codegen/expr_ir_builder.h"
-#include <proto/common.pb.h>
+#include <string>
+#include <vector>
 #include "codegen/fn_ir_builder.h"
 #include "codegen/ir_types.h"
 #include "glog/logging.h"
+#include "proto/common.pb.h"
 
 namespace fesql {
 namespace codegen {
@@ -43,10 +45,8 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
-
-
-::llvm::Function* ExprIRBuilder::GetFuncion(const std::string& col,
-                                            const ::fesql::node::DataType& type) {
+::llvm::Function* ExprIRBuilder::GetFuncion(
+    const std::string& col, const ::fesql::node::DataType& type) {
     ::llvm::Function* fn = module_->getFunction(col);
     if (nullptr == fn) {
         const std::string suffix = fesql::node::DataTypeName(type);
@@ -147,7 +147,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     if (fn == NULL) {
         status.set_code(common::kCallMethodError);
         status.set_msg("fail to find func with name " +
-            call_fn->GetFunctionName());
+                       call_fn->GetFunctionName());
         LOG(WARNING) << status.msg();
         return false;
     }
@@ -357,7 +357,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
 
     if (right->getType()->isIntegerTy() && left->getType()->isIntegerTy()) {
         ::llvm::IRBuilder<> builder(block_);
-        // TODO type check
+        // TODO(wangtaize) type check
         switch (node->GetOp()) {
             case ::fesql::node::kFnOpAdd: {
                 *output = builder.CreateAdd(left, right, "expr_add");
@@ -381,6 +381,5 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
     }
 }
 
-;
 }  // namespace codegen
 }  // namespace fesql

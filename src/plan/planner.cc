@@ -542,5 +542,5 @@ std::string GenerateName(const std::string prefix, int id) {
     return name;
 }
 
-}  // namespace plan
+}  // namespace  plan
 }  // namespace fesql

@@ -18,12 +18,10 @@
 #ifndef SRC_SDK_TABLET_SDK_H_
 #define SRC_SDK_TABLET_SDK_H_
 
-#include "sdk/base_struct.h"
-
-#include <string.h>
-
 #include <string>
 #include <vector>
+#include <memory>
+#include "sdk/base_struct.h"
 
 namespace fesql {
 namespace sdk {
@@ -58,10 +56,11 @@ class TabletSdk {
  public:
     TabletSdk() = default;
     virtual ~TabletSdk() {}
-    virtual void SyncInsert(const Insert& insert, sdk::Status& status) = 0;
+    virtual void SyncInsert(const Insert& insert, sdk::Status& status) = 0;  // NOLINT
     virtual void SyncInsert(const std::string& db, const std::string& sql,
-                            sdk::Status& status) = 0;
-    virtual std::unique_ptr<ResultSet> SyncQuery(const Query& query, sdk::Status& status) = 0;
+                            sdk::Status& status) = 0;  // NOLINT
+    virtual std::unique_ptr<ResultSet> SyncQuery(const Query& query,
+                                                 sdk::Status& status) = 0;  // NOLINT
 };
 
 // create a new dbms sdk with a endpoint
@@ -70,4 +69,4 @@ std::unique_ptr<TabletSdk> CreateTabletSdk(const std::string& endpoint);
 
 }  // namespace sdk
 }  // namespace fesql
-#endif  // SRC_SDK_TABLET_SDK_H
+#endif  // SRC_SDK_TABLET_SDK_H_

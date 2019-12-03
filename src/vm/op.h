@@ -18,6 +18,8 @@
 #ifndef SRC_VM_OP_H_
 #define SRC_VM_OP_H_
 
+#include <string>
+#include <vector>
 #include "proto/type.pb.h"
 
 namespace fesql {
@@ -42,14 +44,14 @@ struct ScanOp {
     std::vector<::fesql::type::ColumnDef> output_schema;
 };
 
-//TODO(chenjing): WindowOp
+// TODO(chenjing): WindowOp
 struct ScanInfo {
     std::string db;
     uint32_t tid;
     uint32_t pid;
     std::vector<std::string> keys;
     std::vector<std::string> orders;
-    //todo(chenjing): start and end parse
+    // todo(chenjing): start and end parse
     int64_t start_offset;
     int64_t end_offset;
     bool is_range_between;

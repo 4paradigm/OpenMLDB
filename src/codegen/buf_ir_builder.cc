@@ -93,7 +93,6 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
 }
 bool BufIRBuilder::GetFieldOffset(const std::string& name, uint32_t& offset,
                                   ::fesql::type::Type& fe_type) {
-
     Types::iterator it = types_.find(name);
     if (it == types_.end()) {
         LOG(WARNING) << "no column " << name << " in table " << table_->name();

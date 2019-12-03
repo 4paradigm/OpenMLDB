@@ -1,29 +1,27 @@
 //
 // skip_list_test.cc
-// Copyright 2017 4paradigm.com 
+// Copyright 2017 4paradigm.com
 
-#include "skiplist.h"
-#include "gtest/gtest.h"
-#include "../base/slice.h"
+#include "storage/skiplist.h"
 #include <vector>
+#include <string>
+#include "base/slice.h"
+#include "gtest/gtest.h"
 
 namespace fesql {
 namespace storage {
 using ::fesql::base::Slice;
 
 class NodeTest : public ::testing::Test {
-
-public:
-    NodeTest(){}
+ public:
+    NodeTest() {}
     ~NodeTest() {}
 };
 
 class SkipListTest : public ::testing::Test {
-
-public:
-    SkipListTest(){}
+ public:
+    SkipListTest() {}
     ~SkipListTest() {}
-
 };
 
 struct SliceComparator {
@@ -38,7 +36,7 @@ struct Comparator {
     int operator()(const uint32_t a, const uint32_t b) const {
         if (a > b) {
             return 1;
-        }else if (a == b) {
+        } else if (a == b) {
             return 0;
         }
         return -1;
@@ -49,7 +47,7 @@ struct DescComparator {
     int operator()(const uint32_t a, const uint32_t b) const {
         if (a > b) {
             return -1;
-        }else if (a == b) {
+        } else if (a == b) {
             return 0;
         }
         return 1;
@@ -60,7 +58,6 @@ struct KE {
     Slice k;
     uint32_t v;
 };
-
 
 struct StrComparator {
     int operator()(const std::string& a, const std::string& b) const {
@@ -82,15 +79,13 @@ TEST_F(NodeTest, SetNext) {
 }
 
 TEST_F(NodeTest, NodeByteSize) {
-    std::atomic<Node<Slice, std::string*>* > node0[12];
+    std::atomic<Node<Slice, std::string*>*> node0[12];
     ASSERT_EQ(96ul, sizeof(node0));
     ASSERT_EQ(32ul, sizeof(Node<uint64_t, void*>));
     ASSERT_EQ(40ul, sizeof(Node<Slice, void*>));
 }
 
-
-
-TEST_F(NodeTest, SliceTest)  {
+TEST_F(NodeTest, SliceTest) {
     SliceComparator cmp;
     SkipList<Slice, KE*, SliceComparator> sl(12, 4, cmp);
     Slice key("test1");
@@ -100,7 +95,7 @@ TEST_F(NodeTest, SliceTest)  {
     sl.Insert(key, v);
     Slice pk("test1");
     KE* n = sl.Get(pk);
-    ASSERT_TRUE(pk.compare(n->k) == 0);
+    ASSERT_EQ(pk.compare(n->k), 0);
 }
 
 TEST_F(NodeTest, AddToFirst) {
@@ -112,7 +107,7 @@ TEST_F(NodeTest, AddToFirst) {
         uint32_t value3 = 5;
         sl.Insert(key3, value3);
         uint32_t key4 = 3;
-        uint32_t value4= 6;
+        uint32_t value4 = 6;
         sl.Insert(key4, value4);
         uint32_t key1 = 1;
         uint32_t value1 = 1;
@@ -136,7 +131,6 @@ TEST_F(NodeTest, AddToFirst) {
     }
 }
 
-
 TEST_F(SkipListTest, InsertAndIterator) {
     Comparator cmp;
     for (auto height : vec) {
@@ -151,7 +145,7 @@ TEST_F(SkipListTest, InsertAndIterator) {
         uint32_t value3 = 5;
         sl.Insert(key3, value3);
         uint32_t key4 = 3;
-        uint32_t value4= 6;
+        uint32_t value4 = 6;
         sl.Insert(key4, value4);
         Iterator<uint32_t, uint32_t>* it = sl.NewIterator();
         it->Seek(0);
@@ -186,7 +180,7 @@ TEST_F(SkipListTest, GetSize) {
     uint32_t value3 = 5;
     sl.Insert(key3, value3);
     uint32_t key4 = 3;
-    uint32_t value4= 6;
+    uint32_t value4 = 6;
     sl.Insert(key4, value4);
     ASSERT_EQ(3u, sl.GetSize());
 }
@@ -200,17 +194,17 @@ TEST_F(SkipListTest, Iterator) {
     delete it;
     {
         uint32_t key = 1;
-        uint32_t value=  2;
+        uint32_t value = 2;
         sl.Insert(key, value);
     }
     {
         uint32_t key = 2;
-        uint32_t value=  3;
+        uint32_t value = 3;
         sl.Insert(key, value);
     }
     {
         uint32_t key = 3;
-        uint32_t value=  4;
+        uint32_t value = 4;
         sl.Insert(key, value);
     }
     it = sl.NewIterator();
@@ -235,17 +229,17 @@ TEST_F(SkipListTest, Split1) {
         Comparator cmp;
         SkipList<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 0;
-        uint32_t value1= 0;
+        uint32_t value1 = 0;
         sl.Insert(key1, value1);
         uint32_t key2 = 1;
-        uint32_t value2= 1;
+        uint32_t value2 = 1;
         sl.Insert(key2, value2);
         uint32_t key3 = 2;
-        uint32_t value3= 2;
+        uint32_t value3 = 2;
         sl.Insert(key3, value3);
         ASSERT_EQ(2u, sl.GetLast()->GetKey());
         uint32_t key4 = 3;
-        uint32_t value4= 6;
+        uint32_t value4 = 6;
         sl.Insert(key4, value4);
         ASSERT_EQ(3u, sl.GetLast()->GetKey());
         Node<uint32_t, uint32_t>* node = sl.Split(4);
@@ -278,19 +272,19 @@ TEST_F(SkipListTest, SplitByPos) {
     for (auto height : vec) {
         SkipList<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 0;
-        uint32_t value1= 0;
+        uint32_t value1 = 0;
         sl.Insert(key1, value1);
         uint32_t key2 = 1;
-        uint32_t value2= 1;
+        uint32_t value2 = 1;
         sl.Insert(key2, value2);
         uint32_t key3 = 2;
-        uint32_t value3= 2;
+        uint32_t value3 = 2;
         sl.Insert(key3, value3);
         // insert the same key
-        uint32_t value3_an= 22;
+        uint32_t value3_an = 22;
         sl.Insert(key3, value3_an);
         uint32_t key4 = 3;
-        uint32_t value4= 6;
+        uint32_t value4 = 6;
         sl.Insert(key4, value4);
         ASSERT_EQ(3u, sl.GetLast()->GetKey());
 
@@ -315,7 +309,7 @@ TEST_F(SkipListTest, SplitByPos) {
         ASSERT_EQ(2u, it->GetKey());
         it->Next();
         ASSERT_FALSE(it->Valid());
-    }    
+    }
 }
 
 TEST_F(SkipListTest, SplitByPos1) {
@@ -323,16 +317,16 @@ TEST_F(SkipListTest, SplitByPos1) {
     for (auto height : vec) {
         SkipList<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
         uint32_t key1 = 1;
-        uint32_t value1= 1;
+        uint32_t value1 = 1;
         sl.Insert(key1, value1);
         uint32_t key2 = 2;
-        uint32_t value2= 2;
+        uint32_t value2 = 2;
         sl.Insert(key2, value2);
         uint32_t key3 = 3;
-        uint32_t value3= 3;
+        uint32_t value3 = 3;
         sl.Insert(key3, value3);
         uint32_t key4 = 4;
-        uint32_t value4= 4;
+        uint32_t value4 = 4;
         sl.Insert(key4, value4);
         ASSERT_EQ(4u, sl.GetLast()->GetKey());
         Node<uint32_t, uint32_t>* node = sl.SplitByPos(2);
@@ -340,16 +334,16 @@ TEST_F(SkipListTest, SplitByPos1) {
         ASSERT_EQ(2u, sl.GetLast()->GetKey());
         ASSERT_EQ(2u, sl.GetLast()->GetValue());
     }
-}    
+}
 
 TEST_F(SkipListTest, Iterator2) {
     StrComparator cmp;
     SkipList<std::string, std::string, StrComparator> sl(12, 4, cmp);
     std::string k = "h";
-    std::string v= "b";
+    std::string v = "b";
     sl.Insert(k, v);
     std::string k1 = "a";
-    std::string v2="b";
+    std::string v2 = "b";
     sl.Insert(k1, v2);
     Iterator<std::string, std::string>* it = sl.NewIterator();
     it->Seek("h");
@@ -362,28 +356,28 @@ TEST_F(SkipListTest, Clear) {
     StrComparator cmp;
     SkipList<std::string, std::string, StrComparator> sl(12, 4, cmp);
     std::string k = "h";
-    std::string v= "b";
+    std::string v = "b";
     sl.Insert(k, v);
     std::string k1 = "a";
-    std::string v2="b";
+    std::string v2 = "b";
     sl.Insert(k1, v2);
-    ASSERT_EQ(2u,sl.Clear());
+    ASSERT_EQ(2u, sl.Clear());
 }
 
 TEST_F(SkipListTest, Remove) {
     StrComparator cmp;
     SkipList<std::string, std::string, StrComparator> sl(12, 4, cmp);
     std::string k = "h";
-    std::string v= "b";
+    std::string v = "b";
     sl.Insert(k, v);
     std::string k1 = "a";
-    std::string v2="b";
+    std::string v2 = "b";
     sl.Insert(k1, v2);
     std::string k2 = "b";
-    std::string v3="c";
+    std::string v3 = "c";
     sl.Insert(k2, v3);
     ASSERT_EQ("h", sl.GetLast()->GetKey());
-    std::string k3="c";
+    std::string k3 = "c";
     Node<std::string, std::string>* none_exist_node = sl.Remove(k3);
     ASSERT_FALSE(none_exist_node != NULL);
     Node<std::string, std::string>* node = sl.Remove(k2);
@@ -417,7 +411,8 @@ TEST_F(SkipListTest, Get) {
     sl.Insert(key, value);
     uint32_t ret = sl.Get(1);
     ASSERT_EQ(1u, ret);
-    ASSERT_FALSE(sl.Get(2) == 2);
+    bool ok = sl.Get(2) == 2;
+    ASSERT_FALSE(ok);
 }
 
 TEST_F(SkipListTest, GetLast) {
@@ -436,7 +431,8 @@ TEST_F(SkipListTest, GetLast) {
         ASSERT_EQ(value, sl.GetLast()->GetValue());
     }
     sl.Clear();
-    ASSERT_TRUE(sl.GetLast() == NULL);
+    bool ok = sl.GetLast() == NULL;
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SkipListTest, Duplicate) {
@@ -460,7 +456,7 @@ TEST_F(SkipListTest, Duplicate) {
 
     Iterator<uint32_t, uint32_t>* it = sl.NewIterator();
 
-    //ASSERT_EQ(3, it->GetSize());
+    // ASSERT_EQ(3, it->GetSize());
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(2u, it->GetKey());
@@ -477,8 +473,8 @@ TEST_F(SkipListTest, Duplicate) {
     ASSERT_FALSE(it->Valid());
 }
 
-}
-}
+}  // namespace storage
+}  // namespace fesql
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

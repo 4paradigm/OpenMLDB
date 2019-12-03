@@ -8,7 +8,8 @@
  **/
 #include "udf/udf.h"
 #include <stdint.h>
-#include "base/window.cc"
+#include "base/window.h"
+#include "proto/type.pb.h"
 namespace fesql {
 namespace udf {
 using base::ColumnIteratorImpl;
@@ -27,8 +28,11 @@ int32_t inc_int32(int32_t i) { return inc<int32_t>(i); }
 
 template <class V>
 V sum(int8_t *input) {
-    ColumnIteratorImpl<V> *col = (ColumnIteratorImpl<V> *)(input);
     V result = 0;
+    if (nullptr == input) {
+        return result;
+    }
+    ColumnIteratorImpl<V> *col = (ColumnIteratorImpl<V> *)(input);
 
     while (col->Valid()) {
         result += col->Next();
@@ -50,17 +54,17 @@ int8_t *col(int8_t *input, int32_t offset, int32_t type_id) {
         case fesql::type::kInt32: {
             ColumnIteratorImpl<int> *impl =
                 new ColumnIteratorImpl<int>(*w, offset);
-            return (int8_t *)impl;
+            return reinterpret_cast<int8_t *>(impl);
         }
         case fesql::type::kInt16: {
             ColumnIteratorImpl<int16_t> *impl =
                 new ColumnIteratorImpl<int16_t>(*w, offset);
-            return (int8_t *)impl;
+            return reinterpret_cast<int8_t *>(impl);
         }
         case fesql::type::kInt64: {
             ColumnIteratorImpl<int64_t> *impl =
                 new ColumnIteratorImpl<int64_t>(*w, offset);
-            return (int8_t *)impl;
+            return reinterpret_cast<int8_t *> (impl);
         }
         default: {
             return nullptr;

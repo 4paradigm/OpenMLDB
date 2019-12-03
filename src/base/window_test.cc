@@ -6,14 +6,13 @@
  * Date: 2019/11/25
  *--------------------------------------------------------------------------
  **/
-#include "window.cc"
+#include "base/window.h"
 #include "gtest/gtest.h"
 namespace fesql {
 namespace base {
 class WindowIteratorTest : public ::testing::Test {
  public:
-    WindowIteratorTest() {
-    }
+    WindowIteratorTest() {}
     ~WindowIteratorTest() {}
 };
 
@@ -43,7 +42,6 @@ TEST_F(WindowIteratorTest, IteratorImplTest) {
     ASSERT_TRUE(subImpl->Valid());
     ASSERT_EQ(4, subImpl->Next());
 
-
     IteratorImpl<int>* subImpl2 = impl.range(0, 2);
     ASSERT_TRUE(subImpl2->Valid());
     ASSERT_EQ(1, subImpl2->Next());
@@ -59,32 +57,32 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
     // prepare row buf
     std::vector<Row> rows;
     {
-        int8_t* ptr = static_cast<int8_t*>(malloc(28));
-        *((int32_t*)(ptr + 2)) = 1;
-        *((int16_t*)(ptr + 2 + 4)) = 2;
-        *((float*)(ptr + 2 + 4 + 2)) = 3.1f;
-        *((double*)(ptr + 2 + 4 + 2 + 4)) = 4.1;
-        *((int64_t*)(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
+        int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+        *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+        *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 2;
+        *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
+        *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
+        *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
         rows.push_back(Row{.buf = ptr});
     }
 
     {
-        int8_t* ptr = static_cast<int8_t*>(malloc(28));
-        *((int32_t*)(ptr + 2)) = 11;
-        *((int16_t*)(ptr + 2 + 4)) = 22;
-        *((float*)(ptr + 2 + 4 + 2)) = 33.1f;
-        *((double*)(ptr + 2 + 4 + 2 + 4)) = 44.1;
-        *((int64_t*)(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
+        int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+        *(reinterpret_cast<int32_t*>(ptr + 2)) = 11;
+        *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 22;
+        *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
+        *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
+        *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
         rows.push_back(Row{.buf = ptr});
     }
 
     {
-        int8_t* ptr = static_cast<int8_t*>(malloc(28));
-        *((int32_t*)(ptr + 2)) = 111;
-        *((int16_t*)(ptr + 2 + 4)) = 221;
-        *((float*)(ptr + 2 + 4 + 2)) = 333.1f;
-        *((double*)(ptr + 2 + 4 + 2 + 4)) = 444.1;
-        *((int64_t*)(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
+        int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+        *(reinterpret_cast<int32_t*>(ptr + 2)) = 111;
+        *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 222;
+        *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
+        *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
+        *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
         rows.push_back(Row{.buf = ptr});
     }
 
@@ -94,10 +92,7 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
     ASSERT_TRUE(impl.Valid());
     ASSERT_TRUE(impl.Valid());
     ASSERT_TRUE(impl.Valid());
-
 }
-
-
 
 }  // namespace base
 }  // namespace fesql

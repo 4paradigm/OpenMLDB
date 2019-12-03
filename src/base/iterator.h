@@ -5,6 +5,7 @@
 //
 
 #pragma once
+
 namespace fesql {
 namespace base {
 

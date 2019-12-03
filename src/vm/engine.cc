@@ -16,9 +16,11 @@
  */
 
 #include "vm/engine.h"
-#include <codegen/buf_ir_builder.h>
+#include <utility>
+#include <vector>
 #include "base/strings.h"
-#include "base/window.cc"
+#include "base/window.h"
+#include "codegen/buf_ir_builder.h"
 
 namespace fesql {
 namespace vm {
@@ -62,7 +64,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             session.SetCompileInfo(info);
         } else {
             session.SetCompileInfo(it->second);
-            // TODO clean
+            // TODO(wtx): clean
         }
     }
     return true;
@@ -87,9 +89,12 @@ RunSession::RunSession() {}
 RunSession::~RunSession() {}
 int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
     // Simple op runner
-    ScanOp* scan_op = (ScanOp*)(compile_info_->sql_ctx.ops.ops[0]);
-    ProjectOp* project_op = (ProjectOp*)(compile_info_->sql_ctx.ops.ops[1]);
-    LimitOp* limit_op = (LimitOp*)(compile_info_->sql_ctx.ops.ops[2]);
+    ScanOp* scan_op =
+        reinterpret_cast<ScanOp*>(compile_info_->sql_ctx.ops.ops[0]);
+    ProjectOp* project_op =
+        reinterpret_cast<ProjectOp*>(compile_info_->sql_ctx.ops.ops[1]);
+    LimitOp* limit_op =
+        reinterpret_cast<LimitOp*>(compile_info_->sql_ctx.ops.ops[2]);
     std::shared_ptr<TableStatus> status =
         table_mgr_->GetTableDef(scan_op->db, scan_op->tid);
     if (!status) {
@@ -129,7 +134,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
         DLOG(INFO) << "value " << base::DebugString(value.data(), value.size());
         DLOG(INFO) << "key " << it->GetKey() << " row size "
                    << 2 + project_op->output_size;
-        int8_t* output = (int8_t*)malloc(2 + project_op->output_size);
+        int8_t* output =
+            reinterpret_cast<int8_t*>(malloc(2 + project_op->output_size));
         int8_t* row =
             reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
 
@@ -143,17 +149,20 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 const int8_t* ptr = row + key_offset;
                 switch (key_type) {
                     case fesql::type::kInt32: {
-                        int32_t value = *((int64_t*)ptr);
+                        const int32_t value =
+                            *(reinterpret_cast<const int64_t*>(ptr));
                         key_name = std::to_string(value);
                         break;
                     }
                     case fesql::type::kInt64: {
-                        int64_t value = *((int64_t*)ptr);
+                        const int64_t value =
+                            *(reinterpret_cast<const int64_t*>(ptr));
                         key_name = std::to_string(value);
                         break;
                     }
                     case fesql::type::kInt16: {
-                        int16_t value = *((int16_t *)ptr);
+                        const int16_t value =
+                            *(reinterpret_cast<const int16_t*>(ptr));
                         key_name = std::to_string(value);
                         break;
                     }
@@ -167,7 +176,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 const int8_t* ptr = row + order_offset;
                 switch (order_type) {
                     case fesql::type::kInt64: {
-                        ts = *((int64_t*)ptr);
+                        ts = *(reinterpret_cast<const int64_t*>(ptr));
                         break;
                     }
                     default: {
@@ -180,9 +189,10 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
             std::vector<::fesql::base::Row> window;
             window_it->SeekToFirst();
             while (window_it->Valid()) {
-//                if (window_it->GetKey() < ts + project_op->w.start_offset) {
-//                    break;
-//                }
+                //                if (window_it->GetKey() < ts +
+                //                project_op->w.start_offset) {
+                //                    break;
+                //                }
                 ::fesql::base::Row w_row;
                 ::fesql::storage::Slice value = window_it->GetValue();
                 w_row.buf =
@@ -191,7 +201,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 window_it->Next();
             }
             fesql::base::WindowIteratorImpl impl(window);
-            uint32_t ret = udf((int8_t*)(&impl), output + 2);
+            uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl), output + 2);
             if (ret != 0) {
                 LOG(WARNING) << "fail to run udf " << ret;
                 delete it;

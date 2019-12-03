@@ -24,11 +24,11 @@ namespace codegen {
 
 struct IRString {
     int32_t size;
-    char* data;
+    char *data;
 };
 
-
-inline const bool ConvertFeSQLType2DataType (const fesql::type::Type proto_type, node::DataType &data_type){
+inline const bool ConvertFeSQLType2DataType(const fesql::type::Type proto_type,
+                                            node::DataType &data_type) { //NOLINT
     switch (proto_type) {
         case fesql::type::kInt16:
             data_type = node::kTypeInt16;
@@ -56,7 +56,9 @@ inline const bool ConvertFeSQLType2DataType (const fesql::type::Type proto_type,
     }
     return true;
 }
-inline const bool ConvertFeSQLType2LLVMType (const node::DataType &data_type, ::llvm::LLVMContext &ctx, ::llvm::Type **llvm_type){
+inline const bool ConvertFeSQLType2LLVMType(const node::DataType &data_type,
+                                            ::llvm::LLVMContext &ctx,   //NOLINT
+                                            ::llvm::Type **llvm_type) {
     switch (data_type) {
         case node::kTypeVoid:
             *llvm_type = (::llvm::Type::getVoidTy(ctx));
@@ -84,7 +86,7 @@ inline const bool ConvertFeSQLType2LLVMType (const node::DataType &data_type, ::
         }
     }
     return true;
-};
+}
 
 }  // namespace codegen
 }  // namespace fesql

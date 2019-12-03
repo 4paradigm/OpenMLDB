@@ -16,25 +16,27 @@
  */
 
 #include "vm/op_generator.h"
-#include "plan/planner.h"
+#include <memory>
+#include <string>
 #include "gtest/gtest.h"
-#include "vm/table_mgr.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "plan/planner.h"
+#include "vm/table_mgr.h"
 
-using namespace llvm;
-using namespace llvm::orc;
+using namespace llvm;       // NOLINT
+using namespace llvm::orc;  // NOLINT
 
 ExitOnError ExitOnErr;
 
@@ -42,17 +44,19 @@ namespace fesql {
 namespace vm {
 
 class TableMgrImpl : public TableMgr {
-
  public:
-    TableMgrImpl(std::shared_ptr<TableStatus> status):status_(status) {}
+    explicit TableMgrImpl(std::shared_ptr<TableStatus> status)
+        : status_(status) {}
     ~TableMgrImpl() {}
     std::shared_ptr<TableStatus> GetTableDef(const std::string&,
-            const std::string&) {
-        return  status_;
-    }
-    std::shared_ptr<TableStatus> GetTableDef(const std::string&, const uint32_t) {
+                                             const std::string&) {
         return status_;
     }
+    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
+                                             const uint32_t) {
+        return status_;
+    }
+
  private:
     std::shared_ptr<TableStatus> status_;
 };
@@ -94,13 +98,14 @@ TEST_F(OpGeneratorTest, test_normal) {
     OpGenerator generator(&table_mgr);
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    const std::string sql = "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
+    const std::string sql =
+        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
+        "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
 
     ::fesql::node::NodeManager manager;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
-
         ::fesql::plan::SimplePlanner planner(&manager);
         ::fesql::parser::FeSQLParser parser;
         ::fesql::node::NodePointVector parser_trees;
@@ -161,16 +166,16 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     OpGenerator generator(&table_mgr);
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    const std::string sql = "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-                            "WINDOW w1 AS (PARTITION BY COL2\n"
-                            "              ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND 1s "
-                            "PRECEDING) limit 10;";
+    const std::string sql =
+        "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+        "WINDOW w1 AS (PARTITION BY COL2\n"
+        "              ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND 1s "
+        "PRECEDING) limit 10;";
 
     ::fesql::node::NodeManager manager;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
-
         ::fesql::plan::SimplePlanner planner(&manager);
         ::fesql::parser::FeSQLParser parser;
         ::fesql::node::NodePointVector parser_trees;
@@ -189,12 +194,12 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     m->print(::llvm::errs(), NULL);
     ASSERT_EQ(3, op.ops.size());
     ASSERT_EQ(kOpProject, op.ops[1]->type);
-    ProjectOp *project_op = reinterpret_cast<ProjectOp*>(op.ops[1]);
+    ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[1]);
     ASSERT_TRUE(project_op->window_agg);
-    ASSERT_EQ(std::vector<std::string>({"COL2"}),project_op->w.keys);
-    ASSERT_EQ(std::vector<std::string>({"TS"}),project_op->w.orders);
+    ASSERT_EQ(std::vector<std::string>({"COL2"}), project_op->w.keys);
+    ASSERT_EQ(std::vector<std::string>({"TS"}), project_op->w.orders);
     ASSERT_TRUE(project_op->w.is_range_between);
-    ASSERT_EQ(-86400000*2, project_op->w.start_offset);
+    ASSERT_EQ(-86400000 * 2, project_op->w.start_offset);
     ASSERT_EQ(-1000, project_op->w.end_offset);
 }
 

@@ -17,53 +17,49 @@
 
 #ifndef SRC_CODEGEN_FN_LET_IR_BUILDER_H_
 #define SRC_CODEGEN_FN_LET_IR_BUILDER_H_
-
 #include <map>
+#include <string>
 #include <utility>
-#include "node/plan_node.h"
-#include "llvm/IR/IRBuilder.h"
-#include "proto/type.pb.h"
+#include <vector>
 #include "codegen/scope_var.h"
-
+#include "llvm/IR/IRBuilder.h"
+#include "node/plan_node.h"
+#include "proto/type.pb.h"
 
 namespace fesql {
 namespace codegen {
 
-typedef std::map<std::string, std::pair<::fesql::type::ColumnDef, int32_t> > Schema;
+typedef std::map<std::string, std::pair<::fesql::type::ColumnDef, int32_t>>
+    Schema;
 
 class RowFnLetIRBuilder {
-
  public:
-    RowFnLetIRBuilder(::fesql::type::TableDef* table,
-            ::llvm::Module* module, bool is_window_agg);
+    RowFnLetIRBuilder(::fesql::type::TableDef* table, ::llvm::Module* module,
+                      bool is_window_agg);
 
     ~RowFnLetIRBuilder();
 
-    bool Build(const std::string& name,
-               const std::string& col,
-               ::fesql::type::Type &);
+    bool Build(const std::string& name, const std::string& col,
+               ::fesql::type::Type&);  // NOLINT (runtime/references)
     bool Build(const std::string& name,
                const ::fesql::node::ProjectListPlanNode* node,
-               std::vector<::fesql::type::ColumnDef>& schema);
+               std::vector<::fesql::type::ColumnDef>&
+                   schema);  // NOLINT (runtime/references)
+
  private:
+    bool BuildFnHeader(const std::string& name, ::llvm::Function** fn);
 
     bool BuildFnHeader(const std::string& name,
-            ::llvm::Function **fn);
-
-    bool BuildFnHeader(const std::string& name,
-                                          std::vector<::llvm::Type*> &args_type,
-                                          ::llvm::Type* ret_type,
-                                          ::llvm::Function** fn);
+                       const std::vector<::llvm::Type*>& args_type,
+                       ::llvm::Type* ret_type, ::llvm::Function** fn);
     bool FillArgs(const std::string& row_ptr_name,
-            const std::string& output_ptr_name,
-            ::llvm::Function *fn,
-            ScopeVar& sv);
+                  const std::string& output_ptr_name, ::llvm::Function* fn,
+                  ScopeVar& sv);  // NOLINT (runtime/references)
 
     bool StoreColumn(int64_t offset, ::llvm::Value* value,
-            ScopeVar& sv, const std::string& output_ptr_name,
-            ::llvm::BasicBlock* block);
-
- private:
+                     ScopeVar& sv,  // NOLINT (runtime/references)
+                     const std::string& output_ptr_name,
+                     ::llvm::BasicBlock* block);
     // input schema
     ::fesql::type::TableDef* table_;
     ::llvm::Module* module_;
@@ -72,4 +68,4 @@ class RowFnLetIRBuilder {
 
 }  // namespace codegen
 }  // namespace fesql
-#endif  // SRC_CODGEN_FN_LET_IR_BUILDER_H 
+#endif  // SRC_CODEGEN_FN_LET_IR_BUILDER_H_

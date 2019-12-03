@@ -18,66 +18,75 @@
 #ifndef SRC_STORAGE_CODEC_H_
 #define SRC_STORAGE_CODEC_H_
 
+#include <vector>
+#include <map>
 #include "proto/type.pb.h"
 
 namespace fesql {
 namespace storage {
 
-typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
-
-class RowView;
+using Schema = ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef>;
 
 class RowBuilder {
-
  public:
+    explicit RowBuilder(const Schema& schema);
+    ~RowBuilder() = default;
 
-    RowBuilder(const Schema* schema, 
-              int8_t* buf,
-              uint32_t size);
-
-    ~RowBuilder(); 
-
+    uint32_t CalTotalLength(uint32_t string_length);
+    bool SetBuffer(int8_t* buf, uint32_t size);
+    bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
     bool AppendInt64(int64_t val);
     bool AppendFloat(float val);
     bool AppendDouble(double val);
+    bool AppendString(const char* val, uint32_t length);
+    bool AppendNULL();
 
  private:
-    inline bool Check(uint32_t delta);
+    bool Check(::fesql::type::Type type);
+
  private:
-    const Schema* schema_;
+    const Schema& schema_;
     int8_t* buf_;
+    uint32_t cnt_;
     uint32_t size_;
-    uint32_t offset_;
+    uint32_t str_field_cnt_;
+    uint32_t str_addr_length_;
+    uint32_t str_field_start_offset_;
+    uint32_t str_offset_;
+    std::vector<uint32_t> offset_vec_;
 };
 
 class RowView {
  public:
+    RowView(const Schema& schema, const int8_t* row, uint32_t size);
+    ~RowView() = default;
+    void Reset(const int8_t* row, uint32_t size);
 
-    RowView(const Schema* schema,
-            const int8_t* row,
-            const std::vector<uint32_t>* offsets,
-            uint32_t size);
-
-    ~RowView();
-
-    bool GetInt32(uint32_t idx, int32_t* val);
-    bool GetInt64(uint32_t idx, int64_t* val);
-    bool GetInt16(uint32_t idx, int16_t* val);
-    bool GetFloat(uint32_t idx, float* val);
-    bool GetDouble(uint32_t idx, double* val);
+    int32_t GetBool(uint32_t idx, bool* val);
+    int32_t GetInt32(uint32_t idx, int32_t* val);
+    int32_t GetInt64(uint32_t idx, int64_t* val);
+    int32_t GetInt16(uint32_t idx, int16_t* val);
+    int32_t GetFloat(uint32_t idx, float* val);
+    int32_t GetDouble(uint32_t idx, double* val);
+    int32_t GetString(uint32_t idx, char** val, uint32_t* length);
+    bool IsNULL(uint32_t idx);
 
  private:
-    const Schema* schema_;
-    const int8_t* row_;
+    bool CheckValid(uint32_t idx, ::fesql::type::Type type);
+
+ private:
+    uint8_t str_addr_length_;
+    bool is_valid_;
+    uint32_t str_field_start_offset_;
     uint32_t size_;
-    const std::vector<uint32_t>* offsets_;
+    const int8_t* row_;
+    const Schema& schema_;
+    std::vector<uint32_t> offset_vec_;
+    std::map<uint32_t, uint32_t> next_str_pos_;
 };
-
-
 
 }  // namespace storage
 }  // namespace fesql
 #endif  // SRC_STORAGE_CODEC_H_
-
