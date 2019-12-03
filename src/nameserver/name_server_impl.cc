@@ -2932,6 +2932,15 @@ void NameServerImpl::UpdateTableStatus() {
                     break;
                 }
             }
+            for (int idx = 0; idx < kv.second->column_desc_v1_size(); idx++) {
+                if (kv.second->column_desc_v1(idx).add_ts_idx()) {
+                    first_index_col = kv.second->column_desc_v1(idx).name();
+                    break;
+                }
+            }
+            if(kv.second->column_key_size() > 0) {
+                first_index_col = kv.second->column_key(0).index_name();
+            }
             for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
                 uint32_t pid = kv.second->table_partition(idx).pid();
                 ::rtidb::nameserver::TablePartition* table_partition =
