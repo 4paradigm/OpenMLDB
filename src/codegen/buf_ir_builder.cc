@@ -26,6 +26,31 @@
 namespace fesql {
 namespace codegen {
 
+#define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
+
+static const uint8_t VERSION_LENGTH = 2;
+static const uint8_t SIZE_LENGTH = 4;
+static const uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
+static const std::map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
+    {::fesql::type::kBool, sizeof(bool)},
+    {::fesql::type::kInt16, sizeof(int16_t)},
+    {::fesql::type::kInt32, sizeof(int32_t)},
+    {::fesql::type::kFloat, sizeof(float)},
+    {::fesql::type::kInt64, sizeof(int64_t)},
+    {::fesql::type::kDouble, sizeof(double)}};
+
+static uint8_t GetAddrLength(uint32_t size) {
+    if (size <= UINT8_MAX) {
+        return 1;
+    } else if (size <= UINT16_MAX) {
+        return 2;
+    } else if (size <= 1 << 24) {
+        return 3;
+    } else {
+        return 4;
+    }
+}
+
 BufIRBuilder::BufIRBuilder(::fesql::type::TableDef* table,
                            ::llvm::BasicBlock* block, ScopeVar* scope_var)
     : table_(table), block_(block), sv_(scope_var), types_() {
@@ -216,8 +241,117 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
 }
 
 BufNativeIRBuilder::BufNativeIRBuilder(::fesql::type::TableDef* table,
-                           ::llvm::BasicBlock* block, ScopeVar* scope_var)
-    : table_(table), block_(block), sv_(scope_var), types_() {}
+                                       ::llvm::BasicBlock* block,
+                                       ScopeVar* scope_var)
+    : table_(table), block_(block), sv_(scope_var), types_() {
+    uint32_t offset = HEADER_LENGTH + BitMapSize(table_->columns_size());
+    uint32_t string_field_cnt = 0;
+    for (int32_t i = 0; i < table_->columns_size(); i++) {
+        const ::fesql::type::ColumnDef& column = table_->columns(i);
+        if (column.type() == ::fesql::type::kVarchar) {
+            types_.insert(std::make_pair(
+                column.name(),
+                std::make_pair(column.type(), string_field_cnt)));
+            next_str_pos_.insert(
+                std::make_pair(string_field_cnt, string_field_cnt));
+            string_field_cnt += 1;
+        } else {
+            auto it = TYPE_SIZE_MAP.find(column.type());
+            if (it == TYPE_SIZE_MAP.end()) {
+                LOG(WARNING) << "fail to find column type "
+                             << ::fesql::type::Type_Name(column.type());
+            } else {
+                types_.insert(std::make_pair(
+                    column.name(), std::make_pair(column.type(), offset)));
+                offset += it->second;
+            }
+        }
+    }
+    uint32_t next_pos = 0;
+    for (auto iter = next_str_pos_.rbegin(); iter != next_str_pos_.rend();
+         iter++) {
+        uint32_t tmp = iter->second;
+        iter->second = next_pos;
+        next_pos = tmp;
+    }
+    str_field_start_offset_ = offset;
+}
+
+BufNativeIRBuilder::~BufNativeIRBuilder() {}
+
+bool BufNativeIRBuilder::BuildGetField(const std::string& name,
+                                       ::llvm::Value* row_ptr,
+                                       ::llvm::Value* row_size,
+                                       ::llvm::Value** output) {
+
+    if (row_ptr == NULL || row_size == NULL || output == NULL) {
+        LOG(WARNING) << "input args have null";
+        return false;
+    }
+
+    Types::iterator it = types_.find(name);
+    if (it == types_.end()) {
+        LOG(WARNING) << "no column " << name << " in table " << table_->name();
+        return false;
+    }
+    // TODO(wangtaize) support null check
+    ::fesql::type::Type& fe_type = it->second.first;
+    ::llvm::IRBuilder<> builder(block_);
+    uint32_t offset = it->second.second;
+    switch (fe_type) {
+        case ::fesql::type::kInt16: {
+            llvm::Type* i16_ty = builder.getInt16Ty();
+            return BuildGetPrimaryField("fesql_storage_get_int16_field", row,
+                                        offset, i16_ty, output);
+        }
+        case ::fesql::type::kInt32: {
+            llvm::Type* i32_ty = builder.getInt32Ty();
+            return BuildGetPrimaryField("fesql_storage_get_int32_field", row,
+                                        offset, i32_ty, output);
+        }
+        case ::fesql::type::kInt64: {
+            llvm::Type* i64_ty = builder.getInt64Ty();
+            return BuildGetPrimaryField("fesql_storage_get_int64_field", row,
+                                        offset, i64_ty, output);
+        }
+        case ::fesql::type::kFloat: {
+            llvm::Type* float_ty = builder.getFloatTy();
+            return BuildGetPrimaryField("fesql_storage_get_float_field", row,
+                                        offset, float_ty, output);
+        }
+        case ::fesql::type::kDouble: {
+            llvm::Type* double_ty = builder.getDoubleTy();
+            return BuildGetPrimaryField("fesql_storage_get_double_field", row,
+                                        offset, double_ty, output);
+        }
+        default: {
+            return false;
+        }
+    }
+}
+
+bool BufNativeIRBuilder::BuildGetPrimaryField(const std::string& fn_name,
+                                              ::llvm::Value* row_ptr,
+                                              uint32_t offset,
+                                              ::llvm::Type* type,
+                                              ::llvm::Value** output) {
+    if (row_ptr == NULL || type == NULL || output == NULL) {
+        LOG(WARNING) << "input args have null ptr";
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+    ::llvm::Type* i32_ty = builder.getInt32Ty();
+    ::llvm::Value* offset = builder.getInt32(offset);
+    ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
+        fn_name, type, i8_ptr_ty, i32_ty);
+    std::vector<Value*> call_args;
+    call_args.push_back(row_ptr);
+    call_args.push_back(offset);
+    ::llvm::ArrayRef<Value*> call_args_ref(call_args);
+    *output = builder.CreateCall(callee, call_args_ref);
+    return true;
+}
 
 }  // namespace codegen
 }  // namespace fesql

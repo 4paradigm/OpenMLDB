@@ -65,11 +65,19 @@ class BufNativeIRBuilder {
  public:
     BufNativeIRBuilder(::fesql::type::TableDef* table,
                        ::llvm::BasicBlock* block, ScopeVar* scope_var);
+
     ~BufNativeIRBuilder();
 
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
                        ::llvm::Value* row_size, ::llvm::Value** output);
 
+ private:
+
+    bool BuildGetPrimaryField(const std::string& fn_name,
+                              ::llvm::Value* row_ptr,
+                              uint32_t offset,
+                              ::llvm::Type* type,
+                              ::llvm::Value** output);
  private:
     ::fesql::type::TableDef* const table_;
     ::llvm::BasicBlock* block_;
@@ -77,6 +85,8 @@ class BufNativeIRBuilder {
     typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
         Types;
     Types types_;
+    uint32_t str_field_start_offset_;
+    std::map<uint32_t, 
 };
 
 }  // namespace codegen

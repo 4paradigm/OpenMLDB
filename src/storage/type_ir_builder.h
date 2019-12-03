@@ -40,24 +40,34 @@ struct Timestamp {
 
 namespace v1 {
 
-int32_t GetBoolField(const int8_t* row, uint32_t offset, bool* val);
+inline int8_t GetBoolField(const int8_t* row, uint32_t offset) {
+    int8_t value = *(row + offset);
+    return value;
+}
 
-int32_t GetInt16Field(const int8_t* row, uint32_t offset, int16_t* val);
+inline int16_t GetInt16Field(const int8_t* row, uint32_t offset) {
+    return  *(reinterpret_cast<const int16_t*>(row + offset));
+}
 
-int32_t GetInt32Field(const int8_t* row, uint32_t offset, int32_t* val);
+inline int32_t GetInt32Field(const int8_t* row, uint32_t offset) {
+    return *(reinterpret_cast<const int32_t*>(row + offset));
+}
 
-int32_t GetInt64Field(const int8_t* row, uint32_t offset, int64_t* val);
+inline int64_t GetInt64Field(const int8_t* row, uint32_t offset) {
+    return *(reinterpret_cast<const int64_t*>(row + offset));
+}
 
-int32_t GetFloatField(const int8_t* row, uint32_t offset, float* val);
+inline float GetFloatField(const int8_t* row, uint32_t offset) {
+    return  *(reinterpret_cast<const float*>(row + offset));
+}
 
-int32_t GetDoubleField(const int8_t* row, uint32_t offset, double* val);
-
-int32_t GetStrAddr(const int8_t* row, uint32_t offset, uint8_t addr_space,
-                   uint32_t* val);
+inline double GetDoubleField(const int8_t* row, uint32_t offset) {
+    return *(reinterpret_cast<const double*>(row + offset));
+}
 
 // native get string field method
-int32_t GetStrField(const int8_t* row, int32_t offset, int32_t next_str_offset,
-                    int32_t addr_space, StringRef* sr);
+int32_t GetStrField(const int8_t* row, uint32_t offset, uint32_t next_str_offset,
+                    uint32_t addr_space, int8_t** data, uint32_t* size);
 
 }  // namespace v1
 }  // namespace storage

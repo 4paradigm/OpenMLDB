@@ -319,7 +319,13 @@ int32_t RowView::GetBool(uint32_t idx, bool* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetBoolField(row_, offset, val);
+    int8_t v = v1::GetBoolField(row_, offset);
+    if (v == 1){
+        *val = true;
+    }else {
+        *val =false;
+    }
+    return 0;
 }
 
 int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
@@ -334,7 +340,8 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetInt32Field(row_, offset, val);
+    *val =  v1::GetInt32Field(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
@@ -349,7 +356,8 @@ int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetInt64Field(row_, offset, val);
+    *val = v1::GetInt64Field(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
@@ -364,7 +372,8 @@ int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetInt16Field(row_, offset, val);
+    *val =  v1::GetInt16Field(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetFloat(uint32_t idx, float* val) {
@@ -379,7 +388,8 @@ int32_t RowView::GetFloat(uint32_t idx, float* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetFloatField(row_, offset, val);
+    *val = v1::GetFloatField(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetDouble(uint32_t idx, double* val) {
@@ -394,50 +404,45 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetDoubleField(row_, offset, val);
+    *val = v1::GetDoubleField(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
+
     if (val == NULL || length == NULL) {
         LOG(WARNING) << "output val or length is null";
         return -1;
     }
+
     if (!CheckValid(idx, ::fesql::type::kVarchar)) {
         return -1;
     }
+
     if (IsNULL(idx)) {
         return 1;
     }
+
     uint32_t field_offset =
         str_field_start_offset_ + offset_vec_.at(idx) * str_addr_length_;
-    uint32_t offset = 0;
-    if (v1::GetStrAddr(row_, field_offset, str_addr_length_, &offset) < 0 ||
-        offset > size_) {
-        return -1;
-    }
-    *val = const_cast<char*>(reinterpret_cast<const char*>(row_ + offset));
     auto iter = next_str_pos_.find(idx);
+
     if (iter == next_str_pos_.end()) {
         return -1;
     }
-    if (iter->second == 0) {
-        *length = size_ - offset;
-    } else {
-        uint32_t next_str_field_offset =
+
+    uint32_t next_str_field_offset = 0;
+    if (iter->second != 0) {
+        next_str_field_offset =
             str_field_start_offset_ +
             offset_vec_.at(iter->second) * str_addr_length_;
         if (next_str_field_offset > size_) {
             return -1;
         }
-        uint32_t next_offset = 0;
-        if (v1::GetStrAddr(row_, next_str_field_offset, str_addr_length_,
-                           &next_offset) < 0 ||
-            next_offset > size_) {
-            return -1;
-        }
-        *length = next_offset - offset;
     }
-    return 0;
+    return v1::GetStrField(row_, field_offset, 
+            next_str_field_offset, str_addr_length_,
+            reinterpret_cast<int8_t**>(val), length);
 }
 
 }  // namespace storage
