@@ -184,7 +184,7 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    int DelReplicaNode(const std::string& endpoint,
+    int DelRemoteReplica(const std::string& endpoint,
             const std::string name,
             uint32_t pid); 
     
@@ -361,7 +361,7 @@ private:
 
     int CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data);
 
-    int CreateDelReplicaNodeOPTask(std::shared_ptr<OPData> op_data);
+    int CreateDelRemoteReplicaOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data);
 
