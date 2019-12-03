@@ -185,7 +185,7 @@ public:
             Closure* done);
 
     int DelRemoteReplica(const std::string& endpoint,
-            const std::string name,
+            const std::string table_name,
             uint32_t pid); 
     
     void DelReplicaNS(RpcController* controller,

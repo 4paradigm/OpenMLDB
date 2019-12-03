@@ -193,8 +193,10 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                 auto &temp_meta = temp_part.partition_meta(j);
                 if (temp_meta.is_alive() && temp_meta.is_leader()) {
                     if (part_p->partition_meta(0).endpoint() != temp_meta.endpoint()) {
+                        DelRemoteReplica(part_p->partition_meta(0).endpoint(), table.name(), part_p->pid());
                         part_p->clear_partition_meta();
                         part_p->add_partition_meta()->CopyFrom(temp_meta);
+                        AddRemoteReplica(table.name(), temp_meta, table.tid(), part_p->pid());
                     }
                     break;
                 }
@@ -3575,26 +3577,26 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
 }
 
 int NameServerImpl::DelRemoteReplica(const std::string& endpoint,
-        const std::string name,
+        const std::string table_name,
         uint32_t pid) {
     std::string value = endpoint;
     std::shared_ptr<OPData> op_data;
-    if (CreateOPData(::rtidb::api::OPType::kDelReplicaForReplicaClusterOP, value, op_data, name, pid) < 0) {
-        PDLOG(WARNING, "create op data error. table[%s] pid[%u]", name.c_str(), pid);
+    if (CreateOPData(::rtidb::api::OPType::kDelReplicaForReplicaClusterOP, value, op_data, table_name, pid) < 0) {
+        PDLOG(WARNING, "create op data error. table[%s] pid[%u]", table_name.c_str(), pid);
         return -1;
     }
     if (CreateDelRemoteReplicaOPTask(op_data) < 0) {
         PDLOG(WARNING, "create delreplica op task failed. name[%s] pid[%u] endpoint[%s]", 
-                name.c_str(), pid, endpoint.c_str());
+                table_name.c_str(), pid, endpoint.c_str());
         return -1;
     }
     if (AddOPData(op_data) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
-                name.c_str(), pid, endpoint.c_str());
+                table_name.c_str(), pid, endpoint.c_str());
         return -1;
     }
     PDLOG(INFO, "add delreplica op. op_id[%lu] table[%s] pid[%u] endpoint[%s]", 
-            op_index_, name.c_str(), pid, endpoint.c_str());
+            op_index_, table_name.c_str(), pid, endpoint.c_str());
     return 0;
 
 }
