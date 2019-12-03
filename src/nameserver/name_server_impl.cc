@@ -6383,6 +6383,10 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             code = 567;
             break;
         }
+        if (!cluster_info->AddReplicaClusterByNs(request->alias(), zone_info_.zone_name(), zone_info_.zone_term(), rpc_msg)) {
+            code = 300;
+            break;
+        }
         std::lock_guard<std::mutex> lock(mu_);
         std::string cluster_value, value;
         request->SerializeToString(&cluster_value);
@@ -6400,11 +6404,6 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
                 rpc_msg = "create zk failed";
                 break;
             }
-        }
-        if (!cluster_info->AddReplicaClusterByNs(request->alias(), zone_info_.zone_name(), zone_info_.zone_term(), rpc_msg)) {
-            zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias());
-            code = 300;
-            break;
         }
         nsc_.insert(std::make_pair(request->alias(), cluster_info));
         //create tables for replica cluster
