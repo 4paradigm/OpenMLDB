@@ -62,7 +62,8 @@ RowBuilder::RowBuilder(const Schema& schema)
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema.Get(idx);
         if (column.type() == ::fesql::type::kVarchar) {
-            str_field_start_offset_ += str_addr_length_;
+            offset_vec_.push_back(str_field_cnt_);
+            str_field_cnt_++;
         } else {
             auto iter = TYPE_SIZE_MAP.find(column.type());
             if (iter == TYPE_SIZE_MAP.end()) {
