@@ -6421,9 +6421,9 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         return;
     }
     if (mode_.load(std::memory_order_relaxed) != rLEADER) {
-        response->set_code(568);
-        response->set_msg("cur nameserver is not leader cluster");
-        PDLOG(WARNING, "cur nameserver is not leader cluster");
+        response->set_code(454);
+        response->set_msg("cur nameserver is not leader mode");
+        PDLOG(WARNING, "cur nameserver is not leader mode");
         return;
     }
     int code = 0;
@@ -6441,8 +6441,8 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         }
         std::vector<::rtidb::nameserver::TableInfo> tables;
         if (!cluster_info->client_->ShowTable("", tables, rpc_msg)) {
-            rpc_msg = "show remote replica nameserver error";
-            code = 566;
+            rpc_msg = "showtable error when add replica cluster";
+            code = 455;
             break;
         }
         if ((tables.size() > 0) && !CompareTableInfo(tables)) {
@@ -6561,6 +6561,7 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
         mode_.store(request->mode(), std::memory_order_release);
         zone_info_.CopyFrom(*request);
     } while (0);
+    thread_pool_.AddTask(boost::bind(&NameServerImpl::DistributeTabletMode, this));
     response->set_code(code);
     response->set_msg(rpc_msg);
 }
@@ -6680,6 +6681,7 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
         mode_.store(zone_info.mode(), std::memory_order_release);
         zone_info_.CopyFrom(zone_info);
     } while (0);
+    thread_pool_.AddTask(boost::bind(&NameServerImpl::DistributeTabletMode, this));
     response->set_code(code);
     response->set_msg(rpc_msg);
     return;
@@ -6728,7 +6730,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
-        PDLOG(WARNING, "cur nameserver is not header");
+        PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (request->sm() >= rFOLLOWER) { // request->sm() > rFOLLOWER
@@ -6759,11 +6761,20 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
     zone_info.set_mode(request->sm());
     std::string value;
     zone_info.SerializeToString(&value);
-    if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower",value)) {
-        response->set_code(304);
-        response->set_msg("set zk failed");
-        PDLOG(WARNING, "save zone info failed, write zk failed");
-        return;
+    if (zk_client_->IsExistNode(zk_zone_data_path_ + "/follower") > 0) {
+        if (!zk_client_->CreateNode(zk_zone_data_path_ + "/follower", value)) {
+            PDLOG(WARNING, "write follower to zk failed");
+            response->set_code(450);
+            response->set_msg("create zk failed");
+            return;
+        }
+    } else {
+        if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", value)) {
+            PDLOG(WARNING, "set zk failed, save follower value failed");
+            response->set_code(304);
+            response->set_msg("set zk failed");
+            return;
+        }
     }
     zone_info_.set_mode(request->sm());
     if (mode_.load(std::memory_order_acquire) == rFOLLOWER) {
