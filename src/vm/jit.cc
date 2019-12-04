@@ -16,12 +16,13 @@
  */
 
 #include "vm/jit.h"
+
 #include <string>
 #include <utility>
-#include "glog/logging.h"
 extern "C" {
-#include <cstdlib> 
+#include <cstdlib>
 }
+#include "glog/logging.h"
 
 namespace fesql {
 namespace vm {
@@ -78,9 +79,7 @@ bool FeSQLJIT::AddSymbol(const std::string& name, void* fn_ptr) {
     return AddSymbol(jd, name, fn_ptr);
 }
 
-void FeSQLJIT::Init() {
-    AddSymbol("malloc", reinterpret_cast<void*>(&malloc));
-}
+void FeSQLJIT::Init() { AddSymbol("malloc", reinterpret_cast<void*>(&malloc)); }
 
 }  // namespace vm
 }  // namespace fesql

@@ -139,7 +139,8 @@ bool BufIRBuilder::BuildGetString(const std::string& name,
         return false;
     }
 
-    ::llvm::Value* data_ptr_ptr = builder.CreateStructGEP(str_type, string_ref, 1);
+    ::llvm::Value* data_ptr_ptr =
+        builder.CreateStructGEP(str_type, string_ref, 1);
     ::llvm::Value* cast_data_ptr_ptr = builder.CreatePointerCast(
         data_ptr_ptr, data_ptr->getType()->getPointerTo());
     builder.CreateStore(data_ptr, cast_data_ptr_ptr, false);
@@ -315,7 +316,7 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
                 next_offset = nit->second;
             }
             DLOG(INFO) << "get string with offset " << offset << " next offset "
-                        << next_offset << " for col " << name;
+                       << next_offset << " for col " << name;
             return BuildGetStringField(offset, next_offset, row_ptr, row_size,
                                        output);
         }
@@ -376,7 +377,8 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
             LOG(WARNING) << "fail to add str add space var";
             return false;
         }
-        str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true, "cast_i8_to_i32");
+        str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true,
+                                               "cast_i8_to_i32");
     }
 
     ::llvm::Type* str_type = NULL;
@@ -387,24 +389,22 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
     }
     // alloca memory on stack
     ::llvm::Value* string_ref = builder.CreateAlloca(str_type);
-    ::llvm::Value* data_ptr_ptr = builder.CreateStructGEP(str_type, string_ref, 1);
+    ::llvm::Value* data_ptr_ptr =
+        builder.CreateStructGEP(str_type, string_ref, 1);
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_get_str_field", i32_ty, 
-        i8_ptr_ty, i32_ty, i32_ty, i32_ty,
-        i32_ty, i8_ptr_ty->getPointerTo(), 
-        i32_ty->getPointerTo());
+        "fesql_storage_get_str_field", i32_ty, i8_ptr_ty, i32_ty, i32_ty,
+        i32_ty, i32_ty, i8_ptr_ty->getPointerTo(), i32_ty->getPointerTo());
 
     ::llvm::Value* str_offset = builder.getInt32(offset);
     ::llvm::Value* next_str_offset = builder.getInt32(next_str_field_offset);
     // get the data ptr
-    data_ptr_ptr = builder.CreatePointerCast(
-        data_ptr_ptr, i8_ptr_ty->getPointerTo());
+    data_ptr_ptr =
+        builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty->getPointerTo());
     ::llvm::Value* size_ptr = builder.CreateStructGEP(str_type, string_ref, 0);
     // get the size ptr
-    size_ptr =
-        builder.CreatePointerCast(size_ptr, i32_ty->getPointerTo());
+    size_ptr = builder.CreatePointerCast(size_ptr, i32_ty->getPointerTo());
     std::vector<::llvm::Value*> call_args;
     call_args.push_back(row_ptr);
     call_args.push_back(str_offset);
@@ -420,26 +420,31 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
     return true;
 }
 
-BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(const std::map<uint32_t, 
-        ::llvm::Value*>* outputs,
-        const std::vector<::fesql::type::ColumnDef>* schema,
-        ::llvm::BasicBlock* block):outputs_(outputs), 
-    schema_(schema), str_field_start_offset_(0), offset_vec_(),
-    str_field_cnt_(0), block_(block) {
+BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
+    const std::map<uint32_t, ::llvm::Value*>* outputs,
+    const std::vector<::fesql::type::ColumnDef>* schema,
+    ::llvm::BasicBlock* block)
+    : outputs_(outputs),
+      schema_(schema),
+      str_field_start_offset_(0),
+      offset_vec_(),
+      str_field_cnt_(0),
+      block_(block) {
     str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema_->size());
-    for (uint32_t idx = 0;  idx < schema_->size(); idx++) {
+    for (uint32_t idx = 0; idx < schema_->size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_->at(idx);
         if (column.type() == ::fesql::type::kVarchar) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
-        }else {
+        } else {
             auto it = TYPE_SIZE_MAP.find(column.type());
             if (it == TYPE_SIZE_MAP.end()) {
-                LOG(WARNING) << ::fesql::type::Type_Name(column.type()) 
-                    << " is not supported";
-            }else {
+                LOG(WARNING) << ::fesql::type::Type_Name(column.type())
+                             << " is not supported";
+            } else {
                 offset_vec_.push_back(str_field_start_offset_);
-                DLOG(INFO) << "idx " << idx << " offset " << str_field_start_offset_;
+                DLOG(INFO) << "idx " << idx << " offset "
+                           << str_field_start_offset_;
                 str_field_start_offset_ += it->second;
             }
         }
@@ -460,21 +465,18 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     }
 
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* i8_ptr = ::llvm::CallInst::CreateMalloc(block_, 
-                    row_size->getType(),
-                    i8_ptr_ty, row_size, nullptr, nullptr, "malloc");
+    ::llvm::Value* i8_ptr =
+        ::llvm::CallInst::CreateMalloc(block_, row_size->getType(), i8_ptr_ty,
+                                       row_size, nullptr, nullptr, "malloc");
     block_->getInstList().push_back(::llvm::cast<::llvm::Instruction>(i8_ptr));
-    i8_ptr = builder.CreatePointerCast(
-                i8_ptr, i8_ptr_ty);
-    DLOG(INFO) << "i8_ptr type " << i8_ptr->getType()->getTypeID() 
-        << " output ptr type " << output_ptr->getType()->getTypeID();
+    i8_ptr = builder.CreatePointerCast(i8_ptr, i8_ptr_ty);
+    DLOG(INFO) << "i8_ptr type " << i8_ptr->getType()->getTypeID()
+               << " output ptr type " << output_ptr->getType()->getTypeID();
     // make sure free it in c++ always
     builder.CreateStore(i8_ptr, output_ptr, false);
     // encode all field to buf
     // append header
-    ok = AppendHeader(i8_ptr, 
-            row_size, 
-            builder.getInt32(schema_->size()));
+    ok = AppendHeader(i8_ptr, row_size, builder.getInt32(schema_->size()));
 
     if (!ok) {
         return false;
@@ -484,32 +486,35 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     ::llvm::Value* str_addr_space_val = NULL;
     for (uint32_t idx = 0; idx < schema_->size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_->at(idx);
-        //TODO null check
+        // TODO(wangtaize) null check
         ::llvm::Value* val = outputs_->at(idx);
-        switch(column.type()) {
-            case ::fesql::type::kInt16: 
-            case ::fesql::type::kInt32: 
-            case ::fesql::type::kInt64: 
-            case ::fesql::type::kFloat: 
+        switch (column.type()) {
+            case ::fesql::type::kInt16:
+            case ::fesql::type::kInt32:
+            case ::fesql::type::kInt64:
+            case ::fesql::type::kFloat:
             case ::fesql::type::kDouble: {
                 uint32_t offset = offset_vec_.at(idx);
-                if (val->getType()->isFloatTy() 
-                        || val->getType()->isDoubleTy()
-                        || val->getType()->isIntegerTy()) {
+                if (val->getType()->isFloatTy() ||
+                    val->getType()->isDoubleTy() ||
+                    val->getType()->isIntegerTy()) {
                     ok = AppendPrimary(i8_ptr, val, offset);
                     if (!ok) {
-                        LOG(WARNING) << "fail to append number for output col " << column.name();
+                        LOG(WARNING) << "fail to append number for output col "
+                                     << column.name();
                         return false;
                     }
                     break;
-                }else {
-                    LOG(WARNING) << "number type is required but " << val->getType()->getTypeID();
+                } else {
+                    LOG(WARNING) << "number type is required but "
+                                 << val->getType()->getTypeID();
                     return false;
                 }
             }
             case ::fesql::type::kVarchar: {
                 if (str_body_offset == NULL) {
-                    str_addr_space_val = builder.CreateLoad(i32_ty, str_addr_space_ptr, "load_str_space");
+                    str_addr_space_val = builder.CreateLoad(
+                        i32_ty, str_addr_space_ptr, "load_str_space");
                     ok = CalcStrBodyStart(&str_body_offset, str_addr_space_val);
                     if (!ok || str_addr_space_val == NULL) {
                         return false;
@@ -517,31 +522,29 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                 }
                 uint32_t field_cnt = offset_vec_.at(idx);
                 ::llvm::Value* temp_body_size = NULL;
-                ok = AppendString(i8_ptr, row_size, val, str_addr_space_val, 
-                        str_body_offset, field_cnt, &temp_body_size);
+                ok = AppendString(i8_ptr, row_size, val, str_addr_space_val,
+                                  str_body_offset, field_cnt, &temp_body_size);
                 if (!ok) {
-                    LOG(WARNING) << "fail to append string for output col " << column.name();
+                    LOG(WARNING) << "fail to append string for output col "
+                                 << column.name();
                     return false;
                 }
                 str_body_offset = temp_body_size;
                 break;
             }
             default: {
-                LOG(WARNING) << "unsuported type, append val for output col " << column.name();
+                LOG(WARNING) << "unsuported type, append val for output col "
+                             << column.name();
                 return false;
             }
         }
     }
     return true;
 }
-bool BufNativeEncoderIRBuilder::AppendString(::llvm::Value* i8_ptr,
-            ::llvm::Value* buf_size,
-            ::llvm::Value* str_val,
-            ::llvm::Value* str_addr_space,
-            ::llvm::Value* str_body_offset,
-            uint32_t str_field_idx,
-            ::llvm::Value** output) {
-
+bool BufNativeEncoderIRBuilder::AppendString(
+    ::llvm::Value* i8_ptr, ::llvm::Value* buf_size, ::llvm::Value* str_val,
+    ::llvm::Value* str_addr_space, ::llvm::Value* str_body_offset,
+    uint32_t str_field_idx, ::llvm::Value** output) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* str_ty = NULL;
     bool ok = GetLLVMType(builder, ::fesql::type::kVarchar, &str_ty);
@@ -551,32 +554,35 @@ bool BufNativeEncoderIRBuilder::AppendString(::llvm::Value* i8_ptr,
     }
 
     ::llvm::Type* size_ty = builder.getInt32Ty();
-    // TODO(wangtaize) define global string 
-    ::llvm::Value* str_val_ptr = builder.CreatePointerCast(str_val, str_ty->getPointerTo());
+    // TODO(wangtaize) define global string
+    ::llvm::Value* str_val_ptr =
+        builder.CreatePointerCast(str_val, str_ty->getPointerTo());
     // get fe.string size
     ::llvm::Value* size_ptr = builder.CreateStructGEP(str_ty, str_val_ptr, 0);
-    ::llvm::Value* size_i32_ptr = builder.CreatePointerCast(
-               size_ptr, size_ty->getPointerTo());
-    ::llvm::Value* fe_str_size = builder.CreateLoad(size_ty, size_i32_ptr, "load_str_length");
+    ::llvm::Value* size_i32_ptr =
+        builder.CreatePointerCast(size_ptr, size_ty->getPointerTo());
+    ::llvm::Value* fe_str_size =
+        builder.CreateLoad(size_ty, size_i32_ptr, "load_str_length");
 
     // get fe.string char*
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* data_ptr_ptr = builder.CreateStructGEP(str_ty, str_val_ptr, 1);
-    data_ptr_ptr = builder.CreatePointerCast(
-               data_ptr_ptr, i8_ptr_ty->getPointerTo());
-   ::llvm::Value* data_ptr =  builder.CreateLoad(i8_ptr_ty, data_ptr_ptr, "load_str_data_ptr");
-   ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_encode_string_field", 
-        size_ty, // return type
-        i8_ptr_ty, // buf ptr
-        size_ty,  // buf size
-        i8_ptr_ty, // str val ptr
-        size_ty, // str val size
-        size_ty, // str_start_offset
-        size_ty, // str_field_offset
-        size_ty, // str_addr_space
-        size_ty // str_body_offset
-        );
+    ::llvm::Value* data_ptr_ptr =
+        builder.CreateStructGEP(str_ty, str_val_ptr, 1);
+    data_ptr_ptr =
+        builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty->getPointerTo());
+    ::llvm::Value* data_ptr =
+        builder.CreateLoad(i8_ptr_ty, data_ptr_ptr, "load_str_data_ptr");
+    ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
+        "fesql_storage_encode_string_field",
+        size_ty,    // return type
+        i8_ptr_ty,  // buf ptr
+        size_ty,    // buf size
+        i8_ptr_ty,  // str val ptr
+        size_ty,    // str val size
+        size_ty,    // str_start_offset
+        size_ty,    // str_field_offset
+        size_ty,    // str_addr_space
+        size_ty);
     std::vector<::llvm::Value*> call_args;
     // add buf args
     call_args.push_back(i8_ptr);
@@ -595,8 +601,8 @@ bool BufNativeEncoderIRBuilder::AppendString(::llvm::Value* i8_ptr,
     return true;
 }
 
-bool BufNativeEncoderIRBuilder::CalcStrBodyStart(::llvm::Value** output,
-        ::llvm::Value* str_addr_space) {
+bool BufNativeEncoderIRBuilder::CalcStrBodyStart(
+    ::llvm::Value** output, ::llvm::Value* str_addr_space) {
     if (output == NULL || str_addr_space == NULL) {
         LOG(WARNING) << "input ptr is null";
         return false;
@@ -610,14 +616,16 @@ bool BufNativeEncoderIRBuilder::CalcStrBodyStart(::llvm::Value** output,
 }
 
 bool BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr,
-        ::llvm::Value* val, uint32_t field_offset) {
+                                              ::llvm::Value* val,
+                                              uint32_t field_offset) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* offset = builder.getInt32(field_offset);
     return BuildStoreOffset(builder, i8_ptr, offset, val);
 }
 
 bool BufNativeEncoderIRBuilder::AppendHeader(::llvm::Value* i8_ptr,
-        ::llvm::Value* size, ::llvm::Value* bitmap_size) {
+                                             ::llvm::Value* size,
+                                             ::llvm::Value* bitmap_size) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* fversion = builder.getInt8(1);
     ::llvm::Value* sversion = builder.getInt8(1);
@@ -644,8 +652,7 @@ bool BufNativeEncoderIRBuilder::AppendHeader(::llvm::Value* i8_ptr,
 }
 
 bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
-        ::llvm::Value* str_addr_space) {
-
+                                              ::llvm::Value* str_addr_space) {
     if (output_ptr == NULL) {
         LOG(WARNING) << "input ptr is null";
         return false;
@@ -667,24 +674,28 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
 
     // build get string length and call native functon
     ::llvm::Type* size_ty = builder.getInt32Ty();
-    for (uint32_t idx = 0;  idx < schema_->size(); ++idx) {
+    for (uint32_t idx = 0; idx < schema_->size(); ++idx) {
         const ::fesql::type::ColumnDef& column = schema_->at(idx);
-        DLOG(INFO) << "output column " << column.name() <<" "  << idx;
+        DLOG(INFO) << "output column " << column.name() << " " << idx;
         if (column.type() == ::fesql::type::kVarchar) {
             ::llvm::Value* fe_str = outputs_->at(idx);
             if (fe_str == NULL) {
                 LOG(WARNING) << "str output is null for " << column.name();
                 return false;
             }
-            ::llvm::Value* fe_str_ptr = builder.CreatePointerCast(fe_str, str_ty->getPointerTo());
-            ::llvm::Value* size_ptr = builder.CreateStructGEP(str_ty, fe_str_ptr, 0);
-            ::llvm::Value* size_i32_ptr = builder.CreatePointerCast(
-                size_ptr, size_ty->getPointerTo());
-            ::llvm::Value* fe_str_size = builder.CreateLoad(size_ty, size_i32_ptr, "load_str_length");
+            ::llvm::Value* fe_str_ptr =
+                builder.CreatePointerCast(fe_str, str_ty->getPointerTo());
+            ::llvm::Value* size_ptr =
+                builder.CreateStructGEP(str_ty, fe_str_ptr, 0);
+            ::llvm::Value* size_i32_ptr =
+                builder.CreatePointerCast(size_ptr, size_ty->getPointerTo());
+            ::llvm::Value* fe_str_size =
+                builder.CreateLoad(size_ty, size_i32_ptr, "load_str_length");
             if (total_size == NULL) {
                 total_size = fe_str_size;
-            }else {
-                total_size = builder.CreateAdd(fe_str_size, total_size, "add_str_length");
+            } else {
+                total_size = builder.CreateAdd(fe_str_size, total_size,
+                                               "add_str_length");
             }
         }
     }
@@ -701,9 +712,6 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
     *output_ptr = builder.CreateCall(callee, call_args_ref);
     return true;
 }
-
-
-
 
 }  // namespace codegen
 }  // namespace fesql

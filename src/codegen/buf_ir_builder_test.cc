@@ -17,12 +17,12 @@
 
 #include "codegen/buf_ir_builder.h"
 #include <stdio.h>
+#include <cstdlib>
 #include <memory>
 #include <vector>
-#include <cstdlib>
 #include "gtest/gtest.h"
-#include "storage/type_ir_builder.h"
 #include "storage/codec.h"
+#include "storage/type_ir_builder.h"
 
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -117,15 +117,14 @@ void RunEncode(int8_t** output_ptr) {
         schema.push_back(column);
     }
 
-
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_encode", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     bool is_void = false;
     Function* fn = Function::Create(
-        FunctionType::get(
-            Type::getVoidTy(*ctx), {Type::getInt8PtrTy(*ctx)->getPointerTo()}, false),
+        FunctionType::get(Type::getVoidTy(*ctx),
+                          {Type::getInt8PtrTy(*ctx)->getPointerTo()}, false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     IRBuilder<> builder(entry_block);
@@ -134,10 +133,13 @@ void RunEncode(int8_t** output_ptr) {
     std::map<uint32_t, ::llvm::Value*> outputs;
     outputs.insert(std::make_pair(0, builder.getInt16(16)));
     outputs.insert(std::make_pair(1, builder.getInt32(32)));
-    outputs.insert(std::make_pair(2, ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(32.1f))));
-    outputs.insert(std::make_pair(3, ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(64.1))));
+    outputs.insert(std::make_pair(
+        2, ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(32.1f))));
+    outputs.insert(std::make_pair(
+        3, ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(64.1))));
     outputs.insert(std::make_pair(4, builder.getInt64(64)));
-    BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, &schema, entry_block);
+    BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, &schema,
+                                                  entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
     bool ok = buf_encoder_builder.BuildEncode(arg0);
@@ -152,12 +154,11 @@ void RunEncode(int8_t** output_ptr) {
     ::llvm::StringRef symbol("malloc");
     ::llvm::orc::SymbolMap symbol_map;
     ::llvm::JITEvaluatedSymbol jit_symbol(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&malloc)),
+        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
         ::llvm::JITSymbolFlags());
 
     symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-    // add codec 
+    // add codec
     auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
     if (err) {
         ASSERT_TRUE(false);
@@ -166,14 +167,13 @@ void RunEncode(int8_t** output_ptr) {
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
     void (*decode)(int8_t**) =
-            reinterpret_cast<void (*)(int8_t**)>(
-                load_fn_jit.getAddress());
+        reinterpret_cast<void (*)(int8_t**)>(load_fn_jit.getAddress());
     decode(output_ptr);
 }
 
 template <class T>
 void RunCaseV1(T expected, const ::fesql::type::Type& type,
-             const std::string& col, int8_t* row, int32_t row_size) {
+               const std::string& col, int8_t* row, int32_t row_size) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
     {
@@ -290,15 +290,16 @@ void RunCaseV1(T expected, const ::fesql::type::Type& type,
         ::llvm::JITSymbolFlags());
 
     ::llvm::JITEvaluatedSymbol jit_symbol4(
-        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&AssertStrEq)),
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&AssertStrEq)),
         ::llvm::JITSymbolFlags());
 
     symbol_map.insert(std::make_pair(mi(symbol1), jit_symbol1));
     symbol_map.insert(std::make_pair(mi(symbol2), jit_symbol2));
     symbol_map.insert(std::make_pair(mi(symbol3), jit_symbol3));
     symbol_map.insert(std::make_pair(mi(symbol4), jit_symbol4));
-    // add codec 
-    
+    // add codec
+
     auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
     if (err) {
         ASSERT_TRUE(false);
@@ -446,8 +447,8 @@ void RunCase(T expected, const ::fesql::type::Type& type,
     symbol_map.insert(std::make_pair(mi(symbol2), jit_symbol2));
     symbol_map.insert(std::make_pair(mi(symbol3), jit_symbol3));
     symbol_map.insert(std::make_pair(mi(symbol4), jit_symbol4));
-    // add codec 
-    
+    // add codec
+
     auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
     if (err) {
         ASSERT_TRUE(false);

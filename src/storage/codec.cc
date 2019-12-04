@@ -140,7 +140,7 @@ bool RowBuilder::AppendNULL() {
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);
     if (column.type() == ::fesql::type::kVarchar) {
         ptr = buf_ + str_field_start_offset_ +
-                          str_addr_length_ * offset_vec_[cnt_];
+              str_addr_length_ * offset_vec_[cnt_];
         if (str_addr_length_ == 1) {
             *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
         } else if (str_addr_length_ == 2) {
@@ -321,10 +321,10 @@ int32_t RowView::GetBool(uint32_t idx, bool* val) {
     }
     uint32_t offset = offset_vec_.at(idx);
     int8_t v = v1::GetBoolField(row_, offset);
-    if (v == 1){
+    if (v == 1) {
         *val = true;
-    }else {
-        *val =false;
+    } else {
+        *val = false;
     }
     return 0;
 }
@@ -341,7 +341,7 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    *val =  v1::GetInt32Field(row_, offset);
+    *val = v1::GetInt32Field(row_, offset);
     return 0;
 }
 
@@ -373,7 +373,7 @@ int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    *val =  v1::GetInt16Field(row_, offset);
+    *val = v1::GetInt16Field(row_, offset);
     return 0;
 }
 
@@ -410,7 +410,6 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
 }
 
 int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
-
     if (val == NULL || length == NULL) {
         LOG(WARNING) << "output val or length is null";
         return -1;
@@ -437,10 +436,9 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
             return -1;
         }
     }
-    return v1::GetStrField(row_, field_offset, 
-            next_str_field_offset, str_field_start_offset_,
-            str_addr_length_,
-            reinterpret_cast<int8_t**>(val), length);
+    return v1::GetStrField(row_, field_offset, next_str_field_offset,
+                           str_field_start_offset_, str_addr_length_,
+                           reinterpret_cast<int8_t**>(val), length);
 }
 
 }  // namespace storage

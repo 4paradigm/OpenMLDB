@@ -20,9 +20,9 @@
 #include <string>
 #include <vector>
 #include "codegen/fn_ir_builder.h"
+#include "gtest/gtest.h"
 #include "storage/codec.h"
 #include "storage/type_ir_builder.h"
-#include "gtest/gtest.h"
 
 #include "parser/parser.h"
 #include "plan/planner.h"
@@ -117,7 +117,6 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
     *size = total_size;
 }
 
-
 TEST_F(FnLetIRBuilderTest, test_udf) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
@@ -194,12 +193,11 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     ::llvm::StringRef symbol("malloc");
     ::llvm::orc::SymbolMap symbol_map;
     ::llvm::JITEvaluatedSymbol jit_symbol(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&malloc)),
+        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
         ::llvm::JITSymbolFlags());
 
     symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-    // add codec 
+    // add codec
     auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
     if (err) {
         ASSERT_TRUE(false);
@@ -295,12 +293,11 @@ TEST_F(FnLetIRBuilderTest, test_project) {
     ::llvm::StringRef symbol("malloc");
     ::llvm::orc::SymbolMap symbol_map;
     ::llvm::JITEvaluatedSymbol jit_symbol(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&malloc)),
+        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
         ::llvm::JITSymbolFlags());
 
     symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-    // add codec 
+    // add codec
     auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
     if (err) {
         ASSERT_TRUE(false);

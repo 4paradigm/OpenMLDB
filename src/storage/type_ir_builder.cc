@@ -130,34 +130,37 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
     return 0;
 }
 
-int32_t AppendString(int8_t* buf_ptr, 
-                     uint32_t buf_size,
-                     int8_t* val, uint32_t size,
-                     uint32_t str_start_offset,
-                     uint32_t str_field_offset,
-                     uint32_t str_addr_space,
+int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, int8_t* val,
+                     uint32_t size, uint32_t str_start_offset,
+                     uint32_t str_field_offset, uint32_t str_addr_space,
                      uint32_t str_body_offset) {
     uint32_t str_offset = str_start_offset + str_field_offset * str_addr_space;
     if (str_offset + size > buf_size) {
-        LOG(WARNING) << "invalid str size expect " << buf_size << " but " << str_offset + size;
+        LOG(WARNING) << "invalid str size expect " << buf_size << " but "
+                     << str_offset + size;
         return -1;
     }
     int8_t* ptr_offset = buf_ptr + str_offset;
     switch (str_addr_space) {
         case 1: {
-            *(reinterpret_cast<uint8_t*>(ptr_offset)) = (uint8_t)str_body_offset;
+            *(reinterpret_cast<uint8_t*>(ptr_offset)) =
+                (uint8_t)str_body_offset;
             break;
         }
 
         case 2: {
-            *(reinterpret_cast<uint16_t*>(ptr_offset)) = (uint16_t)str_body_offset;
+            *(reinterpret_cast<uint16_t*>(ptr_offset)) =
+                (uint16_t)str_body_offset;
             break;
         }
 
         case 3: {
-            *(reinterpret_cast<uint8_t*>(ptr_offset)) = str_body_offset & 0x0F00;
-            *(reinterpret_cast<uint8_t*>(ptr_offset + 1)) = str_body_offset & 0x00F0;
-            *(reinterpret_cast<uint8_t*>(ptr_offset + 2)) = str_body_offset & 0x000F;
+            *(reinterpret_cast<uint8_t*>(ptr_offset)) =
+                str_body_offset & 0x0F00;
+            *(reinterpret_cast<uint8_t*>(ptr_offset + 1)) =
+                str_body_offset & 0x00F0;
+            *(reinterpret_cast<uint8_t*>(ptr_offset + 2)) =
+                str_body_offset & 0x000F;
             break;
         }
 
@@ -175,7 +178,8 @@ int32_t AppendString(int8_t* buf_ptr,
 
 }  // namespace v1
 
-void AddSymbol(::llvm::orc::JITDylib& jd, ::llvm::orc::MangleAndInterner& mi, // NOLINT
+void AddSymbol(::llvm::orc::JITDylib& jd, // NOLINT
+               ::llvm::orc::MangleAndInterner& mi,  // NOLINT
                const std::string& fn_name, void* fn_ptr) {
     ::llvm::StringRef symbol(fn_name);
     ::llvm::JITEvaluatedSymbol jit_symbol(
@@ -190,8 +194,8 @@ void AddSymbol(::llvm::orc::JITDylib& jd, ::llvm::orc::MangleAndInterner& mi, //
     }
 }
 
-void InitCodecSymbol(::llvm::orc::JITDylib& jd,  // NOLINT
-                     ::llvm::orc::MangleAndInterner& mi) { // NOLINT
+void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
+                     ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
     // decode
     AddSymbol(jd, mi, "fesql_storage_get_int16_field",
               reinterpret_cast<void*>(&v1::GetInt16Field));
@@ -225,12 +229,9 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,  // NOLINT
 
     AddSymbol(jd, mi, "fesql_storage_encode_string_field",
               reinterpret_cast<void*>(&v1::AppendString));
-
 }
 
-
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
-
     jit_ptr->AddSymbol("fesql_storage_get_int16_field",
                        reinterpret_cast<void*>(&v1::GetInt16Field));
     jit_ptr->AddSymbol("fesql_storage_get_int32_field",
@@ -247,28 +248,25 @@ void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
                        reinterpret_cast<void*>(&v1::GetStrField));
 
     jit_ptr->AddSymbol("fesql_storage_encode_int16_field",
-              reinterpret_cast<void*>(&v1::AppendInt16));
+                       reinterpret_cast<void*>(&v1::AppendInt16));
 
     jit_ptr->AddSymbol("fesql_storage_encode_int32_field",
-              reinterpret_cast<void*>(&v1::AppendInt32));
+                       reinterpret_cast<void*>(&v1::AppendInt32));
 
     jit_ptr->AddSymbol("fesql_storage_encode_int64_field",
-              reinterpret_cast<void*>(&v1::AppendInt64));
+                       reinterpret_cast<void*>(&v1::AppendInt64));
 
     jit_ptr->AddSymbol("fesql_storage_encode_float_field",
-              reinterpret_cast<void*>(&v1::AppendFloat));
+                       reinterpret_cast<void*>(&v1::AppendFloat));
 
     jit_ptr->AddSymbol("fesql_storage_encode_double_field",
-              reinterpret_cast<void*>(&v1::AppendDouble));
+                       reinterpret_cast<void*>(&v1::AppendDouble));
 
     jit_ptr->AddSymbol("fesql_storage_encode_string_field",
-              reinterpret_cast<void*>(&v1::AppendString));
+                       reinterpret_cast<void*>(&v1::AppendString));
 
     jit_ptr->AddSymbol("fesql_storage_encode_calc_size",
-              reinterpret_cast<void*>(&v1::CalcTotalLength));
-
-
-
+                       reinterpret_cast<void*>(&v1::CalcTotalLength));
 }
 
 }  // namespace storage

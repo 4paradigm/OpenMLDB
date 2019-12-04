@@ -139,9 +139,9 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
             }
         }
         case ::llvm::Type::StructTyID:
-        case ::llvm::Type::PointerTyID:{
-             *output = ::fesql::type::kVarchar;
-             return true;
+        case ::llvm::Type::PointerTyID: {
+            *output = ::fesql::type::kVarchar;
+            return true;
         }
         default: {
             LOG(WARNING) << "no mapping type for llvm type";
