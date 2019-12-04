@@ -73,22 +73,28 @@ inline int32_t GetDoubleField(const int8_t* row, uint32_t offset, double* val) {
 
 inline int32_t GetStrAddr(const int8_t* row, uint32_t offset,
                           uint8_t addr_space, uint32_t* val) {
-    if (addr_space == 1) {
-        *val = *(reinterpret_cast<const uint8_t*>(row + offset));
-    } else if (addr_space == 2) {
-        *val = *(reinterpret_cast<const uint16_t*>(row + offset));
-    } else if (addr_space == 3) {
-        const int8_t* ptr = row + offset;
-        uint32_t str_offset = *(reinterpret_cast<const uint8_t*>(ptr));
-        str_offset =
-            (str_offset << 8) + *(reinterpret_cast<const uint8_t*>(ptr + 1));
-        str_offset =
-            (str_offset << 8) + *(reinterpret_cast<const uint8_t*>(ptr + 2));
-        *val = str_offset;
-    } else if (addr_space == 4) {
-        *val = *(reinterpret_cast<const uint32_t*>(row + offset));
-    } else {
-        return -1;
+    switch(addr_space) {
+        case 1:
+            *val = *(reinterpret_cast<const uint8_t*>(row + offset));
+            break;
+        case 2:
+            *val = *(reinterpret_cast<const uint16_t*>(row + offset));
+            break;
+        case 3: {
+            const int8_t* ptr = row + offset;
+            uint32_t str_offset = *(reinterpret_cast<const uint8_t*>(ptr));
+            str_offset =
+                (str_offset << 8) + *(reinterpret_cast<const uint8_t*>(ptr + 1));
+            str_offset =
+                (str_offset << 8) + *(reinterpret_cast<const uint8_t*>(ptr + 2));
+            *val = str_offset;
+             break;
+        }     
+        case 4:
+            *val = *(reinterpret_cast<const uint32_t*>(row + offset));
+            break;
+        default:
+            return -1;
     }
     return 0;
 }
