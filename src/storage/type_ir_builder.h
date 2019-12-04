@@ -40,20 +40,64 @@ struct Timestamp {
 
 namespace v1 {
 
-int32_t GetBoolField(const int8_t* row, uint32_t offset, bool* val);
+inline int32_t GetBoolField(const int8_t* row, uint32_t offset, bool* val) {
+    int8_t value = *(row + offset);
+    value == 1 ? * val = true : * val = false;
+    return 0;
+}
 
-int32_t GetInt16Field(const int8_t* row, uint32_t offset, int16_t* val);
+inline int32_t GetInt16Field(const int8_t* row, uint32_t offset, int16_t* val) {
+    *val = *(reinterpret_cast<const int16_t*>(row + offset));
+    return 0;
+}
 
-int32_t GetInt32Field(const int8_t* row, uint32_t offset, int32_t* val);
+inline int32_t GetInt32Field(const int8_t* row, uint32_t offset, int32_t* val) {
+    *val = *(reinterpret_cast<const int32_t*>(row + offset));
+    return 0;
+}
 
-int32_t GetInt64Field(const int8_t* row, uint32_t offset, int64_t* val);
+inline int32_t GetInt64Field(const int8_t* row, uint32_t offset, int64_t* val) {
+    *val = *(reinterpret_cast<const int64_t*>(row + offset));
+    return 0;
+}
 
-int32_t GetFloatField(const int8_t* row, uint32_t offset, float* val);
+inline int32_t GetFloatField(const int8_t* row, uint32_t offset, float* val) {
+    *val = *(reinterpret_cast<const float*>(row + offset));
+    return 0;
+}
 
-int32_t GetDoubleField(const int8_t* row, uint32_t offset, double* val);
+inline int32_t GetDoubleField(const int8_t* row, uint32_t offset, double* val) {
+    *val = *(reinterpret_cast<const double*>(row + offset));
+    return 0;
+}
 
-int32_t GetStrAddr(const int8_t* row, uint32_t offset, uint8_t addr_space,
-                   uint32_t* val);
+inline int32_t GetStrAddr(const int8_t* row, uint32_t offset,
+                          uint8_t addr_space, uint32_t* val) {
+    switch (addr_space) {
+        case 1:
+            *val = *(reinterpret_cast<const uint8_t*>(row + offset));
+            break;
+        case 2:
+            *val = *(reinterpret_cast<const uint16_t*>(row + offset));
+            break;
+        case 3: {
+            const int8_t* ptr = row + offset;
+            uint32_t str_offset = *(reinterpret_cast<const uint8_t*>(ptr));
+            str_offset = (str_offset << 8) +
+                         *(reinterpret_cast<const uint8_t*>(ptr + 1));
+            str_offset = (str_offset << 8) +
+                         *(reinterpret_cast<const uint8_t*>(ptr + 2));
+            *val = str_offset;
+            break;
+        }
+        case 4:
+            *val = *(reinterpret_cast<const uint32_t*>(row + offset));
+            break;
+        default:
+            return -1;
+    }
+    return 0;
+}
 
 // native get string field method
 int32_t GetStrField(const int8_t* row, int32_t offset, int32_t next_str_offset,

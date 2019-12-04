@@ -24,7 +24,7 @@ namespace fesql {
 namespace storage {
 class CodecTest : public ::testing::Test {};
 
-TEST_F(CodecTest, NULL) {
+TEST_F(CodecTest, NULLTest) {
     Schema schema;
     ::fesql::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
