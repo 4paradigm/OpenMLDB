@@ -590,6 +590,11 @@ void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
+    if (follower_.load(std::memory_order_acquire)) {
+        response->set_code(453);
+        response->set_msg("is follower cluster");
+        return;
+    }
     if (request->time() == 0 && request->ts_dimensions_size() == 0) {
         response->set_code(114);
         response->set_msg("ts must be greater than zero");
@@ -1546,6 +1551,11 @@ void TabletImpl::Delete(RpcController* controller,
               ::rtidb::api::GeneralResponse* response,
               Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    if (follower_.load(std::memory_order_acquire)) {
+        response->set_code(453);
+        response->set_msg("is follower cluster");
+        return;
+    }
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         PDLOG(DEBUG, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
@@ -2894,6 +2904,11 @@ void TabletImpl::CreateTable(RpcController* controller,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    if (follower_.load(std::memory_order_acquire)) {
+        response->set_code(453);
+        response->set_msg("is follower cluster");
+        return;
+    }
     const ::rtidb::api::TableMeta* table_meta = &request->table_meta();
     std::string msg;
     uint32_t tid = table_meta->tid();
