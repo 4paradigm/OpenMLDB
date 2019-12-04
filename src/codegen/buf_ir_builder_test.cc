@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <memory>
 #include <vector>
+#include <cstdlib>
 #include "gtest/gtest.h"
 #include "storage/type_ir_builder.h"
 #include "storage/codec.h"
@@ -77,6 +78,94 @@ class BufIRBuilderTest : public ::testing::Test {
     BufIRBuilderTest() {}
     ~BufIRBuilderTest() {}
 };
+
+void RunEncode(int8_t** output_ptr) {
+    ::fesql::type::TableDef table;
+    table.set_name("t1");
+    std::vector<::fesql::type::ColumnDef> schema;
+    {
+        ::fesql::type::ColumnDef column;
+        column.set_type(::fesql::type::kInt16);
+        column.set_name("col1");
+        schema.push_back(column);
+    }
+
+    /*{
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col2");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kFloat);
+        column->set_name("col3");
+    }
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kDouble);
+        column->set_name("col4");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col5");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col6");
+    }*/
+
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_encode", *ctx);
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "int" and take an argument of "int".
+    bool is_void = false;
+    Function* fn = Function::Create(
+        FunctionType::get(
+            Type::getVoidTy(*ctx), {Type::getInt8PtrTy(*ctx)->getPointerTo()}, false),
+        Function::ExternalLinkage, "fn", m.get());
+    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
+    IRBuilder<> builder(entry_block);
+    ScopeVar sv;
+    sv.Enter("enter row scope");
+    std::map<uint32_t, ::llvm::Value*> outputs;
+    outputs.insert(std::make_pair(0, builder.getInt16(1)));
+    BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, &schema, entry_block);
+    Function::arg_iterator it = fn->arg_begin();
+    Argument* arg0 = &*it;
+    bool ok = buf_encoder_builder.BuildEncode(arg0);
+    ASSERT_TRUE(ok);
+    builder.CreateRetVoid();
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
+    auto& jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::llvm::StringRef symbol("malloc");
+    ::llvm::orc::SymbolMap symbol_map;
+    ::llvm::JITEvaluatedSymbol jit_symbol(
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&malloc)),
+        ::llvm::JITSymbolFlags());
+
+    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
+    // add codec 
+    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
+    if (err) {
+        ASSERT_TRUE(false);
+    }
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
+    void (*decode)(int8_t**) =
+            reinterpret_cast<void (*)(int8_t**)>(
+                load_fn_jit.getAddress());
+    decode(output_ptr);
+}
 
 template <class T>
 void RunCaseV1(T expected, const ::fesql::type::Type& type,
@@ -512,6 +601,16 @@ TEST_F(BufIRBuilderTest, native_test_load_string) {
     free(ptr);
 }
 
+TEST_F(BufIRBuilderTest, encode_ir_builder) {
+    int8_t* ptr = NULL;
+    RunEncode(&ptr);
+    bool ok = ptr != NULL;
+    ASSERT_TRUE(ok);
+    uint32_t size = *reinterpret_cast<uint32_t*>(ptr + 2);
+    ASSERT_EQ(size, 9);
+    ASSERT_EQ(1, *reinterpret_cast<int16_t*>(ptr + 7));
+    free(ptr);
+}
 
 }  // namespace codegen
 }  // namespace fesql

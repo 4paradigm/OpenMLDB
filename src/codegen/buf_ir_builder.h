@@ -61,11 +61,38 @@ class BufIRBuilder {
     Types types_;
 };
 
+class BufNativeEncoderIRBuilder {
+ public:
+    BufNativeEncoderIRBuilder(const std::map<uint32_t, ::llvm::Value*>* outputs,
+                              const std::vector<::fesql::type::ColumnDef>* schema,
+                              ::llvm::BasicBlock* block);
+
+    ~BufNativeEncoderIRBuilder();
+
+    // the output_ptr like int8_t**
+    bool BuildEncode(::llvm::Value* output_ptr);
+
+ private:
+    bool CalcTotalSize(::llvm::Value** output);
+
+    bool AppendInt16(::llvm::Value* i8_ptr,
+            ::llvm::Value* i16_val, uint32_t field_offset);
+
+    bool AppendHeader(::llvm::Value* i8_ptr, ::llvm::Value* size,
+            ::llvm::Value* bitmap_size);
+ private:
+    const std::map<uint32_t, ::llvm::Value*>* outputs_;
+    const std::vector<::fesql::type::ColumnDef>* schema_;
+    uint32_t str_field_start_offset_;
+    std::vector<uint32_t> offset_vec_;
+    uint32_t str_field_cnt_;
+    ::llvm::BasicBlock* block_;
+};
+
 class BufNativeIRBuilder {
  public:
     BufNativeIRBuilder(::fesql::type::TableDef* table,
                        ::llvm::BasicBlock* block, ScopeVar* scope_var);
-
     ~BufNativeIRBuilder();
 
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,

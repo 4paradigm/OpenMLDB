@@ -21,10 +21,10 @@
 #include <stdint.h>
 #include <cstddef>
 #include "vm/jit.h"
+#include "glog/logging.h"
 
 namespace fesql {
 namespace storage {
-
 
 struct StringRef {
     uint32_t size;
@@ -41,6 +41,95 @@ struct Timestamp {
 };
 
 namespace v1 {
+
+// calc the total row size with primary_size, str field count and str_size
+inline uint32_t CalcTotalLength(uint32_t primary_size,
+        uint32_t str_field_cnt, uint32_t str_size) {
+    uint32_t total_size = primary_size + str_size;
+    if (total_size + str_field_cnt <= UINT8_MAX) {
+        return total_size + str_field_cnt;
+    } else if (total_size + str_field_cnt * 2 <= UINT16_MAX) {
+        return total_size + str_field_cnt * 2;
+    } else if (total_size + str_field_cnt * 3 <= 1 << 24) {
+        return total_size + str_field_cnt * 3;
+    }else {
+        return total_size + str_field_cnt * 4;
+    }
+}
+inline int32_t AppendInt16(int8_t* buf_ptr, 
+                     uint32_t buf_size, int16_t val,
+                     uint32_t field_offset) {
+
+    if (field_offset + 2 > buf_size) {
+        LOG(WARNING) << "invalid field offset expect less than "  << buf_size 
+            << " but " << field_offset + 2;
+        return -1;
+    }
+    *(reinterpret_cast<int16_t*>(buf_ptr + field_offset)) = val;
+    return 4;
+}
+
+inline int32_t AppendFloat(int8_t* buf_ptr, 
+                     uint32_t buf_size, float val,
+                     uint32_t field_offset) {
+
+    if (field_offset + 4 > buf_size) {
+        LOG(WARNING) << "invalid field offset expect less than "  << buf_size 
+            << " but " << field_offset + 4;
+        return -1;
+    }
+    *(reinterpret_cast<float*>(buf_ptr + field_offset)) = val;
+    return 4;
+}
+
+inline int32_t AppendInt32(int8_t* buf_ptr, 
+                     uint32_t buf_size, int32_t val,
+                     uint32_t field_offset) {
+
+    if (field_offset + 4 > buf_size) {
+        LOG(WARNING) << "invalid field offset expect less than "  << buf_size 
+            << " but " << field_offset + 4;
+        return -1;
+    }
+    *(reinterpret_cast<int32_t*>(buf_ptr + field_offset)) = val;
+    return 4;
+}
+
+inline int32_t AppendInt64(int8_t* buf_ptr, 
+                     uint32_t buf_size, int64_t val,
+                     uint32_t field_offset) {
+
+    if (field_offset + 8 > buf_size) {
+        LOG(WARNING) << "invalid field offset expect less than "  << buf_size 
+            << " but " << field_offset + 8;
+        return -1;
+    }
+    *(reinterpret_cast<int64_t*>(buf_ptr + field_offset)) = val;
+    return 8;
+}
+
+inline int32_t AppendDouble(int8_t* buf_ptr, 
+                     uint32_t buf_size, double val,
+                     uint32_t field_offset) {
+
+    if (field_offset + 8 > buf_size) {
+        LOG(WARNING) << "invalid field offset expect less than "  << buf_size 
+            << " but " << field_offset + 8;
+        return -1;
+    }
+
+    *(reinterpret_cast<double*>(buf_ptr + field_offset)) = val;
+    return 8;
+}
+
+int32_t AppendString(int8_t* buf_ptr, 
+                     uint32_t buf_size,
+                     int8_t* val, 
+                     uint32_t size,
+                     uint32_t str_start_offset,
+                     uint32_t str_field_offset,
+                     uint32_t str_addr_space,
+                     uint32_t str_body_offset);
 
 inline int8_t GetAddrSpace(uint32_t size) {
     if (size <= UINT8_MAX) {
@@ -86,13 +175,10 @@ int32_t GetStrField(const int8_t* row,
         uint32_t str_start_offset,
         uint32_t addr_space, 
         int8_t** data, uint32_t* size);
-
-
 }  // namespace v1
 
 void InitCodecSymbol(::llvm::orc::JITDylib& jd, 
         ::llvm::orc::MangleAndInterner& mi);
-
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
 
 }  // namespace storage

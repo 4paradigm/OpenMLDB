@@ -71,69 +71,42 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
     BufNativeIRBuilder buf_ir_builder(table_, block, &sv);
     ExprIRBuilder expr_ir_builder(block, &sv, &buf_ir_builder, row_ptr_name,
                                   row_size_name, output_ptr_name, module_);
-
     const ::fesql::node::PlanNodeList& children = node->GetProjects();
     ::fesql::node::PlanNodeList::const_iterator it = children.begin();
-    int64_t offset = 0;
+    std::map<uint32_t, ::llvm::Value*> outputs;
+    uint32_t index = 0;
     for (; it != children.end(); it++) {
         const ::fesql::node::PlanNode* pn = *it;
         if (pn == NULL) {
             LOG(WARNING) << "plan node is null";
-            continue;
+            return false;
         }
 
         if (pn->GetType() != ::fesql::node::kProject) {
             LOG(WARNING) << "project node is required but "
                          << ::fesql::node::NameOfPlanNodeType(pn->GetType());
-            continue;
+            return false;
         }
 
         const ::fesql::node::ProjectPlanNode* pp_node =
             (const ::fesql::node::ProjectPlanNode*)pn;
         const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
-
         ::llvm::Value* expr_out_val = NULL;
         std::string col_name = pp_node->GetName();
         ok = expr_ir_builder.Build(sql_node, &expr_out_val);
         if (!ok) {
             return false;
         }
-
         ::fesql::type::Type ctype;
         ok = GetTableType(expr_out_val->getType(), &ctype);
         if (!ok) {
             return false;
         }
-
+        outputs.insert(std::make_pair(index, expr_out_val));
         ::fesql::type::ColumnDef cdef;
         cdef.set_name(col_name);
         cdef.set_type(ctype);
         schema.push_back(cdef);
-        ok = StoreColumn(offset, expr_out_val, sv, output_ptr_name, block);
-        if (!ok) {
-            return false;
-        }
-        switch (cdef.type()) {
-            case ::fesql::type::kInt16: {
-                offset += 2;
-                break;
-            }
-            case ::fesql::type::kInt32:
-            case ::fesql::type::kFloat: {
-                offset += 4;
-                break;
-            }
-            case ::fesql::type::kInt64:
-            case ::fesql::type::kDouble:
-            case ::fesql::type::kVarchar: {
-                offset += 8;
-                break;
-            }
-            default: {
-                LOG(WARNING) << "not supported type ";
-                return false;
-            }
-        }
     }
     ::llvm::IRBuilder<> ir_builder(block);
     ::llvm::Value* ret = ir_builder.getInt32(0);
@@ -141,7 +114,8 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
     return true;
 }
 
-bool RowFnLetIRBuilder::StoreColumn(int64_t offset, ::llvm::Value* value,
+bool RowFnLetIRBuilder::StoreColumn(int64_t offset, 
+                                    ::llvm::Value* value,
                                     ScopeVar& sv,
                                     const std::string& output_ptr_name,
                                     ::llvm::BasicBlock* block) {
@@ -201,7 +175,6 @@ bool RowFnLetIRBuilder::FillArgs(const std::string& row_ptr_name,
         LOG(WARNING) << "fn is null or fn arg size mismatch";
         return false;
     }
-
     ::llvm::Function::arg_iterator it = fn->arg_begin();
     sv.AddVar(row_ptr_name, &*it);
     ++it;

@@ -34,7 +34,8 @@ typedef std::map<std::string, std::pair<::fesql::type::ColumnDef, int32_t>>
 
 class RowFnLetIRBuilder {
  public:
-    RowFnLetIRBuilder(::fesql::type::TableDef* table, ::llvm::Module* module);
+    RowFnLetIRBuilder(::fesql::type::TableDef* table,
+            ::llvm::Module* module);
 
     ~RowFnLetIRBuilder();
 

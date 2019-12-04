@@ -181,6 +181,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
                                                 module);
     std::string fn_name = "__internal_sql_codegen";
     std::vector<::fesql::type::ColumnDef> output_schema;
+
     bool ok = builder.Build(fn_name, node, output_schema);
 
     if (!ok) {
