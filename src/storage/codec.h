@@ -29,7 +29,7 @@ using Schema = ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef>;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
-static constexpr uint32_t UINT24_MAX = 1 << 24;
+static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
 
 class RowBuilder {
  public:
