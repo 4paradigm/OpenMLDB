@@ -2407,7 +2407,7 @@ void NameServerImpl::DropTableInternel(const std::string name,
     }
     response->set_code(code);
     code == 0 ?  response->set_msg("ok") : response->set_msg("drop table error");
-    if (task_ptr) {
+    if (task_ptr->IsInitialized()) {
         if (code != 0) {
             task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
         } else {
@@ -2813,7 +2813,7 @@ void NameServerImpl::CreateTableInternel(std::shared_ptr<GeneralResponse> respon
             NotifyTableChanged();
         }
         
-        if (task_ptr) {
+        if (task_ptr->IsInitialized()) {
             std::lock_guard<std::mutex> lock(mu_);
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
             PDLOG(INFO, "set task type success, op_id [%lu] task_tpye [%s] task_status [%s]" , 
@@ -2824,7 +2824,7 @@ void NameServerImpl::CreateTableInternel(std::shared_ptr<GeneralResponse> respon
         response->set_msg("ok");
         return;
     } while (0);
-    if (task_ptr) {
+    if (task_ptr->IsInitialized()) {
         std::lock_guard<std::mutex> lock(mu_);
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
