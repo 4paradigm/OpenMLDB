@@ -21,6 +21,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
@@ -63,9 +64,10 @@ class BufIRBuilder {
 
 class BufNativeEncoderIRBuilder {
  public:
-    BufNativeEncoderIRBuilder(const std::map<uint32_t, ::llvm::Value*>* outputs,
-                              const std::vector<::fesql::type::ColumnDef>* schema,
-                              ::llvm::BasicBlock* block);
+    BufNativeEncoderIRBuilder(
+        const std::map<uint32_t, ::llvm::Value*>* outputs,
+        const std::vector<::fesql::type::ColumnDef>* schema,
+        ::llvm::BasicBlock* block);
 
     ~BufNativeEncoderIRBuilder();
 
@@ -73,23 +75,19 @@ class BufNativeEncoderIRBuilder {
     bool BuildEncode(::llvm::Value* output_ptr);
 
  private:
-    bool CalcTotalSize(::llvm::Value** output,
-            ::llvm::Value* str_addr_space);
-    bool CalcStrBodyStart(::llvm::Value** output,
-            ::llvm::Value* str_add_space);
-    bool AppendPrimary(::llvm::Value* i8_ptr,
-            ::llvm::Value* val, uint32_t field_offset);
+    bool CalcTotalSize(::llvm::Value** output, ::llvm::Value* str_addr_space);
+    bool CalcStrBodyStart(::llvm::Value** output, ::llvm::Value* str_add_space);
+    bool AppendPrimary(::llvm::Value* i8_ptr, ::llvm::Value* val,
+                       uint32_t field_offset);
 
-    bool AppendString(::llvm::Value* i8_ptr,
-            ::llvm::Value* buf_size,
-            ::llvm::Value* str_val,
-            ::llvm::Value* str_addr_space,
-            ::llvm::Value* str_body_offset,
-            uint32_t str_field_idx,
-            ::llvm::Value** output);
-    
+    bool AppendString(::llvm::Value* i8_ptr, ::llvm::Value* buf_size,
+                      ::llvm::Value* str_val, ::llvm::Value* str_addr_space,
+                      ::llvm::Value* str_body_offset, uint32_t str_field_idx,
+                      ::llvm::Value** output);
+
     bool AppendHeader(::llvm::Value* i8_ptr, ::llvm::Value* size,
-            ::llvm::Value* bitmap_size);
+                      ::llvm::Value* bitmap_size);
+
  private:
     const std::map<uint32_t, ::llvm::Value*>* outputs_;
     const std::vector<::fesql::type::ColumnDef>* schema_;
