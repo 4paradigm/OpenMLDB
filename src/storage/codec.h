@@ -18,14 +18,18 @@
 #ifndef SRC_STORAGE_CODEC_H_
 #define SRC_STORAGE_CODEC_H_
 
-#include <vector>
 #include <map>
+#include <vector>
 #include "proto/type.pb.h"
 
 namespace fesql {
 namespace storage {
 
 using Schema = ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef>;
+static constexpr uint8_t VERSION_LENGTH = 2;
+static constexpr uint8_t SIZE_LENGTH = 4;
+static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
+static constexpr uint32_t UINT24_MAX = 1 << 24;
 
 class RowBuilder {
  public:
@@ -61,8 +65,10 @@ class RowBuilder {
 class RowView {
  public:
     RowView(const Schema& schema, const int8_t* row, uint32_t size);
+    explicit RowView(const Schema& schema);
     ~RowView() = default;
-    void Reset(const int8_t* row, uint32_t size);
+    bool Reset(const int8_t* row, uint32_t size);
+    bool Reset(const int8_t* row);
 
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
@@ -71,9 +77,15 @@ class RowView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
-    bool IsNULL(uint32_t idx);
+    inline bool IsNULL(uint32_t idx) {
+        const int8_t* ptr = row_ + HEADER_LENGTH + (idx >> 3);
+        return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
+    }
+    uint32_t GetSize();
+    static uint32_t GetSize(const int8_t* row);
 
  private:
+    bool Init();
     bool CheckValid(uint32_t idx, ::fesql::type::Type type);
 
  private:
@@ -84,7 +96,8 @@ class RowView {
     const int8_t* row_;
     const Schema& schema_;
     std::vector<uint32_t> offset_vec_;
-    std::map<uint32_t, uint32_t> next_str_pos_;
+    std::vector<uint32_t> next_str_pos_;
+    // std::map<uint32_t, uint32_t> next_str_pos_;
 };
 
 }  // namespace storage
