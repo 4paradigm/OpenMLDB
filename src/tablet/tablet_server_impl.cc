@@ -235,13 +235,12 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         status->set_msg("fail to run sql");
         return;
     }
-
     DLOG(INFO) << "buf size " << buf.size();
     // TODO(wangtaize) opt the result buf
     std::vector<int8_t*>::iterator it = buf.begin();
     for (; it != buf.end(); ++it) {
-        void* ptr = reinterpret_cast<void*>(*it);
-        response->add_result_set(ptr, session.GetRowSize());
+        int8_t* ptr = *it;
+        response->add_result_set(ptr, *reinterpret_cast<uint32_t*>(ptr + 2));
         free(ptr);
     }
     // TODO(wangtaize) opt the schema

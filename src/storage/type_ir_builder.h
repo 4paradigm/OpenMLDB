@@ -44,15 +44,20 @@ namespace v1 {
 
 // calc the total row size with primary_size, str field count and str_size
 inline uint32_t CalcTotalLength(uint32_t primary_size,
-        uint32_t str_field_cnt, uint32_t str_size) {
+        uint32_t str_field_cnt, uint32_t str_size,
+        uint32_t* str_addr_space) {
     uint32_t total_size = primary_size + str_size;
     if (total_size + str_field_cnt <= UINT8_MAX) {
+        *str_addr_space = 1;
         return total_size + str_field_cnt;
     } else if (total_size + str_field_cnt * 2 <= UINT16_MAX) {
+        *str_addr_space = 2;
         return total_size + str_field_cnt * 2;
     } else if (total_size + str_field_cnt * 3 <= 1 << 24) {
+        *str_addr_space = 3;
         return total_size + str_field_cnt * 3;
     }else {
+        *str_addr_space = 4;
         return total_size + str_field_cnt * 4;
     }
 }

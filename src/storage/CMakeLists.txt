@@ -4,7 +4,8 @@ include_directories(${INCLUDE_DIRECTORIES}
 add_library(fesql_storage STATIC table.cc segment.cc codec.cc type_ir_builder.cc)
 
 add_executable(codec_test codec_test.cc codec.cc type_ir_builder.cc)
-target_link_libraries(codec_test fesql_proto glog gflags gtest protobuf pthread
+target_link_libraries(codec_test fesql_proto fesql_codegen fesql_vm
+    fesql_storage glog gflags ${llvm_libs} gtest protobuf pthread
     unwind lzma)
 
 add_executable(list_test list_test.cc)

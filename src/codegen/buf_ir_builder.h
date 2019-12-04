@@ -73,11 +73,21 @@ class BufNativeEncoderIRBuilder {
     bool BuildEncode(::llvm::Value* output_ptr);
 
  private:
-    bool CalcTotalSize(::llvm::Value** output);
+    bool CalcTotalSize(::llvm::Value** output,
+            ::llvm::Value* str_addr_space);
+    bool CalcStrBodyStart(::llvm::Value** output,
+            ::llvm::Value* str_add_space);
+    bool AppendPrimary(::llvm::Value* i8_ptr,
+            ::llvm::Value* val, uint32_t field_offset);
 
-    bool AppendInt16(::llvm::Value* i8_ptr,
-            ::llvm::Value* i16_val, uint32_t field_offset);
-
+    bool AppendString(::llvm::Value* i8_ptr,
+            ::llvm::Value* buf_size,
+            ::llvm::Value* str_val,
+            ::llvm::Value* str_addr_space,
+            ::llvm::Value* str_body_offset,
+            uint32_t str_field_idx,
+            ::llvm::Value** output);
+    
     bool AppendHeader(::llvm::Value* i8_ptr, ::llvm::Value* size,
             ::llvm::Value* bitmap_size);
  private:

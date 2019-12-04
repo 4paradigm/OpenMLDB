@@ -53,10 +53,11 @@ class RowFnLetIRBuilder {
             ::llvm::Function *fn,
             ScopeVar& sv); // NOLINT
 
-    bool StoreColumn(int64_t offset, ::llvm::Value* value,
-                     ScopeVar& sv,  // NOLINT (runtime/references)
-                     const std::string& output_ptr_name,
-                     ::llvm::BasicBlock* block);
+    bool EncodeBuf(const std::map<uint32_t, ::llvm::Value*>* values,
+                   const std::vector<::fesql::type::ColumnDef>* schema,
+                    ScopeVar& sv,  // NOLINT (runtime/references)
+                    ::llvm::BasicBlock* block,
+                    const std::string& output_ptr_name);
 
  private:
     // input schema

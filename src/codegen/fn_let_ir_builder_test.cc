@@ -191,18 +191,33 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
                                       J->getDataLayout());
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::llvm::StringRef symbol("malloc");
+    ::llvm::orc::SymbolMap symbol_map;
+    ::llvm::JITEvaluatedSymbol jit_symbol(
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&malloc)),
+        ::llvm::JITSymbolFlags());
+
+    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
+    // add codec 
+    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
+    if (err) {
+        ASSERT_TRUE(false);
+    }
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
-    int32_t (*decode)(int8_t*, int32_t, int8_t*) =
-        (int32_t(*)(int8_t*, int32_t, int8_t*))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
     int8_t* buf = NULL;
     uint32_t size = 0;
     BuildBuf(&buf, &size);
-    int32_t i = 0;
-    int32_t ret2 = decode(buf, size, reinterpret_cast<int8_t*>(&i));
+    int8_t* output = NULL;
+    int32_t ret2 = decode(buf, size, &output);
     ASSERT_EQ(ret2, 0u);
-    ASSERT_EQ(i, 65);
+    uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
+    ASSERT_EQ(out_size, 11);
+    ASSERT_EQ(65, *reinterpret_cast<uint32_t*>(output + 7));
     free(buf);
 }
 
@@ -277,21 +292,33 @@ TEST_F(FnLetIRBuilderTest, test_project) {
                                       J->getDataLayout());
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::llvm::StringRef symbol("malloc");
+    ::llvm::orc::SymbolMap symbol_map;
+    ::llvm::JITEvaluatedSymbol jit_symbol(
+        ::llvm::pointerToJITTargetAddress(
+            reinterpret_cast<void*>(&malloc)),
+        ::llvm::JITSymbolFlags());
 
+    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
+    // add codec 
+    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
+    if (err) {
+        ASSERT_TRUE(false);
+    }
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
 
-    int32_t (*decode)(int8_t*, int32_t, int8_t*) =
-        (int32_t(*)(int8_t*, int32_t, int8_t*))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
     uint32_t size = 0;
     BuildBuf(&ptr, &size);
-    int32_t i = 0;
-    int32_t ret2 = decode(ptr, size, reinterpret_cast<int8_t*>(&i));
+    int8_t* output = NULL;
+    int32_t ret2 = decode(ptr, size, &output);
     ASSERT_EQ(ret2, 0u);
-    ASSERT_EQ(i, 32);
+    ASSERT_EQ(32, *reinterpret_cast<uint32_t*>(output + 7));
     free(ptr);
 }
 

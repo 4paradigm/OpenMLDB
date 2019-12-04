@@ -34,6 +34,7 @@ RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 bool RowFnLetIRBuilder::Build(const std::string& name,
                               const ::fesql::node::ProjectListPlanNode* node,
                               std::vector<::fesql::type::ColumnDef>& schema) {
+
     if (node == NULL) {
         LOG(WARNING) << "node is null";
         return false;
@@ -103,40 +104,39 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
             return false;
         }
         outputs.insert(std::make_pair(index, expr_out_val));
+        index ++;
         ::fesql::type::ColumnDef cdef;
         cdef.set_name(col_name);
         cdef.set_type(ctype);
         schema.push_back(cdef);
     }
+
+    ok = EncodeBuf(&outputs, &schema, sv, block, output_ptr_name);
+    if (!ok) {
+        return false;
+    }
+
     ::llvm::IRBuilder<> ir_builder(block);
     ::llvm::Value* ret = ir_builder.getInt32(0);
     ir_builder.CreateRet(ret);
     return true;
 }
 
-bool RowFnLetIRBuilder::StoreColumn(int64_t offset, 
-                                    ::llvm::Value* value,
-                                    ScopeVar& sv,
-                                    const std::string& output_ptr_name,
-                                    ::llvm::BasicBlock* block) {
-
-    if (value == NULL || block == NULL) {
-        LOG(WARNING) << "value is null";
-        return true;
-    }
-
-    ::llvm::Value* out_ptr = NULL;
-    bool ok = sv.FindVar(output_ptr_name, &out_ptr);
-
-    if (!ok || out_ptr == NULL) {
-        LOG(WARNING) << "fail to find output ptr with " << output_ptr_name;
+bool RowFnLetIRBuilder::EncodeBuf(const std::map<uint32_t, ::llvm::Value*>* values,
+                    const std::vector<::fesql::type::ColumnDef>* schema,
+                    ScopeVar& sv,  // NOLINT (runtime/references)
+                    ::llvm::BasicBlock* block,
+                    const std::string& output_ptr_name) {
+    BufNativeEncoderIRBuilder encoder(values, schema, block);
+    ::llvm::Value* row_ptr = NULL;
+    bool ok = sv.FindVar(output_ptr_name, &row_ptr);
+    if (!ok) {
+        LOG(WARNING) << "fail to get row ptr";
         return false;
     }
-
-    ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* offset_val = builder.getInt64(offset);
-    return BuildStoreOffset(builder, out_ptr, offset_val, value);
+    return encoder.BuildEncode(row_ptr);
 }
+
 
 bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
                                       ::llvm::Function** fn) {
@@ -144,23 +144,19 @@ bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
         LOG(WARNING) << "fn is null";
         return false;
     }
-
     std::vector<::llvm::Type*> args_type;
     args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
     args_type.push_back(::llvm::Type::getInt32Ty(module_->getContext()));
-    args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
+    args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
     ::llvm::ArrayRef<::llvm::Type*> array_ref(args_type);
     ::llvm::FunctionType* fnt = ::llvm::FunctionType::get(
         ::llvm::Type::getInt32Ty(module_->getContext()), array_ref, false);
-
     ::llvm::Function* f = ::llvm::Function::Create(
         fnt, ::llvm::Function::ExternalLinkage, name, module_);
-
     if (f == NULL) {
         LOG(WARNING) << "fail to create fn with name " << name;
         return false;
     }
-
     *fn = f;
     DLOG(INFO) << "create fn header " << name << " done";
     return true;

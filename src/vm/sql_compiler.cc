@@ -60,6 +60,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     ctx.jit = std::move(*jit_expected);
+    ctx.jit->Init();
     ::llvm::Error e = ctx.jit->addIRModule(std::move(
         ::llvm::orc::ThreadSafeModule(std::move(m), std::move(llvm_ctx))));
     if (e) {
@@ -67,7 +68,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     storage::InitCodecSymbol(ctx.jit.get());
-
     std::vector<OpNode*>::iterator it = ctx.ops.ops.begin();
     for (; it != ctx.ops.ops.end(); ++it) {
         OpNode* op_node = *it;

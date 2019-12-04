@@ -90,33 +90,33 @@ void RunEncode(int8_t** output_ptr) {
         schema.push_back(column);
     }
 
-    /*{
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
+    {
+        ::fesql::type::ColumnDef column;
+        column.set_type(::fesql::type::kInt32);
+        column.set_name("col2");
+        schema.push_back(column);
     }
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
+        ::fesql::type::ColumnDef column;
+        column.set_type(::fesql::type::kFloat);
+        column.set_name("col3");
+        schema.push_back(column);
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
+        ::fesql::type::ColumnDef column;
+        column.set_type(::fesql::type::kDouble);
+        column.set_name("col4");
+        schema.push_back(column);
     }
 
     {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
-    }*/
+        ::fesql::type::ColumnDef column;
+        column.set_type(::fesql::type::kInt64);
+        column.set_name("col5");
+        schema.push_back(column);
+    }
+
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_encode", *ctx);
@@ -132,7 +132,11 @@ void RunEncode(int8_t** output_ptr) {
     ScopeVar sv;
     sv.Enter("enter row scope");
     std::map<uint32_t, ::llvm::Value*> outputs;
-    outputs.insert(std::make_pair(0, builder.getInt16(1)));
+    outputs.insert(std::make_pair(0, builder.getInt16(16)));
+    outputs.insert(std::make_pair(1, builder.getInt32(32)));
+    outputs.insert(std::make_pair(2, ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(32.1f))));
+    outputs.insert(std::make_pair(3, ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(64.1))));
+    outputs.insert(std::make_pair(4, builder.getInt64(64)));
     BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, &schema, entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
@@ -607,8 +611,12 @@ TEST_F(BufIRBuilderTest, encode_ir_builder) {
     bool ok = ptr != NULL;
     ASSERT_TRUE(ok);
     uint32_t size = *reinterpret_cast<uint32_t*>(ptr + 2);
-    ASSERT_EQ(size, 9);
-    ASSERT_EQ(1, *reinterpret_cast<int16_t*>(ptr + 7));
+    ASSERT_EQ(size, 33);
+    ASSERT_EQ(16, *reinterpret_cast<int16_t*>(ptr + 7));
+    ASSERT_EQ(32, *reinterpret_cast<int32_t*>(ptr + 9));
+    ASSERT_EQ(32.1f, *reinterpret_cast<float*>(ptr + 13));
+    ASSERT_EQ(64.1, *reinterpret_cast<double*>(ptr + 17));
+    ASSERT_EQ(64, *reinterpret_cast<int64_t*>(ptr + 25));
     free(ptr);
 }
 
