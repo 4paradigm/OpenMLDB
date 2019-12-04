@@ -97,7 +97,6 @@ class RowView {
     const Schema& schema_;
     std::vector<uint32_t> offset_vec_;
     std::vector<uint32_t> next_str_pos_;
-    // std::map<uint32_t, uint32_t> next_str_pos_;
 };
 
 }  // namespace storage
