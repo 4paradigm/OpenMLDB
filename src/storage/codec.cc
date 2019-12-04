@@ -101,7 +101,7 @@ uint32_t RowBuilder::CalTotalLength(uint32_t string_length) {
         return total_length + str_field_cnt_;
     } else if (total_length + str_field_cnt_ * 2 <= UINT16_MAX) {
         return total_length + str_field_cnt_ * 2;
-    } else if (total_length + str_field_cnt_ * 3 <= 1 << 24) {
+    } else if (total_length + str_field_cnt_ * 3 <= UINT24_MAX) {
         return total_length + str_field_cnt_ * 3;
     } else if (total_length + str_field_cnt_ * 4 <= UINT32_MAX) {
         return total_length + str_field_cnt_ * 4;
