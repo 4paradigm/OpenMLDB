@@ -626,8 +626,10 @@ void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts, ::rtidb
 void HandleNSSwitchMode(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
+        return;
     }
-    if ((parts[1] != "normal") || (parts[1] != "leader")) {
+    if ((parts[1] == "normal") || (parts[1] == "leader")) {
+    } else {
         std::cout << "invalid mode type"  << std::endl;
         return;
     }
