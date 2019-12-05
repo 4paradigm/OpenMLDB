@@ -101,6 +101,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return std::string("kSelect");
         case kPlanTypeScan:
             return std::string("kScan");
+        case kPlanTypeMerge:
+            return std::string("kMerge");
         case kPlanTypeLimit:
             return std::string("kLimit");
         case kProjectList:

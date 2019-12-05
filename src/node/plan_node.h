@@ -93,24 +93,27 @@ class ScanPlanNode : public UnaryPlanNode {
         : UnaryPlanNode(kPlanTypeScan),
           scan_type_(scan_type),
           table_name_(table_name),
-          limit_cnt(-1) {}
+          condition_(nullptr),
+          limit_cnt_(-1) {}
     ~ScanPlanNode() {}
 
     PlanType GetScanType() { return scan_type_; }
 
-    const int GetLimit() const { return limit_cnt; }
+    const int GetLimit() const { return limit_cnt_; }
 
     const std::string &GetTable() const { return table_name_; }
 
-    void SetLimit(int limit) { limit_cnt = limit; }
-    SQLNode *GetCondition() const { return condition; }
-
+    void SetLimit(int limit) { limit_cnt_ = limit; }
+    const SQLNode *GetCondition() const { return condition_; }
+    void SetCondition(SQLNode* condition) {
+        condition_ = condition;
+    }
  private:
     // TODO(chenjing): OP tid
     PlanType scan_type_;
     std::string table_name_;
-    SQLNode *condition;
-    int limit_cnt;
+    SQLNode *condition_;
+    int limit_cnt_;
 };
 
 class LimitPlanNode : public MultiChildPlanNode {
@@ -180,10 +183,18 @@ class ProjectPlanNode : public LeafPlanNode {
     std::string w_;
 };
 
+class MergePlanNode : public MultiChildPlanNode {
+ public:
+    MergePlanNode() : MultiChildPlanNode(kPlanTypeMerge) {}
+    ~MergePlanNode() {}
+};
+
 class WindowPlanNode : public LeafPlanNode {
  public:
-    WindowPlanNode()
+    WindowPlanNode(int id)
         : LeafPlanNode(kPlanTypeWindow),
+          id(id),
+          name(""),
           start_offset_(0L),
           end_offset_(0L),
           is_range_between_(true),
@@ -202,8 +213,13 @@ class WindowPlanNode : public LeafPlanNode {
     const std::vector<std::string> &GetOrders() const { return orders_; }
     void SetKeys(const std::vector<std::string> &keys) { keys_ = keys; }
     void SetOrders(const std::vector<std::string> &orders) { orders_ = orders; }
+    const std::string &GetName() const { return name; }
+    void SetName(const std::string &name) { WindowPlanNode::name = name; }
+    const int GetId() const { return id; }
 
  private:
+    int id;
+    std::string name;
     int64_t start_offset_;
     int64_t end_offset_;
     bool is_range_between_;

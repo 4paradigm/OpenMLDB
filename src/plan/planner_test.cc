@@ -52,24 +52,24 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
     // validate select plan
     ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
     node::SelectPlanNode *select_ptr = (node::SelectPlanNode *)plan_ptr;
-    // validate limit 10
-    ASSERT_EQ(node::kPlanTypeLimit, select_ptr->GetChildren()[0]->GetType());
-    node::LimitPlanNode *limit_node =
-        (node::LimitPlanNode *)select_ptr->GetChildren()[0];
-    ASSERT_EQ(10, limit_node->GetLimitCnt());
 
     // validate project list based on current row
-    std::vector<PlanNode *> plan_vec = limit_node->GetChildren();
+    std::vector<PlanNode *> plan_vec = select_ptr->GetChildren();
     ASSERT_EQ(1u, plan_vec.size());
     ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
     ASSERT_EQ(
         3u,
         ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
 
+    // validate limit 10
+    ASSERT_EQ(node::kPlanTypeScan, plan_vec.at(0)->GetChildren()[0]->GetType());
+    node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
+        plan_vec.at(0)->GetChildren()[0]);
+    ASSERT_EQ(10, scan_ptr->GetLimit());
     delete planner_ptr;
 }
 
-TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
+TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
     node::NodePointVector list;
     node::PlanNodeList trees;
     base::Status status;
@@ -93,22 +93,25 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
     // validate select plan
     ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
     node::SelectPlanNode *select_ptr = (node::SelectPlanNode *)plan_ptr;
-    // validate limit 10
-    // validate limit 10
-    ASSERT_EQ(node::kPlanTypeLimit, select_ptr->GetChildren()[0]->GetType());
-    node::LimitPlanNode *limit_node =
-        (node::LimitPlanNode *)select_ptr->GetChildren()[0];
-    ASSERT_EQ(10, limit_node->GetLimitCnt());
+
+    // validate merge node
+    ASSERT_EQ(node::kPlanTypeMerge, select_ptr->GetChildren()[0]->GetType());
+    node::MergePlanNode *merge_ptr =
+        (node::MergePlanNode *)select_ptr->GetChildren()[0];
 
     // validate project list based on current row
-    std::vector<PlanNode *> plan_vec = limit_node->GetChildren();
+    std::vector<PlanNode *> plan_vec = merge_ptr->GetChildren();
     ASSERT_EQ(2u, plan_vec.size());
+
+    // check projections 1: simple projection
     ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
     ASSERT_EQ(
         1u,
         ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
     ASSERT_EQ(nullptr, ((node::ProjectListPlanNode *)plan_vec.at(0))->GetW());
     ASSERT_FALSE(((node::ProjectListPlanNode *)plan_vec.at(0))->IsWindowAgg());
+
+    // check projections 2: window agg projection
     ASSERT_EQ(node::kProjectList, plan_vec.at(1)->GetType());
     ASSERT_EQ(
         1u,
@@ -124,6 +127,93 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanWithWindowProjectTest) {
     ASSERT_EQ(std::vector<std::string>({"COL2"}),
               ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetKeys());
     ASSERT_TRUE(((node::ProjectListPlanNode *)plan_vec.at(1))->IsWindowAgg());
+
+    // validate scan node with limit 10
+    ASSERT_EQ(plan_vec.at(0)->GetChildren()[0],
+              plan_vec.at(1)->GetChildren()[0]);
+    ASSERT_EQ(node::kPlanTypeScan, plan_vec.at(0)->GetChildren()[0]->GetType());
+    node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
+        plan_vec.at(0)->GetChildren()[0]);
+    ASSERT_EQ(10, scan_ptr->GetLimit());
+    delete planner_ptr;
+}
+
+TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    const std::string sql =
+        "SELECT sum(col1) OVER w1 as w1_col1_sum, sum(col1) OVER w2 as "
+        "w2_col1_sum FROM t1 "
+        "WINDOW "
+        "w1 AS (PARTITION BY col2 ORDER BY `TS` RANGE BETWEEN 1d PRECEDING AND "
+        "1s PRECEDING), "
+        "w2 AS (PARTITION BY col3 ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND "
+        "1s PRECEDING) "
+        "limit 10;";
+    int ret = parser_->parse(sql, list, manager_, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+
+    std::cout << *(list[0]) << std::endl;
+    Planner *planner_ptr = new SimplePlanner(manager_);
+    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+    ASSERT_EQ(1u, trees.size());
+    PlanNode *plan_ptr = trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+    // validate select plan
+    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    node::SelectPlanNode *select_ptr = (node::SelectPlanNode *)plan_ptr;
+
+    // validate merge node
+    ASSERT_EQ(node::kPlanTypeMerge, select_ptr->GetChildren().at(0)->GetType());
+    node::MergePlanNode *merge_node =
+        (node::MergePlanNode *)select_ptr->GetChildren()[0];
+
+    // validate project list based on current row
+    std::vector<PlanNode *> plan_vec = merge_node->GetChildren();
+    ASSERT_EQ(2u, merge_node->GetChildren().size());
+    plan_vec = merge_node->GetChildren();
+
+    // validate projection 1: window agg over w1
+    ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
+    ASSERT_EQ(
+        1u,
+        ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
+    ASSERT_TRUE(nullptr !=
+                ((node::ProjectListPlanNode *)plan_vec.at(0))->GetW());
+    ASSERT_TRUE(((node::ProjectListPlanNode *)plan_vec.at(0))->IsWindowAgg());
+    ASSERT_EQ(-1 * 86400000, ((node::ProjectListPlanNode *)plan_vec.at(0))
+                                 ->GetW()
+                                 ->GetStartOffset());
+    ASSERT_EQ(
+        -1000,
+        ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetEndOffset());
+
+    // validate projection 1: window agg over w2
+    ASSERT_EQ(node::kProjectList, plan_vec.at(1)->GetType());
+    ASSERT_EQ(
+        1u,
+        ((node::ProjectListPlanNode *)plan_vec.at(1))->GetProjects().size());
+    ASSERT_TRUE(nullptr !=
+                ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW());
+    ASSERT_EQ(-2 * 86400000, ((node::ProjectListPlanNode *)plan_vec.at(1))
+                                 ->GetW()
+                                 ->GetStartOffset());
+    ASSERT_EQ(
+        -1000,
+        ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetEndOffset());
+    ASSERT_EQ(std::vector<std::string>({"col3"}),
+              ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetKeys());
+    ASSERT_TRUE(((node::ProjectListPlanNode *)plan_vec.at(1))->IsWindowAgg());
+
+
+    ASSERT_EQ(node::kPlanTypeScan, plan_vec.at(0)->GetChildren()[0]->GetType());
+    node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
+        plan_vec.at(0)->GetChildren()[0]);
+    ASSERT_EQ(10, scan_ptr->GetLimit());
     delete planner_ptr;
 }
 

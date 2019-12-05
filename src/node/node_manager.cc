@@ -345,6 +345,11 @@ ScanPlanNode *NodeManager::MakeIndexScanPlanNode(const std::string &table) {
     return node_ptr;
 }
 
+WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
+    WindowPlanNode * node_ptr = new WindowPlanNode(w_id);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
 ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(
     const std::string &table, WindowPlanNode *w_ptr) {
 
@@ -382,7 +387,10 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
             node_ptr = new FuncDefPlanNode();
             break;
         case kPlanTypeWindow:
-            node_ptr = new WindowPlanNode();
+            node_ptr = new WindowPlanNode(0);
+            break;
+        case kPlanTypeMerge:
+            node_ptr = new MergePlanNode();
             break;
         default:
             node_ptr = new LeafPlanNode(kUnknowPlan);

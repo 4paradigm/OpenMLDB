@@ -40,7 +40,6 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
                               Status &status) {  // NOLINT (runtime/references)
     const node::SelectStmt *root = (const node::SelectStmt *)select_tree;
     node::SelectPlanNode *select_plan = (node::SelectPlanNode *)plan_tree;
-
     const node::NodePointVector &table_ref_list = root->GetTableRefList();
     if (table_ref_list.empty()) {
         status.msg =
@@ -60,18 +59,9 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
     node::PlanNode *current_node = select_plan;
     std::map<const node::WindowDefNode *, node::ProjectListPlanNode *>
         project_list_map;
-    // set limit
-    if (nullptr != root->GetLimit()) {
-        const node::LimitNode *limit_ptr = (node::LimitNode *)root->GetLimit();
-        node::LimitPlanNode *limit_plan_ptr =
-            (node::LimitPlanNode *)node_manager_->MakePlanNode(
-                node::kPlanTypeLimit);
-        limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
-        current_node->AddChild(limit_plan_ptr);
-        current_node = limit_plan_ptr;
-    }
 
     // prepare window def
+    int w_id = 1;
     std::map<std::string, node::WindowDefNode *> windows;
     if (!root->GetWindowList().empty()) {
         for (auto node : root->GetWindowList()) {
@@ -82,7 +72,6 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
 
     // prepare project list plan node
     const node::NodePointVector &select_expr_list = root->GetSelectList();
-
     if (false == select_expr_list.empty()) {
         for (auto expr : select_expr_list) {
             node::ProjectPlanNode *project_node_ptr =
@@ -104,8 +93,7 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
                             project_node_ptr->GetTable(), nullptr);
                 } else {
                     node::WindowPlanNode *w_node_ptr =
-                        dynamic_cast<node::WindowPlanNode *>(
-                            node_manager_->MakePlanNode(node::kPlanTypeWindow));
+                        node_manager_->MakeWindowPlanNode(w_id++);
                     CreateWindowPlanNode(w_ptr, w_node_ptr, status);
                     if (common::kOk != status.code) {
                         return status.code;
@@ -118,11 +106,39 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
             project_list_map[w_ptr]->AddProject(project_node_ptr);
         }
 
+        // TODO(chenjing): apply limit optimized rule, remove limit node, fill
+        // limit_cnt into Scan node
+        bool optimized_limit = true;
+        // TODO(chenjing): handle multi table scan
+        node::ScanPlanNode *scan_node_ptr = node_manager_->MakeSeqScanPlanNode(
+            table_node_ptr->GetOrgTableName());
+        // set limit
+        if (nullptr != root->GetLimit()) {
+            const node::LimitNode *limit_ptr =
+                (node::LimitNode *)root->GetLimit();
+            if (optimized_limit) {
+                scan_node_ptr->SetLimit(limit_ptr->GetLimitCount());
+            } else {
+                node::LimitPlanNode *limit_plan_ptr =
+                    (node::LimitPlanNode *)node_manager_->MakePlanNode(
+                        node::kPlanTypeLimit);
+                limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
+                current_node->AddChild(limit_plan_ptr);
+                current_node = limit_plan_ptr;
+            }
+        }
+        // add MergeNode if multi ProjectionLists exist
+        if (project_list_map.size() > 1) {
+            node::PlanNode *merge_node =
+                node_manager_->MakePlanNode(node::kPlanTypeMerge);
+            current_node->AddChild(merge_node);
+            current_node = merge_node;
+        }
+
         for (auto &v : project_list_map) {
             node::ProjectListPlanNode *project_list = v.second;
-            project_list->AddChild(
-                node_manager_->MakeSeqScanPlanNode(project_list->GetTable()));
-            current_node->AddChild(v.second);
+            project_list->AddChild(scan_node_ptr);
+            current_node->AddChild(project_list);
         }
     }
 
@@ -224,6 +240,12 @@ void Planner::CreateWindowPlanNode(
                 return;
             }
 
+            if (w_ptr->GetName().empty()) {
+                w_node_ptr->SetName(
+                    GenerateName("anonymous_w_", w_node_ptr->GetId()));
+            } else {
+                w_node_ptr->SetName(w_ptr->GetName());
+            }
             w_node_ptr->SetStartOffset(start_offset);
             w_node_ptr->SetEndOffset(end_offset);
             w_node_ptr->SetIsRangeBetween(node::kFrameRange ==

@@ -135,7 +135,6 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     ASSERT_EQ(0, ret);
     ::fesql::node::ProjectListPlanNode* pp_node_ptr =
         (::fesql::node::ProjectListPlanNode*)(trees[0]
-                                                  ->GetChildren()[0]
                                                   ->GetChildren()[0]);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
@@ -187,7 +186,6 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     ASSERT_EQ(0, ret);
     ::fesql::node::ProjectListPlanNode* pp_node_ptr =
         (::fesql::node::ProjectListPlanNode*)(plan[0]
-                                                  ->GetChildren()[0]
                                                   ->GetChildren()[0]);
 
     // Create an LLJIT instance.
@@ -238,7 +236,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     ASSERT_EQ(0, ret);
     ::fesql::node::ProjectListPlanNode* pp_node_ptr =
         (::fesql::node::ProjectListPlanNode*)(plan[0]
-                                                  ->GetChildren()[0]
                                                   ->GetChildren()[0]);
 
     // Create an LLJIT instance.
@@ -335,7 +332,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_udf_project) {
     ASSERT_EQ(0, ret);
     ::fesql::node::ProjectListPlanNode* pp_node_ptr =
         (::fesql::node::ProjectListPlanNode*)(plan[0]
-                                                  ->GetChildren()[0]
                                                   ->GetChildren()[0]);
 
     // Create an LLJIT instance.

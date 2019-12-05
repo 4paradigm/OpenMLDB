@@ -18,18 +18,18 @@
 #ifndef SRC_VM_OP_GENERATOR_H_
 #define SRC_VM_OP_GENERATOR_H_
 
-#include <vector>
 #include <string>
+#include <vector>
+#include "base/status.h"
 #include "llvm/IR/Module.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 #include "vm/op.h"
 #include "vm/table_mgr.h"
-#include "base/status.h"
 
 namespace fesql {
 namespace vm {
-
+using ::fesql::base::Status;  // NOLINT
 struct OpVector {
     std::string sql;
     // TOD(wangtaize) add free logic
@@ -42,28 +42,38 @@ class OpGenerator {
     ~OpGenerator();
 
     bool Gen(const ::fesql::node::PlanNodeList& trees, const std::string& db,
-             ::llvm::Module* module, OpVector* ops, base::Status& status);  // NOLINT
+             ::llvm::Module* module, OpVector* ops,
+             base::Status& status);  // NOLINT
 
  private:
     bool GenFnDef(::llvm::Module* module,
                   const ::fesql::node::FuncDefPlanNode* plan);
 
     bool GenSQL(const ::fesql::node::SelectPlanNode* node,
-                const std::string& db, ::llvm::Module* module, OpVector* ops, // NOLINT
+                const std::string& db, ::llvm::Module* module,
+                OpVector* ops,          // NOLINT
                 base::Status& status);  // NOLINT
 
-    bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
+    OpNode* GenProject(const ::fesql::node::ProjectListPlanNode* node,
+                       const std::string& db, ::llvm::Module* module,
+                       Status& status);  // NOLINT
+
+    OpNode* GenScan(const ::fesql::node::ScanPlanNode* node,
                     const std::string& db, ::llvm::Module* module,
-                    OpVector* ops);
+                    Status& status);  // NOLINT
 
-    bool GenScan(const ::fesql::node::ScanPlanNode* node, const std::string& db,
-                 ::llvm::Module* module, OpVector* ops);
+    OpNode* GenLimit(const ::fesql::node::LimitPlanNode* node,
+                     const std::string& db, ::llvm::Module* module,
+                     Status& status);  // NOLINT
+    OpNode* GenMerge(const ::fesql::node::MergePlanNode* node,
+                     ::llvm::Module* module,
+                     Status& status);  // NOLINT
 
-    bool GenLimit(const ::fesql::node::LimitPlanNode* node,
-                  const std::string& db, ::llvm::Module* module, OpVector* ops);
-
-    bool RoutingNode(const ::fesql::node::PlanNode* node, const std::string& db,
-                     ::llvm::Module* module, OpVector* ops);
+    OpNode* RoutingNode(const ::fesql::node::PlanNode* node,
+                        const std::string& db, ::llvm::Module* module,
+                        std::map<const std::string, OpNode*>& ops_map,
+                        OpVector* ops,
+                        Status& status);  // NOLINT
 
  private:
     TableMgr* table_mgr_;

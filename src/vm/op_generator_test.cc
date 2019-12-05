@@ -61,39 +61,48 @@ class TableMgrImpl : public TableMgr {
     std::shared_ptr<TableStatus> status_;
 };
 
-class OpGeneratorTest : public ::testing::Test {};
+class OpGeneratorTest : public ::testing::Test {
+ public:
+    OpGeneratorTest() { InitTable(); }
+    ~OpGeneratorTest() {}
+    void InitTable() {
+        table_def.set_name("t1");
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kInt32);
+            column->set_name("col1");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kInt16);
+            column->set_name("col2");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kFloat);
+            column->set_name("col3");
+        }
+
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kDouble);
+            column->set_name("col4");
+        }
+
+        {
+            ::fesql::type::ColumnDef* column = table_def.add_columns();
+            column->set_type(::fesql::type::kInt64);
+            column->set_name("col15");
+        }
+    }
+
+ protected:
+    fesql::type::TableDef table_def;
+};
 
 TEST_F(OpGeneratorTest, test_normal) {
     std::shared_ptr<TableStatus> status(new TableStatus());
-    status->table_def.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
-
+    status->table_def = table_def;
     TableMgrImpl table_mgr(status);
     OpGenerator generator(&table_mgr);
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -121,7 +130,7 @@ TEST_F(OpGeneratorTest, test_normal) {
     bool ok = generator.Gen(plan_trees, "db", m.get(), &op, base_status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
-    ASSERT_EQ(3, op.ops.size());
+    ASSERT_EQ(2, op.ops.size());
 }
 void RegisterUDFToModule(::llvm::Module* m) {
     ::llvm::Type* i32_ty = ::llvm::Type::getInt32Ty(m->getContext());
@@ -133,35 +142,7 @@ void RegisterUDFToModule(::llvm::Module* m) {
 
 TEST_F(OpGeneratorTest, test_windowp_project) {
     std::shared_ptr<TableStatus> status(new TableStatus());
-    status->table_def.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
-
+    status->table_def = table_def;
     TableMgrImpl table_mgr(status);
     OpGenerator generator(&table_mgr);
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -192,7 +173,7 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     bool ok = generator.Gen(plan_trees, "db", m.get(), &op, base_status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
-    ASSERT_EQ(3, op.ops.size());
+    ASSERT_EQ(2, op.ops.size());
     ASSERT_EQ(kOpProject, op.ops[1]->type);
     ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[1]);
     ASSERT_TRUE(project_op->window_agg);
@@ -201,6 +182,67 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     ASSERT_TRUE(project_op->w.is_range_between);
     ASSERT_EQ(-86400000 * 2, project_op->w.start_offset);
     ASSERT_EQ(-1000, project_op->w.end_offset);
+}
+
+TEST_F(OpGeneratorTest, test_multi_windowp_project) {
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    status->table_def = table_def;
+    TableMgrImpl table_mgr(status);
+    OpGenerator generator(&table_mgr);
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_op_generator", *ctx);
+    const std::string sql =
+        "SELECT sum(col1) OVER w1 as w1_col1_sum, sum(col1) OVER w2 as w2_col1_sum FROM t1 "
+        "WINDOW "
+        "w1 AS (PARTITION BY col2 ORDER BY `TS` RANGE BETWEEN 1d PRECEDING AND 1s PRECEDING), "
+        "w2 AS (PARTITION BY col3 ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND 1s PRECEDING) "
+        "limit 10;";
+
+    std::cout << sql;
+    ::fesql::node::NodeManager manager;
+    ::fesql::node::PlanNodeList plan_trees;
+    ::fesql::base::Status base_status;
+    {
+        ::fesql::plan::SimplePlanner planner(&manager);
+        ::fesql::parser::FeSQLParser parser;
+        ::fesql::node::NodePointVector parser_trees;
+        parser.parse(sql, parser_trees, &manager, base_status);
+        ASSERT_EQ(0, base_status.code);
+        planner.CreatePlanTree(parser_trees, plan_trees, base_status);
+        ASSERT_EQ(0, base_status.code);
+    }
+
+    ASSERT_EQ(1, plan_trees.size());
+
+    RegisterUDFToModule(m.get());
+    OpVector op;
+    bool ok = generator.Gen(plan_trees, "db", m.get(), &op, base_status);
+    ASSERT_TRUE(ok);
+    m->print(::llvm::errs(), NULL);
+    ASSERT_EQ(4, op.ops.size());
+    ASSERT_EQ(kOpScan, op.ops[0]->type);
+    ASSERT_EQ(kOpProject, op.ops[1]->type);
+    ASSERT_EQ(kOpProject, op.ops[2]->type);
+    ASSERT_EQ(kOpMerge, op.ops[3]->type);
+    {
+        ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[1]);
+        ASSERT_TRUE(project_op->window_agg);
+        ASSERT_EQ(std::vector<std::string>({"col2"}), project_op->w.keys);
+        ASSERT_EQ(std::vector<std::string>({"TS"}), project_op->w.orders);
+        ASSERT_TRUE(project_op->w.is_range_between);
+        ASSERT_EQ(-86400000 , project_op->w.start_offset);
+        ASSERT_EQ(-1000, project_op->w.end_offset);
+    }
+    {
+        ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[2]);
+        ASSERT_TRUE(project_op->window_agg);
+        ASSERT_EQ(std::vector<std::string>({"col3"}), project_op->w.keys);
+        ASSERT_EQ(std::vector<std::string>({"TS"}), project_op->w.orders);
+        ASSERT_TRUE(project_op->w.is_range_between);
+        ASSERT_EQ(-86400000 * 2, project_op->w.start_offset);
+        ASSERT_EQ(-1000, project_op->w.end_offset);
+    }
+
 }
 
 }  // namespace vm

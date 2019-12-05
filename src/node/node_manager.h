@@ -54,6 +54,7 @@ class NodeManager {
     PlanNode *MakeUnaryPlanNode(const PlanType &type);
     PlanNode *MakeBinaryPlanNode(const PlanType &type);
     PlanNode *MakeMultiPlanNode(const PlanType &type);
+    WindowPlanNode *MakeWindowPlanNode(int w_id);
     ProjectListPlanNode *MakeProjectListPlanNode(const std::string &table,
                                                  WindowPlanNode *w);
     WindowPlanNode *MakeWindowPlanNode(int64_t start, int64_t end,

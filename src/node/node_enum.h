@@ -137,6 +137,7 @@ enum PlanType {
     kPlanTypeCreate,
     kPlanTypeInsert,
     kPlanTypeScan,
+    kPlanTypeMerge,
     kPlanTypeLimit,
     kPlanTypeFilter,
     kProjectList,

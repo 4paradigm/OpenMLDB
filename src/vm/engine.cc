@@ -87,144 +87,184 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 
 RunSession::RunSession() {}
 RunSession::~RunSession() {}
-int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
-    // Simple op runner
-    ScanOp* scan_op =
-        reinterpret_cast<ScanOp*>(compile_info_->sql_ctx.ops.ops[0]);
-    ProjectOp* project_op =
-        reinterpret_cast<ProjectOp*>(compile_info_->sql_ctx.ops.ops[1]);
-    LimitOp* limit_op =
-        reinterpret_cast<LimitOp*>(compile_info_->sql_ctx.ops.ops[2]);
-    std::shared_ptr<TableStatus> status =
-        table_mgr_->GetTableDef(scan_op->db, scan_op->tid);
-    if (!status) {
-        LOG(WARNING) << "fail to find table with tid " << scan_op->tid;
-        return -1;
-    }
 
-    uint32_t key_offset;
-    ::fesql::type::Type key_type;
-    uint32_t order_offset;
-    ::fesql::type::Type order_type;
-    if (project_op->window_agg) {
-        codegen::BufIRBuilder buf_ir_builder(&status->table_def, nullptr,
-                                             nullptr);
-        if (!buf_ir_builder.GetFieldOffset(project_op->w.keys[0], key_offset,
-                                           key_type)) {
-            LOG(WARNING) << "can not find partition " << project_op->w.keys[0];
-            return 1;
-        }
-        if (!buf_ir_builder.GetFieldOffset(project_op->w.orders[0],
-                                           order_offset, order_type)) {
-            LOG(WARNING) << "can not find order " << project_op->w.orders[0];
-            return 1;
-        }
-    }
-
-    ::fesql::storage::TableIterator* it = status->table->NewIterator();
-    it->SeekToFirst();
-    uint32_t min = limit;
-    if (min > limit_op->limit) {
-        min = limit_op->limit;
-    }
-
-    uint32_t count = 0;
-    while (it->Valid() && count < min) {
-        ::fesql::storage::Slice value = it->GetValue();
-        DLOG(INFO) << "value " << base::DebugString(value.data(), value.size());
-        DLOG(INFO) << "key " << it->GetKey() << " row size "
-                   << 2 + project_op->output_size;
-        int8_t* output =
-            reinterpret_cast<int8_t*>(malloc(2 + project_op->output_size));
-        int8_t* row =
-            reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
-
-        int32_t (*udf)(int8_t*, int8_t*) =
-            (int32_t(*)(int8_t*, int8_t*))project_op->fn;
-
-        // handle window
-        if (project_op->window_agg) {
-            std::string key_name;
-            {
-                const int8_t* ptr = row + key_offset;
-                switch (key_type) {
-                    case fesql::type::kInt32: {
-                        const int32_t value =
-                            *(reinterpret_cast<const int64_t*>(ptr));
-                        key_name = std::to_string(value);
-                        break;
-                    }
-                    case fesql::type::kInt64: {
-                        const int64_t value =
-                            *(reinterpret_cast<const int64_t*>(ptr));
-                        key_name = std::to_string(value);
-                        break;
-                    }
-                    case fesql::type::kInt16: {
-                        const int16_t value =
-                            *(reinterpret_cast<const int16_t*>(ptr));
-                        key_name = std::to_string(value);
-                        break;
-                    }
-                    default: {
-                    }
-                }
-            }
-            int64_t ts;
-            {
-                // TODO(chenjing): handle null ts or timestamp/date ts
-                const int8_t* ptr = row + order_offset;
-                switch (order_type) {
-                    case fesql::type::kInt64: {
-                        ts = *(reinterpret_cast<const int64_t*>(ptr));
-                        break;
-                    }
-                    default: {
-                    }
-                }
-            }
-            // scan window with single key
-            ::fesql::storage::TableIterator* window_it =
-                status->table->NewIterator(key_name);
-            std::vector<::fesql::base::Row> window;
-            window_it->SeekToFirst();
-            while (window_it->Valid()) {
-                //                if (window_it->GetKey() < ts +
-                //                project_op->w.start_offset) {
-                //                    break;
-                //                }
-                ::fesql::base::Row w_row;
-                ::fesql::storage::Slice value = window_it->GetValue();
-                w_row.buf =
-                    reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
-                window.push_back(w_row);
-                window_it->Next();
-            }
-            fesql::base::WindowIteratorImpl impl(window);
-            uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl), output + 2);
-            if (ret != 0) {
-                LOG(WARNING) << "fail to run udf " << ret;
-                delete it;
-                return 1;
-            }
-
-        } else {
-            uint32_t ret = udf(row, output + 2);
-
-            if (ret != 0) {
-                LOG(WARNING) << "fail to run udf " << ret;
-                delete it;
-                return 1;
-            }
-        }
-
-        buf.push_back(output);
-        it->Next();
-        count++;
-    }
-    delete it;
+int32_t RunSession::RunProjectOp(ProjectOp* project_op,
+                                 std::shared_ptr<TableStatus> status,
+                                 int8_t* row, int8_t* output) {
     return 0;
 }
+int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
+    // TODO: memory managetment
+    int index = 0;
+    int op_size = compile_info_->sql_ctx.ops.ops.size();
+    for (auto op : compile_info_->sql_ctx.ops.ops) {
+        switch (op->type) {
+            case kOpScan: {
+                ScanOp* scan_op = reinterpret_cast<ScanOp*>(op);
+                std::shared_ptr<TableStatus> status =
+                    table_mgr_->GetTableDef(scan_op->db, scan_op->tid);
+                if (!status) {
+                    LOG(WARNING)
+                        << "fail to find table with tid " << scan_op->tid;
+                    return -1;
+                }
+                std::vector<int8_t*> output_rows;
+                ::fesql::storage::TableIterator* it =
+                    status->table->NewIterator();
+                it->SeekToFirst();
+                uint32_t min = limit;
+                if (min > scan_op->limit) {
+                    min = scan_op->limit;
+                }
+                uint32_t count = 0;
+                while (it->Valid() && count < min) {
+                    ::fesql::storage::Slice value = it->GetValue();
+                    DLOG(INFO) << "value "
+                               << base::DebugString(value.data(), value.size());
+                    DLOG(INFO) << "key " << it->GetKey() << " row size ";
+                    scan_op->output.push_back(reinterpret_cast<int8_t*>(
+                        const_cast<char*>(value.data())));
+                    it->Next();
+                }
+                break;
+            }
+            case kOpProject: {
+                ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
+                std::vector<int8_t*> output_rows;
+
+                std::shared_ptr<TableStatus> status =
+                    table_mgr_->GetTableDef(project_op->db, project_op->tid);
+                uint32_t key_offset;
+                ::fesql::type::Type key_type;
+                uint32_t order_offset;
+                ::fesql::type::Type order_type;
+                if (project_op->window_agg) {
+                    codegen::BufIRBuilder buf_ir_builder(&status->table_def,
+                                                         nullptr, nullptr);
+                    if (!buf_ir_builder.GetFieldOffset(project_op->w.keys[0],
+                                                       key_offset, key_type)) {
+                        LOG(WARNING) << "can not find partition "
+                                     << project_op->w.keys[0];
+                        return 1;
+                    }
+                    if (!buf_ir_builder.GetFieldOffset(project_op->w.orders[0],
+                                                       order_offset,
+                                                       order_type)) {
+                        LOG(WARNING)
+                            << "can not find order " << project_op->w.orders[0];
+                        return 1;
+                    }
+                }
+                int32_t (*udf)(int8_t*, int8_t*) =
+                    (int32_t(*)(int8_t*, int8_t*))project_op->fn;
+                OpNode* prev = project_op->children[0];
+                for (auto row : prev->output) {
+                    int8_t* output = reinterpret_cast<int8_t*>(
+                        malloc(2 + project_op->output_size));
+                    // handle window
+                    if (project_op->window_agg) {
+                        std::string key_name;
+                        {
+                            const int8_t* ptr = row + key_offset;
+                            switch (key_type) {
+                                case fesql::type::kInt32: {
+                                    const int32_t value = *(
+                                        reinterpret_cast<const int64_t*>(ptr));
+                                    key_name = std::to_string(value);
+                                    break;
+                                }
+                                case fesql::type::kInt64: {
+                                    const int64_t value = *(
+                                        reinterpret_cast<const int64_t*>(ptr));
+                                    key_name = std::to_string(value);
+                                    break;
+                                }
+                                case fesql::type::kInt16: {
+                                    const int16_t value = *(
+                                        reinterpret_cast<const int16_t*>(ptr));
+                                    key_name = std::to_string(value);
+                                    break;
+                                }
+                                default: {
+                                }
+                            }
+                        }
+                        int64_t ts;
+                        {
+                            // TODO(chenjing): handle null ts or timestamp/date
+                            // ts
+                            const int8_t* ptr = row + order_offset;
+                            switch (order_type) {
+                                case fesql::type::kInt64: {
+                                    ts = *(
+                                        reinterpret_cast<const int64_t*>(ptr));
+                                    break;
+                                }
+                                default: {
+                                }
+                            }
+                        }
+                        // scan window with single key
+                        ::fesql::storage::TableIterator* window_it =
+                            status->table->NewIterator(key_name);
+                        std::vector<::fesql::base::Row> window;
+                        window_it->SeekToFirst();
+                        while (window_it->Valid()) {
+                            ::fesql::base::Row w_row;
+                            ::fesql::storage::Slice value =
+                                window_it->GetValue();
+                            w_row.buf = reinterpret_cast<int8_t*>(
+                                const_cast<char*>(value.data()));
+                            window.push_back(w_row);
+                            window_it->Next();
+                        }
+                        fesql::base::WindowIteratorImpl impl(window);
+                        uint32_t ret =
+                            udf(reinterpret_cast<int8_t*>(&impl), output + 2);
+                        if (ret != 0) {
+                            LOG(WARNING) << "fail to run udf " << ret;
+                            return 1;
+                        }
+
+                    } else {
+                        uint32_t ret = udf(row, output + 2);
+
+                        if (ret != 0) {
+                            LOG(WARNING) << "fail to run udf " << ret;
+                            return 1;
+                        }
+                    }
+                    project_op->output.push_back(output);
+                }
+                break;
+            }
+            case kOpMerge: {
+                // TODO(chenjing): add merge execute logic
+                MergeOp* merge_op = reinterpret_cast<MergeOp*>(op);
+                break;
+            }
+            case kOpLimit: {
+                // TODO(chenjing): limit optimized.
+                LimitOp* limit_op = reinterpret_cast<LimitOp*>(op);
+                OpNode* prev = limit_op->children[0];
+                int cnt = 0;
+                for (int i = 0; i < limit_op->limit; ++i) {
+                    if (cnt >= limit_op->limit) {
+                        break;
+                    }
+                    limit_op->output.push_back(prev->output[i]);
+                    cnt++;
+                }
+                break;
+            }
+        }
+        index++;
+        if (index == op_size) {
+            buf = op->output;
+        }
+    }
+    return 0;
+}  // namespace vm
 
 }  // namespace vm
 }  // namespace fesql
