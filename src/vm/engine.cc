@@ -94,7 +94,7 @@ int32_t RunSession::RunProjectOp(ProjectOp* project_op,
     return 0;
 }
 int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
-    // TODO: memory managetment
+    // TODO(chenjing): memory managetment
     int index = 0;
     int op_size = compile_info_->sql_ctx.ops.ops.size();
     for (auto op : compile_info_->sql_ctx.ops.ops) {

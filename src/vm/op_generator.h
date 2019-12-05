@@ -71,7 +71,7 @@ class OpGenerator {
 
     OpNode* RoutingNode(const ::fesql::node::PlanNode* node,
                         const std::string& db, ::llvm::Module* module,
-                        std::map<const std::string, OpNode*>& ops_map,
+                        std::map<const std::string, OpNode*>& ops_map,  // NOLINT
                         OpVector* ops,
                         Status& status);  // NOLINT
 

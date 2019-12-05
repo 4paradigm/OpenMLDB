@@ -158,7 +158,7 @@ OpNode* OpGenerator::RoutingNode(
             break;
         }
         case ::fesql::node::kPlanTypeMerge: {
-            const ::fesql::node::MergePlanNode* merge_node=
+            const ::fesql::node::MergePlanNode* merge_node =
                 (const ::fesql::node::MergePlanNode*)node;
             cur_op = GenMerge(merge_node, module, status);
             cur_op->type = kOpMerge;
@@ -253,8 +253,7 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
                                                   : "__internal_sql_codegen_" +
                                                         node->GetW()->GetName();
     std::vector<::fesql::type::ColumnDef> output_schema;
-    bool ok =
-        builder.Build(fn_name, node, output_schema);
+    bool ok = builder.Build(fn_name, node, output_schema);
 
     if (!ok) {
         status.code = common::kCodegenError;
@@ -348,7 +347,8 @@ bool OpGenerator::GenFnDef(::llvm::Module* module,
     return ok;
 }
 OpNode* OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
-                 ::llvm::Module* module, Status& status) {  //NOLINT
+                              ::llvm::Module* module,
+                              Status& status) {  // NOLINT
     if (node == NULL || module == NULL) {
         status.code = common::kNullPointer;
         status.msg = "input args has null";

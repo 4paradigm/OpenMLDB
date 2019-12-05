@@ -105,9 +105,8 @@ class ScanPlanNode : public UnaryPlanNode {
 
     void SetLimit(int limit) { limit_cnt_ = limit; }
     const SQLNode *GetCondition() const { return condition_; }
-    void SetCondition(SQLNode* condition) {
-        condition_ = condition;
-    }
+    void SetCondition(SQLNode *condition) { condition_ = condition; }
+
  private:
     // TODO(chenjing): OP tid
     PlanType scan_type_;

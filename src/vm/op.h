@@ -32,20 +32,15 @@ enum OpType {
     kOpMerge,
 };
 
-
 struct OpNode {
-    virtual ~ OpNode() {
-
-    }
+    virtual ~OpNode() {}
     OpType type;
-    std::vector<int8_t *> output;
+    std::vector<int8_t*> output;
     std::vector<OpNode*> children;
 };
 
 struct ScanOp : public OpNode {
-    ~ScanOp() {
-        std::cout << "delete scan op";
-    }
+    ~ScanOp() { std::cout << "delete scan op"; }
     std::string db;
     uint32_t tid;
     uint32_t pid;
@@ -82,7 +77,7 @@ struct LimitOp : public OpNode {
     uint32_t limit;
 };
 
-struct MergeOp: public OpNode {
+struct MergeOp : public OpNode {
     int8_t* fn;
 };
 
