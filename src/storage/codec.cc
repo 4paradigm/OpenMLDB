@@ -455,17 +455,13 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
         return 1;
     }
     uint32_t field_offset = offset_vec_.at(idx);
-    auto iter = next_str_pos_.find(idx);
-    if (iter == next_str_pos_.end()) {
-        return -1;
-    }
-
+    uint32_t next_str_pos = next_str_pos_.at(field_offset);
     uint32_t next_str_field_offset = 0;
-    if (iter->second != 0) {
-        next_str_field_offset = offset_vec_.at(iter->second);
-        if (next_str_field_offset > size_) {
-            return -1;
-        }
+    if (next_str_pos != 0) {
+        next_str_field_offset = offset_vec_.at(next_str_pos);
+    }
+    if (next_str_field_offset > size_) {
+        return -1;
     }
     return v1::GetStrField(row_, field_offset, next_str_field_offset,
                            str_field_start_offset_, str_addr_length_,
