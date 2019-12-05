@@ -22,13 +22,13 @@
 namespace fesql {
 namespace codegen {
 
-bool GetLLVMType(::llvm::IRBuilder<>& builder,  // NOLINT
+bool GetLLVMType(::llvm::BasicBlock* block,
                  const ::fesql::type::Type& type, ::llvm::Type** output) {
-    if (output == NULL) {
+    if (output == NULL || block == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
     }
-
+    ::llvm::IRBuilder<> builder(block);
     switch (type) {
         case ::fesql::type::kInt16: {
             *output = builder.getInt16Ty();
@@ -51,15 +51,23 @@ bool GetLLVMType(::llvm::IRBuilder<>& builder,  // NOLINT
             return true;
         }
         case ::fesql::type::kVarchar: {
-            ::llvm::StructType* type = ::llvm::StructType::create(
-                builder.getContext(), "fe.string_ref");
+            ::llvm::Module* m = block->getModule();
+            std::string name = "fe.string_ref";
+            ::llvm::StringRef sr(name);
+            ::llvm::StructType* stype = m->getTypeByName(sr);
+            if (stype != NULL) {
+                *output = stype;
+                return true;
+            }
+            stype = ::llvm::StructType::create(
+                builder.getContext(), name);
             ::llvm::Type* size_ty = builder.getInt32Ty();
             ::llvm::Type* data_ptr_ty = builder.getInt8PtrTy();
             std::vector<::llvm::Type*> elements;
             elements.push_back(size_ty);
             elements.push_back(data_ptr_ty);
-            type->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
-            *output = type;
+            stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
+            *output = stype;
             return true;
         }
         default: {

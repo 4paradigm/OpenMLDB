@@ -164,8 +164,8 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend";
     AddFunc(test, m.get());
-    int ret = parser.parse("SELECT test(col1,col1) FROM t1 limit 10;", list,
-                           &manager, status);
+    int ret = parser.parse("SELECT test(col1,col1), col6 FROM t1 limit 10;",
+                           list, &manager, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
     ::fesql::plan::SimplePlanner planner(&manager);
@@ -182,7 +182,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(1u, schema.size());
+    ASSERT_EQ(2, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -214,8 +214,11 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     int32_t ret2 = decode(buf, size, &output);
     ASSERT_EQ(ret2, 0u);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
-    ASSERT_EQ(out_size, 11);
+    ASSERT_EQ(out_size, 13);
     ASSERT_EQ(65, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(12, *reinterpret_cast<uint8_t*>(output + 11));
+    std::string str(reinterpret_cast<char*>(output + 12), 1);
+    ASSERT_EQ("1", str);
     free(buf);
 }
 
@@ -315,6 +318,7 @@ TEST_F(FnLetIRBuilderTest, test_project) {
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, size, &output);
     ASSERT_EQ(ret2, 0u);
+    ASSERT_EQ(11, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(32, *reinterpret_cast<uint32_t*>(output + 7));
     free(ptr);
 }

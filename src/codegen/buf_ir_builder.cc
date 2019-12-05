@@ -104,7 +104,7 @@ bool BufIRBuilder::BuildGetString(const std::string& name,
         return false;
     }
     ::llvm::Type* str_type = NULL;
-    ok = GetLLVMType(builder, ::fesql::type::kVarchar, &str_type);
+    ok = GetLLVMType(block_, ::fesql::type::kVarchar, &str_type);
     if (!ok) {
         LOG(WARNING) << "fail to get string type";
         return false;
@@ -216,7 +216,7 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* llvm_type = NULL;
 
-    bool ok = GetLLVMType(builder, fe_type, &llvm_type);
+    bool ok = GetLLVMType(block_, fe_type, &llvm_type);
     if (!ok) {
         LOG(WARNING) << "fail to convert fe type to llvm type ";
         return false;
@@ -382,7 +382,7 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
     }
 
     ::llvm::Type* str_type = NULL;
-    ok = GetLLVMType(builder, ::fesql::type::kVarchar, &str_type);
+    ok = GetLLVMType(block_, ::fesql::type::kVarchar, &str_type);
     if (!ok) {
         LOG(WARNING) << "fail to get string type";
         return false;
@@ -547,18 +547,15 @@ bool BufNativeEncoderIRBuilder::AppendString(
     uint32_t str_field_idx, ::llvm::Value** output) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* str_ty = NULL;
-    bool ok = GetLLVMType(builder, ::fesql::type::kVarchar, &str_ty);
+    bool ok = GetLLVMType(block_, ::fesql::type::kVarchar, &str_ty);
     if (!ok || str_ty == NULL) {
         LOG(WARNING) << "fail to get str llvm type";
         return false;
     }
 
     ::llvm::Type* size_ty = builder.getInt32Ty();
-    // TODO(wangtaize) define global string
-    ::llvm::Value* str_val_ptr =
-        builder.CreatePointerCast(str_val, str_ty->getPointerTo());
     // get fe.string size
-    ::llvm::Value* size_ptr = builder.CreateStructGEP(str_ty, str_val_ptr, 0);
+    ::llvm::Value* size_ptr = builder.CreateStructGEP(str_ty, str_val, 0);
     ::llvm::Value* size_i32_ptr =
         builder.CreatePointerCast(size_ptr, size_ty->getPointerTo());
     ::llvm::Value* fe_str_size =
@@ -566,8 +563,7 @@ bool BufNativeEncoderIRBuilder::AppendString(
 
     // get fe.string char*
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* data_ptr_ptr =
-        builder.CreateStructGEP(str_ty, str_val_ptr, 1);
+    ::llvm::Value* data_ptr_ptr = builder.CreateStructGEP(str_ty, str_val, 1);
     data_ptr_ptr =
         builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty->getPointerTo());
     ::llvm::Value* data_ptr =
@@ -636,18 +632,30 @@ bool BufNativeEncoderIRBuilder::AppendHeader(::llvm::Value* i8_ptr,
         LOG(WARNING) << "fail to add fversion to row";
         return false;
     }
+
     ok = BuildStoreOffset(builder, i8_ptr, sverion_offset, sversion);
     if (!ok) {
         LOG(WARNING) << "fail to add sversion to row";
         return false;
     }
+
     ::llvm::Value* size_offset = builder.getInt32(2);
     ok = BuildStoreOffset(builder, i8_ptr, size_offset, size);
+
     if (!ok) {
         LOG(WARNING) << "fail to add size to row";
         return false;
+
     }
-    // TODO(wangtaize) add memset to init bitmap
+
+    ::llvm::Value* output = NULL;
+    ok = BuildGetPtrOffset(builder, i8_ptr, builder.getInt32(6), 
+            builder.getInt8PtrTy(), &output);
+    if (!ok) {
+        LOG(WARNING) << "fail to get ptr with offset ";
+        return false;
+    }
+    builder.CreateMemSet(output, builder.getInt8(0), bitmap_size, 1u);
     return true;
 }
 
@@ -666,12 +674,11 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
 
     ::llvm::Value* total_size = NULL;
     ::llvm::Type* str_ty = NULL;
-    bool ok = GetLLVMType(builder, ::fesql::type::kVarchar, &str_ty);
+    bool ok = GetLLVMType(block_, ::fesql::type::kVarchar, &str_ty);
     if (!ok || str_ty == NULL) {
         LOG(WARNING) << "fail to get str llvm type";
         return false;
     }
-
     // build get string length and call native functon
     ::llvm::Type* size_ty = builder.getInt32Ty();
     for (uint32_t idx = 0; idx < schema_->size(); ++idx) {

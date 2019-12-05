@@ -229,6 +229,9 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
 
     AddSymbol(jd, mi, "fesql_storage_encode_string_field",
               reinterpret_cast<void*>(&v1::AppendString));
+    AddSymbol(jd, mi, "fesql_storage_encode_calc_size",
+                       reinterpret_cast<void*>(&v1::CalcTotalLength));
+
 }
 
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {

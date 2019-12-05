@@ -427,7 +427,6 @@ TEST_F(TabletSdkTest, test_udf_query) {
             "    column4 bigint NOT NULL,\n"
             "    column5 int NOT NULL\n"
             ");";
-
         db.name = "db_1";
         fesql::sdk::Status status;
         fesql::sdk::ExecuteResult result;

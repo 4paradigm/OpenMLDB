@@ -121,7 +121,6 @@ void RunEncode(int8_t** output_ptr) {
     auto m = make_unique<Module>("test_encode", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    bool is_void = false;
     Function* fn = Function::Create(
         FunctionType::get(Type::getVoidTy(*ctx),
                           {Type::getInt8PtrTy(*ctx)->getPointerTo()}, false),
@@ -478,8 +477,8 @@ TEST_F(BufIRBuilderTest, test_load_str) {
     *reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4) = 4.1;
     *reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8) = 5;
     *reinterpret_cast<int16_t*>(ptr + 2 + 4 + 2 + 4 + 8 + 8) = 30;
-    char* str = "hello";
-    memcpy(ptr + 30, static_cast<void*>(str), 5);
+    std::string str = "hello";
+    memcpy(ptr + 30, static_cast<const void*>(str.c_str()), 5);
     printf("char* start %p\n", ptr + 30);
     RunCase<int16_t>(2, ::fesql::type::kVarchar, "col6", ptr, 35);
     free(ptr);
