@@ -161,7 +161,7 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    void AddReplicaRemoteOP(const std::string& name, 
+    void AddReplicaSimplyRemoteOP(const std::string& name, 
             const ::rtidb::nameserver::PartitionMeta& partition_meta,
             uint32_t tid, uint32_t pid); 
 

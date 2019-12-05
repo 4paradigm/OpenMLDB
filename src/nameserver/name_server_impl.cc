@@ -165,7 +165,7 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                 }
                 for (auto& meta : temp_part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
-                        AddReplicaRemoteOP(table.name(), meta, table.tid(), temp_part.pid());
+                        AddReplicaSimplyRemoteOP(table.name(), meta, table.tid(), temp_part.pid());
                         tb.add_partition_meta()->CopyFrom(meta);
                         break;
                     }
@@ -2893,7 +2893,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableOnTablet, this, table_info));
 }
 
-void NameServerImpl::AddReplicaRemoteOP(const std::string& name, 
+void NameServerImpl::AddReplicaSimplyRemoteOP(const std::string& name, 
         const ::rtidb::nameserver::PartitionMeta& partition_meta,
         uint32_t remote_tid, uint32_t pid) {
     if (!running_.load(std::memory_order_acquire)) {
