@@ -104,7 +104,7 @@ TEST_F(TableTest, Put) {
 	}
 	end_time = get_micros();
     printf("time uesed: %lu\n", end_time - start_time);
-}    
+}
 
 /*TEST_F(TableTest, Iterator) {
     ASSERT_TRUE(true);

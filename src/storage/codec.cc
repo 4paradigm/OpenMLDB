@@ -230,6 +230,7 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
 RowView::RowView(const Schema& schema)
     : str_addr_length_(0),
       is_valid_(true),
+      string_field_cnt_(0),
       str_field_start_offset_(0),
       size_(0),
       row_(NULL),
