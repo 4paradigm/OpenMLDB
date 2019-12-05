@@ -239,6 +239,7 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
 
     std::shared_ptr<TableStatus> table_status =
         table_mgr_->GetTableDef(db, node->GetTable());
+
     if (!table_status) {
         status.code = common::kTableNotFound;
         status.msg = "fail to find table " + node->GetTable();
@@ -253,6 +254,7 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
                                                   : "__internal_sql_codegen_" +
                                                         node->GetW()->GetName();
     std::vector<::fesql::type::ColumnDef> output_schema;
+
     bool ok = builder.Build(fn_name, node, output_schema);
 
     if (!ok) {
@@ -277,7 +279,7 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
             }
             case ::fesql::type::kInt64:
             case ::fesql::type::kDouble:
-            case ::fesql::type::kString: {
+            case ::fesql::type::kVarchar: {
                 output_size += 8;
                 break;
             }

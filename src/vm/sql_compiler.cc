@@ -24,6 +24,7 @@
 #include "glog/logging.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
+#include "storage/type_ir_builder.h"
 #include "vm/op_generator.h"
 
 namespace fesql {
@@ -58,7 +59,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (!ok) {
         return false;
     }
-
     OpGenerator op_generator(table_mgr_);
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
@@ -78,25 +78,22 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     ctx.jit = std::move(*jit_expected);
-    ::llvm::orc::JITDylib& jd = ctx.jit->createJITDylib("sql");
-    ::llvm::orc::VModuleKey key = ctx.jit->CreateVModule();
-    ::llvm::Error e =
-        ctx.jit->AddIRModule(jd,
-                             std::move(::llvm::orc::ThreadSafeModule(
-                                 std::move(m), std::move(llvm_ctx))),
-                             key);
+    ctx.jit->Init();
+    ::llvm::Error e = ctx.jit->addIRModule(std::move(
+        ::llvm::orc::ThreadSafeModule(std::move(m), std::move(llvm_ctx))));
     if (e) {
         LOG(WARNING) << "fail to add ir module  for sql " << ctx.sql;
         return false;
     }
-    RegisterDyLib(ctx.jit.get(), jd);
+    storage::InitCodecSymbol(ctx.jit.get());
+    RegisterDyLib(ctx.jit.get(), ctx.jit->getMainJITDylib());
     std::vector<OpNode*>::iterator it = ctx.ops.ops.begin();
     for (; it != ctx.ops.ops.end(); ++it) {
         OpNode* op_node = *it;
         if (op_node->type == kOpProject) {
             ProjectOp* pop = reinterpret_cast<ProjectOp*>(op_node);
             ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
-                ctx.jit->lookup(jd, pop->fn_name));
+                ctx.jit->lookup(pop->fn_name));
             if (symbol.takeError()) {
                 LOG(WARNING) << "fail to find fn with name  " << pop->fn_name
                              << " for sql:\n"

@@ -1,5 +1,5 @@
 /*
- * ir_types.h
+ * type_ir_builder.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,16 +15,21 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_IR_TYPES_H_
-#define SRC_CODEGEN_IR_TYPES_H_
+#ifndef SRC_CODEGEN_TYPE_IR_BUILDER_H_
+#define SRC_CODEGEN_TYPE_IR_BUILDER_H_
 
 #include <node/node_enum.h>
 namespace fesql {
 namespace codegen {
 
-struct IRString {
+struct StringRef {
     int32_t size;
-    char *data;
+    char* data;
+};
+
+struct String {
+    int32_t size;
+    char* data;
 };
 
 inline const bool ConvertFeSQLType2DataType(const fesql::type::Type proto_type,
@@ -48,8 +53,9 @@ inline const bool ConvertFeSQLType2DataType(const fesql::type::Type proto_type,
         case fesql::type::kBool:
             data_type = node::kTypeBool;
             break;
-        case fesql::type::kString:
+        case fesql::type::kVarchar:
             data_type = node::kTypeString;
+            break;
         default: {
             return false;
         }
@@ -88,6 +94,10 @@ inline const bool ConvertFeSQLType2LLVMType(const node::DataType &data_type,
     return true;
 }
 
+struct Timestamp {
+    int64_t ts;
+};
+
 }  // namespace codegen
 }  // namespace fesql
-#endif  // SRC_CODEGEN_IR_TYPES_H_
+#endif  // SRC_CODEGEN_TYPE_IR_BUILDER_H_

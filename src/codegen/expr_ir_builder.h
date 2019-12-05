@@ -30,8 +30,9 @@ class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                  BufIRBuilder* buf_ir_builder, const bool row_mode,
-                  const std::string& row_ptr_name, ::llvm::Module* module);
+                  BufNativeIRBuilder* buf_ir_builder, const bool row_mode,
+                  const std::string& row_ptr_name,
+                  const std::string& row_size_name, ::llvm::Module* module);
 
     ~ExprIRBuilder();
 
@@ -63,10 +64,10 @@ class ExprIRBuilder {
     ScopeVar* sv_;
     bool row_mode_;
     std::string row_ptr_name_;
-    BufIRBuilder* buf_ir_builder_;
+    std::string row_size_name_;
+    BufNativeIRBuilder* buf_ir_builder_;
     ::llvm::Module* module_;
 };
-
 }  // namespace codegen
 }  // namespace fesql
 #endif  // SRC_CODEGEN_EXPR_IR_BUILDER_H_

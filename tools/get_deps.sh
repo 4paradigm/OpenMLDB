@@ -302,10 +302,13 @@ if [ -f "llvm_succ" ]
 then 
     echo "llvm_exist"
 else
-    wget --no-check-certificate -O llvm-9.0.0.src.tar.xz http://releases.llvm.org/9.0.0/llvm-9.0.0.src.tar.xz
-    tar xf llvm-9.0.0.src.tar.xz
+    if [ ! -d "llvm-9.0.0.src" ]
+    then
+        wget --no-check-certificate -O llvm-9.0.0.src.tar.xz http://releases.llvm.org/9.0.0/llvm-9.0.0.src.tar.xz
+        tar xf llvm-9.0.0.src.tar.xz
+    fi
     cd llvm-9.0.0.src && mkdir -p build
-    cd build && cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
+    cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
     make -j12 && make install
     cd ${DEPS_SOURCE}
     touch llvm_succ

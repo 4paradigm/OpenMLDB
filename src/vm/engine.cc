@@ -16,6 +16,7 @@
  */
 
 #include "vm/engine.h"
+#include <string>
 #include <utility>
 #include <vector>
 #include "base/strings.h"
@@ -64,7 +65,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             session.SetCompileInfo(info);
         } else {
             session.SetCompileInfo(it->second);
-            // TODO(wtx): clean
+            // TODO(wangtaize) clean
         }
     }
     return true;
@@ -122,8 +123,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                     DLOG(INFO) << "value "
                                << base::DebugString(value.data(), value.size());
                     DLOG(INFO) << "key " << it->GetKey() << " row size ";
-                    scan_op->output.push_back(reinterpret_cast<int8_t*>(
-                        const_cast<char*>(value.data())));
+                    scan_op->output.push_back(std::make_pair(value.size(), reinterpret_cast<int8_t*>(
+                        const_cast<char*>(value.data()))));
                     it->Next();
                 }
                 break;
@@ -155,12 +156,13 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                         return 1;
                     }
                 }
-                int32_t (*udf)(int8_t*, int8_t*) =
-                    (int32_t(*)(int8_t*, int8_t*))project_op->fn;
+                int32_t (*udf)(int8_t*, int32_t, int8_t**) =
+                    (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
                 OpNode* prev = project_op->children[0];
-                for (auto row : prev->output) {
-                    int8_t* output = reinterpret_cast<int8_t*>(
-                        malloc(2 + project_op->output_size));
+                for (auto pair: prev->output) {
+                    int8_t *row = pair.second;
+                    int8_t* output = NULL;
+                    int32_t output_size = 0;
                     // handle window
                     if (project_op->window_agg) {
                         std::string key_name;
@@ -219,22 +221,21 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             window_it->Next();
                         }
                         fesql::base::WindowIteratorImpl impl(window);
-                        uint32_t ret =
-                            udf(reinterpret_cast<int8_t*>(&impl), output + 2);
+                        uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl), pair.first, &output);
                         if (ret != 0) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
                         }
 
                     } else {
-                        uint32_t ret = udf(row, output + 2);
+                        uint32_t ret = udf(row, pair.first, &output);
 
                         if (ret != 0) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
                         }
                     }
-                    project_op->output.push_back(output);
+                    project_op->output.push_back(std::make_pair(output_size,output));
                 }
                 break;
             }
@@ -260,11 +261,13 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
         }
         index++;
         if (index == op_size) {
-            buf = op->output;
+            for(auto pair: op->output) {
+                buf.push_back(pair.second);
+            }
         }
     }
     return 0;
-}  // namespace vm
+}
 
 }  // namespace vm
 }  // namespace fesql

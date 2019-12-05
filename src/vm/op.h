@@ -35,7 +35,7 @@ enum OpType {
 struct OpNode {
     virtual ~OpNode() {}
     OpType type;
-    std::vector<int8_t*> output;
+    std::vector<std::pair<int32_t ,int8_t*>> output;
     std::vector<OpNode*> children;
 };
 

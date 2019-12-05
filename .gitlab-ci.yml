@@ -4,10 +4,9 @@ variables:
 
 stages:
     - build
-    - style
 
 style_check:
-    stage: style
+    stage: build
     script:
         - bash tools/style_check.sh
     artifacts:
@@ -26,7 +25,6 @@ build_fesql_and_case:
             junit:
                 - build/*.xml
         paths: ["build/coverage"]
-
 
 
 

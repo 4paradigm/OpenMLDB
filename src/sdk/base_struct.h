@@ -11,8 +11,8 @@
 #define SRC_SDK_BASE_STRUCT_H_
 
 #include <proto/type.pb.h>
-#include <stdint-gcc.h>
 #include <string.h>
+#include <stdint.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -237,7 +237,7 @@ inline DataType DataTypeFromProtoType(const type::Type& type) {
             return kTypeFloat;
         case fesql::type::kDouble:
             return kTypeDouble;
-        case fesql::type::kString:
+        case fesql::type::kVarchar:
             return kTypeString;
         case fesql::type::kDate:
             return kTypeDate;

@@ -59,7 +59,7 @@ RowBuilder::RowBuilder(const Schema& schema)
     str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema.size());
     for (int idx = 0; idx < schema.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema.Get(idx);
-        if (column.type() == ::fesql::type::kString) {
+        if (column.type() == ::fesql::type::kVarchar) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
@@ -121,7 +121,7 @@ bool RowBuilder::Check(::fesql::type::Type type) {
                      << fesql::type::Type_Name(column.type());
         return false;
     }
-    if (column.type() != ::fesql::type::kString) {
+    if (column.type() != ::fesql::type::kVarchar) {
         auto iter = TYPE_SIZE_MAP.find(column.type());
         if (iter == TYPE_SIZE_MAP.end()) {
             LOG(WARNING) << ::fesql::type::Type_Name(column.type())
@@ -136,7 +136,7 @@ bool RowBuilder::AppendNULL() {
     int8_t* ptr = buf_ + HEADER_LENGTH + (cnt_ >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
     const ::fesql::type::ColumnDef& column = schema_.Get(cnt_);
-    if (column.type() == ::fesql::type::kString) {
+    if (column.type() == ::fesql::type::kVarchar) {
         ptr = buf_ + str_field_start_offset_ +
               str_addr_length_ * offset_vec_[cnt_];
         if (str_addr_length_ == 1) {
@@ -204,7 +204,7 @@ bool RowBuilder::AppendDouble(double val) {
 }
 
 bool RowBuilder::AppendString(const char* val, uint32_t length) {
-    if (val == NULL || !Check(::fesql::type::kString)) return false;
+    if (val == NULL || !Check(::fesql::type::kVarchar)) return false;
     if (str_offset_ + length > size_) return false;
     int8_t* ptr =
         buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
@@ -260,7 +260,7 @@ bool RowView::Init() {
     uint32_t string_field_cnt = 0;
     for (int idx = 0; idx < schema_.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(idx);
-        if (column.type() == ::fesql::type::kString) {
+        if (column.type() == ::fesql::type::kVarchar) {
             offset_vec_.push_back(string_field_cnt);
             next_str_pos_.push_back(idx);
             string_field_cnt++;
@@ -352,7 +352,13 @@ int32_t RowView::GetBool(uint32_t idx, bool* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetBoolField(row_, offset, val);
+    int8_t v = v1::GetBoolField(row_, offset);
+    if (v == 1) {
+        *val = true;
+    } else {
+        *val = false;
+    }
+    return 0;
 }
 
 int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
@@ -367,7 +373,8 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetInt32Field(row_, offset, val);
+    *val = v1::GetInt32Field(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
@@ -382,7 +389,8 @@ int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetInt64Field(row_, offset, val);
+    *val = v1::GetInt64Field(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
@@ -397,7 +405,8 @@ int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetInt16Field(row_, offset, val);
+    *val = v1::GetInt16Field(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetFloat(uint32_t idx, float* val) {
@@ -412,7 +421,8 @@ int32_t RowView::GetFloat(uint32_t idx, float* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetFloatField(row_, offset, val);
+    *val = v1::GetFloatField(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetDouble(uint32_t idx, double* val) {
@@ -427,7 +437,8 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    return v1::GetDoubleField(row_, offset, val);
+    *val = v1::GetDoubleField(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
@@ -435,38 +446,26 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
         LOG(WARNING) << "output val or length is null";
         return -1;
     }
-    if (!CheckValid(idx, ::fesql::type::kString)) {
+
+    if (!CheckValid(idx, ::fesql::type::kVarchar)) {
         return -1;
     }
+
     if (IsNULL(idx)) {
         return 1;
     }
-    uint32_t field_offset =
-        str_field_start_offset_ + offset_vec_.at(idx) * str_addr_length_;
-    uint32_t offset = 0;
-    if (v1::GetStrAddr(row_, field_offset, str_addr_length_, &offset) < 0 ||
-        offset > size_) {
+    uint32_t field_offset = offset_vec_.at(idx);
+    uint32_t next_str_pos = next_str_pos_.at(field_offset);
+    uint32_t next_str_field_offset = 0;
+    if (next_str_pos != 0) {
+        next_str_field_offset = offset_vec_.at(next_str_pos);
+    }
+    if (next_str_field_offset > size_) {
         return -1;
     }
-    *val = const_cast<char*>(reinterpret_cast<const char*>(row_ + offset));
-    uint32_t pos = next_str_pos_.at(offset_vec_.at(idx));
-    if (pos == 0) {
-        *length = size_ - offset;
-    } else {
-        uint32_t next_str_field_offset =
-            str_field_start_offset_ + offset_vec_.at(pos) * str_addr_length_;
-        if (next_str_field_offset > size_) {
-            return -1;
-        }
-        uint32_t next_offset = 0;
-        if (v1::GetStrAddr(row_, next_str_field_offset, str_addr_length_,
-                           &next_offset) < 0 ||
-            next_offset > size_) {
-            return -1;
-        }
-        *length = next_offset - offset;
-    }
-    return 0;
+    return v1::GetStrField(row_, field_offset, next_str_field_offset,
+                           str_field_start_offset_, str_addr_length_,
+                           reinterpret_cast<int8_t**>(val), length);
 }
 
 }  // namespace storage

@@ -20,6 +20,7 @@
 
 #include <map>
 #include <memory>
+#include <vector>
 #include <mutex>  //NOLINT
 #include <string>
 #include "base/spin_lock.h"
@@ -75,6 +76,7 @@ class Engine {
     explicit Engine(TableMgr* table_mgr);
 
     ~Engine();
+
 
     bool Get(const std::string& db, const std::string& sql, RunSession& session,  //NOLINT
              base::Status& status);  //NOLINT

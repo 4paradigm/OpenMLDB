@@ -39,8 +39,6 @@ class RowFnLetIRBuilder {
 
     ~RowFnLetIRBuilder();
 
-    bool Build(const std::string& name, const std::string& col,
-               ::fesql::type::Type&);  // NOLINT (runtime/references)
     bool Build(const std::string& name,
                const ::fesql::node::ProjectListPlanNode* node,
                std::vector<::fesql::type::ColumnDef>&
@@ -53,13 +51,18 @@ class RowFnLetIRBuilder {
                        const std::vector<::llvm::Type*>& args_type,
                        ::llvm::Type* ret_type, ::llvm::Function** fn);
     bool FillArgs(const std::string& row_ptr_name,
-                  const std::string& output_ptr_name, ::llvm::Function* fn,
-                  ScopeVar& sv);  // NOLINT (runtime/references)
+            const std::string& row_size_name,
+            const std::string& output_ptr_name,
+            ::llvm::Function *fn,
+            ScopeVar& sv); // NOLINT
 
-    bool StoreColumn(int64_t offset, ::llvm::Value* value,
-                     ScopeVar& sv,  // NOLINT (runtime/references)
-                     const std::string& output_ptr_name,
-                     ::llvm::BasicBlock* block);
+    bool EncodeBuf(const std::map<uint32_t, ::llvm::Value*>* values,
+                   const std::vector<::fesql::type::ColumnDef>* schema,
+                    ScopeVar& sv,  // NOLINT (runtime/references)
+                    ::llvm::BasicBlock* block,
+                    const std::string& output_ptr_name);
+
+ private:
     // input schema
     ::fesql::type::TableDef* table_;
     ::llvm::Module* module_;

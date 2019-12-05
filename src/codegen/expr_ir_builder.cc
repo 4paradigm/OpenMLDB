@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 #include "codegen/fn_ir_builder.h"
-#include "codegen/ir_types.h"
+#include "codegen/type_ir_builder.h"
 #include "glog/logging.h"
 #include "proto/common.pb.h"
 
@@ -32,14 +32,18 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       row_ptr_name_(""),
       buf_ir_builder_(nullptr),
       module_(nullptr) {}
+
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                             BufIRBuilder* buf_ir_builder, const bool row_mode,
+                             BufNativeIRBuilder* buf_ir_builder,
+                             const bool row_mode,
                              const std::string& row_ptr_name,
+                             const std::string& row_size_name,
                              ::llvm::Module* module)
     : block_(block),
       sv_(scope_var),
       row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
+      row_size_name_(row_size_name),
       buf_ir_builder_(buf_ir_builder),
       module_(module) {}
 
@@ -238,26 +242,30 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
         return false;
     }
 
+    ::llvm::Value* row_size = NULL;
+    ok = sv_->FindVar(row_size_name_, &row_size);
+    if (!ok || row_size == NULL) {
+        LOG(WARNING) << "fail to find row size with name " << row_size_name_;
+        return false;
+    }
+
     ::llvm::Value* value = NULL;
     ok = sv_->FindVar(col, &value);
     LOG(INFO) << "get table column " << col;
     // not found
     if (!ok) {
-        if (row_mode_) {
-            // TODO(wangtaize) buf ir builder add build get field ptr
-            ok = buf_ir_builder_->BuildGetField(col, row_ptr, &value);
-            if (!ok || value == NULL) {
-                LOG(WARNING) << "fail to find column " << col;
-                return false;
-            }
-
-            ok = sv_->AddVar(col, value);
-            if (ok) {
-                *output = value;
-            }
-            return ok;
-        } else {
+        // TODO(wangtaize) buf ir builder add build get field ptr
+        ok = buf_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
+        if (!ok || value == NULL) {
+            LOG(WARNING) << "fail to find column " << col;
+            return false;
         }
+
+        ok = sv_->AddVar(col, value);
+        if (ok) {
+            *output = value;
+        }
+        return ok;
     } else {
         *output = value;
     }
@@ -279,10 +287,10 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
     if (!ok) {
         uint32_t offset;
         ::fesql::type::Type type;
-        if (!buf_ir_builder_->GetFieldOffset(col, offset, type)) {
-            LOG(WARNING) << "can not find offset and type of column " << col;
-            return false;
-        }
+//        if (!buf_ir_builder_->GetFieldOffset(col, offset, type)) {
+//            LOG(WARNING) << "can not find offset and type of column " << col;
+//            return false;
+//        }
 
         ::fesql::node::DataType data_type;
         if (!ConvertFeSQLType2DataType(type, data_type)) {

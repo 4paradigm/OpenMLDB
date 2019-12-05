@@ -495,7 +495,7 @@ void TransformTableDef(const std::string &table_name,
                         break;
                     }
                     case node::kTypeString:
-                        column->set_type(type::Type::kString);
+                        column->set_type(type::Type::kVarchar);
                         break;
                     default: {
                         status.msg =

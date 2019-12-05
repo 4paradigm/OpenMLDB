@@ -67,7 +67,7 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
         case kFnOpNone:
             return "NONE";
         default:
-            return "unknown";
+            return "NONE";
     }
 }
 
@@ -159,7 +159,7 @@ class SQLNode {
 
     virtual void Print(std::ostream &output, const std::string &tab) const;
 
-    SQLNodeType GetType() const { return type_; }
+    const SQLNodeType GetType() const { return type_; }
 
     uint32_t GetLineNum() const { return line_num_; }
 
