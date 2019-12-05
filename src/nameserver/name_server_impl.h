@@ -161,7 +161,7 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    void AddRemoteReplica(const std::string& name, 
+    void AddReplicaRemoteOP(const std::string& name, 
             const ::rtidb::nameserver::PartitionMeta& partition_meta,
             uint32_t tid, uint32_t pid); 
 
@@ -170,7 +170,7 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    int DelRemoteReplica(const std::string& endpoint,
+    int DelReplicaRemoteOP(const std::string& endpoint,
             const std::string name,
             uint32_t pid); 
     
@@ -332,7 +332,7 @@ private:
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
-    int CreateAddRemoteReplicaOPTask(std::shared_ptr<OPData> op_data);
+    int CreateAddReplicaSimplyRemoteOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data);
 
@@ -342,7 +342,7 @@ private:
 
     int CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data);
 
-    int CreateDelRemoteReplicaOPTask(std::shared_ptr<OPData> op_data);
+    int CreateDelReplicaRemoteOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data);
 
@@ -415,7 +415,7 @@ private:
                     uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader,
                     ::rtidb::common::StorageMode storage_mode);
 
-std::shared_ptr<Task> CreateAddRemoteReplicaTask(const std::string& endpoint, 
+std::shared_ptr<Task> CreateAddReplicaRemoteTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t remote_tid, uint32_t pid,
                     const std::string& des_endpoint);
 
