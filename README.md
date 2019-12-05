@@ -73,6 +73,16 @@ tools/cpplint.py  filename
 clang-format filename
 ```
 
+## LocalRun环境
+
+```
+cd onebox
+# 启动dbms 和 tablet
+sh start_all.sh
+# 使用 cli访问
+sh start_cli.sh
+```
+
 ## CMD使用说明
 
 ### 启动服务端
