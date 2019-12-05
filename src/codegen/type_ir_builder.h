@@ -1,5 +1,5 @@
 /*
- * ir_types.h
+ * type_ir_builder.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,17 +15,26 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CODEGEN_IR_TYPES_H_
-#define SRC_CODEGEN_IR_TYPES_H_
+#ifndef SRC_CODEGEN_TYPE_IR_BUILDER_H_
+#define SRC_CODEGEN_TYPE_IR_BUILDER_H_
 
 namespace fesql {
 namespace codegen {
 
-struct IRString {
+struct StringRef {
     int32_t size;
     char* data;
 };
 
+struct String {
+    int32_t size;
+    char* data;
+};
+
+struct Timestamp {
+    int64_t ts;
+};
+
 }  // namespace codegen
 }  // namespace fesql
-#endif  // SRC_CODEGEN_IR_TYPES_H_
+#endif  // SRC_CODEGEN_TYPE_IR_BUILDER_H_

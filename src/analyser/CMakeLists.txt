@@ -4,6 +4,7 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 
 add_library(fesql_analyser STATIC analyser.cc)
+add_dependencies(fesql_analyser fesql_proto)
 add_executable(analyser_test analyser_test.cc)
 target_link_libraries(analyser_test fesql_analyser fesql_proto fesql_parser fesql_node protobuf gtest ${COMMON_LIBS} pthread)
 add_test(analyser_test analyser_test --gtest_output=xml:${CMAKE_BINARY_DIR}/analyser_test.xml)

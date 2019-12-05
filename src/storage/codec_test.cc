@@ -34,9 +34,9 @@ TEST_F(CodecTest, NULLTest) {
     col->set_type(::fesql::type::kBool);
     col = schema.Add();
     col->set_name("col3");
-    col->set_type(::fesql::type::kString);
+    col->set_type(::fesql::type::kVarchar);
     RowBuilder builder(schema);
-    uint32_t size = builder.CalTotalLength(2);
+    uint32_t size = builder.CalTotalLength(1);
     std::string row;
     row.resize(size);
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
@@ -100,7 +100,7 @@ TEST_F(CodecTest, Encode) {
         } else if (i % 3 == 1) {
             col->set_type(::fesql::type::kDouble);
         } else {
-            col->set_type(::fesql::type::kString);
+            col->set_type(::fesql::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -151,7 +151,7 @@ TEST_F(CodecTest, AppendNULL) {
         } else if (i % 3 == 1) {
             col->set_type(::fesql::type::kDouble);
         } else {
-            col->set_type(::fesql::type::kString);
+            col->set_type(::fesql::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -222,7 +222,7 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
         if (i % 2 == 0) {
             col->set_type(::fesql::type::kInt16);
         } else {
-            col->set_type(::fesql::type::kString);
+            col->set_type(::fesql::type::kVarchar);
         }
     }
     RowBuilder builder(schema);

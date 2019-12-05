@@ -58,7 +58,7 @@ bool ScopeVar::AddVar(const std::string& name, ::llvm::Value* value) {
     std::map<std::string, ::llvm::Value*>::iterator it =
         exist_scope.scope_map.find(name);
     if (it != exist_scope.scope_map.end()) {
-        LOG(WARNING) << "var with name " << name << " exists ";
+        DLOG(INFO) << "var with name " << name << " exists ";
         return false;
     }
     exist_scope.scope_map.insert(std::make_pair(name, value));
@@ -81,7 +81,7 @@ bool ScopeVar::FindVar(const std::string& name, ::llvm::Value** value) {
         exist_scope.scope_map.find(name);
 
     if (it == exist_scope.scope_map.end()) {
-        LOG(WARNING) << "var with name " << name << " does not exist ";
+        DLOG(INFO) << "var with name " << name << " does not exist ";
         return false;
     }
 

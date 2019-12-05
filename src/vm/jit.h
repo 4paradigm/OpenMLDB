@@ -18,6 +18,7 @@
 #ifndef SRC_VM_JIT_H_
 #define SRC_VM_JIT_H_
 
+#include <string>
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 
 namespace fesql {
@@ -33,6 +34,7 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
     friend class ::llvm::orc::LLJITBuilderSetters;
 
  public:
+    void Init();
     ::llvm::Error AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
                               ::llvm::orc::ThreadSafeModule tsm,
                               ::llvm::orc::VModuleKey key);
@@ -45,7 +47,8 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
     bool AddSymbol(const std::string& name, void* fn_ptr);
 
     // add to main module
-    bool AddSymbol(::llvm::orc::JITDylib& jd, const std::string& name, // NOLINT
+    bool AddSymbol(::llvm::orc::JITDylib& jd, // NOLINT
+                   const std::string& name,
                    void* fn_ptr);
 
     ~FeSQLJIT();

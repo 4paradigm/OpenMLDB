@@ -234,12 +234,12 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
         stream << result_set->GetRowCnt() << " row in set" << std::endl;
     }
 }
-void PrintTableSchema(std::ostream &stream,
-                      const fesql::sdk::Schema *schema) {
+void PrintTableSchema(std::ostream &stream, const fesql::sdk::Schema *schema) {
     if (nullptr == schema || schema->GetColumnCnt() == 0) {
         stream << "Empty set" << std::endl;
         return;
     }
+
     uint32_t items_size = schema->GetColumnCnt();
 
     ::fesql::base::TextTable t('-', '|', '+');
@@ -254,6 +254,7 @@ void PrintTableSchema(std::ostream &stream,
         t.add(schema->IsColumnNotNull(i) ? "YES" : "NO");
         t.endOfRow();
     }
+
     stream << t;
     if (items_size > 1) {
         stream << items_size << " rows in set" << std::endl;
@@ -277,7 +278,7 @@ void PrintItems(std::ostream &stream, const std::string &head,
         t.endOfRow();
     }
     stream << t;
-    unsigned items_size = items.size();
+    auto items_size = items.size();
     if (items_size > 1) {
         stream << items_size << " rows in set" << std::endl;
     } else {

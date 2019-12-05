@@ -18,15 +18,17 @@
 #ifndef SRC_VM_SQL_COMPILER_H_
 #define SRC_VM_SQL_COMPILER_H_
 
-#include <string>
 #include <memory>
+#include <string>
 #include <vector>
 #include "base/status.h"
 #include "llvm/IR/Module.h"
 #include "parser/parser.h"
+#include "proto/common.pb.h"
 #include "vm/jit.h"
 #include "vm/op_generator.h"
 #include "vm/table_mgr.h"
+
 namespace fesql {
 namespace vm {
 
@@ -54,8 +56,8 @@ class SQLCompiler {
     bool Compile(SQLContext& ctx, Status& status);  // NOLINT
 
  private:
-    bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr, // NOLINT
-               ::fesql::node::PlanNodeList& trees, Status& status);  // NOLINT
+    bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT
+               ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT
 
  private:
     TableMgr* table_mgr_;

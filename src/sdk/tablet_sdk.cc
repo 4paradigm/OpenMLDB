@@ -196,7 +196,7 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
     uint32_t string_length = 0;
     for (int i = 0; i < schema.columns_size(); i++) {
         const Value& value = insert.values[i];
-        if (schema.columns(i).type() == ::fesql::type::kString) {
+        if (schema.columns(i).type() == ::fesql::type::kVarchar) {
             string_length += strlen(value.GetStr());
         }
     }
@@ -228,7 +228,7 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
             case type::kDouble:
                 rbuilder.AppendDouble(value.GetDouble());
                 break;
-            case type::kString:
+            case type::kVarchar:
                 rbuilder.AppendString(value.GetStr(), strlen(value.GetStr()));
                 break;
             default: {

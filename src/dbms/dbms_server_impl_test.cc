@@ -110,7 +110,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         {
             ::fesql::type::ColumnDef* column = table->add_columns();
             column->set_name("column1");
-            column->set_type(fesql::type::kString);
+            column->set_type(fesql::type::kVarchar);
         }
 
         ::fesql::dbms::AddTableResponse response;
@@ -146,7 +146,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         {
             ::fesql::type::ColumnDef* column = table->add_columns();
             column->set_name("column4");
-            column->set_type(fesql::type::kString);
+            column->set_type(fesql::type::kVarchar);
         }
 
         {
@@ -336,7 +336,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         {
             ::fesql::type::ColumnDef* column = table->add_columns();
             column->set_name("column1");
-            column->set_type(fesql::type::kString);
+            column->set_type(fesql::type::kVarchar);
         }
 
         ::fesql::dbms::AddTableResponse response;
@@ -354,7 +354,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         {
             ::fesql::type::ColumnDef* column = table->add_columns();
             column->set_name("column1");
-            column->set_type(fesql::type::kString);
+            column->set_type(fesql::type::kVarchar);
         }
 
         ::fesql::dbms::AddTableResponse response;
@@ -390,7 +390,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         {
             ::fesql::type::ColumnDef* column = table->add_columns();
             column->set_name("column1");
-            column->set_type(fesql::type::kString);
+            column->set_type(fesql::type::kVarchar);
         }
 
         ::fesql::dbms::AddTableResponse response;
@@ -477,7 +477,7 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_name("column4");
-        column->set_type(fesql::type::kString);
+        column->set_type(fesql::type::kVarchar);
     }
 
     {

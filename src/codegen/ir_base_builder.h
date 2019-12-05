@@ -25,7 +25,7 @@
 namespace fesql {
 namespace codegen {
 
-bool GetLLVMType(::llvm::IRBuilder<>& builder, // NOLINT
+bool GetLLVMType(::llvm::BasicBlock* block,
         const ::fesql::type::Type& type,
         ::llvm::Type** output);
 
@@ -48,7 +48,6 @@ bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
         ::llvm::Value* ptr,
         ::llvm::Value* offset,
         ::llvm::Value* value);
-
 
 }  // namespace codegen
 }  // namespace fesql
