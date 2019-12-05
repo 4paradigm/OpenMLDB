@@ -14,6 +14,7 @@
 #include <map>
 #include "rpc/rpc_client.h"
 #include "proto/name_server.pb.h"
+#include "proto/tablet.pb.h"
 
 namespace rtidb {
 namespace client {
@@ -33,6 +34,8 @@ public:
 
     int Init();
 
+    std::string GetEndpoint();
+
     bool ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg);
     
     bool ShowTable(const std::string& name, std::vector<::rtidb::nameserver::TableInfo>& tables, std::string& msg);
@@ -51,6 +54,14 @@ public:
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg);
 
     bool DropTable(const std::string& name, std::string& msg);
+
+    bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
+
+    bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);
+
+    bool DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, const std::string& name, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, std::string& msg);
+    
+    bool CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, std::string& msg);
 
     bool AddReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint, std::string& msg);
 

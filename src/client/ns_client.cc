@@ -18,6 +18,10 @@ int NsClient::Init() {
     return client_.Init();
 }
 
+std::string NsClient::GetEndpoint() {
+    return endpoint_;
+}
+
 bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
     ::rtidb::nameserver::ShowTabletRequest request;
     ::rtidb::nameserver::ShowTabletResponse response;
@@ -416,6 +420,70 @@ bool NsClient::UpdateTTL(const std::string& name,
     request.set_value(ttl);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UpdateTTL,
                                   &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
+    ::rtidb::api::DeleteTaskRequest request;
+    ::rtidb::api::GeneralResponse response;
+    for (auto op_id : op_id_vec) {
+        request.add_op_id(op_id);
+    }
+    bool ret = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DeleteOPTask,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool NsClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
+    ::rtidb::api::TaskStatusRequest request;
+    bool ret = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::GetTaskStatus,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool NsClient::DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, 
+        const std::string& name, 
+        const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+        std::string& msg) {
+    ::rtidb::nameserver::DropTableRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
+    task_info_p->CopyFrom(task_info);
+    ::rtidb::nameserver::ReplicaClusterByNsRequest* zone_info_p = request.mutable_zone_info();
+    zone_info_p->CopyFrom(zone_info);
+    request.set_name(name);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable, &request, &response, FLAGS_request_timeout_ms, 3);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, 
+        const ::rtidb::nameserver::TableInfo& table_info, 
+        const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+        std::string& msg) {
+    ::rtidb::nameserver::CreateTableRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
+    task_info_p->CopyFrom(task_info);
+    ::rtidb::nameserver::ReplicaClusterByNsRequest* zone_info_p = request.mutable_zone_info();
+    zone_info_p->CopyFrom(zone_info);
+    ::rtidb::nameserver::TableInfo* table_info_p;
+    table_info_p = request.mutable_table_info();
+    table_info_p->CopyFrom(table_info);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response, FLAGS_request_timeout_ms, 3);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
