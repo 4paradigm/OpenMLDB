@@ -5,14 +5,13 @@
 // Date 2019-11-01
 //
 
-#include "storage/segment.h"
-
 #include <mutex>  //NOLINT
+#include "storage/segment.h"
 
 namespace fesql {
 namespace storage {
 
-const uint8_t KEY_ENTRY_MAX_HEIGHT = 12;
+constexpr uint8_t KEY_ENTRY_MAX_HEIGHT = 12;
 static const SliceComparator scmp;
 Segment::Segment() : entries_(NULL), mu_() {
     entries_ = new KeyEntries(KEY_ENTRY_MAX_HEIGHT, 4, scmp);
@@ -22,8 +21,10 @@ Segment::~Segment() {}
 
 void Segment::Put(const Slice& key, uint64_t time, const char* data,
                   uint32_t size) {
-    DataBlock* db = new DataBlock(1, data, size);
-    Put(key, time, db);
+    DataBlock* block = reinterpret_cast<DataBlock*>(malloc(sizeof(DataBlock) + size));
+    block->ref_cnt = 1;
+    memcpy(block->data, data, size);
+    Put(key, time, block);
 }
 
 void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {

@@ -36,7 +36,7 @@ TEST_F(CodecTest, NULLTest) {
     col->set_name("col3");
     col->set_type(::fesql::type::kString);
     RowBuilder builder(schema);
-    uint32_t size = builder.CalTotalLength(2);
+    uint32_t size = builder.CalTotalLength(1);
     std::string row;
     row.resize(size);
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);

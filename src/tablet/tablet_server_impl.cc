@@ -61,7 +61,7 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
             request->tid(), request->pids(i), request->db(), request->table()));
 
         std::unique_ptr<storage::Table> table(new storage::Table(
-            request->table().name(), request->tid(), request->pids(i), 1));
+            request->tid(), request->pids(i), request->table()));
 
         bool ok = table->Init();
 

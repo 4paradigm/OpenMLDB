@@ -43,20 +43,9 @@ struct SliceComparator {
 class Segment;
 
 struct DataBlock {
-    uint8_t dim_cnt_down;
+    uint32_t ref_cnt;
     uint32_t size;
-    char* data;
-
-    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len)
-        : dim_cnt_down(dim_cnt), size(len), data(NULL) {
-        data = new char[len];
-        memcpy(data, input, len);
-    }
-
-    ~DataBlock() {
-        delete[] data;
-        data = NULL;
-    }
+    char data[];
 };
 
 class TableIterator {

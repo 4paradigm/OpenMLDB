@@ -77,26 +77,40 @@ class RowView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
-    inline bool IsNULL(uint32_t idx) {
-        const int8_t* ptr = row_ + HEADER_LENGTH + (idx >> 3);
-        return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
+    bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
+    uint32_t GetSize() { return size_; }
+
+    static inline uint32_t GetSize(const int8_t* row) {
+        return *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
     }
-    uint32_t GetSize();
-    static uint32_t GetSize(const int8_t* row);
+
+    int32_t GetValue(const int8_t* row, uint32_t idx, ::fesql::type::Type type,
+                     void* val);
+    int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
+                     uint32_t* length);
 
  private:
     bool Init();
     bool CheckValid(uint32_t idx, ::fesql::type::Type type);
 
+    inline bool IsNULL(const int8_t* row, uint32_t idx) {
+        const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);
+        return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
+    }
+
+    inline int32_t GetStringValue(const int8_t* row, uint32_t size,
+                                  uint8_t str_addr_length, uint32_t idx,
+                                  char** val, uint32_t* length);
+
  private:
     uint8_t str_addr_length_;
     bool is_valid_;
+    uint32_t string_field_cnt_;
     uint32_t str_field_start_offset_;
     uint32_t size_;
     const int8_t* row_;
     const Schema& schema_;
     std::vector<uint32_t> offset_vec_;
-    std::vector<uint32_t> next_str_pos_;
 };
 
 }  // namespace storage
