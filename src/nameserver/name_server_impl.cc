@@ -147,26 +147,46 @@ bool ClusterInfo::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& tas
 void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtidb::nameserver::TableInfo>& tables) {
     auto rep_iter = rep_table_map_.find(alias);
     if (rep_iter == rep_table_map_.end()) {
-        rep_table_map_.insert(std::make_pair(alias, std::map<std::string, std::vector<::rtidb::nameserver::TablePartition>>()));
+        rep_table_map_.insert(std::make_pair(alias, std::map<std::string, std::vector<std::shared_ptr<TablePartition>>>()));
     }
     rep_iter = rep_table_map_.find(alias);
     for (const auto& table : tables) {
         auto table_iter = rep_iter->second.find(table.name());
         if (table_iter == rep_iter->second.end()) {
-            rep_iter->second.insert(std::make_pair(table.name(), std::vector<::rtidb::nameserver::TablePartition>()));
+            rep_iter->second.insert(std::make_pair(table.name(), std::vector<std::shared_ptr<TablePartition>>()));
             table_iter = rep_iter->second.find(table.name());
             for (auto& temp_part : table.table_partition()) {
-                ::rtidb::nameserver::TablePartition tb;
-                tb.set_pid(temp_part.pid());
-                tb.set_record_byte_size(temp_part.record_byte_size());
-                tb.set_record_cnt(temp_part.record_cnt());
+                std::shared_ptr<::rtidb::nameserver::TablePartition> tb = std::make_shared<TablePartition>();
+                (*tb).set_pid(temp_part.pid());
+                (*tb).set_record_byte_size(temp_part.record_byte_size());
+                (*tb).set_record_cnt(temp_part.record_cnt());
                 for (auto& to : temp_part.term_offset()) {
-                    tb.add_term_offset()->CopyFrom(to);
+                    (*tb).add_term_offset()->CopyFrom(to);
                 }
                 for (auto& meta : temp_part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
+                        meta.offset();
+                        auto info_iter = table_info_.find(table.name());
+                        int i = 0, j = 0;
+                        for (; i < info_iter->second->table_partition_size(); i++) {
+                            if (info_iter->second->table_partition(i).pid() != temp_part.pid()) {
+                                continue;
+                            }
+                            for (; j < info_iter->second->table_partition(i).partition_meta_size(); j++) {
+                                if (info_iter->second->table_partition(i).partition_meta(j).is_leader() && info_iter->second->table_partition(i).partition_meta(j).is_alive()) {
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                        (*tb).add_partition_meta()->CopyFrom(meta);
+                        if (meta.offset() > info_iter->second->table_partition(i).partition_meta(j).offset()) {
+                            // send delete util specify offset
+                            auto temp = (*tb).partition_meta((*tb).partition_meta_size() - 1);
+                            temp.clear_endpoint();
+                            break;
+                        }
                         AddRemoteReplica(table.name(), meta, table.tid(), temp_part.pid());
-                        tb.add_partition_meta()->CopyFrom(meta);
                         break;
                     }
                 }
@@ -176,23 +196,41 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
         }
         for (int i = 0; i < table.table_partition_size(); i++) {
             auto& temp_part = table.table_partition(i);
-            TablePartition* part_p = &table_iter->second[0];
+            std::shared_ptr<TablePartition> part_p = table_iter->second[0];
             for (uint64_t j = 0; j < table_iter->second.size(); j++) {
-                if (table_iter->second[j].pid() == temp_part.pid()) {
-                    part_p = &table_iter->second[j];
+                if (table_iter->second[j]->pid() == temp_part.pid()) {
+                    part_p = table_iter->second[j];
                     break;
                 }
             }
+            /*
             if (temp_part.term_offset_size() > part_p->term_offset_size()) {
                 for (int z = part_p->term_offset_size(); z < temp_part.term_offset_size(); z++) {
                     part_p->add_term_offset()->CopyFrom(temp_part.term_offset(z));
                 }
             }
+             */
             int j = 0;
             for (; j < temp_part.partition_meta_size(); j++) {
                 auto &temp_meta = temp_part.partition_meta(j);
                 if (temp_meta.is_alive() && temp_meta.is_leader()) {
                     if (part_p->partition_meta(0).endpoint() != temp_meta.endpoint()) {
+                        auto info_iter = table_info_.find(table.name());
+                        int i = 0, j = 0;
+                        for (; i < info_iter->second->table_partition_size(); i++) {
+                            if (info_iter->second->table_partition(i).pid() != temp_part.pid()) {
+                                continue;
+                            }
+                            for (; j < info_iter->second->table_partition(i).partition_meta_size(); j++) {
+                                if (info_iter->second->table_partition(i).partition_meta(j).is_leader() && info_iter->second->table_partition(i).partition_meta(j).is_alive()) {
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                        if (temp_meta.offset() > info_iter->second->table_partition(i).partition_meta(j).offset()) {
+                            break;
+                        }
                         DelRemoteReplica(part_p->partition_meta(0).endpoint(), table.name(), part_p->pid());
                         part_p->clear_partition_meta();
                         part_p->add_partition_meta()->CopyFrom(temp_meta);
@@ -4126,9 +4164,9 @@ void NameServerImpl::OnLocked() {
         //TODO fail to recover discard the lock
     }
     running_.store(true, std::memory_order_release);
+    rep_table_map_.clear();
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this, false));
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatusForReplicaCluster, this, false));
-    task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateTableStatus, this));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::ProcessTask, this));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CheckClusterInfo, this));
