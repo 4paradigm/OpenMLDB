@@ -178,7 +178,7 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, int8_t* val,
 
 }  // namespace v1
 
-void AddSymbol(::llvm::orc::JITDylib& jd, // NOLINT
+void AddSymbol(::llvm::orc::JITDylib& jd,           // NOLINT
                ::llvm::orc::MangleAndInterner& mi,  // NOLINT
                const std::string& fn_name, void* fn_ptr) {
     ::llvm::StringRef symbol(fn_name);
@@ -230,8 +230,7 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     AddSymbol(jd, mi, "fesql_storage_encode_string_field",
               reinterpret_cast<void*>(&v1::AppendString));
     AddSymbol(jd, mi, "fesql_storage_encode_calc_size",
-                       reinterpret_cast<void*>(&v1::CalcTotalLength));
-
+              reinterpret_cast<void*>(&v1::CalcTotalLength));
 }
 
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {

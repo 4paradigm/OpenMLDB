@@ -17,13 +17,14 @@
 
 #include "codegen/ir_base_builder.h"
 #include <vector>
+#include <string>
 #include "glog/logging.h"
 
 namespace fesql {
 namespace codegen {
 
-bool GetLLVMType(::llvm::BasicBlock* block,
-                 const ::fesql::type::Type& type, ::llvm::Type** output) {
+bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
+                 ::llvm::Type** output) {
     if (output == NULL || block == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
@@ -59,8 +60,7 @@ bool GetLLVMType(::llvm::BasicBlock* block,
                 *output = stype;
                 return true;
             }
-            stype = ::llvm::StructType::create(
-                builder.getContext(), name);
+            stype = ::llvm::StructType::create(builder.getContext(), name);
             ::llvm::Type* size_ty = builder.getInt32Ty();
             ::llvm::Type* data_ptr_ty = builder.getInt8PtrTy();
             std::vector<::llvm::Type*> elements;

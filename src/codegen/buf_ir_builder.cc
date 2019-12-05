@@ -645,12 +645,11 @@ bool BufNativeEncoderIRBuilder::AppendHeader(::llvm::Value* i8_ptr,
     if (!ok) {
         LOG(WARNING) << "fail to add size to row";
         return false;
-
     }
 
     ::llvm::Value* output = NULL;
-    ok = BuildGetPtrOffset(builder, i8_ptr, builder.getInt32(6), 
-            builder.getInt8PtrTy(), &output);
+    ok = BuildGetPtrOffset(builder, i8_ptr, builder.getInt32(6),
+                           builder.getInt8PtrTy(), &output);
     if (!ok) {
         LOG(WARNING) << "fail to get ptr with offset ";
         return false;
