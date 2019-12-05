@@ -3,11 +3,10 @@ variables:
     GIT_SUBMODULE_STRATEGY: normal
 
 stages:
-    - style
     - build
 
 style_check:
-    stage: style
+    stage: build
     script:
         - bash tools/style_check.sh
     artifacts:
