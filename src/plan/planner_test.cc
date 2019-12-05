@@ -158,7 +158,7 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
     ASSERT_EQ(type::Type::kInt32, table->columns(0).type());
     ASSERT_EQ(type::Type::kTimestamp, table->columns(1).type());
     ASSERT_EQ(type::Type::kInt32, table->columns(2).type());
-    ASSERT_EQ(type::Type::kString, table->columns(3).type());
+    ASSERT_EQ(type::Type::kVarchar, table->columns(3).type());
     ASSERT_EQ(type::Type::kInt32, table->columns(4).type());
     ASSERT_EQ(1, table->indexes_size());
     ASSERT_EQ(60 * 86400000UL, table->indexes(0).ttl(0));

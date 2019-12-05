@@ -34,7 +34,8 @@ typedef std::map<std::string, std::pair<::fesql::type::ColumnDef, int32_t>>
 
 class RowFnLetIRBuilder {
  public:
-    RowFnLetIRBuilder(::fesql::type::TableDef* table, ::llvm::Module* module);
+    RowFnLetIRBuilder(::fesql::type::TableDef* table,
+            ::llvm::Module* module);
 
     ~RowFnLetIRBuilder();
 
@@ -47,13 +48,16 @@ class RowFnLetIRBuilder {
     bool BuildFnHeader(const std::string& name, ::llvm::Function** fn);
 
     bool FillArgs(const std::string& row_ptr_name,
-                  const std::string& output_ptr_name, ::llvm::Function* fn,
-                  ScopeVar& sv);  // NOLINT (runtime/references)
+            const std::string& row_size_name,
+            const std::string& output_ptr_name,
+            ::llvm::Function *fn,
+            ScopeVar& sv); // NOLINT
 
-    bool StoreColumn(int64_t offset, ::llvm::Value* value,
-                     ScopeVar& sv,  // NOLINT (runtime/references)
-                     const std::string& output_ptr_name,
-                     ::llvm::BasicBlock* block);
+    bool EncodeBuf(const std::map<uint32_t, ::llvm::Value*>* values,
+                   const std::vector<::fesql::type::ColumnDef>* schema,
+                    ScopeVar& sv,  // NOLINT (runtime/references)
+                    ::llvm::BasicBlock* block,
+                    const std::string& output_ptr_name);
 
  private:
     // input schema

@@ -427,7 +427,6 @@ TEST_F(TabletSdkTest, test_udf_query) {
             "    column4 bigint NOT NULL,\n"
             "    column5 int NOT NULL\n"
             ");";
-
         db.name = "db_1";
         fesql::sdk::Status status;
         fesql::sdk::ExecuteResult result;
@@ -552,6 +551,5 @@ int main(int argc, char** argv) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
-    // return RUN_ALL_TESTS();
-    return 0;
+    return RUN_ALL_TESTS();
 }
