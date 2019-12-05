@@ -2391,8 +2391,13 @@ void TabletImpl::SendSnapshot(RpcController* controller,
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }    
         sync_snapshot_set_.insert(sync_snapshot_key);
-        task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
-                    request->endpoint(), tid, pid, task_ptr));
+        if (request->has_remote_tid()) {
+            task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
+                        request->endpoint(), tid, pid, request->remote_tid(), task_ptr));
+        } else {
+            task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
+                        request->endpoint(), tid, pid, task_ptr));
+        }
         response->set_code(0);
         response->set_msg("ok");
         return;
@@ -2405,6 +2410,11 @@ void TabletImpl::SendSnapshot(RpcController* controller,
 
 void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
             std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    return SendSnapshotInternal(endpoint, tid, pid, UINT32_MAX, task);
+}
+
+void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
+            uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task) {
     bool has_error = true;
     do {
         std::shared_ptr<Table> table = GetTable(tid, pid);
@@ -2419,6 +2429,10 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
             break;
         }
         FileSender sender(tid, pid, table->GetStorageMode(), endpoint);
+        if (remote_tid != UINT32_MAX) {
+            FileSender sender_tmp(remote_tid, pid, table->GetStorageMode(), endpoint);
+            sender = sender_tmp;
+        }
         if (!sender.Init()) {
             PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
             break;

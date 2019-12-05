@@ -70,6 +70,7 @@ enum OPType {
     kDropTableForReplicaClusterOP = 16;
     kAddReplicaSimplyRemoteOP = 17;
     kDelReplicaRemoteOP = 18;
+    kAddReplicaRemoteOP = 19;
 }
 
 enum TaskType {
@@ -424,6 +425,7 @@ message SendSnapshotRequest {
     required uint32 pid = 2;
     required string endpoint = 3;
     optional TaskInfo task_info = 4;
+    optional uint32 remote_tid = 5;
 }
 
 message SendDataRequest {

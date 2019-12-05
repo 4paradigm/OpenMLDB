@@ -326,6 +326,9 @@ private:
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
                         std::shared_ptr<::rtidb::api::TaskInfo> task);
 
+    void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
+                        uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task);
+
     void SchedMakeSnapshot();
 
     void CheckZkClient();

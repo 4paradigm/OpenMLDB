@@ -3032,6 +3032,78 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
     response->set_msg("ok");
 }
 
+int NameServerImpl::CreateAddReplicaRemoteOPTask(std::shared_ptr<OPData> op_data) {
+    AddReplicaNSRequest request;
+    if (!request.ParseFromString(op_data->op_info_.data())) {
+        PDLOG(WARNING, "parse request failed. data[%s]", op_data->op_info_.data().c_str());
+        return -1;
+    }
+    auto pos = table_info_.find(request.name());
+    if (pos == table_info_.end()) {
+        PDLOG(WARNING, "table[%s] is not exist!", request.name().c_str());
+        return -1;
+    }
+    uint32_t tid = pos->second->tid();
+    uint32_t pid = request.pid();
+    std::string leader_endpoint;
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request.name().c_str(), pid);
+        return -1;
+    }
+
+    uint64_t op_index = op_data->op_info_.op_id();
+    std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index, 
+                ::rtidb::api::OPType::kAddReplicaRemoteOP, tid, pid);
+    if (!task) {
+        PDLOG(WARNING, "create pausesnapshot task failed. tid[%u] pid[%u]", tid, pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateSendSnapshotRemoteTask(leader_endpoint, op_index, 
+                ::rtidb::api::OPType::kAddReplicaRemoteOP, tid, request.remote_tid(), pid, request.endpoint());
+    if (!task) {
+        PDLOG(WARNING, "create sendsnapshot task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
+                tid, request.remote_tid(), pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    /**
+    task = CreateLoadTableTask(request.endpoint(), op_index, 
+                ::rtidb::api::OPType::kAddReplicaRemoteOP, request.name(), 
+                tid, pid, ttl, seg_cnt, false, pos->second->storage_mode());
+    if (!task) {
+        PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    */
+    task = CreateAddReplicaRemoteTask(leader_endpoint, op_index, 
+                ::rtidb::api::OPType::kAddReplicaRemoteOP, tid, request.remote_tid(), pid, request.endpoint());
+    if (!task) {
+        PDLOG(WARNING, "create addreplica task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
+                tid, request.remote_tid(), pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateRecoverSnapshotTask(leader_endpoint, op_index, 
+                ::rtidb::api::OPType::kAddReplicaRemoteOP, tid, pid);
+    if (!task) {
+        PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u]", tid, pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateAddTableInfoTask(request.endpoint(), request.name(), pid, request.partition_meta(),
+            op_index, ::rtidb::api::OPType::kAddReplicaRemoteOP);
+    if (!task) {
+        PDLOG(WARNING, "create addtableinfo task failed. tid[%u] pid[%u]", tid, pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    PDLOG(INFO, "create AddReplicaRemoteOP task ok. tid[%u] pid[%u] endpoint[%s]", 
+                    tid, pid, request.endpoint().c_str());
+    return 0;
+}
+
 int NameServerImpl::CreateAddReplicaSimplyRemoteOPTask(std::shared_ptr<OPData> op_data) {
     AddReplicaNSRequest request;
     if (!request.ParseFromString(op_data->op_info_.data())) {
@@ -5149,6 +5221,25 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(const std::string& 
     task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::SendSnapshot, it->second->client_, tid, pid, 
                 des_endpoint, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+    return task;
+}
+
+std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotRemoteTask(const std::string& endpoint,
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t remote_tid, 
+                    uint32_t pid, const std::string& des_endpoint) {
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
+    auto it = tablets_.find(endpoint);
+    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        return std::shared_ptr<Task>();
+    }
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kSendSnapshot);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
+    boost::function<bool ()> fun = boost::bind(&TabletClient::SendSnapshot, it->second->client_, tid, pid, 
+                des_endpoint, remote_tid, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
