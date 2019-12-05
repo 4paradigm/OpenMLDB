@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-#include "storage/codec.h"
 #include <unordered_map>
 #include <utility>
 #include "glog/logging.h"
 #include "storage/type_ir_builder.h"
+#include "storage/codec.h"
 
 namespace fesql {
 namespace storage {
@@ -435,14 +435,14 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
     }
     if ((int32_t)idx >= schema_.size()) {
         LOG(WARNING) << "idx out of index";
-        return false;
+        return -1;
     }
     const ::fesql::type::ColumnDef& column = schema_.Get(idx);
     if (column.type() != type) {
         LOG(WARNING) << "type mismatch required is "
                      << ::fesql::type::Type_Name(type) << " but is "
                      << fesql::type::Type_Name(column.type());
-        return false;
+        return -1;
     }
     if (GetSize(row) <= HEADER_LENGTH) {
         return -1;

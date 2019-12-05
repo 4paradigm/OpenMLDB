@@ -78,7 +78,7 @@ class RowView {
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
     bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
-    uint32_t GetSize() { return size_; }
+    inline uint32_t GetSize() { return size_; }
 
     static inline uint32_t GetSize(const int8_t* row) {
         return *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
@@ -97,10 +97,6 @@ class RowView {
         const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);
         return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
     }
-
-    inline int32_t GetStringValue(const int8_t* row, uint32_t size,
-                                  uint8_t str_addr_length, uint32_t idx,
-                                  char** val, uint32_t* length);
 
  private:
     uint8_t str_addr_length_;
