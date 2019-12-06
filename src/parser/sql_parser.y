@@ -659,6 +659,9 @@ cmd_stmt:
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
 				free($2);
 			}
+            |EXIT {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdExit);
+            }
 			;
 
 file_path:

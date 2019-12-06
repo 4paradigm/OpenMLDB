@@ -46,6 +46,8 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "desc table";
         case kCmdDropTable:
             return "drop table";
+        case kCmdExit:
+            return "exit";
         default:
             return "unknown cmd type";
     }
@@ -430,9 +432,7 @@ class CallExprNode : public ExprNode {
     NodePointVector &GetArgs() { return args_; }
     const NodePointVector &GetArgs() const { return args_; }
 
-    const int GetArgsSize() const {
-        return args_.size();
-    }
+    const int GetArgsSize() const { return args_.size(); }
 
  private:
     bool is_agg_;
@@ -518,9 +518,7 @@ class ConstNode : public ExprNode {
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    int16_t GetSmallInt() const {
-        return val_.vsmallint;
-    }
+    int16_t GetSmallInt() const { return val_.vsmallint; }
 
     int GetInt() const { return val_.vint; }
 
