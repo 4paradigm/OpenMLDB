@@ -11,8 +11,8 @@
 #define SRC_SDK_BASE_STRUCT_H_
 
 #include <proto/type.pb.h>
-#include <string.h>
 #include <stdint.h>
+#include <string.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -99,7 +99,7 @@ class Value {
             size = 4;
         } else {
             val_.vstr = strdup(v);
-            size = (strlen(v) + 1) * 4;
+            size = strlen(v);
         }
     }
 
