@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <memory>
 #include <vector>
+#include "codegen/ir_base_builder.h"
 #include "gtest/gtest.h"
 #include "storage/codec.h"
 #include "storage/type_ir_builder.h"
@@ -117,6 +118,13 @@ void RunEncode(int8_t** output_ptr) {
         schema.push_back(column);
     }
 
+    {
+        ::fesql::type::ColumnDef column;
+        column.set_type(::fesql::type::kVarchar);
+        column.set_name("col6");
+        schema.push_back(column);
+    }
+
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_encode", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
@@ -137,11 +145,32 @@ void RunEncode(int8_t** output_ptr) {
     outputs.insert(std::make_pair(
         3, ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(64.1))));
     outputs.insert(std::make_pair(4, builder.getInt64(64)));
+    ::llvm::Type* str_type = NULL;
+    bool ok = GetLLVMType(entry_block, ::fesql::type::kVarchar, &str_type);
+    ASSERT_TRUE(ok);
+    ::llvm::Value* string_ref = builder.CreateAlloca(str_type);
+    outputs.insert(std::make_pair(5, string_ref));
+
+    ::llvm::Value* data_ptr_ptr =
+        builder.CreateStructGEP(str_type, string_ref, 1);
+    std::string hello = "hello";
+    ::llvm::StringRef hello_ref(hello);
+    ::llvm::Value* str_val = builder.CreateGlobalStringPtr(hello_ref);
+    ::llvm::Value* cast_data_ptr_ptr = builder.CreatePointerCast(
+        data_ptr_ptr, str_val->getType()->getPointerTo());
+    builder.CreateStore(str_val, cast_data_ptr_ptr, false);
+
+    ::llvm::Value* size = builder.getInt32(5);
+    ::llvm::Value* size_ptr = builder.CreateStructGEP(str_type, string_ref, 0);
+    ::llvm::Value* cast_type_size_ptr =
+        builder.CreatePointerCast(size_ptr, size->getType()->getPointerTo());
+    builder.CreateStore(size, cast_type_size_ptr, false);
+
     BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, &schema,
                                                   entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
-    bool ok = buf_encoder_builder.BuildEncode(arg0);
+    ok = buf_encoder_builder.BuildEncode(arg0);
     ASSERT_TRUE(ok);
     builder.CreateRetVoid();
     m->print(::llvm::errs(), NULL);
@@ -611,12 +640,16 @@ TEST_F(BufIRBuilderTest, encode_ir_builder) {
     bool ok = ptr != NULL;
     ASSERT_TRUE(ok);
     uint32_t size = *reinterpret_cast<uint32_t*>(ptr + 2);
-    ASSERT_EQ(size, 33);
+    ASSERT_EQ(size, 39);
     ASSERT_EQ(16, *reinterpret_cast<int16_t*>(ptr + 7));
     ASSERT_EQ(32, *reinterpret_cast<int32_t*>(ptr + 9));
     ASSERT_EQ(32.1f, *reinterpret_cast<float*>(ptr + 13));
     ASSERT_EQ(64.1, *reinterpret_cast<double*>(ptr + 17));
     ASSERT_EQ(64, *reinterpret_cast<int64_t*>(ptr + 25));
+    ASSERT_EQ(34, *reinterpret_cast<int8_t*>(ptr + 33));
+    char* data = reinterpret_cast<char*>(ptr + 34);
+    std::string val(data, 39 - 34);
+    ASSERT_EQ("hello", val);
     free(ptr);
 }
 
