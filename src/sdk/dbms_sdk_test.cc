@@ -290,7 +290,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
             "    column3 int NOT NULL,\n"
             "    column4 string NOT NULL,\n"
             "    column5 int NOT NULL,\n"
-            "    index(key=(column4))\n"
+            "    index(key=(column4), ts=column2)\n"
             ");";
 
         db.name = "db_1";
@@ -393,7 +393,7 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
             "    column3 int NOT NULL,\n"
             "    column4 string NOT NULL,\n"
             "    column5 int NOT NULL,\n"
-            "    index(key=(column4))\n"
+            "    index(key=(column4), ts=column2)\n"
             ");";
 
         db.name = "db_1";
@@ -413,7 +413,7 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
             "create table test4(\n"
             "    column1 int NOT NULL,\n"
             "    column2 timestamp NOT NULL,\n"
-            "    index(key=(column4))\n"
+            "    index(key=(column1), ts=column2)\n"
             ");";
 
         db.name = "db_1";

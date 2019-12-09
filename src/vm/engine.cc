@@ -102,7 +102,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
         LOG(WARNING) << "fail to find table with tid " << scan_op->tid;
         return -1;
     }
-    std::unique_ptr<::fesql::storage::TableIterator> it = status->table->NewIterator();
+    std::unique_ptr<::fesql::storage::TableIterator> it =
+        status->table->NewIterator();
     it->SeekToFirst();
     uint32_t min = limit;
     if (min > limit_op->limit) {

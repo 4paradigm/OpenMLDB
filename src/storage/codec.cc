@@ -32,6 +32,7 @@ static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kInt32, sizeof(int32_t)},
     {::fesql::type::kFloat, sizeof(float)},
     {::fesql::type::kInt64, sizeof(int64_t)},
+    {::fesql::type::kTimestamp, sizeof(int64_t)},
     {::fesql::type::kDouble, sizeof(double)}};
 
 static inline uint8_t GetAddrLength(uint32_t size) {
@@ -176,6 +177,14 @@ bool RowBuilder::AppendInt16(int16_t val) {
     if (!Check(::fesql::type::kInt16)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int16_t*>(ptr)) = val;
+    cnt_++;
+    return true;
+}
+
+bool RowBuilder::AppendTimestamp(int64_t val) {
+    if (!Check(::fesql::type::kTimestamp)) return false;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
+    *(reinterpret_cast<int64_t*>(ptr)) = val;
     cnt_++;
     return true;
 }
@@ -365,6 +374,10 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
     return 0;
 }
 
+int32_t RowView::GetTimestamp(uint32_t idx, int64_t* val) {
+    return GetInt64(idx, val);
+}    
+
 int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
     if (val == NULL) {
         LOG(WARNING) << "output val is null";
@@ -445,6 +458,7 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
             if (ret == 0) *val = tmp_val;
             break;
         }
+        case ::fesql::type::kTimestamp:                            
         case ::fesql::type::kInt64: {
             int64_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
@@ -498,6 +512,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
         case ::fesql::type::kInt32:
             *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32Field(row, offset);
             break;
+        case ::fesql::type::kTimestamp:                            
         case ::fesql::type::kInt64:
             *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64Field(row, offset);
             break;

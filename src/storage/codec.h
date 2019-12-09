@@ -42,6 +42,7 @@ class RowBuilder {
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
     bool AppendInt64(int64_t val);
+    bool AppendTimestamp(int64_t val);
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const char* val, uint32_t length);
@@ -73,6 +74,7 @@ class RowView {
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
     int32_t GetInt64(uint32_t idx, int64_t* val);
+    int32_t GetTimestamp(uint32_t idx, int64_t* val);
     int32_t GetInt16(uint32_t idx, int16_t* val);
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
