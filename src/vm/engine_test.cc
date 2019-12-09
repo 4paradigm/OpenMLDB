@@ -35,9 +35,8 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "vm/table_mgr.h"
 #include "storage/codec.h"
-
+#include "vm/table_mgr.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -68,6 +67,11 @@ class EngineTest : public ::testing::Test {};
 void BuildBuf(int8_t** buf, uint32_t* size) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col0");
+    }
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kInt32);
@@ -102,9 +106,10 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
     }
 
     storage::RowBuilder builder(table.columns());
-    uint32_t total_size = builder.CalTotalLength(1);
+    uint32_t total_size = builder.CalTotalLength(2);
     int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
     builder.SetBuffer(ptr, total_size);
+    builder.AppendString("0", 1);
     builder.AppendInt32(32);
     builder.AppendInt16(16);
     builder.AppendFloat(2.1f);
@@ -119,9 +124,13 @@ TEST_F(EngineTest, test_normal) {
     int8_t* row1 = NULL;
     uint32_t size1 = 0;
     BuildBuf(&row1, &size1);
-
     std::shared_ptr<TableStatus> status(new TableStatus());
     status->table_def.set_name("t1");
+    {
+        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col0");
+    }
     {
         ::fesql::type::ColumnDef* column = status->table_def.add_columns();
         column->set_type(::fesql::type::kInt32);
@@ -164,7 +173,8 @@ TEST_F(EngineTest, test_normal) {
     TableMgrImpl table_mgr(status);
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
-        "d\nend\n%%sql\nSELECT test(col1,col1), col2 , col6 FROM t1 limit 10;";
+        "d\nend\n%%sql\nSELECT col0, test(col1,col1), col2 , col6 FROM t1 "
+        "limit 10;";
     Engine engine(&table_mgr);
     RunSession session;
     base::Status get_status;

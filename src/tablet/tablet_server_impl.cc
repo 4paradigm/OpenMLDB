@@ -20,8 +20,8 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 #include "base/strings.h"
 
 namespace fesql {
@@ -234,7 +234,6 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         status->set_msg("fail to run sql");
         return;
     }
-    DLOG(INFO) << "buf size " << buf.size();
     // TODO(wangtaize) opt the result buf
     std::vector<int8_t*>::iterator it = buf.begin();
     for (; it != buf.end(); ++it) {

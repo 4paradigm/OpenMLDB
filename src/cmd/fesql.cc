@@ -220,6 +220,13 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
                     t.add(std::to_string(value));
                     break;
                 }
+                case fesql::sdk::kTypeString: {
+                    char *data = NULL;
+                    uint32_t size = 0;
+                    it->GetString(i, &data, &size);
+                    t.add(std::string(data, size));
+                    break;
+                }
                 default: {
                     t.add("NA");
                 }
@@ -354,7 +361,7 @@ void HandleSQLScript(
                 if (0 != status.code) {
                     return;
                 }
-                std::cout << "Insert success";
+                std::cout << "Insert success" << std::endl;
                 return;
             }
             case fesql::node::kFnList:
