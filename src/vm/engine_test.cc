@@ -163,6 +163,10 @@ TEST_F(EngineTest, test_normal) {
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col6");
     }
+    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col0");
+    index->set_second_key("col15");
     std::unique_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, status->table_def));
     ASSERT_TRUE(table->Init());
