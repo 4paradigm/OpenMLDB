@@ -145,27 +145,12 @@ void RunEncode(int8_t** output_ptr) {
     outputs.insert(std::make_pair(
         3, ::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(64.1))));
     outputs.insert(std::make_pair(4, builder.getInt64(64)));
-    ::llvm::Type* str_type = NULL;
-    bool ok = GetLLVMType(entry_block, ::fesql::type::kVarchar, &str_type);
-    ASSERT_TRUE(ok);
-    ::llvm::Value* string_ref = builder.CreateAlloca(str_type);
-    outputs.insert(std::make_pair(5, string_ref));
 
-    ::llvm::Value* data_ptr_ptr =
-        builder.CreateStructGEP(str_type, string_ref, 1);
     std::string hello = "hello";
-    ::llvm::StringRef hello_ref(hello);
-    ::llvm::Value* str_val = builder.CreateGlobalStringPtr(hello_ref);
-    ::llvm::Value* cast_data_ptr_ptr = builder.CreatePointerCast(
-        data_ptr_ptr, str_val->getType()->getPointerTo());
-    builder.CreateStore(str_val, cast_data_ptr_ptr, false);
-
-    ::llvm::Value* size = builder.getInt32(5);
-    ::llvm::Value* size_ptr = builder.CreateStructGEP(str_type, string_ref, 0);
-    ::llvm::Value* cast_type_size_ptr =
-        builder.CreatePointerCast(size_ptr, size->getType()->getPointerTo());
-    builder.CreateStore(size, cast_type_size_ptr, false);
-
+    ::llvm::Value* string_ref = NULL;
+    bool ok = GetConstFeString(hello, entry_block, &string_ref);
+    ASSERT_TRUE(ok);
+    outputs.insert(std::make_pair(5, string_ref));
     BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, &schema,
                                                   entry_block);
     Function::arg_iterator it = fn->arg_begin();

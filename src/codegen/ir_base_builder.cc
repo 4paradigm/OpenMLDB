@@ -16,8 +16,8 @@
  */
 
 #include "codegen/ir_base_builder.h"
-#include <vector>
 #include <string>
+#include <vector>
 #include "glog/logging.h"
 
 namespace fesql {
@@ -76,6 +76,34 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
             return false;
         }
     }
+}
+
+bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
+                      ::llvm::Value** output) {
+    if (block == NULL || output == NULL) {
+        LOG(WARNING) << "the output ptr or block is NULL ";
+        return false;
+    }
+    ::llvm::Type* str_type = NULL;
+    bool ok = GetLLVMType(block, ::fesql::type::kVarchar, &str_type);
+    if (!ok) return false;
+    ::llvm::IRBuilder<> builder(block);
+    ::llvm::Value* string_ref = builder.CreateAlloca(str_type);
+    ::llvm::Value* data_ptr_ptr =
+        builder.CreateStructGEP(str_type, string_ref, 1);
+    ::llvm::StringRef val_ref(val);
+    ::llvm::Value* str_val = builder.CreateGlobalStringPtr(val_ref);
+    ::llvm::Value* cast_data_ptr_ptr = builder.CreatePointerCast(
+        data_ptr_ptr, str_val->getType()->getPointerTo());
+    builder.CreateStore(str_val, cast_data_ptr_ptr, false);
+
+    ::llvm::Value* size = builder.getInt32(val.size());
+    ::llvm::Value* size_ptr = builder.CreateStructGEP(str_type, string_ref, 0);
+    ::llvm::Value* cast_type_size_ptr =
+        builder.CreatePointerCast(size_ptr, size->getType()->getPointerTo());
+    builder.CreateStore(size, cast_type_size_ptr, false);
+    *output = string_ref;
+    return true;
 }
 
 bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
