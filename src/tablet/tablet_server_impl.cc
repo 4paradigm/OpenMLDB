@@ -109,8 +109,7 @@ void TabletServerImpl::Insert(RpcController* ctrl, const InsertRequest* request,
 
     DLOG(INFO) << "put key " << request->key() << " value "
                << base::DebugString(request->row());
-    bool ok = table->table->Put(request->key(), request->ts(),
-                                request->row().c_str(), request->row().size());
+    bool ok = table->table->Put(request->row().c_str(), request->row().size());
     if (!ok) {
         status->set_code(common::kTablePutFailed);
         status->set_msg("fail to put row");

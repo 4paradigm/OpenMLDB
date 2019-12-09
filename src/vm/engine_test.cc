@@ -116,17 +116,11 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
 }
 
 TEST_F(EngineTest, test_normal) {
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table("t1", 1, 1, 1));
-    ASSERT_TRUE(table->Init());
     int8_t* row1 = NULL;
     uint32_t size1 = 0;
     BuildBuf(&row1, &size1);
 
-    ASSERT_TRUE(table->Put("k1", 1, reinterpret_cast<char*>(row1), size1));
-    ASSERT_TRUE(table->Put("k1", 2, reinterpret_cast<char*>(row1), size1));
     std::shared_ptr<TableStatus> status(new TableStatus());
-    status->table = std::move(table);
     status->table_def.set_name("t1");
     {
         ::fesql::type::ColumnDef* column = status->table_def.add_columns();
@@ -160,6 +154,12 @@ TEST_F(EngineTest, test_normal) {
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col6");
     }
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
+    status->table = std::move(table);
 
     TableMgrImpl table_mgr(status);
     const std::string sql =
