@@ -225,17 +225,7 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
     ::llvm::ConstantInt* llvm_offse = builder.getInt32(offset);
     return BuildLoadOffset(builder, row_ptr, llvm_offse, llvm_type, output);
 }
-bool BufIRBuilder::GetFieldOffset(const std::string& name, uint32_t& offset,
-                                  ::fesql::type::Type& fe_type) {
-    Types::iterator it = types_.find(name);
-    if (it == types_.end()) {
-        LOG(WARNING) << "no column " << name << " in table " << table_->name();
-        return false;
-    }
-    fe_type = it->second.first;
-    offset = it->second.second;
-    return true;
-}
+
 
 BufNativeIRBuilder::BufNativeIRBuilder(::fesql::type::TableDef* table,
                                        ::llvm::BasicBlock* block,
@@ -276,7 +266,9 @@ BufNativeIRBuilder::BufNativeIRBuilder(::fesql::type::TableDef* table,
 
 BufNativeIRBuilder::~BufNativeIRBuilder() {}
 
-bool BufNativeIRBuilder::BuildGetFiledOffset(const std::string &name, uint32_t *offset, ::fesql::type::Type* fe_type) {
+bool BufNativeIRBuilder::BuildGetFiledOffset(const std::string& name,
+                                             uint32_t* offset,
+                                             ::fesql::type::Type* fe_type) {
     if (nullptr == offset || nullptr == fe_type) {
         LOG(WARNING) << "input args have null";
         return false;

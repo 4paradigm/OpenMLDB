@@ -19,6 +19,7 @@
 #define SRC_VM_OP_H_
 
 #include <string>
+#include <utility>
 #include <vector>
 #include "proto/type.pb.h"
 
@@ -35,7 +36,7 @@ enum OpType {
 struct OpNode {
     virtual ~OpNode() {}
     OpType type;
-    std::vector<std::pair<int32_t ,int8_t*>> output;
+    std::vector<std::pair<int32_t, int8_t*>> output;
     std::vector<OpNode*> children;
 };
 

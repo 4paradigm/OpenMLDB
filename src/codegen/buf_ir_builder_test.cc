@@ -582,8 +582,7 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
             retTy = Type::getVoidTy(*ctx);
     }
     Function* fn = Function::Create(
-        FunctionType::get(
-            retTy, {Type::getInt8PtrTy(*ctx)}, false),
+        FunctionType::get(retTy, {Type::getInt8PtrTy(*ctx)}, false),
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
@@ -693,14 +692,12 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
     if (!is_void) {
         T(*decode)
-        (int8_t*) =
-            reinterpret_cast<T (*)(int8_t*)>(load_fn_jit.getAddress());
+        (int8_t*) = reinterpret_cast<T (*)(int8_t*)>(load_fn_jit.getAddress());
         ASSERT_EQ(expected, decode(window));
 
     } else {
         void (*decode)(int8_t*) =
-            reinterpret_cast<void (*)(int8_t*)>(
-                load_fn_jit.getAddress());
+            reinterpret_cast<void (*)(int8_t*)>(load_fn_jit.getAddress());
         decode(window);
     }
 }
@@ -876,7 +873,7 @@ void BuildWindow(int8_t** buf) {
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size=total_size});
+        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -890,7 +887,7 @@ void BuildWindow(int8_t** buf) {
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size=total_size});
+        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -904,7 +901,7 @@ void BuildWindow(int8_t** buf) {
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size=total_size});
+        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -918,12 +915,13 @@ void BuildWindow(int8_t** buf) {
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size=total_size});
+        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
     {
         storage::RowBuilder builder(table.columns());
         std::string str =
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "a";
         uint32_t total_size = builder.CalTotalLength(str.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
@@ -933,7 +931,7 @@ void BuildWindow(int8_t** buf) {
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size=total_size});
+        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
 
     ::fesql::storage::WindowIteratorImpl* w =

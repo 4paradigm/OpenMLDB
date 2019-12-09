@@ -37,9 +37,7 @@ class BufIRBuilder {
 
     ~BufIRBuilder();
 
-    bool GetFieldOffset(
-        const std::string& name, uint32_t& offset,
-        ::fesql::type::Type& type);  // NOLINT (runtime/references)
+
     // get reference from row
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
                        ::llvm::Value* row_size, ::llvm::Value** output);
@@ -109,24 +107,28 @@ class BufNativeIRBuilder {
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
                        ::llvm::Value* row_size, ::llvm::Value** output);
 
-    bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr, ::llvm::Value** output);
+    bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
+                     ::llvm::Value** output);
 
-    bool BuildGetFiledOffset(const std::string &name, uint32_t *offset, ::fesql::type::Type* fe_type);
+    bool BuildGetFiledOffset(const std::string& name, uint32_t* offset,
+                             ::fesql::type::Type* fe_type);
+
  private:
     bool BuildGetPrimaryField(const std::string& fn_name,
                               ::llvm::Value* row_ptr, uint32_t offset,
                               ::llvm::Type* type, ::llvm::Value** output);
 
-    bool BuildGetPrimaryCol(const std::string& fn_name,
-                            ::llvm::Value* row_ptr, uint32_t offset,
-                            fesql::type::Type type, ::llvm::Value** output);
+    bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
+                            uint32_t offset, fesql::type::Type type,
+                            ::llvm::Value** output);
     bool BuildGetStringField(uint32_t offset, uint32_t next_str_field_offset,
                              ::llvm::Value* row_ptr, ::llvm::Value* size,
                              ::llvm::Value** output);
 
-    bool BuildGetStringCol(uint32_t offset, uint32_t next_str_field_offset,fesql::type::Type type,
-                             ::llvm::Value* row_ptr,
-                             ::llvm::Value** output);
+    bool BuildGetStringCol(uint32_t offset, uint32_t next_str_field_offset,
+                           fesql::type::Type type, ::llvm::Value* row_ptr,
+                           ::llvm::Value** output);
+
  private:
     ::fesql::type::TableDef* const table_;
     ::llvm::BasicBlock* block_;

@@ -7,8 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 #include "udf/udf.h"
-#include "jit/jit.h"
 #include <stdint.h>
+#include "jit/jit.h"
 #include "proto/type.pb.h"
 #include "storage/type_ir_builder.h"
 #include "storage/window.h"
@@ -70,7 +70,8 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "sum_double", reinterpret_cast<void *>(&v1::sum_double));
     AddSymbol(jd, mi, "sum_float", reinterpret_cast<void *>(&v1::sum_float));
 }
-bool AddSymbol(::llvm::orc::JITDylib &jd, ::llvm::orc::MangleAndInterner &mi,
+bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
+               ::llvm::orc::MangleAndInterner &mi,  // NOLINT
                const std::string &fn_name, void *fn_ptr) {
     return ::fesql::vm::FeSQLJIT::AddSymbol(jd, mi, fn_name, fn_ptr);
 }

@@ -21,17 +21,7 @@
 #include <string>
 #include <vector>
 #include "codegen/fn_ir_builder.h"
-#include "codegen/fn_let_ir_builder.h"
 #include "gtest/gtest.h"
-#include "storage/codec.h"
-#include "storage/type_ir_builder.h"
-#include "storage/window.h"
-#include "udf/udf.h"
-
-#include "parser/parser.h"
-#include "plan/planner.h"
-
-#include "ir_base_builder.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -45,6 +35,12 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
+#include "storage/codec.h"
+#include "storage/type_ir_builder.h"
+#include "storage/window.h"
+#include "udf/udf.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -70,7 +66,7 @@ class FnLetIRBuilderTest : public ::testing::Test {
  public:
     FnLetIRBuilderTest() { GetSchema(table_); }
     ~FnLetIRBuilderTest() {}
-    void GetSchema(::fesql::type::TableDef& table) {
+    void GetSchema(::fesql::type::TableDef& table) {  // NOLINT
         table.set_name("t1");
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
@@ -202,7 +198,6 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     ASSERT_EQ("1", str);
     free(buf);
 }
-
 
 TEST_F(FnLetIRBuilderTest, test_simple_project) {
     ::fesql::node::NodePointVector list;
@@ -497,7 +492,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_udf_project) {
                                       J->getDataLayout());
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
-    ::fesql::udf::InitUDFSymbol(jd,mi);
+    ::fesql::udf::InitUDFSymbol(jd, mi);
     {
         ::llvm::StringRef symbol("malloc");
         ::llvm::orc::SymbolMap symbol_map;

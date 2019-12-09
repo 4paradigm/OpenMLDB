@@ -10,6 +10,7 @@
 #ifndef SRC_UDF_UDF_H_
 #define SRC_UDF_UDF_H_
 #include <stdint.h>
+#include <string>
 #include "proto/type.pb.h"
 #include "storage/type_ir_builder.h"
 namespace fesql {
@@ -32,7 +33,8 @@ double sum_double(int8_t *input);
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);               // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,            // NOLINT
                    ::llvm::orc::MangleAndInterner &mi);  // NOLINT
-bool AddSymbol(::llvm::orc::JITDylib &jd, ::llvm::orc::MangleAndInterner &mi,
+bool AddSymbol(::llvm::orc::JITDylib &jd,                // NOLINT
+               ::llvm::orc::MangleAndInterner &mi,       // NOLINT
                const std::string &fn_name, void *fn_ptr);
 void RegisterUDFToModule(::llvm::Module *m);
 

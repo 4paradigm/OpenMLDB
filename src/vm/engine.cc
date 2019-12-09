@@ -20,8 +20,8 @@
 #include <utility>
 #include <vector>
 #include "base/strings.h"
-#include "storage/window.h"
 #include "codegen/buf_ir_builder.h"
+#include "storage/window.h"
 
 namespace fesql {
 namespace vm {
@@ -123,8 +123,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                     DLOG(INFO) << "value "
                                << base::DebugString(value.data(), value.size());
                     DLOG(INFO) << "key " << it->GetKey() << " row size ";
-                    scan_op->output.push_back(std::make_pair(value.size(), reinterpret_cast<int8_t*>(
-                        const_cast<char*>(value.data()))));
+                    scan_op->output.push_back(std::make_pair(
+                        value.size(), reinterpret_cast<int8_t*>(
+                                          const_cast<char*>(value.data()))));
                     it->Next();
                 }
                 break;
@@ -140,17 +141,17 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 uint32_t order_offset;
                 ::fesql::type::Type order_type;
                 if (project_op->window_agg) {
-                    codegen::BufNativeIRBuilder buf_ir_builder(&status->table_def,
-                                                         nullptr, nullptr);
-                    if (!buf_ir_builder.BuildGetFiledOffset(project_op->w.keys[0],
-                                                       &key_offset, &key_type)) {
+                    codegen::BufNativeIRBuilder buf_ir_builder(
+                        &status->table_def, nullptr, nullptr);
+                    if (!buf_ir_builder.BuildGetFiledOffset(
+                            project_op->w.keys[0], &key_offset, &key_type)) {
                         LOG(WARNING) << "can not find partition "
                                      << project_op->w.keys[0];
                         return 1;
                     }
-                    if (!buf_ir_builder.BuildGetFiledOffset(project_op->w.orders[0],
-                                                       &order_offset,
-                                                       &order_type)) {
+                    if (!buf_ir_builder.BuildGetFiledOffset(
+                            project_op->w.orders[0], &order_offset,
+                            &order_type)) {
                         LOG(WARNING)
                             << "can not find order " << project_op->w.orders[0];
                         return 1;
@@ -159,8 +160,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 int32_t (*udf)(int8_t*, int32_t, int8_t**) =
                     (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
                 OpNode* prev = project_op->children[0];
-                for (auto pair: prev->output) {
-                    int8_t *row = pair.second;
+                for (auto pair : prev->output) {
+                    int8_t* row = pair.second;
                     int8_t* output = NULL;
                     int32_t output_size = 0;
                     // handle window
@@ -171,7 +172,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             switch (key_type) {
                                 case fesql::type::kInt32: {
                                     const int32_t value = *(
-                                        reinterpret_cast<const int32_t *>(ptr));
+                                        reinterpret_cast<const int32_t*>(ptr));
                                     key_name = std::to_string(value);
                                     break;
                                 }
@@ -221,7 +222,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             window_it->Next();
                         }
                         fesql::storage::WindowIteratorImpl impl(window);
-                        uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl), pair.first, &output);
+                        uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl),
+                                           pair.first, &output);
                         if (ret != 0) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
@@ -235,7 +237,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             return 1;
                         }
                     }
-                    project_op->output.push_back(std::make_pair(output_size,output));
+                    project_op->output.push_back(
+                        std::make_pair(output_size, output));
                 }
                 break;
             }
@@ -261,7 +264,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
         }
         index++;
         if (index == op_size) {
-            for(auto pair: op->output) {
+            for (auto pair : op->output) {
                 buf.push_back(pair.second);
             }
         }

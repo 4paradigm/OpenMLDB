@@ -19,9 +19,9 @@
 #include <string>
 #include <vector>
 #include "codegen/fn_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "glog/logging.h"
-#include "ir_base_builder.h"
 #include "proto/common.pb.h"
 
 namespace fesql {
@@ -50,30 +50,29 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
-::llvm::Function* ExprIRBuilder::GetFuncion(
-    const std::string& fn_name, const ::fesql::node::DataType& type, common::Status& status) {
+::llvm::Function* ExprIRBuilder::GetFuncion(const std::string& fn_name,
+                                            const ::fesql::node::DataType& type,
+                                            common::Status& status) {
     ::llvm::Function* fn = module_->getFunction(fn_name);
 
     if (nullptr == fn) {
-        if(::fesql::node::kTypeVoid != type) {
+        if (::fesql::node::kTypeVoid != type) {
             const std::string suffix = fesql::node::DataTypeName(type);
             fn = module_->getFunction(fn_name + "_" + suffix);
             if (nullptr == fn) {
                 status.set_code(common::kCallMethodError);
-                status.set_msg("fail to find func with name " +
-                    fn_name + "_" + suffix);
+                status.set_msg("fail to find func with name " + fn_name + "_" +
+                               suffix);
                 return fn;
             }
         } else {
             status.set_code(common::kCallMethodError);
-            status.set_msg("fail to find func with name " +
-                fn_name);
+            status.set_msg("fail to find func with name " + fn_name);
             return fn;
         }
     }
     return fn;
 }
-
 
 bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                           ::llvm::Value** output) {

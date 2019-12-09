@@ -7,8 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 
-#ifndef SRC_BASE_WINDOW_H_
-#define SRC_BASE_WINDOW_H_
+#ifndef SRC_STORAGE_WINDOW_H_
+#define SRC_STORAGE_WINDOW_H_
 
 #include <cstdint>
 #include <vector>
@@ -47,18 +47,12 @@ class IteratorImpl : public IteratorV<V> {
 
     IteratorImpl(const std::vector<V> &list, int start, int end)
         : list_(list), start_(start), end_(end), pos_(start) {}
-    ~IteratorImpl(){};
-    bool Valid() const {
-        return pos_ < end_;
-    }
+    ~IteratorImpl() {}
+    bool Valid() const { return pos_ < end_; }
 
-    V Next() {
-        return list_[pos_++];
-    }
+    V Next() { return list_[pos_++]; }
 
-    void reset() {
-        pos_ = start_;
-    }
+    void reset() { pos_ = start_; }
 
     IteratorImpl<V> *range(int start, int end) {
         if (start > end || end < start_ || start > end_) {
@@ -79,8 +73,7 @@ class WindowIteratorImpl : public IteratorImpl<Row> {
  public:
     explicit WindowIteratorImpl(const std::vector<Row> &list)
         : IteratorImpl<Row>(list) {}
-    WindowIteratorImpl(const std::vector<Row> &list, int start,
-                                           int end)
+    WindowIteratorImpl(const std::vector<Row> &list, int start, int end)
         : IteratorImpl<Row>(list, start, end) {}
 };
 
@@ -91,17 +84,11 @@ class WrapIteratorImpl : public IteratorImpl<V> {
         : IteratorImpl<V>(), root_(root) {}
 
     ~WrapIteratorImpl() {}
-    bool Valid() const {
-        return root_.Valid();
-    }
+    bool Valid() const { return root_.Valid(); }
 
-    V Next() {
-        return GetField(root_.Next());
-    }
+    V Next() { return GetField(root_.Next()); }
     virtual V GetField(R row) = 0;
-    void reset() {
-        root_.reset();
-    }
+    void reset() { root_.reset(); }
 
     IteratorImpl<V> *range(int start, int end) {
         return root_.range(start, end);
@@ -114,8 +101,7 @@ class WrapIteratorImpl : public IteratorImpl<V> {
 template <class V>
 class ColumnIteratorImpl : public WrapIteratorImpl<V, Row> {
  public:
-    ColumnIteratorImpl(const IteratorImpl<Row> &impl,
-                       uint32_t offset)
+    ColumnIteratorImpl(const IteratorImpl<Row> &impl, uint32_t offset)
         : WrapIteratorImpl<V, Row>(impl), offset_(offset) {}
 
     V GetField(const Row row) {
@@ -140,9 +126,10 @@ class ColumnStringIteratorImpl
         int32_t addr_space = fesql::storage::v1::GetAddrSpace(row.size);
         DLOG(INFO) << "row size: " << row.size << " addr_space: " << addr_space;
         fesql::storage::StringRef value;
-        fesql::storage::v1::GetStrField(row.buf, str_field_offset_,
-                                        next_str_field_offset_, str_start_offset_,
-                                        addr_space, reinterpret_cast<int8_t **>(&(value.data)), &(value.size));
+        fesql::storage::v1::GetStrField(
+            row.buf, str_field_offset_, next_str_field_offset_,
+            str_start_offset_, addr_space,
+            reinterpret_cast<int8_t **>(&(value.data)), &(value.size));
         DLOG(INFO) << "value.size " << value.size;
         return value;
     }
@@ -156,4 +143,4 @@ class ColumnStringIteratorImpl
 }  // namespace storage
 }  // namespace fesql
 
-#endif  // SRC_BASE_WINDOW_H_
+#endif  // SRC_STORAGE_WINDOW_H_

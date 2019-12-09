@@ -268,7 +268,8 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     for (uint32_t i = 0; i < output_schema.size(); i++) {
         ::fesql::type::ColumnDef& column = output_schema[i];
 
-        DLOG(INFO) << "output : " << column.name() << " offset: " << output_size;
+        DLOG(INFO) << "output : " << column.name()
+                   << " offset: " << output_size;
         switch (column.type()) {
             case ::fesql::type::kInt16: {
                 output_size += 2;

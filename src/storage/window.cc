@@ -10,7 +10,6 @@
 namespace fesql {
 namespace storage {
 
-
 ColumnStringIteratorImpl::ColumnStringIteratorImpl(
     const IteratorImpl<Row> &impl, int32_t str_field_offset,
     int32_t next_str_field_offset, int32_t str_start_offset)
@@ -19,5 +18,5 @@ ColumnStringIteratorImpl::ColumnStringIteratorImpl(
       next_str_field_offset_(next_str_field_offset),
       str_start_offset_(str_start_offset) {}
 
-}
-}
+}  // namespace storage
+}  // namespace fesql

@@ -190,7 +190,7 @@ class MergePlanNode : public MultiChildPlanNode {
 
 class WindowPlanNode : public LeafPlanNode {
  public:
-    WindowPlanNode(int id)
+    explicit WindowPlanNode(int id)
         : LeafPlanNode(kPlanTypeWindow),
           id(id),
           name(""),

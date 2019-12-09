@@ -94,7 +94,7 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
         }
     }
 }
-bool GetLLVMListType(::llvm::LLVMContext& ctx,
+bool GetLLVMListType(::llvm::LLVMContext& ctx,  // NOLINT
                      const ::fesql::type::Type& v_type, ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
@@ -216,27 +216,33 @@ bool GetFullType(::llvm::Type* type, ::fesql::type::Type* base,
                 *base = fesql::type::kList;
                 *v1_type = fesql::type::kInt16;
                 return true;
-            } else if (type->getStructName().startswith_lower("fe.list_int32_ref")) {
+            } else if (type->getStructName().startswith_lower(
+                           "fe.list_int32_ref")) {
                 *base = fesql::type::kList;
                 *v1_type = fesql::type::kInt32;
                 return true;
-            } else if (type->getStructName().startswith_lower("fe.list_int64_ref")) {
+            } else if (type->getStructName().startswith_lower(
+                           "fe.list_int64_ref")) {
                 *base = fesql::type::kList;
                 *v1_type = fesql::type::kInt64;
                 return true;
-            } else if (type->getStructName().startswith_lower("fe.list_float_ref")) {
+            } else if (type->getStructName().startswith_lower(
+                           "fe.list_float_ref")) {
                 *base = fesql::type::kList;
                 *v1_type = fesql::type::kFloat;
                 return true;
-            } else if (type->getStructName().startswith_lower("fe.list_double_ref")) {
+            } else if (type->getStructName().startswith_lower(
+                           "fe.list_double_ref")) {
                 *base = fesql::type::kList;
                 *v1_type = fesql::type::kDouble;
                 return true;
-            } else if (type->getStructName().startswith_lower("fe.list_string_ref")) {
+            } else if (type->getStructName().startswith_lower(
+                           "fe.list_string_ref")) {
                 *base = fesql::type::kList;
                 *v1_type = fesql::type::kVarchar;
                 return true;
-            } else if (type->getStructName().startswith_lower("fe.string_ref")) {
+            } else if (type->getStructName().startswith_lower(
+                           "fe.string_ref")) {
                 *base = ::fesql::type::kVarchar;
                 return true;
             }
@@ -246,7 +252,7 @@ bool GetFullType(::llvm::Type* type, ::fesql::type::Type* base,
             return false;
         }
         case ::llvm::Type::PointerTyID: {
-            //TODO(wtx): why is pinter is string type
+            // TODO(wtx): why is pinter is string type
             *base = ::fesql::type::kVarchar;
             return true;
         }
@@ -364,5 +370,5 @@ bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
     return true;
 }
 
-}  // namespace fesql
+}  // namespace codegen
 }  // namespace fesql

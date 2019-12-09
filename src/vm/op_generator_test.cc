@@ -177,8 +177,9 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     ASSERT_EQ(-86400000 * 2, project_op->w.start_offset);
     ASSERT_EQ(-1000, project_op->w.end_offset);
 }
-//
-//TEST_F(OpGeneratorTest, test_multi_windowp_project) {
+// TODO(chenjing): multi window merge
+
+// TEST_F(OpGeneratorTest, test_multi_windowp_project) {
 //    std::shared_ptr<TableStatus> status(new TableStatus());
 //    status->table_def = table_def;
 //    TableMgrImpl table_mgr(status);
@@ -189,11 +190,9 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
 //        "SELECT sum(col1) OVER w1 as w1_col1_sum, sum(col1) OVER w2 as "
 //        "w2_col1_sum FROM t1 "
 //        "WINDOW "
-//        "w1 AS (PARTITION BY col2 ORDER BY `TS` RANGE BETWEEN 1d PRECEDING AND "
-//        "1s PRECEDING), "
-//        "w2 AS (PARTITION BY col3 ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND "
-//        "1s PRECEDING) "
-//        "limit 10;";
+//        "w1 AS (PARTITION BY col2 ORDER BY `TS` RANGE BETWEEN 1d PRECEDING AND
+//        " "1s PRECEDING), " "w2 AS (PARTITION BY col3 ORDER BY `TS` RANGE
+//        BETWEEN 2d PRECEDING AND " "1s PRECEDING) " "limit 10;";
 //
 //    std::cout << sql;
 //    ::fesql::node::NodeManager manager;

@@ -69,7 +69,8 @@ TEST_F(UDFTest, UDF_sum_test) {
                                               2, fesql::type::kInt32, &col));
     fesql::storage::ListRef list_ref;
     list_ref.iterator = col;
-    ASSERT_EQ(1 + 11 + 111, fesql::udf::v1::sum_int32(reinterpret_cast<int8_t *>(&list_ref)));
+    ASSERT_EQ(1 + 11 + 111,
+              fesql::udf::v1::sum_int32(reinterpret_cast<int8_t*>(&list_ref)));
 }
 
 }  // namespace udf
