@@ -26,7 +26,6 @@ using ::fesql::base::Slice;
 
 struct DataBlock {
     uint32_t ref_cnt;
-    uint32_t size;
     char data[];
 };
 

@@ -7,6 +7,7 @@
 
 #include "storage/segment.h"
 #include <mutex>  //NOLINT
+#include "storage/codec.h"
 
 namespace fesql {
 namespace storage {
@@ -121,7 +122,9 @@ void TableIterator::Next() {
 }
 
 Slice TableIterator::GetValue() const {
-    return Slice(ts_it_->GetValue()->data, ts_it_->GetValue()->size);
+    return Slice(
+        ts_it_->GetValue()->data,
+        RowView::GetSize(reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
 }
 
 uint64_t TableIterator::GetKey() const { return ts_it_->GetKey(); }
