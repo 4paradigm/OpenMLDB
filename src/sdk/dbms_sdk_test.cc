@@ -268,7 +268,8 @@ TEST_F(DBMSSdkTest, TableAPITest) {
             "    column2 timestamp NOT NULL,\n"
             "    column3 int NOT NULL,\n"
             "    column4 string NOT NULL,\n"
-            "    column5 int NOT NULL\n"
+            "    column5 int NOT NULL,\n"
+            "    index(key=(column1), ts=column2)\n"
             ");";
 
         db.name = "db_1";
