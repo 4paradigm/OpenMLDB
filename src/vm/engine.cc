@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 #include "base/strings.h"
-#include "base/window.h"
+#include "storage/window.h"
 #include "codegen/buf_ir_builder.h"
 
 namespace fesql {
@@ -140,17 +140,17 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 uint32_t order_offset;
                 ::fesql::type::Type order_type;
                 if (project_op->window_agg) {
-                    codegen::BufIRBuilder buf_ir_builder(&status->table_def,
+                    codegen::BufNativeIRBuilder buf_ir_builder(&status->table_def,
                                                          nullptr, nullptr);
-                    if (!buf_ir_builder.GetFieldOffset(project_op->w.keys[0],
-                                                       key_offset, key_type)) {
+                    if (!buf_ir_builder.BuildGetFiledOffset(project_op->w.keys[0],
+                                                       &key_offset, &key_type)) {
                         LOG(WARNING) << "can not find partition "
                                      << project_op->w.keys[0];
                         return 1;
                     }
-                    if (!buf_ir_builder.GetFieldOffset(project_op->w.orders[0],
-                                                       order_offset,
-                                                       order_type)) {
+                    if (!buf_ir_builder.BuildGetFiledOffset(project_op->w.orders[0],
+                                                       &order_offset,
+                                                       &order_type)) {
                         LOG(WARNING)
                             << "can not find order " << project_op->w.orders[0];
                         return 1;
@@ -171,7 +171,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             switch (key_type) {
                                 case fesql::type::kInt32: {
                                     const int32_t value = *(
-                                        reinterpret_cast<const int64_t*>(ptr));
+                                        reinterpret_cast<const int32_t *>(ptr));
                                     key_name = std::to_string(value);
                                     break;
                                 }
@@ -209,10 +209,10 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                         // scan window with single key
                         ::fesql::storage::TableIterator* window_it =
                             status->table->NewIterator(key_name);
-                        std::vector<::fesql::base::Row> window;
+                        std::vector<::fesql::storage::Row> window;
                         window_it->SeekToFirst();
                         while (window_it->Valid()) {
-                            ::fesql::base::Row w_row;
+                            ::fesql::storage::Row w_row;
                             ::fesql::storage::Slice value =
                                 window_it->GetValue();
                             w_row.buf = reinterpret_cast<int8_t*>(
@@ -220,7 +220,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             window.push_back(w_row);
                             window_it->Next();
                         }
-                        fesql::base::WindowIteratorImpl impl(window);
+                        fesql::storage::WindowIteratorImpl impl(window);
                         uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl), pair.first, &output);
                         if (ret != 0) {
                             LOG(WARNING) << "fail to run udf " << ret;

@@ -6,10 +6,10 @@
  * Date: 2019/11/25
  *--------------------------------------------------------------------------
  **/
-#include "base/window.h"
+#include "storage/window.h"
 #include "gtest/gtest.h"
 namespace fesql {
-namespace base {
+namespace storage {
 class WindowIteratorTest : public ::testing::Test {
  public:
     WindowIteratorTest() {}
@@ -94,7 +94,7 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
     ASSERT_TRUE(impl.Valid());
 }
 
-}  // namespace base
+}  // namespace storage
 }  // namespace fesql
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

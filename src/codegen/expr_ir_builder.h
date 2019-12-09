@@ -55,9 +55,8 @@ class ExprIRBuilder {
 
     bool BuildStructExpr(const ::fesql::node::StructExpr* node,
                          ::llvm::Value** output);
-    ::llvm::Function* GetFuncion(const std::string& col);
     ::llvm::Function* GetFuncion(const std::string& col,
-                                 const ::fesql::node::DataType& type);
+                                 const ::fesql::node::DataType& type, common::Status& status); // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;

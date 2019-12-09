@@ -8,13 +8,15 @@
  **/
 #include "udf/udf.h"
 #include <stdint.h>
-#include "base/window.h"
 #include "proto/type.pb.h"
+#include "storage/type_ir_builder.h"
+#include "storage/window.h"
 namespace fesql {
 namespace udf {
-using base::ColumnIteratorImpl;
-using base::Row;
-using base::WindowIteratorImpl;
+using fesql::storage::ColumnIteratorImpl;
+using fesql::storage::ColumnStringIteratorImpl;
+using fesql::storage::Row;
+using fesql::storage::WindowIteratorImpl;
 template <class V>
 int32_t current_time() {
     return 5;
@@ -32,47 +34,22 @@ V sum(int8_t *input) {
     if (nullptr == input) {
         return result;
     }
-    ColumnIteratorImpl<V> *col = (ColumnIteratorImpl<V> *)(input);
-
+    ::fesql::storage::ListRef *list_ref =
+        reinterpret_cast<::fesql::storage::ListRef *>(input);
+    if (nullptr == list_ref->iterator) {
+        return result;
+    }
+    ColumnIteratorImpl<V> *col = (ColumnIteratorImpl<V> *)(list_ref->iterator);
     while (col->Valid()) {
         result += col->Next();
     }
     return result;
 }
 
+int16_t sum_int16(int8_t *input) { return sum<int16_t>(input); }
 int32_t sum_int32(int8_t *input) { return sum<int32_t>(input); }
-
 int64_t sum_int64(int8_t *input) { return sum<int64_t>(input); }
-
-int8_t *col(int8_t *input, int32_t offset, int32_t type_id) {
-    fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
-    if (nullptr == input) {
-        return nullptr;
-    }
-    WindowIteratorImpl *w = reinterpret_cast<WindowIteratorImpl *>(input);
-    switch (type) {
-        case fesql::type::kInt32: {
-            ColumnIteratorImpl<int> *impl =
-                new ColumnIteratorImpl<int>(*w, offset);
-            return reinterpret_cast<int8_t *>(impl);
-        }
-        case fesql::type::kInt16: {
-            ColumnIteratorImpl<int16_t> *impl =
-                new ColumnIteratorImpl<int16_t>(*w, offset);
-            return reinterpret_cast<int8_t *>(impl);
-        }
-        case fesql::type::kInt64: {
-            ColumnIteratorImpl<int64_t> *impl =
-                new ColumnIteratorImpl<int64_t>(*w, offset);
-            return reinterpret_cast<int8_t *> (impl);
-        }
-        default: {
-            return nullptr;
-        }
-            // TODO(chenjing): handle more type
-    }
-    return nullptr;
-}
-
+float sum_float(int8_t *input) { return sum<float>(input); }
+double sum_double(int8_t *input) { return sum<double>(input); }
 }  // namespace udf
 }  // namespace fesql

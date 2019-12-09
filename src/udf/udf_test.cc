@@ -12,11 +12,11 @@
 #include <stdint.h>
 #include <algorithm>
 #include <vector>
-#include "base/window.h"
+#include "storage/window.h"
 namespace fesql {
 namespace udf {
-using base::ColumnIteratorImpl;
-using base::WindowIteratorImpl;
+using storage::ColumnIteratorImpl;
+using storage::WindowIteratorImpl;
 
 class UDFTest : public ::testing::Test {
  public:
@@ -33,7 +33,7 @@ class UDFTest : public ::testing::Test {
             *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
             *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
             *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-            rows.push_back(base::Row{.buf = ptr});
+            rows.push_back(storage::Row{.buf = ptr});
         }
 
         {
@@ -43,7 +43,7 @@ class UDFTest : public ::testing::Test {
             *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
             *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
             *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-            rows.push_back(base::Row{.buf = ptr});
+            rows.push_back(storage::Row{.buf = ptr});
         }
 
         {
@@ -53,20 +53,23 @@ class UDFTest : public ::testing::Test {
             *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
             *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
             *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-            rows.push_back(base::Row{.buf = ptr});
+            rows.push_back(storage::Row{.buf = ptr});
         }
     }
 
  protected:
-    std::vector<base::Row> rows;
+    std::vector<storage::Row> rows;
 };
 
 TEST_F(UDFTest, UDF_sum_test) {
     WindowIteratorImpl impl(rows);
-    int8_t* col = reinterpret_cast<int8_t*>(
-        ::fesql::udf::col(
-        reinterpret_cast<int8_t*>(&impl), 2, fesql::type::kInt32));
-    ASSERT_EQ(1 + 11 + 111, fesql::udf::sum_int32(col));
+    int8_t* col = NULL;
+
+    ASSERT_EQ(0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl),
+                                              2, fesql::type::kInt32, &col));
+    fesql::storage::ListRef list_ref;
+    list_ref.iterator = col;
+    ASSERT_EQ(1 + 11 + 111, fesql::udf::sum_int32(reinterpret_cast<int8_t *>(&list_ref)));
 }
 
 }  // namespace udf

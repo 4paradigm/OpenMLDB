@@ -276,6 +276,21 @@ BufNativeIRBuilder::BufNativeIRBuilder(::fesql::type::TableDef* table,
 
 BufNativeIRBuilder::~BufNativeIRBuilder() {}
 
+bool BufNativeIRBuilder::BuildGetFiledOffset(const std::string &name, uint32_t *offset, ::fesql::type::Type* fe_type) {
+    if (nullptr == offset || nullptr == fe_type) {
+        LOG(WARNING) << "input args have null";
+        return false;
+    }
+    Types::iterator it = types_.find(name);
+    if (it == types_.end()) {
+        LOG(WARNING) << "no column " << name << " in table " << table_->name();
+        return false;
+    }
+    // TODO(wangtaize) support null check
+    *fe_type = it->second.first;
+    *offset = it->second.second;
+    return true;
+}
 bool BufNativeIRBuilder::BuildGetField(const std::string& name,
                                        ::llvm::Value* row_ptr,
                                        ::llvm::Value* row_size,
@@ -285,15 +300,11 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
         return false;
     }
 
-    Types::iterator it = types_.find(name);
-    if (it == types_.end()) {
-        LOG(WARNING) << "no column " << name << " in table " << table_->name();
-        return false;
-    }
-    // TODO(wangtaize) support null check
-    ::fesql::type::Type& fe_type = it->second.first;
+    ::fesql::type::Type fe_type;
+    uint32_t offset;
+    BuildGetFiledOffset(name, &offset, &fe_type);
+
     ::llvm::IRBuilder<> builder(block_);
-    uint32_t offset = it->second.second;
     switch (fe_type) {
         case ::fesql::type::kInt16: {
             llvm::Type* i16_ty = builder.getInt16Ty();
@@ -428,6 +439,143 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
     // TODO(wangtaize) add status check
     builder.CreateCall(callee, call_args_ref);
     *output = string_ref;
+    return true;
+}
+
+bool BufNativeIRBuilder::BuildGetCol(const std::string& name,
+                                     ::llvm::Value* window_ptr,
+                                     ::llvm::Value** output) {
+    if (window_ptr == NULL || output == NULL) {
+        LOG(WARNING) << "input args have null";
+        return false;
+    }
+
+    Types::iterator it = types_.find(name);
+    if (it == types_.end()) {
+        LOG(WARNING) << "no column " << name << " in table " << table_->name();
+        return false;
+    }
+    // TODO(wangtaize) support null check
+    ::fesql::type::Type& fe_type = it->second.first;
+    ::llvm::IRBuilder<> builder(block_);
+    uint32_t offset = it->second.second;
+    switch (fe_type) {
+        case ::fesql::type::kInt16:
+        case ::fesql::type::kInt32:
+        case ::fesql::type::kInt64:
+        case ::fesql::type::kFloat:
+        case ::fesql::type::kDouble: {
+            return BuildGetPrimaryCol("fesql_storage_get_col", window_ptr,
+                                      offset, fe_type, output);
+        }
+        case ::fesql::type::kVarchar: {
+            uint32_t next_offset = 0;
+            auto nit = next_str_pos_.find(offset);
+            if (nit != next_str_pos_.end()) {
+                next_offset = nit->second;
+            }
+            DLOG(INFO) << "get string with offset " << offset << " next offset "
+                       << next_offset << " for col " << name;
+            return BuildGetStringCol(offset, next_offset, fe_type, window_ptr,
+                                     output);
+        }
+        default: {
+            return false;
+        }
+    }
+}
+bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
+                                            ::llvm::Value* row_ptr,
+                                            uint32_t offset,
+                                            fesql::type::Type type,
+                                            ::llvm::Value** output) {
+    if (row_ptr == NULL || output == NULL) {
+        LOG(WARNING) << "input args have null ptr";
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+    ::llvm::Type* i32_ty = builder.getInt32Ty();
+
+    ::llvm::Type* list_ref_type = NULL;
+    bool ok = GetLLVMListType(block_->getContext(), type, &list_ref_type);
+    if (!ok) {
+        LOG(WARNING) << "fail to get list type";
+        return false;
+    }
+    // alloca memory on stack
+    ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
+    ::llvm::Value* data_ptr_ptr =
+        builder.CreateStructGEP(list_ref_type, list_ref, 0);
+
+    ::llvm::Value* val_offset = builder.getInt32(offset);
+    ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(type));
+
+    ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
+        fn_name, i32_ty, i8_ptr_ty, i32_ty, i32_ty, i8_ptr_ty);
+    std::vector<::llvm::Value*> call_args;
+    call_args.push_back(row_ptr);
+    call_args.push_back(val_offset);
+    call_args.push_back(val_type_id);
+    call_args.push_back(data_ptr_ptr);
+
+    ::llvm::ArrayRef<::llvm::Value*> call_args_ref(call_args);
+    builder.CreateCall(callee, call_args_ref);
+    // TODO(wangtaize) add status check
+    list_ref = builder.CreatePointerCast(list_ref, list_ref_type);
+    *output = list_ref;
+    return true;
+}
+bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
+                                           uint32_t next_str_field_offset,
+                                           fesql::type::Type type,
+                                           ::llvm::Value* window_ptr,
+                                           ::llvm::Value** output) {
+    if (window_ptr == NULL || output == NULL) {
+        LOG(WARNING) << "input args have null ptr";
+        return false;
+    }
+
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Type* i32_ty = builder.getInt32Ty();
+    ::llvm::Type* i8_ty = builder.getInt8Ty();
+
+    ::llvm::Type* list_ref_type = NULL;
+    bool ok = GetLLVMListType(block_->getContext(), type, &list_ref_type);
+    if (!ok) {
+        LOG(WARNING) << "fail to get list type";
+        return false;
+    }
+    // alloca memory on stack
+    ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
+
+    ::llvm::Value* data_ptr_ptr =
+        builder.CreateStructGEP(list_ref_type, list_ref, 0);
+    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+
+    // get str field declear
+    ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
+        "fesql_storage_get_str_col", i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty,
+        i32_ty, i8_ptr_ty->getPointerTo());
+
+    ::llvm::Value* str_offset = builder.getInt32(offset);
+    ::llvm::Value* next_str_offset = builder.getInt32(next_str_field_offset);
+    ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(type));
+    // get the data ptr
+    data_ptr_ptr =
+        builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty->getPointerTo());
+    // get the size ptr
+    std::vector<::llvm::Value*> call_args;
+    call_args.push_back(window_ptr);
+    call_args.push_back(str_offset);
+    call_args.push_back(next_str_offset);
+    call_args.push_back(builder.getInt32(str_field_start_offset_));
+    call_args.push_back(val_type_id);
+    call_args.push_back(data_ptr_ptr);
+    ::llvm::ArrayRef<::llvm::Value*> call_args_ref(call_args);
+    // TODO(wangtaize) add status check
+    builder.CreateCall(callee, call_args_ref);
+    *output = list_ref;
     return true;
 }
 

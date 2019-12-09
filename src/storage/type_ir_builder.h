@@ -35,9 +35,33 @@ struct String {
     uint32_t size;
     char* data;
 };
-
 struct Timestamp {
     uint64_t ts;
+};
+
+struct ListRef {
+    int8_t* iterator;
+};
+struct ColInt16Ref {
+    int8_t* iterator;
+};
+struct ColInt32Ref {
+    int8_t* iterator;
+};
+struct ColInt64Ref {
+    int8_t* iterator;
+};
+struct ColFloatRef {
+    int8_t* iterator;
+};
+struct ColDoubleRef {
+    int8_t* iterator;
+};
+struct ListStringRef {
+    int8_t* iterator;
+};
+struct ListTimestampRef {
+    int8_t* iterator;
 };
 
 namespace v1 {
@@ -162,8 +186,11 @@ inline double GetDoubleField(const int8_t* row, uint32_t offset) {
 int32_t GetStrField(const int8_t* row, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size);
+int32_t GetCol(int8_t *input, int32_t offset, int32_t type_id, int8_t** data);
+int32_t GetStrCol(int8_t *input, int32_t str_field_offset,
+            int32_t next_str_field_offset, int32_t str_start_offset,
+             int32_t type_id, int8_t** data);
 }  // namespace v1
-
 void InitCodecSymbol(::llvm::orc::JITDylib& jd, // NOLINT
                      ::llvm::orc::MangleAndInterner& mi); // NOLINT
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
