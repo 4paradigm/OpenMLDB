@@ -50,6 +50,7 @@ void FeSQLJIT::ReleaseVModule(::llvm::orc::VModuleKey key) {
     LOG(INFO) << "release module with key " << key;
     ES->releaseVModule(key);
 }
+
 bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd, const std::string& name,
                          void* fn_ptr) {
     if (fn_ptr == NULL) {
@@ -57,17 +58,7 @@ bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd, const std::string& name,
         return false;
     }
     ::llvm::orc::MangleAndInterner mi(getExecutionSession(), getDataLayout());
-    ::llvm::StringRef symbol(name);
-    ::llvm::orc::SymbolMap symbol_map;
-    ::llvm::JITEvaluatedSymbol jit_symbol(
-        ::llvm::pointerToJITTargetAddress(fn_ptr), ::llvm::JITSymbolFlags());
-    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        LOG(WARNING) << "fail to add symbol " << name;
-        return false;
-    }
-    return true;
+    return FeSQLJIT::AddSymbol(jd, mi, name, fn_ptr);
 }
 
 bool FeSQLJIT::AddSymbol(const std::string& name, void* fn_ptr) {
@@ -80,6 +71,23 @@ bool FeSQLJIT::AddSymbol(const std::string& name, void* fn_ptr) {
 }
 
 void FeSQLJIT::Init() { AddSymbol("malloc", reinterpret_cast<void*>(&malloc)); }
+bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
+                         ::llvm::orc::MangleAndInterner& mi,
+                         const std::string& fn_name, void* fn_ptr) {
+    ::llvm::StringRef symbol(fn_name);
+    ::llvm::JITEvaluatedSymbol jit_symbol(
+        ::llvm::pointerToJITTargetAddress(fn_ptr), ::llvm::JITSymbolFlags());
+    ::llvm::orc::SymbolMap symbol_map;
+    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
+    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
+    if (err) {
+        LOG(WARNING) << "fail to add symbol " << fn_name;
+        return false;
+    } else {
+        LOG(INFO) << "add fn symbol " << fn_name << " done";
+        return true;
+    }
+}
 
 }  // namespace vm
 }  // namespace fesql

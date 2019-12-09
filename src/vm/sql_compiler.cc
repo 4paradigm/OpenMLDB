@@ -36,37 +36,6 @@ SQLCompiler::SQLCompiler(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
 
 SQLCompiler::~SQLCompiler() {}
 
-void SQLCompiler::RegisterUDF(::llvm::Module* m) {
-    ::llvm::Type* i16_ty = ::llvm::Type::getInt16Ty(m->getContext());
-    ::llvm::Type* i32_ty = ::llvm::Type::getInt32Ty(m->getContext());
-    ::llvm::Type* i64_ty = ::llvm::Type::getInt64Ty(m->getContext());
-    ::llvm::Type* float_ty = ::llvm::Type::getFloatTy(m->getContext());
-    ::llvm::Type* double_ty = ::llvm::Type::getDoubleTy(m->getContext());
-    ::llvm::Type* i8_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
-
-    m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
-    m->getOrInsertFunction("sum_int16", i16_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_int32", i32_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_int64", i64_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_float", float_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_double", double_ty, i8_ptr_ty);
-    m->getOrInsertFunction("col", i8_ptr_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty);
-}
-void SQLCompiler::RegisterDyLib(FeSQLJIT* jit, ::llvm::orc::JITDylib& jd) {
-    jit->AddSymbol(jd, "inc_int32",
-                   reinterpret_cast<void*>(&fesql::udf::inc_int32));
-
-    jit->AddSymbol(jd, "sum_int16",
-                   reinterpret_cast<void*>(&fesql::udf::sum_int16));
-    jit->AddSymbol(jd, "sum_int32",
-                   reinterpret_cast<void*>(&fesql::udf::sum_int32));
-    jit->AddSymbol(jd, "sum_int64",
-                   reinterpret_cast<void*>(&fesql::udf::sum_int64));
-    jit->AddSymbol(jd, "sum_double",
-                   reinterpret_cast<void*>(&fesql::udf::sum_double));
-    jit->AddSymbol(jd, "sum_float",
-                   reinterpret_cast<void*>(&fesql::udf::sum_float));
-}
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     LOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::NodeManager nm;
@@ -78,8 +47,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     OpGenerator op_generator(table_mgr_);
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
-
-    RegisterUDF(m.get());
+    ::fesql::udf::RegisterUDFToModule(m.get());
     ok = op_generator.Gen(trees, ctx.db, m.get(), &ctx.ops, status);
     // TODO(wangtaize) clean ctx
     if (!ok) {
@@ -102,7 +70,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     storage::InitCodecSymbol(ctx.jit.get());
-    RegisterDyLib(ctx.jit.get(), ctx.jit->getMainJITDylib());
+    udf::InitUDFSymbol(ctx.jit.get());
     std::vector<OpNode*>::iterator it = ctx.ops.ops.begin();
     for (; it != ctx.ops.ops.end(); ++it) {
         OpNode* op_node = *it;

@@ -10,7 +10,7 @@ add_test(jit_test jit_test --gtest_output=xml:${CMAKE_BINARY_DIR}/jit_test.xml)
 list(APPEND test_list jit_test)
 
 add_executable(op_generator_test op_generator_test.cc)
-target_link_libraries(op_generator_test ${FESQL_LIBS} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+target_link_libraries(op_generator_test fesql_vm fesql_udf ${FESQL_LIBS} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(op_generator_test op_generator_test
     --gtest_output=xml:${CMAKE_BINARY_DIR}/op_generator_test.xml)
 list(APPEND test_list op_generator_test)

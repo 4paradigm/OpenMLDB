@@ -393,15 +393,16 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_EQ(1 + 2, *((int32_t*)(output[1] + 7)));
     ASSERT_EQ(1.1f + 2.2f, *((float*)(output[1] + 7 + 4)));
     ASSERT_EQ(11.1 + 22.2, *((double*)(output[1] + 7 + 4 + 4)));
-    ASSERT_EQ(5u + 5u, *((int16_t *)(output[1] + 7 + 4 + 4 + 8)));
-    ASSERT_EQ(1L + 2L, *((int64_t *)(output[1] + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(5u + 5u, *((int16_t*)(output[1] + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L, *((int64_t*)(output[1] + 7 + 4 + 4 + 8 + 2)));
 
-    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *(reinterpret_cast<int32_t*>(output[2] + 2)));
-    ASSERT_EQ(3+4+5, *((int32_t*)(output[4] + 7)));
-    ASSERT_EQ(3.3f+4.4f+5.5f, *((float*)(output[4] + 7 + 4)));
-    ASSERT_EQ(33.3+44.4+55.5, *((double*)(output[4] + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u + 55u, *((int16_t *)(output[4] + 7 + 4 + 4 + 8)));
-    ASSERT_EQ(1L + 2L + 3L, *((int64_t *)(output[4] + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output[2] + 2)));
+    ASSERT_EQ(3 + 4 + 5, *((int32_t*)(output[4] + 7)));
+    ASSERT_EQ(3.3f + 4.4f + 5.5f, *((float*)(output[4] + 7 + 4)));
+    ASSERT_EQ(33.3 + 44.4 + 55.5, *((double*)(output[4] + 7 + 4 + 4)));
+    ASSERT_EQ(55u + 55u + 55u, *((int16_t*)(output[4] + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L + 3L, *((int64_t*)(output[4] + 7 + 4 + 4 + 8 + 2)));
     //    ASSERT_EQ(3+4, *((int32_t*)(output[3] + 2)));
     //    ASSERT_EQ(3+4+5, *((int32_t*)(output[4] + 2)));
     //    ASSERT_EQ(4+5+6, *((int32_t*)(output[5] + 2)));

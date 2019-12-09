@@ -254,106 +254,54 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t** data) {
 
 }  // namespace v1
 
-void AddSymbol(::llvm::orc::JITDylib& jd,           // NOLINT
-               ::llvm::orc::MangleAndInterner& mi,  // NOLINT
-               const std::string& fn_name, void* fn_ptr) {
-    ::llvm::StringRef symbol(fn_name);
-    ::llvm::JITEvaluatedSymbol jit_symbol(
-        ::llvm::pointerToJITTargetAddress(fn_ptr), ::llvm::JITSymbolFlags());
-    ::llvm::orc::SymbolMap symbol_map;
-    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        LOG(WARNING) << "fail to add symbol " << fn_name;
-    } else {
-        LOG(INFO) << "add fn symbol " << fn_name << " done";
-    }
-}
 
 void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                      ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
     // decode
-    AddSymbol(jd, mi, "fesql_storage_get_int16_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_int16_field",
               reinterpret_cast<void*>(&v1::GetInt16Field));
-    AddSymbol(jd, mi, "fesql_storage_get_int32_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_int32_field",
               reinterpret_cast<void*>(&v1::GetInt32Field));
-    AddSymbol(jd, mi, "fesql_storage_get_int64_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_int64_field",
               reinterpret_cast<void*>(&v1::GetInt64Field));
-    AddSymbol(jd, mi, "fesql_storage_get_float_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_float_field",
               reinterpret_cast<void*>(&v1::GetFloatField));
-    AddSymbol(jd, mi, "fesql_storage_get_double_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_double_field",
               reinterpret_cast<void*>(&v1::GetDoubleField));
-    AddSymbol(jd, mi, "fesql_storage_get_str_addr_space",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_str_addr_space",
               reinterpret_cast<void*>(&v1::GetAddrSpace));
-    AddSymbol(jd, mi, "fesql_storage_get_str_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_str_field",
               reinterpret_cast<void*>(&v1::GetStrField));
-    AddSymbol(jd, mi, "fesql_storage_get_col",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_col",
               reinterpret_cast<void*>(&v1::GetCol));
-    AddSymbol(jd, mi, "fesql_storage_get_str_col",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_str_col",
               reinterpret_cast<void*>(&v1::GetStrCol));
 
     // encode
-    AddSymbol(jd, mi, "fesql_storage_encode_int16_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_int16_field",
               reinterpret_cast<void*>(&v1::AppendInt16));
 
-    AddSymbol(jd, mi, "fesql_storage_encode_int32_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_int32_field",
               reinterpret_cast<void*>(&v1::AppendInt32));
 
-    AddSymbol(jd, mi, "fesql_storage_encode_int64_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_int64_field",
               reinterpret_cast<void*>(&v1::AppendInt64));
 
-    AddSymbol(jd, mi, "fesql_storage_encode_float_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_float_field",
               reinterpret_cast<void*>(&v1::AppendFloat));
 
-    AddSymbol(jd, mi, "fesql_storage_encode_double_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_double_field",
               reinterpret_cast<void*>(&v1::AppendDouble));
 
-    AddSymbol(jd, mi, "fesql_storage_encode_string_field",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_string_field",
               reinterpret_cast<void*>(&v1::AppendString));
-    AddSymbol(jd, mi, "fesql_storage_encode_calc_size",
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_calc_size",
               reinterpret_cast<void*>(&v1::CalcTotalLength));
 }
 
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
-    jit_ptr->AddSymbol("fesql_storage_get_int16_field",
-                       reinterpret_cast<void*>(&v1::GetInt16Field));
-    jit_ptr->AddSymbol("fesql_storage_get_int32_field",
-                       reinterpret_cast<void*>(&v1::GetInt32Field));
-    jit_ptr->AddSymbol("fesql_storage_get_int64_field",
-                       reinterpret_cast<void*>(&v1::GetInt64Field));
-    jit_ptr->AddSymbol("fesql_storage_get_float_field",
-                       reinterpret_cast<void*>(&v1::GetFloatField));
-    jit_ptr->AddSymbol("fesql_storage_get_double_field",
-                       reinterpret_cast<void*>(&v1::GetDoubleField));
-    jit_ptr->AddSymbol("fesql_storage_get_str_addr_space",
-                       reinterpret_cast<void*>(&v1::GetAddrSpace));
-    jit_ptr->AddSymbol("fesql_storage_get_str_field",
-                       reinterpret_cast<void*>(&v1::GetStrField));
-    jit_ptr->AddSymbol("fesql_storage_get_col",
-                       reinterpret_cast<void*>(&v1::GetCol));
-    jit_ptr->AddSymbol("fesql_storage_get_str_col",
-                       reinterpret_cast<void*>(&v1::GetStrCol));
-
-    jit_ptr->AddSymbol("fesql_storage_encode_int16_field",
-                       reinterpret_cast<void*>(&v1::AppendInt16));
-
-    jit_ptr->AddSymbol("fesql_storage_encode_int32_field",
-                       reinterpret_cast<void*>(&v1::AppendInt32));
-
-    jit_ptr->AddSymbol("fesql_storage_encode_int64_field",
-                       reinterpret_cast<void*>(&v1::AppendInt64));
-
-    jit_ptr->AddSymbol("fesql_storage_encode_float_field",
-                       reinterpret_cast<void*>(&v1::AppendFloat));
-
-    jit_ptr->AddSymbol("fesql_storage_encode_double_field",
-                       reinterpret_cast<void*>(&v1::AppendDouble));
-
-    jit_ptr->AddSymbol("fesql_storage_encode_string_field",
-                       reinterpret_cast<void*>(&v1::AppendString));
-
-    jit_ptr->AddSymbol("fesql_storage_encode_calc_size",
-                       reinterpret_cast<void*>(&v1::CalcTotalLength));
+    ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(), jit_ptr->getDataLayout());
+    InitCodecSymbol(jit_ptr->getMainJITDylib(), mi);
 }
 
 }  // namespace storage

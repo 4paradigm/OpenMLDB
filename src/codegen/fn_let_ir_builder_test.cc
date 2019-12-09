@@ -202,21 +202,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     ASSERT_EQ("1", str);
     free(buf);
 }
-void RegisterUDFToModule(::llvm::Module* m) {
-    ::llvm::Type* i16_ty = ::llvm::Type::getInt16Ty(m->getContext());
-    ::llvm::Type* i32_ty = ::llvm::Type::getInt32Ty(m->getContext());
-    ::llvm::Type* i64_ty = ::llvm::Type::getInt64Ty(m->getContext());
-    ::llvm::Type* float_ty = ::llvm::Type::getFloatTy(m->getContext());
-    ::llvm::Type* double_ty = ::llvm::Type::getDoubleTy(m->getContext());
-    ::llvm::Type* i8_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
-    m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
-    m->getOrInsertFunction("sum_int16", i16_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_int32", i32_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_int64", i64_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_float", float_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_double", double_ty, i8_ptr_ty);
-    m->getOrInsertFunction("col", i8_ptr_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty);
-}
+
 
 TEST_F(FnLetIRBuilderTest, test_simple_project) {
     ::fesql::node::NodePointVector list;
@@ -304,7 +290,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     auto m = make_unique<Module>("test_project", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RegisterUDFToModule(m.get());
+    ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
@@ -317,6 +303,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
                                       J->getDataLayout());
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::udf::InitUDFSymbol(jd, mi);
     {
         ::llvm::StringRef symbol("malloc");
         ::llvm::orc::SymbolMap symbol_map;
@@ -325,20 +312,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
             ::llvm::JITSymbolFlags());
         symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
         // add malloc
-        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-        if (err) {
-            ASSERT_TRUE(false);
-        }
-    }
-    {
-        ::llvm::StringRef symbol("inc_int32");
-        ::llvm::orc::SymbolMap symbol_map;
-        ::llvm::JITEvaluatedSymbol jit_symbol(
-            ::llvm::pointerToJITTargetAddress(
-                reinterpret_cast<void*>(&fesql::udf::inc_int32)),
-            ::llvm::JITSymbolFlags());
-        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-        // add inc_int32
         auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
         if (err) {
             ASSERT_TRUE(false);
@@ -511,7 +484,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_udf_project) {
     auto m = make_unique<Module>("test_project", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RegisterUDFToModule(m.get());
+    ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
@@ -524,6 +497,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_udf_project) {
                                       J->getDataLayout());
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::udf::InitUDFSymbol(jd,mi);
     {
         ::llvm::StringRef symbol("malloc");
         ::llvm::orc::SymbolMap symbol_map;
@@ -532,77 +506,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_udf_project) {
             ::llvm::JITSymbolFlags());
         symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
         // add malloc
-        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-        if (err) {
-            ASSERT_TRUE(false);
-        }
-    }
-    {
-        ::llvm::StringRef symbol("sum_int16");
-        ::llvm::orc::SymbolMap symbol_map;
-        ::llvm::JITEvaluatedSymbol jit_symbol(
-            ::llvm::pointerToJITTargetAddress(
-                reinterpret_cast<void*>(&fesql::udf::sum_int16)),
-            ::llvm::JITSymbolFlags());
-        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-        // add inc_int32
-        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-        if (err) {
-            ASSERT_TRUE(false);
-        }
-    }
-    {
-        ::llvm::StringRef symbol("sum_int32");
-        ::llvm::orc::SymbolMap symbol_map;
-        ::llvm::JITEvaluatedSymbol jit_symbol(
-            ::llvm::pointerToJITTargetAddress(
-                reinterpret_cast<void*>(&fesql::udf::sum_int32)),
-            ::llvm::JITSymbolFlags());
-        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-        // add inc_int32
-        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-        if (err) {
-            ASSERT_TRUE(false);
-        }
-    }
-    {
-        ::llvm::StringRef symbol("sum_int64");
-        ::llvm::orc::SymbolMap symbol_map;
-        ::llvm::JITEvaluatedSymbol jit_symbol(
-            ::llvm::pointerToJITTargetAddress(
-                reinterpret_cast<void*>(&fesql::udf::sum_int64)),
-            ::llvm::JITSymbolFlags());
-        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-        // add inc_int32
-        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-        if (err) {
-            ASSERT_TRUE(false);
-        }
-    }
-    {
-        ::llvm::StringRef symbol("sum_float");
-        ::llvm::orc::SymbolMap symbol_map;
-        ::llvm::JITEvaluatedSymbol jit_symbol(
-            ::llvm::pointerToJITTargetAddress(
-                reinterpret_cast<void*>(&fesql::udf::sum_float)),
-            ::llvm::JITSymbolFlags());
-        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-        // add inc_int32
-        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-        if (err) {
-            ASSERT_TRUE(false);
-        }
-    }
-
-    {
-        ::llvm::StringRef symbol("sum_double");
-        ::llvm::orc::SymbolMap symbol_map;
-        ::llvm::JITEvaluatedSymbol jit_symbol(
-            ::llvm::pointerToJITTargetAddress(
-                reinterpret_cast<void*>(&fesql::udf::sum_double)),
-            ::llvm::JITSymbolFlags());
-        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-        // add inc_int32
         auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
         if (err) {
             ASSERT_TRUE(false);
