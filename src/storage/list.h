@@ -251,7 +251,7 @@ void ArrayListNodeDeleter(ArrayListNode<K, V>* array) {
 
 template <class K, class V, class Comparator,
           class = typename std::enable_if<std::is_pod<K>::value &&
-                                          std::is_pod<V>::value>::type>
+                                          std::is_pod<V>::value>>
 // typename std::enable_if<std::is_pod<K>::value && std::is_pod<V>::value,
 // int>::type = 0>
 class ArrayList : public BaseList<K, V> {

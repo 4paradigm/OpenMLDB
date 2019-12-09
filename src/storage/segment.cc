@@ -5,62 +5,51 @@
 // Date 2019-11-01
 //
 
-#include <mutex>  //NOLINT
 #include "storage/segment.h"
+#include <mutex>  //NOLINT
 
 namespace fesql {
 namespace storage {
 
-constexpr uint8_t KEY_ENTRY_MAX_HEIGHT = 12;
-static const SliceComparator scmp;
 Segment::Segment() : entries_(NULL), mu_() {
-    entries_ = new KeyEntries(KEY_ENTRY_MAX_HEIGHT, 4, scmp);
+    entries_ = new KeyEntry(KEY_ENTRY_MAX_HEIGHT, 4, scmp);
 }
 
-Segment::~Segment() {}
-
-void Segment::Put(const Slice& key, uint64_t time, const char* data,
-                  uint32_t size) {
-    DataBlock* block = reinterpret_cast<DataBlock*>(malloc(sizeof(DataBlock) + size));
-    block->ref_cnt = 1;
-    memcpy(block->data, data, size);
-    Put(key, time, block);
-}
+Segment::~Segment() { delete entries_; }
 
 void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     void* entry = NULL;
     std::lock_guard<base::SpinMutex> lock(mu_);
     int ret = entries_->Get(key, entry);
     if (ret < 0 || entry == NULL) {
+        entry = reinterpret_cast<void*>(new TimeEntry(tcmp));
         char* pk = new char[key.size()];
         memcpy(pk, key.data(), key.size());
-        // need to delete memory when free node
         Slice skey(pk, key.size());
-        entry = reinterpret_cast<void*>(new KeyEntry());
         entries_->Insert(skey, entry);
     }
-    (reinterpret_cast<KeyEntry*>(entry))->entries.Insert(time, row);
+    reinterpret_cast<TimeEntry*>(entry)->Insert(time, row);
 }
 
 // Iterator
-TableIterator* Segment::NewIterator(const Slice& key) {
+std::unique_ptr<TableIterator> Segment::NewIterator(const Slice& key) {
     if (entries_ == NULL) {
-        return new TableIterator();
+        return std::unique_ptr<TableIterator>(new TableIterator());
     }
     void* entry = NULL;
     if (entries_->Get(key, entry) < 0 || entry == NULL) {
-        return new TableIterator();
+        return std::unique_ptr<TableIterator>(new TableIterator());
     }
-    return new TableIterator(
-        NULL, (reinterpret_cast<KeyEntry*>(entry))->entries.NewIterator());
+    return std::unique_ptr<TableIterator>(new TableIterator(
+        NULL, (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
 }
 
-TableIterator* Segment::NewIterator() {
+std::unique_ptr<TableIterator> Segment::NewIterator() {
     if (entries_ == NULL) {
-        return new TableIterator();
+        return std::unique_ptr<TableIterator>(new TableIterator());
     }
     Iterator<Slice, void*>* it = entries_->NewIterator();
-    return new TableIterator(it, NULL);
+    return std::unique_ptr<TableIterator>(new TableIterator(it, NULL));
 }
 
 TableIterator::TableIterator(Iterator<Slice, void*>* pk_it,
@@ -89,8 +78,8 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
         delete ts_it_;
         ts_it_ = NULL;
         while (pk_it_->Valid()) {
-            ts_it_ = (reinterpret_cast<KeyEntry*>(pk_it_->GetValue()))
-                         ->entries.NewIterator();
+            ts_it_ = (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
+                         ->NewIterator();
             ts_it_->SeekToFirst();
             if (ts_it_->Valid()) break;
             delete ts_it_;
@@ -120,8 +109,8 @@ void TableIterator::Next() {
         ts_it_ = NULL;
         pk_it_->Next();
         while (pk_it_->Valid()) {
-            ts_it_ = (reinterpret_cast<KeyEntry*>(pk_it_->GetValue()))
-                         ->entries.NewIterator();
+            ts_it_ = (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
+                         ->NewIterator();
             ts_it_->SeekToFirst();
             if (ts_it_->Valid()) break;
             delete ts_it_;
@@ -151,8 +140,8 @@ void TableIterator::SeekToFirst() {
         pk_it_->SeekToFirst();
         if (pk_it_->Valid()) {
             while (pk_it_->Valid()) {
-                ts_it_ = (reinterpret_cast<KeyEntry*>(pk_it_->GetValue()))
-                             ->entries.NewIterator();
+                ts_it_ = (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
+                             ->NewIterator();
                 ts_it_->SeekToFirst();
                 if (ts_it_->Valid()) return;
                 delete ts_it_;

@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
+#include "storage/codec.h"
 #include <unordered_map>
 #include <utility>
 #include "glog/logging.h"
 #include "storage/type_ir_builder.h"
-#include "storage/codec.h"
 
 namespace fesql {
 namespace storage {
@@ -86,6 +86,7 @@ bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
     *(reinterpret_cast<uint32_t*>(buf_ + VERSION_LENGTH)) = size;
     uint32_t bitmap_size = BitMapSize(schema_.size());
     memset(buf_ + HEADER_LENGTH, 0, bitmap_size);
+    cnt_ = 0;
     str_addr_length_ = GetAddrLength(size);
     str_offset_ = str_field_start_offset_ + str_addr_length_ * str_field_cnt_;
     return true;
@@ -428,6 +429,36 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
     return 0;
 }
 
+int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
+                            ::fesql::type::Type type, int64_t* val) {
+    int32_t ret = 0;
+    switch (type) {
+        case ::fesql::type::kInt16: {
+            int16_t tmp_val = 0;
+            ret = GetValue(row, idx, type, &tmp_val);
+            if (ret == 0) *val = tmp_val;
+            break;
+        }
+        case ::fesql::type::kInt32: {
+            int32_t tmp_val = 0;
+            GetValue(row, idx, type, &tmp_val);
+            if (ret == 0) *val = tmp_val;
+            break;
+        }
+        case ::fesql::type::kInt64: {
+            int64_t tmp_val = 0;
+            GetValue(row, idx, type, &tmp_val);
+            if (ret == 0) *val = tmp_val;
+            break;
+        }
+        default:
+            LOG(WARNING) << "type " << ::fesql::type::Type_Name(type)
+                         << " is not Integer";
+            return -1;
+    }
+    return ret;
+}
+
 int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
                           ::fesql::type::Type type, void* val) {
     if (schema_.size() == 0 || row == NULL) {
@@ -453,7 +484,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
     uint32_t offset = offset_vec_.at(idx);
     switch (type) {
         case ::fesql::type::kBool: {
-            int8_t v = v1::GetBoolField(row_, offset);
+            int8_t v = v1::GetBoolField(row, offset);
             if (v == 1) {
                 *(reinterpret_cast<bool*>(val)) = true;
             } else {
@@ -462,23 +493,19 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             break;
         }
         case ::fesql::type::kInt16:
-            *(reinterpret_cast<int16_t*>(val)) =
-                v1::GetInt16Field(row_, offset);
+            *(reinterpret_cast<int16_t*>(val)) = v1::GetInt16Field(row, offset);
             break;
         case ::fesql::type::kInt32:
-            *(reinterpret_cast<int32_t*>(val)) =
-                v1::GetInt32Field(row_, offset);
+            *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32Field(row, offset);
             break;
         case ::fesql::type::kInt64:
-            *(reinterpret_cast<int64_t*>(val)) =
-                v1::GetInt64Field(row_, offset);
+            *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64Field(row, offset);
             break;
         case ::fesql::type::kFloat:
-            *(reinterpret_cast<float*>(val)) = v1::GetFloatField(row_, offset);
+            *(reinterpret_cast<float*>(val)) = v1::GetFloatField(row, offset);
             break;
         case ::fesql::type::kDouble:
-            *(reinterpret_cast<double*>(val)) =
-                v1::GetDoubleField(row_, offset);
+            *(reinterpret_cast<double*>(val)) = v1::GetDoubleField(row, offset);
             break;
         default:
             return -1;
@@ -514,7 +541,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
     if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
         next_str_field_offset = field_offset + 1;
     }
-    return v1::GetStrField(row_, field_offset, next_str_field_offset,
+    return v1::GetStrField(row, field_offset, next_str_field_offset,
                            str_field_start_offset_, GetAddrLength(size),
                            reinterpret_cast<int8_t**>(val), length);
 }

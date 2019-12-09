@@ -10,19 +10,28 @@
 #include <atomic>
 #include <map>
 #include <memory>
-#include <vector>
 #include <string>
-#include "base/slice.h"
+#include <vector>
 #include "base/iterator.h"
+#include "base/slice.h"
 #include "base/spin_lock.h"
+#include "proto/type.pb.h"
 #include "storage/list.h"
 #include "storage/skiplist.h"
 
 namespace fesql {
 namespace storage {
 using ::fesql::base::Iterator;
-// the desc time comparator
 using ::fesql::base::Slice;
+
+struct DataBlock {
+    uint32_t ref_cnt;
+    uint32_t size;
+    char data[];
+};
+
+constexpr uint8_t KEY_ENTRY_MAX_HEIGHT = 12;
+
 struct TimeComparator {
     int operator()(const uint64_t& a, const uint64_t& b) const {
         if (a > b) {
@@ -40,13 +49,8 @@ struct SliceComparator {
     }
 };
 
-class Segment;
-
-struct DataBlock {
-    uint32_t ref_cnt;
-    uint32_t size;
-    char data[];
-};
+static constexpr SliceComparator scmp;
+static constexpr TimeComparator tcmp;
 
 class TableIterator {
  public:
@@ -67,40 +71,22 @@ class TableIterator {
     Iterator<Slice, void*>* pk_it_ = NULL;
     Iterator<uint64_t, DataBlock*>* ts_it_ = NULL;
 };
-const static TimeComparator tcmp;  // NOLINT
-typedef List<uint64_t, DataBlock*, TimeComparator> TimeEntries;
-typedef SkipList<Slice, void*, SliceComparator> KeyEntries;
 
-
-class KeyEntry {
- public:
-    KeyEntry() : entries(tcmp) {}
-    ~KeyEntry() {}
-
- public:
-    TimeEntries entries;
-    friend Segment;
-};
+using TimeEntry = List<uint64_t, DataBlock*, TimeComparator>;
+using KeyEntry = SkipList<Slice, void*, SliceComparator>;
 
 class Segment {
  public:
     Segment();
-    explicit Segment(uint8_t height);
     ~Segment();
-
-    // Put time data
-    void Put(const Slice& key, uint64_t time, const char* data, uint32_t size);
 
     void Put(const Slice& key, uint64_t time, DataBlock* row);
 
-    TableIterator* NewIterator();
-    TableIterator* NewIterator(const Slice& key);
-
-    KeyEntries* GetKeyEntries() { return entries_; }
+    std::unique_ptr<TableIterator> NewIterator();
+    std::unique_ptr<TableIterator> NewIterator(const Slice& key);
 
  private:
-    uint8_t key_entry_max_height_;
-    KeyEntries* entries_;
+    KeyEntry* entries_;
     base::SpinMutex mu_;
 };
 
