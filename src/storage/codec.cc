@@ -376,7 +376,7 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
 
 int32_t RowView::GetTimestamp(uint32_t idx, int64_t* val) {
     return GetInt64(idx, val);
-}    
+}
 
 int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
     if (val == NULL) {
@@ -458,7 +458,7 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
             if (ret == 0) *val = tmp_val;
             break;
         }
-        case ::fesql::type::kTimestamp:                            
+        case ::fesql::type::kTimestamp:
         case ::fesql::type::kInt64: {
             int64_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
@@ -512,7 +512,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
         case ::fesql::type::kInt32:
             *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32Field(row, offset);
             break;
-        case ::fesql::type::kTimestamp:                            
+        case ::fesql::type::kTimestamp:
         case ::fesql::type::kInt64:
             *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64Field(row, offset);
             break;

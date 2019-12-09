@@ -49,7 +49,6 @@ bool Table::Init() {
         st.name = table_def_.indexes(idx).name();
         if (col_map.find(table_def_.indexes(idx).second_key()) ==
             col_map.end()) {
-            printf("XXXXXXXXXX\n");
             return false;
         }
         st.ts_pos = col_map[table_def_.indexes(idx).second_key()];
