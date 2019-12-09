@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <string>
+#include "glog/logging.h"
 #include "base/hash.h"
 #include "base/slice.h"
 #include "storage/table.h"
@@ -21,7 +22,7 @@ Table::Table(uint32_t id, uint32_t pid, const TableDef& table_def)
     : id_(id),
       pid_(pid),
       table_def_(table_def),
-      row_view_(table_def.columns()) {}
+      row_view_(table_def_.columns()) {}
 
 Table::~Table() {
     if (segments_ != NULL) {
@@ -69,6 +70,10 @@ bool Table::Init() {
         index_map_.insert(
             std::make_pair(table_def_.indexes(idx).name(), std::move(st)));
     }
+    if (index_map_.empty()) {
+        LOG(WARNING) << "no index in table" << table_def_.name();
+        return false;
+    }
     segments_ = new Segment**[index_map_.size()];
     for (uint32_t i = 0; i < index_map_.size(); i++) {
         segments_[i] = new Segment*[seg_cnt_];
@@ -76,6 +81,7 @@ bool Table::Init() {
             segments_[i][j] = new Segment();
         }
     }
+    DLOG(INFO) << "table " << table_def_.name() << " init ok";
     return true;
 }
 

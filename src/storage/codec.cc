@@ -375,7 +375,19 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
 }
 
 int32_t RowView::GetTimestamp(uint32_t idx, int64_t* val) {
-    return GetInt64(idx, val);
+    if (val == NULL) {
+        LOG(WARNING) << "output val is null";
+        return -1;
+    }
+    if (!CheckValid(idx, ::fesql::type::kTimestamp)) {
+        return -1;
+    }
+    if (IsNULL(row_, idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *val = v1::GetInt64Field(row_, offset);
+    return 0;
 }
 
 int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
