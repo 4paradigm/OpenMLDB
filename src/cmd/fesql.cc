@@ -57,7 +57,7 @@ void HandleSQLScript(
     fesql::sdk::Status &status);  // NOLINT (runtime/references)
 
 void HandleEnterDatabase(const std::string &db_name);
-void handleCmd(const fesql::node::CmdNode *cmd_node,
+void HandleCmd(const fesql::node::CmdNode *cmd_node,
                fesql::sdk::Status &status);  // NOLINT (runtime/references)
 void SetupLogging(char *argv[]) { google::InitGoogleLogging(argv[0]); }
 
@@ -130,15 +130,21 @@ void StartClient(char *argv[]) {
               << FESQL_VERSION_MEDIUM << "." << FESQL_VERSION_MINOR << "."
               << FESQL_VERSION_BUG << std::endl;
     cmd_client_db.name = "";
+    std::string log = "fesql";
     std::string display_prefix = ">";
     std::string continue_prefix = "...";
     std::string cmd_str;
     bool cmd_mode = true;
     while (true) {
         std::string buf;
+        std::string prefix = "";
+        if (cmd_client_db.name.empty()) {
+            prefix = log + display_prefix;
+        } else {
+            prefix = log + "/" + cmd_client_db.name + display_prefix;
+        }
         char *line = ::fesql::base::linenoise(
-            cmd_mode ? (cmd_client_db.name + display_prefix).c_str()
-                     : continue_prefix.c_str());
+            cmd_mode ? prefix.c_str() : continue_prefix.c_str());
         if (line == NULL) {
             return;
         }
@@ -329,11 +335,12 @@ void HandleSQLScript(
             LOG(WARNING) << status.msg;
             return;
         }
+
         switch (node->GetType()) {
             case fesql::node::kCmdStmt: {
                 fesql::node::CmdNode *cmd =
                     dynamic_cast<fesql::node::CmdNode *>(node);
-                handleCmd(cmd, status);
+                HandleCmd(cmd, status);
                 return;
             }
             case fesql::node::kCreateStmt: {
@@ -398,7 +405,7 @@ void HandleSQLScript(
         }
     }
 }
-void handleCmd(const fesql::node::CmdNode *cmd_node,
+void HandleCmd(const fesql::node::CmdNode *cmd_node,
                fesql::sdk::Status &status) {  // NOLINT (runtime/references)
     if (dbms_sdk == NULL) {
         dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
@@ -494,6 +501,9 @@ void handleCmd(const fesql::node::CmdNode *cmd_node,
                           << std::endl;
             }
             break;
+        }
+        case fesql::node::kCmdExit: {
+            exit(0);
         }
         default: {
             status.code = fesql::common::kUnSupport;

@@ -18,38 +18,46 @@
 #ifndef SRC_CODEGEN_IR_BASE_BUILDER_H_
 #define SRC_CODEGEN_IR_BASE_BUILDER_H_
 
+#include <string>
 #include "glog/logging.h"
-#include "proto/type.pb.h"
 #include "llvm/IR/IRBuilder.h"
+#include "proto/type.pb.h"
 
 namespace fesql {
 namespace codegen {
 
-bool GetLLVMType(::llvm::BasicBlock* block,
-        const ::fesql::type::Type& type,
-        ::llvm::Type** output);
+bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
+                 ::llvm::Type** output);
 
-bool GetTableType(::llvm::Type* type,
-        ::fesql::type::Type* output);
+bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output);
+
+bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
+                      ::llvm::Value** output);
+
+inline bool GetConstFloat(::llvm::LLVMContext& ctx, float val, // NOLINT
+                          ::llvm::Value** output) {
+    *output = ::llvm::ConstantFP::get(ctx, ::llvm::APFloat(val));
+    return true;
+}
+
+inline bool GetConstDouble(::llvm::LLVMContext& ctx, double val, // NOLINT
+                           ::llvm::Value** output) {
+    *output = ::llvm::ConstantFP::get(ctx, ::llvm::APFloat(val));
+    return true;
+}
 
 bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
-        ::llvm::Value* ptr,
-        ::llvm::Value* offset,
-        ::llvm::Type* type,
-        ::llvm::Value** outptr);
+                       ::llvm::Value* ptr, ::llvm::Value* offset,
+                       ::llvm::Type* type, ::llvm::Value** outptr);
 
 bool BuildLoadOffset(::llvm::IRBuilder<>& builder,  // NOLINT
-        ::llvm::Value* ptr,
-        ::llvm::Value* offset,
-        ::llvm::Type* type,
-        ::llvm::Value** output);
+                     ::llvm::Value* ptr, ::llvm::Value* offset,
+                     ::llvm::Type* type, ::llvm::Value** output);
 
 bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
-        ::llvm::Value* ptr,
-        ::llvm::Value* offset,
-        ::llvm::Value* value);
+                      ::llvm::Value* ptr, ::llvm::Value* offset,
+                      ::llvm::Value* value);
 
 }  // namespace codegen
 }  // namespace fesql
 #endif  // SRC_CODEGEN_IR_BASE_BUILDER_H_
-

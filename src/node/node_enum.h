@@ -119,7 +119,8 @@ enum CmdType {
     kCmdShowDatabases,
     kCmdShowTables,
     kCmdDescTable,
-    kCmdDropTable
+    kCmdDropTable,
+    kCmdExit
 };
 /**
  * Planner:
