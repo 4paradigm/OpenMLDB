@@ -35,6 +35,7 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
 
  public:
     void Init();
+
     ::llvm::Error AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
                               ::llvm::orc::ThreadSafeModule tsm,
                               ::llvm::orc::VModuleKey key);
@@ -47,9 +48,8 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
     bool AddSymbol(const std::string& name, void* fn_ptr);
 
     // add to main module
-    bool AddSymbol(::llvm::orc::JITDylib& jd, // NOLINT
-                   const std::string& name,
-                   void* fn_ptr);
+    bool AddSymbol(::llvm::orc::JITDylib& jd,  // NOLINT
+                   const std::string& name, void* fn_ptr);
 
     static bool AddSymbol(::llvm::orc::JITDylib& jd,           // NOLINT
                                  ::llvm::orc::MangleAndInterner& mi,  // NOLINT

@@ -52,8 +52,8 @@ struct ScanOp : public OpNode {
 
 // TODO(chenjing): WindowOp
 struct ScanInfo {
-    std::vector<std::string> keys;
-    std::vector<std::string> orders;
+    std::vector<std::pair<fesql::type::Type, uint32_t >> keys;
+    std::vector<std::pair<fesql::type::Type, uint32_t >> orders;
     // todo(chenjing): start and end parse
     int64_t start_offset;
     int64_t end_offset;

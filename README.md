@@ -73,6 +73,16 @@ tools/cpplint.py  filename
 clang-format filename
 ```
 
+## LocalRun环境
+
+```
+cd onebox
+# 启动dbms 和 tablet
+sh start_all.sh
+# 使用 cli访问
+sh start_cli.sh
+```
+
 ## CMD使用说明
 
 ### 启动服务端
@@ -114,16 +124,20 @@ USE db_name;
 SHOW TABLES;
 ```
 
-#### 从文件创建schema(待定)
+#### 创建schema
 
 ```mysql
-CREATE TABLE schema_file_path
+CREATE TABLE t1 (
+column1 int,
+col2 string,
+col3 float
+);
 ```
 
 #### 查看表schema
 
 ```mysql
-DESC table_name
+DESC table_name;
 +---------+---------+------+
 | Field   | Type    | Null |
 +---------+---------+------+

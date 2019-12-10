@@ -16,18 +16,18 @@
  */
 
 #include "sdk/tablet_sdk.h"
-#include "sdk/dbms_sdk.h"
 #include "base/strings.h"
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
 #include "gtest/gtest.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/TargetSelect.h"
+#include "sdk/dbms_sdk.h"
 #include "storage/codec.h"
 #include "tablet/tablet_internal_sdk.h"
 #include "tablet/tablet_server_impl.h"
-#include "llvm/Support/InitLLVM.h"
-#include "llvm/Support/TargetSelect.h"
 
-using namespace llvm;  // NOLINT
+using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
 namespace fesql {
@@ -78,6 +78,10 @@ TEST_F(TabletSdkTest, test_normal) {
         column->set_type(::fesql::type::kInt64);
         column->set_name("col5");
     }
+    ::fesql::type::IndexDef* index = table_def->add_indexes();
+    index->set_name("idx1");
+    index->add_first_keys("col1");
+    index->set_second_key("col5");
     common::Status status;
     interal_sdk.CreateTable(&req, status);
     ASSERT_EQ(status.code(), common::kOk);
@@ -228,7 +232,8 @@ TEST_F(TabletSdkTest, test_create_and_query) {
             "    column2 double NOT NULL,\n"
             "    column3 float NOT NULL,\n"
             "    column4 bigint NOT NULL,\n"
-            "    column5 int NOT NULL\n"
+            "    column5 int NOT NULL\n,"
+            "    index(key=column1, ts=column5)\n"
             ");";
 
         db.name = "db_1";
@@ -425,7 +430,9 @@ TEST_F(TabletSdkTest, test_udf_query) {
             "    column2 int NOT NULL,\n"
             "    column3 float NOT NULL,\n"
             "    column4 bigint NOT NULL,\n"
-            "    column5 int NOT NULL\n"
+            "    column5 int NOT NULL,\n"
+            "    column6 string,\n"
+            "    index(key=column1, ts=column5)\n"
             ");";
         db.name = "db_1";
         fesql::sdk::Status status;
@@ -446,7 +453,8 @@ TEST_F(TabletSdkTest, test_udf_query) {
     }
 
     ::fesql::sdk::Status insert_status;
-    sdk->SyncInsert("db_1", "insert into t1 values(1, 2, 3.3, 4, 5);",
+    sdk->SyncInsert("db_1",
+                    "insert into t1 values(1, 2, 3.3, 4, 5, \"hello\");",
                     insert_status);
     if (0 != insert_status.code) {
         std::cout << insert_status.msg << std::endl;
@@ -458,16 +466,18 @@ TEST_F(TabletSdkTest, test_udf_query) {
         sdk::Status query_status;
         query.db = "db_1";
         query.sql =
-            "select column1, column2, column3, column4, column5 from t1 limit "
+            "select column1, column2, column3, column4, column5, column6 from "
+            "t1 limit "
             "1;";
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
-            ASSERT_EQ(5u, rs->GetColumnCnt());
+            ASSERT_EQ(6u, rs->GetColumnCnt());
             ASSERT_EQ("column1", rs->GetColumnName(0));
             ASSERT_EQ("column2", rs->GetColumnName(1));
             ASSERT_EQ("column3", rs->GetColumnName(2));
             ASSERT_EQ("column4", rs->GetColumnName(3));
             ASSERT_EQ("column5", rs->GetColumnName(4));
+            ASSERT_EQ("column6", rs->GetColumnName(5));
             std::unique_ptr<ResultSetIterator> it = rs->Iterator();
             ASSERT_TRUE(it->HasNext());
             it->Next();
@@ -495,6 +505,14 @@ TEST_F(TabletSdkTest, test_udf_query) {
                 int val = 0;
                 ASSERT_TRUE(it->GetInt32(4, &val));
                 ASSERT_EQ(val, 5);
+            }
+            {
+                char* val = NULL;
+                uint32_t size = 0;
+                ASSERT_TRUE(it->GetString(5, &val, &size));
+                ASSERT_EQ(size, 5);
+                std::string str(val, 5);
+                ASSERT_EQ(str, "hello");
             }
         } else {
             ASSERT_TRUE(false);

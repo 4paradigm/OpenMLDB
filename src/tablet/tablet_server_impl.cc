@@ -20,8 +20,8 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 #include "base/strings.h"
 
 namespace fesql {
@@ -61,7 +61,7 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
             request->tid(), request->pids(i), request->db(), request->table()));
 
         std::unique_ptr<storage::Table> table(new storage::Table(
-            request->table().name(), request->tid(), request->pids(i), 1));
+            request->tid(), request->pids(i), request->table()));
 
         bool ok = table->Init();
 
@@ -109,8 +109,7 @@ void TabletServerImpl::Insert(RpcController* ctrl, const InsertRequest* request,
 
     DLOG(INFO) << "put key " << request->key() << " value "
                << base::DebugString(request->row());
-    bool ok = table->table->Put(request->key(), request->ts(),
-                                request->row().c_str(), request->row().size());
+    bool ok = table->table->Put(request->row().c_str(), request->row().size());
     if (!ok) {
         status->set_code(common::kTablePutFailed);
         status->set_msg("fail to put row");
@@ -235,7 +234,6 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         status->set_msg("fail to run sql");
         return;
     }
-    DLOG(INFO) << "buf size " << buf.size();
     // TODO(wangtaize) opt the result buf
     std::vector<int8_t*>::iterator it = buf.begin();
     for (; it != buf.end(); ++it) {

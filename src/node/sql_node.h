@@ -47,6 +47,8 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "desc table";
         case kCmdDropTable:
             return "drop table";
+        case kCmdExit:
+            return "exit";
         default:
             return "unknown cmd type";
     }

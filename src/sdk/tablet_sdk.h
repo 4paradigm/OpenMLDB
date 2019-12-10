@@ -18,9 +18,9 @@
 #ifndef SRC_SDK_TABLET_SDK_H_
 #define SRC_SDK_TABLET_SDK_H_
 
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 #include "sdk/base_struct.h"
 
 namespace fesql {
@@ -39,6 +39,7 @@ class ResultSetIterator {
     virtual bool GetInt64(uint32_t idx, int64_t* val) = 0;
     virtual bool GetFloat(uint32_t idx, float* val) = 0;
     virtual bool GetDouble(uint32_t idx, double* val) = 0;
+    virtual bool GetString(uint32_t idx, char** val, uint32_t* size) = 0;
 };
 
 class ResultSet {
@@ -56,11 +57,13 @@ class TabletSdk {
  public:
     TabletSdk() = default;
     virtual ~TabletSdk() {}
-    virtual void SyncInsert(const Insert& insert, sdk::Status& status) = 0;  // NOLINT
+    virtual void SyncInsert(const Insert& insert,
+                            sdk::Status& status) = 0;  // NOLINT
     virtual void SyncInsert(const std::string& db, const std::string& sql,
                             sdk::Status& status) = 0;  // NOLINT
-    virtual std::unique_ptr<ResultSet> SyncQuery(const Query& query,
-                                                 sdk::Status& status) = 0;  // NOLINT
+    virtual std::unique_ptr<ResultSet> SyncQuery(
+        const Query& query,
+        sdk::Status& status) = 0;  // NOLINT
 };
 
 // create a new dbms sdk with a endpoint

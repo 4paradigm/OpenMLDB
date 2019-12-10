@@ -378,7 +378,7 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* i32_ty = builder.getInt32Ty();
     ::llvm::Type* i8_ty = builder.getInt8Ty();
-    if (!ok) {
+    if (str_addr_space == NULL) {
         ::llvm::FunctionCallee callee =
             block_->getModule()->getOrInsertFunction(
                 "fesql_storage_get_str_addr_space", i8_ty, i32_ty);
@@ -386,13 +386,13 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
         call_args.push_back(size);
         ::llvm::ArrayRef<::llvm::Value*> call_args_ref(call_args);
         str_addr_space = builder.CreateCall(callee, call_args_ref);
+        str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true,
+                                               "cast_i8_to_i32");
         ok = sv_->AddVar("str_addr_space", str_addr_space);
         if (!ok) {
             LOG(WARNING) << "fail to add str add space var";
             return false;
         }
-        str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true,
-                                               "cast_i8_to_i32");
     }
 
     ::llvm::Type* str_type = NULL;

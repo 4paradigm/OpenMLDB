@@ -52,6 +52,7 @@ class ResultSetIteratorImpl : public ResultSetIterator {
     bool GetInt64(uint32_t idx, int64_t* val);
     bool GetFloat(uint32_t idx, float* val);
     bool GetDouble(uint32_t idx, double* val);
+    bool GetString(uint32_t idx, char** val, uint32_t* size);
 
  private:
     uint32_t idx_;
@@ -113,6 +114,14 @@ bool ResultSetIteratorImpl::GetDouble(uint32_t idx, double* val) {
     return row_view_->GetDouble(idx, val) == 0;
 }
 
+bool ResultSetIteratorImpl::GetString(uint32_t idx, char** val,
+                                      uint32_t* size) {
+    if (!row_view_ || val == NULL || size == NULL) {
+        return false;
+    }
+    return row_view_->GetString(idx, val, size) == 0;
+}
+
 class ResultSetImpl : public ResultSet {
  public:
     ResultSetImpl() : response_() {}
@@ -158,6 +167,7 @@ class TabletSdkImpl : public TabletSdk {
 
     void SyncInsert(const std::string& db, const std::string& sql,
                     sdk::Status& status);  // NOLINT (runtime/references)
+
     bool GetSchema(const std::string& db, const std::string& table,
                    type::TableDef& schema,  // NOLINT (runtime/references)
                    sdk::Status& status);    // NOLINT (runtime/references)
@@ -186,6 +196,7 @@ bool TabletSdkImpl::Init() {
 void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
     type::TableDef schema;
 
+    // TODO(wangtaize) reduce visit tablet count
     if (false == GetSchema(insert.db, insert.table, schema, status)) {
         if (0 == status.code) {
             status.code = -1;
@@ -193,17 +204,20 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
         }
         return;
     }
+
     uint32_t string_length = 0;
     for (int i = 0; i < schema.columns_size(); i++) {
         const Value& value = insert.values[i];
         if (schema.columns(i).type() == ::fesql::type::kVarchar) {
-            string_length += strlen(value.GetStr());
+            string_length += value.GetSize();
         }
     }
+
     storage::RowBuilder rbuilder(schema.columns());
     uint32_t row_size = rbuilder.CalTotalLength(string_length);
     std::string row;
-    DLOG(INFO) << "row size: " << row_size;
+    DLOG(INFO) << "row size: " << row_size << " str total leng"
+               << string_length;
     row.resize(row_size);
     char* str_buf = reinterpret_cast<char*>(&(row[0]));
     rbuilder.SetBuffer(reinterpret_cast<int8_t*>(str_buf), row_size);
@@ -229,7 +243,7 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
                 rbuilder.AppendDouble(value.GetDouble());
                 break;
             case type::kVarchar:
-                rbuilder.AppendString(value.GetStr(), strlen(value.GetStr()));
+                rbuilder.AppendString(value.GetStr(), value.GetSize());
                 break;
             default: {
                 status.msg =
@@ -363,7 +377,6 @@ void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
                 status.msg = "fail to execute insert statement with null node";
                 return;
             }
-
             Insert insert;
             insert.db = db;
             insert.table = insert_stmt->table_name_;
@@ -413,6 +426,12 @@ void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
                             case node::kTypeDouble: {
                                 insert.values.push_back(
                                     sdk::Value(primary->GetDouble()));
+                                break;
+                            }
+                            case node::kTypeString: {
+                                // TODO(wangtaize) use slice
+                                insert.values.push_back(
+                                    sdk::Value(primary->GetStr()));
                                 break;
                             }
                             default: {

@@ -21,6 +21,7 @@
 #include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/type_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "proto/common.pb.h"
 
@@ -106,6 +107,17 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                 case ::fesql::node::kTypeInt64:
                     *output = builder.getInt64(const_node->GetLong());
                     return true;
+                case ::fesql::node::kTypeFloat:
+                    return GetConstFloat(block_->getContext(),
+                                         const_node->GetFloat(), output);
+                case ::fesql::node::kTypeDouble:
+                    return GetConstDouble(block_->getContext(),
+                                          const_node->GetDouble(), output);
+                case ::fesql::node::kTypeString: {
+                    std::string val(const_node->GetStr(),
+                                    strlen(const_node->GetStr()));
+                    return GetConstFeString(val, block_, output);
+                }
                 default:
                     return false;
             }

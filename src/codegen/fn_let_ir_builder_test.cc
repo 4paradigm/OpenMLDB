@@ -131,6 +131,77 @@ void AddFunc(const std::string& fn, ::llvm::Module* m) {
     ASSERT_TRUE(ok);
 }
 
+
+TEST_F(FnLetIRBuilderTest, test_primary) {
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_project", *ctx);
+    ::fesql::node::NodePointVector list;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::node::NodeManager manager;
+    ::fesql::base::Status status;
+    int ret =
+        parser.parse("SELECT col1, col6, 1.0, \"hello\"  FROM t1 limit 10;",
+                     list, &manager, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+    ::fesql::plan::SimplePlanner planner(&manager);
+    ::fesql::node::PlanNodeList trees;
+    ret = planner.CreatePlanTree(list, trees, status);
+    ASSERT_EQ(0, ret);
+    ::fesql::node::ProjectListPlanNode* pp_node_ptr =
+        (::fesql::node::ProjectListPlanNode*)(trees[0]
+                                                  ->GetChildren()[0]);
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "int" and take an argument of "int".
+    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
+    std::vector<::fesql::type::ColumnDef> schema;
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(4, schema.size());
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    auto& jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+
+    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::llvm::StringRef symbol("malloc");
+    ::llvm::orc::SymbolMap symbol_map;
+    ::llvm::JITEvaluatedSymbol jit_symbol(
+        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
+        ::llvm::JITSymbolFlags());
+
+    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
+    // add codec
+    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
+    if (err) {
+        ASSERT_TRUE(false);
+    }
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
+    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+    int8_t* buf = NULL;
+    uint32_t size = 0;
+    BuildBuf(&buf, &size);
+    int8_t* output = NULL;
+    int32_t ret2 = decode(buf, size, &output);
+    ASSERT_EQ(ret2, 0u);
+    uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
+    ASSERT_EQ(out_size, 27);
+    ASSERT_EQ(32, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(1.0, *reinterpret_cast<double*>(output + 11));
+    ASSERT_EQ(21, *reinterpret_cast<uint8_t*>(output + 19));
+    ASSERT_EQ(22, *reinterpret_cast<uint8_t*>(output + 20));
+    std::string str(reinterpret_cast<char*>(output + 21), 1);
+    ASSERT_EQ("1", str);
+    std::string str2(reinterpret_cast<char*>(output + 22), 5);
+    ASSERT_EQ("hello", str2);
+    free(buf);
+}
+
 TEST_F(FnLetIRBuilderTest, test_udf) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();

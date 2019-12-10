@@ -173,8 +173,6 @@ OpNode* OpGenerator::RoutingNode(
         }
     }
     if (common::kOk != status.code) {
-        status.msg = "fail to rouing node ";
-        status.code = common::kNullPointer;
         LOG(WARNING) << status.msg;
         if (nullptr != cur_op) {
             delete cur_op;
@@ -301,17 +299,39 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     pop->fn_name = fn_name;
     pop->fn = NULL;
     pop->output_size = output_size;
+    pop->tid = table_status->tid;
+    pop->db = table_status->db;
+    pop->pid = table_status->pid;
     // handle window info
     if (nullptr != node->GetW()) {
         pop->window_agg = true;
-        pop->w.keys = node->GetW()->GetKeys();
-        pop->w.orders = node->GetW()->GetOrders();
+        table_status->InitColumnInfos();
+        for (auto key : node->GetW()->GetKeys()) {
+            auto it = table_status->col_infos.find(key);
+            if (it == table_status->col_infos.end()) {
+                status.msg = "column " + key + " is not exist in table " +
+                             table_status->table_def.name();
+                status.code = common::kColumnNotFound;
+                LOG(WARNING) << status.msg;
+                return nullptr;
+            }
+            pop->w.keys.push_back(it->second);
+        }
+        for (auto order : node->GetW()->GetOrders()) {
+            auto it = table_status->col_infos.find(order);
+            if (it == table_status->col_infos.end()) {
+                status.msg = "column " + order + " is not exist in table " +
+                             table_status->table_def.name();
+                status.code = common::kColumnNotFound;
+                LOG(WARNING) << status.msg;
+                return nullptr;
+            }
+            pop->w.orders.push_back(it->second);
+        }
         pop->w.start_offset = node->GetW()->GetStartOffset();
         pop->w.end_offset = node->GetW()->GetEndOffset();
         pop->w.is_range_between = node->GetW()->IsRangeBetween();
-        pop->tid = table_status->tid;
-        pop->db = table_status->db;
-        pop->pid = table_status->pid;
+
         ::fesql::codegen::BufIRBuilder buf_if_builder(&table_status->table_def,
                                                       nullptr, nullptr);
     } else {

@@ -66,6 +66,8 @@ struct ListTimestampRef {
 
 namespace v1 {
 
+static constexpr uint8_t VERSION_LENGTH = 2;
+static constexpr uint8_t SIZE_LENGTH = 4;
 // calc the total row size with primary_size, str field count and str_size
 inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
                                 uint32_t str_size, uint32_t* str_addr_space) {

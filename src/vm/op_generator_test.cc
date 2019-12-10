@@ -143,8 +143,8 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     auto m = make_unique<Module>("test_op_generator", *ctx);
     const std::string sql =
         "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY COL2\n"
-        "              ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND 1s "
+        "WINDOW w1 AS (PARTITION BY col2\n"
+        "              ORDER BY col15 RANGE BETWEEN 2d PRECEDING AND 1s "
         "PRECEDING) limit 10;";
 
     ::fesql::node::NodeManager manager;
@@ -165,14 +165,20 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     OpVector op;
     bool ok = generator.Gen(plan_trees, "db", m.get(), &op, base_status);
+    if (!ok) {
+        std::cout << base_status.msg << std::endl;
+    }
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
     ASSERT_EQ(2, op.ops.size());
     ASSERT_EQ(kOpProject, op.ops[1]->type);
     ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[1]);
     ASSERT_TRUE(project_op->window_agg);
-    ASSERT_EQ(std::vector<std::string>({"COL2"}), project_op->w.keys);
-    ASSERT_EQ(std::vector<std::string>({"TS"}), project_op->w.orders);
+    ASSERT_EQ(::fesql::type::kInt16, project_op->w.keys[0].first);
+    ASSERT_EQ(1, project_op->w.keys[0].second);
+
+    ASSERT_EQ(::fesql::type::kInt64, project_op->w.orders[0].first);
+    ASSERT_EQ(4, project_op->w.orders[0].second);
     ASSERT_TRUE(project_op->w.is_range_between);
     ASSERT_EQ(-86400000 * 2, project_op->w.start_offset);
     ASSERT_EQ(-1000, project_op->w.end_offset);

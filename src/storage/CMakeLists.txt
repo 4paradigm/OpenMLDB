@@ -15,7 +15,7 @@ add_executable(skiplist_test skiplist_test.cc)
 target_link_libraries(skiplist_test gflags gtest pthread)
 
 add_executable(table_test table_test.cc)
-target_link_libraries(table_test fesql_storage gflags gtest pthread)
+target_link_libraries(table_test fesql_storage fesql_proto fesql_vm glog ${llvm_libs} gflags gtest protobuf pthread unwind)
 
 add_executable(window_test window_test.cc)
 target_link_libraries(window_test fesql_proto fesql_codegen fesql_vm fesql_storage glog gflags ${llvm_libs} gtest pthread unwind lzma)

@@ -20,7 +20,7 @@ namespace storage {
 
 using ::fesql::base::Iterator;
 
-const uint16_t MAX_ARRAY_LIST_LEN = 400;
+constexpr uint16_t MAX_ARRAY_LIST_LEN = 400;
 
 enum class ListType {
     kArrayList = 1,
@@ -251,7 +251,7 @@ void ArrayListNodeDeleter(ArrayListNode<K, V>* array) {
 
 template <class K, class V, class Comparator,
           class = typename std::enable_if<std::is_pod<K>::value &&
-                                          std::is_pod<V>::value>::type>
+                                          std::is_pod<V>::value>>
 // typename std::enable_if<std::is_pod<K>::value && std::is_pod<V>::value,
 // int>::type = 0>
 class ArrayList : public BaseList<K, V> {
@@ -513,8 +513,10 @@ class List {
                 list_.store(new_list, std::memory_order_release);
                 delete array_list;
             }
+            new_list->Insert(key, value);
+        } else {
+            list->Insert(key, value);
         }
-        list->Insert(key, value);
     }
 
     Iterator<K, V>* NewIterator() {
