@@ -49,7 +49,6 @@ class Table {
                        uint64_t* value);
 
     struct ColInfo {
-        std::string name;
         ::fesql::type::Type type;
         uint32_t pos;
     };

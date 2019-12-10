@@ -16,7 +16,8 @@
 namespace fesql {
 namespace storage {
 
-const static uint32_t SEED = 0xe17a1465;  // NOLINT
+static constexpr uint32_t SEED = 0xe17a1465;
+static constexpr uint32_t COMBINE_KEY_RESERVE_SIZE = 128;
 
 Table::Table(uint32_t id, uint32_t pid, const TableDef& table_def)
     : id_(id),
@@ -58,7 +59,6 @@ bool Table::Init() {
         for (int i = 0; i < table_def_.indexes(idx).first_keys_size(); i++) {
             std::string name = table_def_.indexes(idx).first_keys(i);
             ColInfo col;
-            col.name = name;
             auto iter = col_map.find(name);
             if (iter == col_map.end()) return false;
             col.type = table_def_.columns(iter->second).type();
@@ -97,6 +97,7 @@ bool Table::Put(const char* row, uint32_t size) {
         std::string key;
         Slice spk;
         if (kv.second.keys.size() > 1) {
+            key.reserve(COMBINE_KEY_RESERVE_SIZE);
             for (const auto& col : kv.second.keys) {
                 if (!key.empty()) {
                     key.append("|");
