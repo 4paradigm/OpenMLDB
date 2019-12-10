@@ -124,9 +124,9 @@ OpNode* OpGenerator::RoutingNode(
     }
     // firstly, generate operator for node's children
     std::vector<::fesql::node::PlanNode*>::const_iterator it =
-        node->GetChildren().begin();
+        node->GetChildren().cbegin();
     std::vector<OpNode*> children;
-    for (; it != node->GetChildren().end(); ++it) {
+    for (; it != node->GetChildren().cend(); ++it) {
         const ::fesql::node::PlanNode* pn = *it;
         OpNode* child = RoutingNode(pn, db, module, ops_map, ops, status);
         if (common::kOk != status.code) {

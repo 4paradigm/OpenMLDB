@@ -75,10 +75,10 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
                                   !node->IsWindowAgg(), row_ptr_name,
                                   row_size_name, module_);
     const ::fesql::node::PlanNodeList& children = node->GetProjects();
-    ::fesql::node::PlanNodeList::const_iterator it = children.begin();
+    ::fesql::node::PlanNodeList::const_iterator it = children.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
     uint32_t index = 0;
-    for (; it != children.end(); it++) {
+    for (; it != children.cend(); it++) {
         const ::fesql::node::PlanNode* pn = *it;
         if (pn == NULL) {
             LOG(WARNING) << "plan node is null";

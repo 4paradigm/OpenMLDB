@@ -82,7 +82,8 @@ TEST_F(JITTest, test_release_module) {
         ::llvm::Type *i32_ty = builder.getInt32Ty();
         ::llvm::FunctionCallee callee =
             m->getOrInsertFunction("test_fn", i32_ty, i32_ty);
-        ::llvm::Value *ret = builder.CreateCall(callee, ::llvm::ArrayRef<Value *>{Add});
+        ::llvm::Value *ret =
+            builder.CreateCall(callee, ::llvm::ArrayRef<Value *>{Add});
         builder.CreateRet(ret);
         ::llvm::Error e =
             jit->AddIRModule(jd,
@@ -125,7 +126,8 @@ TEST_F(JITTest, test_udf_invoke_module) {
         // int32 inc_int32(int32)
         ::llvm::FunctionCallee callee =
             m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
-        ::llvm::Value *ret = builder.CreateCall(callee, ::llvm::ArrayRef<Value *>{Add});
+        ::llvm::Value *ret =
+            builder.CreateCall(callee, ::llvm::ArrayRef<Value *>{Add});
         builder.CreateRet(ret);
         ::llvm::Error e =
             jit->AddIRModule(jd,

@@ -633,7 +633,8 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
             return;
         }
     }
-    ::llvm::Value* ret_val = builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
+    ::llvm::Value* ret_val =
+        builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
     if (!is_void) {
         builder.CreateRet(ret_val);
     } else {

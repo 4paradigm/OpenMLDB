@@ -36,7 +36,6 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "storage/codec.h"
-#include "vm/table_mgr.h"
 #include "storage/window.h"
 #include "vm/table_mgr.h"
 
@@ -169,11 +168,11 @@ void BuildWindow(int8_t** buf) {
         storage::RowBuilder builder(table.columns());
         std::string str = "1";
         std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size()+str0.size());
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
 
         builder.SetBuffer(ptr, total_size);
-        builder.AppendString("0",1);
+        builder.AppendString("0", 1);
         builder.AppendInt32(1);
         builder.AppendInt16(5);
         builder.AppendFloat(1.1f);
@@ -186,10 +185,10 @@ void BuildWindow(int8_t** buf) {
         storage::RowBuilder builder(table.columns());
         std::string str = "22";
         std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size()+str0.size());
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
-        builder.AppendString("0",1);
+        builder.AppendString("0", 1);
         builder.AppendInt32(2);
         builder.AppendInt16(5);
         builder.AppendFloat(2.2f);
@@ -202,10 +201,10 @@ void BuildWindow(int8_t** buf) {
         storage::RowBuilder builder(table.columns());
         std::string str = "333";
         std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size()+str0.size());
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
-        builder.AppendString("1",1);
+        builder.AppendString("1", 1);
         builder.AppendInt32(3);
         builder.AppendInt16(55);
         builder.AppendFloat(3.3f);
@@ -218,10 +217,10 @@ void BuildWindow(int8_t** buf) {
         storage::RowBuilder builder(table.columns());
         std::string str = "4444";
         std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size()+str0.size());
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
-        builder.AppendString("1",1);
+        builder.AppendString("1", 1);
         builder.AppendInt32(4);
         builder.AppendInt16(55);
         builder.AppendFloat(4.4f);
@@ -236,10 +235,10 @@ void BuildWindow(int8_t** buf) {
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             "a";
         std::string str0 = "0";
-        uint32_t total_size = builder.CalTotalLength(str.size()+str0.size());
+        uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
-        builder.AppendString("2",1);
+        builder.AppendString("2", 1);
         builder.AppendInt32(5);
         builder.AppendInt16(55);
         builder.AppendFloat(5.5f);
@@ -390,16 +389,13 @@ TEST_F(EngineTest, test_window_agg) {
 
     ASSERT_TRUE(w->Valid());
     row = w->Next();
-    ASSERT_TRUE(
-        table->Put(reinterpret_cast<char*>(row.buf), row.size));
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
     ASSERT_TRUE(w->Valid());
     row = w->Next();
-    ASSERT_TRUE(
-        table->Put(reinterpret_cast<char*>(row.buf), row.size));
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
     ASSERT_TRUE(w->Valid());
     row = w->Next();
-    ASSERT_TRUE(
-        table->Put(reinterpret_cast<char*>(row.buf), row.size));
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
     const std::string sql =
@@ -453,7 +449,6 @@ TEST_F(EngineTest, test_window_agg) {
         free(ptr);
     }
 }
-
 
 TEST_F(EngineTest, test_window_agg_varchar_pk) {
     std::shared_ptr<TableStatus> status(new TableStatus());
@@ -517,16 +512,13 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
 
     ASSERT_TRUE(w->Valid());
     row = w->Next();
-    ASSERT_TRUE(
-        table->Put(reinterpret_cast<char*>(row.buf), row.size));
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
     ASSERT_TRUE(w->Valid());
     row = w->Next();
-    ASSERT_TRUE(
-        table->Put(reinterpret_cast<char*>(row.buf), row.size));
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
     ASSERT_TRUE(w->Valid());
     row = w->Next();
-    ASSERT_TRUE(
-        table->Put(reinterpret_cast<char*>(row.buf), row.size));
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
     const std::string sql =
@@ -565,10 +557,8 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
               *(reinterpret_cast<int32_t*>(output[3] + 2)));
     ASSERT_EQ(3 + 4, *(reinterpret_cast<int32_t*>(output[3] + 7)));
-    ASSERT_EQ(3.3f + 4.4f,
-              *(reinterpret_cast<float*>(output[3] + 7 + 4)));
-    ASSERT_EQ(33.3 + 44.4,
-              *(reinterpret_cast<double*>(output[3] + 7 + 4 + 4)));
+    ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output[3] + 7 + 4)));
+    ASSERT_EQ(33.3 + 44.4, *(reinterpret_cast<double*>(output[3] + 7 + 4 + 4)));
     ASSERT_EQ(55u + 55u,
               *(reinterpret_cast<int16_t*>(output[3] + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
@@ -577,14 +567,10 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
               *(reinterpret_cast<int32_t*>(output[4] + 2)));
     ASSERT_EQ(5, *(reinterpret_cast<int32_t*>(output[4] + 7)));
-    ASSERT_EQ(5.5f,
-              *(reinterpret_cast<float*>(output[4] + 7 + 4)));
-    ASSERT_EQ(55.5,
-              *(reinterpret_cast<double*>(output[4] + 7 + 4 + 4)));
-    ASSERT_EQ(55u,
-              *(reinterpret_cast<int16_t*>(output[4] + 7 + 4 + 4 + 8)));
-    ASSERT_EQ(3L,
-              *(reinterpret_cast<int64_t*>(output[4] + 7 + 4 + 4 + 8 + 2)));
+    ASSERT_EQ(5.5f, *(reinterpret_cast<float*>(output[4] + 7 + 4)));
+    ASSERT_EQ(55.5, *(reinterpret_cast<double*>(output[4] + 7 + 4 + 4)));
+    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output[4] + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(3L, *(reinterpret_cast<int64_t*>(output[4] + 7 + 4 + 4 + 8 + 2)));
     //    ASSERT_EQ(3+4, *(reinterpret_cast<int32_t*>(output[3] + 2)));
     //    ASSERT_EQ(3+4+5, *(reinterpret_cast<int32_t*>(output[4] + 2)));
     //    ASSERT_EQ(4+5+6, *(reinterpret_cast<int32_t*>(output[5] + 2)));

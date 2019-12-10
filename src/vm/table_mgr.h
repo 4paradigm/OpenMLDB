@@ -20,6 +20,8 @@
 
 #include <memory>
 #include <string>
+#include <map>
+#include <utility>
 #include "proto/type.pb.h"
 #include "storage/table.h"
 

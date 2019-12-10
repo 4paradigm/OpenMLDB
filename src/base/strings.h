@@ -154,9 +154,9 @@ static inline std::string HumanReadableTime(uint64_t age) {
 }
 
 static inline bool IsNumber(const std::string& str) {
-    std::string::const_iterator it = str.begin();
-    while (it != str.end() && std::isdigit(*it)) ++it;
-    return !str.empty() && it == str.end();
+    std::string::const_iterator it = str.cbegin();
+    while (it != str.cend() && std::isdigit(*it)) ++it;
+    return !str.empty() && it == str.cend();
 }
 
 static inline std::string GetNowTime() {

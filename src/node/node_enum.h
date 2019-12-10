@@ -79,7 +79,7 @@ enum ExprType {
     kExprList,
     kExprAll,
     kExprStruct,
-    kExprUnknow
+    kExprUnknow = 9999
 };
 enum DataType {
     kTypeBool,

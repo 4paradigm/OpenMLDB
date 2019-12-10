@@ -19,6 +19,8 @@
 #define SRC_CODEGEN_TYPE_IR_BUILDER_H_
 
 #include <node/node_enum.h>
+#include <string>
+#include <vector>
 namespace fesql {
 namespace codegen {
 
@@ -32,8 +34,9 @@ struct String {
     char* data;
 };
 
-inline const bool ConvertFeSQLType2DataType(const fesql::type::Type proto_type,
-                                            node::DataType &data_type) { //NOLINT
+inline const bool ConvertFeSQLType2DataType(
+    const fesql::type::Type proto_type,
+    node::DataType& data_type) {  // NOLINT
     switch (proto_type) {
         case fesql::type::kInt16:
             data_type = node::kTypeInt16;
@@ -62,9 +65,9 @@ inline const bool ConvertFeSQLType2DataType(const fesql::type::Type proto_type,
     }
     return true;
 }
-inline const bool ConvertFeSQLType2LLVMType(const node::DataType &data_type,
-                                            ::llvm::Module *m,   //NOLINT
-                                            ::llvm::Type **llvm_type) {
+inline const bool ConvertFeSQLType2LLVMType(const node::DataType& data_type,
+                                            ::llvm::Module* m,  // NOLINT
+                                            ::llvm::Type** llvm_type) {
     switch (data_type) {
         case node::kTypeVoid:
             *llvm_type = (::llvm::Type::getVoidTy(m->getContext()));
@@ -97,7 +100,8 @@ inline const bool ConvertFeSQLType2LLVMType(const node::DataType &data_type,
             }
             stype = ::llvm::StructType::create(m->getContext(), name);
             ::llvm::Type* size_ty = (::llvm::Type::getInt32Ty(m->getContext()));
-            ::llvm::Type* data_ptr_ty =  (::llvm::Type::getInt8PtrTy(m->getContext()));
+            ::llvm::Type* data_ptr_ty =
+                (::llvm::Type::getInt8PtrTy(m->getContext()));
             std::vector<::llvm::Type*> elements;
             elements.push_back(size_ty);
             elements.push_back(data_ptr_ty);
