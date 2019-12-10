@@ -255,7 +255,7 @@ template <class K, class V, class Comparator,
 // typename std::enable_if<std::is_pod<K>::value && std::is_pod<V>::value,
 // int>::type = 0>
 class ArrayList : public BaseList<K, V> {
-    // static_assert(sizeof(ArraySt<K, V>) == sizeof(uint16_t));
+    static_assert(sizeof(ArraySt<K, V>) == sizeof(uint16_t));
 
  public:
     explicit ArrayList(Comparator cmp) : compare_(cmp), array_(NULL) {}
