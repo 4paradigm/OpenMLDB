@@ -265,28 +265,104 @@ bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo
             PDLOG(WARNING, "compress type not equal");
             return false;
         }
-        for (int i = 0; i < table.column_desc_size(); i++) {
-            if (table.column_desc(i).SerializeAsString().compare(iter->second->column_desc(i).SerializeAsString())) {
-                PDLOG(WARNING, "column desc [%d] not equal", i);
-                return false;
+        if (table.column_desc_size() != iter->second->column_desc_size()) {
+            PDLOG(WARNING, "column desc size not equal");
+            return false;
+        }
+        {
+            std::map<std::string, std::string> tmp_map;
+            for (int i = 0; i < iter->second->column_desc_size(); i++) {
+                std::string name = iter->second->column_desc(i).name();
+                std::string value;
+                iter->second->column_desc(i).SerializeToString(&value);
+                tmp_map.insert(std::make_pair(name, value));
+            }
+            for (auto& i : table.column_desc()) {
+                auto iter = tmp_map.find(i.name());
+                if (iter == tmp_map.end()) {
+                    PDLOG(WARNING, "not found column desc [%s] in local cluster", i.name().c_str());
+                    return false;
+                }
+                if (i.SerializeAsString() != iter->second) {
+                    PDLOG(WARNING, "column desc [%s] not equal", i.name().c_str());
+                    return false;
+                }
+
             }
         }
-        for (int i = 0; i < table.column_desc_v1_size(); i++) {
-            if (table.column_desc_v1(i).SerializeAsString().compare(iter->second->column_desc(i).SerializeAsString())) {
-                PDLOG(WARNING, "column desc v1 [%d] not equal", i);
-                return false;
+        if (table.column_desc_v1_size() != iter->second->column_desc_v1_size()) {
+            PDLOG(WARNING, "column desc v1 size not equal");
+            return false;
+        }
+        {
+            std::map<std::string, std::string> tmp_map;
+            for (int i = 0; i < iter->second->column_desc_v1_size(); i++) {
+                std::string name = iter->second->column_desc_v1(i).name();
+                std::string value;
+                iter->second->column_desc_v1(i).SerializeToString(&value);
+                tmp_map.insert(std::make_pair(name, value));
+            }
+            for (auto& i : table.column_desc_v1()) {
+                auto iter = tmp_map.find(i.name());
+                if (iter == tmp_map.end()) {
+                    PDLOG(WARNING, "not found column desc [%s] in local cluster", i.name().c_str());
+                    return false;
+                }
+                if (i.SerializeAsString() != iter->second) {
+                    PDLOG(WARNING, "column desc [%s] not equal", i.name().c_str());
+                    return false;
+                }
+
             }
         }
-        for (int i = 0; i < table.column_key_size(); i++) {
-            if (table.column_key(i).SerializeAsString().compare(iter->second->column_key(i).SerializeAsString())) {
-                PDLOG(WARNING, "column key [%d] not equal", i);
-                return false;
+        if (table.column_key_size() != iter->second->column_key_size()) {
+            PDLOG(WARNING, "column key size not equal");
+            return false;
+        }
+        {
+            std::map<std::string, std::string> tmp_map;
+            for (int i = 0; i < iter->second->column_key_size(); i++) {
+                std::string name = iter->second->column_key(i).index_name();
+                std::string value;
+                iter->second->column_key(i).SerializeToString(&value);
+                tmp_map.insert(std::make_pair(name, value));
+            }
+            for (auto& i : table.column_key()) {
+                auto iter = tmp_map.find(i.index_name());
+                if (iter == tmp_map.end()) {
+                    PDLOG(WARNING, "not found column desc [%s] in local cluster", i.index_name().c_str());
+                    return false;
+                }
+                if (i.SerializeAsString() != iter->second) {
+                    PDLOG(WARNING, "column desc [%s] not equal", i.index_name().c_str());
+                    return false;
+                }
+
             }
         }
-        for (int i = 0; i < table.added_column_desc_size(); i++) {
-            if (table.added_column_desc(i).SerializeAsString().compare(iter->second->added_column_desc(i).SerializeAsString())) {
-                PDLOG(WARNING, "add column desc [%d] not equal", i);
-                return false;
+        if (table.added_column_desc_size() != iter->second->added_column_desc_size()) {
+            PDLOG(WARNING, "added column desc size not equal");
+            return false;
+        }
+        {
+            std::map<std::string, std::string> tmp_map;
+            for (int i = 0; i < iter->second->added_column_desc_size(); i++) {
+                std::string name = iter->second->added_column_desc(i).name();
+                std::string value;
+                iter->second->added_column_desc(i).SerializeToString(&value);
+                tmp_map.insert(std::make_pair(name, value));
+            }
+            for (auto& i : table.added_column_desc()) {
+                auto iter = tmp_map.find(i.name());
+                if (iter == tmp_map.end()) {
+                    PDLOG(WARNING, "not found column desc [%s] in local cluster", i.name().c_str());
+                    return false;
+                }
+                if (i.SerializeAsString() != iter->second) {
+                    PDLOG(WARNING, "column desc [%s] not equal", i.name().c_str());
+                    return false;
+                }
+
             }
         }
     }
