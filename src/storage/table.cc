@@ -160,6 +160,22 @@ std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk,
     return std::move(segment->NewIterator(spk, ts));
 }
 
+std::unique_ptr<TableIterator> Table::NewIterator(
+    const std::string& pk, const std::string& index_name) {
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::fesql::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
+    auto iter = index_map_.find(index_name);
+    if (iter == index_map_.end()) {
+        LOG(WARNING) << "index name \"" << index_name << "\" not exist";
+        return nullptr;
+    }
+    Slice spk(pk);
+    Segment* segment = segments_[iter->second.index][seg_idx];
+    return std::move(segment->NewIterator(spk));
+}
+
 std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk) {
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {

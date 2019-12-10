@@ -40,6 +40,8 @@ class Table {
 
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
                                                const uint64_t ts);
+    std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
+                                               const std::string& index_name);
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk);
     std::unique_ptr<TableIterator> NewIterator();
 
