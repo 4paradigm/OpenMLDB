@@ -82,7 +82,6 @@ TEST_F(TableTest, Iterator) {
         count++;
     }
     ASSERT_EQ(count, 2);
-
     iter = table.NewIterator();
     count = 0;
     iter->SeekToFirst();
@@ -91,6 +90,23 @@ TEST_F(TableTest, Iterator) {
         count++;
     }
     ASSERT_EQ(count, 4);
+    iter = table.NewIterator("key2", 30);
+    count = 0;
+    while (iter->Valid()) {
+        iter->Next();
+        count++;
+    }
+    ASSERT_EQ(count, 2);
+    iter = table.NewIterator("key2", 11);
+    count = 0;
+    while (iter->Valid()) {
+        iter->Next();
+        count++;
+    }
+    ASSERT_EQ(count, 1);
+    iter = table.NewIterator("key2", 0);
+    count = 0;
+    ASSERT_FALSE(iter->Valid());
 }
 
 }  // namespace storage
