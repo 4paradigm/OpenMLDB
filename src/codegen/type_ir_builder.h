@@ -63,30 +63,48 @@ inline const bool ConvertFeSQLType2DataType(const fesql::type::Type proto_type,
     return true;
 }
 inline const bool ConvertFeSQLType2LLVMType(const node::DataType &data_type,
-                                            ::llvm::LLVMContext &ctx,   //NOLINT
+                                            ::llvm::Module *m,   //NOLINT
                                             ::llvm::Type **llvm_type) {
     switch (data_type) {
         case node::kTypeVoid:
-            *llvm_type = (::llvm::Type::getVoidTy(ctx));
+            *llvm_type = (::llvm::Type::getVoidTy(m->getContext()));
             break;
         case node::kTypeInt16:
-            *llvm_type = (::llvm::Type::getInt16Ty(ctx));
+            *llvm_type = (::llvm::Type::getInt16Ty(m->getContext()));
             break;
         case node::kTypeInt32:
-            *llvm_type = (::llvm::Type::getInt32Ty(ctx));
+            *llvm_type = (::llvm::Type::getInt32Ty(m->getContext()));
             break;
         case node::kTypeInt64:
-            *llvm_type = (::llvm::Type::getInt64Ty(ctx));
+            *llvm_type = (::llvm::Type::getInt64Ty(m->getContext()));
             break;
         case node::kTypeFloat:
-            *llvm_type = (::llvm::Type::getFloatTy(ctx));
+            *llvm_type = (::llvm::Type::getFloatTy(m->getContext()));
             break;
         case node::kTypeDouble:
-            *llvm_type = (::llvm::Type::getDoubleTy(ctx));
+            *llvm_type = (::llvm::Type::getDoubleTy(m->getContext()));
             break;
         case node::kTypeInt8Ptr:
-            *llvm_type = (::llvm::Type::getInt8PtrTy(ctx));
+            *llvm_type = (::llvm::Type::getInt8PtrTy(m->getContext()));
             break;
+        case node::kTypeString: {
+            std::string name = "fe.string_ref";
+            ::llvm::StringRef sr(name);
+            ::llvm::StructType* stype = m->getTypeByName(sr);
+            if (stype != NULL) {
+                *llvm_type = stype;
+                return true;
+            }
+            stype = ::llvm::StructType::create(m->getContext(), name);
+            ::llvm::Type* size_ty = (::llvm::Type::getInt32Ty(m->getContext()));
+            ::llvm::Type* data_ptr_ty =  (::llvm::Type::getInt8PtrTy(m->getContext()));
+            std::vector<::llvm::Type*> elements;
+            elements.push_back(size_ty);
+            elements.push_back(data_ptr_ty);
+            stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
+            *llvm_type = stype;
+            return true;
+        }
         default: {
             return false;
         }

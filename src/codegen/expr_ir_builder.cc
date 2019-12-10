@@ -223,7 +223,7 @@ bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
             node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
             ::llvm::Type* type;
             if (ConvertFeSQLType2LLVMType(field->GetParaType(),
-                                          module_->getContext(), &type)) {
+                                          module_, &type)) {
                 members.push_back(type);
             } else {
                 LOG(WARNING)
@@ -274,7 +274,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
 
     ::llvm::Value* value = NULL;
     ok = sv_->FindVar(col, &value);
-    LOG(INFO) << "get table column " << col;
+    DLOG(INFO) << "get table column " << col;
     // not found
     if (!ok) {
         // TODO(wangtaize) buf ir builder add build get field ptr
@@ -321,7 +321,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
     }
 
     ::llvm::Value* value = NULL;
-    LOG(INFO) << "get table column " << col;
+    DLOG(INFO) << "get table column " << col;
     // NOT reuse for iterator
     ok = buf_ir_builder_->BuildGetCol(col, row_ptr, &value);
     if (!ok || value == NULL) {

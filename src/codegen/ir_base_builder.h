@@ -27,7 +27,7 @@ namespace codegen {
 
 bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
                  ::llvm::Type** output);
-bool GetLLVMListType(::llvm::LLVMContext& ctx,  // NOLINT
+bool GetLLVMListType(::llvm::Module *m,
                      const ::fesql::type::Type& type, ::llvm::Type** output);
 
 bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output);

@@ -490,7 +490,7 @@ bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
     ::llvm::Type* i32_ty = builder.getInt32Ty();
 
     ::llvm::Type* list_ref_type = NULL;
-    bool ok = GetLLVMListType(block_->getContext(), type, &list_ref_type);
+    bool ok = GetLLVMListType(block_->getModule(), type, &list_ref_type);
     if (!ok) {
         LOG(WARNING) << "fail to get list type";
         return false;
@@ -533,7 +533,7 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
     ::llvm::Type* i8_ty = builder.getInt8Ty();
 
     ::llvm::Type* list_ref_type = NULL;
-    bool ok = GetLLVMListType(block_->getContext(), type, &list_ref_type);
+    bool ok = GetLLVMListType(block_->getModule(), type, &list_ref_type);
     if (!ok) {
         LOG(WARNING) << "fail to get list type";
         return false;

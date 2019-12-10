@@ -41,7 +41,7 @@ struct OpNode {
 };
 
 struct ScanOp : public OpNode {
-    ~ScanOp() { std::cout << "delete scan op"; }
+    ~ScanOp() {}
     std::string db;
     uint32_t tid;
     uint32_t pid;
