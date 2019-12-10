@@ -160,6 +160,15 @@ OpNode* OpGenerator::RoutingNode(
         case ::fesql::node::kPlanTypeMerge: {
             const ::fesql::node::MergePlanNode* merge_node =
                 (const ::fesql::node::MergePlanNode*)node;
+            if (children.size() != 2) {
+                status.msg =
+                    "fail to generate merge operator: children operators size "
+                    "should be 2, but " +
+                    std::to_string(children.size());
+                status.code = common::kUnSupport;
+                LOG(WARNING) << status.msg;
+                return nullptr;
+            }
             cur_op = GenMerge(merge_node, module, status);
             cur_op->type = kOpMerge;
             break;
@@ -298,7 +307,6 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     pop->output_schema = output_schema;
     pop->fn_name = fn_name;
     pop->fn = NULL;
-    pop->output_size = output_size;
     pop->tid = table_status->tid;
     pop->db = table_status->db;
     pop->pid = table_status->pid;

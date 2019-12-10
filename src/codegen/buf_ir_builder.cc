@@ -226,7 +226,6 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
     return BuildLoadOffset(builder, row_ptr, llvm_offse, llvm_type, output);
 }
 
-
 BufNativeIRBuilder::BufNativeIRBuilder(::fesql::type::TableDef* table,
                                        ::llvm::BasicBlock* block,
                                        ScopeVar* scope_var)
@@ -355,11 +354,8 @@ bool BufNativeIRBuilder::BuildGetPrimaryField(const std::string& fn_name,
     ::llvm::Value* val_offset = builder.getInt32(offset);
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         fn_name, type, i8_ptr_ty, i32_ty);
-    std::vector<::llvm::Value*> call_args;
-    call_args.push_back(row_ptr);
-    call_args.push_back(val_offset);
-    ::llvm::ArrayRef<::llvm::Value*> call_args_ref(call_args);
-    *output = builder.CreateCall(callee, call_args_ref);
+    *output = builder.CreateCall(
+        callee, ::llvm::ArrayRef<::llvm::Value*>{row_ptr, val_offset});
     return true;
 }
 
@@ -382,10 +378,8 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
         ::llvm::FunctionCallee callee =
             block_->getModule()->getOrInsertFunction(
                 "fesql_storage_get_str_addr_space", i8_ty, i32_ty);
-        std::vector<::llvm::Value*> call_args;
-        call_args.push_back(size);
-        ::llvm::ArrayRef<::llvm::Value*> call_args_ref(call_args);
-        str_addr_space = builder.CreateCall(callee, call_args_ref);
+        str_addr_space =
+            builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{size});
         str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true,
                                                "cast_i8_to_i32");
         ok = sv_->AddVar("str_addr_space", str_addr_space);
@@ -419,17 +413,11 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
     ::llvm::Value* size_ptr = builder.CreateStructGEP(str_type, string_ref, 0);
     // get the size ptr
     size_ptr = builder.CreatePointerCast(size_ptr, i32_ty->getPointerTo());
-    std::vector<::llvm::Value*> call_args;
-    call_args.push_back(row_ptr);
-    call_args.push_back(str_offset);
-    call_args.push_back(next_str_offset);
-    call_args.push_back(builder.getInt32(str_field_start_offset_));
-    call_args.push_back(str_addr_space);
-    call_args.push_back(data_ptr_ptr);
-    call_args.push_back(size_ptr);
-    ::llvm::ArrayRef<::llvm::Value*> call_args_ref(call_args);
     // TODO(wangtaize) add status check
-    builder.CreateCall(callee, call_args_ref);
+    builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
+                                   row_ptr, str_offset, next_str_offset,
+                                   builder.getInt32(str_field_start_offset_),
+                                   str_addr_space, data_ptr_ptr, size_ptr});
     *output = string_ref;
     return true;
 }
@@ -505,14 +493,9 @@ bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
 
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         fn_name, i32_ty, i8_ptr_ty, i32_ty, i32_ty, i8_ptr_ty);
-    std::vector<::llvm::Value*> call_args;
-    call_args.push_back(row_ptr);
-    call_args.push_back(val_offset);
-    call_args.push_back(val_type_id);
-    call_args.push_back(data_ptr_ptr);
-
-    ::llvm::ArrayRef<::llvm::Value*> call_args_ref(call_args);
-    builder.CreateCall(callee, call_args_ref);
+    builder.CreateCall(
+        callee, ::llvm::ArrayRef<::llvm::Value*>{row_ptr, val_offset,
+                                                 val_type_id, data_ptr_ptr});
     // TODO(wangtaize) add status check
     list_ref = builder.CreatePointerCast(list_ref, list_ref_type);
     *output = list_ref;
@@ -557,16 +540,11 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
     data_ptr_ptr =
         builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty->getPointerTo());
     // get the size ptr
-    std::vector<::llvm::Value*> call_args;
-    call_args.push_back(window_ptr);
-    call_args.push_back(str_offset);
-    call_args.push_back(next_str_offset);
-    call_args.push_back(builder.getInt32(str_field_start_offset_));
-    call_args.push_back(val_type_id);
-    call_args.push_back(data_ptr_ptr);
-    ::llvm::ArrayRef<::llvm::Value*> call_args_ref(call_args);
     // TODO(wangtaize) add status check
-    builder.CreateCall(callee, call_args_ref);
+    builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
+                                   window_ptr, str_offset, next_str_offset,
+                                   builder.getInt32(str_field_start_offset_),
+                                   val_type_id, data_ptr_ptr});
     *output = list_ref;
     return true;
 }
@@ -730,21 +708,12 @@ bool BufNativeEncoderIRBuilder::AppendString(
         size_ty,    // str_field_offset
         size_ty,    // str_addr_space
         size_ty);
-    std::vector<::llvm::Value*> call_args;
-    // add buf args
-    call_args.push_back(i8_ptr);
-    call_args.push_back(buf_size);
-
-    // add str args
-    call_args.push_back(data_ptr);
-    call_args.push_back(fe_str_size);
-
-    call_args.push_back(builder.getInt32(str_field_start_offset_));
-    call_args.push_back(builder.getInt32(str_field_idx));
-    call_args.push_back(str_addr_space);
-    call_args.push_back(str_body_offset);
-    ::llvm::ArrayRef<::llvm::Value*> call_args_ref(call_args);
-    *output = builder.CreateCall(callee, call_args_ref);
+    *output = builder.CreateCall(
+        callee,
+        ::llvm::ArrayRef<::llvm::Value*>{
+            i8_ptr, buf_size, data_ptr, fe_str_size,
+            builder.getInt32(str_field_start_offset_),
+            builder.getInt32(str_field_idx), str_addr_space, str_body_offset});
     return true;
 }
 
@@ -860,13 +829,11 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         "fesql_storage_encode_calc_size", size_ty, size_ty, size_ty, size_ty,
         size_ty->getPointerTo());
-    std::vector<::llvm::Value*> call_args;
-    call_args.push_back(builder.getInt32(str_field_start_offset_));
-    call_args.push_back(builder.getInt32(str_field_cnt_));
-    call_args.push_back(total_size);
-    call_args.push_back(str_addr_space);
-    ::llvm::ArrayRef<::llvm::Value*> call_args_ref(call_args);
-    *output_ptr = builder.CreateCall(callee, call_args_ref);
+    *output_ptr = builder.CreateCall(
+        callee,
+        ::llvm::ArrayRef<::llvm::Value*>{
+            builder.getInt32(str_field_start_offset_),
+            builder.getInt32(str_field_cnt_), total_size, str_addr_space});
     return true;
 }
 

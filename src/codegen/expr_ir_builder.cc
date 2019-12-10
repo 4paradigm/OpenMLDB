@@ -21,7 +21,6 @@
 #include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/type_ir_builder.h"
-#include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "proto/common.pb.h"
 
@@ -234,8 +233,8 @@ bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
         for (auto each : node->GetFileds()->children) {
             node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
             ::llvm::Type* type;
-            if (ConvertFeSQLType2LLVMType(field->GetParaType(),
-                                          module_, &type)) {
+            if (ConvertFeSQLType2LLVMType(field->GetParaType(), module_,
+                                          &type)) {
                 members.push_back(type);
             } else {
                 LOG(WARNING)

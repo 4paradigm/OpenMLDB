@@ -35,7 +35,6 @@ class Engine;
 
 struct CompileInfo {
     SQLContext sql_ctx;
-    uint32_t row_size;
 };
 
 class RunSession {
@@ -43,8 +42,6 @@ class RunSession {
     RunSession();
 
     ~RunSession();
-
-    inline const uint32_t GetRowSize() const { return compile_info_->row_size; }
 
     inline const std::vector<::fesql::type::ColumnDef>& GetSchema() const {
         return compile_info_->sql_ctx.schema;

@@ -316,10 +316,7 @@ void RunCaseV1(T expected, const ::fesql::type::Type& type,
         ::llvm::Type* void_ty = builder.getVoidTy();
         ::llvm::FunctionCallee callee =
             m->getOrInsertFunction("print_str", void_ty, i8_ptr_ty);
-        std::vector<Value*> call_args;
-        call_args.push_back(i8_ptr);
-        ::llvm::ArrayRef<Value*> call_args_ref(call_args);
-        builder.CreateCall(callee, call_args_ref);
+        builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
     }
     if (!is_void) {
         builder.CreateRet(val);
@@ -466,10 +463,7 @@ void RunCase(T expected, const ::fesql::type::Type& type,
         ::llvm::Type* void_ty = builder.getVoidTy();
         ::llvm::FunctionCallee callee =
             m->getOrInsertFunction("print_str", void_ty, i8_ptr_ty);
-        std::vector<Value*> call_args;
-        call_args.push_back(i8_ptr);
-        ::llvm::ArrayRef<Value*> call_args_ref(call_args);
-        builder.CreateCall(callee, call_args_ref);
+        builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
     }
     if (!is_void) {
         builder.CreateRet(val);
@@ -639,10 +633,7 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
             return;
         }
     }
-    std::vector<Value*> call_args;
-    call_args.push_back(i8_ptr);
-    ::llvm::ArrayRef<Value*> call_args_ref(call_args);
-    ::llvm::Value* ret_val = builder.CreateCall(callee, call_args_ref);
+    ::llvm::Value* ret_val = builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
     if (!is_void) {
         builder.CreateRet(ret_val);
     } else {

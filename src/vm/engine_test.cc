@@ -416,12 +416,10 @@ TEST_F(EngineTest, test_window_agg) {
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
-    const uint32_t length = session.GetRowSize();
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(5, output.size());
-    ASSERT_EQ(length, 28);
 
     //    ASSERT_EQ(15, *(reinterpret_cast<int32_t*>(output[0]+2)));
     //    ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output[0] + 7)));
@@ -545,12 +543,10 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
-    const uint32_t length = session.GetRowSize();
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(5, output.size());
-    ASSERT_EQ(length, 28);
 
     //    ASSERT_EQ(15, *(reinterpret_cast<int32_t*>(output[0]+2)));
     //    ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output[0] + 7)));

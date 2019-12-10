@@ -85,7 +85,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             }
             pop->fn = reinterpret_cast<int8_t*>(symbol->getAddress());
             ctx.schema = pop->output_schema;
-            ctx.row_size = pop->output_size;
         }
     }
     return true;

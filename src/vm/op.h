@@ -18,6 +18,7 @@
 #ifndef SRC_VM_OP_H_
 #define SRC_VM_OP_H_
 
+#include <storage/window.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,7 +37,7 @@ enum OpType {
 struct OpNode {
     virtual ~OpNode() {}
     OpType type;
-    std::vector<std::pair<int32_t, int8_t*>> output;
+    std::vector<::fesql::storage::Row> output;
     std::vector<OpNode*> children;
 };
 
@@ -66,7 +67,6 @@ struct ProjectOp : public OpNode {
     uint32_t tid;
     uint32_t pid;
     std::vector<::fesql::type::ColumnDef> output_schema;
-    uint32_t output_size;
     int8_t* fn;
     std::string fn_name;
     bool window_agg;

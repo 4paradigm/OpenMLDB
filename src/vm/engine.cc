@@ -51,7 +51,6 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         // do clean
         return false;
     }
-    info->row_size = 2 + info->sql_ctx.row_size;
     {
         session.SetTableMgr(table_mgr_);
         // check
@@ -120,39 +119,49 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 uint32_t count = 0;
                 while (it->Valid() && count < min) {
                     ::fesql::storage::Slice value = it->GetValue();
-                    scan_op->output.push_back(std::make_pair(
-                        value.size(), reinterpret_cast<int8_t*>(
-                                          const_cast<char*>(value.data()))));
+                    scan_op->output.push_back(::fesql::storage::Row{
+                        .buf = reinterpret_cast<int8_t*>(
+                            const_cast<char*>(value.data())),
+                        .size = value.size()});
                     it->Next();
                 }
                 break;
             }
             case kOpProject: {
                 ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
-                std::vector<int8_t*> output_rows;
-
                 std::shared_ptr<TableStatus> status =
                     table_mgr_->GetTableDef(project_op->db, project_op->tid);
+                if (!status) {
+                    LOG(WARNING)
+                        << "fail to find table with tid " << project_op->tid;
+                    return 1;
+                }
+                std::vector<int8_t*> output_rows;
                 int32_t (*udf)(int8_t*, int32_t, int8_t**) =
                     (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
                 OpNode* prev = project_op->children[0];
                 std::unique_ptr<storage::RowView> row_view =
                     std::move(std::unique_ptr<storage::RowView>(
                         new storage::RowView(status->table_def.columns())));
-                for (auto pair : prev->output) {
-                    row_view->Reset(pair.second, pair.first);
-                    int8_t* output = NULL;
-                    int32_t output_size = 0;
-                    // handle window
-                    if (project_op->window_agg) {
+
+                if (project_op->window_agg) {
+                    ::fesql::type::Type key_type = project_op->w.keys[0].first;
+                    ::fesql::type::Type order_type =
+                        project_op->w.orders[0].first;
+                    uint32_t key_idx = project_op->w.keys[0].second;
+                    uint32_t order_idx = project_op->w.orders[0].second;
+                    for (auto row : prev->output) {
+                        row_view->Reset(row.buf, row.size);
+                        int8_t* output = NULL;
+                        size_t output_size = 0;
+                        // handle window
                         std::string key_name;
                         {
-                            switch (project_op->w.keys[0].first) {
+                            switch (key_type) {
                                 case fesql::type::kInt32: {
                                     int32_t value;
-                                    if (0 == row_view->GetInt32(
-                                                 project_op->w.keys[0].second,
-                                                 &value)) {
+                                    if (0 ==
+                                        row_view->GetInt32(key_idx, &value)) {
                                         key_name = std::to_string(value);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
@@ -163,9 +172,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                                 }
                                 case fesql::type::kInt64: {
                                     int64_t value;
-                                    if (0 == row_view->GetInt64(
-                                                 project_op->w.keys[0].second,
-                                                 &value)) {
+                                    if (0 ==
+                                        row_view->GetInt64(key_idx, &value)) {
                                         key_name = std::to_string(value);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
@@ -176,9 +184,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                                 }
                                 case fesql::type::kInt16: {
                                     int16_t value;
-                                    if (0 == row_view->GetInt16(
-                                                 project_op->w.keys[0].second,
-                                                 &value)) {
+                                    if (0 ==
+                                        row_view->GetInt16(key_idx, &value)) {
                                         key_name = std::to_string(value);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
@@ -189,9 +196,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                                 }
                                 case fesql::type::kFloat: {
                                     float value;
-                                    if (0 == row_view->GetFloat(
-                                                 project_op->w.keys[0].second,
-                                                 &value)) {
+                                    if (0 ==
+                                        row_view->GetFloat(key_idx, &value)) {
                                         key_name = std::to_string(value);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
@@ -202,9 +208,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                                 }
                                 case fesql::type::kDouble: {
                                     double value;
-                                    if (0 == row_view->GetDouble(
-                                                 project_op->w.keys[0].second,
-                                                 &value)) {
+                                    if (0 ==
+                                        row_view->GetDouble(key_idx, &value)) {
                                         key_name = std::to_string(value);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
@@ -216,9 +221,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                                 case fesql::type::kVarchar: {
                                     char* str;
                                     uint32_t str_size;
-                                    if (0 == row_view->GetString(
-                                                 project_op->w.keys[0].second,
-                                                 &str, &str_size)) {
+                                    if (0 == row_view->GetString(key_idx, &str,
+                                                                 &str_size)) {
                                         key_name = std::string(str, str_size);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
@@ -236,14 +240,12 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                         }
                         int64_t ts;
                         {
-                            // TODO(chenjing): handle null ts or timestamp/date
-                            // ts
-                            switch (project_op->w.orders[0].first) {
-
+                            // TODO(chenjing): handle null ts or
+                            // timestamp/date ts
+                            switch (order_type) {
                                 case fesql::type::kInt64: {
-                                    if (0 == row_view->GetInt64(
-                                        project_op->w.orders[0].second,
-                                        &ts)) {
+                                    if (0 ==
+                                        row_view->GetInt64(order_idx, &ts)) {
                                     } else {
                                         LOG(WARNING) << "fail to get order "
                                                         "for current row";
@@ -275,28 +277,43 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                         }
                         fesql::storage::WindowIteratorImpl impl(window);
                         uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl),
-                                           pair.first, &output);
+                                           row.size, &output);
                         if (ret != 0) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
                         }
 
-                    } else {
-                        uint32_t ret = udf(pair.second, pair.first, &output);
-
-                        if (ret != 0) {
-                            LOG(WARNING) << "fail to run udf " << ret;
-                            return 1;
-                        }
+                        project_op->output.push_back(::fesql::storage::Row{
+                            .buf = output, .size = output_size});
                     }
-                    project_op->output.push_back(
-                        std::make_pair(output_size, output));
+                } else {
+                    for (auto row : prev->output) {
+                        row_view->Reset(row.buf, row.size);
+                        int8_t* output = NULL;
+                        size_t output_size = 0;
+                        // handle window
+                        uint32_t ret = udf(row.buf, row.size, &output);
+
+                        if (ret != 0) {
+                            LOG(WARNING) << "fail to run udf " << ret;
+                            return 1;
+                        }
+                        project_op->output.push_back(::fesql::storage::Row{
+                            .buf = output, .size = output_size});
+                    }
                 }
+
+                // TODO(chenjing): handle multi keys
+
                 break;
             }
             case kOpMerge: {
-                // TODO(chenjing): add merge execute logic
                 MergeOp* merge_op = reinterpret_cast<MergeOp*>(op);
+                if (merge_op->children.size() != 2) {
+                    LOG(WARNING) << "fail to merge when children size is not 2";
+                    return 1;
+                }
+                // TODO(chenjing): add merge execute logic
                 break;
             }
             case kOpLimit: {
@@ -316,8 +333,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
         }
         index++;
         if (index == op_size) {
-            for (auto pair : op->output) {
-                buf.push_back(pair.second);
+            for (auto row : op->output) {
+                // TODO(chenjing)
+                buf.push_back(row.buf);
             }
         }
     }

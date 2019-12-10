@@ -18,7 +18,7 @@ namespace storage {
 
 struct Row {
     int8_t *buf;
-    uint32_t size;
+    size_t size;
 };
 
 template <class V>
