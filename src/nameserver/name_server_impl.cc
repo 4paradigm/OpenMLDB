@@ -146,21 +146,21 @@ bool ClusterInfo::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& tas
 void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtidb::nameserver::TableInfo>& tables) {
     auto rep_iter = rep_table_map_.find(alias);
     if (rep_iter == rep_table_map_.end()) {
-        rep_table_map_.insert(std::make_pair(alias, std::map<std::string, std::vector<std::shared_ptr<TablePartition>>>()));
+        rep_table_map_.insert(std::make_pair(alias, std::map<std::string, std::vector<TablePartition>>()));
     }
     rep_iter = rep_table_map_.find(alias);
     for (const auto& table : tables) {
         auto table_iter = rep_iter->second.find(table.name());
         if (table_iter == rep_iter->second.end()) {
-            rep_iter->second.insert(std::make_pair(table.name(), std::vector<std::shared_ptr<TablePartition>>()));
+            rep_iter->second.insert(std::make_pair(table.name(), std::vector<TablePartition>()));
             table_iter = rep_iter->second.find(table.name());
             for (auto& temp_part : table.table_partition()) {
-                std::shared_ptr<::rtidb::nameserver::TablePartition> tb = std::make_shared<TablePartition>();
-                (*tb).set_pid(temp_part.pid());
-                (*tb).set_record_byte_size(temp_part.record_byte_size());
-                (*tb).set_record_cnt(temp_part.record_cnt());
+                ::rtidb::nameserver::TablePartition tb = TablePartition();
+                tb.set_pid(temp_part.pid());
+                tb.set_record_byte_size(temp_part.record_byte_size());
+                tb.set_record_cnt(temp_part.record_cnt());
                 for (auto& to : temp_part.term_offset()) {
-                    (*tb).add_term_offset()->CopyFrom(to);
+                    tb.add_term_offset()->CopyFrom(to);
                 }
                 for (auto& meta : temp_part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
@@ -178,10 +178,10 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                             }
                             break;
                         }
-                        (*tb).add_partition_meta()->CopyFrom(meta);
+                        tb.add_partition_meta()->CopyFrom(meta);
                         if (meta.offset() > info_iter->second->table_partition(i).partition_meta(j).offset()) {
                             // send delete util specify offset
-                            auto temp = (*tb).partition_meta((*tb).partition_meta_size() - 1);
+                            auto temp = tb.partition_meta(tb.partition_meta_size() - 1);
                             temp.clear_endpoint();
                             break;
                         }
@@ -195,10 +195,10 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
         }
         for (int i = 0; i < table.table_partition_size(); i++) {
             auto& temp_part = table.table_partition(i);
-            std::shared_ptr<TablePartition> part_p = table_iter->second[0];
+            TablePartition* part_p = &table_iter->second[0];
             for (uint64_t j = 0; j < table_iter->second.size(); j++) {
-                if (table_iter->second[j]->pid() == temp_part.pid()) {
-                    part_p = table_iter->second[j];
+                if (table_iter->second[j].pid() == temp_part.pid()) {
+                    part_p = &table_iter->second[j];
                     break;
                 }
             }
