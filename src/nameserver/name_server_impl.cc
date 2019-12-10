@@ -254,7 +254,7 @@ bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo
             return false;
         }
         if (table.ttl_type() != iter->second->ttl_type()) {
-            PDLOG(WARNING, "ttl type not equal");
+            PDLOG(WARNING, "ttl type not equal remote [%s] local [%s]", table.ttl_type().c_str(), iter->second->ttl_type().c_str());
             return false;
         }
         if (table.partition_num() != iter->second->partition_num()) {
@@ -262,7 +262,7 @@ bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo
             return false;
         }
         if (table.compress_type() != iter->second->compress_type()) {
-            PDLOG(WARNING, "compress type not equal remote [%s] local [%s]", table.compress_type().c_str(), iter->second->compress_type().c_str());
+            PDLOG(WARNING, "compress type not equal");
             return false;
         }
         for (int i = 0; i < table.column_desc_size(); i++) {
