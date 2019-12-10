@@ -198,7 +198,7 @@ class LinkList : public BaseList<K, V> {
             return node_->GetValue();
         }
         virtual void Seek(const K& k) {
-            node_ = list_->FindLessThan(k);
+            node_ = list_->FindLessOrEqual(k);
             Next();
         }
         virtual void SeekToFirst() {
@@ -255,7 +255,7 @@ template <class K, class V, class Comparator,
 // typename std::enable_if<std::is_pod<K>::value && std::is_pod<V>::value,
 // int>::type = 0>
 class ArrayList : public BaseList<K, V> {
-    static_assert(sizeof(ArraySt<K, V>) == sizeof(uint16_t));
+    // static_assert(sizeof(ArraySt<K, V>) == sizeof(uint16_t));
 
  public:
     explicit ArrayList(Comparator cmp) : compare_(cmp), array_(NULL) {}
@@ -466,7 +466,7 @@ class ArrayList : public BaseList<K, V> {
             if (array_) {
                 ArrayListNode<K, V>* array_ptr = array_.get();
                 for (uint32_t idx = 0; idx < length_; idx++) {
-                    if (compare_(array_ptr[idx].key_, key) > 0) {
+                    if (compare_(array_ptr[idx].key_, key) >= 0) {
                         pos_ = idx;
                         break;
                     }
@@ -523,7 +523,7 @@ class List {
         return list_.load(std::memory_order_relaxed)->NewIterator();
     }
 
-    Iterator<K, V>* NewIterator(uint64_t ts) {
+    Iterator<K, V>* NewIterator(const uint64_t ts) {
         auto it = list_.load(std::memory_order_relaxed)->NewIterator();
         it->Seek(ts);
         return it;

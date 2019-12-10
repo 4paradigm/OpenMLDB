@@ -4,7 +4,6 @@
 // Date 2019-10-24
 //
 
-
 #include "storage/list.h"
 #include <sys/time.h>
 #include <time.h>
@@ -246,19 +245,21 @@ TEST_F(ListTest, ListIteratorSeek) {
     int count = 0;
     while (iter->Valid()) {
         count += 1;
+        iter->Next();
     }
-    ASSERT(count, 4);
+    ASSERT_EQ(count, 4);
     delete iter;
     iter = list.NewIterator(5);
     ASSERT_EQ(iter->GetValue(), 2);
     count = 0;
-    while(iter->Valid()) {
+    while (iter->Valid()) {
         count += 1;
+        iter->Next();
     }
-    ASSERT(count, 3);
+    ASSERT_EQ(count, 3);
     delete iter;
     iter = list.NewIterator(0);
-    ASSERT_FALSE(iter->Valid);
+    ASSERT_FALSE(iter->Valid());
     delete iter;
 }
 

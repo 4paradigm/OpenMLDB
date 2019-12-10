@@ -11,8 +11,8 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 #include "base/iterator.h"
 #include "storage/codec.h"
 #include "storage/segment.h"
@@ -38,7 +38,8 @@ class Table {
 
     bool Put(const char* row, uint32_t size);
 
-    std::unique_ptr<TableIterator> NewIterator(const std::string& pk, const uint64_t ts);
+    std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
+                                               const uint64_t ts);
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk);
     std::unique_ptr<TableIterator> NewIterator();
 
