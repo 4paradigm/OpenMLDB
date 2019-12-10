@@ -83,6 +83,7 @@ class Segment {
 
     std::unique_ptr<TableIterator> NewIterator();
     std::unique_ptr<TableIterator> NewIterator(const Slice& key);
+    std::unique_ptr<TableIterator> Segment::NewIterator(const Slice& key, const uint64_t ts);
 
  private:
     KeyEntry* entries_;

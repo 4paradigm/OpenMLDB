@@ -231,6 +231,37 @@ TEST_F(ListTest, ArrayListEqualItem) {
     delete iter;
 }
 
+TEST_F(ListTest, ListIteratorSeek) {
+    List<uint64_t, uint64_t, DefaultComparator> list(cmp);
+    uint64_t value1 = 1;
+    list.Insert(2, value1);
+    uint64_t value2 = 8;
+    list.Insert(8, value2);
+    uint64_t value3 = 2;
+    list.Insert(5, value3);
+    uint64_t value4 = 3;
+    list.Insert(1, value4);
+    Iterator<uint64_t, uint64_t>* iter = list.NewIterator(1234);
+    ASSERT_EQ(iter->GetValue(), 8);
+    int count = 0;
+    while (iter->Valid()) {
+        count += 1;
+    }
+    ASSERT(count, 4);
+    delete iter;
+    iter = list.NewIterator(5);
+    ASSERT_EQ(iter->GetValue(), 2);
+    count = 0;
+    while(iter->Valid()) {
+        count += 1;
+    }
+    ASSERT(count, 3);
+    delete iter;
+    iter = list.NewIterator(0);
+    ASSERT_FALSE(iter->Valid);
+    delete iter;
+}
+
 /*TEST_F(ListTest, SkipListPerform) {
     {
         std::vector<::fesql::base::Skiplist<uint64_t, uint64_t,

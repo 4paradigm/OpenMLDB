@@ -149,6 +149,16 @@ bool Table::Put(const char* row, uint32_t size) {
     return true;
 }
 
+std::unique_ptr<TableIterator> Table::NewIterator(const std::string&pk, uint64_t ts) {
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::fesql::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
+    Slice spk(pk);
+    Segment* segment = segments_[0][seg_idx];
+    return std::move(segment->NewIterator(spk, ts));
+}
+
 std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk) {
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {

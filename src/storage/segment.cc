@@ -33,6 +33,18 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
 }
 
 // Iterator
+std::unique_ptr<TableIterator> Segment::NewIterator(const Slice& key, const uint64_t ts) {
+    if (entries_ == NULL) {
+        return std::unique_ptr<TableIterator>(new TableIterator());
+    }
+    void* entry = NULL;
+    if (entries_->Get(key, entry) < 0 || entry == NULL) {
+        return std::unique_ptr<TableIterator>(new TableIterator());
+    }
+    return std::unique_ptr<TableIterator>(new TableIterator(
+        NULL, (reinterpret_cast<TimeEntry*>(entry))->NewIterator(ts)));
+}
+
 std::unique_ptr<TableIterator> Segment::NewIterator(const Slice& key) {
     if (entries_ == NULL) {
         return std::unique_ptr<TableIterator>(new TableIterator());
