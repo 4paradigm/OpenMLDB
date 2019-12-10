@@ -75,7 +75,6 @@ def gen_table_metadata(name, ttl_type, ttl, seg_cnt, *table_partitions):
                 metadata.append({})
     return metadata
 
-
 def gen_table_metadata_file(metadata, filepath):
     s = ''
     for basic in metadata[0]:
