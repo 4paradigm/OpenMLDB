@@ -3870,6 +3870,31 @@ void TabletImpl::SetMode(RpcController* controller,
     response->set_code(0);
 }
 
+void TabletImpl::AlignTable(RpcController* controller,
+        const ::rtidb::api::GeneralRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(100);
+        response->set_msg("table is not exist");
+        done->Run();
+        return;
+    }
+    std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
+    if (!replicator) {
+        PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(),
+              request->pid());
+        response->set_code(100);
+        response->set_msg("table is not exist");
+        done->Run();
+        return;
+    }
+    // replicator.GetLogPart().Get
+}
+
 }
 }
 

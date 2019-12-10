@@ -240,6 +240,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void AlignTable(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     inline void SetServer(brpc::Server* server) {
         server_ = server;
     }
