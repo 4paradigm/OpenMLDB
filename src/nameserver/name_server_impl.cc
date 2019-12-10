@@ -10,7 +10,6 @@
 #include <gflags/gflags.h>
 #include "timer.h"
 #include <strings.h>
-#include "base/strings.h"
 #include <chrono>
 #include <boost/algorithm/string.hpp>
 #include <algorithm>
@@ -247,38 +246,46 @@ bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo
     for (auto &table : tables) {
         auto iter = table_info_.find(table.name());
         if (iter == table_info_.end()) {
+            PDLOG(WARNING, "%s not found in table_info_", table.name().c_str());
             return false;
         }
         if (table.ttl() != iter->second->ttl()) {
+            PDLOG(WARNING, "ttl not equal remote [%d] local [%d]", table.ttl(), iter->second->ttl());
             return false;
         }
         if (table.ttl_type() != iter->second->ttl_type()) {
+            PDLOG(WARNING, "ttl type not equal remote [%s] local [%s]", table.ttl_type().c_str(), iter->second->ttl_type().c_str());
             return false;
         }
         if (table.partition_num() != iter->second->partition_num()) {
+            PDLOG(WARNING, "partition num not equal remote [%d] local [%d]", table.partition_num(), iter->second->partition_num());
             return false;
         }
         if (table.compress_type() != iter->second->compress_type()) {
+            PDLOG(WARNING, "compress type not equal remote [%s] local [%s]", table.compress_type().c_str(), iter->second->compress_type().c_str());
             return false;
         }
         for (int i = 0; i < table.column_desc_size(); i++) {
-            if (table.column_desc(i).SerializeAsString() != iter->second->column_desc(i).SerializeAsString()) {
+            if (table.column_desc(i).SerializeAsString().compare(iter->second->column_desc(i).SerializeAsString())) {
+                PDLOG(WARNING, "column desc [%d] not equal", i);
                 return false;
             }
         }
         for (int i = 0; i < table.column_desc_v1_size(); i++) {
-            if (table.column_desc_v1(i).SerializeAsString() != iter->second->column_desc(i).SerializeAsString()) {
+            if (table.column_desc_v1(i).SerializeAsString().compare(iter->second->column_desc(i).SerializeAsString())) {
+                PDLOG(WARNING, "column desc v1 [%d] not equal", i);
                 return false;
             }
         }
         for (int i = 0; i < table.column_key_size(); i++) {
-            if (table.column_key(i).SerializeAsString() != iter->second->column_key(i).SerializeAsString()) {
+            if (table.column_key(i).SerializeAsString().compare(iter->second->column_key(i).SerializeAsString())) {
+                PDLOG(WARNING, "column key [%d] not equal", i);
                 return false;
             }
         }
         for (int i = 0; i < table.added_column_desc_size(); i++) {
-            if (table.added_column_desc(i).SerializeAsString()
-                != iter->second->added_column_desc(i).SerializeAsString()) {
+            if (table.added_column_desc(i).SerializeAsString().compare(iter->second->added_column_desc(i).SerializeAsString())) {
+                PDLOG(WARNING, "add column desc [%d] not equal", i);
                 return false;
             }
         }
