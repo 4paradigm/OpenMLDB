@@ -254,7 +254,7 @@ bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo
             return false;
         }
         if (table.ttl_type() != iter->second->ttl_type()) {
-            PDLOG(WARNING, "ttl type not equal remote [%s] local [%s]", table.ttl_type().c_str(), iter->second->ttl_type().c_str());
+            PDLOG(WARNING, "ttl type not equal");
             return false;
         }
         if (table.partition_num() != iter->second->partition_num()) {
