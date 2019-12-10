@@ -78,6 +78,10 @@ TEST_F(TabletSdkTest, test_normal) {
         column->set_type(::fesql::type::kInt64);
         column->set_name("col5");
     }
+    ::fesql::type::IndexDef* index = table_def->add_indexes();
+    index->set_name("idx1");
+    index->add_first_keys("col1");
+    index->set_second_key("col5");
     common::Status status;
     interal_sdk.CreateTable(&req, status);
     ASSERT_EQ(status.code(), common::kOk);
@@ -228,7 +232,8 @@ TEST_F(TabletSdkTest, test_create_and_query) {
             "    column2 double NOT NULL,\n"
             "    column3 float NOT NULL,\n"
             "    column4 bigint NOT NULL,\n"
-            "    column5 int NOT NULL\n"
+            "    column5 int NOT NULL\n,"
+            "    index(key=column1, ts=column5)\n"
             ");";
 
         db.name = "db_1";
@@ -426,7 +431,8 @@ TEST_F(TabletSdkTest, test_udf_query) {
             "    column3 float NOT NULL,\n"
             "    column4 bigint NOT NULL,\n"
             "    column5 int NOT NULL,\n"
-            "    column6 string \n"
+            "    column6 string,\n"
+            "    index(key=column1, ts=column5)\n"
             ");";
         db.name = "db_1";
         fesql::sdk::Status status;

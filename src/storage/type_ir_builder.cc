@@ -30,102 +30,65 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
     if (row == NULL || data == NULL || size == NULL) return -1;
 
     const int8_t* row_with_offset = row + str_start_offset;
+    uint32_t str_offset = 0;
+    uint32_t next_str_offset = 0;
     switch (addr_space) {
         case 1: {
-            // no next str field
-            if (next_str_field_offset <= 0) {
-                uint8_t str_offset =
-                    (uint8_t)(*(row_with_offset + field_offset * addr_space));
-                uint32_t total_length = (uint32_t)(*(row + 2));
-                const int8_t* ptr = row + str_offset;
-                *size = (uint32_t)(total_length - str_offset);
-                *data = (int8_t*)(ptr);  // NOLINT
-            } else {
-                uint8_t str_offset =
-                    (uint8_t)(*(row_with_offset + field_offset * addr_space));
-                uint8_t next_str_offset = (uint8_t)(
+            str_offset =
+                (uint8_t)(*(row_with_offset + field_offset * addr_space));
+            if (next_str_field_offset > 0) {
+                next_str_offset = (uint8_t)(
                     *(row_with_offset + next_str_field_offset * addr_space));
-                const int8_t* ptr = row + str_offset;
-                *size = (uint32_t)(next_str_offset - str_offset);
-                *data = (int8_t*)(ptr);  // NOLINT
             }
             break;
         }
         case 2: {
-            // no next str field
-            if (next_str_field_offset <= 0) {
-                uint16_t str_offset =
-                    (uint16_t)(*(row_with_offset + field_offset * addr_space));
-                uint32_t total_length = (uint32_t)(*(row + 2));
-                const int8_t* ptr = row + str_offset;
-                *size = (uint32_t)(total_length - str_offset);
-                *data = (int8_t*)(ptr);  // NOLINT
-            } else {
-                uint16_t str_offset =
-                    (uint16_t)(*(row_with_offset + field_offset * addr_space));
-                uint16_t next_str_offset = (uint16_t)(
-                    *(row_with_offset + next_str_field_offset * addr_space));
-                const int8_t* ptr = row + str_offset;
-                *size = (uint32_t)(next_str_offset - str_offset);
-                *data = (int8_t*)(ptr);  // NOLINT
+            str_offset = *(row_with_offset + field_offset * addr_space);
+            if (next_str_field_offset > 0) {
+                next_str_offset =
+                    *(row_with_offset + next_str_field_offset * addr_space);
             }
             break;
         }
         case 3: {
-            uint32_t offset = field_offset * addr_space;
-            // no next str field
-            if (next_str_field_offset <= 0) {
-                uint32_t str_offset = (uint8_t)(*(row_with_offset + offset));
-                str_offset = (str_offset << 8) +
-                             (uint8_t)(*(row_with_offset + offset + 1));
-                str_offset = (str_offset << 8) +
-                             (uint8_t)(*(row_with_offset + offset + 2));
-                uint32_t total_length = (uint32_t)(*(row + 2));
-                const int8_t* ptr = row + str_offset;
-                *size = (uint32_t)(total_length - str_offset);
-                *data = (int8_t*)(ptr);  // NOLINT
-            } else {
-                uint32_t next_offset = next_str_field_offset * addr_space;
-                uint32_t str_offset = (uint8_t)(*(row_with_offset + offset));
-                str_offset = (str_offset << 8) +
-                             (uint8_t)(*(row_with_offset + offset + 1));
-                str_offset = (str_offset << 8) +
-                             (uint8_t)(*(row_with_offset + offset + 2));
-                uint32_t next_str_offset =
-                    (uint8_t)(*(row_with_offset + next_offset));
+            const int8_t* cur_row_with_offset =
+                row_with_offset + field_offset * addr_space;
+            str_offset = (uint8_t)(*(cur_row_with_offset));
+            str_offset =
+                (str_offset << 8) + (uint8_t)(*(cur_row_with_offset + 1));
+            str_offset =
+                (str_offset << 8) + (uint8_t)(*(cur_row_with_offset + 2));
+            if (next_str_field_offset > 0) {
+                const int8_t* next_row_with_offset =
+                    row_with_offset + field_offset * addr_space;
+                next_str_offset = (uint8_t)(*(next_row_with_offset));
                 next_str_offset = (next_str_offset << 8) +
-                                  (uint8_t)(*(row + next_offset + 1));
+                                  (uint8_t)(*(next_row_with_offset + 1));
                 next_str_offset = (next_str_offset << 8) +
-                                  (uint8_t)(*(row + next_offset + 2));
-                const int8_t* ptr = row + str_offset;
-                *size = (uint32_t)(next_str_offset - str_offset);
-                *data = (int8_t*)(ptr);  // NOLINT
+                                  (uint8_t)(*(next_row_with_offset + 2));
             }
             break;
         }
         case 4: {
-            // no next str field
-            if (next_str_field_offset <= 0) {
-                uint32_t str_offset =
-                    (uint32_t)(*(row_with_offset + field_offset * addr_space));
-                uint32_t total_length = (uint32_t)(*(row + 2));
-                const int8_t* ptr = row + str_offset;
-                *size = (uint32_t)(total_length - str_offset);
-                *data = (int8_t*)(ptr);  // NOLINT
-            } else {
-                uint32_t str_offset =
-                    (uint32_t)(*(row_with_offset + field_offset * addr_space));
-                uint32_t next_str_offset = (uint32_t)(
-                    *(row_with_offset + next_str_field_offset * addr_space));
-                const int8_t* ptr = row + str_offset;
-                *size = (uint32_t)(next_str_offset - str_offset);
-                *data = (int8_t*)(ptr);  // NOLINT
+            str_offset =
+                (uint32_t)(*(row_with_offset + field_offset * addr_space));
+            if (next_str_field_offset > 0) {
+                next_str_offset =
+                    *(row_with_offset + next_str_field_offset * addr_space);
             }
             break;
         }
         default: {
             return -2;
         }
+    }
+    const int8_t* ptr = row + str_offset;
+    *data = (int8_t*)(ptr);  // NOLINT
+    if (next_str_field_offset <= 0) {
+        uint32_t total_length = (uint32_t)(*(row + VERSION_LENGTH));
+        *size = total_length - str_offset;
+    } else {
+        *size = next_str_offset - str_offset;
     }
     return 0;
 }

@@ -42,6 +42,7 @@ class RowBuilder {
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
     bool AppendInt64(int64_t val);
+    bool AppendTimestamp(int64_t val);
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const char* val, uint32_t length);
@@ -73,30 +74,44 @@ class RowView {
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
     int32_t GetInt64(uint32_t idx, int64_t* val);
+    int32_t GetTimestamp(uint32_t idx, int64_t* val);
     int32_t GetInt16(uint32_t idx, int16_t* val);
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
-    inline bool IsNULL(uint32_t idx) {
-        const int8_t* ptr = row_ + HEADER_LENGTH + (idx >> 3);
-        return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
+    bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
+    inline uint32_t GetSize() { return size_; }
+
+    static inline uint32_t GetSize(const int8_t* row) {
+        return *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
     }
-    uint32_t GetSize();
-    static uint32_t GetSize(const int8_t* row);
+
+    int32_t GetValue(const int8_t* row, uint32_t idx, ::fesql::type::Type type,
+                     void* val);
+
+    int32_t GetInteger(const int8_t* row, uint32_t idx,
+                       ::fesql::type::Type type, int64_t* val);
+    int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
+                     uint32_t* length);
 
  private:
     bool Init();
     bool CheckValid(uint32_t idx, ::fesql::type::Type type);
 
+    inline bool IsNULL(const int8_t* row, uint32_t idx) {
+        const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);
+        return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
+    }
+
  private:
     uint8_t str_addr_length_;
     bool is_valid_;
+    uint32_t string_field_cnt_;
     uint32_t str_field_start_offset_;
     uint32_t size_;
     const int8_t* row_;
     const Schema& schema_;
     std::vector<uint32_t> offset_vec_;
-    std::vector<uint32_t> next_str_pos_;
 };
 
 }  // namespace storage

@@ -42,6 +42,8 @@ struct Timestamp {
 
 namespace v1 {
 
+static constexpr uint8_t VERSION_LENGTH = 2;
+static constexpr uint8_t SIZE_LENGTH = 4;
 // calc the total row size with primary_size, str field count and str_size
 inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
                                 uint32_t str_size, uint32_t* str_addr_space) {
@@ -164,8 +166,8 @@ int32_t GetStrField(const int8_t* row, uint32_t str_field_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size);
 }  // namespace v1
 
-void InitCodecSymbol(::llvm::orc::JITDylib& jd, // NOLINT
-                     ::llvm::orc::MangleAndInterner& mi); // NOLINT
+void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
+                     ::llvm::orc::MangleAndInterner& mi);  // NOLINT
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
 
 }  // namespace storage

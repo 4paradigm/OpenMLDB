@@ -59,20 +59,7 @@ class TableMgrImpl : public TableMgr {
 static void BM_EngineFn(benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table("t1", 1, 1, 1));
-    ASSERT_TRUE(table->Init());
-    int8_t* ptr = static_cast<int8_t*>(malloc(28));
-    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
-    *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 2;
-    *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
-    *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
-    *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-
-    table->Put("k1", 1, reinterpret_cast<char*>(ptr), 28);
-    table->Put("k1", 2, reinterpret_cast<char*>(ptr), 28);
     std::shared_ptr<TableStatus> status(new TableStatus());
-    status->table = std::move(table);
     status->table_def.set_name("t1");
     {
         ::fesql::type::ColumnDef* column = status->table_def.add_columns();
@@ -101,6 +88,19 @@ static void BM_EngineFn(benchmark::State& state) {  // NOLINT
         column->set_type(::fesql::type::kInt64);
         column->set_name("col15");
     }
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+    int8_t* ptr = static_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 2;
+    *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
+    *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
+
+    table->Put(reinterpret_cast<char*>(ptr), 28);
+    table->Put(reinterpret_cast<char*>(ptr), 28);
+    status->table = std::move(table);
     TableMgrImpl table_mgr(status);
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "

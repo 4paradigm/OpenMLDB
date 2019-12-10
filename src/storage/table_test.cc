@@ -6,6 +6,7 @@
 //
 
 #include "storage/table.h"
+#include <sys/time.h>
 #include <string>
 #include "gtest/gtest.h"
 
@@ -18,23 +19,69 @@ class TableTest : public ::testing::Test {
 };
 
 TEST_F(TableTest, Iterator) {
-    ASSERT_TRUE(true);
-    Table table("test", 1, 1, 1);
+    ::fesql::type::TableDef def;
+    ::fesql::type::ColumnDef* col = def.add_columns();
+    col->set_name("col1");
+    col->set_type(::fesql::type::kVarchar);
+    col = def.add_columns();
+    col->set_name("col2");
+    col->set_type(::fesql::type::kInt64);
+    col = def.add_columns();
+    col->set_name("col3");
+    col->set_type(::fesql::type::kVarchar);
+    ::fesql::type::IndexDef* index = def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col1");
+    index->set_second_key("col2");
+
+    Table table(1, 1, def);
     table.Init();
-    table.Put("key1", 11, "value1", 6);
-    table.Put("key1", 22, "value1", 6);
-    table.Put("key2", 11, "value2", 6);
-    table.Put("key2", 22, "value2", 6);
-    TableIterator* iter = table.NewIterator("key2");
+
+    RowBuilder builder(def.columns());
+    uint32_t size = builder.CalTotalLength(10);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.AppendString("key1", 4);
+    builder.AppendInt64(11);
+    builder.AppendString("value1", 6);
+    table.Put(row.c_str(), row.length());
+    row.clear();
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.AppendString("key1", 4);
+    builder.AppendInt64(22);
+    builder.AppendString("value1", 6);
+    table.Put(row.c_str(), row.length());
+    row.clear();
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.AppendString("key2", 4);
+    builder.AppendInt64(11);
+    builder.AppendString("value2", 6);
+    table.Put(row.c_str(), row.length());
+    row.clear();
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.AppendString("key2", 4);
+    builder.AppendInt64(22);
+    builder.AppendString("value2", 6);
+    table.Put(row.c_str(), row.length());
+
+    std::unique_ptr<TableIterator> iter = table.NewIterator("key2");
     int count = 0;
+    RowView view(def.columns());
     iter->SeekToFirst();
     while (iter->Valid()) {
-        ASSERT_STREQ("value2", iter->GetValue().ToString().c_str());
+        char* ch;
+        uint32_t length = 0;
+        view.GetValue(reinterpret_cast<const int8_t*>(iter->GetValue().data()),
+                      2, &ch, &length);
+        ASSERT_STREQ("value2", std::string(ch, length).c_str());
         iter->Next();
         count++;
     }
     ASSERT_EQ(count, 2);
-    delete iter;
 
     iter = table.NewIterator();
     count = 0;
@@ -44,7 +91,6 @@ TEST_F(TableTest, Iterator) {
         count++;
     }
     ASSERT_EQ(count, 4);
-    delete iter;
 }
 
 }  // namespace storage
