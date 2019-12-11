@@ -92,8 +92,9 @@ bool OpGenerator::GenSQL(const ::fesql::node::SelectPlanNode* tree,
         LOG(WARNING) << status.msg;
         return false;
     }
-    RoutingNode(tree->GetChildren()[0], db, module, ops_map, ops, status);
-    if (common::kOk != status.code) {
+    std::vector<OpNode*> tmp;
+    if (false == RoutingNode(tree->GetChildren()[0], db, module, ops_map, ops,
+                             tmp, status)) {
         LOG(WARNING) << "Fail to gen op";
         return false;
     } else {
@@ -101,16 +102,17 @@ bool OpGenerator::GenSQL(const ::fesql::node::SelectPlanNode* tree,
     }
 }
 
-OpNode* OpGenerator::RoutingNode(
+bool OpGenerator::RoutingNode(
     const ::fesql::node::PlanNode* node, const std::string& db,
     ::llvm::Module* module,
     std::map<const std::string, OpNode*>& ops_map,  // NOLINT
-    OpVector* ops, Status& status) {                // NOLINT
+    OpVector* ops, std::vector<OpNode*>& prev_children,
+    Status& status) {  // NOLINT
     if (node == NULL || module == NULL || ops == NULL) {
         status.msg = "input args has null";
         status.code = common::kNullPointer;
         LOG(WARNING) << status.msg;
-        return nullptr;
+        return false;
     }
     // handle plan node that has been generated before
     std::stringstream ss;
@@ -120,7 +122,8 @@ OpNode* OpGenerator::RoutingNode(
     DLOG(INFO) << "ops_map size: " << ops_map.size();
     if (iter != ops_map.end()) {
         DLOG(INFO) << "plan node already generate op node";
-        return iter->second;
+        prev_children.push_back(iter->second);
+        return true;
     }
     // firstly, generate operator for node's children
     std::vector<::fesql::node::PlanNode*>::const_iterator it =
@@ -128,12 +131,10 @@ OpNode* OpGenerator::RoutingNode(
     std::vector<OpNode*> children;
     for (; it != node->GetChildren().cend(); ++it) {
         const ::fesql::node::PlanNode* pn = *it;
-        OpNode* child = RoutingNode(pn, db, module, ops_map, ops, status);
-        if (common::kOk != status.code) {
-            LOG(WARNING) << status.msg;
-            return nullptr;
+        if (false ==
+            RoutingNode(pn, db, module, ops_map, ops, children, status)) {
+            return false;
         }
-        children.push_back(child);
     }
 
     // secondly, generate operator for current node
@@ -142,19 +143,19 @@ OpNode* OpGenerator::RoutingNode(
         case ::fesql::node::kPlanTypeLimit: {
             const ::fesql::node::LimitPlanNode* limit_node =
                 (const ::fesql::node::LimitPlanNode*)node;
-            cur_op = GenLimit(limit_node, db, module, status);
+            GenLimit(limit_node, db, module, &cur_op, status);
             break;
         }
         case ::fesql::node::kPlanTypeScan: {
             const ::fesql::node::ScanPlanNode* scan_node =
                 (const ::fesql::node::ScanPlanNode*)node;
-            cur_op = GenScan(scan_node, db, module, status);
+            GenScan(scan_node, db, module, &cur_op, status);
             break;
         }
         case ::fesql::node::kProjectList: {
             const ::fesql::node::ProjectListPlanNode* ppn =
                 (const ::fesql::node::ProjectListPlanNode*)node;
-            cur_op = GenProject(ppn, db, module, status);
+            GenProject(ppn, db, module, &cur_op, status);
             break;
         }
         case ::fesql::node::kPlanTypeMerge: {
@@ -167,50 +168,45 @@ OpNode* OpGenerator::RoutingNode(
                     std::to_string(children.size());
                 status.code = common::kUnSupport;
                 LOG(WARNING) << status.msg;
-                return nullptr;
+                return false;
             }
-            cur_op = GenMerge(merge_node, module, status);
-            cur_op->type = kOpMerge;
-            break;
+            GenMerge(merge_node, module, &cur_op, status);
         }
         default: {
             status.msg = "not supported plan node" +
                          node::NameOfPlanNodeType(node->GetType());
             status.code = common::kNullPointer;
             LOG(WARNING) << status.msg;
-            return nullptr;
+            return false;
         }
     }
+
     if (common::kOk != status.code) {
-        LOG(WARNING) << status.msg;
-        if (nullptr != cur_op) {
-            delete cur_op;
-        }
-        return nullptr;
+        return false;
     }
 
     if (nullptr != cur_op) {
         cur_op->children = children;
         cur_op->idx = ops->ops.size();
         ops->ops.push_back(cur_op);
+        prev_children.push_back(cur_op);
         ops_map[key] = cur_op;
         DLOG(INFO) << "generate operator for plan "
                    << node::NameOfPlanNodeType(node->GetType());
-        DLOG(INFO) << "ops_map size: " << ops_map.size();
-        DLOG(INFO) << "ops_map insert key : " << key;
     } else {
         LOG(WARNING) << "fail to gen op " << node;
     }
     return cur_op;
 }
-OpNode* OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
-                             const std::string& db, ::llvm::Module* module,
-                             Status& status) {  // NOLINT
-    if (node == NULL || module == NULL) {
+bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
+                          const std::string& db, ::llvm::Module* module,
+                          OpNode** op,
+                          Status& status) {  // NOLINT
+    if (node == NULL || module == NULL || nullptr == op) {
         status.code = common::kNullPointer;
         status.msg = "input args has null";
         LOG(WARNING) << status.msg;
-        return nullptr;
+        return false;
     }
 
     std::shared_ptr<TableStatus> table_status =
@@ -219,7 +215,7 @@ OpNode* OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
         status.code = common::kTableNotFound;
         status.msg = "fail to find table " + node->GetTable();
         LOG(WARNING) << status.msg;
-        return nullptr;
+        return false;
     }
 
     ScanOp* sop = new ScanOp();
@@ -232,17 +228,19 @@ OpNode* OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
         sop->input_schema.push_back(table_status->table_def.columns(i));
         sop->output_schema.push_back(table_status->table_def.columns(i));
     }
-    return sop;
+    *op = sop;
+    return true;
 }
 
-OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
-                                const std::string& db, ::llvm::Module* module,
-                                Status& status) {  // NOLINT
-    if (node == NULL || module == NULL) {
+bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
+                             const std::string& db, ::llvm::Module* module,
+                             OpNode** op,
+                             Status& status) {  // NOLINT
+    if (node == NULL || module == NULL || nullptr == op) {
         status.code = common::kNullPointer;
         status.msg = "input args has null";
         LOG(WARNING) << status.msg;
-        return nullptr;
+        return false;
     }
 
     std::shared_ptr<TableStatus> table_status =
@@ -252,7 +250,7 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
         status.code = common::kTableNotFound;
         status.msg = "fail to find table " + node->GetTable();
         LOG(WARNING) << status.msg;
-        return nullptr;
+        return false;
     }
 
     // TODO(wangtaize) use ops end op output schema
@@ -269,7 +267,7 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
         status.code = common::kCodegenError;
         status.msg = "fail to run row fn builder";
         LOG(WARNING) << status.msg;
-        return nullptr;
+        return false;
     }
 
     uint32_t output_size = 0;
@@ -299,7 +297,7 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
                 status.msg =
                     "not supported column type" + Type_Name(column.type());
                 LOG(WARNING) << status.msg;
-                return nullptr;
+                return false;
             }
         }
     }
@@ -322,7 +320,8 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
                              table_status->table_def.name();
                 status.code = common::kColumnNotFound;
                 LOG(WARNING) << status.msg;
-                return nullptr;
+                delete pop;
+                return false;
             }
             pop->w.keys.push_back(it->second);
         }
@@ -333,7 +332,8 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
                              table_status->table_def.name();
                 status.code = common::kColumnNotFound;
                 LOG(WARNING) << status.msg;
-                return nullptr;
+                delete pop;
+                return false;
             }
             pop->w.orders.push_back(it->second);
         }
@@ -346,24 +346,27 @@ OpNode* OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     } else {
         pop->window_agg = false;
     }
+    *op = pop;
     DLOG(INFO) << "project output size " << output_size;
-    return pop;
+    return true;
 }
 
-OpNode* OpGenerator::GenLimit(const ::fesql::node::LimitPlanNode* node,
-                              const std::string& db, ::llvm::Module* module,
-                              Status& status) {  // NOLINT
-    if (node == NULL || module == NULL) {
+bool OpGenerator::GenLimit(const ::fesql::node::LimitPlanNode* node,
+                           const std::string& db, ::llvm::Module* module,
+                           OpNode** op,
+                           Status& status) {  // NOLINT
+    if (node == NULL || module == NULL || nullptr == op) {
         status.code = common::kNullPointer;
         status.msg = "input args has null";
         LOG(WARNING) << status.msg;
-        return nullptr;
+        return false;
     }
 
     LimitOp* limit_op = new LimitOp();
     limit_op->type = kOpLimit;
     limit_op->limit = node->GetLimitCnt();
-    return limit_op;
+    *op = limit_op;
+    return true;
 }
 
 bool OpGenerator::GenFnDef(::llvm::Module* module,
@@ -380,20 +383,20 @@ bool OpGenerator::GenFnDef(::llvm::Module* module,
     }
     return ok;
 }
-OpNode* OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
-                              ::llvm::Module* module,
-                              Status& status) {  // NOLINT
-    if (node == NULL || module == NULL) {
+bool OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
+                           ::llvm::Module* module, OpNode** op,
+                           Status& status) {  // NOLINT
+    if (node == NULL || module == NULL || NULL == op) {
         status.code = common::kNullPointer;
         status.msg = "input args has null";
         LOG(WARNING) << status.msg;
-        return nullptr;
+        return false;
     }
-
     MergeOp* merge_op = new MergeOp();
     merge_op->type = kOpLimit;
     merge_op->fn = nullptr;
-    return merge_op;
+    *op = merge_op;
+    return true;
 }
 
 }  // namespace vm

@@ -54,25 +54,30 @@ class OpGenerator {
                 OpVector* ops,          // NOLINT
                 base::Status& status);  // NOLINT
 
-    OpNode* GenProject(const ::fesql::node::ProjectListPlanNode* node,
+    bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
                        const std::string& db, ::llvm::Module* module,
+                       OpNode** op,
                        Status& status);  // NOLINT
 
-    OpNode* GenScan(const ::fesql::node::ScanPlanNode* node,
+    bool GenScan(const ::fesql::node::ScanPlanNode* node,
                     const std::string& db, ::llvm::Module* module,
+                    OpNode** op,
                     Status& status);  // NOLINT
 
-    OpNode* GenLimit(const ::fesql::node::LimitPlanNode* node,
+    bool GenLimit(const ::fesql::node::LimitPlanNode* node,
                      const std::string& db, ::llvm::Module* module,
+                     OpNode** op,
                      Status& status);  // NOLINT
-    OpNode* GenMerge(const ::fesql::node::MergePlanNode* node,
+    bool GenMerge(const ::fesql::node::MergePlanNode* node,
                      ::llvm::Module* module,
+                     OpNode** op,
                      Status& status);  // NOLINT
 
-    OpNode* RoutingNode(const ::fesql::node::PlanNode* node,
+    bool RoutingNode(const ::fesql::node::PlanNode* node,
                         const std::string& db, ::llvm::Module* module,
                         std::map<const std::string, OpNode*>& ops_map,  // NOLINT
                         OpVector* ops,
+                        std::vector<OpNode*> &prev_children, //NOLINT
                         Status& status);  // NOLINT
 
  private:
