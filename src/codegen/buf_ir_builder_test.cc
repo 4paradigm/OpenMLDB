@@ -17,7 +17,6 @@
 
 #include "codegen/buf_ir_builder.h"
 #include <stdio.h>
-#include <storage/window.h>
 #include <cstdlib>
 #include <memory>
 #include <vector>
@@ -25,6 +24,7 @@
 #include "gtest/gtest.h"
 #include "storage/codec.h"
 #include "storage/type_ir_builder.h"
+#include "storage/window.h"
 
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
