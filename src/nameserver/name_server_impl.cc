@@ -5813,23 +5813,26 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    auto iter = table_info_.find(name);
-    if (iter == table_info_.end()) {
-        PDLOG(WARNING, "not found table[%s] in table_info map. op_id[%lu]", name.c_str(), task_info->op_id());
-        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-        return;
+    TableInfo table_info;
+    auto iter = table_info_.begin();
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = table_info_.find(name);
+        if (iter == table_info_.end()) {
+            PDLOG(WARNING, "not found table[%s] in table_info map. op_id[%lu]", name.c_str(), task_info->op_id());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return;
+        }
+        table_info.CopyFrom(*(*iter).second);
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    table_info->CopyFrom(*(iter->second));
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        if (table_info->table_partition(idx).pid() != pid) {
+    for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
+        if (table_info.table_partition(idx).pid() != pid) {
             continue;
         }
         bool has_found = false;
-        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).remote_partition_meta_size(); meta_idx++) {
-             if (table_info->table_partition(idx).remote_partition_meta(meta_idx).endpoint() == endpoint) {
-                ::rtidb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
+        for (int meta_idx = 0; meta_idx < table_info.table_partition(idx).remote_partition_meta_size(); meta_idx++) {
+             if (table_info.table_partition(idx).remote_partition_meta(meta_idx).endpoint() == endpoint) {
+                ::rtidb::nameserver::TablePartition* table_partition = table_info.mutable_table_partition(idx);
                 ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta = 
                             table_partition->mutable_remote_partition_meta();
                 PDLOG(INFO, "remove pid[%u] in table[%s]. endpoint is[%s]", 
@@ -5848,7 +5851,7 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
         break;
     }
     std::string table_value;
-    table_info->SerializeToString(&table_value);
+    table_info.SerializeToString(&table_value);
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
         PDLOG(WARNING, "update table node[%s/%s] failed! value[%s] op_id[%lu]",
                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str(), task_info->op_id());
@@ -5857,7 +5860,7 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
     }
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-    iter->second->CopyFrom(*table_info);
+    iter->second->CopyFrom(table_info);
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
     NotifyTableChanged();
     PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]",
