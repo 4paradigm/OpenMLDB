@@ -8,7 +8,6 @@
  **/
 #include "udf/udf.h"
 #include <stdint.h>
-#include "jit/jit.h"
 #include "proto/type.pb.h"
 #include "storage/type_ir_builder.h"
 #include "storage/window.h"

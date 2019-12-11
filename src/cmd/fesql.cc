@@ -463,7 +463,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node,
             }
             break;
         }
-        case fesql::node::kCmdCreateTable: {
+        case fesql::node::kCmdSource: {
             std::ifstream in;
             in.open(cmd_node->GetArgs()[0]);  // open the input file
             if (!in.is_open()) {

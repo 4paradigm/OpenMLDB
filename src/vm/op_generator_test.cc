@@ -95,6 +95,10 @@ class OpGeneratorTest : public ::testing::Test {
             column->set_type(::fesql::type::kInt64);
             column->set_name("col15");
         }
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col2");
+        index->set_second_key("col15");
     }
 
  protected:
@@ -137,6 +141,10 @@ TEST_F(OpGeneratorTest, test_normal) {
 TEST_F(OpGeneratorTest, test_windowp_project) {
     std::shared_ptr<TableStatus> status(new TableStatus());
     status->table_def = table_def;
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+    status->table = std::move(table);
     TableMgrImpl table_mgr(status);
     OpGenerator generator(&table_mgr);
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -178,11 +186,11 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     ASSERT_EQ(kOpProject, op.ops[1]->type);
     ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[1]);
     ASSERT_TRUE(project_op->window_agg);
-    ASSERT_EQ(::fesql::type::kInt16, project_op->w.keys[0].first);
-    ASSERT_EQ(1, project_op->w.keys[0].second);
+    ASSERT_EQ(::fesql::type::kInt16, project_op->w.keys.cbegin()->first);
+    ASSERT_EQ(1, project_op->w.keys.cbegin()->second);
 
-    ASSERT_EQ(::fesql::type::kInt64, project_op->w.orders[0].first);
-    ASSERT_EQ(4, project_op->w.orders[0].second);
+    ASSERT_EQ(::fesql::type::kInt64, project_op->w.order.first);
+    ASSERT_EQ(4, project_op->w.order.second);
     ASSERT_TRUE(project_op->w.is_range_between);
     ASSERT_EQ(-86400000 * 2, project_op->w.start_offset);
     ASSERT_EQ(-1000, project_op->w.end_offset);

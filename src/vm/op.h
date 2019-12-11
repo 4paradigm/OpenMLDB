@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <set>
 #include "proto/type.pb.h"
 
 namespace fesql {
@@ -53,11 +54,13 @@ struct ScanOp : public OpNode {
 
 // TODO(chenjing): WindowOp
 struct ScanInfo {
-    std::vector<std::pair<fesql::type::Type, uint32_t >> keys;
-    std::vector<std::pair<fesql::type::Type, uint32_t >> orders;
+    std::set<std::pair<fesql::type::Type, uint32_t >> keys;
+    std::pair<fesql::type::Type, uint32_t > order;
+    std::string index_name;
     // todo(chenjing): start and end parse
     int64_t start_offset;
     int64_t end_offset;
+    bool has_order;
     bool is_range_between;
 };
 

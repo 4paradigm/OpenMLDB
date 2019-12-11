@@ -118,7 +118,7 @@ enum FnOperator {
 enum CmdType {
     kCmdCreateGroup,
     kCmdCreateDatabase,
-    kCmdCreateTable,
+    kCmdSource,
     kCmdUseDatabase,
     kCmdShowDatabases,
     kCmdShowTables,

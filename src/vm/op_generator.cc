@@ -313,33 +313,96 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     if (nullptr != node->GetW()) {
         pop->window_agg = true;
         table_status->InitColumnInfos();
+
+        // validate and get col info of window keys
         for (auto key : node->GetW()->GetKeys()) {
             auto it = table_status->col_infos.find(key);
             if (it == table_status->col_infos.end()) {
-                status.msg = "column " + key + " is not exist in table " +
+                status.msg = "key column " + key + " is not exist in table " +
                              table_status->table_def.name();
                 status.code = common::kColumnNotFound;
                 LOG(WARNING) << status.msg;
                 delete pop;
                 return false;
             }
-            pop->w.keys.push_back(it->second);
+            pop->w.keys.insert(it->second);
         }
-        for (auto order : node->GetW()->GetOrders()) {
+
+        // validate and get col info of window order
+        if (!node->GetW()->GetOrders().empty()) {
+            if (node->GetW()->GetOrders().size() > 1) {
+                status.msg =
+                    "currently not support multiple ts columns in window";
+                status.code = common::kColumnNotFound;
+                LOG(WARNING) << status.msg;
+                delete pop;
+                return false;
+            }
+            auto order = node->GetW()->GetOrders()[0];
             auto it = table_status->col_infos.find(order);
             if (it == table_status->col_infos.end()) {
-                status.msg = "column " + order + " is not exist in table " +
+                status.msg = "ts column " + order + " is not exist in table " +
                              table_status->table_def.name();
                 status.code = common::kColumnNotFound;
                 LOG(WARNING) << status.msg;
                 delete pop;
                 return false;
             }
-            pop->w.orders.push_back(it->second);
+            pop->w.order.first = it->second.first;
+            pop->w.order.second = it->second.second;
+            pop->w.has_order = true;
+            pop->w.is_range_between = node->GetW()->IsRangeBetween();
+        } else {
+            pop->w.has_order = false;
+        }
+
+        // validate index
+        auto index_map = table_status->table->GetIndexMap();
+        bool index_check = false;
+        for (auto iter = index_map.cbegin(); iter != index_map.cend(); iter++) {
+            auto col_infos = iter->second.keys;
+            // keys size match
+            if (col_infos.size() != node->GetW()->GetKeys().size()) {
+                continue;
+            }
+            // keys match
+            bool match_keys = true;
+            for (auto col_info : col_infos) {
+                if (pop->w.keys.find(std::make_pair(
+                        col_info.type, col_info.pos)) == pop->w.keys.end()) {
+                    match_keys = false;
+                    break;
+                }
+            }
+            if (!match_keys) {
+                continue;
+            }
+            // skip validate when order cols empty
+            if (!pop->w.has_order) {
+                index_check = true;
+                pop->w.index_name = iter->second.name;
+                break;
+            }
+            // ts col match
+            auto ts_iter = pop->w.order;
+            // ts col match
+            if (ts_iter.second == iter->second.ts_pos) {
+                index_check = true;
+                pop->w.index_name = iter->second.name;
+                break;
+            }
+            // currently not support multi orders
+        }
+
+        if (!index_check) {
+            status.msg = "index is not match";
+            status.code = common::kIndexNotFound;
+            LOG(WARNING) << status.msg;
+            delete pop;
+            return false;
         }
         pop->w.start_offset = node->GetW()->GetStartOffset();
         pop->w.end_offset = node->GetW()->GetEndOffset();
-        pop->w.is_range_between = node->GetW()->IsRangeBetween();
 
         ::fesql::codegen::BufIRBuilder buf_if_builder(&table_status->table_def,
                                                       nullptr, nullptr);

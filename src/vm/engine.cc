@@ -151,11 +151,10 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[project_op->idx];
                 if (project_op->window_agg) {
-                    ::fesql::type::Type key_type = project_op->w.keys[0].first;
-                    ::fesql::type::Type order_type =
-                        project_op->w.orders[0].first;
-                    uint32_t key_idx = project_op->w.keys[0].second;
-                    uint32_t order_idx = project_op->w.orders[0].second;
+                    auto key_iter = project_op->w.keys.cbegin();
+                    ::fesql::type::Type key_type = key_iter->first;
+                    uint32_t key_idx = key_iter->second;
+
                     for (auto row : in_buffers) {
                         row_view->Reset(row.buf, row.size);
                         int8_t* output = NULL;
@@ -245,13 +244,37 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             }
                         }
                         int64_t ts;
-                        {
+                        if (project_op->w.has_order) {
                             // TODO(chenjing): handle null ts or
                             // timestamp/date ts
-                            switch (order_type) {
+                            switch (project_op->w.order.first) {
                                 case fesql::type::kInt64: {
                                     if (0 ==
-                                        row_view->GetInt64(order_idx, &ts)) {
+                                        row_view->GetInt64(project_op->w.order.second, &ts)) {
+                                    } else {
+                                        LOG(WARNING) << "fail to get order "
+                                                        "for current row";
+                                        continue;
+                                    }
+                                    break;
+                                }
+                                case fesql::type::kInt32: {
+                                    int32_t v;
+                                    if (0 ==
+                                        row_view->GetInt32(project_op->w.order.second, &v)) {
+                                        ts = static_cast<int64_t >(v);
+                                    } else {
+                                        LOG(WARNING) << "fail to get order "
+                                                        "for current row";
+                                        continue;
+                                    }
+                                    break;
+                                }
+                                case fesql::type::kInt16: {
+                                    int16_t v;
+                                    if (0 ==
+                                        row_view->GetInt16(project_op->w.order.second, &v)) {
+                                        ts = static_cast<int64_t >(v);
                                     } else {
                                         LOG(WARNING) << "fail to get order "
                                                         "for current row";
@@ -262,7 +285,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                                 default: {
                                     LOG(WARNING) << "fail to get order for "
                                                     "current row";
-                                    break;
+                                    continue;
                                 }
                             }
                         }

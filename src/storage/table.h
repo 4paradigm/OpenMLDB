@@ -60,6 +60,10 @@ class Table {
         std::vector<ColInfo> keys;
     };
 
+    const std::map<std::string, IndexSt>& GetIndexMap() const {
+        return index_map_;
+    }
+
  private:
     std::string name_;
     uint32_t id_;
