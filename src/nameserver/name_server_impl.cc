@@ -5423,8 +5423,15 @@ std::shared_ptr<Task> NameServerImpl::CreateAddRemoteReplicaTask(const std::stri
                     uint32_t pid, const std::string& des_endpoint) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        PDLOG(WARNING, "provide endpoint [%s] is valid", endpoint.c_str());
+    for (auto& ti : tablets_) {
+        PDLOG(WARNING, "tablet [%s] status [%d]", ti.first.c_str(), ti.second->state_);
+    }
+    if (it == tablets_.end()) {
+        PDLOG(WARNING, "provide endpoint [%s] not found", endpoint.c_str());
+        return std::shared_ptr<Task>();
+    }
+    if (it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        PDLOG(WARNING, "provide endpoint [%s] is not healthy", endpoint.c_str());
         return std::shared_ptr<Task>();
     }
     task->task_info_->set_op_id(op_index);
