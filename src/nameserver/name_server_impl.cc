@@ -188,6 +188,7 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                             temp.clear_endpoint();
                             break;
                         }
+                        PDLOG(INFO, "table [%s] tid[%u] pid[%u] will add endpoint %s", table.name().c_str(), table.tid(), temp_part.pid(), meta.endpoint().c_str());
                         AddRemoteReplica(table.name(), meta, table.tid(), temp_part.pid());
                         break;
                     }
@@ -235,6 +236,7 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                             PDLOG(INFO, "table [%s] partition [%u] remote offset [%lu] ge local offset [%lu]", table.name().c_str(), temp_part.pid(), temp_meta.offset(), local_offset);
                             break;
                         }
+                        PDLOG(INFO, "table [%s] tid[%u] pid[%u] will update endpoint %s", table.name().c_str(), table.tid(), temp_part.pid(), meta.endpoint().c_str());
                         DelRemoteReplica(part_p->partition_meta(0).endpoint(), table.name(), part_p->pid());
                         part_p->clear_partition_meta();
                         part_p->add_partition_meta()->CopyFrom(temp_meta);
