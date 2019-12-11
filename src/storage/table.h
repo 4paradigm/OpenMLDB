@@ -69,10 +69,7 @@ class Table {
                                                const std::string& index_name);
     std::unique_ptr<TableIterator> NewIterator(const Slice& key,
                                                const uint64_t ts);
-    std::unique_ptr<TableIterator> NewIterator(const uint32_t idx);
-
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk);
-    std::unique_ptr<TableIterator> NewIterator();
 
     std::unique_ptr<TableIterator> NewTraverseIterator(
         const std::string& index_name);

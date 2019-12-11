@@ -116,6 +116,7 @@ TEST_F(TableTest, SingleIndexIterator) {
     count = 0;
     iter->SeekToFirst();
     while (iter->Valid()) {
+        iter->Next();
         count++;
     }
     ASSERT_EQ(count, 4);

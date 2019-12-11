@@ -213,22 +213,6 @@ std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk) {
         NULL, (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
 }
 
-std::unique_ptr<TableIterator> Table::NewIterator(const uint32_t idx) {
-    if (idx >= index_map_.size()) {
-        return nullptr;
-    }
-    Segment* segment = segments_[idx][0];
-    if (segment->entries_ == NULL) {
-        return std::unique_ptr<TableIterator>(new TableIterator());
-    }
-    Iterator<Slice, void*>* it = segment->entries_->NewIterator();
-    return std::unique_ptr<TableIterator>(new TableIterator(it, NULL));
-}
-
-std::unique_ptr<TableIterator> Table::NewIterator() {
-    return std::move(NewIterator(0));
-}
-
 std::unique_ptr<TableIterator> Table::NewTraverseIterator(
     const std::string& index_name) {
     auto iter = index_map_.find(index_name);
