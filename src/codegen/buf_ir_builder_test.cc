@@ -95,8 +95,8 @@ int32_t PrintListString(int8_t* input) {
     if (nullptr == input) {
         std::cout << "list is null";
     }
-    ::fesql::storage::ListStringRef* col_string =
-        reinterpret_cast<::fesql::storage::ListStringRef*>(input);
+    ::fesql::storage::ListRef* col_string =
+        reinterpret_cast<::fesql::storage::ListRef*>(input);
     ::fesql::storage::ColumnStringIteratorImpl* col =
         reinterpret_cast<::fesql::storage::ColumnStringIteratorImpl*>(
             col_string->iterator);
