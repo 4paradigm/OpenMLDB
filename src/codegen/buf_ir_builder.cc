@@ -513,7 +513,6 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
 
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* i32_ty = builder.getInt32Ty();
-    ::llvm::Type* i8_ty = builder.getInt8Ty();
 
     ::llvm::Type* list_ref_type = NULL;
     bool ok = GetLLVMListType(block_->getModule(), type, &list_ref_type);
