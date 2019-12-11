@@ -330,8 +330,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                     temp_buffers[prev->idx];
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[limit_op->idx];
-                int cnt = 0;
-                for (int i = 0; i < limit_op->limit; ++i) {
+                uint32_t cnt = 0;
+                for (uint32_t i = 0; i < limit_op->limit; ++i) {
                     if (cnt >= limit_op->limit) {
                         break;
                     }
