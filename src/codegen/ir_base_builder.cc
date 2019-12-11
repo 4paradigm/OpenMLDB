@@ -244,7 +244,12 @@ bool GetFullType(::llvm::Type* type, ::fesql::type::Type* base,
                 }
             }
         }
-        case ::llvm::Type::StructTyID: {
+        case ::llvm::Type::StructTyID:
+        case ::llvm::Type::PointerTyID: {
+            if (type->getTypeID() == ::llvm::Type::PointerTyID) {
+                type = reinterpret_cast<::llvm::PointerType*>(type)
+                           ->getElementType();
+            }
             if (type->getStructName().equals("fe.list_int16_ref")) {
                 *base = fesql::type::kList;
                 *v1_type = fesql::type::kInt16;
@@ -277,11 +282,6 @@ bool GetFullType(::llvm::Type* type, ::fesql::type::Type* base,
             LOG(WARNING) << "no mapping type for llvm type "
                          << type->getStructName().str();
             return false;
-        }
-        case ::llvm::Type::PointerTyID: {
-            // TODO(wtx): why is pinter is string type
-            *base = ::fesql::type::kVarchar;
-            return true;
         }
         default: {
             LOG(WARNING) << "no mapping type for llvm type";
@@ -324,7 +324,12 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
                 }
             }
         }
-        case ::llvm::Type::StructTyID: {
+        case ::llvm::Type::StructTyID:
+        case ::llvm::Type::PointerTyID: {
+            if (type->getTypeID() == ::llvm::Type::PointerTyID) {
+                type = reinterpret_cast<::llvm::PointerType*>(type)
+                           ->getElementType();
+            }
             if (type->getStructName().startswith_lower("fe.list_")) {
                 *output = fesql::type::kList;
                 return true;
@@ -335,10 +340,6 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
             LOG(WARNING) << "no mapping type for llvm type "
                          << type->getStructName().str();
             return false;
-        }
-        case ::llvm::Type::PointerTyID: {
-            *output = ::fesql::type::kVarchar;
-            return true;
         }
         default: {
             LOG(WARNING) << "no mapping type for llvm type";

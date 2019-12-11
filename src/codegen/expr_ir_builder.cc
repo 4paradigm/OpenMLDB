@@ -201,6 +201,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
             return false;
         }
     }
+
     ::llvm::Function* fn = GetFuncion(name, list_value_type, status);
 
     if (common::kOk != status.code()) {
