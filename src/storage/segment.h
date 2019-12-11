@@ -18,7 +18,7 @@
 #include "proto/type.pb.h"
 #include "storage/list.h"
 #include "storage/skiplist.h"
-#include "storage/table.h"
+// #include "storage/table.h"
 
 namespace fesql {
 namespace storage {
@@ -60,16 +60,15 @@ class Segment {
     Segment();
     ~Segment();
 
-    void Put(const Slice& key, uint64_t time, DataBlock* row);
+    bool Valid();
 
-    std::unique_ptr<TableIterator> NewIterator();
-    std::unique_ptr<TableIterator> NewIterator(const Slice& key);
-    std::unique_ptr<TableIterator> NewIterator(const Slice& key,
-                                               const uint64_t ts);
+    void Put(const Slice& key, uint64_t time, DataBlock* row);
 
  private:
     KeyEntry* entries_;
     base::SpinMutex mu_;
+    friend class TableIterator;
+    friend class Table;
 };
 
 }  // namespace storage

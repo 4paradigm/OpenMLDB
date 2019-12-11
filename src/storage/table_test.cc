@@ -68,10 +68,12 @@ TEST_F(TableTest, SingleIndexIterator) {
     builder.AppendString("value2", 6);
     table.Put(row.c_str(), row.length());
 
+    // test NewIterator(key)
     std::unique_ptr<TableIterator> iter = table.NewIterator("key2");
     int count = 0;
     RowView view(def.columns());
     iter->SeekToFirst();
+    ASSERT_TRUE(iter->Valid());
     while (iter->Valid()) {
         char* ch;
         uint32_t length = 0;
@@ -82,7 +84,25 @@ TEST_F(TableTest, SingleIndexIterator) {
         count++;
     }
     ASSERT_EQ(count, 2);
-    iter = table.NewIterator();
+
+    // test NewIterator(key)
+    iter = table.NewIterator("key2", "index1");
+    count = 0;
+    iter->SeekToFirst();
+    ASSERT_TRUE(iter->Valid());
+    while (iter->Valid()) {
+        char* ch;
+        uint32_t length = 0;
+        view.GetValue(reinterpret_cast<const int8_t*>(iter->GetValue().data()),
+                      2, &ch, &length);
+        ASSERT_STREQ("value2", std::string(ch, length).c_str());
+        iter->Next();
+        count++;
+    }
+    ASSERT_EQ(count, 2);
+
+    // test NewTraverseIterator()
+    iter = table.NewTraverseIterator();
     count = 0;
     iter->SeekToFirst();
     while (iter->Valid()) {
@@ -90,6 +110,17 @@ TEST_F(TableTest, SingleIndexIterator) {
         count++;
     }
     ASSERT_EQ(count, 4);
+
+    // test NewTraverseIterator(index_name)
+    iter = table.NewTraverseIterator("index1");
+    count = 0;
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        count++;
+    }
+    ASSERT_EQ(count, 4);
+
+    // test NewTraverseIterator(key, ts)
     iter = table.NewIterator("key2", 30);
     count = 0;
     while (iter->Valid()) {
@@ -108,7 +139,6 @@ TEST_F(TableTest, SingleIndexIterator) {
     count = 0;
     ASSERT_FALSE(iter->Valid());
 }
-
 
 TEST_F(TableTest, MultiIndexIterator) {
     ::fesql::type::TableDef def;
@@ -173,9 +203,11 @@ TEST_F(TableTest, MultiIndexIterator) {
     table.Put(row.c_str(), row.length());
     RowView view(def.columns());
 
+    // test NewIterator(key, index_name)
     std::unique_ptr<TableIterator> iter = table.NewIterator("i2_k2", "index2");
     int count = 0;
     iter->SeekToFirst();
+    ASSERT_TRUE(iter->Valid());
     while (iter->Valid()) {
         char* ch;
         uint32_t length = 0;
@@ -199,14 +231,43 @@ TEST_F(TableTest, MultiIndexIterator) {
         count++;
     }
     ASSERT_EQ(count, 1);
+
+    // test NewIterator(key)
+    iter = table.NewIterator("i1_k2");
     count = 0;
-    iter = table.NewIterator();
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        char* ch;
+        uint32_t length = 0;
+        view.GetValue(reinterpret_cast<const int8_t*>(iter->GetValue().data()),
+                      2, &ch, &length);
+        ASSERT_STREQ("i2_k1", std::string(ch, length).c_str());
+        iter->Next();
+        count++;
+    }
+    ASSERT_EQ(count, 1);
+
+    // test NewTraverseIterator()
+    count = 0;
+    iter = table.NewTraverseIterator();
     iter->SeekToFirst();
     while (iter->Valid()) {
         iter->Next();
         count++;
     }
     ASSERT_EQ(count, 4);
+
+    // test NewTraverseIterator(index_name)
+    count = 0;
+    iter = table.NewTraverseIterator("index1");
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        iter->Next();
+        count++;
+    }
+    ASSERT_EQ(count, 4);
+
+    // test NewIterator(key, ts)
     iter = table.NewIterator("i1_k1", 30);
     count = 0;
     while (iter->Valid()) {
@@ -225,7 +286,6 @@ TEST_F(TableTest, MultiIndexIterator) {
     count = 0;
     ASSERT_FALSE(iter->Valid());
 }
-
 
 }  // namespace storage
 }  // namespace fesql

@@ -24,22 +24,24 @@ using ::fesql::base::Iterator;
 using ::fesql::type::IndexDef;
 using ::fesql::type::TableDef;
 
-static constexpr uint32_t SEG_CNT = 1;
+static constexpr uint32_t SEG_CNT = 8;
 
 class TableIterator {
  public:
     TableIterator() = default;
     TableIterator(Iterator<Slice, void*>* pk_it,
                   Iterator<uint64_t, DataBlock*>* ts_it);
-    TableIterator(Segment ** segments, uint32_t seg_cnt);
+    TableIterator(Segment** segments, uint32_t seg_cnt);
     ~TableIterator();
     void Seek(uint64_t time);
+    void Seek(const std::string& key, uint64_t ts);
     bool Valid();
     void Next();
     Slice GetValue() const;
     uint64_t GetKey() const;
     std::string GetPK() const;
     void SeekToFirst();
+    bool SeekToNextTsInPks();
 
  private:
     Segment** segments_ = NULL;
@@ -65,10 +67,15 @@ class Table {
                                                const uint64_t ts);
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
                                                const std::string& index_name);
+    std::unique_ptr<TableIterator> NewIterator(const Slice& key,
+                                               const uint64_t ts);
+    std::unique_ptr<TableIterator> NewIterator(const uint32_t idx);
+
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk);
     std::unique_ptr<TableIterator> NewIterator();
 
-    std::unique_ptr<TableIterator> NewTraverseIterator(const std::string& index_name);
+    std::unique_ptr<TableIterator> NewTraverseIterator(
+        const std::string& index_name);
     std::unique_ptr<TableIterator> NewTraverseIterator();
 
     inline uint32_t GetId() const { return id_; }
