@@ -4263,7 +4263,7 @@ void NameServerImpl::OnLocked() {
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatusForReplicaCluster, this, false));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateTableStatus, this));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::ProcessTask, this));
-    task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CheckClusterInfo, this));
+    task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
 }
 
 void NameServerImpl::OnLostLock() {
@@ -6858,7 +6858,7 @@ void NameServerImpl::CheckClusterInfo() {
     } while(0);
 
     if (running_.load(std::memory_order_acquire)) {
-        thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
+        thread_pool_.DelayTask(FLAGS_get_replica_status_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
     }
 }
 
