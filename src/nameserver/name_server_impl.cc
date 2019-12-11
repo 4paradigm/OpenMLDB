@@ -165,6 +165,7 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                 for (auto& meta : temp_part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
                         meta.offset();
+                        uint64_t local_offset = 0;
                         auto info_iter = table_info_.find(table.name());
                         int i = 0, j = 0;
                         for (; i < info_iter->second->table_partition_size(); i++) {
@@ -173,14 +174,16 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                             }
                             for (; j < info_iter->second->table_partition(i).partition_meta_size(); j++) {
                                 if (info_iter->second->table_partition(i).partition_meta(j).is_leader() && info_iter->second->table_partition(i).partition_meta(j).is_alive()) {
+                                    local_offset = info_iter->second->table_partition(i).partition_meta(j).offset();
                                     break;
                                 }
                             }
                             break;
                         }
                         tb.add_partition_meta()->CopyFrom(meta);
-                        if (meta.offset() > info_iter->second->table_partition(i).partition_meta(j).offset()) {
+                        if (meta.offset() > local_offset) {
                             // send delete util specify offset
+                            PDLOG(INFO, "table [%s] partition [%u] remote offset [%lu] ge local offset [%lu]", table.name().c_str(), temp_part.pid(), meta.offset(), local_offset);
                             auto temp = tb.partition_meta(tb.partition_meta_size() - 1);
                             temp.clear_endpoint();
                             break;
@@ -214,6 +217,7 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                 auto &temp_meta = temp_part.partition_meta(j);
                 if (temp_meta.is_alive() && temp_meta.is_leader()) {
                     if (part_p->partition_meta(0).endpoint() != temp_meta.endpoint()) {
+                        uint64_t local_offset = 0;
                         auto info_iter = table_info_.find(table.name());
                         int i = 0, j = 0;
                         for (; i < info_iter->second->table_partition_size(); i++) {
@@ -222,12 +226,13 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                             }
                             for (; j < info_iter->second->table_partition(i).partition_meta_size(); j++) {
                                 if (info_iter->second->table_partition(i).partition_meta(j).is_leader() && info_iter->second->table_partition(i).partition_meta(j).is_alive()) {
-                                    break;
+                                    local_offset = info_iter->second->table_partition(i).partition_meta(j).offset();
                                 }
                             }
                             break;
                         }
-                        if (temp_meta.offset() > info_iter->second->table_partition(i).partition_meta(j).offset()) {
+                        if (temp_meta.offset() > local_offset) {
+                            PDLOG(INFO, "table [%s] partition [%u] remote offset [%lu] ge local offset [%lu]", table.name().c_str(), temp_part.pid(), temp_meta.offset(), local_offset);
                             break;
                         }
                         DelRemoteReplica(part_p->partition_meta(0).endpoint(), table.name(), part_p->pid());
