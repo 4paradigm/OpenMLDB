@@ -136,7 +136,7 @@ col3 float
 
 #### 查看表schema
 
-```mysql
+```SQL
 DESC table_name;
 +---------+---------+------+
 | Field   | Type    | Null |
@@ -149,10 +149,113 @@ DESC table_name;
 
 
 ### 查询SQL
-```shell script
-> SELECT col1, col2, col3 from t1;
+
+#### simple udf query
+```sql
+create table IF NOT EXISTS t1(
+    column1 int NOT NULL,
+    column2 int NOT NULL,
+    column3 float NOT NULL,
+    column4 bigint NOT NULL,
+    column5 int NOT NULL,
+    column6 string,
+    index(key=column1, ts=column4)
+);
+insert into t1 values(1, 2, 3.3, 1000, 5, "hello");
+insert into t1 values(1, 3, 4.4, 2000, 6, "world");
+insert into t1 values(11, 4, 5.5, 3000, 7, "string1");
+insert into t1 values(11, 5, 6.6, 4000, 8, "string2");
+insert into t1 values(11, 6, 7.7, 5000, 9, "string3");
+insert into t1 values(1, 2, 3.3, 1000, 5, "hello");
+insert into t1 values(1, 3, 4.4, 2000, 6, "world");
+insert into t1 values(11, 4, 5.5, 3000, 7, "string1");
+insert into t1 values(11, 5, 6.6, 4000, 8, "string2");
+insert into t1 values(11, 6, 7.7, 5000, 9, "string3");
+%%fun
+def test(a:i32,b:i32):i32
+    c=a+b
+    d=c+1
+    return d
+end
+%%sql
+SELECT column1, column2,test(column1,column5) as f1 FROM t1 limit 10;
+
++---------+---------+----+
+| column1 | column2 | f1 |
++---------+---------+----+
+| 1       | 3       | 8  |
+| 1       | 3       | 8  |
+| 1       | 2       | 7  |
+| 1       | 2       | 7  |
+| 11      | 6       | 21 |
+| 11      | 6       | 21 |
+| 11      | 5       | 20 |
+| 11      | 5       | 20 |
+| 11      | 4       | 19 |
+| 11      | 4       | 19 |
++---------+---------+----+
 ```
 
+### 查询window聚合结果
+```sql
+create table IF NOT EXISTS t2(
+    column1 int NOT NULL,
+    column2 int NOT NULL,
+    column3 float NOT NULL,
+    column4 bigint NOT NULL,
+    column5 int NOT NULL,
+    column6 string,
+    index(key=column6, ts=column4)
+);
+insert into t2 values(1, 2, 3.3, 1000, 5, "hello");
+insert into t2 values(1, 3, 4.4, 2000, 6, "world");
+insert into t2 values(11, 4, 5.5, 3000, 7, "string1");
+insert into t2 values(11, 5, 6.6, 4000, 8, "string2");
+insert into t2 values(11, 6, 7.7, 5000, 9, "string3");
+insert into t2 values(1, 2, 3.3, 1000, 5, "hello");
+insert into t2 values(1, 3, 4.4, 2000, 6, "world");
+insert into t2 values(11, 4, 5.5, 3000, 7, "string1");
+insert into t2 values(11, 5, 6.6, 4000, 8, "string2");
+insert into t2 values(11, 6, 7.7, 5000, 9, "string3");
+
+select column1, column2, column3, column4, column5, column6 from t2 limit 100;
++---------+---------+----------+---------+---------+---------+
+| column1 | column2 | column3  | column4 | column5 | column6 |
++---------+---------+----------+---------+---------+---------+
+| 1       | 2       | 3.300000 | 1000    | 5       | hello   |
+| 1       | 2       | 3.300000 | 1000    | 5       | hello   |
+| 11      | 4       | 5.500000 | 3000    | 7       | string1 |
+| 11      | 4       | 5.500000 | 3000    | 7       | string1 |
+| 11      | 5       | 6.600000 | 4000    | 8       | string2 |
+| 11      | 5       | 6.600000 | 4000    | 8       | string2 |
+| 11      | 6       | 7.700000 | 5000    | 9       | string3 |
+| 11      | 6       | 7.700000 | 5000    | 9       | string3 |
+| 1       | 3       | 4.400000 | 2000    | 6       | world   |
+| 1       | 3       | 4.400000 | 2000    | 6       | world   |
++---------+---------+----------+---------+---------+---------+
+
+select
+sum(column1) OVER w1 as w1_col1_sum, 
+sum(column2) OVER w1 as w1_col2_sum, 
+sum(column3) OVER w1 as w1_col3_sum, 
+sum(column4) OVER w1 as w1_col4_sum, 
+sum(column5) OVER w1 as w1_col5_sum 
+FROM t2 WINDOW w1 AS (PARTITION BY column6 ORDER BY column4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) limit 100;
++-------------+-------------+-------------+-------------+-------------+
+| w1_col1_sum | w1_col2_sum | w1_col3_sum | w1_col4_sum | w1_col5_sum |
++-------------+-------------+-------------+-------------+-------------+
+| 2           | 4           | 6.600000    | 2000        | 10          |
+| 2           | 4           | 6.600000    | 2000        | 10          |
+| 22          | 8           | 11.000000   | 6000        | 14          |
+| 22          | 8           | 11.000000   | 6000        | 14          |
+| 22          | 10          | 13.200000   | 8000        | 16          |
+| 22          | 10          | 13.200000   | 8000        | 16          |
+| 22          | 12          | 15.400000   | 10000       | 18          |
+| 22          | 12          | 15.400000   | 10000       | 18          |
+| 2           | 6           | 8.800000    | 4000        | 12          |
+| 2           | 6           | 8.800000    | 4000        | 12          |
++-------------+-------------+-------------+-------------+-------------
+```
 
 
 
