@@ -78,7 +78,8 @@ enum ExprType {
     kExprPrimary,
     kExprList,
     kExprAll,
-    kExprUnknow
+    kExprStruct,
+    kExprUnknow = 9999
 };
 enum DataType {
     kTypeBool,
@@ -93,7 +94,10 @@ enum DataType {
     kTypeDay,
     kTypeMinute,
     kTypeSecond,
-    kTypeNull
+    kTypeRow,
+    kTypeNull,
+    kTypeVoid,
+    kTypeInt8Ptr,
 };
 
 enum TimeUnit {
@@ -134,9 +138,11 @@ enum PlanType {
     kPlanTypeCreate,
     kPlanTypeInsert,
     kPlanTypeScan,
+    kPlanTypeMerge,
     kPlanTypeLimit,
     kPlanTypeFilter,
     kProjectList,
+    kPlanTypeWindow,
     kProject,
     kScalarFunction,
     kOpExpr,

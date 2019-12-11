@@ -18,7 +18,9 @@
 #include "codegen/expr_ir_builder.h"
 #include <string>
 #include <vector>
+#include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/type_ir_builder.h"
 #include "glog/logging.h"
 #include "proto/common.pb.h"
 
@@ -27,26 +29,50 @@ namespace codegen {
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
+      row_mode_(true),
       row_ptr_name_(""),
-      output_ptr_name_(""),
       buf_ir_builder_(nullptr),
       module_(nullptr) {}
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                              BufNativeIRBuilder* buf_ir_builder,
+                             const bool row_mode,
                              const std::string& row_ptr_name,
                              const std::string& row_size_name,
-                             const std::string& output_ptr_name,
                              ::llvm::Module* module)
     : block_(block),
       sv_(scope_var),
+      row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
       row_size_name_(row_size_name),
-      output_ptr_name_(output_ptr_name),
       buf_ir_builder_(buf_ir_builder),
       module_(module) {}
 
 ExprIRBuilder::~ExprIRBuilder() {}
+
+::llvm::Function* ExprIRBuilder::GetFuncion(const std::string& fn_name,
+                                            const ::fesql::node::DataType& type,
+                                            common::Status& status) {
+    ::llvm::Function* fn = module_->getFunction(fn_name);
+
+    if (nullptr == fn) {
+        if (::fesql::node::kTypeVoid != type) {
+            const std::string suffix = fesql::node::DataTypeName(type);
+            fn = module_->getFunction(fn_name + "_" + suffix);
+            if (nullptr == fn) {
+                status.set_code(common::kCallMethodError);
+                status.set_msg("fail to find func with name " + fn_name + "_" +
+                               suffix);
+                return fn;
+            }
+        } else {
+            status.set_code(common::kCallMethodError);
+            status.set_msg("fail to find func with name " + fn_name);
+            return fn;
+        }
+    }
+    return fn;
+}
 
 bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                           ::llvm::Value** output) {
@@ -71,6 +97,9 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                 (::fesql::node::ConstNode*)node;
 
             switch (const_node->GetDataType()) {
+                case ::fesql::node::kTypeInt16:
+                    *output = builder.getInt16(const_node->GetSmallInt());
+                    return true;
                 case ::fesql::node::kTypeInt32:
                     *output = builder.getInt32(const_node->GetInt());
                     return true;
@@ -114,6 +143,9 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprUnary: {
             return Build(node->children[0], output);
         }
+        case ::fesql::node::kExprStruct: {
+            return BuildStructExpr((fesql::node::StructExpr*)node, output);
+        }
         default: {
             LOG(WARNING) << "not supported";
             return false;
@@ -132,42 +164,95 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         return false;
     }
 
+    ::llvm::IRBuilder<> builder(block_);
     ::llvm::StringRef name(call_fn->GetFunctionName());
-    // TODO(wangtaize) opt function location
-    ::llvm::Function* fn = module_->getFunction(name);
 
-    if (fn == NULL) {
-        status.set_code(common::kCallMethodError);
-        status.set_msg("fail to find func with name " +
-                       call_fn->GetFunctionName());
+    std::vector<::llvm::Value*> llvm_args;
+    const std::vector<::fesql::node::SQLNode*>& args = call_fn->GetArgs();
+    std::vector<::fesql::node::SQLNode*>::const_iterator it = args.cbegin();
+    ::fesql::node::DataType list_value_type = ::fesql::node::kTypeVoid;
+    for (; it != args.cend(); ++it) {
+        const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
+        ::llvm::Value* llvm_arg = NULL;
+        // TODO(chenjing): remove out_name
+        if (Build(arg, &llvm_arg)) {
+            if (nullptr != call_fn->GetOver()) {
+                fesql::type::Type base;
+                fesql::type::Type v1_type;
+                fesql::type::Type v2_type;
+                if (false == GetFullType(llvm_arg->getType(), &base, &v1_type,
+                                         &v2_type)) {
+                    LOG(WARNING) << "fail to handle arg type";
+                    return false;
+                }
+                // handle list type
+                if (fesql::type::kList == base) {
+                    if (false ==
+                        ConvertFeSQLType2DataType(v1_type, list_value_type)) {
+                        return false;
+                    }
+                    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+                    llvm_arg = builder.CreatePointerCast(llvm_arg, i8_ptr_ty);
+                }
+            }
+            llvm_args.push_back(llvm_arg);
+        } else {
+            LOG(WARNING) << "faild to build args: " << *arg;
+            return false;
+        }
+    }
+
+    ::llvm::Function* fn = GetFuncion(name, list_value_type, status);
+
+    if (common::kOk != status.code()) {
         LOG(WARNING) << status.msg();
         return false;
     }
 
-    const std::vector<::fesql::node::SQLNode*>& args = call_fn->GetArgs();
     if (args.size() != fn->arg_size()) {
         status.set_msg("Incorrect arguments passed");
         status.set_code(common::kCallMethodError);
         return false;
     }
 
-    std::vector<::fesql::node::SQLNode*>::const_iterator it = args.begin();
-    std::vector<::llvm::Value*> llvm_args;
-
-    for (; it != args.end(); ++it) {
-        const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
-        ::llvm::Value* llvm_arg = NULL;
-        // TODO(chenjing): remove out_name
-        Build(arg, &llvm_arg);
-        llvm_args.push_back(llvm_arg);
-    }
-    // TODO(wangtaize) args type check
-    ::llvm::IRBuilder<> builder(block_);
     ::llvm::ArrayRef<::llvm::Value*> array_ref(llvm_args);
     *output = builder.CreateCall(fn->getFunctionType(), fn, array_ref);
     return true;
 }
 
+/**
+ * Build Struct Expr IR:
+ * TODO(chenjing): support method memeber
+ * @param node
+ * @param output
+ * @return
+ */
+bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
+                                    ::llvm::Value** output) {
+    std::vector<::llvm::Type*> members;
+    if (nullptr != node->GetFileds() && !node->GetFileds()->children.empty()) {
+        for (auto each : node->GetFileds()->children) {
+            node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
+            ::llvm::Type* type;
+            if (ConvertFeSQLType2LLVMType(field->GetParaType(), module_,
+                                          &type)) {
+                members.push_back(type);
+            } else {
+                LOG(WARNING)
+                    << "Invalid struct with unacceptable field type: " +
+                           ::fesql::node::DataTypeName(field->GetParaType());
+                return false;
+            }
+        }
+    }
+    ::llvm::StringRef name(node->GetName());
+    ::llvm::StructType* llvm_struct =
+        ::llvm::StructType::create(module_->getContext(), name);
+    ::llvm::ArrayRef<::llvm::Type*> array_ref(members);
+    llvm_struct->setBody(array_ref);
+    *output = (::llvm::Value*)llvm_struct;
+    return true;
+}
 bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
                                    ::llvm::Value** output) {
     if (node == NULL || output == NULL) {
@@ -175,6 +260,15 @@ bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
         return false;
     }
 
+    if (row_mode_) {
+        return BuildColumnItem(node->GetColumnName(), output);
+    } else {
+        return BuildColumnIterator(node->GetColumnName(), output);
+    }
+}
+
+bool ExprIRBuilder::BuildColumnItem(const std::string& col,
+                                    ::llvm::Value** output) {
     ::llvm::Value* row_ptr = NULL;
     bool ok = sv_->FindVar(row_ptr_name_, &row_ptr);
 
@@ -191,17 +285,18 @@ bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
     }
 
     ::llvm::Value* value = NULL;
-    ok = sv_->FindVar(node->GetColumnName(), &value);
-    LOG(INFO) << "get table column " << node->GetColumnName();
+    ok = sv_->FindVar(col, &value);
+    DLOG(INFO) << "get table column " << col;
     // not found
     if (!ok) {
-        ok = buf_ir_builder_->BuildGetField(node->GetColumnName(), row_ptr,
-                                            row_size, &value);
+        // TODO(wangtaize) buf ir builder add build get field ptr
+        ok = buf_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
         if (!ok || value == NULL) {
-            LOG(WARNING) << "fail to find column " << node->GetColumnName();
+            LOG(WARNING) << "fail to find column " << col;
             return false;
         }
-        ok = sv_->AddVar(node->GetColumnName(), value);
+
+        ok = sv_->AddVar(col, value);
         if (ok) {
             *output = value;
         }
@@ -210,6 +305,43 @@ bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
         *output = value;
     }
     return true;
+}
+
+/**
+ * Get col with given col name
+ * set iterator struct pointer into output
+ * TODO(chenjing): list ref manage
+ * @param col
+ * @param output
+ * @return
+ */
+bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
+                                        ::llvm::Value** output) {
+    ::llvm::Value* row_ptr = NULL;
+    bool ok = sv_->FindVar(row_ptr_name_, &row_ptr);
+
+    if (!ok || row_ptr == NULL) {
+        LOG(WARNING) << "fail to find row ptr with name " << row_ptr_name_;
+        return false;
+    }
+
+    ::llvm::Value* row_size = NULL;
+    ok = sv_->FindVar(row_size_name_, &row_size);
+    if (!ok || row_size == NULL) {
+        LOG(WARNING) << "fail to find row size with name " << row_size_name_;
+        return false;
+    }
+
+    ::llvm::Value* value = NULL;
+    DLOG(INFO) << "get table column " << col;
+    // NOT reuse for iterator
+    ok = buf_ir_builder_->BuildGetCol(col, row_ptr, &value);
+    if (!ok || value == NULL) {
+        LOG(WARNING) << "fail to find column " << col;
+        return false;
+    }
+    *output = value;
+    return ok;
 }
 
 bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,

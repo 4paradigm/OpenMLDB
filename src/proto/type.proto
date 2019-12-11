@@ -13,6 +13,7 @@ enum Type {
     kVarchar = 9;
     kDate = 10;
     kTimestamp = 11;
+    kList = 12;
 }
 
 enum TTLType {

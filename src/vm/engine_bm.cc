@@ -118,6 +118,7 @@ static void BM_EngineFn(benchmark::State& state) {  // NOLINT
         free(output2);
     }
 }
+
 BENCHMARK(BM_EngineFn);
 }  // namespace vm
 }  // namespace fesql

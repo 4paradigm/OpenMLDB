@@ -16,15 +16,16 @@
  */
 
 #include "vm/sql_compiler.h"
-
 #include <memory>
 #include <utility>
 #include <vector>
 #include "analyser/analyser.h"
+#include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "storage/type_ir_builder.h"
+#include "udf/udf.h"
 #include "vm/op_generator.h"
 
 namespace fesql {
@@ -46,10 +47,11 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     OpGenerator op_generator(table_mgr_);
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
+    ::fesql::udf::RegisterUDFToModule(m.get());
     ok = op_generator.Gen(trees, ctx.db, m.get(), &ctx.ops, status);
     // TODO(wangtaize) clean ctx
     if (!ok) {
-        LOG(WARNING) << "fail to generate operators for sql " << ctx.sql;
+        LOG(WARNING) << "fail to generate operators for sql: \n" << ctx.sql;
         return false;
     }
 
@@ -68,6 +70,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
     storage::InitCodecSymbol(ctx.jit.get());
+    udf::InitUDFSymbol(ctx.jit.get());
     std::vector<OpNode*>::iterator it = ctx.ops.ops.begin();
     for (; it != ctx.ops.ops.end(); ++it) {
         OpNode* op_node = *it;
@@ -77,11 +80,11 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
                 ctx.jit->lookup(pop->fn_name));
             if (symbol.takeError()) {
                 LOG(WARNING) << "fail to find fn with name  " << pop->fn_name
-                             << " for sql" << ctx.sql;
+                             << " for sql:\n"
+                             << ctx.sql;
             }
             pop->fn = reinterpret_cast<int8_t*>(symbol->getAddress());
             ctx.schema = pop->output_schema;
-            ctx.row_size = pop->output_size;
         }
     }
     return true;

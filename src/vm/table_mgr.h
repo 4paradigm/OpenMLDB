@@ -18,8 +18,10 @@
 #ifndef SRC_VM_TABLE_MGR_H_
 #define SRC_VM_TABLE_MGR_H_
 
-#include <string>
 #include <memory>
+#include <string>
+#include <map>
+#include <utility>
 #include "proto/type.pb.h"
 #include "storage/table.h"
 
@@ -32,13 +34,24 @@ struct TableStatus {
     std::string db;
     ::fesql::type::TableDef table_def;
     std::unique_ptr<::fesql::storage::Table> table;
+    // ColInfos: map<col_name, pair<col_type, col_idx>>
+    typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
+        ColInfos;
+    ColInfos col_infos;
 
     TableStatus() {}
     TableStatus(uint32_t tid, uint32_t pid, const std::string& db,
                 const ::fesql::type::TableDef& table_def)
         : tid(tid), pid(pid), db(db), table_def(table_def) {}
-
     ~TableStatus() {}
+    void InitColumnInfos() {
+        col_infos.clear();
+        for (int32_t i = 0; i < table_def.columns_size(); i++) {
+            const ::fesql::type::ColumnDef& column = table_def.columns(i);
+            col_infos.insert(std::make_pair(column.name(),
+                                            std::make_pair(column.type(), i)));
+        }
+    }
 };
 
 class TableMgr {

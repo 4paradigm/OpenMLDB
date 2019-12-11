@@ -93,24 +93,26 @@ class ScanPlanNode : public UnaryPlanNode {
         : UnaryPlanNode(kPlanTypeScan),
           scan_type_(scan_type),
           table_name_(table_name),
-          limit_cnt(-1) {}
+          condition_(nullptr),
+          limit_cnt_(-1) {}
     ~ScanPlanNode() {}
 
     PlanType GetScanType() { return scan_type_; }
 
-    const int GetLimit() const { return limit_cnt; }
+    const int GetLimit() const { return limit_cnt_; }
 
     const std::string &GetTable() const { return table_name_; }
 
-    void SetLimit(int limit) { limit_cnt = limit; }
-    SQLNode *GetCondition() const { return condition; }
+    void SetLimit(int limit) { limit_cnt_ = limit; }
+    const SQLNode *GetCondition() const { return condition_; }
+    void SetCondition(SQLNode *condition) { condition_ = condition; }
 
  private:
     // TODO(chenjing): OP tid
     PlanType scan_type_;
     std::string table_name_;
-    SQLNode *condition;
-    int limit_cnt;
+    SQLNode *condition_;
+    int limit_cnt_;
 };
 
 class LimitPlanNode : public MultiChildPlanNode {
@@ -180,11 +182,61 @@ class ProjectPlanNode : public LeafPlanNode {
     std::string w_;
 };
 
+class MergePlanNode : public MultiChildPlanNode {
+ public:
+    MergePlanNode() : MultiChildPlanNode(kPlanTypeMerge) {}
+    ~MergePlanNode() {}
+};
+
+class WindowPlanNode : public LeafPlanNode {
+ public:
+    explicit WindowPlanNode(int id)
+        : LeafPlanNode(kPlanTypeWindow),
+          id(id),
+          name(""),
+          start_offset_(0L),
+          end_offset_(0L),
+          is_range_between_(true),
+          keys_(),
+          orders_() {}
+    ~WindowPlanNode() {}
+    int64_t GetStartOffset() const { return start_offset_; }
+    void SetStartOffset(int64_t startOffset) { start_offset_ = startOffset; }
+    int64_t GetEndOffset() const { return end_offset_; }
+    void SetEndOffset(int64_t endOffset) { end_offset_ = endOffset; }
+    bool IsRangeBetween() const { return is_range_between_; }
+    void SetIsRangeBetween(bool isRangeBetween) {
+        is_range_between_ = isRangeBetween;
+    }
+    const std::vector<std::string> &GetKeys() const { return keys_; }
+    const std::vector<std::string> &GetOrders() const { return orders_; }
+    void SetKeys(const std::vector<std::string> &keys) { keys_ = keys; }
+    void SetOrders(const std::vector<std::string> &orders) { orders_ = orders; }
+    const std::string &GetName() const { return name; }
+    void SetName(const std::string &name) { WindowPlanNode::name = name; }
+    const int GetId() const { return id; }
+
+ private:
+    int id;
+    std::string name;
+    int64_t start_offset_;
+    int64_t end_offset_;
+    bool is_range_between_;
+    std::vector<std::string> keys_;
+    std::vector<std::string> orders_;
+};
 class ProjectListPlanNode : public MultiChildPlanNode {
  public:
-    ProjectListPlanNode() : MultiChildPlanNode(kProjectList) {}
-    ProjectListPlanNode(const std::string &table, const std::string &w)
-        : MultiChildPlanNode(kProjectList), table_(table), w_(w) {}
+    ProjectListPlanNode()
+        : MultiChildPlanNode(kProjectList),
+          w_ptr_(nullptr),
+          is_window_agg_(false) {}
+    ProjectListPlanNode(const std::string &table, WindowPlanNode *w_ptr,
+                        const bool is_window_agg)
+        : MultiChildPlanNode(kProjectList),
+          table_(table),
+          w_ptr_(w_ptr),
+          is_window_agg_(is_window_agg) {}
     ~ProjectListPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -193,12 +245,15 @@ class ProjectListPlanNode : public MultiChildPlanNode {
 
     const std::string GetTable() const { return table_; }
 
-    std::string GetW() const { return w_; }
+    WindowPlanNode *GetW() const { return w_ptr_; }
+
+    const bool IsWindowAgg() const { return is_window_agg_; }
 
  private:
     PlanNodeList projects;
     std::string table_;
-    std::string w_;
+    WindowPlanNode *w_ptr_;
+    bool is_window_agg_;
 };
 
 class CreatePlanNode : public LeafPlanNode {

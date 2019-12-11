@@ -35,7 +35,6 @@ class Engine;
 
 struct CompileInfo {
     SQLContext sql_ctx;
-    uint32_t row_size;
 };
 
 class RunSession {
@@ -44,13 +43,14 @@ class RunSession {
 
     ~RunSession();
 
-    inline const uint32_t GetRowSize() const { return compile_info_->row_size; }
-
     inline const std::vector<::fesql::type::ColumnDef>& GetSchema() const {
         return compile_info_->sql_ctx.schema;
     }
 
-    int32_t Run(std::vector<int8_t*>& buf, uint32_t limit);  // NOLINT
+    int32_t Run(std::vector<int8_t*>& buf, uint32_t limit); //NOLINT
+    int32_t RunProjectOp(ProjectOp* project_op,
+                                     std::shared_ptr<TableStatus> status,
+                                     int8_t* row, int8_t* output);
 
  private:
     inline void SetCompileInfo(std::shared_ptr<CompileInfo> compile_info) {

@@ -29,7 +29,7 @@
 
 namespace fesql {
 namespace vm {
-
+using ::fesql::base::Status;  // NOLINT
 struct OpVector {
     std::string sql;
     // TOD(wangtaize) add free logic
@@ -55,17 +55,30 @@ class OpGenerator {
                 base::Status& status);  // NOLINT
 
     bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
-                    const std::string& db, ::llvm::Module* module,
-                    OpVector* ops);
+                       const std::string& db, ::llvm::Module* module,
+                       OpNode** op,
+                       Status& status);  // NOLINT
 
-    bool GenScan(const ::fesql::node::ScanPlanNode* node, const std::string& db,
-                 ::llvm::Module* module, OpVector* ops);
+    bool GenScan(const ::fesql::node::ScanPlanNode* node,
+                    const std::string& db, ::llvm::Module* module,
+                    OpNode** op,
+                    Status& status);  // NOLINT
 
     bool GenLimit(const ::fesql::node::LimitPlanNode* node,
-                  const std::string& db, ::llvm::Module* module, OpVector* ops);
+                     const std::string& db, ::llvm::Module* module,
+                     OpNode** op,
+                     Status& status);  // NOLINT
+    bool GenMerge(const ::fesql::node::MergePlanNode* node,
+                     ::llvm::Module* module,
+                     OpNode** op,
+                     Status& status);  // NOLINT
 
-    bool RoutingNode(const ::fesql::node::PlanNode* node, const std::string& db,
-                     ::llvm::Module* module, OpVector* ops);
+    bool RoutingNode(const ::fesql::node::PlanNode* node,
+                        const std::string& db, ::llvm::Module* module,
+                        std::map<const std::string, OpNode*>& ops_map,  // NOLINT
+                        OpVector* ops,
+                        std::vector<OpNode*> &prev_children, //NOLINT
+                        Status& status);  // NOLINT
 
  private:
     TableMgr* table_mgr_;
