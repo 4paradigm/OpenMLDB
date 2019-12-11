@@ -103,7 +103,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
         return -1;
     }
     std::unique_ptr<::fesql::storage::TableIterator> it =
-        status->table->NewIterator();
+        status->table->NewTraverseIterator();
     it->SeekToFirst();
     uint32_t min = limit;
     if (min > limit_op->limit) {
