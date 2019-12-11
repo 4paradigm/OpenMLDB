@@ -18,7 +18,6 @@
 #include "proto/type.pb.h"
 #include "storage/list.h"
 #include "storage/skiplist.h"
-// #include "storage/table.h"
 
 namespace fesql {
 namespace storage {

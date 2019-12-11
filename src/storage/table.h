@@ -82,9 +82,6 @@ class Table {
 
     inline uint32_t GetPid() const { return pid_; }
 
-    int32_t GetInteger(const char* row, uint32_t idx, ::fesql::type::Type type,
-                       uint64_t* value);
-
     struct ColInfo {
         ::fesql::type::Type type;
         uint32_t pos;
