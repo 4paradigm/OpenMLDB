@@ -191,5 +191,20 @@ std::unique_ptr<TableIterator> Table::NewIterator() {
     return std::move(segment->NewIterator());
 }
 
+std::unique_ptr<TableIterator> Table::NewTraverseIterator(const std::string& index_name) {
+    auto iter = index_map_.find(index_name);
+    if (iter == index_map_.end()) {
+        LOG(WARNING) << "index name \"" << index_name << "\" not exist";
+        return nullptr;
+    }
+    return std::unique_ptr<TableIterator>(new TableIterator(
+        segments_[iter->second.index], seg_cnt_));
+}
+
+std::unique_ptr<TableIterator> Table::NewTraverseIterator() {
+    return std::unique_ptr<TableIterator>(new TableIterator(
+        segments_[0], seg_cnt_));
+}
+
 }  // namespace storage
 }  // namespace fesql

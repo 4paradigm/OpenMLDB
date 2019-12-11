@@ -26,6 +26,29 @@ using ::fesql::type::TableDef;
 
 static constexpr uint32_t SEG_CNT = 1;
 
+class TableIterator {
+ public:
+    TableIterator() = default;
+    TableIterator(Iterator<Slice, void*>* pk_it,
+                  Iterator<uint64_t, DataBlock*>* ts_it);
+    TableIterator(Segment ** segments, uint32_t seg_cnt);
+    ~TableIterator();
+    void Seek(uint64_t time);
+    bool Valid();
+    void Next();
+    Slice GetValue() const;
+    uint64_t GetKey() const;
+    std::string GetPK() const;
+    void SeekToFirst();
+
+ private:
+    Segment** segments_ = NULL;
+    uint32_t seg_cnt_ = 0;
+    uint32_t seg_idx_ = 0;
+    Iterator<Slice, void*>* pk_it_ = NULL;
+    Iterator<uint64_t, DataBlock*>* ts_it_ = NULL;
+};
+
 class Table {
  public:
     Table() = default;
@@ -44,6 +67,9 @@ class Table {
                                                const std::string& index_name);
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk);
     std::unique_ptr<TableIterator> NewIterator();
+
+    std::unique_ptr<TableIterator> NewTraverseIterator(const std::string& index_name);
+    std::unique_ptr<TableIterator> NewTraverseIterator();
 
     inline uint32_t GetId() const { return id_; }
 
