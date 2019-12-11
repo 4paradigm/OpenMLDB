@@ -71,11 +71,11 @@ T PrintList(int8_t* input) {
     if (nullptr == input) {
         std::cout << "list is null";
     }
-    ::fesql::storage::ColInt16Ref* col_int16 =
-        reinterpret_cast<::fesql::storage::ColInt16Ref*>(input);
+    ::fesql::storage::ListRef* list_ref =
+        reinterpret_cast<::fesql::storage::ListRef*>(input);
     ::fesql::storage::ColumnIteratorImpl<T>* col =
         reinterpret_cast<::fesql::storage::ColumnIteratorImpl<T>*>(
-            col_int16->iterator);
+            list_ref->iterator);
     std::cout << "[";
     while (col->Valid()) {
         T v = col->Next();

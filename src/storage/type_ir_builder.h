@@ -44,27 +44,6 @@ struct Timestamp {
 struct ListRef {
     int8_t* iterator;
 };
-struct ColInt16Ref {
-    int8_t* iterator;
-};
-struct ColInt32Ref {
-    int8_t* iterator;
-};
-struct ColInt64Ref {
-    int8_t* iterator;
-};
-struct ColFloatRef {
-    int8_t* iterator;
-};
-struct ColDoubleRef {
-    int8_t* iterator;
-};
-struct ListStringRef {
-    int8_t* iterator;
-};
-struct ListTimestampRef {
-    int8_t* iterator;
-};
 
 namespace v1 {
 
