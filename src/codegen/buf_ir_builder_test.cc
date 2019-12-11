@@ -604,7 +604,6 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
     ASSERT_TRUE(ok);
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Value* i8_ptr = builder.CreatePointerCast(val, i8_ptr_ty);
-    ::llvm::Type* void_ty = builder.getVoidTy();
     llvm::FunctionCallee callee;
     switch (type) {
         case fesql::type::kInt16:

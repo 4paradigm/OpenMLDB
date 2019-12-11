@@ -191,6 +191,7 @@ OpNode* OpGenerator::RoutingNode(
 
     if (nullptr != cur_op) {
         cur_op->children = children;
+        cur_op->idx = ops->ops.size();
         ops->ops.push_back(cur_op);
         ops_map[key] = cur_op;
         DLOG(INFO) << "generate operator for plan "

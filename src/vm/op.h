@@ -37,7 +37,7 @@ enum OpType {
 struct OpNode {
     virtual ~OpNode() {}
     OpType type;
-    std::vector<::fesql::storage::Row> output;
+    uint32_t idx;
     std::vector<OpNode*> children;
 };
 

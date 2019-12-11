@@ -110,6 +110,7 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
         // limit_cnt into Scan node
         bool optimized_limit = true;
         // TODO(chenjing): handle multi table scan
+        // TODO(chenjing): Scan optimized
         node::ScanPlanNode *scan_node_ptr = node_manager_->MakeSeqScanPlanNode(
             table_node_ptr->GetOrgTableName());
         // set limit

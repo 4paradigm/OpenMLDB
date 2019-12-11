@@ -171,6 +171,10 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
     ASSERT_EQ(2, op.ops.size());
+    ASSERT_EQ(0, op.ops[0]->idx);
+    ASSERT_EQ(kOpScan, op.ops[0]->type);
+
+    ASSERT_EQ(1, op.ops[1]->idx);
     ASSERT_EQ(kOpProject, op.ops[1]->type);
     ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[1]);
     ASSERT_TRUE(project_op->window_agg);

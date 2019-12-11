@@ -95,8 +95,8 @@ int32_t RunSession::RunProjectOp(ProjectOp* project_op,
 }
 int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
     // TODO(chenjing): memory managetment
-    int index = 0;
     int op_size = compile_info_->sql_ctx.ops.ops.size();
+    std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
     for (auto op : compile_info_->sql_ctx.ops.ops) {
         switch (op->type) {
             case kOpScan: {
@@ -117,9 +117,11 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                     min = scan_op->limit;
                 }
                 uint32_t count = 0;
+                std::vector<::fesql::storage::Row>& out_buffers =
+                    temp_buffers[scan_op->idx];
                 while (it->Valid() && count < min) {
                     ::fesql::storage::Slice value = it->GetValue();
-                    scan_op->output.push_back(::fesql::storage::Row{
+                    out_buffers.push_back(::fesql::storage::Row{
                         .buf = reinterpret_cast<int8_t*>(
                             const_cast<char*>(value.data())),
                         .size = value.size()});
@@ -144,13 +146,17 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                     std::move(std::unique_ptr<storage::RowView>(
                         new storage::RowView(status->table_def.columns())));
 
+                std::vector<::fesql::storage::Row>& in_buffers =
+                    temp_buffers[prev->idx];
+                std::vector<::fesql::storage::Row>& out_buffers =
+                    temp_buffers[project_op->idx];
                 if (project_op->window_agg) {
                     ::fesql::type::Type key_type = project_op->w.keys[0].first;
                     ::fesql::type::Type order_type =
                         project_op->w.orders[0].first;
                     uint32_t key_idx = project_op->w.keys[0].second;
                     uint32_t order_idx = project_op->w.orders[0].second;
-                    for (auto row : prev->output) {
+                    for (auto row : in_buffers) {
                         row_view->Reset(row.buf, row.size);
                         int8_t* output = NULL;
                         size_t output_size = 0;
@@ -283,11 +289,11 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             return 1;
                         }
 
-                        project_op->output.push_back(::fesql::storage::Row{
+                        out_buffers.push_back(::fesql::storage::Row{
                             .buf = output, .size = output_size});
                     }
                 } else {
-                    for (auto row : prev->output) {
+                    for (auto row : in_buffers) {
                         row_view->Reset(row.buf, row.size);
                         int8_t* output = NULL;
                         size_t output_size = 0;
@@ -298,7 +304,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
                         }
-                        project_op->output.push_back(::fesql::storage::Row{
+                        out_buffers.push_back(::fesql::storage::Row{
                             .buf = output, .size = output_size});
                     }
                 }
@@ -320,24 +326,24 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 // TODO(chenjing): limit optimized.
                 LimitOp* limit_op = reinterpret_cast<LimitOp*>(op);
                 OpNode* prev = limit_op->children[0];
+                std::vector<::fesql::storage::Row>& in_buffers =
+                    temp_buffers[prev->idx];
+                std::vector<::fesql::storage::Row>& out_buffers =
+                    temp_buffers[limit_op->idx];
                 int cnt = 0;
                 for (int i = 0; i < limit_op->limit; ++i) {
                     if (cnt >= limit_op->limit) {
                         break;
                     }
-                    limit_op->output.push_back(prev->output[i]);
+                    out_buffers.push_back(in_buffers[i]);
                     cnt++;
                 }
                 break;
             }
         }
-        index++;
-        if (index == op_size) {
-            for (auto row : op->output) {
-                // TODO(chenjing)
-                buf.push_back(row.buf);
-            }
-        }
+    }
+    for (auto row : temp_buffers[op_size - 1]) {
+        buf.push_back(row.buf);
     }
     return 0;
 }
