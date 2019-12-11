@@ -524,9 +524,9 @@ class List {
     }
 
     Iterator<K, V>* NewIterator(const uint64_t ts) {
-        auto it = list_.load(std::memory_order_relaxed)->NewIterator();
-        it->Seek(ts);
-        return it;
+        auto iter = NewIterator();
+        iter->Seek(ts);
+        return iter;
     }
 
  private:
