@@ -47,7 +47,7 @@ struct ScanOp : public OpNode {
     std::string db;
     uint32_t tid;
     uint32_t pid;
-    int32_t limit;
+    uint32_t limit;
     std::vector<::fesql::type::ColumnDef> input_schema;
     std::vector<::fesql::type::ColumnDef> output_schema;
 };
