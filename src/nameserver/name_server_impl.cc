@@ -5424,6 +5424,7 @@ std::shared_ptr<Task> NameServerImpl::CreateAddRemoteReplicaTask(const std::stri
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        PDLOG(WARNING, "provide endpoint [%s] is valid", endpoint.c_str());
         return std::shared_ptr<Task>();
     }
     task->task_info_->set_op_id(op_index);
