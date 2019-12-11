@@ -6849,7 +6849,7 @@ void NameServerImpl::CheckClusterInfo() {
         }
     } while(0);
 
-    if (running_.load(std::memory_order_acquire) && (mode_.load(std::memory_order_acquire) == rLEADER)) {
+    if (running_.load(std::memory_order_acquire)) {
         thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
     }
 }
