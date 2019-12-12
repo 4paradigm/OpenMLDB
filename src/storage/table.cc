@@ -158,7 +158,6 @@ std::unique_ptr<TableIterator> Table::NewIndexIterator(
     Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];
     if (segment->GetEntries() == NULL) {
-        std::cout << "invalid" << std::endl;
         return std::unique_ptr<TableIterator>(new TableIterator());
     }
     void* entry = NULL;
@@ -181,22 +180,9 @@ std::unique_ptr<TableIterator> Table::NewIterator(
 
 std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk,
                                                   const uint64_t ts) {
-    uint32_t seg_idx = 0;
-    if (seg_cnt_ > 1) {
-        seg_idx = ::fesql::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
-    }
-    Slice spk(pk);
-    Segment* segment = segments_[0][seg_idx];
-    if (segment->GetEntries() == NULL) {
-        return std::unique_ptr<TableIterator>(new TableIterator());
-    }
-    void* entry = NULL;
-    if (segment->GetEntries()->Get(spk, entry) < 0 || entry == NULL) {
-        return std::unique_ptr<TableIterator>(new TableIterator());
-    }
-    auto iter = std::unique_ptr<TableIterator>(new TableIterator(
-        (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
+    auto iter = NewIndexIterator(pk, 0);
     iter->Seek(ts);
+    Slice spk(pk);
     return std::move(iter);
 }
 

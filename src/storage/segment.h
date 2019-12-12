@@ -60,7 +60,9 @@ class Segment {
     ~Segment();
 
     void Put(const Slice& key, uint64_t time, DataBlock* row);
-    KeyEntry* GetEntries();
+    inline KeyEntry* GetEntries() {
+        return entries_;
+    }
 
  private:
     KeyEntry* entries_;

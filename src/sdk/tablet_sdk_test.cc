@@ -725,37 +725,6 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
             {
                 int32_t val = 0;
                 ASSERT_TRUE(it->GetInt32(0, &val));
-                ASSERT_EQ(val, 1 + 1);
-            }
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
-                ASSERT_EQ(val, 2 + 3);
-            }
-            {
-                float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
-                ASSERT_EQ(val, 3.3f + 4.4f);
-            }
-            {
-                int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
-                ASSERT_EQ(val, 1000L + 2000L);
-            }
-            {
-                int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
-                ASSERT_EQ(val, 5 + 6);
-            }
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
                 ASSERT_EQ(val, 11 + 11 + 11);
             }
             {
@@ -778,7 +747,37 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
                 ASSERT_TRUE(it->GetInt32(4, &val));
                 ASSERT_EQ(val, 7 + 8 + 9);
             }
-
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1 + 1);  // todo
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 2 + 3);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.3f + 4.4f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_EQ(val, 1000L + 2000L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_EQ(val, 5 + 6);
+            }
         } else {
             ASSERT_TRUE(false);
         }
