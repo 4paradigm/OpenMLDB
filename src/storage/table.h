@@ -41,6 +41,8 @@ class TableIterator {
     uint64_t GetKey() const;
     std::string GetPK() const;
     void SeekToFirst();
+
+ private:
     bool SeekToNextTsInPks();
 
  private:
@@ -67,8 +69,6 @@ class Table {
                                                const uint64_t ts);
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
                                                const std::string& index_name);
-    std::unique_ptr<TableIterator> NewIterator(const Slice& key,
-                                               const uint64_t ts);
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk);
 
     std::unique_ptr<TableIterator> NewTraverseIterator(
@@ -90,6 +90,10 @@ class Table {
         uint32_t ts_pos;
         std::vector<ColInfo> keys;
     };
+
+ private:
+    std::unique_ptr<TableIterator> NewIndexIterator(const std::string& pk,
+                                                    const uint32_t index);
 
  private:
     std::string name_;

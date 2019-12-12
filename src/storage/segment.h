@@ -59,15 +59,12 @@ class Segment {
     Segment();
     ~Segment();
 
-    bool Valid();
-
     void Put(const Slice& key, uint64_t time, DataBlock* row);
+    KeyEntry* GetEntries();
 
  private:
     KeyEntry* entries_;
     base::SpinMutex mu_;
-    friend class TableIterator;
-    friend class Table;
 };
 
 }  // namespace storage

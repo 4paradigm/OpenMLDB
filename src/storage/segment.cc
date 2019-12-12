@@ -32,5 +32,9 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     reinterpret_cast<TimeEntry*>(entry)->Insert(time, row);
 }
 
+KeyEntry* Segment::GetEntries() {
+    return entries_;
+}
+
 }  // namespace storage
 }  // namespace fesql

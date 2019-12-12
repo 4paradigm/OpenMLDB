@@ -149,28 +149,34 @@ bool Table::Put(const char* row, uint32_t size) {
     return true;
 }
 
-std::unique_ptr<TableIterator> Table::NewIterator(
-    const std::string& pk, const std::string& index_name) {
+std::unique_ptr<TableIterator> Table::NewIndexIterator(
+    const std::string& pk, const uint32_t index) {
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
         seg_idx = ::fesql::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
+    Slice spk(pk);
+    Segment* segment = segments_[index][seg_idx];
+    if (segment->GetEntries() == NULL) {
+        std::cout << "invalid" << std::endl;
+        return std::unique_ptr<TableIterator>(new TableIterator());
+    }
+    void* entry = NULL;
+    if (segment->GetEntries()->Get(spk, entry) < 0 || entry == NULL) {
+        return std::unique_ptr<TableIterator>(new TableIterator());
+    }
+    return std::unique_ptr<TableIterator>(new TableIterator(
+        NULL, (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
+}
+
+std::unique_ptr<TableIterator> Table::NewIterator(
+    const std::string& pk, const std::string& index_name) {
     auto iter = index_map_.find(index_name);
     if (iter == index_map_.end()) {
         LOG(WARNING) << "index name \"" << index_name << "\" not exist";
         return nullptr;
     }
-    Slice spk(pk);
-    Segment* segment = segments_[iter->second.index][seg_idx];
-    if (segment->entries_ == NULL) {
-        return std::unique_ptr<TableIterator>(new TableIterator());
-    }
-    void* entry = NULL;
-    if (segment->entries_->Get(spk, entry) < 0 || entry == NULL) {
-        return std::unique_ptr<TableIterator>(new TableIterator());
-    }
-    return std::unique_ptr<TableIterator>(new TableIterator(
-        NULL, (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
+    return std::move(NewIndexIterator(pk, iter->second.index));
 }
 
 std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk,
@@ -181,11 +187,11 @@ std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk,
     }
     Slice spk(pk);
     Segment* segment = segments_[0][seg_idx];
-    if (segment->entries_ == NULL) {
+    if (segment->GetEntries() == NULL) {
         return std::unique_ptr<TableIterator>(new TableIterator());
     }
     void* entry = NULL;
-    if (segment->entries_->Get(spk, entry) < 0 || entry == NULL) {
+    if (segment->GetEntries()->Get(spk, entry) < 0 || entry == NULL) {
         return std::unique_ptr<TableIterator>(new TableIterator());
     }
     auto iter = std::unique_ptr<TableIterator>(new TableIterator(
@@ -195,22 +201,7 @@ std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk,
 }
 
 std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk) {
-    uint32_t seg_idx = 0;
-    if (seg_cnt_ > 1) {
-        seg_idx = ::fesql::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
-    }
-    Slice spk(pk);
-    Segment* segment = segments_[0][seg_idx];
-    if (segment->entries_ == NULL) {
-        std::cout << "invalid" << std::endl;
-        return std::unique_ptr<TableIterator>(new TableIterator());
-    }
-    void* entry = NULL;
-    if (segment->entries_->Get(spk, entry) < 0 || entry == NULL) {
-        return std::unique_ptr<TableIterator>(new TableIterator());
-    }
-    return std::unique_ptr<TableIterator>(new TableIterator(
-        NULL, (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
+    return std::move(NewIndexIterator(pk, 0));
 }
 
 std::unique_ptr<TableIterator> Table::NewTraverseIterator(
@@ -258,7 +249,7 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
         seg_idx_ =
             ::fesql::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
         delete pk_it_;
-        pk_it_ = segments_[seg_idx_]->entries_->NewIterator();
+        pk_it_ = segments_[seg_idx_]->GetEntries()->NewIterator();
     }
     Slice spk(key);
     pk_it_->Seek(spk);
@@ -313,7 +304,7 @@ void TableIterator::Next() {
     if (pk_it_ != NULL && !pk_it_->Valid()) {
         while (seg_idx_ + 1 < seg_cnt_) {
             delete pk_it_;
-            pk_it_ = segments_[++seg_idx_]->entries_->NewIterator();
+            pk_it_ = segments_[++seg_idx_]->GetEntries()->NewIterator();
             pk_it_->SeekToFirst();
             if (SeekToNextTsInPks()) return;
         }
@@ -342,7 +333,7 @@ void TableIterator::SeekToFirst() {
         ts_it_ = NULL;
         while (seg_idx_ < seg_cnt_) {
             delete pk_it_;
-            pk_it_ = segments_[seg_idx_]->entries_->NewIterator();
+            pk_it_ = segments_[seg_idx_]->GetEntries()->NewIterator();
             pk_it_->SeekToFirst();
             if (SeekToNextTsInPks()) return;
             ++seg_idx_;
@@ -352,10 +343,11 @@ void TableIterator::SeekToFirst() {
         delete ts_it_;
         ts_it_ = NULL;
         pk_it_->SeekToFirst();
-        if (SeekToNextTsInPks())
+        if (SeekToNextTsInPks()) {
             return;
-        else
+        } else {
             ts_it_ = NULL;
+        }
     }
     if (ts_it_ == NULL) {
         return;
