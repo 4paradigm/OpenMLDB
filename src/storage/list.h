@@ -523,12 +523,6 @@ class List {
         return list_.load(std::memory_order_relaxed)->NewIterator();
     }
 
-    Iterator<K, V>* NewIterator(const uint64_t ts) {
-        auto iter = NewIterator();
-        iter->Seek(ts);
-        return iter;
-    }
-
  private:
     Comparator const compare_;
     std::atomic<BaseList<K, V>*> list_;

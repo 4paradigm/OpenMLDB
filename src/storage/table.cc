@@ -319,11 +319,11 @@ Slice TableIterator::GetValue() const {
 
 uint64_t TableIterator::GetKey() const { return ts_it_->GetKey(); }
 
-std::string TableIterator::GetPK() const {
+Slice TableIterator::GetPK() const {
     if (pk_it_ == NULL) {
-        return std::string();
+        return Slice();
     }
-    return pk_it_->GetKey().ToString();
+    return pk_it_->GetKey();
 }
 
 void TableIterator::SeekToFirst() {

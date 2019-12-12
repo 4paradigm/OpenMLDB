@@ -39,7 +39,7 @@ class TableIterator {
     void Next();
     Slice GetValue() const;
     uint64_t GetKey() const;
-    std::string GetPK() const;
+    Slice GetPK() const;
     void SeekToFirst();
 
  private:
