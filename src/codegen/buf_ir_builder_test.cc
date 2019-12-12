@@ -17,7 +17,6 @@
 
 #include "codegen/buf_ir_builder.h"
 #include <stdio.h>
-#include <storage/window.h>
 #include <cstdlib>
 #include <memory>
 #include <vector>
@@ -25,6 +24,7 @@
 #include "gtest/gtest.h"
 #include "storage/codec.h"
 #include "storage/type_ir_builder.h"
+#include "storage/window.h"
 
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -71,11 +71,11 @@ T PrintList(int8_t* input) {
     if (nullptr == input) {
         std::cout << "list is null";
     }
-    ::fesql::storage::ColInt16Ref* col_int16 =
-        reinterpret_cast<::fesql::storage::ColInt16Ref*>(input);
+    ::fesql::storage::ListRef* list_ref =
+        reinterpret_cast<::fesql::storage::ListRef*>(input);
     ::fesql::storage::ColumnIteratorImpl<T>* col =
         reinterpret_cast<::fesql::storage::ColumnIteratorImpl<T>*>(
-            col_int16->iterator);
+            list_ref->iterator);
     std::cout << "[";
     while (col->Valid()) {
         T v = col->Next();
@@ -95,8 +95,8 @@ int32_t PrintListString(int8_t* input) {
     if (nullptr == input) {
         std::cout << "list is null";
     }
-    ::fesql::storage::ListStringRef* col_string =
-        reinterpret_cast<::fesql::storage::ListStringRef*>(input);
+    ::fesql::storage::ListRef* col_string =
+        reinterpret_cast<::fesql::storage::ListRef*>(input);
     ::fesql::storage::ColumnStringIteratorImpl* col =
         reinterpret_cast<::fesql::storage::ColumnStringIteratorImpl*>(
             col_string->iterator);

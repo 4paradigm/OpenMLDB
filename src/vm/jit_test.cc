@@ -134,6 +134,9 @@ TEST_F(JITTest, test_udf_invoke_module) {
                              std::move(::llvm::orc::ThreadSafeModule(
                                  std::move(m), std::move(ct2))),
                              m1);
+        if (e) {
+            ASSERT_TRUE(false);
+        }
         jit->AddSymbol(jd, "inc_int32",
                        reinterpret_cast<void *>(&fesql::udf::v1::inc_int32));
         auto Add1Sym = FeCheck((jit->lookup(jd, "add1")));
