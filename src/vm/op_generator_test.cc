@@ -195,6 +195,84 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     ASSERT_EQ(-86400000 * 2, project_op->w.start_offset);
     ASSERT_EQ(-1000, project_op->w.end_offset);
 }
+
+void AssertOpGenError(TableMgrImpl *table_mrg_ptr, const std::string &sql, const Status &exp_status) {
+    OpGenerator generator(table_mrg_ptr);
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_op_generator", *ctx);
+    ::fesql::node::NodeManager manager;
+    ::fesql::node::PlanNodeList plan_trees;
+    ::fesql::base::Status base_status;
+    {
+        ::fesql::plan::SimplePlanner planner(&manager);
+        ::fesql::parser::FeSQLParser parser;
+        ::fesql::node::NodePointVector parser_trees;
+        parser.parse(sql, parser_trees, &manager, base_status);
+        ASSERT_EQ(0, base_status.code);
+        planner.CreatePlanTree(parser_trees, plan_trees, base_status);
+        ASSERT_EQ(0, base_status.code);
+        ASSERT_EQ(1, plan_trees.size());
+    }
+    ::fesql::udf::RegisterUDFToModule(m.get());
+    OpVector op;
+    bool ok = generator.Gen(plan_trees, "db", m.get(), &op, base_status);
+    ASSERT_FALSE(ok);
+    std::cout << base_status.msg << std::endl;
+    ASSERT_EQ(base_status.code, exp_status.code);
+    ASSERT_EQ(base_status.msg, exp_status.msg);
+}
+
+TEST_F(OpGeneratorTest, test_op_generator_error) {
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    status->table_def = table_def;
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+    status->table = std::move(table);
+    TableMgrImpl table_mgr(status);
+    {
+        const std::string sql =
+            "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+            "WINDOW w1 AS (PARTITION BY col1\n"
+            "              ORDER BY col15 RANGE BETWEEN 2d PRECEDING AND 1s "
+            "PRECEDING) limit 10;";
+        const Status exp_status(::fesql::common::kIndexNotFound,"fail to generate project operator: index is not match window");
+        AssertOpGenError(&table_mgr, sql, exp_status);
+    }
+
+    {
+        const std::string sql =
+            "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+            "WINDOW w1 AS (PARTITION BY col2\n"
+            "              ORDER BY col1 RANGE BETWEEN 2d PRECEDING AND 1s "
+            "PRECEDING) limit 10;";
+        const Status exp_status(::fesql::common::kIndexNotFound,"fail to generate project operator: index is not match window");
+        AssertOpGenError(&table_mgr, sql, exp_status);
+    }
+
+    {
+        const std::string sql =
+            "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+            "WINDOW w1 AS (PARTITION BY col222\n"
+            "              ORDER BY col15 RANGE BETWEEN 2d PRECEDING AND 1s "
+            "PRECEDING) limit 10;";
+        const Status exp_status(::fesql::common::kColumnNotFound,"key column col222 is not exist in table t1");
+        AssertOpGenError(&table_mgr, sql, exp_status);
+    }
+
+    {
+        const std::string sql =
+            "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+            "WINDOW w1 AS (PARTITION BY col2\n"
+            "              ORDER BY col555 RANGE BETWEEN 2d PRECEDING AND 1s "
+            "PRECEDING) limit 10;";
+        const Status exp_status(::fesql::common::kColumnNotFound,"ts column col555 is not exist in table t1");
+        AssertOpGenError(&table_mgr, sql, exp_status);
+    }
+}
+
+
+
 // TODO(chenjing): multi window merge
 
 // TEST_F(OpGeneratorTest, test_multi_windowp_project) {

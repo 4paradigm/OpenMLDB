@@ -59,8 +59,6 @@ bool OpGenerator::Gen(const ::fesql::node::PlanNodeList& trees,
                     dynamic_cast<const ::fesql::node::SelectPlanNode*>(node);
                 bool ok = GenSQL(select_plan, db, module, ops, status);
                 if (!ok) {
-                    status.code = (common::kCodegenError);
-                    status.msg = ("Fail to codegen select sql");
                     return false;
                 }
                 break;
@@ -395,7 +393,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
         }
 
         if (!index_check) {
-            status.msg = "index is not match";
+            status.msg = "fail to generate project operator: index is not match window";
             status.code = common::kIndexNotFound;
             LOG(WARNING) << status.msg;
             delete pop;
