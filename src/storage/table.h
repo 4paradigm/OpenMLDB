@@ -29,8 +29,7 @@ static constexpr uint32_t SEG_CNT = 8;
 class TableIterator {
  public:
     TableIterator() = default;
-    TableIterator(Iterator<Slice, void*>* pk_it,
-                  Iterator<uint64_t, DataBlock*>* ts_it);
+    explicit TableIterator(Iterator<uint64_t, DataBlock*>* ts_it);
     TableIterator(Segment** segments, uint32_t seg_cnt);
     ~TableIterator();
     void Seek(uint64_t time);

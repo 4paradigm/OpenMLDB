@@ -166,7 +166,7 @@ std::unique_ptr<TableIterator> Table::NewIndexIterator(
         return std::unique_ptr<TableIterator>(new TableIterator());
     }
     return std::unique_ptr<TableIterator>(new TableIterator(
-        NULL, (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
+        (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
 }
 
 std::unique_ptr<TableIterator> Table::NewIterator(
@@ -195,7 +195,7 @@ std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk,
         return std::unique_ptr<TableIterator>(new TableIterator());
     }
     auto iter = std::unique_ptr<TableIterator>(new TableIterator(
-        NULL, (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
+        (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
     iter->Seek(ts);
     return std::move(iter);
 }
@@ -222,9 +222,8 @@ std::unique_ptr<TableIterator> Table::NewTraverseIterator() {
 
 // Iterator
 
-TableIterator::TableIterator(Iterator<Slice, void*>* pk_it,
-                             Iterator<uint64_t, DataBlock*>* ts_it)
-    : pk_it_(pk_it), ts_it_(ts_it) {}
+TableIterator::TableIterator(Iterator<uint64_t, DataBlock*>* ts_it)
+    : ts_it_(ts_it) {}
 
 TableIterator::TableIterator(Segment** segments, uint32_t seg_cnt)
     : segments_(segments), seg_cnt_(seg_cnt) {}
