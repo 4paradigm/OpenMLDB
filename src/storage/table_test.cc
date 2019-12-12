@@ -39,6 +39,12 @@ TEST_F(TableTest, SingleIndexIterator) {
 
     RowBuilder builder(def.columns());
     uint32_t size = builder.CalTotalLength(10);
+
+    // test empty table
+    std::unique_ptr<TableIterator> iter = table.NewIterator("key2");
+    iter->SeekToFirst();
+    ASSERT_FALSE(iter->Valid());
+
     std::string row;
     row.resize(size);
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
@@ -69,7 +75,7 @@ TEST_F(TableTest, SingleIndexIterator) {
     table.Put(row.c_str(), row.length());
 
     // test NewIterator(key)
-    std::unique_ptr<TableIterator> iter = table.NewIterator("key2");
+    iter = table.NewIterator("key2");
     int count = 0;
     RowView view(def.columns());
     iter->SeekToFirst();
@@ -170,6 +176,12 @@ TEST_F(TableTest, MultiIndexIterator) {
 
     RowBuilder builder(def.columns());
     uint32_t size = builder.CalTotalLength(10);
+
+    // test empty table
+    std::unique_ptr<TableIterator> iter = table.NewIterator("i1_k2");
+    iter->SeekToFirst();
+    ASSERT_FALSE(iter->Valid());
+
     std::string row;
     row.resize(size);
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
@@ -205,7 +217,7 @@ TEST_F(TableTest, MultiIndexIterator) {
     RowView view(def.columns());
 
     // test NewIterator(key, index_name)
-    std::unique_ptr<TableIterator> iter = table.NewIterator("i2_k2", "index2");
+    iter = table.NewIterator("i2_k2", "index2");
     int count = 0;
     iter->SeekToFirst();
     ASSERT_TRUE(iter->Valid());
@@ -286,6 +298,59 @@ TEST_F(TableTest, MultiIndexIterator) {
     iter = table.NewIterator("key2", 0);
     count = 0;
     ASSERT_FALSE(iter->Valid());
+}
+
+TEST_F(TableTest, FullTableTest) {
+    ::fesql::type::TableDef def;
+    ::fesql::type::ColumnDef* col = def.add_columns();
+    col->set_name("col1");
+    col->set_type(::fesql::type::kVarchar);
+    col = def.add_columns();
+    col->set_name("col2");
+    col->set_type(::fesql::type::kInt64);
+    col = def.add_columns();
+    col->set_name("col3");
+    col->set_type(::fesql::type::kVarchar);
+    ::fesql::type::IndexDef* index = def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col1");
+    index->set_second_key("col2");
+
+    Table table(1, 1, def);
+    table.Init();
+
+    // test empty table
+    std::unique_ptr<TableIterator> iter = table.NewIterator("key2");
+    int count = 0;
+    RowView view(def.columns());
+    iter->SeekToFirst();
+    ASSERT_FALSE(iter->Valid());
+
+    // test full table
+    RowBuilder builder(def.columns());
+    uint32_t size = builder.CalTotalLength(14);
+    std::string row;
+    int entry_count = 1000;
+    char key[12];
+    char value[12];
+    for (int i = 0; i < entry_count; ++i) {
+        row.resize(size);
+        sprintf(key, "key%03d", i % 10);  //NOLINT
+        sprintf(value, "value%03d", i % 100);  //NOLINT
+        builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+        builder.AppendString(key, 6);
+        builder.AppendInt64(i % 10);
+        builder.AppendString(value, 8);
+        table.Put(row.c_str(), row.length());
+    }
+    iter = table.NewTraverseIterator();
+    iter->SeekToFirst();
+    count = 0;
+    while (iter->Valid()) {
+        iter->Next();
+        count++;
+    }
+    ASSERT_EQ(count, 1000);
 }
 
 }  // namespace storage
