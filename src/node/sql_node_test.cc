@@ -34,6 +34,27 @@ class SqlNodeTest : public ::testing::Test {
     NodeManager *node_manager_;
 };
 
+TEST_F(SqlNodeTest, StructExprNodeTest) {
+    StructExpr struct_expr("window");
+    FnParaNode filed1("idx", DataType::kTypeInt32);
+    FnParaNode filed2("rows_ptr", DataType::kTypeInt32);
+    FnNodeList fileds;
+    fileds.AddChild(&filed1);
+    fileds.AddChild(&filed2);
+    struct_expr.SetFileds(&fileds);
+
+    FnNodeList parameters;
+    FnNodeList methods;
+    FnNodeFnDef iterator("iterator", &parameters, DataType::kTypeRow);
+    methods.AddChild(&iterator);
+    struct_expr.SetMethod(&methods);
+
+    std::cout << struct_expr << std::endl;
+    ASSERT_EQ(kExprStruct, struct_expr.GetExprType());
+    ASSERT_EQ(&methods, struct_expr.GetMethods());
+    ASSERT_EQ(&fileds, struct_expr.GetFileds());
+}
+
 TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
     SQLNode *node = node_manager_->MakeColumnRefNode("col", "t");
     ColumnRefNode *columnnode = dynamic_cast<ColumnRefNode *>(node);
@@ -92,12 +113,13 @@ TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
 
 TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     int64_t val = 86400000L;
-    SQLNodeList *partitions = node_manager_->MakeNodeList();
-    SQLNode *ptr1 = node_manager_->MakeColumnRefNode("keycol", "");
+
+    ExprListNode *partitions = node_manager_->MakeExprList();
+    ExprNode *ptr1 = node_manager_->MakeColumnRefNode("keycol", "");
     partitions->PushBack(ptr1);
 
-    SQLNode *ptr2 = node_manager_->MakeColumnRefNode("col1", "");
-    SQLNodeList *orders = node_manager_->MakeNodeList();
+    ExprNode *ptr2 = node_manager_->MakeColumnRefNode("col1", "");
+    ExprListNode *orders = node_manager_->MakeExprList();
     orders->PushBack(ptr2);
 
     SQLNode *frame = node_manager_->MakeFrameNode(
@@ -109,12 +131,9 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
     std::cout << *node_ptr << std::endl;
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
     //
-    NodePointVector vector1;
-    vector1.push_back(ptr1);
-    NodePointVector vector2;
-    vector2.push_back(ptr2);
-    ASSERT_EQ(vector1, node_ptr->GetPartitions());
-    ASSERT_EQ(vector2, node_ptr->GetOrders());
+
+    ASSERT_EQ(std::vector<std::string>({"keycol"}), node_ptr->GetPartitions());
+    ASSERT_EQ(std::vector<std::string>({"col1"}), node_ptr->GetOrders());
     ASSERT_EQ(frame, node_ptr->GetFrame());
     ASSERT_EQ("", node_ptr->GetName());
 }

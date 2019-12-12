@@ -40,7 +40,6 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
                               Status &status) {  // NOLINT (runtime/references)
     const node::SelectStmt *root = (const node::SelectStmt *)select_tree;
     node::SelectPlanNode *select_plan = (node::SelectPlanNode *)plan_tree;
-
     const node::NodePointVector &table_ref_list = root->GetTableRefList();
     if (table_ref_list.empty()) {
         status.msg =
@@ -58,21 +57,21 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
     const node::TableNode *table_node_ptr =
         (const node::TableNode *)table_ref_list.at(0);
     node::PlanNode *current_node = select_plan;
-    std::map<std::string, node::ProjectListPlanNode *> project_list_map;
-    // set limit
-    if (nullptr != root->GetLimit()) {
-        const node::LimitNode *limit_ptr = (node::LimitNode *)root->GetLimit();
-        node::LimitPlanNode *limit_plan_ptr =
-            (node::LimitPlanNode *)node_manager_->MakePlanNode(
-                node::kPlanTypeLimit);
-        limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
-        current_node->AddChild(limit_plan_ptr);
-        current_node = limit_plan_ptr;
+    std::map<const node::WindowDefNode *, node::ProjectListPlanNode *>
+        project_list_map;
+
+    // prepare window def
+    int w_id = 1;
+    std::map<std::string, node::WindowDefNode *> windows;
+    if (!root->GetWindowList().empty()) {
+        for (auto node : root->GetWindowList()) {
+            node::WindowDefNode *w = dynamic_cast<node::WindowDefNode *>(node);
+            windows[w->GetName()] = w;
+        }
     }
 
     // prepare project list plan node
     const node::NodePointVector &select_expr_list = root->GetSelectList();
-
     if (false == select_expr_list.empty()) {
         for (auto expr : select_expr_list) {
             node::ProjectPlanNode *project_node_ptr =
@@ -84,30 +83,183 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
             if (0 != status.code) {
                 return status.code;
             }
-            std::string key = project_node_ptr->GetW().empty()
-                                  ? project_node_ptr->GetTable()
-                                  : project_node_ptr->GetW();
-            if (project_list_map.find(key) == project_list_map.end()) {
-                project_list_map[key] =
-                    project_node_ptr->GetW().empty()
-                        ? node_manager_->MakeProjectListPlanNode(key, "")
-                        : node_manager_->MakeProjectListPlanNode(
-                              project_node_ptr->GetTable(), key);
+            node::WindowDefNode *w_ptr = node::WindowOfExpression(
+                windows, project_node_ptr->GetExpression());
+
+            if (project_list_map.find(w_ptr) == project_list_map.end()) {
+                if (w_ptr == nullptr) {
+                    project_list_map[w_ptr] =
+                        node_manager_->MakeProjectListPlanNode(
+                            project_node_ptr->GetTable(), nullptr);
+                } else {
+                    node::WindowPlanNode *w_node_ptr =
+                        node_manager_->MakeWindowPlanNode(w_id++);
+                    CreateWindowPlanNode(w_ptr, w_node_ptr, status);
+                    if (common::kOk != status.code) {
+                        return status.code;
+                    }
+                    project_list_map[w_ptr] =
+                        node_manager_->MakeProjectListPlanNode(
+                            project_node_ptr->GetTable(), w_node_ptr);
+                }
             }
-            project_list_map[key]->AddProject(project_node_ptr);
+            project_list_map[w_ptr]->AddProject(project_node_ptr);
+        }
+
+        // TODO(chenjing): apply limit optimized rule, remove limit node, fill
+        // limit_cnt into Scan node
+        bool optimized_limit = true;
+        // TODO(chenjing): handle multi table scan
+        // TODO(chenjing): Scan optimized
+        node::ScanPlanNode *scan_node_ptr = node_manager_->MakeSeqScanPlanNode(
+            table_node_ptr->GetOrgTableName());
+        // set limit
+        if (nullptr != root->GetLimit()) {
+            const node::LimitNode *limit_ptr =
+                (node::LimitNode *)root->GetLimit();
+            if (optimized_limit) {
+                scan_node_ptr->SetLimit(limit_ptr->GetLimitCount());
+            } else {
+                node::LimitPlanNode *limit_plan_ptr =
+                    (node::LimitPlanNode *)node_manager_->MakePlanNode(
+                        node::kPlanTypeLimit);
+                limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
+                current_node->AddChild(limit_plan_ptr);
+                current_node = limit_plan_ptr;
+            }
+        }
+        // add MergeNode if multi ProjectionLists exist
+        if (project_list_map.size() > 1) {
+            node::PlanNode *merge_node =
+                node_manager_->MakePlanNode(node::kPlanTypeMerge);
+            current_node->AddChild(merge_node);
+            current_node = merge_node;
         }
 
         for (auto &v : project_list_map) {
             node::ProjectListPlanNode *project_list = v.second;
-            project_list->AddChild(
-                node_manager_->MakeSeqScanPlanNode(project_list->GetTable()));
-            current_node->AddChild(v.second);
+            project_list->AddChild(scan_node_ptr);
+            current_node->AddChild(project_list);
         }
     }
 
     return 0;
 }
+int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
+                                   Status &status) {
+    bool negtive = false;
+    switch (bound->GetBoundType()) {
+        case node::kCurrent: {
+            return 0;
+        }
+        case node::kPreceding: {
+            negtive = true;
+            break;
+        }
+        case node::kFollowing: {
+            negtive = false;
+            break;
+        }
+        default: {
+            status.msg =
+                "cannot create window frame with unrecognized bound type, only "
+                "support CURRENT|PRECEDING|FOLLOWING";
+            status.code = common::kUnSupport;
+            return -1;
+        }
+    }
+    if (nullptr == bound->GetOffset()) {
+        return negtive ? INT64_MIN : INT64_MAX;
+    }
+    if (node::kExprPrimary != bound->GetOffset()->GetExprType()) {
+        status.msg =
+            "cannot create window frame, only support "
+            "primary frame";
+        status.code = common::kTypeError;
+        return 0;
+    }
 
+    int64_t offset = 0;
+    node::ConstNode *primary =
+        dynamic_cast<node::ConstNode *>(bound->GetOffset());
+    switch (primary->GetDataType()) {
+        case node::DataType::kTypeInt16:
+            offset = static_cast<int64_t>(primary->GetSmallInt());
+            break;
+        case node::DataType::kTypeInt32:
+            offset = static_cast<int64_t>(primary->GetInt());
+            break;
+        case node::DataType::kTypeInt64:
+            offset = (primary->GetLong());
+            break;
+        case node::DataType::kTypeDay:
+        case node::DataType::kTypeHour:
+        case node::DataType::kTypeMinute:
+        case node::DataType::kTypeSecond:
+            offset = (primary->GetMillis());
+            break;
+        default: {
+            status.msg =
+                "cannot create window frame, only support "
+                "smallint|int|bigint offset of frame";
+            status.code = common::kTypeError;
+            return 0;
+        }
+    }
+    return negtive ? -1 * offset : offset;
+}
+
+void Planner::CreateWindowPlanNode(
+    node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
+    Status &status) {  // NOLINT (runtime/references)
+
+    if (nullptr != w_ptr) {
+        int64_t start_offset = 0;
+        int64_t end_offset = 0;
+        if (nullptr != w_ptr->GetFrame()) {
+            node::FrameNode *frame =
+                dynamic_cast<node::FrameNode *>(w_ptr->GetFrame());
+            node::FrameBound *start = frame->GetStart();
+            node::FrameBound *end = frame->GetEnd();
+
+            start_offset = CreateFrameOffset(start, status);
+            if (common::kOk != status.code) {
+                LOG(WARNING)
+                    << "fail to create project list node: " << status.msg;
+                return;
+            }
+            end_offset = CreateFrameOffset(end, status);
+            if (common::kOk != status.code) {
+                LOG(WARNING)
+                    << "fail to create project list node: " << status.msg;
+                return;
+            }
+
+            if (end_offset == INT64_MAX) {
+                LOG(WARNING) << "fail to create project list node: end frame "
+                                "can't be unbound ";
+                return;
+            }
+
+            if (w_ptr->GetName().empty()) {
+                w_node_ptr->SetName(
+                    GenerateName("anonymous_w_", w_node_ptr->GetId()));
+            } else {
+                w_node_ptr->SetName(w_ptr->GetName());
+            }
+            w_node_ptr->SetStartOffset(start_offset);
+            w_node_ptr->SetEndOffset(end_offset);
+            w_node_ptr->SetIsRangeBetween(node::kFrameRange ==
+                                          frame->GetFrameType());
+            w_node_ptr->SetKeys(w_ptr->GetPartitions());
+            w_node_ptr->SetOrders(w_ptr->GetOrders());
+        } else {
+            LOG(WARNING) << "fail to create project list node: right frame "
+                            "can't be unbound ";
+            return;
+        }
+    }
+}  // namespace plan
 void Planner::CreateProjectPlanNode(
     const SQLNode *root, const std::string &table_name,
     node::ProjectPlanNode *plan_tree,
@@ -122,8 +274,7 @@ void Planner::CreateProjectPlanNode(
     switch (root->GetType()) {
         case node::kResTarget: {
             const node::ResTarget *target_ptr = (const node::ResTarget *)root;
-            std::string w = node::WindowOfExpression(target_ptr->GetVal());
-            plan_tree->SetW(w);
+
             if (target_ptr->GetName().empty()) {
                 if (target_ptr->GetVal()->GetExprType() ==
                     node::kExprColumnRef) {

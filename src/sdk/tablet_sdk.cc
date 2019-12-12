@@ -61,7 +61,10 @@ class ResultSetIteratorImpl : public ResultSetIterator {
 };
 
 ResultSetIteratorImpl::ResultSetIteratorImpl(tablet::QueryResponse* response)
-    : idx_(0), response_(response), row_view_() {}
+    : idx_(0), response_(response) {
+    row_view_ = std::move(std::unique_ptr<storage::RowView>(
+        new storage::RowView(response_->schema())));
+}
 
 ResultSetIteratorImpl::~ResultSetIteratorImpl() {}
 
@@ -74,8 +77,7 @@ void ResultSetIteratorImpl::Next() {
     const int8_t* row =
         reinterpret_cast<const int8_t*>(response_->result_set(idx_).c_str());
     uint32_t size = response_->result_set(idx_).size();
-    row_view_ = std::move(std::unique_ptr<storage::RowView>(
-        new storage::RowView(response_->schema(), row, size)));
+    row_view_->Reset(row, size);
     idx_ += 1;
 }
 

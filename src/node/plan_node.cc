@@ -79,12 +79,17 @@ void ProjectListPlanNode::Print(std::ostream &output,
                                 const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    if (w_.empty()) {
+    if (nullptr == w_ptr_) {
         PrintPlanVector(output, org_tab + INDENT, projects,
                         "projects on table " + table_, true);
     } else {
+        PrintSQLNode(
+            output, org_tab,
+            const_cast<SQLNode *>(dynamic_cast<const SQLNode *>(w_ptr_)),
+            "window", false);
         PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on window " + w_, true);
+                        "projects on window ", true);
+        output << "\n";
     }
     output << "\n";
     PrintPlanVector(output, org_tab + INDENT, children_, "children", true);
@@ -96,6 +101,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return std::string("kSelect");
         case kPlanTypeScan:
             return std::string("kScan");
+        case kPlanTypeMerge:
+            return std::string("kMerge");
         case kPlanTypeLimit:
             return std::string("kLimit");
         case kProjectList:

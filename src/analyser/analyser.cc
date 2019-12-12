@@ -54,12 +54,11 @@ void FeSQLAnalyser::Analyse(SQLNode *parser_tree,
             return TransformFnDefListNode(
                 dynamic_cast<node::FnNodeList *>(parser_tree), status);
         default: {
-                    status.msg =
-                        ("can not support " +
-                         node::NameOfSQLNodeType(parser_tree->GetType()));
-                    status.code = (common::kSQLError);
-                    return;
-                }
+            status.msg = ("can not support " +
+                          node::NameOfSQLNodeType(parser_tree->GetType()));
+            status.code = (common::kSQLError);
+            return;
+        }
     }
 }
 
@@ -140,11 +139,7 @@ void FeSQLAnalyser::TransformSingleTableSelectNode(
                 break;
             }
             default: {
-                status.msg =
-                    "SELECT common: can not handle " +
-                    node::NameOfSQLNodeType(target->GetVal()->GetType());
-                status.code = common::kSQLError;
-                LOG(WARNING) << status.msg;
+                // do nothing
             }
         }
         if (0 != status.code) {
@@ -291,30 +286,8 @@ void FeSQLAnalyser::TransformWindowDef(
     node::WindowDefNode *node_ptr, const std::string &table_name,
     Status &status) {  // NOLINT (runtime/references)
     // TODO(chenjing): window is exist
-    // TODO(chenjing): window is redefined
-    for (auto partition : node_ptr->GetPartitions()) {
-        TransformPartition(partition, table_name, status);
-        if (0 != status.code) {
-            return;
-        }
-    }
-
-    for (auto order : node_ptr->GetOrders()) {
-        TransformOrder(order, table_name, status);
-        if (0 != status.code) {
-            return;
-        }
-    }
-}
-
-void FeSQLAnalyser::TransformOrder(
-    SQLNode *node_ptr, const std::string &table_name,
-    Status &status) {  // NOLINT (runtime/references)
-}
-
-void FeSQLAnalyser::TransformPartition(
-    SQLNode *node_ptr, const std::string &table_name,
-    Status &status) {  // NOLINT (runtime/references)
+    // TODO(chenjing): partions type is valid
+    // TODO(chenjing): order type is valid
 }
 
 void FeSQLAnalyser::TransformExprNode(
@@ -368,11 +341,11 @@ void FeSQLAnalyser::TransformCmdNode(
     node::CmdNode *node_ptr, Status &status) {  // NOLINT (runtime/references)
     // no nothing
 }
-void FeSQLAnalyser::TransformFnDefListNode(node::FnNodeList *node_ptr,
-                                           Status &status) { // NOLINT (runtime/references)
+void FeSQLAnalyser::TransformFnDefListNode(
+    node::FnNodeList *node_ptr,
+    Status &status) {  // NOLINT (runtime/references)
     // TODO(chenjing): check function name, args size, parameter list
 }
-
 
 }  // namespace analyser
 }  // namespace fesql

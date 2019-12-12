@@ -82,12 +82,36 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeWindowDefNode(SQLNodeList *partitions,
-                                        SQLNodeList *orders, SQLNode *frame) {
+SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
+                                        ExprListNode *orders, SQLNode *frame) {
     WindowDefNode *node_ptr = new WindowDefNode();
-    FillSQLNodeList2NodeVector(partitions, node_ptr->GetPartitions());
-    FillSQLNodeList2NodeVector(orders, node_ptr->GetOrders());
-    node_ptr->SetFrame(frame);
+    for (auto expr : orders->children) {
+        switch (expr->GetExprType()) {
+            case kExprColumnRef:
+                node_ptr->GetOrders().push_back(
+                    dynamic_cast<ColumnRefNode *>(expr)->GetColumnName());
+                break;
+            default: {
+                LOG(WARNING) << "fail to create window node with invalid expr";
+                delete node_ptr;
+                return nullptr;
+            }
+        }
+    }
+    for (auto expr : partitions->children) {
+        switch (expr->GetExprType()) {
+            case kExprColumnRef:
+                node_ptr->GetPartitions().push_back(
+                    dynamic_cast<ColumnRefNode *>(expr)->GetColumnName());
+                break;
+            default: {
+                LOG(WARNING) << "fail to create window node with invalid expr";
+                delete node_ptr;
+                return nullptr;
+            }
+        }
+    }
+    node_ptr->SetFrame(dynamic_cast<FrameNode *>(frame));
     return RegisterNode(node_ptr);
 }
 
@@ -102,12 +126,14 @@ SQLNode *NodeManager::MakeFrameBound(SQLNodeType bound_type) {
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeFrameBound(SQLNodeType bound_type, SQLNode *offset) {
+SQLNode *NodeManager::MakeFrameBound(SQLNodeType bound_type, ExprNode *offset) {
     FrameBound *node_ptr = new FrameBound(bound_type, offset);
     return RegisterNode(node_ptr);
 }
 SQLNode *NodeManager::MakeFrameNode(SQLNode *start, SQLNode *end) {
-    FrameNode *node_ptr = new FrameNode(kFrameRange, start, end);
+    FrameNode *node_ptr =
+        new FrameNode(kFrameRange, dynamic_cast<FrameBound *>(start),
+                      dynamic_cast<FrameBound *>(end));
     return RegisterNode(node_ptr);
 }
 SQLNode *NodeManager::MakeRangeFrameNode(SQLNode *node_ptr) {
@@ -319,9 +345,16 @@ ScanPlanNode *NodeManager::MakeIndexScanPlanNode(const std::string &table) {
     return node_ptr;
 }
 
+WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
+    WindowPlanNode * node_ptr = new WindowPlanNode(w_id);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
 ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(
-    const std::string &table, const std::string &w) {
-    ProjectListPlanNode *node_ptr = new ProjectListPlanNode(table, w);
+    const std::string &table, WindowPlanNode *w_ptr) {
+
+    ProjectListPlanNode *node_ptr =
+        new ProjectListPlanNode(table, w_ptr, w_ptr != nullptr);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -352,6 +385,12 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
             break;
         case kPlanTypeFuncDef:
             node_ptr = new FuncDefPlanNode();
+            break;
+        case kPlanTypeWindow:
+            node_ptr = new WindowPlanNode(0);
+            break;
+        case kPlanTypeMerge:
+            node_ptr = new MergePlanNode();
             break;
         default:
             node_ptr = new LeafPlanNode(kUnknowPlan);
@@ -468,6 +507,7 @@ SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
         return RegisterNode(node_ptr);
     }
 }
+
 
 }  // namespace node
 }  // namespace fesql

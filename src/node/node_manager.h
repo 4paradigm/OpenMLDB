@@ -54,8 +54,11 @@ class NodeManager {
     PlanNode *MakeUnaryPlanNode(const PlanType &type);
     PlanNode *MakeBinaryPlanNode(const PlanType &type);
     PlanNode *MakeMultiPlanNode(const PlanType &type);
+    WindowPlanNode *MakeWindowPlanNode(int w_id);
     ProjectListPlanNode *MakeProjectListPlanNode(const std::string &table,
-                                                 const std::string &w);
+                                                 WindowPlanNode *w);
+    WindowPlanNode *MakeWindowPlanNode(int64_t start, int64_t end,
+                                       bool is_range_between);
     ScanPlanNode *MakeSeqScanPlanNode(const std::string &table);
     ScanPlanNode *MakeIndexScanPlanNode(const std::string &table);
     ProjectPlanNode *MakeProjectPlanNode(node::SQLNode *expression,
@@ -72,20 +75,20 @@ class NodeManager {
     ExprNode *MakeFuncNode(const std::string &name, SQLNodeList *args,
                            SQLNode *over);
     SQLNode *MakeWindowDefNode(const std::string &name);
-    SQLNode *MakeWindowDefNode(SQLNodeList *partitions, SQLNodeList *orders,
+    SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprListNode *orders,
                                SQLNode *frame);
     SQLNode *MakeOrderByNode(SQLNode *node_ptr);
     SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);
     SQLNode *MakeFrameBound(SQLNodeType bound_type);
-    SQLNode *MakeFrameBound(SQLNodeType bound_type, SQLNode *offset);
+    SQLNode *MakeFrameBound(SQLNodeType bound_type, ExprNode *offset);
     SQLNode *MakeRangeFrameNode(SQLNode *node_ptr);
     SQLNode *MakeRowsFrameNode(SQLNode *node_ptr);
     SQLNode *MakeLimitNode(int count);
 
     SQLNode *MakeNameNode(const std::string &name);
     SQLNode *MakeInsertTableNode(const std::string &table_name,
-                                 const ExprListNode* column_names,
-                                 const ExprListNode* values);
+                                 const ExprListNode *column_names,
+                                 const ExprListNode *values);
     SQLNode *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &table_name,
                                  SQLNodeList *column_desc_list);

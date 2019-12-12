@@ -95,10 +95,7 @@ class FeSQLAnalyser {
     void TransformAllRef(node::AllNode *node_ptr,
                          const std::string &relation_name,
                          Status &status);  // NOLINT (runtime/references)
-    void TransformPartition(SQLNode *node_ptr, const std::string &table_name,
-                            Status &status);  // NOLINT (runtime/references)
-    void TransformOrder(SQLNode *node_ptr, const std::string &table_name,
-                        Status &status);  // NOLINT (runtime/references)
+
     void TransformExprNode(SQLNode *node, const std::string &table_name,
                            Status &status);  // NOLINT (runtime/references)
     std::string GenerateName(const std::string prefix, int id);

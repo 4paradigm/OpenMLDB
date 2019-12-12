@@ -349,20 +349,20 @@ typedef void* yyscan_t;
                fn_def return_stmt assign_stmt para
 %type<fnlist> plist stmt_block func_stmts
 
-%type <expr> var expr primary_time column_ref call_expr expr_const
+%type <expr> var expr primary_time column_ref call_expr expr_const frame_expr
  /* select stmt */
 %type <node>  sql_stmt stmt select_stmt
               opt_all_clause
               table_factor table_reference
               projection
 
-              sortby opt_frame_clause frame_bound frame_extent
+              opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
               limit_clause
 
  /* insert table */
 %type<node> insert_stmt
-%type<exprlist> insert_expr_list column_ref_list
+%type<exprlist> insert_expr_list column_ref_list opt_partition_clause sort_clause opt_sort_clause
 %type<expr> insert_expr
 
  /* create table */
@@ -374,8 +374,8 @@ typedef void* yyscan_t;
 %type <list> opt_target_list
             select_projection_list expr_list
             table_references
-            opt_sort_clause sort_clause sortby_list
-            window_clause window_definition_list opt_partition_clause
+
+            window_clause window_definition_list
 
 %type <strval> relation_name relation_factor
                column_name
@@ -861,7 +861,7 @@ expr_list:
     }
   	;
 
-expr : column_ref   { $$ = $1; }
+expr:	column_ref   { $$ = $1; }
      | call_expr  { $$ = $1; }
      | expr_const
      | var
@@ -962,7 +962,7 @@ opt_existing_window_name:
 
                         ;
 
-opt_partition_clause: PARTITION BY expr_list		{ $$ = $3; }
+opt_partition_clause: PARTITION BY column_ref_list		{ $$ = $3; }
 			            | /*EMPTY*/					{ $$ = NULL; }
 
 
@@ -986,28 +986,8 @@ opt_sort_clause:
 		    ;
 
 sort_clause:
-			ORDER BY sortby_list					{ $$ = $3; }
+			ORDER BY column_ref_list					{ $$ = $3; }
 		    ;
-
-sortby_list:
-			sortby
-			{
-			     $$ = node_manager->MakeNodeList($1);
-			}
-			|sortby_list ',' sortby 			{
-				$$ = $1;
-                $$->PushBack($3);
-
-			}
-		    ;
-
-sortby:	column_name
-		{
-		    ::fesql::node::SQLNode* node_ptr = node_manager->MakeColumnRefNode($1, "");
-		    $$ = node_manager->MakeOrderByNode(node_ptr);
-		}
-		;
-
 /*===========================================================
  *
  *	Frame Clasuse
@@ -1033,11 +1013,7 @@ opt_frame_clause:
 opt_window_exclusion_clause:
              /*EMPTY*/				{ $$ = 0; }
             ;
-frame_extent: frame_bound
-				{
-				    $$ = node_manager->MakeFrameNode($1, NULL);
-				}
-			| BETWEEN frame_bound AND frame_bound
+frame_extent: BETWEEN frame_bound AND frame_bound
 				{
 				    $$ = node_manager->MakeFrameNode($2, $4);
 				}
@@ -1057,16 +1033,19 @@ frame_bound:
 				{
 				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kCurrent));
 				}
-			| expr PRECEDING
+			| frame_expr PRECEDING
 				{
 				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kPreceding, $1));
 				}
-			| expr FOLLOWING
+			| frame_expr FOLLOWING
 				{
 				    $$ = (fesql::node::SQLNode*)(node_manager->MakeFrameBound(fesql::node::kFollowing, $1));
 				}
 		;
 
+frame_expr: expr_const
+			|primary_time
+			;
 column_ref:
     column_name
     {
