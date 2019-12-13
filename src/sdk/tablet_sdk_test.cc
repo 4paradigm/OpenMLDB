@@ -705,7 +705,7 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
             "sum(column4) OVER w1 as w1_col4_sum, "
             "sum(column5) OVER w1 as w1_col5_sum "
             "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
-            "BETWEEN 3 "
+            "BETWEEN 3000"
             "PRECEDING AND CURRENT ROW) limit 10;";
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
@@ -718,8 +718,6 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
 
             ASSERT_EQ(5u, rs->GetRowCnt());
             std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
             ASSERT_TRUE(it->HasNext());
             it->Next();
             {
@@ -747,10 +745,35 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
                 ASSERT_TRUE(it->GetInt32(4, &val));
                 ASSERT_EQ(val, 7 + 8 + 9);
             }
+
             ASSERT_TRUE(it->HasNext());
             it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 11 + 11);
+            }
+
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 4 + 5);
+            }
+
             ASSERT_TRUE(it->HasNext());
             it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 11);
+            }
+
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 4);
+            }
+
             ASSERT_TRUE(it->HasNext());
             it->Next();
             {
@@ -778,6 +801,35 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
                 ASSERT_TRUE(it->GetInt32(4, &val));
                 ASSERT_EQ(val, 5 + 6);
             }
+
+            ASSERT_TRUE(it->HasNext());
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 2);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.3f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_EQ(val, 1000L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_EQ(val, 5);
+            }
+
         } else {
             ASSERT_TRUE(false);
         }
@@ -929,33 +981,139 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             std::unique_ptr<ResultSetIterator> it = rs->Iterator();
             ASSERT_TRUE(it->HasNext());
             it->Next();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
             {
                 int32_t val = 0;
                 ASSERT_TRUE(it->GetInt32(0, &val));
-                ASSERT_EQ(val, 1 + 1 + 1 + 1 + 1);
+                ASSERT_EQ(val, 1 + 1 + 1);
             }
             {
                 int32_t val = 0;
                 ASSERT_TRUE(it->GetInt32(1, &val));
-                ASSERT_EQ(val, 2 + 3 + 4 + 5 + 6);
+                ASSERT_EQ(val, 4 + 5 + 6);
             }
             {
                 float val = 0;
                 ASSERT_TRUE(it->GetFloat(2, &val));
-                ASSERT_FLOAT_EQ(val, 3.3f + 4.4f + 5.5f + 6.6f + 7.7f);
+                ASSERT_EQ(val, 5.5f + 6.6f + 7.7f);
             }
             {
                 int64_t val = 0;
                 ASSERT_TRUE(it->GetInt64(3, &val));
-                ASSERT_EQ(val, 1000L + 2000L + 3000L + 4000L + 5000L);
+                ASSERT_EQ(val, 3000L + 4000L + 5000L);
             }
             {
                 int val = 0;
                 ASSERT_TRUE(it->GetInt32(4, &val));
-                ASSERT_EQ(val, 5 + 6 + 7 + 8 + 9);
+                ASSERT_EQ(val, 7 + 8 + 9);
             }
+
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1 + 1 + 1);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 3 + 4 + 5);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_EQ(val, 4.4f + 5.5f + 6.6f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_EQ(val, 2000L + 3000L + 4000L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_EQ(val, 6 + 7 + 8);
+            }
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1 + 1 + 1);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 2 + 3 + 4);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.3f + 4.4f + 5.5f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_EQ(val, 1000L + 2000L + 3000L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_EQ(val, 5 + 6 + 7);
+            }
+
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1 + 1);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 2 + 3);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.3f + 4.4f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_EQ(val, 1000L + 2000L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_EQ(val, 5 + 6);
+            }
+
+            it->Next();
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_EQ(val, 2);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.3f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_EQ(val, 1000L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_EQ(val, 5);
+            }
+
         } else {
             ASSERT_TRUE(false);
         }
