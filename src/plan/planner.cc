@@ -135,11 +135,20 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
             current_node->AddChild(merge_node);
             current_node = merge_node;
         }
-
+        std::vector<node::ProjectListPlanNode *> project_list_vec(
+            w_id);
         for (auto &v : project_list_map) {
             node::ProjectListPlanNode *project_list = v.second;
+            int pos = nullptr == project_list->GetW()
+                          ? 0
+                          : project_list->GetW()->GetId();
             project_list->AddChild(scan_node_ptr);
-            current_node->AddChild(project_list);
+            project_list_vec[pos] =project_list;
+        }
+        for(auto project_list : project_list_vec) {
+            if (nullptr != project_list) {
+                current_node->AddChild(project_list);
+            }
         }
     }
 

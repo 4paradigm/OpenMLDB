@@ -169,9 +169,10 @@ bool OpGenerator::RoutingNode(
                 return false;
             }
             GenMerge(merge_node, module, &cur_op, status);
+            break;
         }
         default: {
-            status.msg = "not supported plan node" +
+            status.msg = "not supported plan node " +
                          node::NameOfPlanNodeType(node->GetType());
             status.code = common::kNullPointer;
             LOG(WARNING) << status.msg;
@@ -393,7 +394,8 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
         }
 
         if (!index_check) {
-            status.msg = "fail to generate project operator: index is not match window";
+            status.msg =
+                "fail to generate project operator: index is not match window";
             status.code = common::kIndexNotFound;
             LOG(WARNING) << status.msg;
             delete pop;
@@ -454,7 +456,7 @@ bool OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
         return false;
     }
     MergeOp* merge_op = new MergeOp();
-    merge_op->type = kOpLimit;
+    merge_op->type = kOpMerge;
     merge_op->fn = nullptr;
     *op = merge_op;
     return true;
