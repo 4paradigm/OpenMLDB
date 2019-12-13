@@ -198,7 +198,7 @@ class LinkList : public BaseList<K, V> {
             return node_->GetValue();
         }
         virtual void Seek(const K& k) {
-            node_ = list_->FindLessThan(k);
+            node_ = list_->FindLessOrEqual(k);
             Next();
         }
         virtual void SeekToFirst() {
@@ -466,7 +466,7 @@ class ArrayList : public BaseList<K, V> {
             if (array_) {
                 ArrayListNode<K, V>* array_ptr = array_.get();
                 for (uint32_t idx = 0; idx < length_; idx++) {
-                    if (compare_(array_ptr[idx].key_, key) > 0) {
+                    if (compare_(array_ptr[idx].key_, key) >= 0) {
                         pos_ = idx;
                         break;
                     }

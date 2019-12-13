@@ -11,8 +11,8 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 #include "base/iterator.h"
 #include "storage/codec.h"
 #include "storage/segment.h"
@@ -24,7 +24,33 @@ using ::fesql::base::Iterator;
 using ::fesql::type::IndexDef;
 using ::fesql::type::TableDef;
 
-static constexpr uint32_t SEG_CNT = 1;
+static constexpr uint32_t SEG_CNT = 8;
+
+class TableIterator {
+ public:
+    TableIterator() = default;
+    explicit TableIterator(Iterator<uint64_t, DataBlock*>* ts_it);
+    TableIterator(Segment** segments, uint32_t seg_cnt);
+    ~TableIterator();
+    void Seek(uint64_t time);
+    void Seek(const std::string& key, uint64_t ts);
+    bool Valid();
+    void Next();
+    Slice GetValue() const;
+    uint64_t GetKey() const;
+    Slice GetPK() const;
+    void SeekToFirst();
+
+ private:
+    bool SeekToNextTsInPks();
+
+ private:
+    Segment** segments_ = NULL;
+    uint32_t seg_cnt_ = 0;
+    uint32_t seg_idx_ = 0;
+    Iterator<Slice, void*>* pk_it_ = NULL;
+    Iterator<uint64_t, DataBlock*>* ts_it_ = NULL;
+};
 
 class Table {
  public:
@@ -38,15 +64,19 @@ class Table {
 
     bool Put(const char* row, uint32_t size);
 
+    std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
+                                               const uint64_t ts);
+    std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
+                                               const std::string& index_name);
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk);
-    std::unique_ptr<TableIterator> NewIterator();
+
+    std::unique_ptr<TableIterator> NewTraverseIterator(
+        const std::string& index_name);
+    std::unique_ptr<TableIterator> NewTraverseIterator();
 
     inline uint32_t GetId() const { return id_; }
 
     inline uint32_t GetPid() const { return pid_; }
-
-    int32_t GetInteger(const char* row, uint32_t idx, ::fesql::type::Type type,
-                       uint64_t* value);
 
     struct ColInfo {
         ::fesql::type::Type type;
@@ -63,6 +93,10 @@ class Table {
     const std::map<std::string, IndexSt>& GetIndexMap() const {
         return index_map_;
     }
+
+ private:
+    std::unique_ptr<TableIterator> NewIndexIterator(const std::string& pk,
+                                                    const uint32_t index);
 
  private:
     std::string name_;

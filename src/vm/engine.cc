@@ -93,6 +93,7 @@ int32_t RunSession::RunProjectOp(ProjectOp* project_op,
                                  int8_t* row, int8_t* output) {
     return 0;
 }
+
 int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
     // TODO(chenjing): memory managetment
     int op_size = compile_info_->sql_ctx.ops.ops.size();
@@ -110,7 +111,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 }
                 std::vector<int8_t*> output_rows;
                 std::unique_ptr<::fesql::storage::TableIterator> it =
-                    status->table->NewIterator();
+                    status->table->NewTraverseIterator();
                 it->SeekToFirst();
                 uint32_t min = limit;
                 if (min > scan_op->limit) {

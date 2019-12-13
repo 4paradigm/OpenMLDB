@@ -4,7 +4,6 @@
 // Date 2019-10-24
 //
 
-
 #include "storage/list.h"
 #include <sys/time.h>
 #include <time.h>
