@@ -393,7 +393,8 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
         }
 
         if (!index_check) {
-            status.msg = "fail to generate project operator: index is not match window";
+            status.msg =
+                "fail to generate project operator: index is not match window";
             status.code = common::kIndexNotFound;
             LOG(WARNING) << status.msg;
             delete pop;
