@@ -251,7 +251,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             switch (project_op->w.order.first) {
                                 case fesql::type::kInt64: {
                                     if (0 ==
-                                        row_view->GetInt64(project_op->w.order.second, &ts)) {
+                                        row_view->GetInt64(
+                                            project_op->w.order.second, &ts)) {
                                     } else {
                                         LOG(WARNING) << "fail to get order "
                                                         "for current row";
@@ -262,8 +263,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                                 case fesql::type::kInt32: {
                                     int32_t v;
                                     if (0 ==
-                                        row_view->GetInt32(project_op->w.order.second, &v)) {
-                                        ts = static_cast<int64_t >(v);
+                                        row_view->GetInt32(
+                                            project_op->w.order.second, &v)) {
+                                        ts = static_cast<int64_t>(v);
                                     } else {
                                         LOG(WARNING) << "fail to get order "
                                                         "for current row";
@@ -274,8 +276,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                                 case fesql::type::kInt16: {
                                     int16_t v;
                                     if (0 ==
-                                        row_view->GetInt16(project_op->w.order.second, &v)) {
-                                        ts = static_cast<int64_t >(v);
+                                        row_view->GetInt16(
+                                            project_op->w.order.second, &v)) {
+                                        ts = static_cast<int64_t>(v);
                                     } else {
                                         LOG(WARNING) << "fail to get order "
                                                         "for current row";
@@ -290,16 +293,40 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                                 }
                             }
                         }
+                        DLOG(INFO) << "get table iterator when index_name: "
+                                   << project_op->w.index_name
+                                   << " key_name: " << key_name;
                         // scan window with single key
                         std::unique_ptr<::fesql::storage::TableIterator>
-                            window_it = status->table->NewIterator(key_name);
+                            window_it = status->table->NewIterator(
+                                key_name, project_op->w.index_name);
 
+                        if (!window_it) {
+                            LOG(WARNING)
+                                << "fail get table iterator when index_name: "
+                                << project_op->w.index_name
+                                << " key: " << key_name;
+                            return 1;
+                        }
                         std::vector<::fesql::storage::Row> window;
-                        window_it->SeekToFirst();
+
+                        if (project_op->w.has_order) {
+                            window_it->Seek(ts);
+                        } else {
+                            window_it->SeekToFirst();
+                        }
                         while (window_it->Valid()) {
-                            ::fesql::storage::Row w_row;
+                            int64_t current_ts = window_it->GetKey();
+                            if (current_ts > ts + project_op->w.end_offset) {
+                                window_it->Next();
+                                continue;
+                            }
+                            if (current_ts <= ts + project_op->w.start_offset) {
+                                break;
+                            }
                             ::fesql::storage::Slice value =
                                 window_it->GetValue();
+                            ::fesql::storage::Row w_row;
                             w_row.buf = reinterpret_cast<int8_t*>(
                                 const_cast<char*>(value.data()));
                             window.push_back(w_row);

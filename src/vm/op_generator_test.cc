@@ -19,6 +19,7 @@
 #include <udf/udf.h>
 #include <memory>
 #include <string>
+#include <utility>
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -196,7 +197,8 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
     ASSERT_EQ(-1000, project_op->w.end_offset);
 }
 
-void AssertOpGenError(TableMgrImpl *table_mrg_ptr, const std::string &sql, const Status &exp_status) {
+void AssertOpGenError(TableMgrImpl* table_mrg_ptr, const std::string& sql,
+                      const Status& exp_status) {
     OpGenerator generator(table_mrg_ptr);
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
@@ -236,7 +238,9 @@ TEST_F(OpGeneratorTest, test_op_generator_error) {
             "WINDOW w1 AS (PARTITION BY col1\n"
             "              ORDER BY col15 RANGE BETWEEN 2d PRECEDING AND 1s "
             "PRECEDING) limit 10;";
-        const Status exp_status(::fesql::common::kIndexNotFound,"fail to generate project operator: index is not match window");
+        const Status exp_status(
+            ::fesql::common::kIndexNotFound,
+            "fail to generate project operator: index is not match window");
         AssertOpGenError(&table_mgr, sql, exp_status);
     }
 
@@ -246,7 +250,9 @@ TEST_F(OpGeneratorTest, test_op_generator_error) {
             "WINDOW w1 AS (PARTITION BY col2\n"
             "              ORDER BY col1 RANGE BETWEEN 2d PRECEDING AND 1s "
             "PRECEDING) limit 10;";
-        const Status exp_status(::fesql::common::kIndexNotFound,"fail to generate project operator: index is not match window");
+        const Status exp_status(
+            ::fesql::common::kIndexNotFound,
+            "fail to generate project operator: index is not match window");
         AssertOpGenError(&table_mgr, sql, exp_status);
     }
 
@@ -256,7 +262,8 @@ TEST_F(OpGeneratorTest, test_op_generator_error) {
             "WINDOW w1 AS (PARTITION BY col222\n"
             "              ORDER BY col15 RANGE BETWEEN 2d PRECEDING AND 1s "
             "PRECEDING) limit 10;";
-        const Status exp_status(::fesql::common::kColumnNotFound,"key column col222 is not exist in table t1");
+        const Status exp_status(::fesql::common::kColumnNotFound,
+                                "key column col222 is not exist in table t1");
         AssertOpGenError(&table_mgr, sql, exp_status);
     }
 
@@ -266,12 +273,11 @@ TEST_F(OpGeneratorTest, test_op_generator_error) {
             "WINDOW w1 AS (PARTITION BY col2\n"
             "              ORDER BY col555 RANGE BETWEEN 2d PRECEDING AND 1s "
             "PRECEDING) limit 10;";
-        const Status exp_status(::fesql::common::kColumnNotFound,"ts column col555 is not exist in table t1");
+        const Status exp_status(::fesql::common::kColumnNotFound,
+                                "ts column col555 is not exist in table t1");
         AssertOpGenError(&table_mgr, sql, exp_status);
     }
 }
-
-
 
 // TODO(chenjing): multi window merge
 
