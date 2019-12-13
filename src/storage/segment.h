@@ -51,26 +51,6 @@ struct SliceComparator {
 static constexpr SliceComparator scmp;
 static constexpr TimeComparator tcmp;
 
-class TableIterator {
- public:
-    TableIterator() = default;
-    TableIterator(Iterator<Slice, void*>* pk_it,
-                  Iterator<uint64_t, DataBlock*>* ts_it);
-    ~TableIterator();
-    void Seek(uint64_t time);
-    void Seek(const std::string& key, uint64_t ts);
-    bool Valid();
-    void Next();
-    Slice GetValue() const;
-    uint64_t GetKey() const;
-    std::string GetPK() const;
-    void SeekToFirst();
-
- private:
-    Iterator<Slice, void*>* pk_it_ = NULL;
-    Iterator<uint64_t, DataBlock*>* ts_it_ = NULL;
-};
-
 using TimeEntry = List<uint64_t, DataBlock*, TimeComparator>;
 using KeyEntry = SkipList<Slice, void*, SliceComparator>;
 
@@ -80,9 +60,9 @@ class Segment {
     ~Segment();
 
     void Put(const Slice& key, uint64_t time, DataBlock* row);
-
-    std::unique_ptr<TableIterator> NewIterator();
-    std::unique_ptr<TableIterator> NewIterator(const Slice& key);
+    inline KeyEntry* GetEntries() {
+        return entries_;
+    }
 
  private:
     KeyEntry* entries_;

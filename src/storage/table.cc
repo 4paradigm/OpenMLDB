@@ -6,12 +6,12 @@
 //
 //
 
+#include "storage/table.h"
 #include <algorithm>
 #include <string>
-#include "glog/logging.h"
 #include "base/hash.h"
 #include "base/slice.h"
-#include "storage/table.h"
+#include "glog/logging.h"
 
 namespace fesql {
 namespace storage {
@@ -149,19 +149,195 @@ bool Table::Put(const char* row, uint32_t size) {
     return true;
 }
 
-std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk) {
+std::unique_ptr<TableIterator> Table::NewIndexIterator(
+    const std::string& pk, const uint32_t index) {
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
         seg_idx = ::fesql::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
     Slice spk(pk);
-    Segment* segment = segments_[0][seg_idx];
-    return std::move(segment->NewIterator(spk));
+    Segment* segment = segments_[index][seg_idx];
+    if (segment->GetEntries() == NULL) {
+        return std::unique_ptr<TableIterator>(new TableIterator());
+    }
+    void* entry = NULL;
+    if (segment->GetEntries()->Get(spk, entry) < 0 || entry == NULL) {
+        return std::unique_ptr<TableIterator>(new TableIterator());
+    }
+    return std::unique_ptr<TableIterator>(new TableIterator(
+        (reinterpret_cast<TimeEntry*>(entry))->NewIterator()));
 }
 
-std::unique_ptr<TableIterator> Table::NewIterator() {
-    Segment* segment = segments_[0][0];
-    return std::move(segment->NewIterator());
+std::unique_ptr<TableIterator> Table::NewIterator(
+    const std::string& pk, const std::string& index_name) {
+    auto iter = index_map_.find(index_name);
+    if (iter == index_map_.end()) {
+        LOG(WARNING) << "index name \"" << index_name << "\" not exist";
+        return nullptr;
+    }
+    return std::move(NewIndexIterator(pk, iter->second.index));
+}
+
+std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk,
+                                                  const uint64_t ts) {
+    auto iter = NewIndexIterator(pk, 0);
+    iter->Seek(ts);
+    Slice spk(pk);
+    return std::move(iter);
+}
+
+std::unique_ptr<TableIterator> Table::NewIterator(const std::string& pk) {
+    return std::move(NewIndexIterator(pk, 0));
+}
+
+std::unique_ptr<TableIterator> Table::NewTraverseIterator(
+    const std::string& index_name) {
+    auto iter = index_map_.find(index_name);
+    if (iter == index_map_.end()) {
+        LOG(WARNING) << "index name \"" << index_name << "\" not exist";
+        return nullptr;
+    }
+    return std::unique_ptr<TableIterator>(
+        new TableIterator(segments_[iter->second.index], seg_cnt_));
+}
+
+std::unique_ptr<TableIterator> Table::NewTraverseIterator() {
+    return std::unique_ptr<TableIterator>(
+        new TableIterator(segments_[0], seg_cnt_));
+}
+
+// Iterator
+
+TableIterator::TableIterator(Iterator<uint64_t, DataBlock*>* ts_it)
+    : ts_it_(ts_it) {}
+
+TableIterator::TableIterator(Segment** segments, uint32_t seg_cnt)
+    : segments_(segments), seg_cnt_(seg_cnt) {}
+
+TableIterator::~TableIterator() {
+    delete ts_it_;
+    delete pk_it_;
+}
+
+void TableIterator::Seek(uint64_t time) {
+    if (ts_it_ == NULL) {
+        return;
+    }
+    ts_it_->Seek(time);
+}
+
+void TableIterator::Seek(const std::string& key, uint64_t ts) {
+    if (pk_it_ == NULL && seg_cnt_ == 0) {
+        return;
+    }
+    if (seg_cnt_ > 1) {
+        seg_idx_ =
+            ::fesql::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
+        delete pk_it_;
+        pk_it_ = segments_[seg_idx_]->GetEntries()->NewIterator();
+    }
+    Slice spk(key);
+    pk_it_->Seek(spk);
+
+    if (pk_it_->Valid()) {
+        delete ts_it_;
+        ts_it_ = NULL;
+        while (pk_it_->Valid()) {
+            ts_it_ = (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
+                         ->NewIterator();
+            ts_it_->SeekToFirst();
+            if (ts_it_->Valid()) break;
+            delete ts_it_;
+            ts_it_ = NULL;
+            pk_it_->Next();
+        }
+    }
+}
+
+bool TableIterator::Valid() {
+    if (ts_it_ == NULL) {
+        return false;
+    }
+    if (pk_it_ == NULL) {
+        return ts_it_->Valid();
+    }
+    return pk_it_->Valid() && ts_it_->Valid();
+}
+
+bool TableIterator::SeekToNextTsInPks() {
+    while (pk_it_->Valid()) {
+        ts_it_ =
+            (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))->NewIterator();
+        ts_it_->SeekToFirst();
+        if (ts_it_->Valid()) return true;
+        delete ts_it_;
+        ts_it_ = NULL;
+        pk_it_->Next();
+    }
+    return false;
+}
+
+void TableIterator::Next() {
+    if (ts_it_ == NULL) {
+        return;
+    }
+    ts_it_->Next();
+    if (!ts_it_->Valid() && pk_it_ != NULL) {
+        pk_it_->Next();
+        if (SeekToNextTsInPks()) return;
+    }
+    if (pk_it_ != NULL && !pk_it_->Valid()) {
+        while (seg_idx_ + 1 < seg_cnt_) {
+            delete pk_it_;
+            pk_it_ = segments_[++seg_idx_]->GetEntries()->NewIterator();
+            pk_it_->SeekToFirst();
+            if (SeekToNextTsInPks()) return;
+        }
+    }
+}
+
+Slice TableIterator::GetValue() const {
+    return Slice(
+        ts_it_->GetValue()->data,
+        RowView::GetSize(reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+}
+
+uint64_t TableIterator::GetKey() const { return ts_it_->GetKey(); }
+
+Slice TableIterator::GetPK() const {
+    if (pk_it_ == NULL) {
+        return Slice();
+    }
+    return pk_it_->GetKey();
+}
+
+void TableIterator::SeekToFirst() {
+    if (seg_cnt_ > 0) {
+        seg_idx_ = 0;
+        delete ts_it_;
+        ts_it_ = NULL;
+        while (seg_idx_ < seg_cnt_) {
+            delete pk_it_;
+            pk_it_ = segments_[seg_idx_]->GetEntries()->NewIterator();
+            pk_it_->SeekToFirst();
+            if (SeekToNextTsInPks()) return;
+            ++seg_idx_;
+        }
+    }
+    if (pk_it_ != NULL) {
+        delete ts_it_;
+        ts_it_ = NULL;
+        pk_it_->SeekToFirst();
+        if (SeekToNextTsInPks()) {
+            return;
+        } else {
+            ts_it_ = NULL;
+        }
+    }
+    if (ts_it_ == NULL) {
+        return;
+    }
+    ts_it_->SeekToFirst();
 }
 
 }  // namespace storage
