@@ -56,7 +56,8 @@ class TableMgrImpl : public TableMgr {
     std::shared_ptr<TableStatus> status_;
 };
 
-static void BuildBuf(int8_t** buf, uint32_t* size, ::fesql::type::TableDef& table) {
+static void BuildBuf(int8_t** buf, uint32_t* size,
+                     ::fesql::type::TableDef& table) { // NOLINT
     table.set_name("t1");
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
@@ -124,7 +125,7 @@ static void BM_EngineFn(benchmark::State& state) {  // NOLINT
     BuildBuf(&ptr, &size, status->table_def);
 
     std::unique_ptr<::fesql::storage::Table> table(
-     new ::fesql::storage::Table(1, 1, status->table_def));
+        new ::fesql::storage::Table(1, 1, status->table_def));
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
