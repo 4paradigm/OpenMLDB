@@ -966,7 +966,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             "sum(column4) OVER w1 as w1_col4_sum, "
             "sum(column5) OVER w1 as w1_col5_sum "
             "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
-            "BETWEEN 3 "
+            "BETWEEN 3s "
             "PRECEDING AND CURRENT ROW) limit 10;";
         std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
         if (rs) {
