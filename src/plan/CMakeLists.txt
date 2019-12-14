@@ -2,9 +2,8 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-
 add_library(fesql_planner STATIC planner.cc)
-add_dependencies(fesql_planner run_gen_parser)
+add_dependencies(fesql_planner fesql_proto fesql_parser)
 
 add_executable(planner_test planner_test.cc)
 target_link_libraries(planner_test  fesql_proto fesql_parser fesql_analyser
