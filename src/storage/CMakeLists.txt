@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_BINARY_DIR}/src)
 add_library(fesql_storage STATIC table.cc segment.cc codec.cc type_ir_builder.cc window.cc)
-add_dependencies(fesql_storage run_gen_proto)
+add_dependencies(fesql_storage fesql_proto)
 
 add_executable(codec_test codec_test.cc codec.cc type_ir_builder.cc)
 target_link_libraries(codec_test fesql_proto fesql_codegen fesql_vm

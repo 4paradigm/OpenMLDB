@@ -3,7 +3,7 @@ include_directories(${INCLUDE_DIRECTORIES}
     ${PROJECT_BINARY_DIR}/src)
 
 add_library(fesql_vm STATIC jit.cc op_generator.cc sql_compiler.cc engine.cc)
-add_dependencies(fesql_vm run_gen_proto fesql_parser)
+add_dependencies(fesql_vm fesql_proto fesql_parser)
 set(vm_deps_libs fesql_storage fesql_vm fesql_parser fesql_planner fesql_codegen fesql_proto
     fesql_node fesql_udf)
 

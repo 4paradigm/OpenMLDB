@@ -3,7 +3,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 add_library(fesql_dbms STATIC dbms_server_impl.cc)
-add_dependencies(fesql_dbms run_gen_proto)
+add_dependencies(fesql_dbms fesql_proto)
 
 add_executable(fesql_server_dbms_test dbms_server_impl_test.cc)
 target_link_libraries(fesql_server_dbms_test fesql_dbms fesql_tablet
