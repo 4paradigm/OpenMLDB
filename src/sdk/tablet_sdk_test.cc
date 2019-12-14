@@ -49,7 +49,6 @@ class TabletSdkTest : public ::testing::Test {
 TEST_F(TabletSdkTest, test_normal) {
     int port_offset = 0;
     int tablet_port = base_tablet_port_ + port_offset;
-    int port = base_dbms_port_ + port_offset;
     tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
     ASSERT_TRUE(tablet->Init());
     brpc::ServerOptions options;
