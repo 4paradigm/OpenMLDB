@@ -590,7 +590,7 @@ void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
-    if (follower_.load(std::memory_order_acquire)) {
+    if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(453);
         response->set_msg("is follower cluster");
         return;
@@ -1551,7 +1551,7 @@ void TabletImpl::Delete(RpcController* controller,
               ::rtidb::api::GeneralResponse* response,
               Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (follower_.load(std::memory_order_acquire)) {
+    if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(453);
         response->set_msg("is follower cluster");
         return;
@@ -3868,7 +3868,8 @@ void TabletImpl::SetMode(RpcController* controller,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    follower_.store(request->follower(), std::memory_order_release);
+    follower_.store(request->follower(), std::memory_order_relaxed);
+    PDLOG(INFO, "set tablet mode bool %d", request->follower());
     response->set_code(0);
 }
 
