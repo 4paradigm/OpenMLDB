@@ -158,7 +158,6 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     switch (type) {
         case fesql::type::kVarchar: {
-            ColumnStringIteratorImpl* impl =
                 new (data) ColumnStringIteratorImpl(*w, str_field_offset,
                                                     next_str_field_offset,
                                                     str_start_offset);
@@ -179,28 +178,23 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
     WindowIteratorImpl* w = reinterpret_cast<WindowIteratorImpl*>(input);
     switch (type) {
         case fesql::type::kInt32: {
-            ColumnIteratorImpl<int>* impl =
-                new (data) ColumnIteratorImpl<int>(*w, offset);
+            new (data) ColumnIteratorImpl<int>(*w, offset);
             break;
         }
         case fesql::type::kInt16: {
-            ColumnIteratorImpl<int16_t>* impl =
-                new (data) ColumnIteratorImpl<int16_t>(*w, offset);
+            new (data) ColumnIteratorImpl<int16_t>(*w, offset);
             break;
         }
         case fesql::type::kInt64: {
-            ColumnIteratorImpl<int64_t>* impl =
-                new (data) ColumnIteratorImpl<int64_t>(*w, offset);
+            new (data) ColumnIteratorImpl<int64_t>(*w, offset);
             break;
         }
         case fesql::type::kFloat: {
-            ColumnIteratorImpl<float>* impl =
-                new (data) ColumnIteratorImpl<float>(*w, offset);
+            new (data) ColumnIteratorImpl<float>(*w, offset);
             break;
         }
         case fesql::type::kDouble: {
-            ColumnIteratorImpl<double>* impl =
-                new (data) ColumnIteratorImpl<double>(*w, offset);
+            new (data) ColumnIteratorImpl<double>(*w, offset);
             break;
         }
         default: {
