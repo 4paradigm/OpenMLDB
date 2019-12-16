@@ -149,100 +149,109 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
         rep_table_map_.insert(std::make_pair(alias, std::map<std::string, std::vector<TablePartition>>()));
     }
     rep_iter = rep_table_map_.find(alias);
+    std::map<std::string, std::shared_ptr<TableInfo>>::iterator table_info_iter;
     for (const auto& table : tables) {
-        auto table_iter = rep_iter->second.find(table.name());
-        if (table_iter == rep_iter->second.end()) {
+        auto rep_table_iter = rep_iter->second.find(table.name());
+        if (rep_table_iter == rep_iter->second.end()) {
             rep_iter->second.insert(std::make_pair(table.name(), std::vector<TablePartition>()));
-            table_iter = rep_iter->second.find(table.name());
-            for (auto& temp_part : table.table_partition()) {
-                ::rtidb::nameserver::TablePartition tb = TablePartition();
-                tb.set_pid(temp_part.pid());
-                tb.set_record_byte_size(temp_part.record_byte_size());
-                tb.set_record_cnt(temp_part.record_cnt());
-                for (auto& to : temp_part.term_offset()) {
-                    tb.add_term_offset()->CopyFrom(to);
+            rep_table_iter = rep_iter->second.find(table.name());
+            rep_table_iter->second.resize(table.table_partition_size());
+            table_info_iter = table_info_.find(table.name());
+            std::map<uint32_t, uint64_t> pid_offset_map;
+            for (auto& part : table_info_iter->second->table_partition()) {
+                for (auto& meta : part.partition_meta()) {
+                    if (meta.is_alive() && meta.is_leader()) {
+                        pid_offset_map.insert(std::make_pair(part.pid(), meta.offset()));
+                    }
                 }
-                for (auto& meta : temp_part.partition_meta()) {
+            }
+            for (auto& part : table.table_partition()) {
+                ::rtidb::nameserver::TablePartition tb = TablePartition();
+                tb.set_pid(part.pid());
+                tb.set_record_byte_size(part.record_byte_size());
+                tb.set_record_cnt(part.record_cnt());
+                PartitionMeta* m = tb.add_partition_meta();
+                m->set_endpoint("");
+                for (auto& meta : part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
-                        meta.offset();
-                        uint64_t local_offset = 0;
-                        auto info_iter = table_info_.find(table.name());
-                        int i = 0, j = 0;
-                        for (; i < info_iter->second->table_partition_size(); i++) {
-                            if (info_iter->second->table_partition(i).pid() != temp_part.pid()) {
-                                continue;
-                            }
-                            for (; j < info_iter->second->table_partition(i).partition_meta_size(); j++) {
-                                if (info_iter->second->table_partition(i).partition_meta(j).is_leader() && info_iter->second->table_partition(i).partition_meta(j).is_alive()) {
-                                    local_offset = info_iter->second->table_partition(i).partition_meta(j).offset();
-                                    break;
-                                }
-                            }
+                        m->CopyFrom(meta);
+                        auto offset_iter = pid_offset_map.find(part.pid());
+                        if (offset_iter == pid_offset_map.end()) {
+                            // table partition leader is offline, so skip below process
+                            PDLOG(WARNING, "table [%s] tid[%u] pid[%u] not found in local table info", table.name().c_str(), table.tid(), part.pid());
                             break;
                         }
-                        tb.add_partition_meta()->CopyFrom(meta);
-                        if (meta.offset() > local_offset) {
-                            // send delete util specify offset
-                            PDLOG(INFO, "table [%s] partition [%u] remote offset [%lu] ge local offset [%lu]", table.name().c_str(), temp_part.pid(), meta.offset(), local_offset);
-                            auto temp = tb.partition_meta(tb.partition_meta_size() - 1);
-                            temp.clear_endpoint();
+                        if (meta.offset() > offset_iter->second) {
+                            // send delete offset request
+                            // DeleteOffset(i->second);
+                            std::string temp_key = alias + table.name() + std::to_string(part.pid());
+                            delete_offset_map_.insert(std::make_pair(temp_key, offset_iter->second));
+                            PDLOG(WARNING, "table [%s] partition [%u] remote offset [%lu] ge local offset [%lu]", table.name().c_str(), part.pid(), meta.offset(), offset_iter->second);
+                            m->set_endpoint("");
                             break;
                         }
-                        PDLOG(INFO, "table [%s] tid[%u] pid[%u] will add endpoint %s", table.name().c_str(), table.tid(), temp_part.pid(), meta.endpoint().c_str());
-                        AddRemoteReplica(table.name(), meta, table.tid(), temp_part.pid());
+                        PDLOG(INFO, "table [%s] tid[%u] pid[%u] will add endpoint %s", table.name().c_str(), table.tid(), part.pid(), meta.endpoint().c_str());
+                        AddRemoteReplica(table.name(), (*m), table.tid(), part.pid());
                         break;
                     }
                 }
-                table_iter->second.push_back(tb);
+                rep_table_iter->second.push_back(tb);
             }
-            continue;
-        }
-        for (int i = 0; i < table.table_partition_size(); i++) {
-            auto& temp_part = table.table_partition(i);
-            TablePartition* part_p = &table_iter->second[0];
-            for (uint64_t j = 0; j < table_iter->second.size(); j++) {
-                if (table_iter->second[j].pid() == temp_part.pid()) {
-                    part_p = &table_iter->second[j];
-                    break;
-                }
+        } else {
+            std::map<uint32_t, std::string> pid_endpoint_map;
+            std::map<uint32_t, std::uint64_t> pid_offset_map;
+            std::map<uint32_t, TablePartition*> part_refer;
+            // cache endpoint && part reference
+            for (auto& part : rep_table_iter->second) {
+                pid_endpoint_map.insert(std::make_pair(part.pid(), part.partition_meta(0).endpoint()));
+                part_refer.insert(std::make_pair(part.pid(), &part));
             }
-            /*
-            if (temp_part.term_offset_size() > part_p->term_offset_size()) {
-                for (int z = part_p->term_offset_size(); z < temp_part.term_offset_size(); z++) {
-                    part_p->add_term_offset()->CopyFrom(temp_part.term_offset(z));
-                }
-            }
-             */
-            int j = 0;
-            for (; j < temp_part.partition_meta_size(); j++) {
-                auto &temp_meta = temp_part.partition_meta(j);
-                if (temp_meta.is_alive() && temp_meta.is_leader()) {
-                    if (part_p->partition_meta(0).endpoint() != temp_meta.endpoint()) {
-                        uint64_t local_offset = 0;
-                        auto info_iter = table_info_.find(table.name());
-                        int i = 0, j = 0;
-                        for (; i < info_iter->second->table_partition_size(); i++) {
-                            if (info_iter->second->table_partition(i).pid() != temp_part.pid()) {
-                                continue;
-                            }
-                            for (; j < info_iter->second->table_partition(i).partition_meta_size(); j++) {
-                                if (info_iter->second->table_partition(i).partition_meta(j).is_leader() && info_iter->second->table_partition(i).partition_meta(j).is_alive()) {
-                                    local_offset = info_iter->second->table_partition(i).partition_meta(j).offset();
-                                }
-                            }
-                            break;
-                        }
-                        if (temp_meta.offset() > local_offset) {
-                            PDLOG(INFO, "table [%s] partition [%u] remote offset [%lu] ge local offset [%lu]", table.name().c_str(), temp_part.pid(), temp_meta.offset(), local_offset);
-                            break;
-                        }
-                        PDLOG(INFO, "table [%s] tid[%u] pid[%u] will update endpoint %s", table.name().c_str(), table.tid(), temp_part.pid(), temp_meta.endpoint().c_str());
-                        DelRemoteReplica(part_p->partition_meta(0).endpoint(), table.name(), part_p->pid());
-                        part_p->clear_partition_meta();
-                        part_p->add_partition_meta()->CopyFrom(temp_meta);
-                        AddRemoteReplica(table.name(), temp_meta, table.tid(), part_p->pid());
+            // cache offset
+            for (auto& part : table_info_iter->second->table_partition()) {
+                for (auto& meta : part.partition_meta()) {
+                    if (meta.is_alive() && meta.is_leader()) {
+                        pid_offset_map.insert(std::make_pair(part.pid(), meta.offset()));
                     }
-                    break;
+                }
+            }
+            for (auto& part : table.table_partition()) {
+                for (auto& meta : part.partition_meta()) {
+                    if (meta.is_leader() && meta.is_alive()) {
+                        std::string temp_key = alias + table.name() + std::to_string(part.pid());
+                        auto offset_iter = pid_offset_map.find(part.pid());
+                        if (offset_iter == pid_offset_map.end()) {
+                            // table partition leader is offline
+                            break;
+                        }
+                        auto delete_offset_iter = delete_offset_map_.find(temp_key);
+                        if (delete_offset_iter == delete_offset_map_.end()) {
+                            if (meta.offset() > offset_iter->second) {
+                                // TODO: send delete offset request
+                                // DeleteOffset(offset_iter->second);
+                                delete_offset_map_.insert(std::make_pair(temp_key, offset_iter->second));
+                                break;
+                            }
+                        } else {
+                            if (meta.offset() > delete_offset_iter->second) {
+                                break;
+                            }
+                            delete_offset_map_.erase(temp_key);
+                        }
+                        auto endpoint_iter = pid_endpoint_map.find(part.pid());
+                        if (meta.endpoint() == endpoint_iter->second) {
+                            break;
+                        }
+                        // table partition leader if offline
+                        if (endpoint_iter->second.size() > 9) {
+                            PDLOG(INFO, "table [%s] tid[%u] pid[%u] will update endpoint %s", table.name().c_str(), table.tid(), part.pid(), meta.endpoint().c_str());
+                            DelRemoteReplica(endpoint_iter->second, table.name(), part.pid());
+                        }
+                        // update partition meta
+                        part_refer[part.pid()]->clear_partition_meta();
+                        part_refer[part.pid()]->add_partition_meta()->CopyFrom(meta);
+                        AddRemoteReplica(table.name(), meta, table.tid(), part.pid());
+                        break;
+                    }
                 }
             }
         }
@@ -5423,9 +5432,6 @@ std::shared_ptr<Task> NameServerImpl::CreateAddRemoteReplicaTask(const std::stri
                     uint32_t pid, const std::string& des_endpoint) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
-    for (auto& ti : tablets_) {
-        PDLOG(WARNING, "tablet [%s] status [%d]", ti.first.c_str(), ti.second->state_);
-    }
     if (it == tablets_.end()) {
         PDLOG(WARNING, "provide endpoint [%s] not found", endpoint.c_str());
         return std::shared_ptr<Task>();

@@ -587,6 +587,7 @@ private:
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
     std::map<std::string, std::map<std::string, std::vector<TablePartition>>> rep_table_map_;
+    std::map<std::string, uint64_t> delete_offset_map_;
     ReplicaClusterByNsRequest zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
