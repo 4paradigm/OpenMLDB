@@ -6770,6 +6770,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             break;
         }
         nsc_.erase(it);
+        rep_table_map_.erase(request->alias());
     } while(0);
     response->set_code(code);
     response->set_msg(rpc_msg);
