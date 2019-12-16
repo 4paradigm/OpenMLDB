@@ -67,20 +67,16 @@ public:
 
     bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, int& code, std::string& msg);
 
-    const ::rtidb::nameserver::ClusterAddress& ReturnAdd() {
-        return cluster_add_;
-    }
-    const uint64_t& ReturnCt() {
-        return ctime_;
-    }
     std::shared_ptr<::rtidb::client::NsClient> client_;
+    std::map<std::string, uint64_t> delete_offset_map_;
+    std::map<std::string, std::vector<TablePartition>> last_status;
+    ::rtidb::nameserver::ClusterAddress cluster_add_;
+    uint64_t ctime_;
 private:
     std::shared_ptr<ZkClient> zk_client_;
     std::mutex mu_;
-    ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t session_term_;
     int64_t task_id_;
-    uint64_t ctime_;
     // todo :: add statsus variable show replicas status
 };
 
@@ -577,7 +573,7 @@ private:
 
     bool CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo>& tables);
 
-    void CheckTableInfo(const std::string &alias, std::vector<::rtidb::nameserver::TableInfo> &tables);
+    void CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, std::vector<::rtidb::nameserver::TableInfo>& tables);
 
     void DistributeTabletMode();
 
@@ -586,8 +582,6 @@ private:
     Tablets tablets_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
-    std::map<std::string, std::map<std::string, std::vector<TablePartition>>> rep_table_map_;
-    std::map<std::string, uint64_t> delete_offset_map_;
     ReplicaClusterByNsRequest zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;

@@ -143,36 +143,29 @@ bool ClusterInfo::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& tas
     return true;
 }
 
-void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtidb::nameserver::TableInfo>& tables) {
-    auto rep_iter = rep_table_map_.find(alias);
-    if (rep_iter == rep_table_map_.end()) {
-        rep_table_map_.insert(std::make_pair(alias, std::map<std::string, std::vector<TablePartition>>()));
-    }
-    rep_iter = rep_table_map_.find(alias);
+void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, std::vector<::rtidb::nameserver::TableInfo>& tables) {
     std::map<std::string, std::shared_ptr<TableInfo>>::iterator table_info_iter;
     for (const auto& table : tables) {
         table_info_iter = table_info_.find(table.name());
-        auto rep_table_iter = rep_iter->second.find(table.name());
-        if (rep_table_iter == rep_iter->second.end()) {
-            rep_iter->second.insert(std::make_pair(table.name(), std::vector<TablePartition>()));
-            rep_table_iter = rep_iter->second.find(table.name());
-
+        auto status_iter = ci->last_status.find(table.name());
+        if (status_iter == ci->last_status.end()) {
             std::map<uint32_t, uint64_t> pid_offset_map;
-            for (auto& part : table_info_iter->second->table_partition()) {
-                for (auto& meta : part.partition_meta()) {
+            for (auto &part : table_info_iter->second->table_partition()) {
+                for (auto &meta : part.partition_meta()) {
                     if (meta.is_alive() && meta.is_leader()) {
                         pid_offset_map.insert(std::make_pair(part.pid(), meta.offset()));
                     }
                 }
             }
-            for (auto& part : table.table_partition()) {
+            std::vector<TablePartition> tbs;
+            for (auto &part : table.table_partition()) {
                 ::rtidb::nameserver::TablePartition tb = TablePartition();
                 tb.set_pid(part.pid());
                 tb.set_record_byte_size(part.record_byte_size());
                 tb.set_record_cnt(part.record_cnt());
-                PartitionMeta* m = tb.add_partition_meta();
+                PartitionMeta *m = tb.add_partition_meta();
                 m->set_endpoint("");
-                for (auto& meta : part.partition_meta()) {
+                for (auto &meta : part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
                         auto offset_iter = pid_offset_map.find(part.pid());
                         if (offset_iter == pid_offset_map.end()) {
@@ -184,10 +177,9 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                         if (meta.offset() > offset_iter->second) {
                             // send delete offset request
                             // DeleteOffset(i->second);
-                            std::string temp_key = alias + table.name() + std::to_string(part.pid());
-                            delete_offset_map_.insert(std::make_pair(temp_key, offset_iter->second));
-                            PDLOG(WARNING, "table [%s] partition [%u] remote offset [%lu] ge local offset [%lu]", table.name().c_str(), part.pid(), meta.offset(), offset_iter->second);
-                            m->set_endpoint("");
+                            std::string temp_key = table.name() + std::to_string(part.pid());
+                            ci->delete_offset_map_.insert(std::make_pair(temp_key, offset_iter->second));
+                            PDLOG(WARNING, "table [%s] partition [%u] remote offset [%lu] ge local offset [%lu]", table.name().c_str(), part.pid(), meta.offset(), offset_iter->second); m->set_endpoint("");
                             break;
                         }
                         PDLOG(INFO, "table [%s] tid[%u] pid[%u] will add endpoint %s", table.name().c_str(), table.tid(), part.pid(), meta.endpoint().c_str());
@@ -195,18 +187,19 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                         break;
                     }
                 }
-                rep_table_iter->second.push_back(tb);
+                tbs.push_back(tb);
             }
+            ci->last_status.insert(std::make_pair(table.name(), tbs));
         } else {
             std::map<uint32_t, std::uint64_t> pid_offset_map;
             std::map<uint32_t, std::vector<TablePartition>::iterator> part_refer;
             // cache endpoint && part reference
-            for (std::vector<TablePartition>::iterator iter = rep_table_iter->second.begin(); iter != rep_table_iter->second.end(); iter++) {
+            for (auto iter = status_iter->second.begin(); iter != status_iter->second.end(); iter++) {
                 part_refer.insert(std::make_pair(iter->pid(), iter));
             }
             // cache offset
-            for (auto& part : table_info_iter->second->table_partition()) {
-                for (auto& meta : part.partition_meta()) {
+            for (auto &part : table_info_iter->second->table_partition()) {
+                for (auto &meta : part.partition_meta()) {
                     if (meta.is_alive() && meta.is_leader()) {
                         pid_offset_map.insert(std::make_pair(part.pid(), meta.offset()));
                     }
@@ -215,18 +208,18 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
             for (auto& part : table.table_partition()) {
                 for (auto& meta : part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
-                        std::string temp_key = alias + table.name() + std::to_string(part.pid());
+                        std::string temp_key = table.name() + std::to_string(part.pid());
                         auto offset_iter = pid_offset_map.find(part.pid());
                         if (offset_iter == pid_offset_map.end()) {
                             // table partition leader is offline
                             break;
                         }
-                        auto delete_offset_iter = delete_offset_map_.find(temp_key);
-                        if (delete_offset_iter == delete_offset_map_.end()) {
+                        auto delete_offset_iter = ci->delete_offset_map_.find(temp_key);
+                        if (delete_offset_iter == ci->delete_offset_map_.end()) {
                             if (meta.offset() > offset_iter->second) {
                                 // TODO: send delete offset request
                                 // DeleteOffset(offset_iter->second);
-                                delete_offset_map_.insert(std::make_pair(temp_key, offset_iter->second));
+                                ci->delete_offset_map_.insert(std::make_pair(temp_key, offset_iter->second));
                                 break;
                             }
                         } else {
@@ -234,11 +227,11 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                                 break;
                             }
                             PDLOG(INFO, "erase key [%s] in delete offset", temp_key.c_str());
-                            delete_offset_map_.erase(temp_key);
+                            ci->delete_offset_map_.erase(temp_key);
                         }
                         std::string origin_endpoint = part_refer[part.pid()]->partition_meta(0).endpoint();
                         if (meta.endpoint() == origin_endpoint) {
-                            PDLOG(INFO, "do not need update alias [%s] table [%s]", alias.c_str(), table.name().c_str());
+                            PDLOG(INFO, "do not need update alias [%s] table [%s]", ci->cluster_add_.alias().c_str(), table.name().c_str());
                             break;
                         }
                         // table partition leader if offline
@@ -6732,9 +6725,9 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
         auto* status = response->add_replicas();
         auto replica = status->mutable_replica();
         replica->set_alias(it->first);
-        replica->set_zk_path(it->second->ReturnAdd().zk_path());
-        replica->set_zk_endpoints(it->second->ReturnAdd().zk_endpoints());
-        status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ReturnCt());
+        replica->set_zk_path(it->second->cluster_add_.zk_path());
+        replica->set_zk_endpoints(it->second->cluster_add_.zk_endpoints());
+        status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_));
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -6770,7 +6763,6 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             break;
         }
         nsc_.erase(it);
-        rep_table_map_.erase(request->alias());
     } while(0);
     response->set_code(code);
     response->set_msg(rpc_msg);
@@ -6863,7 +6855,7 @@ void NameServerImpl::CheckClusterInfo() {
                 PDLOG(WARNING, "compare %s table info has error", i.first.c_str());
                 continue;
             }
-            CheckTableInfo(i.first, tables);
+            CheckTableInfo(i.second, tables);
         }
     } while(0);
 
