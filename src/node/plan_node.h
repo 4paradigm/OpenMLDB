@@ -13,6 +13,7 @@
 #include <glog/logging.h>
 #include <node/sql_node.h>
 #include <list>
+#include <utility>
 #include <string>
 #include <vector>
 #include "node/node_enum.h"
@@ -186,7 +187,6 @@ class ProjectPlanNode : public LeafPlanNode {
     std::string table_;
     std::string w_;
 };
-;
 
 class WindowPlanNode : public LeafPlanNode {
  public:

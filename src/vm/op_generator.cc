@@ -460,17 +460,17 @@ bool OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
     if (children.empty()) {
         status.code = common::kOpGenError;
         status.msg = "merge children is empty";
-        LOG(WARNING) <<status.msg;
+        LOG(WARNING) << status.msg;
         return false;
     }
-
 
     MergeOp* merge_op = new MergeOp();
     merge_op->pos_mapping = node->GetPosMapping();
     merge_op->output_schema.resize(merge_op->pos_mapping.size());
     merge_op->output_schema.clear();
-    for(auto pair : merge_op->pos_mapping) {
-        merge_op->output_schema.push_back(children[pair.first]->output_schema[pair.second]);
+    for (auto pair : merge_op->pos_mapping) {
+        merge_op->output_schema.push_back(
+            children[pair.first]->output_schema[pair.second]);
     }
     merge_op->type = kOpMerge;
     merge_op->fn = nullptr;

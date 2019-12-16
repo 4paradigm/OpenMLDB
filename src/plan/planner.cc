@@ -134,7 +134,7 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
         // add MergeNode if multi ProjectionLists exist
         if (project_list_map.size() > 1) {
             uint32_t columns_size = 0;
-            for(auto project: project_list_map) {
+            for (auto project : project_list_map) {
                 columns_size += project.second->GetProjects().size();
             }
             node::PlanNode *merge_node =
@@ -146,8 +146,8 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
         for (auto &v : project_list_map) {
             node::ProjectListPlanNode *project_list = v.second;
             int pos = nullptr == project_list->GetW()
-                      ? 0
-                      : project_list->GetW()->GetId();
+                          ? 0
+                          : project_list->GetW()->GetId();
             project_list->AddChild(scan_node_ptr);
             project_list_vec[pos] = project_list;
         }
@@ -156,9 +156,6 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
                 current_node->AddChild(project_list);
             }
         }
-
-
-
     }
 
     return 0;

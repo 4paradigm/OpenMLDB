@@ -31,7 +31,6 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(::fesql::type::TableDef* table,
 
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
-
 bool RowFnLetIRBuilder::Build(const std::string& name,
                               const ::fesql::node::ProjectListPlanNode* node,
                               std::vector<::fesql::type::ColumnDef>&
@@ -111,7 +110,6 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
         cdef.set_name(col_name);
         cdef.set_type(ctype);
         schema.push_back(cdef);
-
     }
 
     ok = EncodeBuf(&outputs, &schema, sv, block, output_ptr_name);
@@ -198,8 +196,6 @@ bool RowFnLetIRBuilder::FillArgs(const std::string& row_ptr_name,
     sv.AddVar(output_ptr_name, &*it);
     return true;
 }
-
-
 
 }  // namespace codegen
 }  // namespace fesql

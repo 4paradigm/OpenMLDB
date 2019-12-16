@@ -290,7 +290,6 @@ TEST_F(OpGeneratorTest, test_multi_windowp_project) {
             ASSERT_EQ(merge_op->output_schema[5].name(), "w1_col2_sum");
             ASSERT_EQ(merge_op->output_schema[6].name(), "w2_col3_sum");
             ASSERT_EQ(merge_op->output_schema[7].name(), "w2_col4_sum");
-
         }
     }
 }

@@ -9,6 +9,7 @@
 
 #include "plan/planner.h"
 #include <vector>
+#include <utility>
 #include "analyser/analyser.h"
 #include "gtest/gtest.h"
 #include "parser/parser.h"
@@ -274,13 +275,13 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
     std::vector<std::pair<uint32_t, uint32_t>> pos_mapping =
         merge_node->GetPosMapping();
     ASSERT_EQ(7, pos_mapping.size());
-    ASSERT_EQ(std::make_pair(1u,0u), pos_mapping[0]);
-    ASSERT_EQ(std::make_pair(2u,0u), pos_mapping[1]);
-    ASSERT_EQ(std::make_pair(2u,1u), pos_mapping[2]);
-    ASSERT_EQ(std::make_pair(0u,0u), pos_mapping[3]);
-    ASSERT_EQ(std::make_pair(1u,1u), pos_mapping[4]);
-    ASSERT_EQ(std::make_pair(0u,1u), pos_mapping[5]);
-    ASSERT_EQ(std::make_pair(2u,2u), pos_mapping[6]);
+    ASSERT_EQ(std::make_pair(1u, 0u), pos_mapping[0]);
+    ASSERT_EQ(std::make_pair(2u, 0u), pos_mapping[1]);
+    ASSERT_EQ(std::make_pair(2u, 1u), pos_mapping[2]);
+    ASSERT_EQ(std::make_pair(0u, 0u), pos_mapping[3]);
+    ASSERT_EQ(std::make_pair(1u, 1u), pos_mapping[4]);
+    ASSERT_EQ(std::make_pair(0u, 1u), pos_mapping[5]);
+    ASSERT_EQ(std::make_pair(2u, 2u), pos_mapping[6]);
 
     // validate project list based on current row
     std::vector<PlanNode *> plan_vec = merge_node->GetChildren();
