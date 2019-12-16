@@ -104,12 +104,14 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
         if (!ok) {
             return false;
         }
+
         outputs.insert(std::make_pair(index, expr_out_val));
         index++;
         ::fesql::type::ColumnDef cdef;
         cdef.set_name(col_name);
         cdef.set_type(ctype);
         schema.push_back(cdef);
+
     }
 
     ok = EncodeBuf(&outputs, &schema, sv, block, output_ptr_name);

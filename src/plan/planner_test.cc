@@ -60,6 +60,21 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
     ASSERT_EQ(
         3u,
         ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
+    {
+        node::ProjectPlanNode *project = dynamic_cast<node::ProjectPlanNode *>(
+            ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects()[0]);
+        ASSERT_EQ(0u, project->GetPos());
+    }
+    {
+        node::ProjectPlanNode *project = dynamic_cast<node::ProjectPlanNode *>(
+            ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects()[1]);
+        ASSERT_EQ(1u, project->GetPos());
+    }
+    {
+        node::ProjectPlanNode *project = dynamic_cast<node::ProjectPlanNode *>(
+            ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects()[2]);
+        ASSERT_EQ(2u, project->GetPos());
+    }
 
     // validate limit 10
     ASSERT_EQ(node::kPlanTypeScan, plan_vec.at(0)->GetChildren()[0]->GetType());
@@ -209,13 +224,175 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
               ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetKeys());
     ASSERT_TRUE(((node::ProjectListPlanNode *)plan_vec.at(1))->IsWindowAgg());
 
-
     ASSERT_EQ(node::kPlanTypeScan, plan_vec.at(0)->GetChildren()[0]->GetType());
     node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
         plan_vec.at(0)->GetChildren()[0]);
     ASSERT_EQ(10, scan_ptr->GetLimit());
     delete planner_ptr;
 }
+
+TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    const std::string sql =
+        "SELECT sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w2 as w2_col3_sum, "
+        "sum(col4) OVER w2 as w2_col4_sum, "
+        "col1, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "col2, "
+        "sum(col1) OVER w2 as w2_col1_sum "
+        "FROM t1 "
+        "WINDOW "
+        "w1 AS (PARTITION BY col2 ORDER BY `TS` RANGE BETWEEN 1d PRECEDING AND "
+        "1s PRECEDING), "
+        "w2 AS (PARTITION BY col3 ORDER BY `TS` RANGE BETWEEN 2d PRECEDING AND "
+        "1s PRECEDING) "
+        "limit 10;";
+    int ret = parser_->parse(sql, list, manager_, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+
+    std::cout << *(list[0]) << std::endl;
+    Planner *planner_ptr = new SimplePlanner(manager_);
+    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+    ASSERT_EQ(1u, trees.size());
+    PlanNode *plan_ptr = trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+    // validate select plan
+    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    node::SelectPlanNode *select_ptr = (node::SelectPlanNode *)plan_ptr;
+
+    // validate merge node
+    ASSERT_EQ(node::kPlanTypeMerge, select_ptr->GetChildren().at(0)->GetType());
+    node::MergePlanNode *merge_node =
+        (node::MergePlanNode *)select_ptr->GetChildren()[0];
+
+    std::vector<std::pair<uint32_t, uint32_t>> pos_mapping =
+        merge_node->GetPosMapping();
+    ASSERT_EQ(7, pos_mapping.size());
+    ASSERT_EQ(std::make_pair(1u,0u), pos_mapping[0]);
+    ASSERT_EQ(std::make_pair(2u,0u), pos_mapping[1]);
+    ASSERT_EQ(std::make_pair(2u,1u), pos_mapping[2]);
+    ASSERT_EQ(std::make_pair(0u,0u), pos_mapping[3]);
+    ASSERT_EQ(std::make_pair(1u,1u), pos_mapping[4]);
+    ASSERT_EQ(std::make_pair(0u,1u), pos_mapping[5]);
+    ASSERT_EQ(std::make_pair(2u,2u), pos_mapping[6]);
+
+    // validate project list based on current row
+    std::vector<PlanNode *> plan_vec = merge_node->GetChildren();
+    ASSERT_EQ(3u, merge_node->GetChildren().size());
+    plan_vec = merge_node->GetChildren();
+
+    // validate projection 1: window agg over w1
+    ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
+    {
+        node::ProjectListPlanNode *project_list =
+            dynamic_cast<node::ProjectListPlanNode *>(plan_vec.at(0));
+
+        ASSERT_EQ(2u, project_list->GetProjects().size());
+        ASSERT_TRUE(nullptr == project_list->GetW());
+        ASSERT_FALSE(project_list->IsWindowAgg());
+
+        // validate col1 pos 3
+        {
+            node::ProjectPlanNode *project =
+                dynamic_cast<node::ProjectPlanNode *>(
+                    project_list->GetProjects()[0]);
+            ASSERT_EQ(3u, project->GetPos());
+        }
+        // validate col2 pos 5
+        {
+            node::ProjectPlanNode *project =
+                dynamic_cast<node::ProjectPlanNode *>(
+                    project_list->GetProjects()[1]);
+            ASSERT_EQ(5u, project->GetPos());
+        }
+
+        ASSERT_EQ(node::kPlanTypeScan,
+                  project_list->GetChildren()[0]->GetType());
+        node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
+            project_list->GetChildren()[0]);
+        ASSERT_EQ(10, scan_ptr->GetLimit());
+    }
+    {
+        node::ProjectListPlanNode *project_list =
+            dynamic_cast<node::ProjectListPlanNode *>(plan_vec.at(1));
+
+        ASSERT_EQ(2u, project_list->GetProjects().size());
+        ASSERT_FALSE(nullptr == project_list->GetW());
+        ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
+        ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
+
+        // validate w1_col1_sum pos 0
+        {
+            node::ProjectPlanNode *project =
+                dynamic_cast<node::ProjectPlanNode *>(
+                    project_list->GetProjects()[0]);
+            ASSERT_EQ(0, project->GetPos());
+        }
+        // validate w1_col3_sum pos 0
+        {
+            node::ProjectPlanNode *project =
+                dynamic_cast<node::ProjectPlanNode *>(
+                    project_list->GetProjects()[1]);
+            ASSERT_EQ(4u, project->GetPos());
+        }
+
+        ASSERT_EQ(node::kPlanTypeScan,
+                  project_list->GetChildren()[0]->GetType());
+        node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
+            project_list->GetChildren()[0]);
+        ASSERT_EQ(10, scan_ptr->GetLimit());
+    }
+    {
+        // validate projection 1: window agg over w2
+        ASSERT_EQ(node::kProjectList, plan_vec.at(2)->GetType());
+        node::ProjectListPlanNode *project_list =
+            dynamic_cast<node::ProjectListPlanNode *>(plan_vec.at(2));
+
+        ASSERT_EQ(3u, project_list->GetProjects().size());
+        ASSERT_TRUE(nullptr != project_list->GetW());
+        ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
+        ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
+        ASSERT_EQ(std::vector<std::string>({"col3"}),
+                  project_list->GetW()->GetKeys());
+        ASSERT_TRUE(project_list->IsWindowAgg());
+
+        // validate w2_col3_sum pos 1
+        {
+            node::ProjectPlanNode *project =
+                dynamic_cast<node::ProjectPlanNode *>(
+                    project_list->GetProjects()[0]);
+            ASSERT_EQ(1u, project->GetPos());
+        }
+        // validate w2_col4_sum pos 2
+        {
+            node::ProjectPlanNode *project =
+                dynamic_cast<node::ProjectPlanNode *>(
+                    project_list->GetProjects()[1]);
+            ASSERT_EQ(2u, project->GetPos());
+        }
+        // validate w2_col1_sum pos 6
+        {
+            node::ProjectPlanNode *project =
+                dynamic_cast<node::ProjectPlanNode *>(
+                    project_list->GetProjects()[2]);
+            ASSERT_EQ(6u, project->GetPos());
+        }
+
+        ASSERT_EQ(node::kPlanTypeScan,
+                  project_list->GetChildren()[0]->GetType());
+        node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
+            project_list->GetChildren()[0]);
+        ASSERT_EQ(10, scan_ptr->GetLimit());
+    }
+
+    delete planner_ptr;
+}  // namespace plan
 
 TEST_F(PlannerTest, CreateStmtPlanTest) {
     const std::string sql_str =

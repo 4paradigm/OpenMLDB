@@ -39,6 +39,7 @@ struct OpNode {
     virtual ~OpNode() {}
     OpType type;
     uint32_t idx;
+    std::vector<::fesql::type::ColumnDef> output_schema;
     std::vector<OpNode*> children;
 };
 
@@ -49,7 +50,6 @@ struct ScanOp : public OpNode {
     uint32_t pid;
     uint32_t limit;
     std::vector<::fesql::type::ColumnDef> input_schema;
-    std::vector<::fesql::type::ColumnDef> output_schema;
 };
 
 // TODO(chenjing): WindowOp
@@ -69,7 +69,6 @@ struct ProjectOp : public OpNode {
     std::string db;
     uint32_t tid;
     uint32_t pid;
-    std::vector<::fesql::type::ColumnDef> output_schema;
     int8_t* fn;
     std::string fn_name;
     bool window_agg;
@@ -83,6 +82,7 @@ struct LimitOp : public OpNode {
 
 struct MergeOp : public OpNode {
     int8_t* fn;
+    std::vector<std::pair<uint32_t , uint32_t >> pos_mapping;
 };
 
 }  // namespace vm

@@ -168,7 +168,7 @@ bool OpGenerator::RoutingNode(
                 LOG(WARNING) << status.msg;
                 return false;
             }
-            GenMerge(merge_node, module, &cur_op, status);
+            GenMerge(merge_node, children, module, &cur_op, status);
             break;
         }
         default: {
@@ -447,6 +447,7 @@ bool OpGenerator::GenFnDef(::llvm::Module* module,
     return ok;
 }
 bool OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
+                           const std::vector<OpNode*> children,
                            ::llvm::Module* module, OpNode** op,
                            Status& status) {  // NOLINT
     if (node == NULL || module == NULL || NULL == op) {
@@ -455,7 +456,22 @@ bool OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
         LOG(WARNING) << status.msg;
         return false;
     }
+
+    if (children.empty()) {
+        status.code = common::kOpGenError;
+        status.msg = "merge children is empty";
+        LOG(WARNING) <<status.msg;
+        return false;
+    }
+
+
     MergeOp* merge_op = new MergeOp();
+    merge_op->pos_mapping = node->GetPosMapping();
+    merge_op->output_schema.resize(merge_op->pos_mapping.size());
+    merge_op->output_schema.clear();
+    for(auto pair : merge_op->pos_mapping) {
+        merge_op->output_schema.push_back(children[pair.first]->output_schema[pair.second]);
+    }
     merge_op->type = kOpMerge;
     merge_op->fn = nullptr;
     *op = merge_op;

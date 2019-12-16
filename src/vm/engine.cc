@@ -366,11 +366,12 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
             }
             case kOpMerge: {
                 MergeOp* merge_op = reinterpret_cast<MergeOp*>(op);
-                if (merge_op->children.size() != 2) {
-                    LOG(WARNING) << "fail to merge when children size is not 2";
+                if (merge_op->children.size() <= 1) {
+                    LOG(WARNING) << "fail to merge when children size less than 2";
                     return 1;
                 }
                 // TODO(chenjing): add merge execute logic
+
                 break;
             }
             case kOpLimit: {

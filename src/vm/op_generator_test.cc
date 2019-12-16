@@ -214,7 +214,13 @@ TEST_F(OpGeneratorTest, test_multi_windowp_project) {
         const std::string sql =
             "SELECT "
             "sum(col1) OVER w1 as w1_col1_sum, "
-            "sum(col1) OVER w2 as w2_col1_sum "
+            "sum(col2) OVER w2 as w2_col2_sum, "
+            "sum(col3) OVER w1 as w1_col3_sum, "
+            "sum(col4) OVER w2 as w2_col4_sum, "
+            "sum(col1) OVER w2 as w2_col1_sum, "
+            "sum(col2) OVER w1 as w1_col2_sum, "
+            "sum(col3) OVER w2 as w2_col3_sum, "
+            "sum(col4) OVER w2 as w2_col4_sum "
             "FROM t1 "
             "WINDOW "
             "w1 AS (PARTITION BY col2 ORDER BY col15 RANGE BETWEEN 1d "
@@ -260,11 +266,31 @@ TEST_F(OpGeneratorTest, test_multi_windowp_project) {
         }
 
         {
+            /**
+             *
+             *    "sum(col1) OVER w1 as w1_col1_sum, "
+            "sum(col2) OVER w2 as w2_col2_sum, "
+            "sum(col3) OVER w1 as w1_col3_sum, "
+            "sum(col4) OVER w2 as w2_col4_sum, "
+            "sum(col1) OVER w2 as w2_col1_sum, "
+            "sum(col2) OVER w1 as w1_col2_sum, "
+            "sum(col3) OVER w2 as w2_col3_sum, "
+            "sum(col4) OVER w2 as w2_col4_sum "
+             */
             MergeOp* merge_op = reinterpret_cast<MergeOp*>(op.ops[3]);
             ASSERT_EQ(nullptr, merge_op->fn);
             ASSERT_EQ(2u, merge_op->children.size());
             ASSERT_EQ(kOpProject, merge_op->children[0]->type);
             ASSERT_EQ(kOpProject, merge_op->children[1]->type);
+            ASSERT_EQ(merge_op->output_schema[0].name(), "w1_col1_sum");
+            ASSERT_EQ(merge_op->output_schema[1].name(), "w2_col2_sum");
+            ASSERT_EQ(merge_op->output_schema[2].name(), "w1_col3_sum");
+            ASSERT_EQ(merge_op->output_schema[3].name(), "w2_col4_sum");
+            ASSERT_EQ(merge_op->output_schema[4].name(), "w2_col1_sum");
+            ASSERT_EQ(merge_op->output_schema[5].name(), "w1_col2_sum");
+            ASSERT_EQ(merge_op->output_schema[6].name(), "w2_col3_sum");
+            ASSERT_EQ(merge_op->output_schema[7].name(), "w2_col4_sum");
+
         }
     }
 }

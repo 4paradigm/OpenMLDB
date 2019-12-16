@@ -333,6 +333,12 @@ PlanNode *NodeManager::MakeMultiPlanNode(const PlanType &type) {
     return node_ptr;
 }
 
+PlanNode *NodeManager::MakeMergeNode(int columns_size) {
+    PlanNode *node_ptr = new MergePlanNode(columns_size);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+
 ScanPlanNode *NodeManager::MakeSeqScanPlanNode(const std::string &table) {
     node::ScanPlanNode *node_ptr = new ScanPlanNode(table, kScanTypeSeqScan);
     RegisterNode(node_ptr);
@@ -390,7 +396,7 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
             node_ptr = new WindowPlanNode(0);
             break;
         case kPlanTypeMerge:
-            node_ptr = new MergePlanNode();
+            node_ptr = new MergePlanNode(0);
             break;
         default:
             node_ptr = new LeafPlanNode(kUnknowPlan);
