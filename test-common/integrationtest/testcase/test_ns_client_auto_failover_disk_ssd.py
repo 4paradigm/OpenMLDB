@@ -26,25 +26,14 @@ class TestAutoFailover(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'true'),
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 144000,
             "storage_mode": storage_mode,
             "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "1-2","is_leader": "false"},
-                {"endpoint": self.slave2,"pid_group": "2-3","is_leader": "false"},
+                {"endpoint": self.leader,"pid_group": "0-1","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0","is_leader": "false"},
+                {"endpoint": self.slave2,"pid_group": "1","is_leader": "false"},
             ],
             "column_desc":[
                 {"name": "k1", "type": "string", "add_ts_idx": "true"},
@@ -78,24 +67,22 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(5)
         self.wait_op_done(name)
         self.assertIn('kTabletOffline', rs2[self.leader])
-        self.confset(self.ns_leader, 'auto_failover', 'false')
 
         # leader to offline
         self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])  # RTIDB-203
         self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
-        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
-        self.assertEqual(rs3[(name, tid, '3', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
 
         # slave to leader
-        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
-        act1 = rs3[(name, tid, '2', self.slave1)]
-        act2 = rs3[(name, tid, '2', self.slave2)]
+        self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        act1 = rs3[(name, tid, '0', self.slave1)]
+        act2 = rs3[(name, tid, '1', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
-        self.assertEqual(roles.count('leader'), 1)
-        self.assertEqual(roles.count('follower'), 1)
-        self.assertEqual(rs3[(name, tid, '3', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(roles.count('leader'), 2)
+        self.assertEqual(roles.count('follower'), 0)
+        self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
         self.get_new_ns_leader()
         self.ns_drop(self.ns_leader, name)
+        self.confset(self.ns_leader, 'auto_failover', 'false')
 
 
     @ddt.data(
@@ -113,15 +100,6 @@ class TestAutoFailover(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 144000,
@@ -170,6 +148,7 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.get_new_ns_leader()
         self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -182,14 +161,6 @@ class TestAutoFailover(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"2"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
         table_meta = {
             "name": name,
             "ttl": 144000,
@@ -258,16 +229,6 @@ class TestAutoFailover(TestCaseBase):
 
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"0"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'true'),
-        #     ('column_desc', '"k3"', '"string"', 'true')
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
         table_meta = {
             "name": name,
             "ttl": 144000,
@@ -339,6 +300,7 @@ class TestAutoFailover(TestCaseBase):
         rs_scan = self.scan(self.leader, tid, pid, 'testkey1', self.now() + 19999, 1)
         self.assertTrue('ccard1' in rs_scan)
         rs = self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -355,7 +317,7 @@ class TestAutoFailover(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "partition_num": 8,
+            "partition_num": 1,
             "replica_num": 3,
             "storage_mode": storage_mode,
         }
@@ -388,12 +350,13 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn(msg, rs)
         self.confset(self.ns_leader, 'auto_failover', 'false')
         rs = self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
     )
     @ddt.unpack
-    def test_unable_auto_failover(self,storage_mode):
+    def test_disable_auto_failover(self,storage_mode):
         """
         auto_failover关闭时，可以手动执行恢复相关命名
         :return:
@@ -404,7 +367,7 @@ class TestAutoFailover(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "partition_num": 8,
+            "partition_num": 1,
             "replica_num": 3,
             "storage_mode": storage_mode,
         }
@@ -440,6 +403,7 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn('update ok', rs)
         self.get_new_ns_leader()
         rs = self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -499,6 +463,7 @@ class TestAutoFailover(TestCaseBase):
         self.confset(self.ns_leader, 'auto_failover', 'false')
         self.get_new_ns_leader()
         self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -552,7 +517,6 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(5)
         self.start_client(self.slave1)
         time.sleep(10)
-        self.wait_op_down(name)
         for i in range(20):
             time.sleep(3)
             rs_after = self.gettablestatus(self.slave1, tid, pid)
@@ -563,12 +527,12 @@ class TestAutoFailover(TestCaseBase):
         rs = self.ns_showopstatus(self.ns_slaver)
         if '{}'.format(rs_after) == 'gettablestatus failed':
             infoLogger.debug('{}'.format(rs))
-        self.print_table(self.ns_slaver, '')
         self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
-        self.confset(self.ns_leader, 'auto_failover', 'false')
         self.start_client(self.ns_leader, 'nameserver')
         self.get_new_ns_leader()
         self.ns_drop(self.ns_leader, name)
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -640,6 +604,7 @@ class TestAutoFailover(TestCaseBase):
         self.get_new_ns_leader()
         time.sleep(3)
         self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -654,16 +619,14 @@ class TestAutoFailover(TestCaseBase):
         self.confset(self.ns_leader, 'auto_failover', 'true')
         name = 't{}'.format(time.time())
         infoLogger.info(name)
-        pid_number = 8
-        endpoint_number = 3
         ttl = 144000
          # rs1 = self.ns_create_cmd(self.ns_leader, name, ttl, pid_number, endpoint_number, '')
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
             "name": name,
             "ttl": ttl,
-            "partition_num": pid_number,
-            "replica_num": endpoint_number,
+            "partition_num": 1,
+            "replica_num": 3,
             "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
@@ -694,27 +657,25 @@ class TestAutoFailover(TestCaseBase):
         for i in range(number):
             rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
+        diff = 3
+        for i in range(10):
+            time.sleep(2)
+            offset_number = 0
+            rs = self.showtable_with_tablename(self.ns_leader, name)
+            rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
+            for table_info in rs_after:
+                offset_number = int(rs_after[table_info][4])
+            if offset_number == 6:
+                break
 
         rs = self.showtable_with_tablename(self.ns_leader, name)
         rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
-        for repeat in range(20):
-            offset_number = 0
-            rs = self.showtable_with_tablename(self.ns_leader, name)
-            rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
-            for table_info in rs_after:
-                if rs_after[table_info][4] == '2':
-                    offset_number = offset_number + 1
-            if offset_number == 9:
-                break
-            time.sleep(2)
-        diff = 1
         for table_info in rs_after:
-            if rs_after[table_info][4] == '0':
-                continue
             self.assertEqual(diff, int(rs_after[table_info][4]) - int(rs_before[table_info][4]))
 
         self.confset(self.ns_leader, 'auto_failover', 'false')
         self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -728,16 +689,14 @@ class TestAutoFailover(TestCaseBase):
         """
         self.confset(self.ns_leader, 'auto_failover', 'true')
         name = 't{}'.format(time.time())
-        pid_number = 8
-        endpoint_number = 3
         ttl = 144000
         # rs1 = self.ns_create_cmd(self.ns_leader, name, ttl, pid_number, endpoint_number, '')
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
             "name": name,
             "ttl": ttl,
-            "partition_num": pid_number,
-            "replica_num": endpoint_number,
+            "partition_num": 1,
+            "replica_num": 3,
             "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
@@ -766,19 +725,16 @@ class TestAutoFailover(TestCaseBase):
             rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
 
-        rs = self.showtable_with_tablename(self.ns_leader, name)
-        rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
+        diff = 3
         for i in range(10):
             time.sleep(2)
             offset_number = 0
             rs = self.showtable_with_tablename(self.ns_leader, name)
             rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
             for table_info in rs_after:
-                if rs_after[table_info][4] == '2':
-                    offset_number = offset_number + 1
-            if offset_number == 9:
+                offset_number = int(rs_after[table_info][4])
+            if offset_number == 6:
                 break
-        diff = 1
         for table_info in rs_after:
             if rs_after[table_info][4] == '0':
                 continue

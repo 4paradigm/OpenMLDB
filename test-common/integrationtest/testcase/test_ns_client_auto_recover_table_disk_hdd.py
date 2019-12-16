@@ -30,9 +30,9 @@ class TestAutoRecoverTable(TestCaseBase):
             "ttl": 144000,
             "storage_mode": "kHDD",
             "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-9","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "0-9","is_leader": "false"},
-                {"endpoint": self.slave2,"pid_group": "2-9","is_leader": "false"},
+                {"endpoint": self.leader,"pid_group": "0","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0","is_leader": "false"},
+                {"endpoint": self.slave2,"pid_group": "0","is_leader": "false"},
             ],
             "column_desc":[
                 {"name": "k1", "type": "string", "add_ts_idx": "true"},
@@ -45,7 +45,7 @@ class TestAutoRecoverTable(TestCaseBase):
         self.assertIn('Create table ok', rs)
         table_info = self.showtable(self.ns_leader, self.tname)
         self.tid = int(table_info.keys()[0][1])
-        self.pid = 3
+        self.pid = 0
         self.put_large_datas(data_count, data_thread)
 
     def put_data(self, endpoint):
@@ -135,9 +135,9 @@ class TestAutoRecoverTable(TestCaseBase):
             if role_x.count('leader') == 10 and role_x.count('follower') == 18 and is_alive_x.count('yes') == 28:
                 break
             time.sleep(3)
-        self.assertEqual(role_x.count('leader'), 10)
-        self.assertEqual(role_x.count('follower'), 18)
-        self.assertEqual(is_alive_x.count('yes'), 28)
+        self.assertEqual(role_x.count('leader'), 1)
+        self.assertEqual(role_x.count('follower'), 2)
+        self.assertEqual(is_alive_x.count('yes'), 3)
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave1, self.tid, self.pid)[0])
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
@@ -184,9 +184,9 @@ class TestAutoRecoverTable(TestCaseBase):
         self.start_client(self.slave1)
         self.start_client(self.slave2)
 
-        self.assertEqual(role_x.count('leader'), 10)
-        self.assertEqual(role_x.count('follower'), 18)
-        self.assertEqual(is_alive_x.count('yes'), 28)
+        self.assertEqual(role_x.count('leader'), 1)
+        self.assertEqual(role_x.count('follower'), 2)
+        self.assertEqual(is_alive_x.count('yes'), 3)
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave1, self.tid, self.pid)[0])
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
@@ -223,24 +223,14 @@ class TestAutoRecoverTable(TestCaseBase):
         """
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(self.tname), '"kAbsoluteTime"', 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"2-3"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": self.tname,
             "ttl": 144000,
             "storage_mode": "kHDD",
             "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "2-3","is_leader": "false"},
-                {"endpoint": self.slave2,"pid_group": "2-3","is_leader": "false"},
+                {"endpoint": self.leader,"pid_group": "0","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0","is_leader": "false"},
+                {"endpoint": self.slave2,"pid_group": "0","is_leader": "false"},
             ],
             "column_desc":[
                 {"name": "k1", "type": "string", "add_ts_idx": "true"},
@@ -253,7 +243,7 @@ class TestAutoRecoverTable(TestCaseBase):
         self.assertIn('Create table ok', rs)
         table_info = self.showtable(self.ns_leader, self.tname)
         self.tid = int(table_info.keys()[0][1])
-        self.pid = 1
+        self.pid = 0
         for _ in range(10):
             self.put(self.leader, self.tid, self.pid, 'testkey0', self.now() + 90000, 'testvalue0')
 
@@ -262,7 +252,7 @@ class TestAutoRecoverTable(TestCaseBase):
             eval(steps_dict[i])
         rs = self.showtable(self.ns_leader, self.tname)
         self.assertEqual(rs[(self.tname, str(self.tid), str(self.pid), self.leader)],
-                         ['leader', '144000min', 'yes', 'kNoCompress'])
+                         ['follower', '144000min', 'yes', 'kNoCompress'])
         self.ns_drop(self.ns_leader, self.tname)
 
 
