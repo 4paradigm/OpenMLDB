@@ -235,10 +235,12 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                             if (meta.offset() > delete_offset_iter->second) {
                                 break;
                             }
+                            PDLOG(INFO, "erase key [%s] in delete offset", temp_key.c_str());
                             delete_offset_map_.erase(temp_key);
                         }
                         auto endpoint_iter = pid_endpoint_map.find(part.pid());
                         if (meta.endpoint() == endpoint_iter->second) {
+                            PDLOG(INFO, "do not need update alias [%s] table [%s]", alias.c_str(), table.name().c_str());
                             break;
                         }
                         // table partition leader if offline
