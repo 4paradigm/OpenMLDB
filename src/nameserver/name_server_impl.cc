@@ -174,13 +174,13 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                 m->set_endpoint("");
                 for (auto& meta : part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
-                        m->CopyFrom(meta);
                         auto offset_iter = pid_offset_map.find(part.pid());
                         if (offset_iter == pid_offset_map.end()) {
                             // table partition leader is offline, so skip below process
                             PDLOG(WARNING, "table [%s] tid[%u] pid[%u] not found in local table info", table.name().c_str(), table.tid(), part.pid());
                             break;
                         }
+                        m->CopyFrom(meta);
                         if (meta.offset() > offset_iter->second) {
                             // send delete offset request
                             // DeleteOffset(i->second);
@@ -198,12 +198,10 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                 rep_table_iter->second.push_back(tb);
             }
         } else {
-            std::map<uint32_t, std::string> pid_endpoint_map;
             std::map<uint32_t, std::uint64_t> pid_offset_map;
             std::map<uint32_t, TablePartition*> part_refer;
             // cache endpoint && part reference
             for (auto& part : rep_table_iter->second) {
-                pid_endpoint_map.insert(std::make_pair(part.pid(), part.partition_meta(0).endpoint()));
                 part_refer.insert(std::make_pair(part.pid(), &part));
             }
             // cache offset
@@ -238,15 +236,15 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
                             PDLOG(INFO, "erase key [%s] in delete offset", temp_key.c_str());
                             delete_offset_map_.erase(temp_key);
                         }
-                        auto endpoint_iter = pid_endpoint_map.find(part.pid());
-                        if (meta.endpoint() == endpoint_iter->second) {
+                        std::string origin_endpoint = part_refer[part.pid()]->partition_meta(0).endpoint();
+                        if (meta.endpoint() == origin_endpoint) {
                             PDLOG(INFO, "do not need update alias [%s] table [%s]", alias.c_str(), table.name().c_str());
                             break;
                         }
                         // table partition leader if offline
-                        if (endpoint_iter->second.size() > 9) {
+                        if (origin_endpoint.size() > 9) {
                             PDLOG(INFO, "table [%s] tid[%u] pid[%u] will update endpoint %s", table.name().c_str(), table.tid(), part.pid(), meta.endpoint().c_str());
-                            DelRemoteReplica(endpoint_iter->second, table.name(), part.pid());
+                            DelRemoteReplica(origin_endpoint, table.name(), part.pid());
                         }
                         // update partition meta
                         part_refer[part.pid()]->clear_partition_meta();
