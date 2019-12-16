@@ -116,14 +116,96 @@ static void BuildBuf(int8_t** buf, uint32_t* size,
     *size = total_size;
 }
 
-static void BM_EngineFn(benchmark::State& state) {  // NOLINT
+static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     std::shared_ptr<TableStatus> status(new TableStatus());
     int8_t* ptr = NULL;
     uint32_t size = 0;
     BuildBuf(&ptr, &size, status->table_def);
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+    table->Put(reinterpret_cast<char*>(ptr), size);
+    table->Put(reinterpret_cast<char*>(ptr), size);
+    status->table = std::move(table);
+    TableMgrImpl table_mgr(status);
+    const std::string sql ="SELECT col4 FROM t1 limit 2;";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status query_status;
+    engine.Get(sql, "db", session, query_status);
+    for (auto _ : state) {
+        std::vector<int8_t*> output(2);
+        benchmark::DoNotOptimize(session.Run(output, 2));
+        int8_t* output1 = output[0];
+        int8_t* output2 = output[1];
+        free(output1);
+        free(output2);
+    }
+}
 
+static void BM_EngineSimpleSelectVarchar(benchmark::State& state) {  // NOLINT
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    int8_t* ptr = NULL;
+    uint32_t size = 0;
+    BuildBuf(&ptr, &size, status->table_def);
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+    table->Put(reinterpret_cast<char*>(ptr), size);
+    table->Put(reinterpret_cast<char*>(ptr), size);
+    status->table = std::move(table);
+    TableMgrImpl table_mgr(status);
+    const std::string sql ="SELECT col6 FROM t1 limit 1;";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status query_status;
+    engine.Get(sql, "db", session, query_status);
+    for (auto _ : state) {
+        std::vector<int8_t*> output(2);
+        benchmark::DoNotOptimize(session.Run(output, 2));
+        int8_t* output1 = output[0];
+        free(output1);
+    }
+}
+
+static void BM_EngineSimpleSelectInt32(benchmark::State& state) {  // NOLINT
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    int8_t* ptr = NULL;
+    uint32_t size = 0;
+    BuildBuf(&ptr, &size, status->table_def);
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+    table->Put(reinterpret_cast<char*>(ptr), size);
+    table->Put(reinterpret_cast<char*>(ptr), size);
+    status->table = std::move(table);
+    TableMgrImpl table_mgr(status);
+    const std::string sql ="SELECT col1 FROM t1 limit 1;";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status query_status;
+    engine.Get(sql, "db", session, query_status);
+    for (auto _ : state) {
+        std::vector<int8_t*> output(2);
+        benchmark::DoNotOptimize(session.Run(output, 2));
+        int8_t* output1 = output[0];
+        free(output1);
+    }
+}
+
+static void BM_EngineSimpleUDF(benchmark::State& state) {  // NOLINT
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    int8_t* ptr = NULL;
+    uint32_t size = 0;
+    BuildBuf(&ptr, &size, status->table_def);
     std::unique_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, status->table_def));
     ASSERT_TRUE(table->Init());
@@ -133,22 +215,23 @@ static void BM_EngineFn(benchmark::State& state) {  // NOLINT
     TableMgrImpl table_mgr(status);
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
-        "d\nend\n%%sql\nSELECT test(col1,col1), col2 FROM t1 limit 2;";
+        "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 1;";
     Engine engine(&table_mgr);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
-        session.Run(output, 2);
+        benchmark::DoNotOptimize(session.Run(output, 2));
         int8_t* output1 = output[0];
-        int8_t* output2 = output[1];
         free(output1);
-        free(output2);
     }
 }
 
-BENCHMARK(BM_EngineFn);
+BENCHMARK(BM_EngineSimpleSelectVarchar);
+BENCHMARK(BM_EngineSimpleSelectDouble);
+BENCHMARK(BM_EngineSimpleSelectInt32);
+BENCHMARK(BM_EngineSimpleUDF);
 }  // namespace vm
 }  // namespace fesql
 

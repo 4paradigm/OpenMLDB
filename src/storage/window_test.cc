@@ -50,7 +50,7 @@ TEST_F(WindowIteratorTest, IteratorImplTest) {
     ASSERT_EQ(2, subImpl2->Next());
 
     IteratorImpl<int>* subImpl3 = impl.range(3, 2);
-    ASSERT_FALSE(subImpl2->Valid());
+    ASSERT_FALSE(subImpl3->Valid());
 }
 
 TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
