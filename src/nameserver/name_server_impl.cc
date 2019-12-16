@@ -199,10 +199,10 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
             }
         } else {
             std::map<uint32_t, std::uint64_t> pid_offset_map;
-            std::map<uint32_t, TablePartition*> part_refer;
+            std::map<uint32_t, std::vector<TablePartition>::iterator> part_refer;
             // cache endpoint && part reference
-            for (auto& part : rep_table_iter->second) {
-                part_refer.insert(std::make_pair(part.pid(), &part));
+            for (std::vector<TablePartition>::iterator iter = rep_table_iter->second.begin(); iter != rep_table_iter->second.end(); iter++) {
+                part_refer.insert(std::make_pair(iter->pid(), iter));
             }
             // cache offset
             for (auto& part : table_info_iter->second->table_partition()) {
