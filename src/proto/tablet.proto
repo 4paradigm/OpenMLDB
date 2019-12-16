@@ -41,6 +41,8 @@ enum TTLType {
     kRelativeTime = 2;
     // keep the latest record
     kLatestTime = 3;
+    kAbsAndLat = 4;
+    kAbsOrLat = 5;
 }
 
 enum GetType {

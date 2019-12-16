@@ -67,6 +67,7 @@ message TableInfo {
     repeated rtidb.common.ColumnKey column_key = 13;
     optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 15;
+    optional rtidb.common.TTLDesc ttl_desc = 16;
 }
 
 message CreateTableRequest {

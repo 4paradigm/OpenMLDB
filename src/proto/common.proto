@@ -27,9 +27,14 @@ message ColumnKey {
     repeated string ts_name = 3;
 }
 
+message TTLDesc {
+    optional rtidb.api.TTLType ttl_type = 1;
+    optional uint64 abs_ttl = 2;
+    optional uint64 lat_ttl = 3;
+}
+
 enum StorageMode {
     kMemory = 1;
     kSSD = 2;
     kHDD = 3;
 }
-

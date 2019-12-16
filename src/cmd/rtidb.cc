@@ -2043,14 +2043,26 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     std::string ttl_type = table_info.ttl_type();
     std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
     uint32_t default_skiplist_height = FLAGS_absolute_default_skiplist_height;
-    if (ttl_type == "kabsolutetime") {
-        ns_table_info.set_ttl_type("kAbsoluteTime");
-    } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
-        ns_table_info.set_ttl_type("kLatestTime");
-        default_skiplist_height = FLAGS_latest_default_skiplist_height;
+    if (table_info.has_ttl_desc()) {
+        ns_table_info.set_ttl_desc(table_inf.ttl_desc());
     } else {
-        printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
-        return -1;
+        if (ttl_type == "kabsolutetime") {
+            ns_table_info.set_ttl_type("kAbsoluteTime");
+            ::rtidb::common::TTLDesc* ttl_desc = ns_table_info.add_ttl_desc();
+            ttl_desc.set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+            ttl_desc.set_abs_ttl(table_info.ttl());
+            ttl_desc.set_lat_ttl(table_info.ttl(0));
+        } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
+            ns_table_info.set_ttl_type("kLatestTime");
+            default_skiplist_height = FLAGS_latest_default_skiplist_height;
+            ::rtidb::common::TTLDesc* ttl_desc = ns_table_info.add_ttl_desc();
+            ttl_desc.set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+            ttl_desc.set_abs_ttl(0);
+            ttl_desc.set_lat_ttl(table_info.ttl());
+        } else {
+            printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
+            return -1;
+        }
     }
     ns_table_info.set_ttl(table_info.ttl());
     std::string compress_type = table_info.compress_type();
@@ -2123,16 +2135,25 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     } else if (parts.size() > 4) {
         ns_table_info.set_name(parts[1]);
         std::string type = "kAbsoluteTime";
+        ::rtidb::common::TTLDesc* ttl_desc = ns_table_info.add_ttl_desc();
+        ttl_desc.set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
         try {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[2], ":", vec);
             if (vec.size() > 1) {
                 if ((vec[0] == "latest" || vec[0] == "kLatestTime"))  {
                     type = "kLatestTime";
+                    ttl_desc.set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+                    ttl_desc.set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+                    ttl_desc.set_abs_ttl(0));
                 } else {
                     std::cout << "invalid ttl type" << std::endl;
                     return;
-                }    
+                }
+            } else {
+                ttl_desc.set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+                ttl_desc.set_lat_ttl(0);
+                ttl_desc.set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1])));
             }
             ns_table_info.set_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
             uint32_t partition_num = boost::lexical_cast<uint32_t>(parts[3]);
@@ -2152,6 +2173,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
             return;
         } 
         ns_table_info.set_ttl_type(type);
+        ttl_desc.set_ttl_type
         bool has_index = false;
         std::set<std::string> name_set;
         for (uint32_t i = 5; i < parts.size(); i++) {

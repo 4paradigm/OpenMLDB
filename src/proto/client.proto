@@ -20,4 +20,5 @@ message TableInfo {
     optional uint32 key_entry_max_height = 10;
     repeated rtidb.common.ColumnKey column_key = 11;
     optional string storage_mode = 12 [default = "kMemory"];
+    optional rtidb.common.TTLDesc ttl_desc = 13;
 }
