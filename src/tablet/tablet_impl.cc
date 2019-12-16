@@ -593,6 +593,7 @@ void TabletImpl::Put(RpcController* controller,
     if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(453);
         response->set_msg("is follower cluster");
+        done->Run();
         return;
     }
     if (request->time() == 0 && request->ts_dimensions_size() == 0) {
