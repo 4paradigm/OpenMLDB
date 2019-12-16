@@ -69,13 +69,14 @@ template <class T>
 T PrintList(int8_t* input) {
     T sum = 0;
     if (nullptr == input) {
-        std::cout << "list is null";
+        std::cout << "list is null" << std::endl;
+    } else {
+        std::cout << "list ptr is ok" << std::endl;
     }
-    ::fesql::storage::ListRef* list_ref =
-        reinterpret_cast<::fesql::storage::ListRef*>(input);
+    printf("input: %p\n", input);
     ::fesql::storage::ColumnIteratorImpl<T>* col =
-        reinterpret_cast<::fesql::storage::ColumnIteratorImpl<T>*>(
-            list_ref->iterator);
+        reinterpret_cast<::fesql::storage::ColumnIteratorImpl<T>*>(input);
+    printf("col addr : %p\n", col);
     std::cout << "[";
     while (col->Valid()) {
         T v = col->Next();
@@ -94,12 +95,17 @@ int32_t PrintListString(int8_t* input) {
     int32_t cnt = 0;
     if (nullptr == input) {
         std::cout << "list is null";
+    } else {
+        std::cout << "list ptr is ok" << std::endl;
     }
+    printf("print list string input: %p\n", input);
     ::fesql::storage::ListRef* col_string =
         reinterpret_cast<::fesql::storage::ListRef*>(input);
+    printf("col_string addr : %p\n", col_string);
     ::fesql::storage::ColumnStringIteratorImpl* col =
         reinterpret_cast<::fesql::storage::ColumnStringIteratorImpl*>(
-            col_string->iterator);
+            col_string);
+    printf("col iterator addr : %p\n", col);
     std::cout << "[";
     while (col->Valid()) {
         ::fesql::storage::StringRef v = col->Next();
