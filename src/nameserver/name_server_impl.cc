@@ -151,12 +151,12 @@ void NameServerImpl::CheckTableInfo(const std::string& alias, std::vector<::rtid
     rep_iter = rep_table_map_.find(alias);
     std::map<std::string, std::shared_ptr<TableInfo>>::iterator table_info_iter;
     for (const auto& table : tables) {
+        table_info_iter = table_info_.find(table.name());
         auto rep_table_iter = rep_iter->second.find(table.name());
         if (rep_table_iter == rep_iter->second.end()) {
             rep_iter->second.insert(std::make_pair(table.name(), std::vector<TablePartition>()));
             rep_table_iter = rep_iter->second.find(table.name());
-            rep_table_iter->second.resize(table.table_partition_size());
-            table_info_iter = table_info_.find(table.name());
+
             std::map<uint32_t, uint64_t> pid_offset_map;
             for (auto& part : table_info_iter->second->table_partition()) {
                 for (auto& meta : part.partition_meta()) {
