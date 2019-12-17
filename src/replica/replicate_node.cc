@@ -162,6 +162,10 @@ int ReplicateNode::MatchLogOffsetFromNode() {
 int ReplicateNode::SyncData(uint64_t log_offset) {
     PDLOG(DEBUG, "node[%s] offset[%lu] log offset[%lu]", 
                 endpoint_.c_str(), last_sync_offset_, log_offset);
+    if (log_offset <= last_sync_offset_) {
+        PDLOG(INFO, "log offset [%lu] le last sync offset [%lu], do nothing", log_offset, last_sync_offset_);
+        return 0;
+    }
     ::rtidb::api::AppendEntriesRequest request;
     ::rtidb::api::AppendEntriesResponse response;
     uint64_t sync_log_offset =  last_sync_offset_;
