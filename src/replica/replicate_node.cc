@@ -42,11 +42,13 @@ ReplicateNode::ReplicateNode(const std::string& point,
                              const std::string& log_path, 
                              uint32_t tid, uint32_t pid,
                              std::atomic<uint64_t>* term, std::atomic<uint64_t>* leader_log_offset,
-                             bthread::Mutex* mu, bthread::ConditionVariable* cv): log_reader_(logs, log_path), cache_(),
+                             bthread::Mutex* mu, bthread::ConditionVariable* cv, bool rep_follower,
+                             std::atomic<uint64_t>* follower_offset): log_reader_(logs, log_path), cache_(),
     endpoint_(point), last_sync_offset_(0), log_matched_(false),
     tid_(tid), pid_(pid), term_(term), 
     rpc_client_(point), worker_(), leader_log_offset_(leader_log_offset),
-    is_running_(false), mu_(mu), cv_(cv), go_back_cnt_(0) {
+    is_running_(false), mu_(mu), cv_(cv), go_back_cnt_(0),
+    rep_node_(rep_follower), follower_offset_(follower_offset) {
 }
 
 int ReplicateNode::Init() {
@@ -102,7 +104,12 @@ void ReplicateNode::SyncData() {
                 }
             }
         }
-        int ret = SyncData(leader_log_offset_->load(std::memory_order_relaxed));
+        int ret;
+        if (rep_node_.load(std::memory_order_relaxed)) {
+            ret = SyncData(follower_offset_->load(std::memory_order_relaxed));
+        } else {
+            ret = SyncData(leader_log_offset_->load(std::memory_order_relaxed));
+        }
         if (ret == 1) {
             coffee_time = FLAGS_binlog_coffee_time;
         }
@@ -252,6 +259,11 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
         if (ret && response.code() == 0) {
             PDLOG(DEBUG, "sync log to node[%s] to offset %lld", endpoint_.c_str(), sync_log_offset);
             last_sync_offset_ = sync_log_offset;
+            if (!rep_node_.load(std::memory_order_relaxed) &&
+                    (last_sync_offset_ > follower_offset_->load(std::memory_order_relaxed))) {
+
+                follower_offset_->store(last_sync_offset_, std::memory_order_relaxed);
+            }
             if (request_from_cache) {
                 cache_.clear(); 
             }

@@ -89,7 +89,7 @@ bool LogReplicator::Init() {
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
             std::shared_ptr<ReplicateNode> replicate_node = std::make_shared<ReplicateNode>
-                    (*it, logs_, log_path_, table_->GetId(), table_->GetPid(), &term_, &log_offset_, &mu_, &cv_);
+                    (*it, logs_, log_path_, table_->GetId(), table_->GetPid(), &term_, &log_offset_, &mu_, &cv_, false, &follower_offset_);
             if (replicate_node->Init() < 0) {
                 PDLOG(WARNING, "init replicate node %s error", it->c_str());
                 return false;
@@ -367,9 +367,16 @@ int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec
                 return 1;
             }
         }
-        std::shared_ptr<ReplicateNode> replicate_node = std::make_shared<ReplicateNode>(
-                            endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(),
-                            &term_, &log_offset_, &mu_, &cv_);
+        std::shared_ptr<ReplicateNode> replicate_node;
+        if (tid == UINT32_MAX) {
+            replicate_node = std::make_shared<ReplicateNode>(
+                    endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(),
+                    &term_, &log_offset_, &mu_, &cv_, false, &follower_offset_);
+        } else {
+            replicate_node = std::make_shared<ReplicateNode>(
+                    endpoint, logs_, log_path_, tid, table_->GetPid(),
+                    &term_, &log_offset_, &mu_, &cv_, true, &follower_offset_);
+        }
         if (replicate_node->Init() < 0) {
             PDLOG(WARNING, "init replicate node %s error", endpoint.c_str());
             return -1;
