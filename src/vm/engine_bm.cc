@@ -175,6 +175,7 @@ static void BuildBuf(int8_t** buf, uint32_t* size,
 }
 
 static void Data_WindowCase1(TableStatus* status, int32_t data_size) {
+    DLOG(INFO) << "insert window data";
     BuildTableDef(status->table_def);
     // Build index
     ::fesql::type::IndexDef* index = status->table_def.add_indexes();
@@ -215,6 +216,7 @@ static void Data_WindowCase1(TableStatus* status, int32_t data_size) {
         builder.AppendInt64(col5.GetValue());
         builder.AppendString(str2.c_str(), str2.size());
         table->Put(reinterpret_cast<char*>(ptr), total_size);
+        free(ptr);
     }
     status->table = std::move(table);
 }
@@ -392,6 +394,8 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
         }
     }
 }
+
+
 BENCHMARK(BM_EngineSimpleSelectVarchar);
 BENCHMARK(BM_EngineSimpleSelectDouble);
 BENCHMARK(BM_EngineSimpleSelectInt32);
