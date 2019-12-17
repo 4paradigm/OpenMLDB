@@ -756,7 +756,7 @@ TEST_F(TableTest, UpdateTTL) {
     table.Init();
     ASSERT_EQ(10, table.GetTTL(0, 0));
     ASSERT_EQ(5, table.GetTTL(0, 1));
-    table.SetTTL(1, 20);
+    table.SetTTL(1, 20L, 0L);
     ASSERT_EQ(10, table.GetTTL(0, 0));
     ASSERT_EQ(5, table.GetTTL(0, 1));
     table.SchedGc();

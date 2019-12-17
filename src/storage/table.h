@@ -182,15 +182,15 @@ public:
             lat_ttl_.load(std::memory_order_relaxed));
     }
 
-    inline void SetTTL(const TTLDesc& ttl) {
-        new_abs_ttl_.store(ttl.abs_ttl * 60 * 1000, std::memory_order_relaxed);
-        new_lat_ttl_.store(ttl.lat_ttl, std::memory_order_relaxed);
+    inline void SetTTL(const uint64_t& abs_ttl, const uint64_t lat_ttl) {
+        new_abs_ttl_.store(abs_ttl * 60 * 1000, std::memory_order_relaxed);
+        new_lat_ttl_.store(lat_ttl, std::memory_order_relaxed);
     }
 
-    inline void SetTTL(uint32_t ts_idx, const TTLDesc& ttl) {
+    inline void SetTTL(const uint32_t ts_idx, const uint64_t& abs_ttl, const uint64_t& lat_ttl) {
         if (ts_idx < new_abs_ttl_vec_.size()) {
-            new_abs_ttl_vec_[ts_idx]->store(ttl.abs_ttl * 60 * 1000, std::memory_order_relaxed);
-            new_lat_ttl_vec_[ts_idx]->store(ttl.lat_ttl, std::memory_order_relaxed);
+            new_abs_ttl_vec_[ts_idx]->store(abs_ttl * 60 * 1000, std::memory_order_relaxed);
+            new_lat_ttl_vec_[ts_idx]->store(lat_ttl, std::memory_order_relaxed);
         }
     }
 

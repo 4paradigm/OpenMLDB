@@ -176,14 +176,15 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         return;
     }
 
-    uint64_t ttl = request->value();
-    if ((table->GetTTLType() == ::rtidb::common::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
-            (table->GetTTLType() == ::rtidb::common::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+    // uint64_t ttl = request->value();
+    const ::rtidb::common::TTLDesc& ttl_desc = request->ttl_desc();
+    if (ttl_desc.abs_ttl() > FLAGS_absolute_ttl_max || ttl_desc.lat_ttl() > FLAGS_latest_ttl_max) {
         response->set_code(132);
         uint32_t max_ttl = table->GetTTLType() == ::rtidb::common::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
-        response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
-        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
-                        ttl, ::rtidb::common::TTLType_Name(table->GetTTLType()).c_str(), max_ttl);
+        response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl)); // todo@pxc fixit
+        PDLOG(WARNING, "ttl is greater than conf value. abs_ttl[%lu] lat_ttl[%lu] ttl_type[%s] max abs_ttl[%u] max lat_ttl[%u]", 
+                        ttl_desc.abs_ttl(), ttl_desc.lat_ttl(), ::rtidb::common::TTLType_Name(table->GetTTLType()).c_str(), 
+                        FLAGS_absolute_ttl_max, FLAGS_latest_ttl_max);
         return;
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
@@ -195,12 +196,12 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
             response->set_msg("ts name not found");
             return;
         }
-        table->SetTTL(iter->second, ttl);
-        PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu, ts_name %u",
-                request->tid(), request->pid(), request->value(), request->ts_name().c_str());
+        table->SetTTL(iter->second, ttl_desc.abs_ttl(), ttl_desc.lat_ttl());
+        PDLOG(INFO, "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu, ts_name %u",
+                request->tid(), request->pid(), ttl_desc.abs_ttl(), ttl_desc.lat_ttl(), request->ts_name().c_str());
     } else {
-        table->SetTTL(ttl);
-        PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());
+        table->SetTTL(ttl_desc.abs_ttl(), ttl_desc.lat_ttl());
+        PDLOG(INFO, "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu", request->tid(), request->pid(), ttl_desc.abs_ttl(), ttl_desc.lat_ttl());
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -536,24 +537,41 @@ void TabletImpl::Get(RpcController* controller,
         return;
     }
 
-    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
+    ::rtidb::storage::TTLDesc ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
     std::string* value = response->mutable_value(); 
     uint64_t ts = 0;
     int32_t code = 0;
     switch(table->GetTTLType()) {
-        case ::rtidb::common::TTLType::kLatestTime:
-            code = GetLatestIndex(ttl, it,
+        case ::rtidb::common::TTLType::kLatestTime: {
+            code = GetLatestIndex(ttl.lat_ttl, it,
                         request->ts(), request->type(),
                         request->et(), request->et_type(),
                         value, &ts);
             break;
-
-        default:
-            uint64_t expire_ts = table->GetExpireTime(ttl);
+        }
+        case ::rtidb::common::TTLType::kAbsoluteTime: {
+            uint64_t expire_ts = table->GetExpireTime(ttl.abs_ttl);
             code = GetTimeIndex(expire_ts, it,
                     request->ts(), request->type(),
                     request->et(), request->et_type(),
                     value, &ts);
+            break;
+        }
+        case ::rtidb::common::TTLType::kAbsAndLat: { // todo@pxc
+            code = GetLatestIndex(ttl.lat_ttl, it,
+                        request->ts(), request->type(),
+                        request->et(), request->et_type(),
+                        value, &ts);
+            break;
+        }
+        case ::rtidb::common::TTLType::kAbsOrLat: { // todo@pxc
+            code = GetLatestIndex(ttl.lat_ttl, it,
+                        request->ts(), request->type(),
+                        request->et(), request->et_type(),
+                        value, &ts);
+            break;
+        }
+        default:
             break;
     }
     delete it;
@@ -1223,29 +1241,54 @@ void TabletImpl::Scan(RpcController* controller,
         response->set_msg("key not found");
         return;
     }
-    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
+    ::rtidb::storage::TTLDesc ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
     std::string* pairs = response->mutable_pairs(); 
     uint32_t count = 0;
     int32_t code = 0;
     switch(table->GetTTLType()) {
-        case ::rtidb::common::TTLType::kLatestTime:
-            code = ScanLatestIndex(ttl, it, request->limit(),
+        case ::rtidb::common::TTLType::kLatestTime: {
+            code = ScanLatestIndex(ttl.lat_ttl, it, request->limit(),
                         request->st(), request->st_type(),
                         request->et(), request->et_type(),
                         pairs, &count);
             break;
-
-        default:
+        }
+        case ::rtidb::common::TTLType::kAbsoluteTime: {
             bool remove_duplicated_record = false;
             if (request->has_enable_remove_duplicated_record()) {
                 remove_duplicated_record = request->enable_remove_duplicated_record();
             }
-            uint64_t expire_ts = table->GetExpireTime(ttl);
+            uint64_t expire_ts = table->GetExpireTime(ttl.abs_ttl);
             code = ScanTimeIndex(expire_ts, it, request->limit(),
                     request->st(), request->st_type(),
                     request->et(), request->et_type(),
                     pairs, &count, remove_duplicated_record);
             break;
+        }
+        case ::rtidb::common::TTLType::kAbsAndLat: {// todo@pxc
+            bool remove_duplicated_record = false;
+            if (request->has_enable_remove_duplicated_record()) {
+                remove_duplicated_record = request->enable_remove_duplicated_record();
+            }
+            uint64_t expire_ts = table->GetExpireTime(ttl.abs_ttl);
+            code = ScanTimeIndex(expire_ts, it, request->limit(),
+                    request->st(), request->st_type(),
+                    request->et(), request->et_type(),
+                    pairs, &count, remove_duplicated_record);
+            break;
+        }
+        case ::rtidb::common::TTLType::kAbsOrLat: {// todo@pxc
+            bool remove_duplicated_record = false;
+            if (request->has_enable_remove_duplicated_record()) {
+                remove_duplicated_record = request->enable_remove_duplicated_record();
+            }
+            uint64_t expire_ts = table->GetExpireTime(ttl.abs_ttl);
+            code = ScanTimeIndex(expire_ts, it, request->limit(),
+                    request->st(), request->st_type(),
+                    request->et(), request->et_type(),
+                    pairs, &count, remove_duplicated_record);
+            break;
+        }
     }
     delete it;
     response->set_code(code);
@@ -1353,7 +1396,7 @@ void TabletImpl::Count(RpcController* controller,
         response->set_msg("ts name not found");
         return;
     }
-    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
+    ::rtidb::storage::TTLDesc ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
     uint32_t count = 0;
     int32_t code = 0;
     bool remove_duplicated_record = false;
@@ -1361,20 +1404,37 @@ void TabletImpl::Count(RpcController* controller,
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
     switch(table->GetTTLType()) {
-        case ::rtidb::common::TTLType::kLatestTime:
-            code = CountLatestIndex(ttl, it,
+        case ::rtidb::common::TTLType::kLatestTime: {
+            code = CountLatestIndex(ttl.lat_ttl, it,
                         request->st(), request->st_type(),
                         request->et(), request->et_type(),
                         &count, remove_duplicated_record);
             break;
-
-        default:
-            uint64_t expire_ts = table->GetExpireTime(ttl);
+        }
+        case ::rtidb::common::TTLType::kAbsoluteTime: {
+            uint64_t expire_ts = table->GetExpireTime(ttl.abs_ttl);
             code = CountTimeIndex(expire_ts, it,
                     request->st(), request->st_type(),
                     request->et(), request->et_type(),
                     &count, remove_duplicated_record);
             break;
+        }
+        case ::rtidb::common::TTLType::kAbsAndLat: { // todo@pxc
+            uint64_t expire_ts = table->GetExpireTime(ttl.abs_ttl);
+            code = CountTimeIndex(expire_ts, it,
+                    request->st(), request->st_type(),
+                    request->et(), request->et_type(),
+                    &count, remove_duplicated_record);
+            break;
+        }
+        case ::rtidb::common::TTLType::kAbsOrLat: {// todo@pxc
+            uint64_t expire_ts = table->GetExpireTime(ttl.abs_ttl);
+            code = CountTimeIndex(expire_ts, it,
+                    request->st(), request->st_type(),
+                    request->et(), request->et_type(),
+                    &count, remove_duplicated_record);
+            break;
+        }
     }
     delete it;
     response->set_code(code);
@@ -1968,11 +2028,17 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             }
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
-            status->set_ttl(table->GetTTL());
-            status->set_ttl_type(table->GetTTLType());
+            
+            // status->set_ttl(table->GetTTL());
+            // status->set_ttl_type(table->GetTTLType());
             status->set_compress_type(table->GetCompressType());
             status->set_storage_mode(table->GetStorageMode());
             status->set_name(table->GetName());
+            ::rtidb::common::TTLDesc* ttl_desc = status->mutable_ttl_desc();
+            ::rtidb::storage::TTLDesc ttl = table->GetTTL();
+            ttl_desc->set_abs_ttl(ttl.abs_ttl);
+            ttl_desc->set_lat_ttl(ttl.lat_ttl);
+            ttl_desc->set_ttl_type(table->GetTTLType());
             if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
