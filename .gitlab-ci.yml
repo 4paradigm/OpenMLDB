@@ -4,6 +4,7 @@ variables:
 
 stages:
     - build
+    - benchmark
 
 style_check:
     stage: build
@@ -25,6 +26,12 @@ build_fesql_and_case:
             junit:
                 - build/*.xml
         paths: ["build/coverage"]
+
+micro_benchmark:
+    stage: benchmark
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - source /opt/rh/devtoolset-8/enable && bash tools/micro_bench.sh
 
 
 

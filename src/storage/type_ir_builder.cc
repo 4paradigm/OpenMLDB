@@ -34,9 +34,6 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size) {
     if (row == NULL || data == NULL || size == NULL) return -1;
-    DLOG(INFO) << "GetStrField : " << field_offset << ", "
-               << next_str_field_offset << ", " << str_start_offset << ", "
-               << addr_space;
     const int8_t* row_with_offset = row + str_start_offset;
     uint32_t str_offset = 0;
     uint32_t next_str_offset = 0;
