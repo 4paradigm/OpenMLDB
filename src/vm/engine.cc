@@ -120,7 +120,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 uint32_t count = 0;
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[scan_op->idx];
-                while (it->Valid() && count < min) {
+                while (it->Valid() && count++ < min) {
                     ::fesql::storage::Slice value = it->GetValue();
                     out_buffers.push_back(::fesql::storage::Row{
                         .buf = reinterpret_cast<int8_t*>(
