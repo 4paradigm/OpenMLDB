@@ -64,12 +64,14 @@ class UDFTest : public ::testing::Test {
 TEST_F(UDFTest, UDF_sum_test) {
     WindowIteratorImpl impl(rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
-    char* buf = reinterpret_cast<char*>(alloca(size));
-    int8_t *col = reinterpret_cast<int8_t *>(buf);
+    int8_t* buf = reinterpret_cast<int8_t *>(alloca(size));
+    ::fesql::storage::ListRef list_ref;
+    list_ref.iterator = buf;
+    int8_t *col = reinterpret_cast<int8_t *>(&list_ref);
 
 
     ASSERT_EQ(0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl),
-                                              2, fesql::type::kInt32, col));
+                                              2, fesql::type::kInt32, buf));
     ASSERT_EQ(1 + 11 + 111,
               fesql::udf::v1::sum_int32(col));
 }
