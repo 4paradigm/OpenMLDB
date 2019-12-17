@@ -153,7 +153,6 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
     if (nullptr == input || nullptr == data) {
         return -2;
     }
-    printf("input: %p\n", data);
     WindowIteratorImpl* w = reinterpret_cast<WindowIteratorImpl*>(input);
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     switch (type) {
