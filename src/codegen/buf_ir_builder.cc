@@ -499,8 +499,9 @@ bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
     ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
+    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, col_iter->getType()->getPointerTo());
     builder.CreateStore(col_iter, data_ptr_ptr, false);
-//    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty);
+    col_iter = builder.CreatePointerCast(col_iter, i8_ptr_ty);
 
     ::llvm::Value* val_offset = builder.getInt32(offset);
     ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(type));
