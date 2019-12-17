@@ -42,7 +42,7 @@ bool TabletClient::CreateTable(const std::string& name,
                      uint32_t tid, uint32_t pid,
                      uint64_t ttl, uint32_t seg_cnt,
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
-                     const ::rtidb::api::TTLType& type,
+                     const ::rtidb::common::TTLType& type,
                      bool leader, const std::vector<std::string>& endpoints,
                      uint64_t term, const ::rtidb::api::CompressType compress_type) {
     std::string schema;
@@ -61,7 +61,7 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    if (type == ::rtidb::api::kLatestTime) {
+    if (type == ::rtidb::common::kLatestTime) {
         if (ttl > FLAGS_latest_ttl_max) {
             return false;
         }    
@@ -98,10 +98,10 @@ bool TabletClient::CreateTable(const std::string& name,
                      uint32_t tid, uint32_t pid, uint64_t ttl,
                      bool leader, 
                      const std::vector<std::string>& endpoints,
-                     const ::rtidb::api::TTLType& type,
+                     const ::rtidb::common::TTLType& type,
                      uint32_t seg_cnt, uint64_t term, const ::rtidb::api::CompressType compress_type) {
     ::rtidb::api::CreateTableRequest request;
-    if (type == ::rtidb::api::kLatestTime) {
+    if (type == ::rtidb::common::kLatestTime) {
         if (ttl > FLAGS_latest_ttl_max) {
             return false;
         }    
@@ -444,7 +444,7 @@ bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
 }
 
 bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
-                             const ::rtidb::api::TTLType& type,
+                             const ::rtidb::common::TTLType& type,
                              uint64_t ttl, const std::string& ts_name) {
     ::rtidb::api::UpdateTTLRequest request;
     request.set_tid(tid);

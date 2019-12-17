@@ -29,15 +29,15 @@ typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
 class MemTableTraverseIterator : public TableIterator {
 public:
-	MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, uint64_t expire_value, uint32_t ts_index);
-	~MemTableTraverseIterator();
-	virtual bool Valid() override;
-	virtual void Next() override;
-	virtual void Seek(const std::string& key, uint64_t time) override;
-	virtual rtidb::base::Slice GetValue() const override;
-	virtual std::string GetPK() const override;
-	virtual uint64_t GetKey() const override;
-	virtual void SeekToFirst() override;
+    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::common::TTLType ttl_type, const uint64_t& expire_value, const uint64_t& expire_cnt, uint32_t ts_index);
+    ~MemTableTraverseIterator();
+    virtual bool Valid() override;
+    virtual void Next() override;
+    virtual void Seek(const std::string& key, uint64_t time) override;
+    virtual rtidb::base::Slice GetValue() const override;
+    virtual std::string GetPK() const override;
+    virtual uint64_t GetKey() const override;
+    virtual void SeekToFirst() override;
     virtual uint64_t GetCount() const override;
 
 private:
@@ -50,10 +50,11 @@ private:
     uint32_t seg_idx_;
     KeyEntries::Iterator* pk_it_;
     TimeEntries::Iterator* it_;
-    ::rtidb::api::TTLType ttl_type_;
+    ::rtidb::common::TTLType ttl_type_;
     uint32_t record_idx_;
     uint32_t ts_idx_;
-    uint64_t expire_value_;
+    // uint64_t expire_value_;
+    TTLDesc expire_value_;
     Ticket ticket_;
     uint64_t traverse_cnt_;
 };
@@ -66,8 +67,7 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          const std::map<std::string, uint32_t>& mapping,
-          uint64_t ttl);
+          const std::map<std::string, uint32_t>& mapping);
 
     MemTable(const ::rtidb::api::TableMeta& table_meta);
     virtual ~MemTable();
@@ -154,13 +154,17 @@ public:
         record_cnt_.fetch_add(cnt, std::memory_order_relaxed);
     }
 
-    inline void SetTTL(uint64_t ttl) {
-        new_ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
+    inline void SetTTL(const TTLDesc& ttl) {
+        new_abs_ttl_.store(ttl.abs_ttl * 60 * 1000);
+        new_lat_ttl_.store(ttl.lat_ttl);
     }
 
-    inline void SetTTL(uint32_t ts_idx, uint64_t ttl) {
-        if (ts_idx < new_ttl_vec_.size()) {
-            new_ttl_vec_[ts_idx]->store(ttl * 60 * 1000, std::memory_order_relaxed);
+    inline void SetTTL(const uint32_t ts_idx, const TTLDesc& ttl) {
+        if (ts_idx < new_abs_ttl_vec_.size()) {
+            new_abs_ttl_vec_[ts_idx]->store(ttl.abs_ttl * 60 * 1000, std::memory_order_relaxed);
+        }
+        if (ts_idx < new_lat_ttl_vec_.size()) {
+            new_lat_ttl_vec_[ts_idx]->store(ttl.abs_ttl, std::memory_order_relaxed);
         }
     }
 

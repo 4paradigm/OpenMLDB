@@ -718,7 +718,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 5, 1, 8, mapping, 4);
     table->Init();
-    table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
+    table->SetTTLType(::rtidb::common::TTLType::kLatestTime);
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
     std::string log_path = FLAGS_db_root_path + "/5_1/binlog/";
@@ -1090,7 +1090,7 @@ TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* disk_table_ptr = new DiskTable("test", 1, 1, mapping, 0, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     std::shared_ptr<Table> table(disk_table_ptr);
     table->Init();

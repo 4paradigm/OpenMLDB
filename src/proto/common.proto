@@ -19,6 +19,7 @@ message ColumnDesc {
     optional bool add_ts_idx = 3 [default=false]; 
     optional bool is_ts_col = 4 [default=false];
     optional uint64 ttl = 5;
+    optional TTLDesc ttl_desc = 6;
 }
 
 message ColumnKey {
@@ -28,7 +29,7 @@ message ColumnKey {
 }
 
 message TTLDesc {
-    optional rtidb.api.TTLType ttl_type = 1;
+    optional TTLType ttl_type = 1;
     optional uint64 abs_ttl = 2;
     optional uint64 lat_ttl = 3;
 }
@@ -37,4 +38,13 @@ enum StorageMode {
     kMemory = 1;
     kSSD = 2;
     kHDD = 3;
+}
+
+enum TTLType {
+    kAbsoluteTime = 1;
+    kRelativeTime = 2;
+    // keep the latest record
+    kLatestTime = 3;
+    kAbsAndLat = 4;
+    kAbsOrLat = 5;
 }

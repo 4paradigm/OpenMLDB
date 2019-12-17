@@ -220,6 +220,93 @@ public:
         }
         return NULL;
     }
+
+    Node<K, V>* FindNodeAtPos(uint64_t pos, Node<K, V>** nodes) {
+        Node<K, V>* pos_node = head_->GetNext(0);
+        for (uint64_t idx = 0; idx < pos; idx++) {
+            if (pos_node == NULL) {
+                return NULL;
+            }
+            pos_node = pos_node->GetNext(0);
+        }
+        if (pos_node == NULL) {
+            return NULL;
+        }
+        Node<K, V>* node = head_;
+        // read form head node, so let pos plus one
+        pos++;
+        uint64_t cnt = 0;
+        while (node != NULL) {
+            if (cnt == pos) {
+                return node;
+            }
+            for (uint8_t i = 1; i < node->Height(); i++) {
+                Node<K, V>* next = node->GetNext(i);
+                if (next != NULL && compare_(pos_node->GetKey(), next->GetKey()) <= 0) {
+                    node->SetNext(i, NULL);
+                    nodes[i] = node;
+                }
+            }
+            node = node->GetNext(0);
+            cnt++;
+        }
+        return NULL;
+    }
+
+    Node<K,V>* SplitOnTarget(Node<K, V>* target, Node<K, V>* pre) {
+        tail_.store(target, std::memory_order_release);
+        Node<K, V>* result = target->GetNextNoBarrier(0);
+        for (uint8_t i = 0; i < MaxHeight; i++) {
+            if (pre[i] == NULL) {
+                continue;
+            }
+            pre[i]->SetNext(i, NULL);
+        }
+        return result;
+    }
+
+    Node<K,V>* SplitByKeyAndPos(const K& key, const uint64_t& pos) {
+        Node<K, V>* keypre[MaxHeight];
+        Node<K, V>* pospre[MaxHeight];
+        Node<K, V>* node = GetLast();
+        if (node == NULL || compare_(node->GetKey(), key) < 0) {
+            return NULL;
+        }
+        Node<K, V>* keytarget = FindLessOrEqual(key, keypre);
+        Node<K, V>* postarget = FindNodeAtPos(pos, pospre);
+        if(keytarget == NULL || postarget == NULL) {
+            return NULL;
+        }
+        if (compare_(keytarget.GetKey(), postarget.GetKey()) > 0) {
+            return SplitOnTarget(keytarget, keypre);
+        } else {
+            return SplitOnTarget(postarget, pospre);
+        }     
+    }
+
+    Node<K,V>* SplitByKeyOrPos(const K& key, const uint64_t& pos) {
+        Node<K, V>* keypre[MaxHeight];
+        Node<K, V>* pospre[MaxHeight];
+        Node<K, V>* node = GetLast();
+        Node<K, V>* keytarget = NULL;
+        Node<K, V>* postarget = NULL;
+        if (node != NULL) {
+            keytarget = FindLessOrEqual(key, keypre);
+        }
+        postarget = FindNodeAtPos(pos, pospre);
+        if(keytarget == NULL && postarget == NULL) {
+            return NULL;
+        }
+        if (keytarget==NULL) {
+            return SplitOnTarget(postarget, pospre);
+        } else if (postarget==NULL) {
+            return SplitOnTarget(keytarget, keypre);
+        } else if (compare_(keytarget.GetKey(), postarget.GetKey()) < 0) {
+            return SplitOnTarget(keytarget, keypre);
+        } else {
+            return SplitOnTarget(postarget, pospre);
+        }     
+    }
     
     const V& Get(const K& key) {
         Node<K,V>* node = FindEqual(key);

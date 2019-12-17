@@ -581,7 +581,7 @@ static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& statu
         } else {
             row.push_back("false");
         }
-        if (table_status.ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+        if (table_status.ttl_type() == ::rtidb::common::TTLType::kLatestTime) {
             row.push_back(std::to_string(table_status.ttl()));
         } else {
             row.push_back(std::to_string(table_status.ttl()) + "min");

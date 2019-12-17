@@ -36,12 +36,16 @@ int Table::InitColumnDesc() {
                 key_idx++;
             } else if (column_desc.is_ts_col()) {
                 ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
-                if (column_desc.has_ttl()) {
-                    ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
-                    new_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
+                if (column_desc.has_ttl_desc()) {
+                    abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().abs_ttl() * 60 * 1000));
+                    new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().abs_ttl() * 60 * 1000));
+                    lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().lat_ttl()));
+                    new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().lat_ttl()));
                 } else {
-                    ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl() * 60 * 1000));
-                    new_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl() * 60 * 1000));
+                    abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl_desc().abs_ttl() * 60 * 1000));
+                    new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl_desc().abs_ttl() * 60 * 1000));
+                    lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl_desc().lat_ttl()));
+                    new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl_desc().lat_ttl()));
                 }
                 ts_idx++;
             }
@@ -116,6 +120,39 @@ int Table::InitColumnDesc() {
         PDLOG(INFO, "no index specified with default");
     }
     return 0;
+}
+
+void Table::UpdateTTL() {
+    if (abs_ttl_.load(std::memory_order_relaxed) != new_abs_ttl_.load(std::memory_order_relaxed)) {
+        uint64_t ttl_for_logger = abs_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+        uint64_t new_ttl_for_logger = new_abs_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+        PDLOG(INFO, "update abs_ttl form %lu to %lu, table %s tid %u pid %u",
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_);
+        abs_ttl_.store(new_abs_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    }
+    if (lat_ttl_.load(std::memory_order_relaxed) != new_lat_ttl_.load(std::memory_order_relaxed)) {
+        uint64_t ttl_for_logger = lat_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+        uint64_t new_ttl_for_logger = new_lat_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+        PDLOG(INFO, "update lat_ttl form %lu to %lu, table %s tid %u pid %u",
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_);
+        lat_ttl_.store(new_lat_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    }
+    for (uint32_t i = 0; i < abs_ttl_vec_.size(); i++) {
+        if (abs_ttl_vec_[i]->load(std::memory_order_relaxed) != new_abs_ttl_vec_[i]->load(std::memory_order_relaxed)) {
+            uint64_t ttl_for_logger = abs_ttl_vec_[i]->load(std::memory_order_relaxed) / 1000 / 60;
+            uint64_t new_ttl_for_logger = new_abs_ttl_vec_[i]->load(std::memory_order_relaxed) / 1000 / 60;
+            PDLOG(INFO, "update abs_ttl form %lu to %lu, table %s tid %u pid %u ts_index %u",
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_, i);
+            abs_ttl_vec_[i]->store(new_abs_ttl_vec_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
+        if (lat_ttl_vec_[i]->load(std::memory_order_relaxed) != new_lat_ttl_vec_[i]->load(std::memory_order_relaxed)) {
+            uint64_t ttl_for_logger = lat_ttl_vec_[i]->load(std::memory_order_relaxed);
+            uint64_t new_ttl_for_logger = new_lat_ttl_vec_[i]->load(std::memory_order_relaxed);
+            PDLOG(INFO, "update lat_ttl form %lu to %lu, table %s tid %u pid %u ts_index %u",
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_, i);
+            lat_ttl_vec_[i]->store(new_lat_ttl_vec_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
+    }
 }
 }
 }

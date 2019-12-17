@@ -30,6 +30,22 @@ using ::rtidb::base::Slice;
 class Segment;
 class Ticket;
 
+struct TTLDesc {
+    TTLDesc(const uint64_t& abs, const uint64_t& lat) : abs_ttl(abs), lat_ttl(lat) {}
+    // std::atomic<uint64_t> abs_ttl;
+    // std::atomic<uint64_t> lat_ttl;
+    inline bool Valid(::rtidb::common::TTLType ttl_type) const {
+        switch(ttl_type) {
+            case ::rtidb::common::TTLType::kAbsoluteTime: return abs_ttl != 0;
+            case ::rtidb::common::TTLType::kLatestTime: return lat_ttl != 0;
+            case ::rtidb::common::TTLType::kAbsAndLat: return abs_ttl != 0 && lat_ttl != 0;
+            case ::rtidb::common::TTLType::kAbsOrLat: return abs_ttl != 0 || lat_ttl != 0;
+            default: return false;
+        }
+    }
+    const uint64_t abs_ttl;
+    const uint64_t lat_ttl;
+};
 struct DataBlock {
     // dimension count down
     uint8_t dim_cnt_down;
@@ -157,11 +173,19 @@ public:
     uint64_t Release();
     // gc with specify time, delete the data before time 
     void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
-    void Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_idx_cnt, 
+    void Gc4TTL(const std::map<uint32_t, TTLDesc>& ttl_desc, uint64_t& gc_idx_cnt, 
             uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
-    void Gc4Head(const std::map<uint32_t, uint64_t>& keep_cnt_map, uint64_t& gc_idx_cnt, 
+    void Gc4Head(const std::map<uint32_t, TTLDesc>& ttl_desc, uint64_t& gc_idx_cnt, 
             uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+    void Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64_t& gc_idx_cnt, 
+            uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+    void Gc4TTLAndHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
+            uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+    void Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, uint64_t& gc_idx_cnt, 
+            uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+    void Gc4TTLOrHead(const std::map<uint32_t, TTLDesc>& ttl_desc, 
+            uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);
     MemTableIterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket);
 

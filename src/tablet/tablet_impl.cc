@@ -177,13 +177,13 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
     }
 
     uint64_t ttl = request->value();
-    if ((table->GetTTLType() == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
-            (table->GetTTLType() == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+    if ((table->GetTTLType() == ::rtidb::common::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+            (table->GetTTLType() == ::rtidb::common::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
         response->set_code(132);
-        uint32_t max_ttl = table->GetTTLType() == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        uint32_t max_ttl = table->GetTTLType() == ::rtidb::common::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
         response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
         PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
-                        ttl, ::rtidb::api::TTLType_Name(table->GetTTLType()).c_str(), max_ttl);
+                        ttl, ::rtidb::common::TTLType_Name(table->GetTTLType()).c_str(), max_ttl);
         return;
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
@@ -541,7 +541,7 @@ void TabletImpl::Get(RpcController* controller,
     uint64_t ts = 0;
     int32_t code = 0;
     switch(table->GetTTLType()) {
-        case ::rtidb::api::TTLType::kLatestTime:
+        case ::rtidb::common::TTLType::kLatestTime:
             code = GetLatestIndex(ttl, it,
                         request->ts(), request->type(),
                         request->et(), request->et_type(),
@@ -678,11 +678,11 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
         msg = "tid is zero";
         return -1;
     }
-    ::rtidb::api::TTLType type = table_meta->ttl_type();
-    uint64_t ttl = table_meta->ttl();
-    if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
-            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
-        uint32_t max_ttl = type == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+    ::rtidb::common::TTLType type = table_meta->ttl_desc().ttl_type();
+    uint64_t ttl = table_meta->ttl_desc().abs_ttl();
+    if ((table_meta->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) ||
+            (table_meta->ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
+        uint32_t max_ttl = type == ::rtidb::common::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
         msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
         return -1;
     }
@@ -704,11 +704,18 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                     msg = "ttl column type must be int64, uint64, timestamp";
                     return -1;
                 }
-                if (column_desc.has_ttl()) {
+                if (column_desc.has_ttl_desc()) {
+                    if ((column_desc.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) ||
+                            (column_desc.ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
+                        uint32_t max_ttl = column_desc.ttl_desc().ttl_type() == ::rtidb::common::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+                        msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
+                        return -1;
+                    }
+                } else if (column_desc.has_ttl()) {
                     ttl = column_desc.ttl();
-                    if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
-                            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
-                        uint32_t max_ttl = type == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+                    if ((type == ::rtidb::common::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+                            (type == ::rtidb::common::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+                        uint32_t max_ttl = type == ::rtidb::common::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
                         msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
                         return -1;
                     }
@@ -1221,7 +1228,7 @@ void TabletImpl::Scan(RpcController* controller,
     uint32_t count = 0;
     int32_t code = 0;
     switch(table->GetTTLType()) {
-        case ::rtidb::api::TTLType::kLatestTime:
+        case ::rtidb::common::TTLType::kLatestTime:
             code = ScanLatestIndex(ttl, it, request->limit(),
                         request->st(), request->st_type(),
                         request->et(), request->et_type(),
@@ -1354,7 +1361,7 @@ void TabletImpl::Count(RpcController* controller,
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
     switch(table->GetTTLType()) {
-        case ::rtidb::api::TTLType::kLatestTime:
+        case ::rtidb::common::TTLType::kLatestTime:
             code = CountLatestIndex(ttl, it,
                         request->st(), request->st_type(),
                         request->et(), request->et_type(),
@@ -2877,7 +2884,7 @@ void TabletImpl::CreateTable(RpcController* controller,
         response->set_msg("table already exists");
         return;
     } 
-    ::rtidb::api::TTLType type = table_meta->ttl_type();
+    ::rtidb::common::TTLType type = table_meta->ttl_type();
     uint64_t ttl = table_meta->ttl();
     std::string name = table_meta->name();
     PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", 
@@ -2936,7 +2943,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
     task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     PDLOG(INFO, "create table with id %u pid %u name %s ttl %llu type %s", 
-                tid, pid, name.c_str(), ttl, ::rtidb::api::TTLType_Name(type).c_str());
+                tid, pid, name.c_str(), ttl, ::rtidb::common::TTLType_Name(type).c_str());
     gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
 }
 

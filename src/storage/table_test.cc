@@ -204,7 +204,7 @@ TEST_F(TableTest, SchedGcHead) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
-    table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
+    table->SetTTLType(::rtidb::common::TTLType::kLatestTime);
     table->Init();
     table->Put("test", 2, "test1", 5);
     uint64_t bytes = table->GetRecordByteSize();
@@ -225,7 +225,7 @@ TEST_F(TableTest, SchedGcHead1) {
     mapping.insert(std::make_pair("idx0", 0));
     uint64_t keep_cnt = 500;
     MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, keep_cnt);
-    table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
+    table->SetTTLType(::rtidb::common::TTLType::kLatestTime);
     table->Init();
 	uint64_t ts = 0;
     for (int i = 0; i < 10; i++) {
@@ -404,7 +404,7 @@ TEST_F(TableTest, TableIterator) {
 
     MemTable* table1 = new MemTable("tx_log", 1, 1, 8, mapping, 2);
     table1->Init();
-    table1->SetTTLType(::rtidb::api::TTLType::kLatestTime);
+    table1->SetTTLType(::rtidb::common::TTLType::kLatestTime);
 
     table1->Put("pk", 9527, "test1", 5);
     table1->Put("pk1", 9527, "test2", 5);

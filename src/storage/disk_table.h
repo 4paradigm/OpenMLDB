@@ -229,9 +229,9 @@ private:
 class DiskTableTraverseIterator : public TableIterator {
 public:
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, 
-                ::rtidb::api::TTLType ttl_type, uint64_t expire_value);
+                ::rtidb::common::TTLType ttl_type, uint64_t expire_value);
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-                            ::rtidb::api::TTLType ttl_type, uint64_t expire_value, int32_t ts_idx);
+                            ::rtidb::common::TTLType ttl_type, uint64_t expire_value, int32_t ts_idx);
     virtual ~DiskTableTraverseIterator();
     virtual bool Valid() override;
     virtual void Next() override;
@@ -250,7 +250,7 @@ private:
     rocksdb::DB* db_;
     rocksdb::Iterator* it_;
     const rocksdb::Snapshot* snapshot_;
-    ::rtidb::api::TTLType ttl_type_;
+    ::rtidb::common::TTLType ttl_type_;
     uint32_t record_idx_;
     uint64_t expire_value_;
     std::string pk_;
@@ -269,7 +269,7 @@ public:
                 uint32_t pid,
                 const std::map<std::string, uint32_t>& mapping,
                 uint64_t ttl,
-                ::rtidb::api::TTLType ttl_type,
+                ::rtidb::common::TTLType ttl_type,
                 ::rtidb::common::StorageMode storage_mode,
                 const std::string& db_root_path);
 

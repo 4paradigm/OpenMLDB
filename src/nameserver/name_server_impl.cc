@@ -1329,9 +1329,9 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
 int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
-    ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
+    ::rtidb::common::TTLType ttl_type = ::rtidb::common::TTLType::kAbsoluteTime;
     if (table_info->ttl_type() == "kLatestTime") {
-        ttl_type = ::rtidb::api::TTLType::kLatestTime;
+        ttl_type = ::rtidb::common::TTLType::kLatestTime;
     } else if (table_info->ttl_type() != "kAbsoluteTime") {
         return -1;
     }
@@ -1364,6 +1364,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     table_meta.set_schema(schema);
     table_meta.set_ttl_type(ttl_type);
     table_meta.set_compress_type(compress_type);
+    table_meta.set_allocated_ttl_desc(table_info->mutable_ttl_desc());
     table_meta.set_storage_mode(storage_mode);
     if (table_info->has_key_entry_max_height()) {
         table_meta.set_key_entry_max_height(table_info->key_entry_max_height());
@@ -2173,8 +2174,8 @@ void NameServerImpl::AddTableField(RpcController* controller,
 }
 
 void NameServerImpl::CreateTable(RpcController* controller, 
-        const CreateTableRequest* request, 
-        GeneralResponse* response, 
+        const CreateTableRequest* request,
+        GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
@@ -2205,13 +2206,13 @@ void NameServerImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max) 
-            || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
+    if ((table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) || (table_info->ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
         response->set_code(307);
-        uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        uint32_t max_ttl = table_info->ttl_desc().ttl_type() == ::rtidb::common::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        uint64_t ttl = table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max ? table_info->ttl_desc().abs_ttl() : table_info->ttl_desc().lat_ttl();
         response->set_msg("invalid parameter");
         PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
-                        table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
+                        ttl, ::rtidb::common::TTLType_Name(table_info->ttl_desc().ttl_type()).c_str(), max_ttl);
         return;
     }
     if (table_info->table_partition_size() > 0) {
@@ -5014,8 +5015,8 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         return;
     }
 
-    ::rtidb::api::TTLType ttl_type;
-    bool ok = ::rtidb::api::TTLType_Parse(request->ttl_type(), &ttl_type);
+    ::rtidb::common::TTLType ttl_type;
+    bool ok = ::rtidb::common::TTLType_Parse(request->ttl_type(), &ttl_type);
     if (!ok) {
         PDLOG(WARNING, "fail to parse ttl_type %s", request->ttl_type().c_str());
         response->set_code(307);
@@ -5206,7 +5207,7 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTabletInfo(const std::string& end
 }
 
 bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
-        int32_t tid, int32_t pid, const ::rtidb::api::TTLType& type,
+        int32_t tid, int32_t pid, const ::rtidb::common::TTLType& type,
         uint64_t ttl, const std::string& ts_name) {
     std::shared_ptr<TabletInfo> tablet = GetTabletInfo(endpoint);
     if (!tablet) {

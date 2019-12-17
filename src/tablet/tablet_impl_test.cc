@@ -210,7 +210,7 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::rtidb::common::TTLType::kLatestTime);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
@@ -347,7 +347,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(0);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::rtidb::common::TTLType::kAbsoluteTime);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
@@ -484,7 +484,7 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_ttl(5);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::rtidb::common::TTLType::kLatestTime);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
@@ -696,7 +696,7 @@ TEST_F(TabletImplTest, Get) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(5);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::rtidb::common::TTLType::kLatestTime);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
@@ -760,7 +760,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         table_meta->set_pid(0);
         table_meta->set_wal(true);
         table_meta->set_ttl(100);
-        table_meta->set_ttl_type(::rtidb::api::kAbsoluteTime);
+        table_meta->set_ttl_type(::rtidb::common::kAbsoluteTime);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
@@ -773,7 +773,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_type(::rtidb::common::kAbsoluteTime);
         request.set_value(0);
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -785,7 +785,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_type(::rtidb::common::kAbsoluteTime);
         request.set_value(60*24*365*30*2);
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -797,7 +797,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::rtidb::common::kLatestTime);
         request.set_value(0);
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -830,7 +830,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     ::rtidb::api::UpdateTTLRequest request;
     request.set_tid(id);
     request.set_pid(0);
-    request.set_type(::rtidb::api::kAbsoluteTime);
+    request.set_type(::rtidb::common::kAbsoluteTime);
     ::rtidb::api::UpdateTTLResponse response;
     //ExecuteGcRequest 
     ::rtidb::api::ExecuteGcRequest request_execute;
@@ -991,7 +991,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         table_meta->set_pid(0);
         table_meta->set_wal(true);
         table_meta->set_ttl(1);
-        table_meta->set_ttl_type(::rtidb::api::kLatestTime);
+        table_meta->set_ttl_type(::rtidb::common::kLatestTime);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
@@ -1004,7 +1004,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::rtidb::common::kLatestTime);
         request.set_value(0);
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -1016,7 +1016,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::rtidb::common::kLatestTime);
         request.set_value(20000);
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -1028,7 +1028,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_type(::rtidb::common::kAbsoluteTime);
         request.set_value(0);
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -1040,7 +1040,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::rtidb::common::kLatestTime);
         request.set_value(2);
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -1453,7 +1453,7 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
-    table_meta->set_ttl_type(::rtidb::api::kLatestTime);
+    table_meta->set_ttl_type(::rtidb::common::kLatestTime);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -2238,7 +2238,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(3);
-        table_meta->set_ttl_type(::rtidb::api::kLatestTime);
+        table_meta->set_ttl_type(::rtidb::common::kLatestTime);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
@@ -2310,7 +2310,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::rtidb::common::kLatestTime);
         request.set_value(2);
         ::rtidb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -2350,7 +2350,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::rtidb::api::kLatestTime);
+        request.set_type(::rtidb::common::kLatestTime);
         request.set_value(3);
         ::rtidb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -2744,7 +2744,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         table_meta->set_pid(1);
         // 3 minutes
         table_meta->set_ttl(3);
-        table_meta->set_ttl_type(::rtidb::api::kAbsoluteTime);
+        table_meta->set_ttl_type(::rtidb::common::kAbsoluteTime);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
@@ -2823,7 +2823,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_type(::rtidb::common::kAbsoluteTime);
         request.set_value(1);
         ::rtidb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -2911,7 +2911,7 @@ TEST_F(TabletImplTest, TestGetType) {
     table_meta->set_pid(1);
     table_meta->set_ttl(4);
     table_meta->set_wal(true);
-    table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+    table_meta->set_ttl_type(::rtidb::common::TTLType::kLatestTime);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -3116,7 +3116,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Default){
         table_meta->set_ttl(0);
         table_meta->set_mode(::rtidb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::rtidb::common::TTLType::kLatestTime);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
@@ -3148,7 +3148,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Specify){
         table_meta->set_ttl(0);
         table_meta->set_mode(::rtidb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_ttl_type(::rtidb::common::TTLType::kLatestTime);
         table_meta->set_key_entry_max_height(2);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
@@ -3180,7 +3180,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default){
         table_meta->set_ttl(0);
         table_meta->set_mode(::rtidb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::rtidb::common::TTLType::kAbsoluteTime);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
@@ -3211,7 +3211,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify){
         table_meta->set_ttl(0);
         table_meta->set_mode(::rtidb::api::kTableLeader);
         table_meta->set_wal(true);
-        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        table_meta->set_ttl_type(::rtidb::common::TTLType::kAbsoluteTime);
         table_meta->set_key_entry_max_height(8);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
