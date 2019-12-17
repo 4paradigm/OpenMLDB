@@ -30,14 +30,15 @@ enum TableStat {
 class Table {
 
 public:
-    // Table() {}
+    Table() {}
     Table(::rtidb::common::StorageMode storage_mode, const std::string& name, uint32_t id, uint32_t pid, 
-            bool is_leader, uint64_t ttl_offset,
-            const std::map<std::string, uint32_t>& mapping,
-            ::rtidb::api::CompressType compress_type):
-            storage_mode_(storage_mode),
-            name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()), ttl_offset_(ttl_offset), is_leader_(is_leader),
-            mapping_(mapping), compress_type_(compress_type) {}
+            uint64_t ttl, bool is_leader, uint64_t ttl_offset,
+            const std::map<std::string, uint32_t>& mapping, 
+            ::rtidb::common::TTLType ttl_type, ::rtidb::api::CompressType compress_type) :
+        storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
+        abs_ttl_(ttl), new_abs_ttl_(ttl), lat_ttl_(ttl/60/1000), new_lat_ttl_(ttl/60/1000),
+        ttl_offset_(ttl_offset), is_leader_(is_leader),
+        mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {}
     virtual ~Table() {}
     virtual bool Init() = 0;
 
@@ -195,6 +196,7 @@ public:
 
 protected:
     void UpdateTTL();
+    bool InitFromMeta();
 
     ::rtidb::common::StorageMode storage_mode_;
     std::string name_;

@@ -154,5 +154,27 @@ void Table::UpdateTTL() {
         }
     }
 }
+
+bool Table::InitFromMeta() {
+    if (InitColumnDesc() < 0) {
+        PDLOG(WARNING, "init column desc failed, tid %u pid %u", id_, pid_);
+        return false;
+    }
+    if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
+        is_leader_ = false;
+    }
+    if (table_meta_.has_ttl_desc()) {
+        abs_ttl_ = table_meta_.ttl_desc().abs_ttl();
+        lat_ttl_ = table_meta_.ttl_desc().lat_ttl();
+        new_abs_ttl_.store(abs_ttl_.load());
+        new_lat_ttl_.store(lat_ttl_.load());
+        ttl_type_ = table_meta_.ttl_desc().ttl_type();
+    } 
+    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
+    if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
+    idx_cnt_ = mapping_.size();
+    return true;
+}
+
 }
 }

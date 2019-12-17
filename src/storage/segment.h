@@ -32,9 +32,7 @@ class Ticket;
 
 struct TTLDesc {
     TTLDesc(const uint64_t& abs, const uint64_t& lat) : abs_ttl(abs), lat_ttl(lat) {}
-    // std::atomic<uint64_t> abs_ttl;
-    // std::atomic<uint64_t> lat_ttl;
-    inline bool Valid(::rtidb::common::TTLType ttl_type) const {
+    inline bool HasExpire(::rtidb::common::TTLType ttl_type) const {
         switch(ttl_type) {
             case ::rtidb::common::TTLType::kAbsoluteTime: return abs_ttl != 0;
             case ::rtidb::common::TTLType::kLatestTime: return lat_ttl != 0;

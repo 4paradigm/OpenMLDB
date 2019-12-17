@@ -229,9 +229,9 @@ private:
 class DiskTableTraverseIterator : public TableIterator {
 public:
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, 
-                ::rtidb::common::TTLType ttl_type, uint64_t expire_value);
+                ::rtidb::common::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt);
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-                            ::rtidb::common::TTLType ttl_type, uint64_t expire_value, int32_t ts_idx);
+                            ::rtidb::common::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt, int32_t ts_idx);
     virtual ~DiskTableTraverseIterator();
     virtual bool Valid() override;
     virtual void Next() override;
@@ -252,7 +252,8 @@ private:
     const rocksdb::Snapshot* snapshot_;
     ::rtidb::common::TTLType ttl_type_;
     uint32_t record_idx_;
-    uint64_t expire_value_;
+    // uint64_t expire_value_;
+    TTLDesc expire_value_;
     std::string pk_;
     uint64_t ts_;
     bool has_ts_idx_;
@@ -281,8 +282,6 @@ public:
     virtual ~DiskTable();
 
     bool InitColumnFamilyDescriptor();
-
-    bool InitTableProperty();
 
     virtual bool Init() override;
 

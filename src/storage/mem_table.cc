@@ -37,9 +37,9 @@ MemTable::MemTable(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
-        const std::map<std::string, uint32_t>& mapping
-        ): Table(::rtidb::common::StorageMode::kMemory, name, id, pid, true, 60 * 1000, mapping,
-            ::rtidb::api::CompressType::kNoCompress), seg_cnt_(seg_cnt),
+         const std::map<std::string, uint32_t>& mapping,
+        uint64_t ttl): Table(::rtidb::common::StorageMode::kMemory, name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
+            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::api::CompressType::kNoCompress), seg_cnt_(seg_cnt),
     segments_(NULL), 
     enable_gc_(false), 
     record_cnt_(0), time_offset_(0),
@@ -47,7 +47,8 @@ MemTable::MemTable(const std::string& name,
 
 MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) :
         Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(),
-                true, 60 * 1000, std::map<std::string, uint32_t>(),
+                0, true, 60 * 1000, std::map<std::string, uint32_t>(),
+                ::rtidb::common::TTLType::kAbsoluteTime, 
                 ::rtidb::api::CompressType::kNoCompress) {
     seg_cnt_ = 8;
     segments_ = NULL; 
@@ -77,32 +78,12 @@ MemTable::~MemTable() {
 bool MemTable::Init() {
     key_entry_max_height_ = FLAGS_key_entry_max_height;
     ttl_offset_ = FLAGS_gc_safe_offset * 60 * 1000;
+    if(!InitFromMeta()) {
+        return false;
+    }
     if (table_meta_.seg_cnt() > 0) {
         seg_cnt_ = table_meta_.seg_cnt();
     }
-    if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
-        is_leader_ = false;
-    }
-    if (InitColumnDesc() < 0) {
-        PDLOG(WARNING, "init column desc failed");
-        return false;
-    }
-    if (table_meta_.has_ttl_desc()) {
-        abs_ttl_ = table_meta_.ttl_desc().abs_ttl();
-        lat_ttl_ = table_meta_.ttl_desc().lat_ttl();
-        new_abs_ttl_.store(abs_ttl_.load());
-        new_lat_ttl_.store(lat_ttl_.load());
-        ttl_type_ = table_meta_.ttl_desc().ttl_type();
-    } else { // TODO@pxc reduntant
-        // if (table_meta_.has_ttl()) {
-        //     ttl_ = table_meta_.ttl() * 60 * 1000;
-        //     new_ttl_.store(ttl_.load());
-        // }
-        // if (table_meta_.has_ttl_type()) ttl_type_ = table_meta_.ttl_type();
-    }
-
-    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
-    if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
     if (table_meta_.has_key_entry_max_height() && table_meta_.key_entry_max_height() <= FLAGS_skiplist_max_height
             && table_meta_.key_entry_max_height() > 0) {
         key_entry_max_height_ = table_meta_.key_entry_max_height();
@@ -113,7 +94,6 @@ bool MemTable::Init() {
             key_entry_max_height_ = FLAGS_absolute_default_skiplist_height;
         }
     }
-    idx_cnt_ = mapping_.size();
 
     segments_ = new Segment**[idx_cnt_];
     for (uint32_t i = 0; i < idx_cnt_; i++) {
@@ -692,7 +672,7 @@ uint64_t MemTableTraverseIterator::GetCount() const {
 }
 
 bool MemTableTraverseIterator::IsExpired() {
-    if (expire_value_.Valid(ttl_type_)) {
+    if (!expire_value_.HasExpire(ttl_type_)) {
         return false;
     }
     if (ttl_type_ == ::rtidb::common::TTLType::kLatestTime) {

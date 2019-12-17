@@ -697,7 +697,9 @@ void Segment::Gc4TTLOrHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
+        Slice key = it->GetKey();
         it->Next();
+        uint32_t empty_cnt = 0;
         for (const auto& kv : ttl_desc) {
             auto pos = ts_idx_map_.find(kv.first);
             if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ || (kv.second.lat_ttl == 0 && kv.second.abs_ttl == 0)) {
@@ -717,6 +719,27 @@ void Segment::Gc4TTLOrHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
                     }
                 }
                 if (entry->entries.IsEmpty()) {
+                    empty_cnt++;
+                }
+            }
+            uint64_t entry_gc_idx_cnt = 0;
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            gc_idx_cnt += entry_gc_idx_cnt;
+        }
+        if (empty_cnt == ts_cnt_) {
+            bool is_empty = true;
+            ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                for (uint32_t i = 0; i < ts_cnt_; i++) {
+                    if (!entry_arr[i]->entries.IsEmpty()) {
+                        is_empty = false;
+                        break;
+                    }
+                }
+                if (is_empty) {
                     entry_node = entries_->Remove(key);
                 }
             }
@@ -724,11 +747,6 @@ void Segment::Gc4TTLOrHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
                 std::lock_guard<std::mutex> lock(gc_mu_);
                 entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
             }
-            uint64_t entry_gc_idx_cnt = 0;
-            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-            gc_idx_cnt += entry_gc_idx_cnt;
         }
     }
     PDLOG(DEBUG, "[Gc4TTLOrHead] segment gc consumed %lld, count %lld",

@@ -253,7 +253,7 @@ public:
         return NULL;
     }
 
-    Node<K,V>* SplitOnTarget(Node<K, V>* target, Node<K, V>* pre) {
+    Node<K,V>* SplitOnTarget(Node<K, V>* target, Node<K, V>** pre) {
         tail_.store(target, std::memory_order_release);
         Node<K, V>* result = target->GetNextNoBarrier(0);
         for (uint8_t i = 0; i < MaxHeight; i++) {
@@ -277,7 +277,7 @@ public:
         if(keytarget == NULL || postarget == NULL) {
             return NULL;
         }
-        if (compare_(keytarget.GetKey(), postarget.GetKey()) > 0) {
+        if (compare_(keytarget->GetKey(), postarget->GetKey()) > 0) {
             return SplitOnTarget(keytarget, keypre);
         } else {
             return SplitOnTarget(postarget, pospre);
@@ -301,7 +301,7 @@ public:
             return SplitOnTarget(postarget, pospre);
         } else if (postarget==NULL) {
             return SplitOnTarget(keytarget, keypre);
-        } else if (compare_(keytarget.GetKey(), postarget.GetKey()) < 0) {
+        } else if (compare_(keytarget->GetKey(), postarget->GetKey()) < 0) {
             return SplitOnTarget(keytarget, keypre);
         } else {
             return SplitOnTarget(postarget, pospre);
