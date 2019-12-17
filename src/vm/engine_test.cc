@@ -124,7 +124,6 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
 }
 void BuildWindow(int8_t** buf) {
     ::fesql::type::TableDef table;
-    uint32_t size = 0;
     BuildTableDef(table);
     std::vector<fesql::storage::Row> rows;
     {
