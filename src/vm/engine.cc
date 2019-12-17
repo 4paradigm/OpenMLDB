@@ -149,13 +149,13 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
 
                 std::vector<::fesql::storage::Row>& in_buffers =
                     temp_buffers[prev->idx];
+//                DLOG(INFO) << "in_buffer size " << in_buffers.size();
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[project_op->idx];
                 if (project_op->window_agg) {
                     auto key_iter = project_op->w.keys.cbegin();
                     ::fesql::type::Type key_type = key_iter->first;
                     uint32_t key_idx = key_iter->second;
-
                     for (auto row : in_buffers) {
                         row_view->Reset(row.buf, row.size);
                         int8_t* output = NULL;
@@ -293,9 +293,6 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                                 }
                             }
                         }
-                        DLOG(INFO) << "get table iterator when index_name: "
-                                   << project_op->w.index_name
-                                   << " key_name: " << key_name;
                         // scan window with single key
                         std::unique_ptr<::fesql::storage::TableIterator>
                             window_it = status->table->NewIterator(
