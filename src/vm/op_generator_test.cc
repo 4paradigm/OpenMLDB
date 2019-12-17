@@ -151,8 +151,14 @@ TEST_F(OpGeneratorTest, test_normal) {
         const Status exp_status(::fesql::common::kOk, "ok");
         AssertOpGen(table_def, &op, sql, exp_status);
         ASSERT_EQ(2, op.ops.size());
-        ASSERT_EQ(0, op.ops[0]->idx);
-        ASSERT_EQ(kOpScan, op.ops[0]->type);
+
+        {
+            ASSERT_EQ(0, op.ops[0]->idx);
+            ASSERT_EQ(kOpScan, op.ops[0]->type);
+            ScanOp* scan_op = dynamic_cast<ScanOp*>(op.ops[0]);
+            ASSERT_EQ(10u, scan_op->limit);
+        }
+
         ASSERT_EQ(1, op.ops[1]->idx);
         ASSERT_EQ(kOpProject, op.ops[1]->type);
     }
@@ -175,8 +181,12 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
         const Status exp_status(::fesql::common::kOk, "ok");
         AssertOpGen(table_def, &op, sql, exp_status);
         ASSERT_EQ(2, op.ops.size());
-        ASSERT_EQ(0, op.ops[0]->idx);
-        ASSERT_EQ(kOpScan, op.ops[0]->type);
+        {
+            ASSERT_EQ(0, op.ops[0]->idx);
+            ASSERT_EQ(kOpScan, op.ops[0]->type);
+            ASSERT_EQ(kOpScan, op.ops[0]->type);
+            ScanOp* scan_op = dynamic_cast<ScanOp*>(op.ops[0]);
+        }
 
         ASSERT_EQ(1, op.ops[1]->idx);
         ASSERT_EQ(kOpProject, op.ops[1]->type);
