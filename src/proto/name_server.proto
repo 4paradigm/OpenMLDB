@@ -1,4 +1,5 @@
 import "common.proto";
+import "tablet.proto";
 package rtidb.nameserver;
 
 option cc_generic_services = true;
@@ -71,10 +72,14 @@ message TableInfo {
 
 message CreateTableRequest {
     required TableInfo table_info = 1;
+    optional ReplicaClusterByNsRequest zone_info = 2;
+    optional rtidb.api.TaskInfo task_info = 3;
 }
 
 message DropTableRequest {
     required string name = 1;
+    optional ReplicaClusterByNsRequest zone_info = 2;
+    optional rtidb.api.TaskInfo task_info = 3;
 }
 
 message ShowTableRequest {
@@ -201,6 +206,11 @@ message RecoverTableData {
     optional uint32 concurrency = 4;
 }
 
+message CreateTableData {
+    optional string alias = 1;
+    optional TableInfo table_info = 2;
+}
+
 message ChangeLeaderData {
     optional string name = 1;
     optional uint32 tid = 2;
@@ -221,6 +231,7 @@ message OPStatus {
     required string task_type = 6;
     optional string name = 7;
     optional uint32 pid = 8;
+    optional bool for_replica_cluster = 9 [default = false];   
 }
 
 message GetTablePartitionRequest {
@@ -300,7 +311,6 @@ message AddReplicaClusterByNsResponse {
     optional string msg = 4;
 }
 
-
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -330,4 +340,7 @@ service NameServer {
     rpc RemoveReplicaCluster(RemoveReplicaOfRequest) returns (GeneralResponse);
     rpc AddReplicaClusterByNs(ReplicaClusterByNsRequest) returns (AddReplicaClusterByNsResponse);
     rpc RemoveReplicaClusterByNs(ReplicaClusterByNsRequest) returns (GeneralResponse);
+    
+    rpc GetTaskStatus(rtidb.api.TaskStatusRequest) returns (rtidb.api.TaskStatusResponse);
+    rpc DeleteOPTask(rtidb.api.DeleteTaskRequest) returns (rtidb.api.GeneralResponse);
 }

@@ -172,6 +172,11 @@ static inline int GetNowHour() {
  	return t.tm_hour;
 }
 
+static inline int64_t ParseTimeToSecond(const std::string& time_str, const std::string& format_time) {
+    struct tm timeinfo;
+    strptime(time_str.c_str(), format_time.c_str(), &timeinfo);
+    return mktime(&timeinfo);
+}
 
 }
 }

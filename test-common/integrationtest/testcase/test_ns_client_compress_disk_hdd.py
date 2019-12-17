@@ -81,6 +81,7 @@ class TestCreateTableByNsClient(TestCaseBase):
             *column_descs)
         m[0].append(("compress_type",'"snappy"'))
         m[0].append(("storage_mode",'"kHDD"'))
+        m[0].append(("partition_num",'1'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         infoLogger.info(rs)

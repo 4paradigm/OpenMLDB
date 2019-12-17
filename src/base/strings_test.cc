@@ -37,7 +37,6 @@ TEST_F(StringsTest, Split) {
 }
 
 TEST_F(StringsTest, ReadableTime) {
-
     std::string result = HumanReadableTime(60000);
     ASSERT_EQ("1m", result);
     result = HumanReadableTime(600);
@@ -50,6 +49,11 @@ TEST_F(StringsTest, ReadableTime) {
     ASSERT_EQ("5h", result);
     result = HumanReadableTime(60000 * 60 * 24 * 5 + 100);
     ASSERT_EQ("5d", result);
+}
+
+TEST_F(StringsTest, getNowTimeInSecond) {
+    ASSERT_EQ(1573620180, ParseTimeToSecond("20191113124300", "%Y%m%d%H%M%S"));
+    ASSERT_EQ(1582952399, ParseTimeToSecond("20200229125959", "%Y%m%d%H%M%S"));
 }
 
 }

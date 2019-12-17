@@ -15,16 +15,6 @@ class TestAutoRecoverTable(TestCaseBase):
     def createtable_put(self, data_count, data_thread=2):
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(self.tname), '"kAbsoluteTime"', 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-9"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-9"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"2-9"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": self.tname,
             "ttl": 144000,

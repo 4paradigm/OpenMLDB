@@ -10,10 +10,12 @@ from libs.logger import infoLogger
 import collections
 
 
+
 @ddt.ddt
 class TestCreateTableByNsClient(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
+        
 
     @ddt.data(
         ('"t{}"'.format(time.time()), None, 144000, 8,
@@ -131,7 +133,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertNotIn('testvalue0', self.get(self.slave1, tid, pid, 'testkey0', 0))
         self.assertIn('testvalue1', self.get(self.slave1, tid, pid, 'testkey0', 0))
         self.ns_drop(self.ns_leader, name)
-
+        
 
     def test_create_name_repeat(self):
         """
@@ -616,6 +618,55 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(pid_map[self.slave1], 29)
         self.assertEqual(pid_map[self.slave2], 29)
         self.clear_ns_table(self.ns_leader);
+
+    @ddt.data(
+        ('Create table ok',
+        ('column_desc', {'name': 'k1', 'type': 'string', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k2', 'type': 'int32', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k3', 'type': 'double', 'add_ts_idx': 'false'}),
+        ),
         
+        ('Create table ok',
+        ('column_desc', {'name': 'k1', 'type': 'string'}),
+        ('column_desc', {'name': 'k2', 'type': 'int32'}),
+        ('column_desc', {'name': 'k3', 'type': 'double'}),
+        ('column_key', {'index_name': 'k1', 'col_name': 'k1'}),
+        ('column_key', {'index_name': 'k2', 'col_name': 'k2'})),
+    )
+    @ddt.unpack
+    def test_create_showtable_record_cnt(self, exp_msg, *eles):
+        """
+        使用文件column_key创建表，put数据后showtable检查record的数量
+        """
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+            "name":name,
+            "ttl": 120,
+            "partition_num": 3,
+            "replica_num": 3,
+            "column_desc":[],
+            "column_key":[]
+        }
+        for item in eles:
+            table_meta[item[0]].append(item[1])
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        infoLogger.info(rs)
+        self.assertIn(exp_msg, rs)
+        self.ns_put_multi(self.ns_leader, name, 10, ['card0', '123', '1.1'])
+        self.ns_put_multi(self.ns_leader, name, 10, ['card1', '123', '2.2'])
+        self.ns_put_multi(self.ns_leader, name, 10, ['card1', '233', '3.3'])
+        self.ns_put_multi(self.ns_leader, name, 10, ['card0', '233', '4.4'])
+        time.sleep(2)
+        table_info = self.showtable_with_tablename(self.ns_leader, name)
+        table_info = self.parse_tb(table_info, ' ', [1,2,3], [9])
+        record_cnt = 0
+        for k, v in table_info.items():
+            record_cnt += int(v[0])
+        self.assertEqual(record_cnt, 12)
+        self.ns_drop(self.ns_leader, name)
+
+
 if __name__ == "__main__":
     load(TestCreateTableByNsClient)

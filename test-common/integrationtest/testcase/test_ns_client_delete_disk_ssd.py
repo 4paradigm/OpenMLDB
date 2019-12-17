@@ -28,7 +28,7 @@ class TestDelete(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 0,
-            "partition_num": 8,
+            "partition_num": 1,
             "replica_num": 3,
             "storage_mode": storage_mode,
         }
@@ -75,7 +75,7 @@ class TestDelete(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 0,
-            "partition_num": 8,
+            "partition_num": 1,
             "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
