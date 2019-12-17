@@ -66,7 +66,7 @@ class TestHasTsCol(TestCaseBase):
         rs11 = self.ns_count_with_pair(self.ns_leader, name, 'mcc1', 'mcc', 'ts3')
         self.assertIn('ts name not found', rs11)
         self.ns_drop(self.ns_leader,name)
-        time.sleep(1)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -83,6 +83,7 @@ class TestHasTsCol(TestCaseBase):
                 "name": name,
                 "ttl": 0,
             "storage_mode": storage_mode,
+            "partition_num" : 1,
                "column_desc":[
                    {"name": "card", "type": "string", "add_ts_idx": "true"},
                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -130,7 +131,7 @@ class TestHasTsCol(TestCaseBase):
         rs7 = self.ns_scan_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '25', '0', 'ts2', '1')
         self.assertEqual(len(rs7), 1)
         self.ns_drop(self.ns_leader,name)
-        time.sleep(1)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -147,6 +148,7 @@ class TestHasTsCol(TestCaseBase):
                 "name": name,
                 "ttl": 0,
             "storage_mode": storage_mode,
+            "partition_num" : 1,
                "column_desc":[
                    {"name": "card", "type": "string", "add_ts_idx": "true"},
                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -190,10 +192,6 @@ class TestHasTsCol(TestCaseBase):
         rs7 = self.ns_get_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '0', 'ts2')
         self.assertEqual(len(rs7), 5)
         self.ns_drop(self.ns_leader,name)
-        time.sleep(1)
-
-
-
 
 if __name__ == "__main__":
     load(TestHasTsCol)

@@ -119,9 +119,9 @@ class TestDelReplicaNs(TestCaseBase):
         self.assertIn('testvalue2', rs12)
         self.assertIn('testvalue3', rs12)
         self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
-        ['kHDD'],
     )
     @ddt.unpack
     def test_delreplica_drop_table(self,storage_mode):
@@ -131,12 +131,6 @@ class TestDelReplicaNs(TestCaseBase):
         """
         name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
-        #                              ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #                              ('table_partition', '"{}"'.format(self.slave1), '"0-2"', 'false'),
-        #                              ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl_type": "kLatestTime",
@@ -164,113 +158,9 @@ class TestDelReplicaNs(TestCaseBase):
         self.assertNotIn((tid, 0), rs6.keys())
         self.ns_drop(self.ns_leader, name)
 
-    @ddt.data(
-        ('notexsit', None, None, 'Fail to delreplica','kSSD'),
-        (None, 10, None, 'Fail to delreplica','kSSD'),
-        (None, None, leader, 'Fail to delreplica','kSSD'),
-        (None, None, '127.1.1.1:6666', 'Fail to delreplica','kSSD'),
-        ('notexsit', None, None, 'Fail to delreplica','kHDD'),
-        (None, 10, None, 'Fail to delreplica','kHDD'),
-        (None, None, leader, 'Fail to delreplica','kHDD'),
-        (None, None, '127.1.1.1:6666', 'Fail to delreplica','kHDD'),
-    )
-    @ddt.unpack
-    def test_delreplica_args_invalid(self, tname, pid, endpoint, exp_msg,storage_mode):
-        """
-        建表时带副本，然后删掉副本时，参数异常检查
-        :return:
-        """
-        name = 't{}'.format(time.time())
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '{}'.format(name)
-        # m = utils.gen_table_metadata(name, '"kLatestTime"', 100, 8,
-        #                              ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #                              ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #                              ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
-        table_meta = {
-            "name": name,
-            "ttl_type": "kLatestTime",
-            "ttl": 100,
-            "storage_mode": storage_mode,
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
-                {"endpoint": self.slave2,"pid_group": "1-2","is_leader": "false"},
-            ],
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
-        rs1 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertIn('Create table ok', rs1)
-
-        table_name = name if tname is None else tname
-        tpid = 0 if pid is None else pid
-        tendpoint = self.slave1 if endpoint is None else endpoint
-        self.showtable(self.ns_leader, name)
-        rs3 = self.delreplica(self.ns_leader, table_name, tpid, 'ns_client', tendpoint)
-        self.assertIn(exp_msg, rs3)
-        self.ns_drop(self.ns_leader, name)
-
-    @ddt.data(
-        ('0', 'DelReplica ok','kSSD'),
-        ('0-3', 'DelReplica ok','kSSD'),
-        ('0,2,3', 'DelReplica ok','kSSD'),
-        ('a-z', 'pid group[a-z] format error','kSSD'),
-        ('0-10', 'Fail to delreplica','kSSD'),
-        ('0', 'DelReplica ok','kHDD'),
-        ('0-3', 'DelReplica ok','kHDD'),
-        ('0,2,3', 'DelReplica ok','kHDD'),
-        ('a-z', 'pid group[a-z] format error','kHDD'),
-        ('0-10', 'Fail to delreplica','kHDD'),
-    )
-    @ddt.unpack
-    def test_delreplica_pid_group(self, pid_group, exp_msg,storage_mode):
-        """
-        一次删除好几个副本
-        :return:
-        """
-        name = 't{}'.format(time.time())
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
-        #                              ('table_partition', '"{}"'.format(self.leader), '"0-7"', 'true'),
-        #                              ('table_partition', '"{}"'.format(self.slave1), '"0-7"', 'false'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
-        table_meta = {
-            "name": name,
-            "ttl_type": "kLatestTime",
-            "ttl": 100,
-            "storage_mode": storage_mode,
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-7","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "0-7","is_leader": "false"},
-            ],
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
-        rs1 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertIn('Create table ok', rs1)
-
-        rs2 = self.delreplica(self.ns_leader, name, pid_group, 'ns_client', self.slave1)
-        self.assertIn(exp_msg, rs2)
-        if 'DelReplica ok' in rs2:
-            time.sleep(15)
-            rs3 = self.showtable(self.ns_leader, name)
-            self.tid = int(rs3.keys()[0][1])
-            self.assertIn((name, str(self.tid), '6', self.slave1), rs3)
-            self.assertNotIn((name, str(self.tid), '0', self.slave1), rs3)
-            if pid_group == '0-3':
-                self.assertNotIn((name, str(self.tid), '1', self.slave1), rs3)
-                self.assertNotIn((name, str(self.tid), '2', self.slave1), rs3)
-                self.assertNotIn((name, str(self.tid), '3', self.slave1), rs3)
-            elif pid_group == '0,2,3':
-                self.assertNotIn((name, str(self.tid), '2', self.slave1), rs3)
-                self.assertNotIn((name, str(self.tid), '3', self.slave1), rs3)
-        self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
         ['kSSD'],
-        ['kHDD'],
     )
     @ddt.unpack
     def test_delreplica_not_alive(self,storage_mode):  # RTIDB-201
@@ -281,15 +171,6 @@ class TestDelReplicaNs(TestCaseBase):
         self.start_client(self.slave1)
         name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
-        #                              ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #                              ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #                              ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
-        #                              ('column_desc', '"merchant"', '"string"', 'true'),
-        #                              ('column_desc', '"amt"', '"double"', 'false'),
-        #                              ('column_desc', '"card"', '"string"', 'true'),)
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 100,
@@ -326,60 +207,6 @@ class TestDelReplicaNs(TestCaseBase):
         self.assertIn('Fail to delreplica', rs3)
         self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '100', 'no', 'kNoCompress'])
         self.ns_drop(self.ns_leader, name)
-
-    @ddt.data(
-        ('pid group[m] format error', 'm', conf.tb_endpoints[1],'kSSD'),
-        ('pid group[-1] format error', '-1', conf.tb_endpoints[1],'kSSD'),
-        ('Fail to delreplica', '1,2,10', conf.tb_endpoints[1],'kSSD'),
-        ('pid group[1,x,5] format error', '1,x,5', conf.tb_endpoints[1],'kSSD'),
-        ('pid group[1,3:5] format error', '1,3:5', conf.tb_endpoints[1],'kSSD'),
-        ('Fail to delreplica', '1-10', conf.tb_endpoints[1],'kSSD'),
-        ('pid group[1~10] format error', '1~10', conf.tb_endpoints[1],'kSSD'),
-        ('pid group[1-m] format error', '1-m', conf.tb_endpoints[1],'kSSD'),
-        ('pid group[m-5] format error', 'm-5', conf.tb_endpoints[1],'kSSD'),
-        ('Fail to delreplica', '5-7', conf.tb_endpoints[1],'kSSD'),
-        ('Fail to delreplica', '5,6,7', conf.tb_endpoints[1],'kSSD'),
-        ('pid group[m] format error', 'm', conf.tb_endpoints[1],'kHDD'),
-        ('pid group[-1] format error', '-1', conf.tb_endpoints[1],'kHDD'),
-        ('Fail to delreplica', '1,2,10', conf.tb_endpoints[1],'kHDD'),
-        ('pid group[1,x,5] format error', '1,x,5', conf.tb_endpoints[1],'kHDD'),
-        ('pid group[1,3:5] format error', '1,3:5', conf.tb_endpoints[1],'kHDD'),
-        ('Fail to delreplica', '1-10', conf.tb_endpoints[1],'kHDD'),
-        ('pid group[1~10] format error', '1~10', conf.tb_endpoints[1],'kHDD'),
-        ('pid group[1-m] format error', '1-m', conf.tb_endpoints[1],'kHDD'),
-        ('pid group[m-5] format error', 'm-5', conf.tb_endpoints[1],'kHDD'),
-        ('Fail to delreplica', '5-7', conf.tb_endpoints[1],'kHDD'),
-        ('Fail to delreplica', '5,6,7', conf.tb_endpoints[1],'kHDD'),
-    )
-    @ddt.unpack
-    def test_delreplica_pid_group_error(self, exp_msg, pid_group, endpoint,storage_mode):
-        """
-        删除失败
-        :return:
-        """
-        name = 't{}'.format(time.time())
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
-        #                              ('table_partition', '"{}"'.format(self.leader), '"0-7"', 'true'),
-        #                              ('table_partition', '"{}"'.format(self.slave1), '"0-5"', 'false'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
-        table_meta = {
-            "name": name,
-            "ttl_type": "kLatestTime",
-            "ttl": 100,
-            "storage_mode": storage_mode,
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-7","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "0-5","is_leader": "false"},
-            ],
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
-        rs1 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertIn('Create table ok', rs1)
-
-        rs2 = self.delreplica(self.ns_leader, name, pid_group, 'ns_client', endpoint)
-        self.assertIn(exp_msg, rs2)
 
 if __name__ == "__main__":
     load(TestDelReplicaNs)

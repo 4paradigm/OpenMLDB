@@ -24,17 +24,6 @@ class TestChangeLeader(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         infoLogger.info(name)
-        # m = utils.gen_table_metadata_ssd(
-        #     '"{}"'.format(name), None, 144000, 2,'"kSSD"',
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false')
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 144000,
@@ -145,17 +134,6 @@ class TestChangeLeader(TestCaseBase):
         self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false')
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 144000,

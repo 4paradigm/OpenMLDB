@@ -27,7 +27,7 @@ class TestPreview(TestCaseBase):
         table_meta = {
             "name": "t1",
             "ttl": 0,
-            "partition_num": 8,
+            "partition_num": 1,
             "replica_num": 3,
             "storage_mode": storage_mode,
         }
@@ -70,21 +70,12 @@ class TestPreview(TestCaseBase):
         """
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), '"kAbsoluteTime"', 0, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'true'),
-        #     ('column_desc', '"k3"', '"uint16"', 'false'),
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
 
         table_meta = {
             "name": name,
             "ttl": 0,
             "storage_mode": storage_mode,
+            "partition_num": 1,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},

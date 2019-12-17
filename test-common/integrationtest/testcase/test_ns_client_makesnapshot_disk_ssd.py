@@ -72,16 +72,6 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
 
         pid_group = "0"
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 1, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), pid_group, 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), pid_group, 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), pid_group, 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'true'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 1,
@@ -122,32 +112,17 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.assertIn('kMakeSnapshotOP', last_opstatus)
         self.ns_drop(self.ns_leader, name)
 
-    @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
-    )
-    @ddt.unpack
-    def test_makesnapshot_name_notexist(self,storage_mode):
+    def test_makesnapshot_name_notexist(self):
         """
         name不存在时，makesnapshot失败
         :return:
         """
         name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-3"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"0-3"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'true'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": storage_mode,
+            "storage_mode": "kSSD",
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-3","is_leader": "false"},
@@ -171,214 +146,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
-    )
-    @ddt.unpack
-    def test_makesnapshot_pid_notexist(self,storage_mode):
-        """
-        pid不存在时，makesnapshot失败
-        :return:
-        """
-        name = 't{}'.format(time.time())
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-3"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"0-3"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'true'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
-        table_meta = {
-            "name": name,
-            "ttl": 144000,
-            "storage_mode": storage_mode,
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "0-3","is_leader": "false"},
-                {"endpoint": self.slave2,"pid_group": "0-3","is_leader": "false"},
-            ],
-            "column_desc":[
-                {"name": "k1", "type": "string", "add_ts_idx": "true"},
-                {"name": "k2", "type": "string", "add_ts_idx": "false"},
-                {"name": "k3", "type": "string", "add_ts_idx": "true"},
-            ],
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
-        rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertIn('Create table ok', rs)
-        table_info = self.showtable(self.ns_leader, name)
-        tid = table_info.keys()[0][1]
-        pid = table_info.keys()[0][2]
-        self.put(self.leader, tid, pid, 'testkey0', self.now(), 'testvalue0')
-        rs3 = self.makesnapshot(self.ns_leader, name, 4, 'ns_client')
-        self.assertIn('Fail to makesnapshot', rs3)
-        self.ns_drop(self.ns_leader, name)
-
-    @ddt.data(
         ('ssd_db', 'kSSD'),
-        ('hdd_db', 'kHDD'),
-    )
-    @ddt.unpack
-    def test_changeleader_and_makesnapshot(self,db_path,storage_mode):
-        """
-        changeleader后，可以makesnapshot，未changeleader的无法makesnapshot
-        :return:
-        """
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = 'tname{}'.format(time.time())
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-2"', 'false'),
-        #     ('column_desc', '"merchant"', '"string"', 'true'),
-        #     ('column_desc', '"amt"', '"double"', 'false'),
-        #     ('column_desc', '"card"', '"string"', 'true'),
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-
-        table_meta = {
-            "name": name,
-            "ttl": 144000,
-            "storage_mode": storage_mode,
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "0-2","is_leader": "false"},
-            ],
-            "column_desc":[
-                {"name": "merchant", "type": "string", "add_ts_idx": "true"},
-                {"name": "amt", "type": "double", "add_ts_idx": "false"},
-                {"name": "card", "type": "string", "add_ts_idx": "true"},
-            ],
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
-        rs0 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertIn('Create table ok', rs0)
-
-        rs1 = self.showtable(self.ns_leader, name)
-        tid = rs1.keys()[0][1]
-
-        self.put(self.leader, tid, 0, 'testkey0', self.now(), 'testvalue0')
-
-        self.stop_client(self.leader)
-        self.updatetablealive(self.ns_leader, name, '*', self.leader, 'no')
-        time.sleep(10)
-
-        self.changeleader(self.ns_leader, name, 0)
-        time.sleep(2)
-
-        rs2 = self.showtable(self.ns_leader, name)
-        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
-        rs4 = self.makesnapshot(self.ns_leader, name, 1, 'ns_client')
-        self.start_client(self.leader)
-        time.sleep(10)
-        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
-        self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
-        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
-        self.assertEqual(rs2[(name, tid, '2', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
-
-        self.assertIn('MakeSnapshot ok', rs3)
-        self.assertIn('Fail to makesnapshot', rs4)
-        mf = self.get_manifest_by_realpath(self.slave1path + "/" + db_path, tid, 0)
-        self.assertEqual(mf['offset'], '1')
-        self.assertTrue(mf['name'])
-        self.assertEqual(mf['count'], '1')
-        self.ns_drop(self.ns_leader, name)
-    @ddt.data(
-        ('ssd_db', 'kSSD'),
-        ('hdd_db', 'kHDD'),
-    )
-    @ddt.unpack
-    def test_one_ts(self,db_path,storage_mode):
-        name = 'tname{}'.format(time.time())
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
-        table_meta = {
-                "name": name,
-                "ttl": 10,
-                "partition_num": 1,
-                "replica_num": 1,
-                "storage_mode": storage_mode,
-                "column_desc":[
-                    {"name": "card", "type": "string", "add_ts_idx": "true"},
-                    {"name": "mcc", "type": "string", "add_ts_idx": "false"},
-                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
-                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
-                    ]
-                }
-        utils.gen_table_meta_file(table_meta, metadata_path)
-        rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertIn('Create table ok', rs)
-        curtime = int(time.time() * 1000)
-        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', str(curtime)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.2', str(curtime - 10)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc2', '1.3', str(curtime - 20)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc3', '1.4', str(curtime - 30)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc4', '1.5', str(curtime - 40)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc5', '1.6', str(curtime - 10*60*1000 - 10)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc6', '1.7', str(curtime - 10*60*1000 - 20)])
-        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
-
-        table_info = self.showtable(self.ns_leader, name)
-        tid = table_info.keys()[0][1]
-
-        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
-        self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
-        # mf = self.get_manifest(self.leaderpath, tid, 0)
-        self.assertEqual(mf['offset'], '7')
-        self.assertEqual(mf['count'], '5')
-        self.ns_drop(self.ns_leader, name)
-    @ddt.data(
-        ('ssd_db', 'kSSD'),
-        ('hdd_db', 'kHDD'),
-    )
-    @ddt.unpack
-    def test_one_ts(self,db_path,storage_mode):
-        name = 'tname{}'.format(time.time())
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
-        table_meta = {
-                "name": name,
-                "ttl": 10,
-                "partition_num": 1,
-                "storage_mode": storage_mode,
-                "replica_num": 1,
-                "column_desc":[
-                    {"name": "card", "type": "string", "add_ts_idx": "true"},
-                    {"name": "mcc", "type": "string", "add_ts_idx": "false"},
-                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
-                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
-                    ]
-                }
-        utils.gen_table_meta_file(table_meta, metadata_path)
-        rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertIn('Create table ok', rs)
-        curtime = int(time.time() * 1000)
-        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', str(curtime)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.2', str(curtime - 10)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc2', '1.3', str(curtime - 20)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc3', '1.4', str(curtime - 30)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc4', '1.5', str(curtime - 40)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc5', '1.6', str(curtime - 10*60*1000 - 10)])
-        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc6', '1.7', str(curtime - 10*60*1000 - 20)])
-        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
-
-        table_info = self.showtable(self.ns_leader, name)
-        tid = table_info.keys()[0][1]
-
-        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
-        self.assertIn('MakeSnapshot ok', rs3)
-        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
-        # mf = self.get_manifest(self.leaderpath, tid, 0)
-        self.assertEqual(mf['offset'], '7')
-        self.assertEqual(mf['count'], '7')
-    @ddt.data(
-        ('ssd_db', 'kSSD'),
-        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
     def test_two_ts(self,db_path,storage_mode):
@@ -424,9 +192,9 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         # mf = self.get_manifest(self.leaderpath, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '14')
+
     @ddt.data(
         ('ssd_db', 'kSSD'),
-        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
     def test_two_ts_1(self,db_path,storage_mode):
@@ -472,9 +240,9 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         # mf = self.get_manifest(self.leaderpath, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '7')
+
     @ddt.data(
         ('ssd_db', 'kSSD'),
-        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
     def test_two_ts_ttl(self,db_path,storage_mode):
@@ -520,8 +288,8 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '14')
+
     @ddt.data(
-        ('ssd_db', 'kSSD'),
         ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
@@ -569,8 +337,8 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '8')
+
     @ddt.data(
-        ('ssd_db', 'kSSD'),
         ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
@@ -619,9 +387,9 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '8')
+
     @ddt.data(
         ('ssd_db', 'kSSD'),
-        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
     def test_two_ts_latest_ttl(self,db_path,storage_mode):
@@ -669,9 +437,9 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         # mf = self.get_manifest(self.leaderpath, tid, 0)
         self.assertEqual(mf['offset'], '7')
         self.assertEqual(mf['count'], '17')
+
     @ddt.data(
         ('ssd_db', 'kSSD'),
-        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
     def test_two_ts_two_index_latest_ttl(self, db_path,storage_mode):

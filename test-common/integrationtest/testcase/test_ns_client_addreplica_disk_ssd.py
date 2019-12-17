@@ -127,48 +127,6 @@ class TestAddReplicaNs(TestCaseBase):
         self.assertIn('testvalue0', self.scan(self.slave1, tid, 1, 'testkey0', self.now() + 9999, 1))
         self.ns_drop(self.ns_leader, name)
 
-
-    @multi_dimension(False)
-    @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
-    )
-    @ddt.unpack
-    def test_addreplica_offline(self,storage_mode):
-        """
-        添加一个offline的副本，添加失败
-        :return:
-        """
-        self.start_client(self.slave1)
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = 'tname{}'.format(time.time())
-        infoLogger.info(name)
-        # m = utils.gen_table_metadata(
-        #     name, None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-        table_meta = {
-            "name": name,
-            "ttl": 144000,
-            "storage_mode": storage_mode,
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
-            ],
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
-        rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertIn('Create table ok', rs)
-
-        self.stop_client(self.slave1)
-        time.sleep(10)
-
-        infoLogger.info(self.showtablet(self.ns_leader))
-        rs2 = self.addreplica(self.ns_leader, name, 1, 'ns_client', self.slave1)
-        self.assertIn('Fail to addreplica', rs2)
-        self.start_client(self.slave1)
-        self.ns_drop(self.ns_leader, name)
-
     @multi_dimension(False)
     @ddt.data(
         ['kSSD'],

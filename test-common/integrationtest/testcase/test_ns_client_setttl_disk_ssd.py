@@ -27,7 +27,7 @@ class TestSetTTL(TestCaseBase):
         table_meta = {
             "name": "t1",
             "ttl": 10,
-            "partition_num": 8,
+            "partition_num": 1,
             "replica_num": 3,
             "storage_mode": storage_mode,
         }
@@ -41,7 +41,7 @@ class TestSetTTL(TestCaseBase):
             "name": "latest1",
             "ttl_type": "kLatestTime",
             "ttl": 10,
-            "partition_num": 8,
+            "partition_num": 1,
             "replica_num": 3,
             "storage_mode": storage_mode,
         }
@@ -79,7 +79,7 @@ class TestSetTTL(TestCaseBase):
             "name": "t1",
             "ttl_type": "kAbsoluteTime",
             "ttl": 10,
-            "partition_num": 8,
+            "partition_num": 1,
             "replica_num": 3,
             "storage_mode": storage_mode,
         }
@@ -130,6 +130,7 @@ class TestSetTTL(TestCaseBase):
 
         rs_absolute5 = self.ns_scan_kv(self.ns_leader, 't1', 'testkey0', str(rs_time), '0', ' ')
         self.assertEqual(0, len(rs_absolute5))
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -142,6 +143,7 @@ class TestSetTTL(TestCaseBase):
                 "name": name,
                 "ttl": 14400,
                 "storage_mode": storage_mode,
+                "partition_num" : 1,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -170,6 +172,7 @@ class TestSetTTL(TestCaseBase):
         self.assertEqual(column_key[1], ["1", "card", "card", "ts2", "100min"])
         self.assertEqual(column_key[2], ["2", "mcc", "mcc", "ts2", "100min"])
         self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -183,6 +186,7 @@ class TestSetTTL(TestCaseBase):
                 "ttl": 100,
                 "ttl_type": "kLatestTime",
                 "storage_mode": storage_mode,
+                "partition_num" : 1,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},

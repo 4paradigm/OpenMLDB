@@ -105,13 +105,6 @@ class TestOfflineEndpoint(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         infoLogger.info(name)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
 
         table_meta = {
             "name": name,
@@ -149,21 +142,6 @@ class TestOfflineEndpoint(TestCaseBase):
 
 
     @ddt.data(
-        ('127.0.0.1:80', '', 'failed to offline endpoint'),
-        (conf.tb_endpoints[0], '-1', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0], '0', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0], '10', 'failed to offline endpoint'),
-        (conf.tb_endpoints[0], 'abc', 'Invalid args. concurrency should be uint32_t'),
-    )
-    @ddt.unpack
-    def test_offlineendpoint_failed(self, endpoint, concurrency, exp_msg):
-        """
-        offlineendpoint 参数校验
-        :return:
-        """
-        rs2 = self.offlineendpoint(self.ns_leader, endpoint, concurrency)
-        self.assertIn(exp_msg, rs2)
-    @ddt.data(
         ['kSSD'],
         ['kHDD'],
     )
@@ -175,19 +153,6 @@ class TestOfflineEndpoint(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.leader), '"4-6"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"4-6"', 'true'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false')
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 144000,

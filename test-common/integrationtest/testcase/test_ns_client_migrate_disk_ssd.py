@@ -17,23 +17,13 @@ class TestNameserverMigrate(TestCaseBase):
 
     def createtable_put(self, tname, data_count):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(tname), '"kAbsoluteTime"', 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-10"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"3-8"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"0-3"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": tname,
             "ttl": 144000,
             "storage_mode": "kSSD",
             "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-10","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "3-8","is_leader": "false"},
+                {"endpoint": self.leader,"pid_group": "0-7","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "3-7","is_leader": "false"},
                 {"endpoint": self.slave2,"pid_group": "0-3","is_leader": "false"},
             ],
             "column_desc":[
@@ -65,7 +55,7 @@ class TestNameserverMigrate(TestCaseBase):
         """
         tname = str(time.time())
         self.tname = tname
-        self.createtable_put(tname, 500)
+        self.createtable_put(tname, 100)
         time.sleep(2)
         rs1 = self.get_table_status(self.slave1)
         rs2 = self.get_table_status(self.slave2)
@@ -102,52 +92,6 @@ class TestNameserverMigrate(TestCaseBase):
         self.assertIn('src_endpoint is not exist or not healthy', rs1)
         self.assertIn('des_endpoint is not exist or not healthy', rs2)
 
-    @ddt.data(
-        (slave1, time.time(), '4-6', slave1,
-         'src_endpoint is same as des_endpoint'),
-        (leader, time.time(), '4-6', slave1,
-         'cannot migrate leader'),
-        ('src_notexists', time.time(), '4-6', slave1,
-         'src_endpoint is not exist or not healthy'),
-        (slave1, time.time(), '4-6', 'des_notexists',
-         'des_endpoint is not exist or not healthy'),
-        (slave1, 'table_not_exists', '4-6', slave2,
-         'table is not exist'),
-        (slave1, time.time(), '20', slave2,
-         'leader endpoint is empty'),
-        (slave1, time.time(), 'pid', slave2,
-         'format error'),
-        (slave1, time.time(), '', slave2,
-         'Bad format.'),
-        (slave1, time.time(), '8-9', slave2,
-         'failed to migrate partition'),
-        (slave1, time.time(), '3-4', slave2,
-         'is already in des_endpoint'),
-        (slave1, time.time(), '6-4', slave2,
-         'has not valid pid'),
-        (slave1, time.time(), '8,9', slave2,
-         'has not partition[9]'),
-    )
-    @ddt.unpack
-    def test_ns_client_migrate_args_invalid(self, src, tname, pid_group, des, exp_msg):
-        """
-        参数异常时返回失败
-        :param src:
-        :param tname:
-        :param pid_group:
-        :param des:
-        :param exp_msg:
-        :return:
-        """
-        self.createtable_put(str(tname), 1)
-        if tname != 'table_not_exists':
-            rs2 = self.migrate(self.ns_leader, src, tname, pid_group, des)
-        else:
-            rs2 = self.migrate(self.ns_leader, src, 'table_not_exists_', pid_group, des)
-        self.assertIn(exp_msg, rs2)
-        self.ns_drop(self.ns_leader, tname)
-
-
     def test_ns_client_migrate_failover_and_recover(self):  # RTIDB-252
         """
         迁移时发生故障切换，故障切换成功，迁移失败
@@ -155,7 +99,7 @@ class TestNameserverMigrate(TestCaseBase):
         :return:
         """
         tname = str(time.time())
-        self.createtable_put(tname, 100)
+        self.createtable_put(tname, 50)
         time.sleep(2)
         rs0 = self.get_table_status(self.leader, self.tid, self.pid)  # get offset leader
         self.stop_client(self.leader)
@@ -199,7 +143,7 @@ class TestNameserverMigrate(TestCaseBase):
         :return:
         """
         tname = str(time.time())
-        self.createtable_put(tname, 500)
+        self.createtable_put(tname, 10)
         self.stop_client(self.leader)
         time.sleep(2)
         rs1 = self.migrate(self.ns_leader, self.slave1, tname, "4-6", self.slave2)

@@ -16,16 +16,6 @@ class TestRecoverEndpoint(TestCaseBase):
     def createtable_put(self, data_count):
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(self.tname), '"kAbsoluteTime"', 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-3"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": self.tname,
             "ttl": 144000,
@@ -53,14 +43,6 @@ class TestRecoverEndpoint(TestCaseBase):
     def createtable_nofollower_put(self, data_count):
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(self.tname), '"kAbsoluteTime"', 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": self.tname,
             "ttl": 144000,
@@ -251,17 +233,6 @@ class TestRecoverEndpoint(TestCaseBase):
         self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false')
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 144000,
@@ -304,23 +275,6 @@ class TestRecoverEndpoint(TestCaseBase):
         self.assertEqual(rs5[(name, tid, '2', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
         self.ns_drop(self.ns_leader, name)
 
-    @ddt.data(
-        ('127.0.0.1:80', '', '', 'failed to recover endpoint. error msg: endpoint is not exist'),
-        (conf.tb_endpoints[0], 'abc', '', 'Invalid args. need_restore should be true or false'),
-        (conf.tb_endpoints[0], 'false', '-1', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0], 'false', '0', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0], 'false', '10', 'invalid parameter'),
-        (conf.tb_endpoints[0], 'false', 'abc', 'Invalid args. concurrency should be uint32_t'),
-    )
-    @ddt.unpack
-    def test_recoverendpoint_failed(self, endpoint, need_restore, concurrency, exp_msg):
-        """
-        recoverendpoint 参数校验
-        :return:
-        """
-        rs2 = self.recoverendpoint(self.ns_leader, endpoint, need_restore, concurrency)
-        self.assertIn(exp_msg, rs2)
-
     def test_recoverendpoint_need_restore(self):
         """
         recoverendpoint恢复最初的表结构
@@ -329,19 +283,6 @@ class TestRecoverEndpoint(TestCaseBase):
         self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-3"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"3"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.leader), '"3"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false')
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 144000,

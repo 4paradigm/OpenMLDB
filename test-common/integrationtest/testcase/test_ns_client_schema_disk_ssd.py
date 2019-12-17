@@ -23,26 +23,6 @@ class TestSchema(TestCaseBase):
     def test_schema(self,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), '"kAbsoluteTime"', 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"int16"', 'true'),
-        #     ('column_desc', '"k3"', '"uint16"', 'false'),
-        #     ('column_desc', '"k4"', '"int32"', 'false'),
-        #     ('column_desc', '"k5"', '"uint32"', 'false'),
-        #     ('column_desc', '"k6"', '"int64"', 'false'),
-        #     ('column_desc', '"k7"', '"uint64"', 'false'),
-        #     ('column_desc', '"k8"', '"bool"', 'false'),
-        #     ('column_desc', '"k9"', '"float"', 'false'),
-        #     ('column_desc', '"k10"', '"double"', 'false'),
-        #     ('column_desc', '"k11"', '"timestamp"', 'false'),
-        #     ('column_desc', '"k12"', '"date"', 'false'),
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-
         table_meta = {
             "name": name,
             "ttl": 144000,
@@ -113,6 +93,7 @@ class TestSchema(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 14400,
+            "partition_num": 1,
             "storage_mode": storage_mode,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
@@ -151,6 +132,7 @@ class TestSchema(TestCaseBase):
                 "name": name,
                 "ttl": 14400,
             "storage_mode": storage_mode,
+            "partition_num": 1,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -170,6 +152,7 @@ class TestSchema(TestCaseBase):
         self.assertEqual(column_key[0], ["0", "card", "card", "ts1", "14400min"])
         self.assertEqual(column_key[1], ["1", "mcc", "mcc", "ts1", "14400min"])
         self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -182,6 +165,7 @@ class TestSchema(TestCaseBase):
                 "name": name,
                 "ttl": 14400,
             "storage_mode": storage_mode,
+            "partition_num": 1,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -202,6 +186,7 @@ class TestSchema(TestCaseBase):
         # self.assertEqual(column_key[0], ["0", "card", "card", "-", "14400min"])
         # self.assertEqual(column_key[1], ["1", "mcc", "mcc", "-", "14400min"])
         self.ns_drop(self.ns_leader, name)
+
     @ddt.data(
         ['kSSD'],
         ['kHDD'],
@@ -209,13 +194,11 @@ class TestSchema(TestCaseBase):
     @ddt.unpack
     def test_showschema_no_schema(self,storage_mode):
         name = 'tname{}'.format(time.time())
-        # rs = self.ns_create_cmd(self.ns_leader, name, '0', '8', '3')
-
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
             "name": name,
             "ttl": 0,
-            "partition_num": 8,
+            "partition_num": 1,
             "replica_num": 3,
             "storage_mode": storage_mode,
         }
@@ -226,6 +209,7 @@ class TestSchema(TestCaseBase):
         (schema_map, column_key) = self.ns_showschema(self.ns_leader, name)
         self.assertEqual(len(schema_map), 0)
         self.assertEqual(len(column_key), 0)
+        self.ns_drop(self.ns_leader, name)
 
 if __name__ == "__main__":
     load(TestSchema)
