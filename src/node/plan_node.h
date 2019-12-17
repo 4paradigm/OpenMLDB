@@ -14,6 +14,7 @@
 #include <node/sql_node.h>
 #include <list>
 #include <string>
+#include <utility>
 #include <vector>
 #include "node/node_enum.h"
 namespace fesql {
@@ -150,6 +151,7 @@ class ProjectPlanNode : public LeafPlanNode {
  public:
     ProjectPlanNode()
         : LeafPlanNode(kProject),
+          pos_(0),
           expression_(nullptr),
           name_(""),
           table_(""),
@@ -158,6 +160,9 @@ class ProjectPlanNode : public LeafPlanNode {
     ~ProjectPlanNode() {}
     void Print(std::ostream &output, const std::string &orgTab) const;
 
+    const uint32_t GetPos() const { return pos_; }
+
+    void SetPos(uint32_t pos) { pos_ = pos; }
     void SetW(const std::string w) { w_ = w; }
     std::string GetW() const { return w_; }
 
@@ -176,16 +181,11 @@ class ProjectPlanNode : public LeafPlanNode {
     bool IsWindowProject() { return !w_.empty(); }
 
  private:
+    uint32_t pos_;
     node::ExprNode *expression_;
     std::string name_;
     std::string table_;
     std::string w_;
-};
-
-class MergePlanNode : public MultiChildPlanNode {
- public:
-    MergePlanNode() : MultiChildPlanNode(kPlanTypeMerge) {}
-    ~MergePlanNode() {}
 };
 
 class WindowPlanNode : public LeafPlanNode {
@@ -256,6 +256,38 @@ class ProjectListPlanNode : public MultiChildPlanNode {
     bool is_window_agg_;
 };
 
+class MergePlanNode : public MultiChildPlanNode {
+ public:
+    explicit MergePlanNode(uint32_t columns_size)
+        : MultiChildPlanNode(kPlanTypeMerge) {
+        pos_mapping_.resize(columns_size);
+    }
+    ~MergePlanNode() {}
+
+    bool AddChild(PlanNode *node) {
+        children_.push_back(node);
+        uint32_t project_list_idx = children_.size() - 1;
+        ProjectListPlanNode *project_list =
+            dynamic_cast<ProjectListPlanNode *>(node);
+        for (uint32_t i = 0; i < project_list->GetProjects().size(); ++i) {
+            ProjectPlanNode *project =
+                dynamic_cast<ProjectPlanNode *>(project_list->GetProjects()[i]);
+            uint32_t dis_pos = project->GetPos();
+            if (dis_pos >= pos_mapping_.size()) {
+                pos_mapping_.resize(dis_pos + 1);
+            }
+            pos_mapping_[dis_pos] = std::make_pair(project_list_idx, i);
+        }
+        return true;
+    }
+
+    const std::vector<std::pair<uint32_t, uint32_t>> &GetPosMapping() const {
+        return pos_mapping_;
+    }
+
+ private:
+    std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
+};
 class CreatePlanNode : public LeafPlanNode {
  public:
     CreatePlanNode()

@@ -72,6 +72,8 @@ void ProjectPlanNode::Print(std::ostream &output,
     output << "\n";
     PrintSQLNode(output, orgTab, expression_, "expression", false);
     output << "\n";
+    PrintValue(output, orgTab, std::to_string(pos_), "org_pos", true);
+    output << "\n";
     PrintValue(output, orgTab, name_, "name", true);
 }
 

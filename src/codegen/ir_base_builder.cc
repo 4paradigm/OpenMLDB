@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "glog/logging.h"
+#include "storage/window.h"
 
 namespace fesql {
 namespace codegen {
@@ -93,6 +94,46 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
             return false;
         }
     }
+}
+bool GetLLVMColumnIteratorSize(const ::fesql::type::Type& v_type,
+                               uint32_t* size) {
+    if (nullptr == size) {
+        LOG(WARNING) << "the size ptr is NULL ";
+        return false;
+    }
+
+    switch (v_type) {
+        case ::fesql::type::kInt16: {
+            *size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
+            break;
+        }
+        case ::fesql::type::kInt32: {
+            *size = sizeof(::fesql::storage::ColumnIteratorImpl<int32_t>);
+            break;
+        }
+        case ::fesql::type::kInt64: {
+            *size = sizeof(::fesql::storage::ColumnIteratorImpl<int64_t>);
+            break;
+        }
+        case ::fesql::type::kDouble: {
+            *size = sizeof(::fesql::storage::ColumnIteratorImpl<double>);
+            break;
+        }
+        case ::fesql::type::kFloat: {
+            *size = sizeof(::fesql::storage::ColumnIteratorImpl<float>);
+            break;
+        }
+        case ::fesql::type::kVarchar: {
+            *size = sizeof(::fesql::storage::ColumnStringIteratorImpl);
+            break;
+        }
+        default: {
+            LOG(WARNING) << "not supported type "
+                         << ::fesql::type::Type_Name(v_type);
+            return false;
+        }
+    }
+    return true;
 }
 bool GetLLVMListType(::llvm::Module* m,  // NOLINT
                      const ::fesql::type::Type& v_type, ::llvm::Type** output) {

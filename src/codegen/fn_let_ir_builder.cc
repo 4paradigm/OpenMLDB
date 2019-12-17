@@ -31,7 +31,6 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(::fesql::type::TableDef* table,
 
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
-
 bool RowFnLetIRBuilder::Build(const std::string& name,
                               const ::fesql::node::ProjectListPlanNode* node,
                               std::vector<::fesql::type::ColumnDef>&
@@ -104,6 +103,7 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
         if (!ok) {
             return false;
         }
+
         outputs.insert(std::make_pair(index, expr_out_val));
         index++;
         ::fesql::type::ColumnDef cdef;
@@ -196,8 +196,6 @@ bool RowFnLetIRBuilder::FillArgs(const std::string& row_ptr_name,
     sv.AddVar(output_ptr_name, &*it);
     return true;
 }
-
-
 
 }  // namespace codegen
 }  // namespace fesql

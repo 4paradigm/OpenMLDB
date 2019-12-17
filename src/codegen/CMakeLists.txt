@@ -2,10 +2,10 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-
 add_library(fesql_codegen STATIC scope_var.cc expr_ir_builder.cc
     fn_ir_builder.cc buf_ir_builder.cc ir_base_builder.cc
     fn_let_ir_builder.cc)
+add_dependencies(fesql_codegen fesql_proto)
 
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
 target_link_libraries(ir_base_builder_test fesql_codegen fesql_proto protobuf  ${llvm_libs} ${COMMON_LIBS} gtest pthread)
@@ -19,7 +19,8 @@ add_test(expr_ir_builder_test expr_ir_builder_test --gtest_output=xml:${CMAKE_BI
 list(APPEND test_list expr_ir_builder_test)
 
 add_executable(fn_ir_builder_test fn_ir_builder_test.cc)
-target_link_libraries(fn_ir_builder_test fesql_codegen ${FESQL_PLAN_LIBS} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+target_link_libraries(fn_ir_builder_test fesql_codegen fesql_parser fesql_proto fesql_node
+    protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(fn_ir_builder_test fn_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/fn_ir_builder_test.xml)
 list(APPEND test_list fn_ir_builder_test)
 
