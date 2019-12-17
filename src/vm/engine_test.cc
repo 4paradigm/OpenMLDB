@@ -534,7 +534,6 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 100);
 
-    //validate limit 10
     ASSERT_EQ(2, output.size());
 
     int8_t* output_4444 = output[1];

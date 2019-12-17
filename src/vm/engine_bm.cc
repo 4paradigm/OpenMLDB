@@ -57,7 +57,7 @@ class TableMgrImpl : public TableMgr {
     std::shared_ptr<TableStatus> status_;
 };
 
-static void BuildTableDef(::fesql::type::TableDef& table) {
+static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
@@ -102,8 +102,9 @@ template <class T>
 class Repeater {
  public:
     Repeater() : idx_(0), values_({}) {}
-    Repeater(T value) : idx_(0), values_({value}) {}
-    Repeater(const std::vector<T>& values) : idx_(0), values_(values) {}
+    explicit Repeater(T value) : idx_(0), values_({value}) {}
+    explicit Repeater(const std::vector<T>& values)
+        : idx_(0), values_(values) {}
 
     virtual T GetValue() {
         T value = values_[idx_];
@@ -149,8 +150,7 @@ class RealRepeater : public NumberRepeater<T> {
             this->values_.push_back(u(e));
         }
     }
-
-};  // namespace vm
+};
 
 static void BuildBuf(int8_t** buf, uint32_t* size,
                      ::fesql::type::TableDef& table) {  // NOLINT
@@ -330,7 +330,7 @@ static void BM_EngineSimpleUDF(benchmark::State& state) {  // NOLINT
     }
 }
 
-static void BM_EngineWindowSumFeature1(benchmark::State& state) {
+static void BM_EngineWindowSumFeature1(benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
 
@@ -354,12 +354,12 @@ static void BM_EngineWindowSumFeature1(benchmark::State& state) {
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
         benchmark::DoNotOptimize(session.Run(output, size));
-        for(int8_t* row: output) {
+        for (int8_t* row : output) {
             free(row);
         }
     }
 }
-static void BM_EngineWindowSumFeature5(benchmark::State& state) {
+static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
 
@@ -387,7 +387,7 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
         benchmark::DoNotOptimize(session.Run(output, size));
-        for(int8_t* row: output) {
+        for (int8_t* row : output) {
             free(row);
         }
     }
@@ -396,8 +396,18 @@ BENCHMARK(BM_EngineSimpleSelectVarchar);
 BENCHMARK(BM_EngineSimpleSelectDouble);
 BENCHMARK(BM_EngineSimpleSelectInt32);
 BENCHMARK(BM_EngineSimpleUDF);
-BENCHMARK(BM_EngineWindowSumFeature1)->Arg(1)->Arg(2)->Arg(10)->Arg(100)->Arg(1000);
-BENCHMARK(BM_EngineWindowSumFeature5)->Arg(1)->Arg(2)->Arg(10)->Arg(100)->Arg(1000);
+BENCHMARK(BM_EngineWindowSumFeature1)
+    ->Arg(1)
+    ->Arg(2)
+    ->Arg(10)
+    ->Arg(100)
+    ->Arg(1000);
+BENCHMARK(BM_EngineWindowSumFeature5)
+    ->Arg(1)
+    ->Arg(2)
+    ->Arg(10)
+    ->Arg(100)
+    ->Arg(1000);
 }  // namespace vm
 }  // namespace fesql
 
