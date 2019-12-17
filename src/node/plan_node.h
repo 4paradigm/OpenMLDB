@@ -13,8 +13,8 @@
 #include <glog/logging.h>
 #include <node/sql_node.h>
 #include <list>
-#include <utility>
 #include <string>
+#include <utility>
 #include <vector>
 #include "node/node_enum.h"
 namespace fesql {
@@ -269,8 +269,8 @@ class MergePlanNode : public MultiChildPlanNode {
         uint32_t project_list_idx = children_.size() - 1;
         ProjectListPlanNode *project_list =
             dynamic_cast<ProjectListPlanNode *>(node);
-        for (auto i = 0; i < project_list->GetProjects().size(); ++i) {
-            auto project =
+        for (uint32_t i = 0; i < project_list->GetProjects().size(); ++i) {
+            ProjectPlanNode *project =
                 dynamic_cast<ProjectPlanNode *>(project_list->GetProjects()[i]);
             uint32_t dis_pos = project->GetPos();
             if (dis_pos >= pos_mapping_.size()) {
@@ -278,6 +278,7 @@ class MergePlanNode : public MultiChildPlanNode {
             }
             pos_mapping_[dis_pos] = std::make_pair(project_list_idx, i);
         }
+        return true;
     }
 
     const std::vector<std::pair<uint32_t, uint32_t>> &GetPosMapping() const {

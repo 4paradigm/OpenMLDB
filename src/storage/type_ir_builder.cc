@@ -149,68 +149,56 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, int8_t* val,
 
 int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
                   int32_t next_str_field_offset, int32_t str_start_offset,
-                  int32_t type_id, int8_t** data) {
-    if (nullptr == input) {
+                  int32_t type_id, int8_t* data) {
+    if (nullptr == input || nullptr == data) {
         return -2;
     }
     WindowIteratorImpl* w = reinterpret_cast<WindowIteratorImpl*>(input);
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     switch (type) {
         case fesql::type::kVarchar: {
-            ColumnStringIteratorImpl* impl = new ColumnStringIteratorImpl(
-                *w, str_field_offset, next_str_field_offset, str_start_offset);
-            *data = reinterpret_cast<int8_t*>(impl);
+                new (data) ColumnStringIteratorImpl(*w, str_field_offset,
+                                                    next_str_field_offset,
+                                                    str_start_offset);
             break;
         }
         default: {
-            *data = nullptr;
             return -2;
         }
     }
     return 0;
 }
 
-int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t** data) {
+int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
-    if (nullptr == input) {
+    if (nullptr == input || nullptr == data) {
         return -2;
     }
     WindowIteratorImpl* w = reinterpret_cast<WindowIteratorImpl*>(input);
     switch (type) {
         case fesql::type::kInt32: {
-            ColumnIteratorImpl<int>* impl =
-                new ColumnIteratorImpl<int>(*w, offset);
-            *data = reinterpret_cast<int8_t*>(impl);
+            new (data) ColumnIteratorImpl<int>(*w, offset);
             break;
         }
         case fesql::type::kInt16: {
-            ColumnIteratorImpl<int16_t>* impl =
-                new ColumnIteratorImpl<int16_t>(*w, offset);
-            *data = reinterpret_cast<int8_t*>(impl);
+            new (data) ColumnIteratorImpl<int16_t>(*w, offset);
             break;
         }
         case fesql::type::kInt64: {
-            ColumnIteratorImpl<int64_t>* impl =
-                new ColumnIteratorImpl<int64_t>(*w, offset);
-            *data = reinterpret_cast<int8_t*>(impl);
+            new (data) ColumnIteratorImpl<int64_t>(*w, offset);
             break;
         }
         case fesql::type::kFloat: {
-            ColumnIteratorImpl<float>* impl =
-                new ColumnIteratorImpl<float>(*w, offset);
-            *data = reinterpret_cast<int8_t*>(impl);
+            new (data) ColumnIteratorImpl<float>(*w, offset);
             break;
         }
         case fesql::type::kDouble: {
-            ColumnIteratorImpl<double>* impl =
-                new ColumnIteratorImpl<double>(*w, offset);
-            *data = reinterpret_cast<int8_t*>(impl);
+            new (data) ColumnIteratorImpl<double>(*w, offset);
             break;
         }
         default: {
             LOG(WARNING) << "cannot get col for type "
                          << ::fesql::type::Type_Name(type);
-            *data = nullptr;
             return -2;
         }
     }
