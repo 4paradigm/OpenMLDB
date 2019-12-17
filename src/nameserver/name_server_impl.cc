@@ -4260,7 +4260,6 @@ void NameServerImpl::OnLocked() {
         //TODO fail to recover discard the lock
     }
     running_.store(true, std::memory_order_release);
-    rep_table_map_.clear();
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this, false));
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatusForReplicaCluster, this, false));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateTableStatus, this));
@@ -6727,7 +6726,7 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
         replica->set_alias(it->first);
         replica->set_zk_path(it->second->cluster_add_.zk_path());
         replica->set_zk_endpoints(it->second->cluster_add_.zk_endpoints());
-        status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_));
+        status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_);
     }
     response->set_code(0);
     response->set_msg("ok");
