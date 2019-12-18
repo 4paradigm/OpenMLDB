@@ -63,14 +63,12 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     ctx.jit = std::move(*jit_expected);
     ctx.jit->Init();
-
-    ::llvm::Error e = ctx.jit->OptModule(m.get());
-    if (e) {
+    if (false == ctx.jit->OptModule(m.get())) {
         LOG(WARNING) << "fail to opt ir module for sql " << ctx.sql;
         return false;
     }
 
-    e = ctx.jit->addIRModule(std::move(
+    ::llvm::Error e = ctx.jit->addIRModule(std::move(
         ::llvm::orc::ThreadSafeModule(std::move(m), std::move(llvm_ctx))));
     if (e) {
         LOG(WARNING) << "fail to add ir module  for sql " << ctx.sql;

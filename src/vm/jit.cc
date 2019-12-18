@@ -71,9 +71,9 @@ FeSQLJIT::~FeSQLJIT() {}
     return CompileLayer->add(jd, std::move(tsm), key);
 }
 
-::llvm::Error FeSQLJIT::OptModule(::llvm::Module* m) {
+bool FeSQLJIT::OptModule(::llvm::Module* m) {
     if (auto err = applyDataLayout(*m)) {
-        return err;
+        return false;
     }
     LOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
     ::llvm::legacy::FunctionPassManager fpm(m);
@@ -90,6 +90,7 @@ FeSQLJIT::~FeSQLJIT() {}
         fpm.run(*it);
     }
     LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
+    return true;
 }
 
 ::llvm::orc::VModuleKey FeSQLJIT::CreateVModule() {
