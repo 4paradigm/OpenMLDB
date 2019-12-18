@@ -73,6 +73,8 @@ public:
 
     // add replication
     int AddReplicateNode(const std::vector<std::string>& endpoint_vec);
+    // add replication with tid
+    int AddReplicateNode(const std::vector<std::string>& endpoint_vec, uint32_t tid);
 
     int DelReplicateNode(const std::string& endpoint);
 
