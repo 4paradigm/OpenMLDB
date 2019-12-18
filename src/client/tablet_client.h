@@ -15,6 +15,8 @@
 #include "base/schema_codec.h"
 
 namespace rtidb {
+
+const uint32_t INVALID_TID = UINT32_MAX;
 namespace client {
 using ::rtidb::api::TaskInfo;
 
