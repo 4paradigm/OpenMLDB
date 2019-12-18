@@ -175,6 +175,7 @@ static void BuildBuf(int8_t** buf, uint32_t* size,
 }
 
 static void Data_WindowCase1(TableStatus* status, int32_t data_size) {
+    DLOG(INFO) << "insert window data";
     BuildTableDef(status->table_def);
     // Build index
     ::fesql::type::IndexDef* index = status->table_def.add_indexes();
