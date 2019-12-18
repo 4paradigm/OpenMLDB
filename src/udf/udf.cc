@@ -35,7 +35,7 @@ V sum(int8_t *input) {
     if (nullptr == input) {
         return result;
     }
-    ::fesql::storage::ListRef* list_ref= (::fesql::storage::ListRef *)(input);
+    ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
     ColumnIteratorImpl<V> *col = (ColumnIteratorImpl<V> *)(list_ref->iterator);
     while (col->Valid()) {
         result += col->Next();
