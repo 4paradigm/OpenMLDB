@@ -408,10 +408,10 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     zk_auto_failover_node_ = zk_config_path + "/auto_failover";
     zk_table_changed_notify_node_ = zk_table_path + "/notify";
     running_.store(false, std::memory_order_release);
-    mode_.store(rNORMAL, std::memory_order_release);
+    mode_.store(kNORMAL, std::memory_order_release);
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
     task_rpc_version_.store(0, std::memory_order_relaxed);
-    zone_info_.set_mode(rNORMAL);
+    zone_info_.set_mode(kNORMAL);
     zone_info_.set_zone_name(FLAGS_endpoint + FLAGS_zk_root_path);
     zone_info_.set_replica_alias("");
     zone_info_.set_zone_term(1);
@@ -1633,7 +1633,7 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -2532,7 +2532,7 @@ void NameServerImpl::DropTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (mode_.load(std::memory_order_acquire) == rFOLLOWER) {
+    if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
@@ -2661,7 +2661,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -2855,7 +2855,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (mode_.load(std::memory_order_acquire) == rFOLLOWER) {
+    if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
@@ -6316,7 +6316,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         ::rtidb::nameserver::UpdateTTLResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);    
-    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -6561,7 +6561,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (mode_.load(std::memory_order_relaxed) != rLEADER) {
+    if (mode_.load(std::memory_order_relaxed) != kLEADER) {
         response->set_code(454);
         response->set_msg("cur nameserver is not leader mode");
         PDLOG(WARNING, "cur nameserver is not leader mode");
@@ -6649,7 +6649,7 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (mode_.load(std::memory_order_relaxed) == rLEADER) {
+    if (mode_.load(std::memory_order_relaxed) == kLEADER) {
         response->set_code(568);
         response->set_msg("cur nameserver is leader cluster");
         PDLOG(WARNING, "cur nameserver is leader cluster");
@@ -6659,7 +6659,7 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
     PDLOG(DEBUG, "request zone name is: %s, term is: %u %d,", request->zone_name().c_str(), request->zone_term(), zone_info_.mode());
     PDLOG(DEBUG, "cur zone name is: %s", zone_info_.zone_name().c_str());
     do {
-        if ((mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
+        if ((mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
             if (request->replica_alias() != zone_info_.replica_alias()) {
                 code = 402;
                 rpc_msg = "not same replica name";
@@ -6711,7 +6711,7 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
         ShowReplicaClusterResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == rFOLLOWER)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -6737,7 +6737,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
         ::rtidb::nameserver::GeneralResponse* response,
         ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_relaxed) == rFOLLOWER)) {
+    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_relaxed) == kFOLLOWER)) {
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
@@ -6782,7 +6782,7 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (mode_.load(std::memory_order_acquire) != rFOLLOWER) {
+    if (mode_.load(std::memory_order_acquire) != kFOLLOWER) {
         response->set_code(405);
         response->set_msg("this is not follower");
         return;
@@ -6808,7 +6808,7 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
         std::string value;
         ReplicaClusterByNsRequest zone_info;
         zone_info.CopyFrom(*request);
-        zone_info.set_mode(rNORMAL);
+        zone_info.set_mode(kNORMAL);
         zone_info.set_zone_name(FLAGS_endpoint + FLAGS_zk_root_path);
         zone_info.set_replica_alias("");
         zone_info.set_zone_term(1);
@@ -6874,7 +6874,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (request->sm() >= rFOLLOWER) { // request->sm() > rFOLLOWER
+    if (request->sm() >= kFOLLOWER) { // request->sm() > rFOLLOWER
         response->set_code(505);
         response->set_msg("unkown server status");
         return;
@@ -6890,7 +6890,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         response->set_code(0);
         return;
     }
-    if (mode_.load(std::memory_order_acquire) == rLEADER) {
+    if (mode_.load(std::memory_order_acquire) == kLEADER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (nsc_.size() > 0) {
             response->set_code(555);
@@ -6918,7 +6918,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         }
     }
     zone_info_.set_mode(request->sm());
-    if (mode_.load(std::memory_order_acquire) == rFOLLOWER) {
+    if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         // notify table leave follower mode, leader table will be writeable.
         mode_.store(request->sm(), std::memory_order_release);
         thread_pool_.AddTask(boost::bind(&NameServerImpl::DistributeTabletMode, this));
@@ -6930,7 +6930,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
 
 void NameServerImpl::DistributeTabletMode() {
     decltype(tablets_) tmp_tablets;
-    bool mode = mode_.load(std::memory_order_acquire) == rFOLLOWER;
+    bool mode = mode_.load(std::memory_order_acquire) == kFOLLOWER;
     {
         std::lock_guard<std::mutex> lock(mu_);
         tmp_tablets = tablets_;

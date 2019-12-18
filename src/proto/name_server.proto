@@ -12,9 +12,9 @@ enum CompressType {
 }
 
 enum ServerMode {
-    rNORMAL = 0;
-    rLEADER = 1;
-    rFOLLOWER = 2;
+    kNORMAL = 0;
+    kLEADER = 1;
+    kFOLLOWER = 2;
 }
 
 message ColumnDesc {
