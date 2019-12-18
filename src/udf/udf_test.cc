@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <algorithm>
 #include <vector>
+#include "google/heap-profiler.h"
 #include "storage/window.h"
 namespace fesql {
 namespace udf {
@@ -64,16 +65,55 @@ class UDFTest : public ::testing::Test {
 TEST_F(UDFTest, UDF_sum_test) {
     WindowIteratorImpl impl(rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
-    int8_t* buf = reinterpret_cast<int8_t *>(alloca(size));
-    ::fesql::storage::ListRef list_ref;
-    list_ref.iterator = buf;
-    int8_t *col = reinterpret_cast<int8_t *>(&list_ref);
+    for (int i = 0; i < 10; ++i) {
+        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+        ::fesql::storage::ListRef list_ref;
+        list_ref.iterator = buf;
+        int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
+        ASSERT_EQ(
+            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2,
+                                            fesql::type::kInt32, buf));
+        ASSERT_EQ(1 + 11 + 111, fesql::udf::v1::sum_int32(col));
+    }
+}
 
-    ASSERT_EQ(0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl),
-                                              2, fesql::type::kInt32, buf));
-    ASSERT_EQ(1 + 11 + 111,
-              fesql::udf::v1::sum_int32(col));
+TEST_F(UDFTest, GetColTest) {
+    WindowIteratorImpl impl(rows);
+    const uint32_t size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
+    for (int i = 0; i < 10; ++i) {
+        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+        ::fesql::storage::ListRef list_ref;
+        list_ref.iterator = buf;
+        ASSERT_EQ(
+            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2,
+                                            fesql::type::kInt32, buf));
+        ::fesql::storage::ColumnIteratorImpl<int16_t>* col_iterator =
+            reinterpret_cast< ::fesql::storage::ColumnIteratorImpl<int16_t>*>(
+                list_ref.iterator);
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(1u, col_iterator->Next());
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(11u, col_iterator->Next());
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(111u, col_iterator->Next());
+        ASSERT_FALSE(col_iterator->Valid());
+    }
+}
+
+TEST_F(UDFTest, GetColHeapTest) {
+    HeapProfilerStart("/debug/profile_get_col.log");
+    WindowIteratorImpl impl(rows);
+    const uint32_t size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
+    for (int i = 0; i < 100000000; ++i) {
+        int8_t buf[size];  // NOLINT
+        ::fesql::storage::ListRef list_ref;
+        list_ref.iterator = buf;
+        ASSERT_EQ(
+            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2,
+                                            fesql::type::kInt32, buf));
+    }
+    HeapProfilerStop();
 }
 
 }  // namespace udf

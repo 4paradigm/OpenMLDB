@@ -34,16 +34,14 @@ class IteratorV {
 template <class V>
 class IteratorImpl : public IteratorV<V> {
  public:
-    IteratorImpl() : list_(), start_(0), end_(0), pos_(0) {}
-
-    explicit IteratorImpl(const IteratorImpl<V> &impl)
+    IteratorImpl() : list_({}), start_(0), end_(0), pos_(0) {}
+    explicit IteratorImpl(const std::vector<V> &list)
+        : list_(list), start_(0), end_(list.size()), pos_(0) {}
+    explicit IteratorImpl(IteratorImpl &impl)
         : list_(impl.list_),
           start_(impl.start_),
           end_(impl.end_),
           pos_(impl.start_) {}
-
-    explicit IteratorImpl(const std::vector<V> &list)
-        : list_(list), start_(0), end_(list.size()), pos_(0) {}
 
     IteratorImpl(const std::vector<V> &list, int start, int end)
         : list_(list), start_(start), end_(end), pos_(start) {}
@@ -64,7 +62,7 @@ class IteratorImpl : public IteratorV<V> {
     }
 
  protected:
-    const std::vector<V> list_;
+    const std::vector<V> &list_;
     const int start_;
     const int end_;
     int pos_;
@@ -75,6 +73,7 @@ class WindowIteratorImpl : public IteratorImpl<Row> {
         : IteratorImpl<Row>(list) {}
     WindowIteratorImpl(const std::vector<Row> &list, int start, int end)
         : IteratorImpl<Row>(list, start, end) {}
+    ~WindowIteratorImpl() {}
 };
 
 template <class V, class R>
@@ -124,13 +123,11 @@ class ColumnStringIteratorImpl
 
     fesql::storage::StringRef GetField(Row row) {
         int32_t addr_space = fesql::storage::v1::GetAddrSpace(row.size);
-        DLOG(INFO) << "row size: " << row.size << " addr_space: " << addr_space;
         fesql::storage::StringRef value;
         fesql::storage::v1::GetStrField(
             row.buf, str_field_offset_, next_str_field_offset_,
             str_start_offset_, addr_space,
             reinterpret_cast<int8_t **>(&(value.data)), &(value.size));
-        DLOG(INFO) << "value.size " << value.size;
         return value;
     }
 

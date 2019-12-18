@@ -493,13 +493,13 @@ bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
     // alloca memory on stack for col iterator
     ::llvm::ArrayType* array_type =
         ::llvm::ArrayType::get(i8_ty, col_iterator_size);
-    ::llvm::Value* col_iter =
-        builder.CreateAlloca(array_type);
+    ::llvm::Value* col_iter = builder.CreateAlloca(array_type);
     // alloca memory on stack
     ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
-    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, col_iter->getType()->getPointerTo());
+    data_ptr_ptr = builder.CreatePointerCast(
+        data_ptr_ptr, col_iter->getType()->getPointerTo());
     builder.CreateStore(col_iter, data_ptr_ptr, false);
     col_iter = builder.CreatePointerCast(col_iter, i8_ptr_ty);
 
@@ -508,9 +508,8 @@ bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
 
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         fn_name, i32_ty, i8_ptr_ty, i32_ty, i32_ty, i8_ptr_ty);
-    builder.CreateCall(
-        callee, ::llvm::ArrayRef<::llvm::Value*>{row_ptr, val_offset,
-                                                 val_type_id, col_iter});
+    builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
+                                   row_ptr, val_offset, val_type_id, col_iter});
     *output = list_ref;
     return true;
 }
@@ -543,8 +542,7 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
     // alloca memory on stack for col iterator
     ::llvm::ArrayType* array_type =
         ::llvm::ArrayType::get(i8_ty, col_iterator_size);
-    ::llvm::Value* col_iter =
-        builder.CreateAlloca(array_type);
+    ::llvm::Value* col_iter = builder.CreateAlloca(array_type);
 
     // alloca memory on stack
     ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
@@ -552,7 +550,7 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
     builder.CreateStore(col_iter, data_ptr_ptr, false);
-//    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty);
+    //    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty);
 
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(

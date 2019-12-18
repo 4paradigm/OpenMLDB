@@ -232,6 +232,7 @@ static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
+    delete ptr;
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
     const std::string sql = "SELECT col4 FROM t1 limit 2;";
@@ -261,6 +262,7 @@ static void BM_EngineSimpleSelectVarchar(benchmark::State& state) {  // NOLINT
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
+    delete ptr;
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
     const std::string sql = "SELECT col6 FROM t1 limit 1;";
@@ -288,6 +290,7 @@ static void BM_EngineSimpleSelectInt32(benchmark::State& state) {  // NOLINT
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
+    delete ptr;
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
     const std::string sql = "SELECT col1 FROM t1 limit 1;";
@@ -315,6 +318,7 @@ static void BM_EngineSimpleUDF(benchmark::State& state) {  // NOLINT
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
+    delete ptr;
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
     const std::string sql =
@@ -395,7 +399,6 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
     }
 }
 
-
 BENCHMARK(BM_EngineSimpleSelectVarchar);
 BENCHMARK(BM_EngineSimpleSelectDouble);
 BENCHMARK(BM_EngineSimpleSelectInt32);
@@ -405,13 +408,16 @@ BENCHMARK(BM_EngineWindowSumFeature1)
     ->Arg(2)
     ->Arg(10)
     ->Arg(100)
-    ->Arg(1000);
+    ->Arg(1000)
+    ->Arg(10000);
 BENCHMARK(BM_EngineWindowSumFeature5)
     ->Arg(1)
     ->Arg(2)
     ->Arg(10)
     ->Arg(100)
-    ->Arg(1000);
+    ->Arg(1000)
+    ->Arg(10000);
+
 }  // namespace vm
 }  // namespace fesql
 

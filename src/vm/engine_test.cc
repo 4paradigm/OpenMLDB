@@ -122,10 +122,10 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
     *buf = ptr;
     *size = total_size;
 }
-void BuildWindow(int8_t** buf) {
+void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
+                 int8_t** buf) {
     ::fesql::type::TableDef table;
     BuildTableDef(table);
-    std::vector<fesql::storage::Row> rows;
     {
         storage::RowBuilder builder(table.columns());
         std::string str = "1";
@@ -214,10 +214,11 @@ void BuildWindow(int8_t** buf) {
         new ::fesql::storage::WindowIteratorImpl(rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
-void BuildWindowUnique(int8_t** buf) {
+void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
+                       int8_t** buf) {
     ::fesql::type::TableDef table;
     BuildTableDef(table);
-    std::vector<fesql::storage::Row> rows;
+
     {
         storage::RowBuilder builder(table.columns());
         std::string str = "1";
@@ -415,7 +416,8 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    BuildWindow(&rows);
+    std::vector<fesql::storage::Row> windows;
+    BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
@@ -513,7 +515,8 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    BuildWindow(&rows);
+    std::vector<fesql::storage::Row> windows;
+    BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
@@ -590,7 +593,8 @@ TEST_F(EngineTest, test_multi_windows_agg) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    BuildWindow(&rows);
+    std::vector<fesql::storage::Row> windows;
+    BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
@@ -685,7 +689,8 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    BuildWindowUnique(&rows);
+    std::vector<fesql::storage::Row> windows;
+    BuildWindowUnique(windows, &rows);
     StoreData(table.get(), rows);
 
     status->table = std::move(table);
@@ -788,7 +793,8 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    BuildWindow(&rows);
+    std::vector<fesql::storage::Row> windows;
+    BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
 
     status->table = std::move(table);

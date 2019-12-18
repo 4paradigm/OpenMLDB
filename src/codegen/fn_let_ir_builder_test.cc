@@ -131,7 +131,6 @@ void AddFunc(const std::string& fn, ::llvm::Module* m) {
     ASSERT_TRUE(ok);
 }
 
-
 TEST_F(FnLetIRBuilderTest, test_primary) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -150,8 +149,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     ret = planner.CreatePlanTree(list, trees, status);
     ASSERT_EQ(0, ret);
     ::fesql::node::ProjectListPlanNode* pp_node_ptr =
-        (::fesql::node::ProjectListPlanNode*)(trees[0]
-                                                  ->GetChildren()[0]);
+        (::fesql::node::ProjectListPlanNode*)(trees[0]->GetChildren()[0]);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
@@ -402,7 +400,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     free(ptr);
 }
 
-void BuildWindow(int8_t** buf) {
+void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
+                 int8_t** buf) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
     {
@@ -437,8 +436,6 @@ void BuildWindow(int8_t** buf) {
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col6");
     }
-
-    std::vector<fesql::storage::Row> rows;
 
     {
         storage::RowBuilder builder(table.columns());
@@ -586,7 +583,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_udf_project) {
         (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    BuildWindow(&ptr);
+    std::vector<fesql::storage::Row> window;
+    BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, 0, &output);
     ASSERT_EQ(ret2, 0u);

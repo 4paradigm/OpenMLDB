@@ -8,6 +8,7 @@
  **/
 #include "storage/window.h"
 #include "gtest/gtest.h"
+#include "proto/type.pb.h"
 namespace fesql {
 namespace storage {
 class WindowIteratorTest : public ::testing::Test {
