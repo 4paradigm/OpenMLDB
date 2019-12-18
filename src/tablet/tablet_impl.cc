@@ -1684,11 +1684,18 @@ void TabletImpl::AddReplica(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kAddReplica, task_ptr) < 0) {
+        if (AddOPMultiTask(request->task_info(), ::rtidb::api::TaskType::kAddReplica, task_ptr) < 0) {
             response->set_code(-1);
             response->set_msg("add task failed");
             return;
         }
+        /**
+          if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kAddReplica, task_ptr) < 0) {
+          response->set_code(-1);
+          response->set_msg("add task failed");
+          return;
+        }
+        */
     }
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     do {
@@ -3643,6 +3650,51 @@ std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindTask(
     }
     for (auto& task : iter->second) {
         if (task->op_id() == op_id && task->task_type() == task_type) {
+            return task;
+        }
+    }
+    return std::shared_ptr<::rtidb::api::TaskInfo>();
+}
+
+int TabletImpl::AddOPMultiTask(const ::rtidb::api::TaskInfo& task_info, 
+        ::rtidb::api::TaskType task_type,
+        std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (FindMultiTask(task_info)) {
+        PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
+                        task_info.op_id(),
+                        ::rtidb::api::OPType_Name(task_info.op_type()).c_str(),
+                        ::rtidb::api::TaskType_Name(task_info.task_type()).c_str());
+        return -1;
+    }
+    task_ptr.reset(task_info.New());
+    task_ptr->CopyFrom(task_info);
+    task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+    auto iter = task_map_.find(task_info.op_id());
+    if (iter == task_map_.end()) {
+        task_map_.insert(std::make_pair(task_info.op_id(), 
+                std::list<std::shared_ptr<::rtidb::api::TaskInfo>>()));
+    }
+    task_map_[task_info.op_id()].push_back(task_ptr);
+    if (task_info.task_type() != task_type) {
+        PDLOG(WARNING, "task type is not match. type is[%s]", 
+                        ::rtidb::api::TaskType_Name(task_info.task_type()).c_str());
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+        return -1;
+    }
+    PDLOG(DEBUG, "task status [%s]--------------", ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
+    return 0;
+}
+
+std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindMultiTask(const ::rtidb::api::TaskInfo& task_info) {
+    auto iter = task_map_.find(task_info.op_id());
+    if (iter == task_map_.end()) {
+        return std::shared_ptr<::rtidb::api::TaskInfo>();
+    }
+    for (auto& task : iter->second) {
+        if (task->op_id() == task_info.op_id() && 
+                task->task_type() == task_info.task_type() &&
+                task->task_id() == task_info.task_id()) {
             return task;
         }
     }

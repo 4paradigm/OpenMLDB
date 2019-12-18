@@ -59,11 +59,31 @@ public:
 
     bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);
 
+    bool LoadTable(const std::string& name,
+            const std::string& endpoint,
+            uint32_t pid,
+            const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+            const ::rtidb::api::TaskInfo& task_info);
+
+    bool CreateRemoteTableInfo(const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+            ::rtidb::nameserver::TableInfo& table_info,
+            std::string& msg);
+
+    bool CreateRemoteTableInfoSimply(const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+            ::rtidb::nameserver::TableInfo& table_info,
+            std::string& msg);
+
     bool DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, const std::string& name, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, std::string& msg);
     
     bool CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, std::string& msg);
 
     bool AddReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint, std::string& msg);
+
+    bool AddReplicaNS(const std::string& name, 
+            const std::vector<std::string>& endpoint_vec,
+            uint32_t pid,
+            const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+            const ::rtidb::api::TaskInfo& task_info); 
 
     bool DelReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint, std::string& msg);
 

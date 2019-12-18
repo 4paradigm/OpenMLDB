@@ -346,12 +346,17 @@ private:
     int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta);
 
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
-                    std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
+            std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
             uint64_t op_id, ::rtidb::api::TaskType task_type);
 
-    int CheckDimessionPut(const ::rtidb::api::PutRequest* request, uint32_t idx_cnt);
+    int AddOPMultiTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
+            std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
+
+    std::shared_ptr<::rtidb::api::TaskInfo> FindMultiTask(const ::rtidb::api::TaskInfo& task_info); 
+
+   int CheckDimessionPut(const ::rtidb::api::PutRequest* request, uint32_t idx_cnt);
     
     // sync log data from page cache to disk 
     void SchedSyncDisk(uint32_t tid, uint32_t pid);

@@ -83,6 +83,19 @@ message DropTableRequest {
     optional rtidb.api.TaskInfo task_info = 3;
 }
 
+message LoadTableRequest {
+    optional string name = 1;
+    optional string endpoint = 2;
+    optional uint32 pid = 3;
+    optional ReplicaClusterByNsRequest zone_info = 4;
+    optional rtidb.api.TaskInfo task_info = 5;
+}
+
+message CreateTableInfoRequest {
+    optional TableInfo table_info = 1;
+    optional ReplicaClusterByNsRequest zone_info = 22;
+}
+
 message ShowTableRequest {
     optional string name = 1;
 }
@@ -109,8 +122,13 @@ message AddReplicaNSRequest {
     required uint32 pid = 2;
     required string endpoint = 3;
     repeated uint32 pid_group = 4;
-    optional PartitionMeta partition_meta = 5; //for remote
+    optional string alias = 5; //for remote 
     optional uint32 remote_tid = 6; //for remote
+    repeated string endpoint_group = 7; //for remote
+    optional PartitionMeta partition_meta = 8; //for remote
+    optional TablePartition table_partition = 9; //for remote
+    optional ReplicaClusterByNsRequest zone_info = 10; //for remote
+    optional rtidb.api.TaskInfo task_info = 11; //for remote
 }
 
 message Pair {
@@ -150,6 +168,12 @@ message RecoverEndpointRequest {
 message GeneralResponse {
     required int32 code = 1;
     optional string msg = 2;
+}
+
+message CreateTableInfoResponse {
+    optional TableInfo table_info = 1;
+    required int32 code = 2;
+    optional string msg = 3;
 }
 
 message ShowTabletRequest {}
@@ -212,6 +236,7 @@ message RecoverTableData {
 message CreateTableData {
     optional string alias = 1;
     optional TableInfo table_info = 2;
+    optional TableInfo remote_table_info = 3;
 }
 
 message ChangeLeaderData {
@@ -347,4 +372,8 @@ service NameServer {
     
     rpc GetTaskStatus(rtidb.api.TaskStatusRequest) returns (rtidb.api.TaskStatusResponse);
     rpc DeleteOPTask(rtidb.api.DeleteTaskRequest) returns (rtidb.api.GeneralResponse);
+    rpc CreateTableInfo(CreateTableInfoRequest) returns (CreateTableInfoResponse);
+    rpc CreateTableInfoSimply(CreateTableInfoRequest) returns (CreateTableInfoResponse);
+    rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
+    rpc AddReplicaNSFromRemote(AddReplicaNSRequest) returns (GeneralResponse);
 }
