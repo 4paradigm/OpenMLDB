@@ -399,21 +399,20 @@ bool NsClient::UpdateTableAliveStatus(const std::string& endpoint, std::string& 
 }
 
 bool NsClient::UpdateTTL(const std::string& name, 
-                         const std::string& ttl_type,
-                         uint64_t ttl, const std::string& ts_name,
+                         const ::rtidb::common::TTLType& type,
+                         uint64_t abs_ttl, uint64_t lat_ttl,
+                         const std::string& ts_name,
                          std::string& msg) {
     ::rtidb::nameserver::UpdateTTLRequest request;
     ::rtidb::nameserver::UpdateTTLResponse response;
     request.set_name(name);
-    if (ttl_type == "absolute") {
-        request.set_ttl_type("kAbsoluteTime");
-    } else {
-        request.set_ttl_type("kLatestTime");
-    }
+    ::rtidb::common::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+    ttl_desc->set_ttl_type(type);
+    ttl_desc->set_abs_ttl(abs_ttl);
+    ttl_desc->set_lat_ttl(lat_ttl);
     if (!ts_name.empty()) {
         request.set_ts_name(ts_name);
     }
-    request.set_value(ttl);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UpdateTTL,
                                   &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();

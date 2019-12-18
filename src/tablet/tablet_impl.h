@@ -278,6 +278,16 @@ public:
                           const rtidb::api::GetType& et_type,
                           uint32_t* count,
                           bool remove_duplicated_record);
+
+    int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt,
+                          ::rtidb::common::TTLType ttl_type,
+                          ::rtidb::storage::TableIterator* it,
+                          uint64_t st,
+                          const rtidb::api::GetType& st_type,
+                          uint64_t et,
+                          const rtidb::api::GetType& et_type,
+                          uint32_t* count,
+                          bool remove_duplicated_record);
 private:
 
     bool CreateMultiDir(const std::vector<std::string>& dirs);

@@ -5008,21 +5008,22 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         return;
     }
     // validation
-    if (table->ttl_type() != request->ttl_type()) {
-        PDLOG(WARNING, "table ttl type mismatch, expect %s bug %s", table->ttl_type().c_str(), request->ttl_type().c_str());
+    if (table->ttl_desc().ttl_type() != request->ttl_desc().ttl_type()) {
+        PDLOG(WARNING, "table ttl type mismatch, expect %s bug %s", ::rtidb::common::TTLType_Name(table->ttl_desc().ttl_type()).c_str(),
+            ::rtidb::common::TTLType_Name(request->ttl_desc().ttl_type()).c_str());
         response->set_code(112);
         response->set_msg("ttl type mismatch");
         return;
     }
-
-    ::rtidb::common::TTLType ttl_type;
-    bool ok = ::rtidb::common::TTLType_Parse(request->ttl_type(), &ttl_type);
-    if (!ok) {
-        PDLOG(WARNING, "fail to parse ttl_type %s", request->ttl_type().c_str());
-        response->set_code(307);
-        response->set_msg("invalid parameter");
-        return;
-    }
+    
+    // ::rtidb::common::TTLType ttl_type;
+    // bool ok = ::rtidb::common::TTLType_Parse(request->ttl_type(), &ttl_type);
+    // if (!ok) {
+    //     PDLOG(WARNING, "fail to parse ttl_type %s", request->ttl_type().c_str());
+    //     response->set_code(307);
+    //     response->set_msg("invalid parameter");
+    //     return;
+    // }
     std::string ts_name;
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         ts_name = request->ts_name();
@@ -5052,7 +5053,8 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         for (int32_t j = 0; j < table_partition.partition_meta_size(); j++) {
             const PartitionMeta& meta = table_partition.partition_meta(j);
             all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), 
-                    table_partition.pid(), ttl_type, request->value(), ts_name); 
+                    table_partition.pid(), request->ttl_desc().ttl_type(),
+                    request->ttl_desc().abs_ttl(), request->ttl_desc().lat_ttl(), ts_name); 
         }
     }
     if (!all_ok) {
@@ -5208,7 +5210,7 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTabletInfo(const std::string& end
 
 bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
         int32_t tid, int32_t pid, const ::rtidb::common::TTLType& type,
-        uint64_t ttl, const std::string& ts_name) {
+        uint64_t abs_ttl, uint64_t lat_ttl, const std::string& ts_name) {
     std::shared_ptr<TabletInfo> tablet = GetTabletInfo(endpoint);
     if (!tablet) {
         PDLOG(WARNING, "tablet with endpoint %s is not found", endpoint.c_str());
@@ -5219,11 +5221,11 @@ bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
         PDLOG(WARNING, "tablet with endpoint %s has not client", endpoint.c_str());
         return false;
     }
-    bool ok = tablet->client_->UpdateTTL(tid, pid, type, ttl, ts_name);
+    bool ok = tablet->client_->UpdateTTL(tid, pid, type, abs_ttl, lat_ttl, ts_name);
     if (!ok) {
-        PDLOG(WARNING, "fail to update ttl with tid %d, pid %d, ttl %lu, endpoint %s", tid, pid, ttl, endpoint.c_str());
+        PDLOG(WARNING, "fail to update ttl with tid %d, pid %d, abs_ttl %lu, lat_ttl %lu, endpoint %s", tid, pid, abs_ttl, lat_ttl, endpoint.c_str());
     }else {
-        PDLOG(INFO, "update ttl with tid %d pid %d ttl %lu endpoint %s ok", tid, pid, ttl, endpoint.c_str());
+        PDLOG(INFO, "update ttl with tid %d pid %d abs_ttl %lu, lat_ttl %lu endpoint %s ok", tid, pid, abs_ttl, lat_ttl, endpoint.c_str());
     }
     return ok;
 }

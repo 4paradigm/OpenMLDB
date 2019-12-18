@@ -533,14 +533,38 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client
         return;
     }
     std::string ts_name;
-    if (parts.size() == 5) {
-        ts_name = parts[4];
-    }
     try {
-        std::string value;
         std::string err;
-        uint64_t ttl = boost::lexical_cast<uint64_t>(parts[3]);
-        bool ok = client->UpdateTTL(parts[1], parts[2], ttl, ts_name, err);
+        uint64_t abs_ttl = 0; 
+        uint64_t lat_ttl = 0;
+        ::rtidb::common::TTLType type = ::rtidb::common::kLatestTime;
+        if (parts[2] == "absolute") {
+            type = ::rtidb::common::kAbsoluteTime;
+            abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
+            if (parts.size() == 5) {
+                ts_name = parts[4];
+            }
+        } else if (parts[2] == "absandlat") {
+            type = ::rtidb::common::kAbsAndLat;
+            abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
+            lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
+            if (parts.size() == 6) {
+                ts_name = parts[5];
+            }
+        } else if(parts[2] == "absorlat") {
+            type = ::rtidb::common::kAbsOrLat;
+            abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
+            lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
+            if (parts.size() == 6) {
+                ts_name = parts[5];
+            }
+        } else {
+            lat_ttl = boost::lexical_cast<uint64_t>(parts[3]);
+            if (parts.size() == 5) {
+                ts_name = parts[4];
+            }
+        }
+        bool ok = client->UpdateTTL(parts[1], type, abs_ttl, lat_ttl, ts_name, err);
         if (ok) {
             std::cout << "Set ttl ok !" << std::endl;
         }else {
@@ -2134,19 +2158,35 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         }
     } else if (parts.size() > 4) {
         ns_table_info.set_name(parts[1]);
-        std::string type = "kAbsoluteTime";
         ::rtidb::common::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsoluteTime);
         try {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[2], ":", vec);
-            if (vec.size() > 1) {
-                if ((vec[0] == "latest" || vec[0] == "kLatestTime"))  {
-                    type = "kLatestTime";
+            if (vec.size() == 2) {
+                if ((vec[0] == "latest" || vec[0] == "kLatestTime")) {
                     ttl_desc->set_ttl_type(::rtidb::common::TTLType::kLatestTime);
                     ttl_desc->set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                     ttl_desc->set_abs_ttl(0);
-                } else {
+                } else if ((vec[0] == "absolute" || vec[0] == "kAbsoluteTime")) {
+                    ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsoluteTime);
+                    ttl_desc->set_lat_ttl(0);
+                    ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+                }
+                else {
+                    std::cout << "invalid ttl type" << std::endl;
+                    return;
+                }
+            } else if(vec.size() == 3) {
+                if ((vec[0] == "absandlat" || vec[0] == "kAbsAndLat")) {
+                    ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsAndLat);
+                    ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
+                    ttl_desc->set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+                } else if ((vec[0] == "absorlat" || vec[0] == "kAbsOrLat")) {
+                    ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsOrLat);
+                    ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
+                    ttl_desc->set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+                }
+                else {
                     std::cout << "invalid ttl type" << std::endl;
                     return;
                 }
@@ -2155,7 +2195,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                 ttl_desc->set_lat_ttl(0);
                 ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
             }
-            ns_table_info.set_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+            // ns_table_info.set_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
             uint32_t partition_num = boost::lexical_cast<uint32_t>(parts[3]);
             if (partition_num == 0) {
                  std::cout << "partition_num should be large than zero" << std::endl;
@@ -2172,7 +2212,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
             std::cout << "Invalid args. pid should be uint32_t" << std::endl;
             return;
         } 
-        ns_table_info.set_ttl_type(type);
+        // ns_table_info.set_ttl_type(type);
         bool has_index = false;
         std::set<std::string> name_set;
         for (uint32_t i = 5; i < parts.size(); i++) {
@@ -2679,25 +2719,45 @@ void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::
         return;
     }
     std::string ts_name;
-    if (parts.size() == 6) {
-        ts_name = parts[5];
-    }
     try {
-        std::string value;
-        uint64_t ttl = boost::lexical_cast<uint64_t>(parts[4]);
+        uint64_t abs_ttl = 0; 
+        uint64_t lat_ttl = 0;
         ::rtidb::common::TTLType type = ::rtidb::common::kLatestTime;
         if (parts[3] == "absolute") {
-            type = ::rtidb::common::kAbsoluteTime; 
+            type = ::rtidb::common::kAbsoluteTime;
+            abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
+            if (parts.size() == 6) {
+                ts_name = parts[5];
+            }
+        } else if (parts[3] == "absandlat") {
+            type = ::rtidb::common::kAbsAndLat;
+            abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
+            lat_ttl = boost::lexical_cast<uint64_t>(parts[5]);
+            if (parts.size() == 7) {
+                ts_name = parts[6];
+            }
+        } else if(parts[3] == "absorlat") {
+            type = ::rtidb::common::kAbsOrLat;
+            abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
+            lat_ttl = boost::lexical_cast<uint64_t>(parts[5]);
+            if (parts.size() == 7) {
+                ts_name = parts[6];
+            }
+        } else {
+            lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
+            if (parts.size() == 6) {
+                ts_name = parts[5];
+            }
         }
         bool ok = client->UpdateTTL(boost::lexical_cast<uint32_t>(parts[1]),
                                     boost::lexical_cast<uint32_t>(parts[2]),
-                                    type, ttl, ts_name);
+                                    type, abs_ttl, lat_ttl, ts_name);
         if (ok) {
             std::cout << "Set ttl ok !" << std::endl;
         } else {
             std::cout << "Set ttl failed! " << std::endl; 
         }
-    
+
     } catch(std::exception const& e) {
         std::cout << "Invalid args tid and pid should be uint32_t" << std::endl;
     }
@@ -2845,16 +2905,19 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
     }
 
     try {
-        int64_t ttl = 0;
+        uint64_t abs_ttl = 0;
+        uint64_t lat_ttl = 0;
         ::rtidb::common::TTLType type = ::rtidb::common::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[4], ":", vec);
-            ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
+            abs_ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
             if (vec.size() > 1) {
                 if (vec[0] == "latest") {
                     type = ::rtidb::common::TTLType::kLatestTime;
-                    if (ttl > FLAGS_latest_ttl_max) {
+                    lat_ttl = abs_ttl;
+                    abs_ttl = 0;
+                    if (lat_ttl > FLAGS_latest_ttl_max) {
                         std::cout << "Create failed. The max num of latest LatestTime is " 
                                   << FLAGS_latest_ttl_max << std::endl;
                         return;
@@ -2864,14 +2927,14 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
                     return;
                 }
             } else {
-                if (ttl > FLAGS_absolute_ttl_max) {
+                if (abs_ttl > FLAGS_absolute_ttl_max) {
                     std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
                               << FLAGS_absolute_ttl_max << std::endl;
                     return;
                 }
             }
         }
-        if (ttl < 0) {
+        if (abs_ttl < 0 || lat_ttl < 0) {
             std::cout << "ttl should be equal or greater than 0" << std::endl;
             return;
         }
@@ -2900,7 +2963,7 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      (uint64_t)ttl, is_leader, endpoints, type, seg_cnt, 0, compress_type);
+                                      abs_ttl, lat_ttl, is_leader, endpoints, type, seg_cnt, 0, compress_type);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
@@ -3647,15 +3710,18 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
     type_set.insert("int16");
     type_set.insert("uint16");
     try {
-        int64_t ttl = 0;
+        uint64_t abs_ttl = 0;
+        uint64_t lat_ttl = 0;
         ::rtidb::common::TTLType type = ::rtidb::common::TTLType::kAbsoluteTime;
         std::vector<std::string> vec;
         ::rtidb::base::SplitString(parts[4], ":", vec);
-        ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
+        abs_ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
         if (vec.size() > 1) {
             if (vec[0] == "latest") {
                 type = ::rtidb::common::TTLType::kLatestTime;
-                if (ttl > FLAGS_latest_ttl_max) {
+                lat_ttl = abs_ttl;
+                abs_ttl = 0;
+                if (lat_ttl > FLAGS_latest_ttl_max) {
                     std::cout << "Create failed. The max num of latest LatestTime is " 
                               << FLAGS_latest_ttl_max << std::endl;
                     return;
@@ -3665,13 +3731,13 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
                 return;
             }
         } else {
-            if (ttl > FLAGS_absolute_ttl_max) {
+            if (abs_ttl > FLAGS_absolute_ttl_max) {
                 std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
                           << FLAGS_absolute_ttl_max << std::endl;
                 return;
             }
         }        
-        if (ttl < 0) {
+        if (abs_ttl < 0 || lat_ttl < 0) {
             std::cout << "invalid ttl which should be equal or greater than 0" << std::endl;
             return;
         }
@@ -3727,7 +3793,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      (uint64_t)ttl, seg_cnt, columns, type, leader,
+                                      abs_ttl, lat_ttl, seg_cnt, columns, type, leader,
                                       std::vector<std::string>());
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;

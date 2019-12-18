@@ -44,6 +44,7 @@ message UpdateTTLRequest {
     optional string ttl_type = 2;
     optional uint64 value = 3;
     optional string ts_name = 4;
+    optional rtidb.common.TTLDesc ttl_desc = 5;
 }
 
 message UpdateTTLResponse {

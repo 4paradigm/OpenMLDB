@@ -717,7 +717,8 @@ TEST_F(TableTest, UpdateTTL) {
     table_meta.set_name("table1");
     table_meta.set_tid(1);
     table_meta.set_pid(0);
-    table_meta.set_ttl(10);
+    ::rtidb::common::TTLDesc* ttl_desc = table_meta.mutable_ttl_desc();
+    ttl_desc->set_abs_ttl(10);
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
@@ -743,7 +744,8 @@ TEST_F(TableTest, UpdateTTL) {
     desc->set_type("int64");
     desc->set_add_ts_idx(false);
     desc->set_is_ts_col(true);
-    desc->set_ttl(5);
+    ttl_desc = desc->mutable_ttl_desc();
+    ttl_desc->set_abs_ttl(5);
     ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
     column_key->set_index_name("card");
     column_key->add_ts_name("ts1");
@@ -754,14 +756,14 @@ TEST_F(TableTest, UpdateTTL) {
 
     MemTable table(table_meta);
     table.Init();
-    ASSERT_EQ(10, table.GetTTL(0, 0));
-    ASSERT_EQ(5, table.GetTTL(0, 1));
-    table.SetTTL(1, 20L, 0L);
-    ASSERT_EQ(10, table.GetTTL(0, 0));
-    ASSERT_EQ(5, table.GetTTL(0, 1));
+    ASSERT_EQ(10, table.GetTTL(0, 0).abs_ttl);
+    ASSERT_EQ(5, table.GetTTL(0, 1).abs_ttl);
+    table.SetTTL(1, 20, 0);
+    ASSERT_EQ(10, table.GetTTL(0, 0).abs_ttl);
+    ASSERT_EQ(5, table.GetTTL(0, 1).abs_ttl);
     table.SchedGc();
-    ASSERT_EQ(10, table.GetTTL(0, 0));
-    ASSERT_EQ(20, table.GetTTL(0, 1));
+    ASSERT_EQ(10, table.GetTTL(0, 0).abs_ttl);
+    ASSERT_EQ(20, table.GetTTL(0, 1).abs_ttl);
 }
 
 }

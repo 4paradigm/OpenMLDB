@@ -87,8 +87,9 @@ public:
                             uint32_t pid, bool is_alive, std::string& msg);
 
     bool UpdateTTL(const std::string& name, 
-                   const std::string& ttl_type, 
-                   uint64_t ttl, const std::string& ts_name,
+                   const ::rtidb::common::TTLType& type,
+                   uint64_t abs_ttl, uint64_t lat_ttl,
+                   const std::string& ts_name,
                    std::string& msg);
 private:
     std::string endpoint_;
