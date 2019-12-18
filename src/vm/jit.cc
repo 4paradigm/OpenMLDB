@@ -37,8 +37,8 @@ extern "C" {
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Utils.h"
 
 namespace fesql {
 namespace vm {
@@ -52,8 +52,9 @@ FeSQLJIT::~FeSQLJIT() {}
                                     ::llvm::orc::ThreadSafeModule tsm,
                                     ::llvm::orc::VModuleKey key) {
     if (auto Err = applyDataLayout(*tsm.getModule())) return Err;
-    LOG(INFO) << "add a module with key " << key << " with ins cnt " << tsm.getModule()->getInstructionCount();
-	::llvm::legacy::FunctionPassManager fpm(tsm.getModule());
+    LOG(INFO) << "add a module with key " << key << " with ins cnt "
+              << tsm.getModule()->getInstructionCount();
+    ::llvm::legacy::FunctionPassManager fpm(tsm.getModule());
     // Add some optimizations.
     fpm.add(::llvm::createInstructionCombiningPass());
     fpm.add(::llvm::createReassociatePass());
@@ -63,16 +64,18 @@ FeSQLJIT::~FeSQLJIT() {}
     ::llvm::Module::iterator it;
     ::llvm::Module::iterator end = tsm.getModule()->end();
     for (it = tsm.getModule()->begin(); it != end; ++it) {
-      fpm.run(*it);
+        fpm.run(*it);
     }
-    LOG(INFO) << "after opt with ins cnt " << tsm.getModule()->getInstructionCount();
+    LOG(INFO) << "after opt with ins cnt "
+              << tsm.getModule()->getInstructionCount();
     return CompileLayer->add(jd, std::move(tsm), key);
 }
 
 void FeSQLJIT::OptModule(::llvm::Module* m) {
-    if (auto Err = applyDataLayout(*m)){}
+    if (auto Err = applyDataLayout(*m)) {
+    }
     LOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
-	::llvm::legacy::FunctionPassManager fpm(m);
+    ::llvm::legacy::FunctionPassManager fpm(m);
     fpm.add(::llvm::createPromoteMemoryToRegisterPass());
     // Add some optimizations.
     fpm.add(::llvm::createInstructionCombiningPass());
@@ -83,7 +86,7 @@ void FeSQLJIT::OptModule(::llvm::Module* m) {
     ::llvm::Module::iterator it;
     ::llvm::Module::iterator end = m->end();
     for (it = m->begin(); it != end; ++it) {
-      fpm.run(*it);
+        fpm.run(*it);
     }
     LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
 }
