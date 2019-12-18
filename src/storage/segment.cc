@@ -826,14 +826,12 @@ void MemTableIterator::Seek(const uint64_t time) {
     it_->Seek(time);
 }
 
-bool MemTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t cnt) {
+bool MemTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t max_cnt, uint32_t& cnt) {
     if (it_ == NULL) {
-        return;
+        return false;
     }
-    uint32_t it_cnt = 0;
     it_->SeekToFirst();
-    while(it_->Valid() && (it_cnt < cnt || cnt == 0)) {
-        ++it_cnt;
+    while(it_->Valid() && (cnt < max_cnt || max_cnt == 0)) {
         switch(type) {
             case ::rtidb::api::GetType::kSubKeyEq:
                 if (it_->GetKey() <= time) {
@@ -846,7 +844,7 @@ bool MemTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, uin
                 }
                 break;
             case ::rtidb::api::GetType::kSubKeyLt:
-                if (it_->GetKey() < st) {
+                if (it_->GetKey() < time) {
                     return true;
                 }
                 break;
@@ -857,14 +855,15 @@ bool MemTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, uin
             default:
                 return false;
         }
-        it->Next();
+        it_->Next();
+        ++cnt;
     }
     return false;
 }
 
 bool MemTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type) {
     if (it_ == NULL) {
-        return;
+        return false;
     }
     switch(type) {
         case ::rtidb::api::GetType::kSubKeyEq:
@@ -872,10 +871,10 @@ bool MemTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type) {
             return it_->Valid() && it_->GetKey() == time;
         case ::rtidb::api::GetType::kSubKeyLe:
             it_->Seek(time);
-            return true;
+            return it_->Valid();
         case ::rtidb::api::GetType::kSubKeyLt:
             it_->Seek(time - 1);
-            return true;
+            return it_->Valid();
         case ::rtidb::api::GetType::kSubKeyGe:
             it_->SeekToFirst();
             return it_->Valid() && it_->GetKey() >= time;

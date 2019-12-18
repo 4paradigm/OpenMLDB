@@ -81,7 +81,7 @@ public:
     MemTableIterator(TimeEntries::Iterator* it);
     ~MemTableIterator();
     virtual void Seek(const uint64_t time) override;
-    virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t cnt) override;
+    virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t max_cnt, uint32_t& cnt) override;
     virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type) override;
     virtual bool Valid() override;
     virtual void Next() override;

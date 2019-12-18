@@ -215,7 +215,7 @@ public:
     virtual uint64_t GetKey() const override;
     virtual void SeekToFirst() override;
     virtual void Seek(const uint64_t time) override;
-    virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t cnt) override;
+    virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t max_cnt, uint32_t& cnt) override;
     virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type) override;
 
 private:

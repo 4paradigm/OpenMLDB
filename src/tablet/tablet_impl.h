@@ -237,17 +237,6 @@ public:
         server_ = server;
     }
 
-    // scan the latest index
-    int32_t ScanLatestIndex(uint64_t ttl,
-                            ::rtidb::storage::TableIterator* it,
-                            uint32_t limit,
-                            uint64_t st,
-                            const rtidb::api::GetType& st_type,
-                            uint64_t et,
-                            const rtidb::api::GetType& et_type,
-                            std::string* pairs,
-                            uint32_t* count);
-
     int32_t CountLatestIndex(uint64_t ttl, 
                             ::rtidb::storage::TableIterator* it,
                             uint64_t st,
@@ -257,28 +246,20 @@ public:
                             uint32_t* count,
                             bool remove_duplicated_record);
 
-    // get one value from latest index
-    int32_t GetLatestIndex(uint64_t ttl,
-                           ::rtidb::storage::TableIterator* it,
-                           uint64_t st,
-                           const rtidb::api::GetType& st_type,
-                           uint64_t et,
-                           const rtidb::api::GetType& et_type,
-                           std::string* value,
-                           uint64_t* ts);
+    // get on value from specified ttl type index
+    int32_t GetIndex(uint64_t expire_time, uint64_t expire_cnt,
+                          ::rtidb::common::TTLType ttl_type,
+                          ::rtidb::storage::TableIterator* it,
+                          uint64_t st,
+                          const rtidb::api::GetType& st_type,
+                          uint64_t et,
+                          const rtidb::api::GetType& et_type,
+                          std::string* value,
+                          uint64_t* ts);
 
-    // get one value from time index
-    int32_t GetTimeIndex(uint64_t expire_ts,
-                         ::rtidb::storage::TableIterator* it,
-                         uint64_t st,
-                         const rtidb::api::GetType& st_type,
-                         uint64_t et,
-                         const rtidb::api::GetType& et_type,
-                         std::string* value,
-                         uint64_t* ts);
-
-    // scan the time index 
-    int32_t ScanTimeIndex(uint64_t expire_ts, 
+    // scan specified ttl type index
+    int32_t ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
+                          ::rtidb::common::TTLType ttl_type,
                           ::rtidb::storage::TableIterator* it,
                           uint32_t limit,
                           uint64_t st,

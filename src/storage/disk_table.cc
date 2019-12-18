@@ -708,11 +708,9 @@ bool DiskTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type) {
     return false;
 }
 
-bool DiskTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t cnt) {
-    uint32_t it_cnt = 0;
+bool DiskTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t max_cnt, uint32_t& cnt) {
     SeekToFirst();
-    while(Valid() && (it_cnt < cnt || cnt == 0)) {
-        ++it_cnt;
+    while(Valid() && (cnt < max_cnt || max_cnt == 0)) {
         switch(type) {
             case ::rtidb::api::GetType::kSubKeyEq:
                 if (ts_ <= time) {
@@ -725,7 +723,7 @@ bool DiskTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, ui
                 }
                 break;
             case ::rtidb::api::GetType::kSubKeyLt:
-                if (ts_ < st) {
+                if (ts_ < time) {
                     return true;
                 }
                 break;
@@ -737,6 +735,7 @@ bool DiskTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, ui
                 return false;
         }
         it_->Next();
+        ++cnt;
     }
     return false;
 }
