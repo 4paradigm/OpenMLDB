@@ -571,9 +571,9 @@ private:
                            const ::rtidb::api::TTLType& type,
                            uint64_t ttl, const std::string& ts_name);
 
-    bool CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo>& tables);
+    bool CompareTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables);
 
-    void CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, std::vector<::rtidb::nameserver::TableInfo>& tables);
+    void CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std::vector<::rtidb::nameserver::TableInfo>& tables);
 
     void DistributeTabletMode();
 

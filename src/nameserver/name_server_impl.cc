@@ -143,29 +143,29 @@ bool ClusterInfo::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& tas
     return true;
 }
 
-void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, std::vector<::rtidb::nameserver::TableInfo>& tables) {
+void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std::vector<::rtidb::nameserver::TableInfo>& tables) {
     std::map<std::string, std::shared_ptr<TableInfo>>::iterator table_info_iter;
     for (const auto& table : tables) {
         table_info_iter = table_info_.find(table.name());
         auto status_iter = ci->last_status.find(table.name());
         if (status_iter == ci->last_status.end()) {
             std::map<uint32_t, uint64_t> pid_offset_map;
-            for (auto &part : table_info_iter->second->table_partition()) {
-                for (auto &meta : part.partition_meta()) {
+            for (auto& part : table_info_iter->second->table_partition()) {
+                for (auto& meta : part.partition_meta()) {
                     if (meta.is_alive() && meta.is_leader()) {
                         pid_offset_map.insert(std::make_pair(part.pid(), meta.offset()));
                     }
                 }
             }
             std::vector<TablePartition> tbs;
-            for (auto &part : table.table_partition()) {
-                ::rtidb::nameserver::TablePartition tb = TablePartition();
+            for (auto& part : table.table_partition()) {
+                ::rtidb::nameserver::TablePartition tb;
                 tb.set_pid(part.pid());
                 tb.set_record_byte_size(part.record_byte_size());
                 tb.set_record_cnt(part.record_cnt());
-                PartitionMeta *m = tb.add_partition_meta();
+                PartitionMeta* m = tb.add_partition_meta();
                 m->set_endpoint("");
-                for (auto &meta : part.partition_meta()) {
+                for (auto& meta : part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
                         auto offset_iter = pid_offset_map.find(part.pid());
                         if (offset_iter == pid_offset_map.end()) {
@@ -173,25 +173,13 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, std::vecto
                             PDLOG(WARNING, "table [%s] tid[%u] pid[%u] not found in local table info", table.name().c_str(), table.tid(), part.pid());
                             break;
                         }
-                        m->CopyFrom(meta);
-                        if (meta.offset() > offset_iter->second) {
-                            // send delete offset request
-                            // DeleteOffset(i->second);
-                            std::string temp_key = table.name() + std::to_string(part.pid());
-                            ci->delete_offset_map_.insert(std::make_pair(temp_key, offset_iter->second));
-                            PDLOG(WARNING, "table [%s] partition [%u] remote offset [%lu] ge local offset [%lu]", table.name().c_str(), part.pid(), meta.offset(), offset_iter->second); m->set_endpoint("");
-                            break;
-                        }
-                        PDLOG(INFO, "table [%s] tid[%u] pid[%u] will add endpoint %s", table.name().c_str(), table.tid(), part.pid(), meta.endpoint().c_str());
-                        AddRemoteReplica(table.name(), (*m), table.tid(), part.pid());
-                        break;
                     }
                 }
                 tbs.push_back(tb);
             }
             ci->last_status.insert(std::make_pair(table.name(), tbs));
         } else {
-            std::map<uint32_t, std::uint64_t> pid_offset_map;
+            std::map<uint32_t, uint64_t> pid_offset_map;
             std::map<uint32_t, std::vector<TablePartition>::iterator> part_refer;
             // cache endpoint && part reference
             for (auto iter = status_iter->second.begin(); iter != status_iter->second.end(); iter++) {
@@ -224,6 +212,8 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, std::vecto
                             }
                         } else {
                             if (meta.offset() > delete_offset_iter->second) {
+                                PDLOG(INFO, "cluster [%s] table [%s] pid [%u] offset still lg local offset",
+                                    ci->cluster_add_.alias().c_str(), table.name().c_str(), part.pid());
                                 break;
                             }
                             PDLOG(INFO, "erase key [%s] in delete offset", temp_key.c_str());
@@ -235,8 +225,8 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, std::vecto
                             break;
                         }
                         // table partition leader if offline
-                        if (origin_endpoint.size() > 9) {
-                            PDLOG(INFO, "table [%s] tid[%u] pid[%u] will update endpoint %s", table.name().c_str(), table.tid(), part.pid(), meta.endpoint().c_str());
+                        if (origin_endpoint.size() > 0) {
+                            PDLOG(INFO, "table [%s] pid[%u] will update endpoint %s", table.name().c_str(), part.pid(), meta.endpoint().c_str());
                             DelRemoteReplica(origin_endpoint, table.name(), part.pid());
                         }
                         // update partition meta
@@ -251,7 +241,7 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, std::vecto
     }
 }
 
-bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo>& tables) {
+bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables) {
     for (auto &table : tables) {
         auto iter = table_info_.find(table.name());
         if (iter == table_info_.end()) {
@@ -286,14 +276,14 @@ bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo
                 iter->second->column_desc(i).SerializeToString(&value);
                 tmp_map.insert(std::make_pair(name, value));
             }
-            for (auto& i : table.column_desc()) {
-                auto iter = tmp_map.find(i.name());
+            for (auto& column : table.column_desc()) {
+                auto iter = tmp_map.find(column.name());
                 if (iter == tmp_map.end()) {
-                    PDLOG(WARNING, "not found column desc [%s] in local cluster", i.name().c_str());
+                    PDLOG(WARNING, "not found column desc [%s] in local cluster", column.name().c_str());
                     return false;
                 }
-                if (i.SerializeAsString() != iter->second) {
-                    PDLOG(WARNING, "column desc [%s] not equal", i.name().c_str());
+                if (column.SerializeAsString() != iter->second) {
+                    PDLOG(WARNING, "column desc [%s] not equal", column.name().c_str());
                     return false;
                 }
 
@@ -311,14 +301,14 @@ bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo
                 iter->second->column_desc_v1(i).SerializeToString(&value);
                 tmp_map.insert(std::make_pair(name, value));
             }
-            for (auto& i : table.column_desc_v1()) {
-                auto iter = tmp_map.find(i.name());
+            for (auto& column_v1 : table.column_desc_v1()) {
+                auto iter = tmp_map.find(column_v1.name());
                 if (iter == tmp_map.end()) {
-                    PDLOG(WARNING, "not found column desc [%s] in local cluster", i.name().c_str());
+                    PDLOG(WARNING, "not found column desc [%s] in local cluster", column_v1.name().c_str());
                     return false;
                 }
-                if (i.SerializeAsString() != iter->second) {
-                    PDLOG(WARNING, "column desc [%s] not equal", i.name().c_str());
+                if (column_v1.SerializeAsString() != iter->second) {
+                    PDLOG(WARNING, "column desc [%s] not equal", column_v1.name().c_str());
                     return false;
                 }
 
@@ -336,14 +326,14 @@ bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo
                 iter->second->column_key(i).SerializeToString(&value);
                 tmp_map.insert(std::make_pair(name, value));
             }
-            for (auto& i : table.column_key()) {
-                auto iter = tmp_map.find(i.index_name());
+            for (auto& key : table.column_key()) {
+                auto iter = tmp_map.find(key.index_name());
                 if (iter == tmp_map.end()) {
-                    PDLOG(WARNING, "not found column desc [%s] in local cluster", i.index_name().c_str());
+                    PDLOG(WARNING, "not found column desc [%s] in local cluster", key.index_name().c_str());
                     return false;
                 }
-                if (i.SerializeAsString() != iter->second) {
-                    PDLOG(WARNING, "column desc [%s] not equal", i.index_name().c_str());
+                if (key.SerializeAsString() != iter->second) {
+                    PDLOG(WARNING, "column desc [%s] not equal", key.index_name().c_str());
                     return false;
                 }
 
@@ -361,14 +351,14 @@ bool NameServerImpl::CompareTableInfo(std::vector<::rtidb::nameserver::TableInfo
                 iter->second->added_column_desc(i).SerializeToString(&value);
                 tmp_map.insert(std::make_pair(name, value));
             }
-            for (auto& i : table.added_column_desc()) {
-                auto iter = tmp_map.find(i.name());
+            for (auto& added_column : table.added_column_desc()) {
+                auto iter = tmp_map.find(added_column.name());
                 if (iter == tmp_map.end()) {
-                    PDLOG(WARNING, "not found column desc [%s] in local cluster", i.name().c_str());
+                    PDLOG(WARNING, "not found column desc [%s] in local cluster", added_column.name().c_str());
                     return false;
                 }
-                if (i.SerializeAsString() != iter->second) {
-                    PDLOG(WARNING, "column desc [%s] not equal", i.name().c_str());
+                if (added_column.SerializeAsString() != iter->second) {
+                    PDLOG(WARNING, "column desc [%s] not equal", added_column.name().c_str());
                     return false;
                 }
 
@@ -6586,7 +6576,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             code = 455;
             break;
         }
-        if ((tables.size() > 0) && !CompareTableInfo(tables)) {
+        if ((tables.empty()) && !CompareTableInfo(tables)) {
             rpc_msg = "compare table info error";
             code = 567;
             break;
@@ -6595,7 +6585,6 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             code = 300;
             break;
         }
-        std::lock_guard<std::mutex> lock(mu_);
         std::string cluster_value, value;
         request->SerializeToString(&cluster_value);
         if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/replica/" + request->alias(), value)) {
@@ -6613,22 +6602,8 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
                 break;
             }
         }
+        std::lock_guard<std::mutex> lock(mu_);
         nsc_.insert(std::make_pair(request->alias(), cluster_info));
-        //create tables for replica cluster
-        if ((!table_info_.empty()) && (!nsc_.empty())) {
-            for (auto kv : nsc_) {
-                for (const auto table_info : table_info_) {
-                    if (CreateTableForReplicaClusterOP(*(table_info.second), kv.first)) {
-                        PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info.second->name().c_str(), kv.first.c_str());
-                        code = 503;
-                        rpc_msg = "create table for replica cluster failed";
-                        break;   
-                    }
-                }
-                break;
-            }
-            break;
-        } 
     } while (0);
 
     response->set_code(code);
