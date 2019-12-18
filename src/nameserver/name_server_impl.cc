@@ -65,6 +65,10 @@ void ClusterInfo::CheckZkClient() {
 }
 
 void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
+    if (children.empty()) {
+        PDLOG(INFO, "children is empty on UpdateNsClient");
+        return;
+    }
     std::vector<std::string> tmp_children(children.begin(), children.end());
     std::sort(tmp_children.begin(), tmp_children.end());
     std::string endpoint;
