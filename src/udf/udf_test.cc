@@ -12,7 +12,8 @@
 #include <stdint.h>
 #include <algorithm>
 #include <vector>
-#include "google/heap-profiler.h"
+#include "gperftools/heap-profiler.h"
+
 #include "storage/window.h"
 namespace fesql {
 namespace udf {

@@ -26,7 +26,7 @@ class IteratorV {
  public:
     IteratorV() {}
     virtual ~IteratorV() {}
-    virtual bool Valid() const = 0;
+    virtual const bool Valid() const = 0;
     virtual V Next() = 0;
     virtual void reset() = 0;
 };
@@ -34,10 +34,10 @@ class IteratorV {
 template <class V>
 class IteratorImpl : public IteratorV<V> {
  public:
-    IteratorImpl() : list_({}), start_(0), end_(0), pos_(0) {}
+    IteratorImpl() : list_{}, start_(0), end_(0), pos_(0) {}
     explicit IteratorImpl(const std::vector<V> &list)
         : list_(list), start_(0), end_(list.size()), pos_(0) {}
-    explicit IteratorImpl(IteratorImpl &impl)
+    explicit IteratorImpl(const IteratorImpl<V> &impl)
         : list_(impl.list_),
           start_(impl.start_),
           end_(impl.end_),
@@ -46,7 +46,7 @@ class IteratorImpl : public IteratorV<V> {
     IteratorImpl(const std::vector<V> &list, int start, int end)
         : list_(list), start_(start), end_(end), pos_(start) {}
     ~IteratorImpl() {}
-    bool Valid() const { return pos_ < end_; }
+    const bool Valid() const { return pos_ < end_; }
 
     V Next() { return list_[pos_++]; }
 
@@ -83,10 +83,10 @@ class WrapIteratorImpl : public IteratorImpl<V> {
         : IteratorImpl<V>(), root_(root) {}
 
     ~WrapIteratorImpl() {}
-    bool Valid() const { return root_.Valid(); }
+    const bool Valid() const { return root_.Valid(); }
 
     V Next() { return GetField(root_.Next()); }
-    virtual V GetField(R row) = 0;
+    virtual const V GetField(R row) const = 0;
     void reset() { root_.reset(); }
 
     IteratorImpl<V> *range(int start, int end) {
@@ -103,7 +103,7 @@ class ColumnIteratorImpl : public WrapIteratorImpl<V, Row> {
     ColumnIteratorImpl(const IteratorImpl<Row> &impl, uint32_t offset)
         : WrapIteratorImpl<V, Row>(impl), offset_(offset) {}
 
-    V GetField(const Row row) {
+    const V GetField(const Row row) const {
         V value;
         const int8_t *ptr = row.buf + offset_;
         value = *((const V *)ptr);
@@ -121,7 +121,7 @@ class ColumnStringIteratorImpl
                              int32_t next_str_field_offset,
                              int32_t str_start_offset);
 
-    fesql::storage::StringRef GetField(Row row) {
+    const fesql::storage::StringRef GetField(Row row) const {
         int32_t addr_space = fesql::storage::v1::GetAddrSpace(row.size);
         fesql::storage::StringRef value;
         fesql::storage::v1::GetStrField(
