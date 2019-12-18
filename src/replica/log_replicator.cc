@@ -350,7 +350,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
 }
 
 int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec) {
-    AddReplicateNode(endpoint_vec, UINT32_MAX);
+    return AddReplicateNode(endpoint_vec, UINT32_MAX);
 }
 
 int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec, uint32_t tid) {
