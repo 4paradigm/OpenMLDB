@@ -677,12 +677,68 @@ void DiskTableIterator::SeekToFirst() {
     }
 }
 
-void DiskTableIterator::Seek(uint64_t ts) {
+void DiskTableIterator::Seek(const uint64_t ts) {
     if (has_ts_idx_) {
         it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, ts, ts_idx_)));
     } else {
         it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, ts)));
     }
+}
+
+bool DiskTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type) {
+    switch(type) {
+        case ::rtidb::api::GetType::kSubKeyEq:
+            Seek(time);
+            return Valid() && ts_ == time;
+        case ::rtidb::api::GetType::kSubKeyLe:
+            Seek(time);
+            return true;
+        case ::rtidb::api::GetType::kSubKeyLt:
+            Seek(time - 1);
+            return true;
+        case ::rtidb::api::GetType::kSubKeyGe:
+            SeekToFirst();
+            return Valid() && ts_ >= time;
+        case ::rtidb::api::GetType::kSubKeyGt:
+            SeekToFirst();
+            return Valid() && ts_ > time;
+        default:
+            return false;
+    }
+    return false;
+}
+
+bool DiskTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t cnt) {
+    uint32_t it_cnt = 0;
+    SeekToFirst();
+    while(Valid() && (it_cnt < cnt || cnt == 0)) {
+        ++it_cnt;
+        switch(type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                if (ts_ <= time) {
+                    return ts_ == time;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyLe:
+                if (ts_ <= time) {
+                    return true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyLt:
+                if (ts_ < st) {
+                    return true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyGe:
+                return ts_ >= time;
+            case ::rtidb::api::GetType::kSubKeyGt:
+                return ts_ > time;
+            default:
+                return false;
+        }
+        it_->Next();
+    }
+    return false;
 }
 
 DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, 

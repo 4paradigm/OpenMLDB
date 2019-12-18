@@ -826,6 +826,68 @@ void MemTableIterator::Seek(const uint64_t time) {
     it_->Seek(time);
 }
 
+bool MemTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t cnt) {
+    if (it_ == NULL) {
+        return;
+    }
+    uint32_t it_cnt = 0;
+    it_->SeekToFirst();
+    while(it_->Valid() && (it_cnt < cnt || cnt == 0)) {
+        ++it_cnt;
+        switch(type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                if (it_->GetKey() <= time) {
+                    return it_->GetKey() == time;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyLe:
+                if (it_->GetKey() <= time) {
+                    return true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyLt:
+                if (it_->GetKey() < st) {
+                    return true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyGe:
+                return it_->GetKey() >= time;
+            case ::rtidb::api::GetType::kSubKeyGt:
+                return it_->GetKey() > time;
+            default:
+                return false;
+        }
+        it->Next();
+    }
+    return false;
+}
+
+bool MemTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type) {
+    if (it_ == NULL) {
+        return;
+    }
+    switch(type) {
+        case ::rtidb::api::GetType::kSubKeyEq:
+            it_->Seek(time);
+            return it_->Valid() && it_->GetKey() == time;
+        case ::rtidb::api::GetType::kSubKeyLe:
+            it_->Seek(time);
+            return true;
+        case ::rtidb::api::GetType::kSubKeyLt:
+            it_->Seek(time - 1);
+            return true;
+        case ::rtidb::api::GetType::kSubKeyGe:
+            it_->SeekToFirst();
+            return it_->Valid() && it_->GetKey() >= time;
+        case ::rtidb::api::GetType::kSubKeyGt:
+            it_->SeekToFirst();
+            return it_->Valid() && it_->GetKey() > time;
+        default:
+            return false;
+    }
+    return false;
+}
+
 bool MemTableIterator::Valid() {
     if (it_ == NULL) {
         return false;
