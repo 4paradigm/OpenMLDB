@@ -40,6 +40,8 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
                               ::llvm::orc::ThreadSafeModule tsm,
                               ::llvm::orc::VModuleKey key);
 
+    void OptModule(::llvm::Module* m);
+
     ::llvm::orc::VModuleKey CreateVModule();
 
     void ReleaseVModule(::llvm::orc::VModuleKey key);

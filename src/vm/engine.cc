@@ -149,9 +149,10 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
 
                 std::vector<::fesql::storage::Row>& in_buffers =
                     temp_buffers[prev->idx];
-//                DLOG(INFO) << "in_buffer size " << in_buffers.size();
+
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[project_op->idx];
+
                 if (project_op->window_agg) {
                     auto key_iter = project_op->w.keys.cbegin();
                     ::fesql::type::Type key_type = key_iter->first;
@@ -306,7 +307,6 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                             return 1;
                         }
                         std::vector<::fesql::storage::Row> window;
-
                         if (project_op->w.has_order) {
                             window_it->Seek(ts);
                         } else {
