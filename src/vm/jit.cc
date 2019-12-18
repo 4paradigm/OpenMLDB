@@ -51,7 +51,7 @@ FeSQLJIT::~FeSQLJIT() {}
 ::llvm::Error FeSQLJIT::AddIRModule(::llvm::orc::JITDylib& jd,  // NOLINT
                                     ::llvm::orc::ThreadSafeModule tsm,
                                     ::llvm::orc::VModuleKey key) {
-    if (auto Err = applyDataLayout(*tsm.getModule())) return Err;
+    if (auto err = applyDataLayout(*tsm.getModule())) return err;
     LOG(INFO) << "add a module with key " << key << " with ins cnt "
               << tsm.getModule()->getInstructionCount();
     ::llvm::legacy::FunctionPassManager fpm(tsm.getModule());
@@ -71,8 +71,9 @@ FeSQLJIT::~FeSQLJIT() {}
     return CompileLayer->add(jd, std::move(tsm), key);
 }
 
-void FeSQLJIT::OptModule(::llvm::Module* m) {
-    if (auto Err = applyDataLayout(*m)) {
+::llvm::Error FeSQLJIT::OptModule(::llvm::Module* m) {
+    if (auto err = applyDataLayout(*m)) {
+        return err;
     }
     LOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
     ::llvm::legacy::FunctionPassManager fpm(m);
