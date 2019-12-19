@@ -10,6 +10,7 @@
 #include "timer.h"
 #include "logging.h"
 #include "base/file_util.h"
+#include <iostream>
 
 using ::baidu::common::INFO;
 
@@ -435,6 +436,9 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
             ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
+    ASSERT_EQ(table->GetTTL().abs_ttl, 5*60*1000);
+    ASSERT_EQ(table->GetTTL().lat_ttl, 0);
+    ASSERT_EQ(table->GetTTLType(), ::rtidb::common::TTLType::kAbsoluteTime);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 10; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -487,6 +491,9 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
             ::rtidb::common::TTLType::kLatestTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
+    ASSERT_EQ(table->GetTTL().abs_ttl, 0);
+    ASSERT_EQ(table->GetTTL().lat_ttl, 3);
+    ASSERT_EQ(table->GetTTLType(), ::rtidb::common::TTLType::kLatestTime);
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;

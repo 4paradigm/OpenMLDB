@@ -36,9 +36,26 @@ public:
             const std::map<std::string, uint32_t>& mapping, 
             ::rtidb::common::TTLType ttl_type, ::rtidb::api::CompressType compress_type) :
         storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
-        abs_ttl_(ttl), new_abs_ttl_(ttl), lat_ttl_(ttl/60/1000), new_lat_ttl_(ttl/60/1000),
         ttl_offset_(ttl_offset), is_leader_(is_leader),
-        mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {}
+        mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {
+        ::rtidb::common::TTLDesc* ttl_desc = table_meta_.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(ttl_type);
+        if (ttl_type == ::rtidb::common::TTLType::kAbsoluteTime) {
+            abs_ttl_.store(ttl);
+            lat_ttl_.store(0);
+            new_abs_ttl_.store(ttl);
+            new_lat_ttl_.store(0);
+            ttl_desc->set_abs_ttl(ttl);
+            ttl_desc->set_lat_ttl(0);
+        } else {
+            abs_ttl_.store(0);
+            lat_ttl_.store(ttl/(60*1000));
+            new_abs_ttl_.store(0);
+            new_lat_ttl_.store(ttl/(60*1000));
+            ttl_desc->set_abs_ttl(0);
+            ttl_desc->set_lat_ttl(ttl/(60*1000));
+        }
+    }
     virtual ~Table() {}
     virtual bool Init() = 0;
 

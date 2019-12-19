@@ -169,7 +169,16 @@ bool Table::InitFromMeta() {
         new_abs_ttl_.store(abs_ttl_.load());
         new_lat_ttl_.store(lat_ttl_.load());
         ttl_type_ = table_meta_.ttl_desc().ttl_type();
-    } 
+    } else {
+        ttl_type_ = table_meta_.ttl_type();
+        if (table_meta_.ttl_type() == ::rtidb::common::TTLType::kAbsoluteTime) {
+            abs_ttl_ = table_meta_.ttl();
+            lat_ttl_ = 0;
+        } else {
+            abs_ttl_ = 0;
+            lat_ttl_ = table_meta_.ttl();
+        }
+    }
     if (table_meta_.has_schema()) schema_ = table_meta_.schema();
     if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
     idx_cnt_ = mapping_.size();

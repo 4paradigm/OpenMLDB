@@ -2593,9 +2593,7 @@ void TabletImpl::CreateTable(RpcController* controller,
         response->set_code(101);
         response->set_msg("table already exists");
         return;
-    } 
-    ::rtidb::common::TTLType type = table_meta->ttl_type();
-    uint64_t ttl = table_meta->ttl();
+    }
     std::string name = table_meta->name();
     PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", 
             tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
@@ -2652,8 +2650,9 @@ void TabletImpl::CreateTable(RpcController* controller,
     replicator->StartSyncing();
     io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
     task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
-    PDLOG(INFO, "create table with id %u pid %u name %s ttl %llu type %s", 
-                tid, pid, name.c_str(), ttl, ::rtidb::common::TTLType_Name(type).c_str());
+    PDLOG(INFO, "create table with id %u pid %u name %s abs_ttl %llu lat_ttl %llu type %s", 
+                tid, pid, name.c_str(), table_meta->ttl_desc().abs_ttl(), table_meta->ttl_desc().lat_ttl(),
+                ::rtidb::common::TTLType_Name(table_meta->ttl_desc().ttl_type()).c_str());
     gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
 }
 
@@ -2980,7 +2979,7 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
 }
  
 
-int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
+int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) { // todo@pxc
     std::vector<std::string> endpoints;
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));

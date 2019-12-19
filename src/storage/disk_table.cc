@@ -500,12 +500,13 @@ void DiskTable::GcHead() {
     PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
 }
 
+// ttl as ms
 uint64_t DiskTable::GetExpireTime(uint64_t ttl) {
     if (ttl == 0 || ttl_type_ == ::rtidb::common::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    return cur_time - ttl * 60 * 1000;
+    return cur_time - ttl;
 }
 
 uint64_t DiskTable::GetExpireTime() {
@@ -610,10 +611,8 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_index)
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %u, failed getting table tid %u pid %u", ts_index, index, id_, pid_);
         return NULL;
     }
-    uint64_t expire_time = 0;
-    uint64_t expire_cnt = 0;
-    expire_time = GetExpireTime(GetTTL(index, ts_index).abs_ttl);
-    expire_cnt = GetTTL(index, ts_index).lat_ttl;
+    uint64_t expire_time = GetExpireTime(GetTTL(index, ts_index).abs_ttl);
+    uint64_t expire_cnt = GetTTL(index, ts_index).lat_ttl;
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;

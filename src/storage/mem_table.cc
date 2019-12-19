@@ -385,13 +385,14 @@ void MemTable::SchedGc() {
     UpdateTTL();
 }
 
+// tll as ms
 uint64_t MemTable::GetExpireTime(uint64_t ttl) {
     if (!enable_gc_.load(std::memory_order_relaxed) || ttl == 0
             || ttl_type_ == ::rtidb::common::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl * 60 * 1000;
+    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl;
 }
 
 bool MemTable::IsExpire(const LogEntry& entry) {
