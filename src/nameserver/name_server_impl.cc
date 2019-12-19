@@ -562,6 +562,14 @@ bool NameServerImpl::RecoverOPTask() {
                     continue;
                 }
                 break;
+            case ::rtidb::api::OPType::kAddReplicaRemoteOP:
+                if (CreateAddReplicaRemoteOPTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
+                    continue;
+                }
+                break;
             default:
                 PDLOG(WARNING, "unsupport recover op[%s]! op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
@@ -6067,13 +6075,13 @@ void NameServerImpl::AddTableInfo(const std::string& endpoint,
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(iter->second->New());
-    table_info->CopyFrom(*(iter->second));
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        if (table_info->table_partition(idx).pid() == pid) {
-            ::rtidb::nameserver::TablePartition* table_partition_ptr = table_info->mutable_table_partition(idx);
+    ::rtidb::nameserver::TableInfo table_info(*(iter->second));
+    for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
+        if (table_info.table_partition(idx).pid() == pid) {
+            ::rtidb::nameserver::TablePartition* table_partition_ptr = table_info.mutable_table_partition(idx);
             bool is_exist = false;
-            for (int meta_idx = 0; meta_idx < table_partition_ptr->remote_partition_meta_size(); meta_idx++) {
+            int meta_idx = 0;
+            for (; meta_idx < table_partition_ptr->remote_partition_meta_size(); meta_idx++) {
                 if (table_partition_ptr->remote_partition_meta(meta_idx).endpoint() == endpoint) {
                     is_exist = true;
                     break;
@@ -6081,6 +6089,8 @@ void NameServerImpl::AddTableInfo(const std::string& endpoint,
             }
             if (is_exist) {
                 PDLOG(INFO, "remote follower already exists pid[%u] table[%s] endpoint[%s] op_id[%lu]", pid, name.c_str(), endpoint.c_str(), task_info->op_id());
+                ::rtidb::nameserver::PartitionMeta* partition_meta_ptr = table_partition_ptr->mutable_remote_partition_meta(meta_idx);
+                partition_meta_ptr->CopyFrom(partition_meta);
                 break;
             }
             ::rtidb::nameserver::PartitionMeta* partition_meta_ptr = table_partition_ptr->add_remote_partition_meta();
@@ -6089,7 +6099,7 @@ void NameServerImpl::AddTableInfo(const std::string& endpoint,
         }
     }
     std::string table_value;
-    table_info->SerializeToString(&table_value);
+    table_info.SerializeToString(&table_value);
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
         PDLOG(WARNING, "update table node[%s/%s] failed! value[%s] op_id[%lu]", 
                         zk_table_data_path_.c_str(), name.c_str(), table_value.c_str(), task_info->op_id());
@@ -6098,7 +6108,7 @@ void NameServerImpl::AddTableInfo(const std::string& endpoint,
     }
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-    iter->second->CopyFrom(*table_info);
+    iter->second->CopyFrom(table_info);
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
     PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]",
                 task_info->op_id(), 
@@ -6343,16 +6353,15 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(iter->second->New());
-    table_info->CopyFrom(*(iter->second));
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        if (table_info->table_partition(idx).pid() != pid) {
+    ::rtidb::nameserver::TableInfo table_info(*(iter->second));
+    for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
+        if (table_info.table_partition(idx).pid() != pid) {
             continue;
         }
         bool has_found = false;
-        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).remote_partition_meta_size(); meta_idx++) {
-             if (table_info->table_partition(idx).remote_partition_meta(meta_idx).endpoint() == endpoint) {
-                ::rtidb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
+        for (int meta_idx = 0; meta_idx < table_info.table_partition(idx).remote_partition_meta_size(); meta_idx++) {
+             if (table_info.table_partition(idx).remote_partition_meta(meta_idx).endpoint() == endpoint) {
+                ::rtidb::nameserver::TablePartition* table_partition = table_info.mutable_table_partition(idx);
                 ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta = 
                             table_partition->mutable_remote_partition_meta();
                 PDLOG(INFO, "remove pid[%u] in table[%s]. endpoint is[%s]", 
@@ -6371,7 +6380,7 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
         break;
     }
     std::string table_value;
-    table_info->SerializeToString(&table_value);
+    table_info.SerializeToString(&table_value);
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
         PDLOG(WARNING, "update table node[%s/%s] failed! value[%s] op_id[%lu]",
                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str(), task_info->op_id());
@@ -6380,7 +6389,7 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
     }
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-    iter->second->CopyFrom(*table_info);
+    iter->second->CopyFrom(table_info);
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
     NotifyTableChanged();
     PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]",
