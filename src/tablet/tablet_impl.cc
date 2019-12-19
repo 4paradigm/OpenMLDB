@@ -289,19 +289,26 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
     if (st > 0) {
         switch(ttl_type) {
             case ::rtidb::common::TTLType::kAbsoluteTime: {
-                if (!it->Seek(expire_time, st_type)) { return 1; }
+                if (!it->Seek(st, st_type)) {
+                    return 1;
+                }
                 break;
             }
             case ::rtidb::common::TTLType::kAbsAndLat: {
                 if (st<expire_time) {
-                    if (!it->Seek(expire_time, st_type, expire_cnt, cnt)) { return 1; }
+                    if (!it->Seek(st, st_type, expire_cnt, cnt)) {
+                        return 1; }
                 } else {
-                    if (!it->Seek(expire_time, st_type)) { return 1; }
+                    if (!it->Seek(st, st_type)) {
+                        return 1;
+                    }
                 }
                 break;
             }
             default: {
-                if (!it->Seek(expire_time, st_type, expire_cnt, cnt)) { return 1; }
+                if (!it->Seek(st, st_type, expire_cnt, cnt)) {
+                        return 1;
+                    }
                 break;
             }
         }
@@ -408,7 +415,7 @@ void TabletImpl::Get(RpcController* controller,
     std::string* value = response->mutable_value(); 
     uint64_t ts = 0;
     int32_t code = 0;
-    code = GetIndex(table->GetExpireTime(ttl.abs_ttl), ttl.lat_ttl,
+    code = GetIndex(table->GetExpireTime(ttl.abs_ttl*60*1000), ttl.lat_ttl,
                     table->GetTTLType(),
                     it, request->ts(),
                     request->type(),
@@ -687,10 +694,10 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     if (st > 0) {
         switch (ttl_type) {
             case ::rtidb::common::TTLType::kAbsoluteTime: 
-                if(it->Seek(expire_time, real_st_type)) { return 1; }
+                if(it->Seek(st, real_st_type)) { return 1; }
                 break;
             default: 
-                if(it->Seek(expire_time, real_st_type, expire_cnt, cnt)) { return 1; }
+                if(it->Seek(st, real_st_type, expire_cnt, cnt)) { return 1; }
                 break;
         }
     } else {
@@ -810,10 +817,10 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
     if (st > 0) {
         switch (ttl_type) {
             case ::rtidb::common::TTLType::kAbsoluteTime: 
-                if(it->Seek(expire_time, real_st_type)) { return 1; }
+                if(it->Seek(st, real_st_type)) { return 1; }
                 break;
             default: 
-                if(it->Seek(expire_time, real_st_type, expire_cnt, cnt)) { return 1; }
+                if(it->Seek(st, real_st_type, expire_cnt, cnt)) { return 1; }
                 break;
         }
     } else {
@@ -950,7 +957,7 @@ void TabletImpl::Scan(RpcController* controller,
     std::string* pairs = response->mutable_pairs(); 
     uint32_t count = 0;
     int32_t code = 0;
-    uint64_t expire_time = table->GetExpireTime(ttl.abs_ttl);
+    uint64_t expire_time = table->GetExpireTime(ttl.abs_ttl*60*1000);
     uint64_t expire_cnt = ttl.lat_ttl;
     bool remove_duplicated_record = false;
     if (request->has_enable_remove_duplicated_record()) {
@@ -1075,7 +1082,7 @@ void TabletImpl::Count(RpcController* controller,
     if (request->has_enable_remove_duplicated_record()) {
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
-    code = CountIndex(table->GetExpireTime(ttl.abs_ttl),
+    code = CountIndex(table->GetExpireTime(ttl.abs_ttl*60*1000),
                         ttl.lat_ttl, table->GetTTLType(), it,
                         request->st(), request->st_type(),
                         request->et(), request->et_type(),

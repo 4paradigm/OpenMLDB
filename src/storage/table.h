@@ -41,17 +41,17 @@ public:
         ::rtidb::common::TTLDesc* ttl_desc = table_meta_.mutable_ttl_desc();
         ttl_desc->set_ttl_type(ttl_type);
         if (ttl_type == ::rtidb::common::TTLType::kAbsoluteTime) {
-            abs_ttl_.store(ttl);
-            lat_ttl_.store(0);
-            new_abs_ttl_.store(ttl);
-            new_lat_ttl_.store(0);
-            ttl_desc->set_abs_ttl(ttl);
+            // abs_ttl_.store(ttl);
+            // lat_ttl_.store(0);
+            // new_abs_ttl_.store(ttl);
+            // new_lat_ttl_.store(0);
+            ttl_desc->set_abs_ttl(ttl/(60*1000));
             ttl_desc->set_lat_ttl(0);
         } else {
-            abs_ttl_.store(0);
-            lat_ttl_.store(ttl/(60*1000));
-            new_abs_ttl_.store(0);
-            new_lat_ttl_.store(ttl/(60*1000));
+            // abs_ttl_.store(0);
+            // lat_ttl_.store(ttl/(60*1000));
+            // new_abs_ttl_.store(0);
+            // new_lat_ttl_.store(ttl/(60*1000));
             ttl_desc->set_abs_ttl(0);
             ttl_desc->set_lat_ttl(ttl/(60*1000));
         }
@@ -182,20 +182,20 @@ public:
         auto pos = column_key_map_.find(index);
         if (pos != column_key_map_.end() && !pos->second.empty()) {
             if (pos->second.front() < abs_ttl_vec_.size()) {
-                return TTLDesc(abs_ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed),
+                return TTLDesc(abs_ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed)/(60*1000),
                     lat_ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed));
             }
         }
-        return TTLDesc(abs_ttl_.load(std::memory_order_relaxed),
+        return TTLDesc(abs_ttl_.load(std::memory_order_relaxed)/(60*1000),
             lat_ttl_.load(std::memory_order_relaxed));
     }
 
     TTLDesc GetTTL(uint32_t index, uint32_t ts_index) {
         if (ts_index < abs_ttl_vec_.size()) {
-            return TTLDesc(abs_ttl_vec_[ts_index]->load(std::memory_order_relaxed),
+            return TTLDesc(abs_ttl_vec_[ts_index]->load(std::memory_order_relaxed)/(60*1000),
                     lat_ttl_vec_[ts_index]->load(std::memory_order_relaxed));
         }
-        return TTLDesc(abs_ttl_.load(std::memory_order_relaxed),
+        return TTLDesc(abs_ttl_.load(std::memory_order_relaxed)/(60*1000),
             lat_ttl_.load(std::memory_order_relaxed));
     }
 

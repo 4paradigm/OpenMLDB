@@ -41,11 +41,23 @@ int Table::InitColumnDesc() {
                     new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().abs_ttl() * 60 * 1000));
                     lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().lat_ttl()));
                     new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().lat_ttl()));
+                } else if (column_desc.has_ttl()) {
+                    if (ttl_type_ == ::rtidb::common::TTLType::kAbsoluteTime) {
+                        abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
+                        new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
+                        lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+                        new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+                    } else {
+                        abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+                        new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+                        lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl()));
+                        new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl()));
+                    }
                 } else {
-                    abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl_desc().abs_ttl() * 60 * 1000));
-                    new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl_desc().abs_ttl() * 60 * 1000));
-                    lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl_desc().lat_ttl()));
-                    new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl_desc().lat_ttl()));
+                    abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(abs_ttl_.load()));
+                    new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(abs_ttl_.load()));
+                    lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(lat_ttl_.load()));
+                    new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(lat_ttl_.load()));
                 }
                 ts_idx++;
             }
@@ -156,28 +168,31 @@ void Table::UpdateTTL() {
 }
 
 bool Table::InitFromMeta() {
-    if (InitColumnDesc() < 0) {
-        PDLOG(WARNING, "init column desc failed, tid %u pid %u", id_, pid_);
-        return false;
-    }
     if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
         is_leader_ = false;
     }
     if (table_meta_.has_ttl_desc()) {
-        abs_ttl_ = table_meta_.ttl_desc().abs_ttl();
+        std::cout << "has_ttl_desc" << std::endl;
+        abs_ttl_ = table_meta_.ttl_desc().abs_ttl() * 60 * 1000;
         lat_ttl_ = table_meta_.ttl_desc().lat_ttl();
-        new_abs_ttl_.store(abs_ttl_.load());
-        new_lat_ttl_.store(lat_ttl_.load());
         ttl_type_ = table_meta_.ttl_desc().ttl_type();
-    } else {
+    } else if (table_meta_.has_ttl_type()) {
         ttl_type_ = table_meta_.ttl_type();
-        if (table_meta_.ttl_type() == ::rtidb::common::TTLType::kAbsoluteTime) {
-            abs_ttl_ = table_meta_.ttl();
+        if (ttl_type_ == ::rtidb::common::TTLType::kAbsoluteTime) {
+            abs_ttl_ = table_meta_.ttl() * 60 * 1000;
             lat_ttl_ = 0;
         } else {
             abs_ttl_ = 0;
             lat_ttl_ = table_meta_.ttl();
         }
+    } else {
+        PDLOG(WARNING, "init table with no ttl_desc");
+    }
+    new_abs_ttl_.store(abs_ttl_.load());
+    new_lat_ttl_.store(lat_ttl_.load());
+    if (InitColumnDesc() < 0) {
+        PDLOG(WARNING, "init column desc failed, tid %u pid %u", id_, pid_);
+        return false;
     }
     if (table_meta_.has_schema()) schema_ = table_meta_.schema();
     if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();

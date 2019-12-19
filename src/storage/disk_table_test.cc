@@ -436,7 +436,7 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
             ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
-    ASSERT_EQ(table->GetTTL().abs_ttl, 5*60*1000);
+    ASSERT_EQ(table->GetTTL().abs_ttl*60*1000, 5*60*1000);
     ASSERT_EQ(table->GetTTL().lat_ttl, 0);
     ASSERT_EQ(table->GetTTLType(), ::rtidb::common::TTLType::kAbsoluteTime);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;

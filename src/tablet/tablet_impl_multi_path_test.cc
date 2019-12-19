@@ -127,12 +127,21 @@ void CreateBaseTablet(::rtidb::tablet::TabletImpl& tablet,
         std::string value = "value" + std::to_string(i);
         request.set_value(value);
         ::rtidb::api::PutResponse response;
-
         MockClosure closure;
         tablet.Put(NULL, &request, &response,
                 &closure);
         ASSERT_EQ(0, response.code());
-
+        // {
+        //     // 
+        //     ::rtidb::api::CountRequest request;
+        //     request.set_tid(tid);
+        //     request.set_pid(pid);
+        //     request.set_key(k1);
+        //     ::rtidb::api::CountResponse response;
+        //     tablet.Count(NULL, &request, &response, &closure);
+        //     ASSERT_EQ(0, response.code());
+        //     ASSERT_EQ(10, response.count());
+        // }
         {
             ::rtidb::api::GetRequest request;
             request.set_tid(tid);

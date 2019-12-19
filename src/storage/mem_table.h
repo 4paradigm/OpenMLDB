@@ -67,7 +67,8 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          const std::map<std::string, uint32_t>& mapping, uint64_t ttl);
+          const std::map<std::string, uint32_t>& mapping,
+          uint64_t ttl, ::rtidb::common::TTLType ttl_type);
 
     MemTable(const ::rtidb::api::TableMeta& table_meta);
     virtual ~MemTable();

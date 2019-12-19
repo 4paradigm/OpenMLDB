@@ -1357,13 +1357,18 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     if (!codec_ok) {
         return false;
     }
+    // if (!table_meta.has_ttl_desc()) {
+    //     PDLOG(WARNING, "create ns table without ttl_desc");
+    // }
+
     table_meta.set_name(table_info->name());
     table_meta.set_tid(table_index_);
-    table_meta.set_ttl(table_info->ttl());
+    // table_meta.set_ttl(table_info->ttl());
     table_meta.set_seg_cnt(table_info->seg_cnt());
     table_meta.set_schema(schema);
-    table_meta.set_ttl_type(ttl_type);
+    // table_meta.set_ttl_type(ttl_type);
     table_meta.set_compress_type(compress_type);
+    table_meta.mutable_ttl_desc();
     table_meta.set_allocated_ttl_desc(table_info->mutable_ttl_desc());
     table_meta.set_storage_mode(storage_mode);
     if (table_info->has_key_entry_max_height()) {

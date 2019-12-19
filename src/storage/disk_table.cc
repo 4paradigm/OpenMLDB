@@ -587,7 +587,7 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index) {
     if (column_map_iter != column_key_map_.end() && !column_map_iter->second.empty()) {
         return NewTraverseIterator(index, column_map_iter->second.front());
     }
-    uint64_t expire_time = GetExpireTime(GetTTL(index, 0).abs_ttl);
+    uint64_t expire_time = GetExpireTime(GetTTL(index, 0).abs_ttl*60*1000);
     uint64_t expire_cnt = GetTTL(index, 0).lat_ttl;
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
@@ -611,7 +611,7 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_index)
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %u, failed getting table tid %u pid %u", ts_index, index, id_, pid_);
         return NULL;
     }
-    uint64_t expire_time = GetExpireTime(GetTTL(index, ts_index).abs_ttl);
+    uint64_t expire_time = GetExpireTime(GetTTL(index, ts_index).abs_ttl*60*1000);
     uint64_t expire_cnt = GetTTL(index, ts_index).lat_ttl;
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
