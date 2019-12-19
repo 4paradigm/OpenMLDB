@@ -167,14 +167,11 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
 }
 
 int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
-    DLOG(INFO) << "start get col iterator";
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     if (nullptr == input || nullptr == data) {
         return -2;
     }
-    DLOG(INFO) << "try get window iterator";
     WindowIteratorImpl* w = reinterpret_cast<WindowIteratorImpl*>(input);
-    DLOG(INFO) << "get window iterator";
     switch (type) {
         case fesql::type::kInt32: {
             new (data) ColumnIteratorImpl<int>(*w, offset);
