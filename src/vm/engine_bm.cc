@@ -243,10 +243,9 @@ static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
         benchmark::DoNotOptimize(session.Run(output, 2));
-        int8_t* output1 = output[0];
-        int8_t* output2 = output[1];
-        free(output1);
-        free(output2);
+        for (int8_t* row : output) {
+            free(row);
+        }
     }
 }
 
@@ -273,8 +272,9 @@ static void BM_EngineSimpleSelectVarchar(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
         benchmark::DoNotOptimize(session.Run(output, 2));
-        int8_t* output1 = output[0];
-        free(output1);
+        for (int8_t* row : output) {
+            free(row);
+        }
     }
 }
 
@@ -301,8 +301,9 @@ static void BM_EngineSimpleSelectInt32(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
         benchmark::DoNotOptimize(session.Run(output, 2));
-        int8_t* output1 = output[0];
-        free(output1);
+        for (int8_t* row : output) {
+            free(row);
+        }
     }
 }
 
@@ -331,8 +332,9 @@ static void BM_EngineSimpleUDF(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
         benchmark::DoNotOptimize(session.Run(output, 2));
-        int8_t* output1 = output[0];
-        free(output1);
+        for (int8_t* row : output) {
+            free(row);
+        }
     }
 }
 
@@ -410,6 +412,7 @@ BENCHMARK(BM_EngineWindowSumFeature1)
     ->Arg(100)
     ->Arg(1000)
     ->Arg(10000);
+
 BENCHMARK(BM_EngineWindowSumFeature5)
     ->Arg(1)
     ->Arg(2)

@@ -12,7 +12,6 @@
 #include <stdint.h>
 #include <algorithm>
 #include <vector>
-#include "gperftools/heap-profiler.h"
 
 #include "storage/window.h"
 namespace fesql {
@@ -103,7 +102,6 @@ TEST_F(UDFTest, GetColTest) {
 }
 
 TEST_F(UDFTest, GetColHeapTest) {
-    HeapProfilerStart("/debug/profile_get_col.log");
     WindowIteratorImpl impl(rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
     for (int i = 0; i < 100000000; ++i) {
@@ -114,7 +112,6 @@ TEST_F(UDFTest, GetColHeapTest) {
             0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2,
                                             fesql::type::kInt32, buf));
     }
-    HeapProfilerStop();
 }
 
 }  // namespace udf
