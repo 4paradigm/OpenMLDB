@@ -1673,6 +1673,10 @@ void TabletImpl::ChangeRole(RpcController* controller,
         if (replicator->AddReplicateNode(vec) < 0) {
             PDLOG(WARNING,"add replicator failed. tid[%u] pid[%u]", tid, pid);
         }
+        for (auto& e : request->et()) {
+            std::vector<std::string> endpoints{e.endpoint()};
+            replicator->AddReplicateNode(endpoints, e.tid());
+        }
     } else {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         if (!table->IsLeader()) {

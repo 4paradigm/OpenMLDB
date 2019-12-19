@@ -189,7 +189,8 @@ public:
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term = 0);
 
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
-                    const std::vector<std::string>& endpoints, uint64_t term = 0);
+                    const std::vector<std::string>& endpoints, uint64_t term = 0,
+                    std::vector<::rtidb::common::EndpointAndTid>* et = nullptr);
 
     bool UpdateTTL(uint32_t tid, uint32_t pid, 
                    const ::rtidb::api::TTLType& type,

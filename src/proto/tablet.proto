@@ -417,6 +417,7 @@ message ChangeRoleRequest {
     optional uint64 term = 3;
     optional TableMode mode = 4;
     repeated string replicas = 5;
+    repeated rtidb.common.EndpointAndTid et = 6;
 }
 
 message SendSnapshotRequest {

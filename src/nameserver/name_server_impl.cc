@@ -3223,23 +3223,7 @@ int NameServerImpl::CreateAddRemoteReplicaOPTask(std::shared_ptr<OPData> op_data
     }
     uint64_t op_index = op_data->op_info_.op_id();
     std::shared_ptr<Task> task;
-    /**
-    std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index, 
-                ::rtidb::api::OPType::kAddReplicaOP, tid, pid);
-    if (!task) {
-        PDLOG(WARNING, "create pausesnapshot task failed. tid[%u] pid[%u]", tid, pid);
-        return -1;
-    }
-    op_data->task_list_.push_back(task);
-    task = CreateSendSnapshotTask(leader_endpoint, op_index, 
-                ::rtidb::api::OPType::kAddReplicaOP, tid, pid, request.endpoint());
-    if (!task) {
-        PDLOG(WARNING, "create sendsnapshot task failed. tid[%u] pid[%u]", tid, pid);
-        return -1;
-    }
-    op_data->task_list_.push_back(task);
-    */
-    task = CreateAddRemoteReplicaTask(leader_endpoint, op_index, 
+    task = CreateAddRemoteReplicaTask(leader_endpoint, op_index,
                 ::rtidb::api::OPType::kAddReplicaForReplicaClusterOP, tid, request.remote_tid(), pid, request.endpoint());
     if (!task) {
         PDLOG(WARNING, "create addreplica task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
@@ -3256,7 +3240,10 @@ int NameServerImpl::CreateAddRemoteReplicaOPTask(std::shared_ptr<OPData> op_data
     }
     op_data->task_list_.push_back(task);
     */
-    task = CreateAddTableInfoTask(request.endpoint(), request.name(), pid, request.partition_meta(),
+    std::shared_ptr<PartitionMeta> pm = std::make_shared<PartitionMeta>();
+    pm->CopyFrom(request.partition_meta());
+    pm->set_remote_tid(request.remote_tid());
+    task = CreateAddTableInfoTask(request.endpoint(), request.name(), pid, pm,
             op_index, ::rtidb::api::OPType::kAddReplicaForReplicaClusterOP);
     if (!task) {
         PDLOG(WARNING, "create addtableinfo task failed. tid[%u] pid[%u]", tid, pid);
@@ -4127,7 +4114,7 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
     uint32_t tid = iter->second->tid();
     //TODO use get healthy follower method
     std::vector<std::string> follower_endpoint;
-    std::vector<std::string> remote_follower_endpoint;
+    std::vector<::rtidb::common::EndpointAndTid> remote_follower_endpoint;
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
         if (iter->second->table_partition(idx).pid() != pid) {
             continue;
@@ -4149,8 +4136,12 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
         }
         for (int i = 0; i < iter->second->table_partition(idx).remote_partition_meta_size(); i++) {
             if (iter->second->table_partition(idx).remote_partition_meta(i).is_alive()) {
+                ::rtidb::common::EndpointAndTid et;
                 std::string endpoint = iter->second->table_partition(idx).remote_partition_meta(i).endpoint();
-                remote_follower_endpoint.push_back(endpoint);
+                uint32_t tid = iter->second->table_partition(idx).remote_partition_meta(i).remote_tid();
+                et.set_endpoint(endpoint);
+                et.set_tid(tid);
+                remote_follower_endpoint.push_back(et);
             }
         }
         break;
@@ -4177,7 +4168,7 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
         change_leader_data.add_follower(endpoint);
     }
     for (const auto &endpoint : remote_follower_endpoint) {
-        change_leader_data.add_remote_follower(endpoint);
+        change_leader_data.add_remote_follower()->CopyFrom(endpoint);
     }
     if (!candidate_leader.empty()) {
         change_leader_data.set_candidate_leader(candidate_leader);
@@ -5431,7 +5422,7 @@ std::shared_ptr<Task> NameServerImpl::CreateAddRemoteReplicaTask(const std::stri
     task->task_info_->set_task_type(::rtidb::api::TaskType::kAddReplica);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
-    boost::function<bool ()> fun = boost::bind(&TabletClient::AddReplica, it->second->client_, tid, pid, 
+    boost::function<bool ()> fun = boost::bind(&TabletClient::AddReplica, it->second->client_, tid, pid,
                 des_endpoint, remote_tid, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
@@ -5468,11 +5459,8 @@ std::shared_ptr<Task> NameServerImpl::CreateAddTableInfoTask(const std::string& 
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateAddTableInfoTask(const std::string& endpoint,
-        const std::string& name, 
-        uint32_t pid, 
-        const ::rtidb::nameserver::PartitionMeta& partition_meta,
-        uint64_t op_index, 
-        ::rtidb::api::OPType op_type) {
+        const std::string& name, uint32_t pid,
+        const std::shared_ptr<PartitionMeta> partition_meta, uint64_t op_index, ::rtidb::api::OPType op_type) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
@@ -5527,7 +5515,7 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
 void NameServerImpl::AddTableInfo(const std::string& endpoint,
         const std::string& name, 
         uint32_t pid, 
-        const ::rtidb::nameserver::PartitionMeta& partition_meta, 
+        const std::shared_ptr<PartitionMeta> partition_meta,
         std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = table_info_.find(name);
@@ -5553,7 +5541,7 @@ void NameServerImpl::AddTableInfo(const std::string& endpoint,
                 break;
             }
             ::rtidb::nameserver::PartitionMeta* partition_meta_ptr = table_partition_ptr->add_remote_partition_meta();
-            partition_meta_ptr->CopyFrom(partition_meta);
+            partition_meta_ptr->CopyFrom(*partition_meta);
             break;
         }
     }
@@ -6285,11 +6273,12 @@ void NameServerImpl::ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_i
         follower_endpoint.erase(std::find(follower_endpoint.begin(), follower_endpoint.end(), leader_endpoint));
         tablet_ptr = iter->second;
     }
-    for (int i = 0; i < change_leader_data.remote_follower_size(); i++) {
-        follower_endpoint.push_back(change_leader_data.remote_follower(i));
+    std::vector<::rtidb::common::EndpointAndTid> et;
+    for (auto it : change_leader_data.remote_follower()) {
+        et.push_back(it);
     }
     if (!tablet_ptr->client_->ChangeRole(change_leader_data.tid(), change_leader_data.pid(), true,
-                                         follower_endpoint, cur_term)) {
+                                         follower_endpoint, cur_term, &et)) {
         PDLOG(WARNING, "change leader failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]",
                         change_leader_data.name().c_str(), change_leader_data.tid(),
                         change_leader_data.pid(), leader_endpoint.c_str(), task_info->op_id());
