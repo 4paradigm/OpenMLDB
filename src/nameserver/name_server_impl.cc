@@ -121,22 +121,22 @@ int ClusterInfo::Init(std::string& msg) {
     return 0;
 }
 
-bool ClusterInfo::DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, 
+bool ClusterInfo::DropTableRemote(const ::rtidb::api::TaskInfo& task_info, 
         const std::string& name, 
         const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info) {
     std::string msg;
-    if (!client_->DropTableForReplicaCluster(task_info, name, zone_info, msg)) {
+    if (!client_->DropTableRemote(task_info, name, zone_info, msg)) {
         PDLOG(WARNING, "drop table for replica cluster failed!, msg is: %s", msg.c_str());
         return false;
     }
     return true;
 }
 
-bool ClusterInfo::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info,
+bool ClusterInfo::CreateTableRemote(const ::rtidb::api::TaskInfo& task_info,
         const ::rtidb::nameserver::TableInfo& table_info, 
         const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info) {
     std::string msg;
-    if (!client_->CreateTableForReplicaCluster(task_info, table_info, zone_info, msg)) {
+    if (!client_->CreateTableRemote(task_info, table_info, zone_info, msg)) {
         PDLOG(WARNING, "create table for replica cluster failed!, msg is: %s", msg.c_str());
         return false;
     }
@@ -530,16 +530,16 @@ bool NameServerImpl::RecoverOPTask() {
                     continue;
                 }
                 break;
-            case ::rtidb::api::OPType::kCreateTableForReplicaClusterOP:
-                if (CreateTableForReplicaClusterTask(op_data) < 0) {
+            case ::rtidb::api::OPType::kCreateTableRemoteOP:
+                if (CreateTableRemoteTask(op_data) < 0) {
                     PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                             ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                             op_data->op_info_.op_id());
                     continue;
                 }
                 break;
-            case ::rtidb::api::OPType::kDropTableForReplicaClusterOP:
-                if (DropTableForReplicaClusterTask(op_data) < 0) {
+            case ::rtidb::api::OPType::kDropTableRemoteOP:
+                if (DropTableRemoteTask(op_data) < 0) {
                     PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]",
                             ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                             op_data->op_info_.op_id());
@@ -1002,14 +1002,14 @@ int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
             }
         }
     }
-    UpdateTaskStatusForReplicaCluster(is_recover_op);
+    UpdateTaskStatusRemote(is_recover_op);
     if (running_.load(std::memory_order_acquire)) {
         task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this, false));
     }
     return 0;
 }
 
-int NameServerImpl::UpdateTaskStatusForReplicaCluster(bool is_recover_op) {
+int NameServerImpl::UpdateTaskStatusRemote(bool is_recover_op) {
     std::map<std::string, std::shared_ptr<::rtidb::client::NsClient>> client_map;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -1228,14 +1228,14 @@ int NameServerImpl::DeleteTask() {
         }
         PDLOG(DEBUG, "tablet[%s] delete op success", (*iter)->GetEndpoint().c_str()); 
     }
-    DeleteTaskForReplicaCluster(done_task_vec, has_failed);
+    DeleteTaskRemote(done_task_vec, has_failed);
     if (!has_failed) {
         DeleteTask(done_task_vec);        
     }
     return 0;
 }
 
-int NameServerImpl::DeleteTaskForReplicaCluster(std::vector<uint64_t>& done_task_vec, bool& has_failed) {
+int NameServerImpl::DeleteTaskRemote(std::vector<uint64_t>& done_task_vec, bool& has_failed) {
     std::vector<std::shared_ptr<::rtidb::client::NsClient>> client_vec;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -2392,7 +2392,7 @@ void NameServerImpl::DropTable(RpcController* controller,
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
         {
             std::lock_guard<std::mutex> lock(mu_);
-            if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDropTableForReplicaCluster, task_ptr) < 0) {
+            if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDropTableRemote, task_ptr) < 0) {
                 response->set_code(504);
                 response->set_msg("add task in replica cluster ns failed");
                 return;
@@ -2461,7 +2461,7 @@ void NameServerImpl::DropTableInternel(const std::string name,
     }
     if (!nsc_.empty()) {
         for (auto kv : nsc_) {
-            if(DropTableForReplicaClusterOP(name, kv.first)) {
+            if(DropTableRemoteOP(name, kv.first)) {
                 PDLOG(WARNING, "drop table for replica cluster failed, table_name: %s, alias: %s", name.c_str(), kv.first.c_str());
                 code = 505;
                 break;
@@ -3112,7 +3112,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
         {
             std::lock_guard<std::mutex> lock(mu_);
-            if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kCreateTableForReplicaCluster, task_ptr) < 0) {
+            if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kCreateTableRemote, task_ptr) < 0) {
                 response->set_code(504);
                 response->set_msg("add task in replica cluster ns failed");
                 return;
@@ -3157,7 +3157,7 @@ void NameServerImpl::CreateTableInternel(std::shared_ptr<GeneralResponse> respon
                         PDLOG(WARNING, "create remote table_info erro, wrong msg is [%s]", msg.c_str()); 
                         return;
                     }
-                    if(CreateTableForReplicaClusterOP(*table_info, remote_table_info, kv.first)) {
+                    if(CreateTableRemoteOP(*table_info, remote_table_info, kv.first)) {
                         PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
                         response->set_code(503);
                         response->set_msg( "create table for replica cluster failed");
@@ -5373,20 +5373,20 @@ int NameServerImpl::CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_da
     return 0;
 }
 
-int NameServerImpl::DropTableForReplicaClusterOP(const std::string& name, 
+int NameServerImpl::DropTableRemoteOP(const std::string& name, 
         const std::string& alias,  
         uint64_t parent_id, 
         uint32_t concurrency) {
     std::string value = alias;
     uint32_t pid = UINT32_MAX;
     std::shared_ptr<OPData> op_data;
-    if (CreateOPData(::rtidb::api::OPType::kDropTableForReplicaClusterOP, value, op_data, name, pid, parent_id) < 0) {
-        PDLOG(WARNING, "create DropTableForReplicaClusterOP data error. table[%s] pid[%u] alias[%s]",
+    if (CreateOPData(::rtidb::api::OPType::kDropTableRemoteOP, value, op_data, name, pid, parent_id) < 0) {
+        PDLOG(WARNING, "create DropTableRemoteOP data error. table[%s] pid[%u] alias[%s]",
                 name.c_str(), pid, alias.c_str());
         return -1;
     }
-    if (DropTableForReplicaClusterTask(op_data) < 0) {
-        PDLOG(WARNING, "create DropTableForReplicaCluster task failed. table[%s] pid[%u] alias[%s]",
+    if (DropTableRemoteTask(op_data) < 0) {
+        PDLOG(WARNING, "create DropTableRemote task failed. table[%s] pid[%u] alias[%s]",
                         name.c_str(), pid, alias.c_str());
         return -1;
     }
@@ -5396,12 +5396,12 @@ int NameServerImpl::DropTableForReplicaClusterOP(const std::string& name,
                         name.c_str(), pid, alias.c_str());
         return -1;
     }
-    PDLOG(INFO, "create DropTableForReplicaCluster op ok. op_id[%lu] name[%s] pid[%u] alias[%s]", 
+    PDLOG(INFO, "create DropTableRemote op ok. op_id[%lu] name[%s] pid[%u] alias[%s]", 
                 op_data->op_info_.op_id(), name.c_str(), pid, alias.c_str());
     return 0;
 }
 
-int NameServerImpl::DropTableForReplicaClusterTask(std::shared_ptr<OPData> op_data) {
+int NameServerImpl::DropTableRemoteTask(std::shared_ptr<OPData> op_data) {
     std::string name = op_data->op_info_.name();
     std::string alias = op_data->op_info_.data();
     auto it = nsc_.find(alias);
@@ -5409,19 +5409,19 @@ int NameServerImpl::DropTableForReplicaClusterTask(std::shared_ptr<OPData> op_da
         PDLOG(WARNING, "replica cluster [%s] is not online", alias.c_str());
         return -1;
     }
-    std::shared_ptr<Task> task = DropTableForReplicaClusterTask(name, alias, 
-            op_data->op_info_.op_id(), ::rtidb::api::OPType::kDropTableForReplicaClusterOP);
+    std::shared_ptr<Task> task = DropTableRemoteTask(name, alias, 
+            op_data->op_info_.op_id(), ::rtidb::api::OPType::kDropTableRemoteOP);
     if (!task) {
-        PDLOG(WARNING, "create DropTableForReplicaCluster task failed. table[%s] pid[%u]", name.c_str(), op_data->op_info_.pid());
+        PDLOG(WARNING, "create DropTableRemote task failed. table[%s] pid[%u]", name.c_str(), op_data->op_info_.pid());
         return -1;
     }
     op_data->task_list_.push_back(task);
-    PDLOG(INFO, "create DropTableForReplicaCluster task ok. name[%s] pid[%u] alias[%s]", 
+    PDLOG(INFO, "create DropTableRemote task ok. name[%s] pid[%u] alias[%s]", 
             name.c_str(), op_data->op_info_.pid(), alias.c_str());
     return 0;
 }
 
-int NameServerImpl::CreateTableForReplicaClusterOP(const ::rtidb::nameserver::TableInfo& table_info, 
+int NameServerImpl::CreateTableRemoteOP(const ::rtidb::nameserver::TableInfo& table_info, 
         const ::rtidb::nameserver::TableInfo& remote_table_info,
         const std::string& alias,  
         uint64_t parent_id, 
@@ -5437,13 +5437,13 @@ int NameServerImpl::CreateTableForReplicaClusterOP(const ::rtidb::nameserver::Ta
     std::string name = table_info.name();
     uint32_t pid = UINT32_MAX;
     std::shared_ptr<OPData> op_data;
-    if (CreateOPData(::rtidb::api::OPType::kCreateTableForReplicaClusterOP, value, op_data, name, pid, parent_id) < 0) {
-        PDLOG(WARNING, "create CreateTableForReplicaClusterOP data error. table[%s] pid[%u] alias[%s]",
+    if (CreateOPData(::rtidb::api::OPType::kCreateTableRemoteOP, value, op_data, name, pid, parent_id) < 0) {
+        PDLOG(WARNING, "create CreateTableRemoteOP data error. table[%s] pid[%u] alias[%s]",
                 name.c_str(), pid, alias.c_str());
         return -1;
     }
-    if (CreateTableForReplicaClusterTask(op_data) < 0) {
-        PDLOG(WARNING, "create CreateTableForReplicaCluster task failed. table[%s] pid[%u] alias[%s]",
+    if (CreateTableRemoteTask(op_data) < 0) {
+        PDLOG(WARNING, "create CreateTableRemote task failed. table[%s] pid[%u] alias[%s]",
                         table_info.name().c_str(), pid, alias.c_str());
         return -1;
     }
@@ -5453,12 +5453,12 @@ int NameServerImpl::CreateTableForReplicaClusterOP(const ::rtidb::nameserver::Ta
                         table_info.name().c_str(), pid, alias.c_str());
         return -1;
     }
-    PDLOG(INFO, "create CreateTableForReplicaCluster op ok. op_id[%lu] name[%s] pid[%u] alias[%s]", 
+    PDLOG(INFO, "create CreateTableRemote op ok. op_id[%lu] name[%s] pid[%u] alias[%s]", 
                 op_data->op_info_.op_id(), table_info.name().c_str(), pid, alias.c_str());
     return 0;
 }
 
-int NameServerImpl::CreateTableForReplicaClusterTask(std::shared_ptr<OPData> op_data) {
+int NameServerImpl::CreateTableRemoteTask(std::shared_ptr<OPData> op_data) {
     CreateTableData create_table_data;
     if (!create_table_data.ParseFromString(op_data->op_info_.data())) {
         PDLOG(WARNING, "parse create_table_data failed. data[%s]", op_data->op_info_.data().c_str());
@@ -5472,10 +5472,10 @@ int NameServerImpl::CreateTableForReplicaClusterTask(std::shared_ptr<OPData> op_
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task = CreateTableForReplicaClusterTask(remote_table_info, alias, 
-            op_index, ::rtidb::api::OPType::kCreateTableForReplicaClusterOP);
+    std::shared_ptr<Task> task = CreateTableRemoteTask(remote_table_info, alias, 
+            op_index, ::rtidb::api::OPType::kCreateTableRemoteOP);
     if (!task) {
-        PDLOG(WARNING, "create CreateTableForReplicaCluster task failed. table[%s] pid[%u]", remote_table_info.name().c_str(), op_data->op_info_.pid());
+        PDLOG(WARNING, "create CreateTableRemote task failed. table[%s] pid[%u]", remote_table_info.name().c_str(), op_data->op_info_.pid());
         return -1;
     }
     op_data->task_list_.push_back(task);
@@ -5498,7 +5498,7 @@ int NameServerImpl::CreateTableForReplicaClusterTask(std::shared_ptr<OPData> op_
                     return -1;
                 }
                 task = CreateAddReplicaRemoteTask(leader_endpoint, op_index, 
-                        ::rtidb::api::OPType::kCreateTableForReplicaClusterOP, tid, remote_tid, pid, endpoint, idx);
+                        ::rtidb::api::OPType::kCreateTableRemoteOP, tid, remote_tid, pid, endpoint, idx);
                 if (!task) {
                     PDLOG(WARNING, "create addreplica task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
                             tid, remote_tid, pid);
@@ -5506,7 +5506,7 @@ int NameServerImpl::CreateTableForReplicaClusterTask(std::shared_ptr<OPData> op_
                 }
                 op_data->task_list_.push_back(task);
                 task = CreateAddTableInfoTask(endpoint, name, pid, partition_meta,
-                        op_index, ::rtidb::api::OPType::kCreateTableForReplicaClusterOP);
+                        op_index, ::rtidb::api::OPType::kCreateTableRemoteOP);
                 if (!task) {
                     PDLOG(WARNING, "create addtableinfo task failed. tid[%u] pid[%u]", tid, pid);
                     return -1;
@@ -5517,7 +5517,7 @@ int NameServerImpl::CreateTableForReplicaClusterTask(std::shared_ptr<OPData> op_
         }
     }
 
-    PDLOG(INFO, "create CreateTableForReplicaCluster task ok. name[%s] pid[%u] alias[%s]", 
+    PDLOG(INFO, "create CreateTableRemote task ok. name[%s] pid[%u] alias[%s]", 
             remote_table_info.name().c_str(), op_data->op_info_.pid(), alias.c_str());
     return 0;
 }
@@ -5830,7 +5830,7 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotRemoteTask(const std::st
     return task;
 }
 
-std::shared_ptr<Task> NameServerImpl::DropTableForReplicaClusterTask(const std::string& name, 
+std::shared_ptr<Task> NameServerImpl::DropTableRemoteTask(const std::string& name, 
         const std::string& alias, 
         uint64_t op_index, 
         ::rtidb::api::OPType op_type) {
@@ -5841,16 +5841,16 @@ std::shared_ptr<Task> NameServerImpl::DropTableForReplicaClusterTask(const std::
     std::shared_ptr<Task> task = std::make_shared<Task>(it->second->client_->GetEndpoint(), std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::rtidb::api::TaskType::kDropTableForReplicaCluster);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kDropTableRemote);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(it->second->client_->GetEndpoint());
 
-    boost::function<bool ()> fun = boost::bind(&NameServerImpl::DropTableForReplicaCluster, this, *(task->task_info_), name, it->second);
+    boost::function<bool ()> fun = boost::bind(&NameServerImpl::DropTableRemote, this, *(task->task_info_), name, it->second);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
-std::shared_ptr<Task> NameServerImpl::CreateTableForReplicaClusterTask(const ::rtidb::nameserver::TableInfo& table_info, 
+std::shared_ptr<Task> NameServerImpl::CreateTableRemoteTask(const ::rtidb::nameserver::TableInfo& table_info, 
         const std::string& alias, 
         uint64_t op_index, 
         ::rtidb::api::OPType op_type) {
@@ -5861,11 +5861,11 @@ std::shared_ptr<Task> NameServerImpl::CreateTableForReplicaClusterTask(const ::r
     std::shared_ptr<Task> task = std::make_shared<Task>(it->second->client_->GetEndpoint(), std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::rtidb::api::TaskType::kCreateTableForReplicaCluster);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kCreateTableRemote);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(it->second->client_->GetEndpoint());
 
-    boost::function<bool ()> fun = boost::bind(&NameServerImpl::CreateTableForReplicaCluster, this, *(task->task_info_), table_info, it->second);
+    boost::function<bool ()> fun = boost::bind(&NameServerImpl::CreateTableRemote, this, *(task->task_info_), table_info, it->second);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
@@ -7337,16 +7337,16 @@ void NameServerImpl::CheckClusterInfo() {
     thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
 }
 
-bool NameServerImpl::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info,
+bool NameServerImpl::CreateTableRemote(const ::rtidb::api::TaskInfo& task_info,
         const ::rtidb::nameserver::TableInfo& table_info, 
         const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info) {
-    return cluster_info->CreateTableForReplicaCluster(task_info, table_info, zone_info_);
+    return cluster_info->CreateTableRemote(task_info, table_info, zone_info_);
 }
 
-bool NameServerImpl::DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, 
+bool NameServerImpl::DropTableRemote(const ::rtidb::api::TaskInfo& task_info, 
         const std::string& name, 
         const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info) {
-    return cluster_info->DropTableForReplicaCluster(task_info, name, zone_info_);
+    return cluster_info->DropTableRemote(task_info, name, zone_info_);
 }
 
 }

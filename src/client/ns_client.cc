@@ -536,7 +536,7 @@ bool NsClient::CreateRemoteTableInfoSimply(const ::rtidb::nameserver::ReplicaClu
     return false;
 }
 
-bool NsClient::DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, 
+bool NsClient::DropTableRemote(const ::rtidb::api::TaskInfo& task_info, 
         const std::string& name, 
         const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
         std::string& msg) {
@@ -555,7 +555,7 @@ bool NsClient::DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_inf
     return false;
 }
 
-bool NsClient::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, 
+bool NsClient::CreateTableRemote(const ::rtidb::api::TaskInfo& task_info, 
         const ::rtidb::nameserver::TableInfo& table_info, 
         const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
         std::string& msg) {

@@ -73,9 +73,9 @@ public:
             ::rtidb::nameserver::TableInfo& table_info,
             std::string& msg);
 
-    bool DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, const std::string& name, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, std::string& msg);
+    bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info, const std::string& name, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, std::string& msg);
     
-    bool CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, std::string& msg);
+    bool CreateTableRemote(const ::rtidb::api::TaskInfo& task_info, const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, std::string& msg);
 
     bool AddReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint, std::string& msg);
 

@@ -66,8 +66,8 @@ enum OPType {
     kReLoadTableOP = 12;
     kUpdatePartitionStatusOP = 13;
     kRecoverTableOP = 14;
-    kCreateTableForReplicaClusterOP = 15; //for remote
-    kDropTableForReplicaClusterOP = 16; //for remote
+    kCreateTableRemoteOP = 15; //for remote
+    kDropTableRemoteOP = 16; //for remote
     kAddReplicaSimplyRemoteOP = 17; //for remote
     kDelReplicaRemoteOP = 18; //for remote
     kAddReplicaRemoteOP = 19; //for remote
@@ -92,8 +92,8 @@ enum TaskType {
     kUpdateLeaderInfo = 16;
     kRecoverTable = 17;
     kCheckBinlogSyncProgress = 18;
-    kCreateTableForReplicaCluster = 19; //for remote
-    kDropTableForReplicaCluster = 20; //for remote
+    kCreateTableRemote = 19; //for remote
+    kDropTableRemote = 20; //for remote
 }
 
 enum TaskStatus {
