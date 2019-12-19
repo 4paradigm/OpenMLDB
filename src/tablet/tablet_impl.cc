@@ -169,20 +169,34 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         return;
     }
 
-    if (request->type() != table->GetTTLType()) {
+    uint64_t abs_ttl = 0;
+    uint64_t lat_ttl = 0;
+    ::rtidb::common::TTLType ttl_type = ::rtidb::common::TTLType::kAbsoluteTime;
+    if (request->has_ttl_desc()) {
+        ttl_type = request->ttl_desc().ttl_type();
+        abs_ttl = request->ttl_desc().abs_ttl();
+        lat_ttl = request->ttl_desc().lat_ttl();
+    } else if (request->has_value()){
+        ttl_type = request->type();
+        if (ttl_type == ::rtidb::common::TTLType::kAbsoluteTime) {
+            abs_ttl = request->value();
+            lat_ttl = 0;
+        } else {
+            abs_ttl = 0;
+            lat_ttl = request->value();
+        }
+    }
+    if (ttl_type != table->GetTTLType()) {
         response->set_code(112);
         response->set_msg("ttl type mismatch");
         PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
         return;
     }
-
-    // uint64_t ttl = request->value();
-    const ::rtidb::common::TTLDesc& ttl_desc = request->ttl_desc();
-    if (ttl_desc.abs_ttl() > FLAGS_absolute_ttl_max || ttl_desc.lat_ttl() > FLAGS_latest_ttl_max) {
+    if (abs_ttl > FLAGS_absolute_ttl_max || lat_ttl > FLAGS_latest_ttl_max) {
         response->set_code(132);
         response->set_msg("ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) + ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max));
         PDLOG(WARNING, "ttl is greater than conf value. abs_ttl[%lu] lat_ttl[%lu] ttl_type[%s] max abs_ttl[%u] max lat_ttl[%u]", 
-                        ttl_desc.abs_ttl(), ttl_desc.lat_ttl(), ::rtidb::common::TTLType_Name(table->GetTTLType()).c_str(), 
+                        abs_ttl, abs_ttl, ::rtidb::common::TTLType_Name(ttl_type).c_str(), 
                         FLAGS_absolute_ttl_max, FLAGS_latest_ttl_max);
         return;
     }
@@ -195,12 +209,12 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
             response->set_msg("ts name not found");
             return;
         }
-        table->SetTTL(iter->second, ttl_desc.abs_ttl(), ttl_desc.lat_ttl());
+        table->SetTTL(iter->second, abs_ttl, lat_ttl);
         PDLOG(INFO, "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu, ts_name %u",
-                request->tid(), request->pid(), ttl_desc.abs_ttl(), ttl_desc.lat_ttl(), request->ts_name().c_str());
+                request->tid(), request->pid(), abs_ttl, lat_ttl, request->ts_name().c_str());
     } else {
-        table->SetTTL(ttl_desc.abs_ttl(), ttl_desc.lat_ttl());
-        PDLOG(INFO, "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu", request->tid(), request->pid(), ttl_desc.abs_ttl(), ttl_desc.lat_ttl());
+        table->SetTTL(abs_ttl, lat_ttl);
+        PDLOG(INFO, "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu", request->tid(), request->pid(), abs_ttl, lat_ttl);
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -272,10 +286,6 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
     if (et < expire_time && et_type == ::rtidb::api::GetType::kSubKeyGt) {
         real_et_type = ::rtidb::api::GetType::kSubKeyGe; 
     }
-    if (st < et) {
-        PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
-        return -1;
-    }
 
     if (st_type != ::rtidb::api::GetType::kSubKeyEq &&
         st_type != ::rtidb::api::GetType::kSubKeyLe &&
@@ -287,28 +297,25 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
     }
     uint32_t cnt = 0;
     if (st > 0) {
+        if (st < et) {
+            PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
+            return -1;
+        }
         switch(ttl_type) {
             case ::rtidb::common::TTLType::kAbsoluteTime: {
-                if (!it->Seek(st, st_type)) {
-                    return 1;
-                }
+                if (!it->Seek(st, st_type)) { return 1; }
                 break;
             }
             case ::rtidb::common::TTLType::kAbsAndLat: {
                 if (st<expire_time) {
-                    if (!it->Seek(st, st_type, expire_cnt, cnt)) {
-                        return 1; }
+                    if (!it->Seek(st, st_type, expire_cnt, cnt)) { return 1; }
                 } else {
-                    if (!it->Seek(st, st_type)) {
-                        return 1;
-                    }
+                    if (!it->Seek(st, st_type)) { return 1;}
                 }
                 break;
             }
             default: {
-                if (!it->Seek(st, st_type, expire_cnt, cnt)) {
-                        return 1;
-                    }
+                if (!it->Seek(st, st_type, expire_cnt, cnt)) { return 1; }
                 break;
             }
         }
@@ -680,10 +687,6 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     if (st_type == ::rtidb::api::GetType::kSubKeyEq) {
         real_st_type = ::rtidb::api::GetType::kSubKeyLe;
     }
-    if (st < et) {
-        PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
-        return -1;
-    }
     if (st_type != ::rtidb::api::GetType::kSubKeyEq &&
         st_type != ::rtidb::api::GetType::kSubKeyLe &&
         st_type != ::rtidb::api::GetType::kSubKeyLt) {
@@ -692,12 +695,16 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     }
     uint32_t cnt = 0;
     if (st > 0) {
+        if (st < et) {
+            PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
+            return -1;
+        }
         switch (ttl_type) {
             case ::rtidb::common::TTLType::kAbsoluteTime: 
-                if(it->Seek(st, real_st_type)) { return 1; }
+                it->Seek(st, real_st_type);
                 break;
             default: 
-                if(it->Seek(st, real_st_type, expire_cnt, cnt)) { return 1; }
+                it->Seek(st, real_st_type, expire_cnt, cnt);
                 break;
         }
     } else {
@@ -803,10 +810,6 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
     if (st_type == ::rtidb::api::GetType::kSubKeyEq) {
         real_st_type = ::rtidb::api::GetType::kSubKeyLe;
     }
-    if (st < et) {
-        PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
-        return -1;
-    }
     if (st_type != ::rtidb::api::GetType::kSubKeyEq &&
         st_type != ::rtidb::api::GetType::kSubKeyLe &&
         st_type != ::rtidb::api::GetType::kSubKeyLt) {
@@ -815,12 +818,16 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
     }
     uint32_t cnt = 0;
     if (st > 0) {
+        if (st < et) {
+            PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
+            return -1;
+        }
         switch (ttl_type) {
             case ::rtidb::common::TTLType::kAbsoluteTime: 
-                if(it->Seek(st, real_st_type)) { return 1; }
+                it->Seek(st, real_st_type);
                 break;
             default: 
-                if(it->Seek(st, real_st_type, expire_cnt, cnt)) { return 1; }
+                it->Seek(st, real_st_type, expire_cnt, cnt);
                 break;
         }
     } else {

@@ -176,7 +176,7 @@ bool Table::InitFromMeta() {
         abs_ttl_ = table_meta_.ttl_desc().abs_ttl() * 60 * 1000;
         lat_ttl_ = table_meta_.ttl_desc().lat_ttl();
         ttl_type_ = table_meta_.ttl_desc().ttl_type();
-    } else if (table_meta_.has_ttl_type()) {
+    } else if (table_meta_.has_ttl_type() || table_meta_.has_ttl()) {
         ttl_type_ = table_meta_.ttl_type();
         if (ttl_type_ == ::rtidb::common::TTLType::kAbsoluteTime) {
             abs_ttl_ = table_meta_.ttl() * 60 * 1000;
