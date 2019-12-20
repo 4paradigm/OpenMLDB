@@ -78,7 +78,6 @@ public class TabletClientImpl implements TabletClient {
                 logger.error("fail to decode schema");
                 return false;
             }
-
         }
         if (type != null) {
             builder.setTtlType(type);

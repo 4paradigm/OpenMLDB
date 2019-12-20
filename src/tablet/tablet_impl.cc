@@ -3011,11 +3011,6 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
         old_meta.MergeFrom(*table_meta);
         table_meta->CopyFrom(old_meta);
     }
-    // if (!table_meta->has_ttl_desc()) {
-    //     ::rtidb::common::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
-    //     ttl_desc->set_ttl_type(table_meta->ttl_type());
-    //     ttl_desc->set_ttl_type()
-    // }
     std::string new_name = full_path + "." + ::rtidb::base::GetNowTime();
     rename(full_path.c_str(), new_name.c_str());
     return 0;
@@ -3026,7 +3021,7 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
 }
  
 
-int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) { // todo@pxc
+int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
     std::vector<std::string> endpoints;
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));
