@@ -2241,7 +2241,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
             return;
         }
     } else {
-        // 
         if (SetPartitionInfo(*table_info) < 0) {
             response->set_code(314);
             response->set_msg("set partition info failed");
