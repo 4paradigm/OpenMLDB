@@ -858,7 +858,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(100, ts.ttl());
+                // std::cout << ts.ttl() << " : " << ts.ttl_desc().abs_ttl() << " : " << ts.ttl_desc().lat_ttl() << std::endl;
+                ASSERT_EQ(100, ts.ttl_desc().abs_ttl());
                 checked = true;
             }
         }

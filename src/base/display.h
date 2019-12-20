@@ -581,10 +581,14 @@ static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& statu
         } else {
             row.push_back("false");
         }
-        if (table_status.ttl_type() == ::rtidb::common::TTLType::kLatestTime) {
-            row.push_back(std::to_string(table_status.ttl()));
+        if (table_status.ttl_desc().ttl_type() == ::rtidb::common::TTLType::kLatestTime) {
+            row.push_back(std::to_string(table_status.ttl_desc().lat_ttl()));
+        } else if (table_status.ttl_desc().ttl_type() == ::rtidb::common::TTLType::kAbsAndLat) {
+            row.push_back(std::to_string(table_status.ttl_desc().abs_ttl()) + "min && " + std::to_string(table_status.ttl_desc().lat_ttl()));
+        } else if (table_status.ttl_desc().ttl_type() == ::rtidb::common::TTLType::kAbsOrLat) {
+            row.push_back(std::to_string(table_status.ttl_desc().abs_ttl()) + "min || " + std::to_string(table_status.ttl_desc().lat_ttl()));
         } else {
-            row.push_back(std::to_string(table_status.ttl()) + "min");
+            row.push_back(std::to_string(table_status.ttl_desc().abs_ttl()) + "min");
         }
         row.push_back(std::to_string(table_status.time_offset()) + "s");
         if (!table_status.has_storage_mode() || table_status.storage_mode() == ::rtidb::common::StorageMode::kMemory) {

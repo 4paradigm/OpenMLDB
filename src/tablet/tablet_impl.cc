@@ -551,13 +551,25 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
         msg = "tid is zero";
         return -1;
     }
-    ::rtidb::common::TTLType type = table_meta->ttl_desc().ttl_type();
-    uint64_t ttl = table_meta->ttl_desc().abs_ttl();
-    if ((table_meta->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) ||
-            (table_meta->ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
-        msg = "ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) + ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max);
-        return -1;
+    ::rtidb::common::TTLType type = ::rtidb::common::TTLType::kAbsoluteTime;
+    if (table_meta->has_ttl_desc()) {
+        type = table_meta->ttl_desc().ttl_type();
+        if ((table_meta->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) ||
+                (table_meta->ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
+            msg = "ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) + ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max);
+            return -1;
+        }
+    } else if (table_meta->has_ttl()){
+        uint64_t ttl = table_meta->ttl();
+        type = table_meta->ttl_type();
+        if ((type == ::rtidb::common::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+                (type == ::rtidb::common::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+            uint32_t max_ttl = type == ::rtidb::common::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+            msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
+            return -1;
+        }
     }
+
     std::map<std::string, std::string> column_map;
     std::set<std::string> ts_set;
     if (table_meta->column_desc_size() > 0) {
@@ -583,7 +595,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                         return -1;
                     }
                 } else if (column_desc.has_ttl()) {
-                    ttl = column_desc.ttl();
+                    uint64_t ttl = column_desc.ttl();
                     if ((type == ::rtidb::common::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
                             (type == ::rtidb::common::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
                         uint32_t max_ttl = type == ::rtidb::common::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
@@ -1686,9 +1698,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             }
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
-            
-            // status->set_ttl(table->GetTTL());
-            // status->set_ttl_type(table->GetTTLType());
+
             status->set_compress_type(table->GetCompressType());
             status->set_storage_mode(table->GetStorageMode());
             status->set_name(table->GetName());
@@ -1697,6 +1707,12 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             ttl_desc->set_abs_ttl(ttl.abs_ttl);
             ttl_desc->set_lat_ttl(ttl.lat_ttl);
             ttl_desc->set_ttl_type(table->GetTTLType());
+            status->set_ttl_type(table->GetTTLType());
+            if (status->ttl_type() == ::rtidb::common::TTLType::kLatestTime) {
+                status->set_ttl(table->GetTTL().lat_ttl);
+            } else {
+                status->set_ttl(table->GetTTL().abs_ttl);
+            }
             if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
@@ -2644,7 +2660,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    table = GetTable(tid, pid);        
+    table = GetTable(tid, pid);
     if (!table) {
         response->set_code(131);
         response->set_msg("table is not exist");
@@ -2983,6 +2999,11 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
         old_meta.MergeFrom(*table_meta);
         table_meta->CopyFrom(old_meta);
     }
+    // if (!table_meta->has_ttl_desc()) {
+    //     ::rtidb::common::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+    //     ttl_desc->set_ttl_type(table_meta->ttl_type());
+    //     ttl_desc->set_ttl_type()
+    // }
     std::string new_name = full_path + "." + ::rtidb::base::GetNowTime();
     rename(full_path.c_str(), new_name.c_str());
     return 0;
