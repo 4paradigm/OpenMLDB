@@ -262,8 +262,8 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::Tab
             PDLOG(WARNING, "ttl type not equal remote [%s] local [%s]", table.ttl_type().c_str(), iter->second->ttl_type().c_str());
             return false;
         }
-        if (table.partition_num() != iter->second->partition_num()) {
-            PDLOG(WARNING, "partition num not equal remote [%d] local [%d]", table.partition_num(), iter->second->partition_num());
+        if (table.table_partition_size() != iter->second->table_partition_size()) {
+            PDLOG(WARNING, "partition num not equal remote [%d] local [%d]", table.table_partition_size(), iter->second->table_partition_size());
             return false;
         }
         if (table.compress_type() != iter->second->compress_type()) {
