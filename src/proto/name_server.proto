@@ -17,6 +17,12 @@ enum ServerMode {
     kFOLLOWER = 2;
 }
 
+enum ClusterStatus {
+    kClusterHealthy = 0;
+    kClusterOffline = 1;
+    kClusterRemove = 2;
+}
+
 message ColumnDesc {
     required string name = 1;
     required string type = 2;
@@ -297,6 +303,7 @@ message GeneralRequest {}
 message ClusterAddAge {
     optional ClusterAddress replica = 1;
     optional uint64 age = 2;
+    optional string state = 3;
 }
 message ShowReplicaClusterResponse {
     repeated ClusterAddAge replicas = 1;

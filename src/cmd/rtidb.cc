@@ -1702,7 +1702,7 @@ void HandleNSAddReplicaCluster(const std::vector<std::string>& parts, ::rtidb::c
 }
 
 void HandleShowReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
-    std::vector<std::string> row = {"zk_endpoints", "zk_path", "alias", "age"};
+    std::vector<std::string> row = {"zk_endpoints", "zk_path", "alias", "state", "age"};
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
 
@@ -1718,6 +1718,7 @@ void HandleShowReplicaCluster(const std::vector<std::string>& parts, ::rtidb::cl
         row.push_back(i.replica().zk_endpoints());
         row.push_back(i.replica().zk_path());
         row.push_back(i.replica().alias());
+        row.push_back(i.state());
         row.push_back(::rtidb::base::HumanReadableTime(i.age()));
         tp.AddRow(row);
     }

@@ -44,6 +44,7 @@ const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
 ClusterInfo::ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd) : mu_() {
     cluster_add_.CopyFrom(cd);
+    state_ = kClusterHealthy;
     ctime_ = ::baidu::common::timer::get_micros() / 1000;
 }
 
@@ -552,6 +553,7 @@ void NameServerImpl::RecoverClusterInfo() {
         if (cluster_info->Init(rpc_msg) != 0) {
             PDLOG(WARNING, "%s init failed, error: %s", alias.c_str(), rpc_msg.c_str());
             // todo :: add cluster status, need show in showreplica
+            cluster_info->state_ = kClusterOffline;
             continue;
         }
         nsc_.insert(std::make_pair(alias, cluster_info));
@@ -6595,6 +6597,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
                 break;
             }
         }
+        cluster_info->state_ = kClusterHealthy;
         std::lock_guard<std::mutex> lock(mu_);
         nsc_.insert(std::make_pair(request->alias(), cluster_info));
     } while (0);
@@ -6694,6 +6697,7 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
         replica->set_alias(it->first);
         replica->set_zk_path(it->second->cluster_add_.zk_path());
         replica->set_zk_endpoints(it->second->cluster_add_.zk_endpoints());
+        status->set_state(ClusterStatus_Name(it->second->state_));
         status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_);
     }
     response->set_code(0);
@@ -6720,6 +6724,17 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             code = 404;
             rpc_msg = "replica name not found";
             break;
+        }
+        it->second->state_ = kClusterRemove;
+        for (auto iter = it->second->last_status.begin(); iter != it->second->last_status.end(); iter++) {
+            for (auto part_iter = iter->second.begin(); part_iter != iter->second.end(); part_iter++) {
+                for (auto meta : part_iter->partition_meta()) {
+                    if (meta.endpoint().empty()) {
+                        continue;
+                    }
+                    DelRemoteReplica(meta.endpoint(), iter->first, part_iter->pid());
+                }
+            }
         }
         if (!it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
             break;
