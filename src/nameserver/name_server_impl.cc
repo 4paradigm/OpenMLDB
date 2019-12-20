@@ -586,7 +586,7 @@ bool NameServerImpl::RecoverOPTask() {
             done_op_list_.push_back(op_data);
         } else {
             uint32_t idx = 0;
-            if (op_data->for_replica_cluster) {
+            if (op_data->for_replica_cluster == 1) {
                 idx = op_data->op_info_.vec_idx();
                 PDLOG(INFO, "current task is for replica cluster, op_index [%lu] op_type[%s]", 
                         op_data->op_info_.op_id(), ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
@@ -3240,7 +3240,7 @@ void NameServerImpl::AddReplicaSimplyRemoteOP(const std::string& name,
                 name.c_str(), pid, endpoint.c_str());
         return;
     }
-    op_data->for_replica_cluster = true;
+    op_data->for_replica_cluster = 1;
     if (AddOPData(op_data, 1) < 0) {
         PDLOG(WARNING, "add AddReplicaOP data failed. table[%s] pid[%u]",
                 name.c_str(), pid);
@@ -3321,7 +3321,7 @@ void NameServerImpl::AddReplicaRemoteOP(const std::string& alias,
                 name.c_str(), pid);
         return;
     }
-    op_data->for_replica_cluster = true;
+    op_data->for_replica_cluster = 1;
     if (AddOPData(op_data, 1) < 0) {
         PDLOG(WARNING, "add AddReplicaOP data failed. table[%s] pid[%u]",
                 name.c_str(), pid);
@@ -4194,8 +4194,8 @@ int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type, const std::string
 int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, 
         uint32_t concurrency) {
     uint32_t idx = 0;
-    if (op_data->for_replica_cluster) {
-        idx = FLAGS_name_server_task_max_concurrency + rand_.Next() % concurrency; 
+    if (op_data->for_replica_cluster == 1) {
+        idx = FLAGS_name_server_task_max_concurrency + (rand_.Next() % concurrency); 
         PDLOG(INFO, "current task is for replica cluster, op_index [%lu] op_type[%s]", 
                 op_data->op_info_.op_id(), ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
     } else {
@@ -5390,7 +5390,7 @@ int NameServerImpl::DropTableRemoteOP(const std::string& name,
                         name.c_str(), pid, alias.c_str());
         return -1;
     }
-    op_data->for_replica_cluster = true;
+    op_data->for_replica_cluster = 1;
     if (AddOPData(op_data, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] alias[%s]", 
                         name.c_str(), pid, alias.c_str());
@@ -5447,7 +5447,7 @@ int NameServerImpl::CreateTableRemoteOP(const ::rtidb::nameserver::TableInfo& ta
                         table_info.name().c_str(), pid, alias.c_str());
         return -1;
     }
-    op_data->for_replica_cluster = true;
+    op_data->for_replica_cluster = 1;
     if (AddOPData(op_data, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] alias[%s]", 
                         table_info.name().c_str(), pid, alias.c_str());

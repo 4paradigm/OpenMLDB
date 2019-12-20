@@ -2730,7 +2730,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).task_type());
-        if (response.op_status(idx).for_replica_cluster()) {
+        if (response.op_status(idx).for_replica_cluster() == 1) {
             row.push_back("yes");
         } else {
             row.push_back("no");

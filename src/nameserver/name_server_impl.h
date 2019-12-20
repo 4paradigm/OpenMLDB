@@ -101,7 +101,7 @@ struct Task {
 struct OPData {
     ::rtidb::api::OPInfo op_info_;
     std::list<std::shared_ptr<Task>> task_list_;
-    bool for_replica_cluster = false;
+    int32_t for_replica_cluster = 0;  //default 0. if 1, for multi cluster 
 };
 
 class NameServerImplTest;
