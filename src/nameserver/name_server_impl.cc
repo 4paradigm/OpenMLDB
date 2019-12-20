@@ -6940,6 +6940,10 @@ bool NameServerImpl::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& 
 bool NameServerImpl::DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, 
         const std::string& name, 
         const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info) {
+    auto iter = cluster_info->last_status.find(name);
+    if (iter != cluster_info->last_status.end()) {
+        cluster_info->last_status.erase(iter);
+    }
     return cluster_info->DropTableForReplicaCluster(task_info, name, zone_info_);
 }
 

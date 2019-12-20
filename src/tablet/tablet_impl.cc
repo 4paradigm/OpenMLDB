@@ -3363,12 +3363,12 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      endpoints,
                                                      ReplicatorRole::kLeaderNode, 
-                                                     table);
+                                                     table, &follower_);
     } else {
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      std::vector<std::string>(), 
                                                      ReplicatorRole::kFollowerNode,
-                                                     table);
+                                                     table, &follower_);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u", table_meta->tid(), table_meta->pid());
@@ -3449,12 +3449,12 @@ int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_met
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      endpoints,
                                                      ReplicatorRole::kLeaderNode, 
-                                                     table);
+                                                     table, &follower_);
     } else {
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      std::vector<std::string>(), 
                                                      ReplicatorRole::kFollowerNode,
-                                                     table);
+                                                     table, &follower_);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u", table_meta->tid(), table_meta->pid());

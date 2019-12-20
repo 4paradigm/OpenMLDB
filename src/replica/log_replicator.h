@@ -47,7 +47,7 @@ public:
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role,
-                  std::shared_ptr<Table> table);
+                  std::shared_ptr<Table> table, std::atomic<bool>* follower);
 
     ~LogReplicator();
 
@@ -118,6 +118,7 @@ private:
     // the term for leader judgement
     std::atomic<uint64_t> log_offset_;
     std::atomic<uint32_t> binlog_index_;
+    std::atomic<bool>* follower_;
     LogParts* logs_;
     WriteHandle* wh_;
     ReplicatorRole role_;

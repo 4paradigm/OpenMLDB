@@ -37,10 +37,10 @@ const static ::rtidb::base::DefaultComparator scmp;
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
-                             std::shared_ptr<Table> table):path_(path), log_path_(),
+                             std::shared_ptr<Table> table, std::atomic<bool>* follower):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
     endpoints_(endpoints), nodes_(), term_(0), mu_(), cv_(),
-    wmu_(){
+    wmu_(), follower_(follower){
     table_ = table;
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
@@ -293,11 +293,13 @@ bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
 
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
-    std::lock_guard<std::mutex> lock(wmu_);
-    if (!FLAGS_zk_cluster.empty() && request->term() < term_.load(std::memory_order_relaxed)) {
-        PDLOG(WARNING, "leader id not match. request term  %lu, cur term %lu, tid %u, pid %u",
-                        request->term(), term_.load(std::memory_order_relaxed), request->tid(), request->pid());
-        return false;
+    if (!follower_->load(std::memory_order_relaxed)) {
+        std::lock_guard<std::mutex> lock(wmu_);
+        if (!FLAGS_zk_cluster.empty() && request->term() < term_.load(std::memory_order_relaxed)) {
+            PDLOG(WARNING, "leader id not match. request term  %lu, cur term %lu, tid %u, pid %u",
+                            request->term(), term_.load(std::memory_order_relaxed), request->tid(), request->pid());
+            return false;
+        }
     }
     uint64_t last_log_offset = GetOffset();
     if (request->pre_log_index() == 0 && request->entries_size() == 0) {
@@ -463,7 +465,7 @@ bool LogReplicator::DelAllReplicateNode() {
     return true;
 }
 
-bool LogReplicator::AppendEntry(LogEntry& entry) {
+bool LogReplicator::AppendEntry(LogEntry& entry) {;;
     std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ == NULL || wh_->GetSize() / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
