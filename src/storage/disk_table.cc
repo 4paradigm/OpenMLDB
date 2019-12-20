@@ -123,7 +123,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         }
         cfo.comparator = &cmp_;
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
-        if (ttl_type_ == ::rtidb::common::TTLType::kAbsoluteTime) {
+        if (ttl_type_ == ::rtidb::common::TTLType::kAbsoluteTime || ttl_type_ == ::rtidb::common::TTLType::kAbsOrLat) {
             auto column_key_map_iter = column_key_map_.find(iter->second);
             if (column_key_map_iter == column_key_map_.end() || column_key_map_iter->second.empty()) {
                 cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(&abs_ttl_);

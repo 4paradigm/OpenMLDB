@@ -143,8 +143,8 @@ void Table::UpdateTTL() {
         abs_ttl_.store(new_abs_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     }
     if (lat_ttl_.load(std::memory_order_relaxed) != new_lat_ttl_.load(std::memory_order_relaxed)) {
-        uint64_t ttl_for_logger = lat_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
-        uint64_t new_ttl_for_logger = new_lat_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+        uint64_t ttl_for_logger = lat_ttl_.load(std::memory_order_relaxed);
+        uint64_t new_ttl_for_logger = new_lat_ttl_.load(std::memory_order_relaxed);
         PDLOG(INFO, "update lat_ttl form %lu to %lu, table %s tid %u pid %u",
                     ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_);
         lat_ttl_.store(new_lat_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);

@@ -1330,10 +1330,18 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
     ::rtidb::common::TTLType ttl_type = ::rtidb::common::TTLType::kAbsoluteTime;
-    if (table_info->ttl_type() == "kLatestTime") {
-        ttl_type = ::rtidb::common::TTLType::kLatestTime;
-    } else if (table_info->ttl_type() != "kAbsoluteTime") {
-        return -1;
+    if (!table_info->has_ttl_desc()) {
+        if (table_info->ttl_type() == "kLatestTime") {
+            ttl_type = ::rtidb::common::TTLType::kLatestTime;
+        } else if (table_info->ttl_type() == "kAbsOrLat") {
+            ttl_type = ::rtidb::common::TTLType::kAbsOrLat;
+        } else if (table_info->ttl_type() == "kAbsAndLat") {
+            ttl_type = ::rtidb::common::TTLType::kAbsAndLat;
+        } else if (table_info->ttl_type() != "kAbsoluteTime") {
+            return -1;
+        }
+    } else {
+        ttl_type = table_info->ttl_desc().ttl_type();
     }
     ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
     if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
@@ -1365,7 +1373,9 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     table_meta.set_schema(schema);
     table_meta.set_ttl_type(ttl_type);
     table_meta.set_compress_type(compress_type);
-    table_meta.mutable_ttl_desc()->CopyFrom(table_info->ttl_desc());
+    if (table_info->has_ttl_desc()) {
+        table_meta.mutable_ttl_desc()->CopyFrom(table_info->ttl_desc());
+    }
     table_meta.set_storage_mode(storage_mode);
     if (table_info->has_key_entry_max_height()) {
         table_meta.set_key_entry_max_height(table_info->key_entry_max_height());

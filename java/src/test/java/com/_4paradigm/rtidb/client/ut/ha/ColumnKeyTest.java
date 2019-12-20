@@ -1265,7 +1265,7 @@ public class ColumnKeyTest extends TestCaseBase {
             query.put("mcc", "mcc0");
             Assert.assertEquals(2, tableSyncClient.count(name, query, "card2", "ts_1", false));
             Assert.assertEquals(2, tableSyncClient.count(name, query, "card2", "ts_1", true));
-            Assert.assertEquals(1, tableSyncClient.count(name, query, "card2", "ts_2", true));
+            Assert.assertEquals(1, tableSyncClient.count(name, query, "card2", "ts_2", true)); // todo@pxc
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -1313,7 +1313,7 @@ public class ColumnKeyTest extends TestCaseBase {
         if (tableInfo.getStorageMode().equals(Common.StorageMode.kMemory)){
             Assert.assertEquals(tableSyncClient.count(tableName,key),20);
         } else {
-          Assert.assertEquals(tableSyncClient.count(tableName,key), 10);
+          Assert.assertEquals(tableSyncClient.count(tableName,key), 10); // todo@pxc
         }
 
         //count(String tname, String key, long st, long et)
