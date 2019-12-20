@@ -345,7 +345,8 @@ static void BM_EngineWindowSumFeature1(benchmark::State& state) {  // NOLINT
     // prepare data into table
     std::shared_ptr<TableStatus> status(new TableStatus());
 
-    int64_t size = state.range(0);
+    int64_t limit_cnt = state.range(0);
+    int64_t size = state.range(1);
     Data_WindowCase1(status.get(), size);
     TableMgrImpl table_mgr(status);
 
@@ -354,27 +355,62 @@ static void BM_EngineWindowSumFeature1(benchmark::State& state) {  // NOLINT
         "sum(col4) OVER w1 as w1_col4_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
         "30d "
-        "PRECEDING AND CURRENT ROW) limit 1;";
+        "PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
     Engine engine(&table_mgr);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.Run(output, size));
+        benchmark::DoNotOptimize(session.Run(output, limit_cnt));
         for (int8_t* row : output) {
             free(row);
         }
     }
 }
-static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
+
+
+static void BM_EngineRunBatchWindowSumFeature1(benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
 
     // prepare data into table
     std::shared_ptr<TableStatus> status(new TableStatus());
 
-    int64_t size = state.range(0);
+    int64_t limit_cnt = state.range(0);
+    int64_t size = state.range(1);
+    Data_WindowCase1(status.get(), size);
+    TableMgrImpl table_mgr(status);
+
+    const std::string sql =
+        "SELECT "
+        "sum(col4) OVER w1 as w1_col4_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW) limit " +
+            std::to_string(limit_cnt) + ";";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status query_status;
+    engine.Get(sql, "db", session, query_status);
+    for (auto _ : state) {
+        std::vector<int8_t*> output(2);
+        benchmark::DoNotOptimize(session.RunBatch(output, limit_cnt));
+        for (int8_t* row : output) {
+            free(row);
+        }
+    }
+}
+static void BM_EngineRunBatchWindowSumFeature5(benchmark::State& state) {  // NOLINT
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+
+    // prepare data into table
+    std::shared_ptr<TableStatus> status(new TableStatus());
+
+    int64_t limit_cnt = state.range(0);
+    int64_t size = state.range(1);
     Data_WindowCase1(status.get(), size);
     TableMgrImpl table_mgr(status);
 
@@ -387,14 +423,51 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
         "sum(col5) OVER w1 as w1_col5_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
         "30d "
-        "PRECEDING AND CURRENT ROW) limit 1;";
+        "PRECEDING AND CURRENT ROW) limit " +
+            std::to_string(limit_cnt) + ";";
     Engine engine(&table_mgr);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.Run(output, size));
+        benchmark::DoNotOptimize(session.RunBatch(output, limit_cnt));
+        for (int8_t* row : output) {
+            free(row);
+        }
+    }
+}
+
+static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+
+    // prepare data into table
+    std::shared_ptr<TableStatus> status(new TableStatus());
+
+    int64_t limit_cnt = state.range(0);
+    int64_t size = state.range(1);
+    Data_WindowCase1(status.get(), size);
+    TableMgrImpl table_mgr(status);
+
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status query_status;
+    engine.Get(sql, "db", session, query_status);
+    for (auto _ : state) {
+        std::vector<int8_t*> output(2);
+        benchmark::DoNotOptimize(session.Run(output, limit_cnt));
         for (int8_t* row : output) {
             free(row);
         }
@@ -406,20 +479,48 @@ BENCHMARK(BM_EngineSimpleSelectDouble);
 BENCHMARK(BM_EngineSimpleSelectInt32);
 BENCHMARK(BM_EngineSimpleUDF);
 BENCHMARK(BM_EngineWindowSumFeature1)
-    ->Arg(1)
-    ->Arg(2)
-    ->Arg(10)
-    ->Arg(100)
-    ->Arg(1000)
-    ->Arg(10000);
+    ->Args({1, 2})
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
 
 BENCHMARK(BM_EngineWindowSumFeature5)
-    ->Arg(1)
-    ->Arg(2)
-    ->Arg(10)
-    ->Arg(100)
-    ->Arg(1000)
-    ->Arg(10000);
+    ->Args({1, 2})
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+
+BENCHMARK(BM_EngineRunBatchWindowSumFeature1)
+->Args({1, 2})
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+
+BENCHMARK(BM_EngineRunBatchWindowSumFeature5)
+->Args({1, 2})
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
 
 }  // namespace vm
 }  // namespace fesql

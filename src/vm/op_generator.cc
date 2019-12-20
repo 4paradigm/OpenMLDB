@@ -308,6 +308,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     pop->tid = table_status->tid;
     pop->db = table_status->db;
     pop->pid = table_status->pid;
+    pop->scan_limit = node->GetScanLimit();
     // handle window info
     if (nullptr != node->GetW()) {
         pop->window_agg = true;

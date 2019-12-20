@@ -31,6 +31,7 @@
 namespace fesql {
 namespace vm {
 
+using ::fesql::storage::Row;
 class Engine;
 
 struct CompileInfo {
@@ -51,6 +52,8 @@ class RunSession {
     int32_t RunProjectOp(ProjectOp* project_op,
                                      std::shared_ptr<TableStatus> status,
                                      int8_t* row, int8_t* output);
+    int32_t RunOne(Row &in_row, Row &out_row);
+    int32_t RunBatch(std::vector<int8_t*>& buf, uint32_t limit);
 
  private:
     inline void SetCompileInfo(std::shared_ptr<CompileInfo> compile_info) {

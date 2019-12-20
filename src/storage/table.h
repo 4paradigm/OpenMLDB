@@ -35,7 +35,10 @@ class TableIterator {
     void Seek(uint64_t time);
     void Seek(const std::string& key, uint64_t ts);
     bool Valid();
+    bool CurrentTsValid();
     void Next();
+    void NextTs();
+    void NextTsInPks();
     Slice GetValue() const;
     uint64_t GetKey() const;
     Slice GetPK() const;

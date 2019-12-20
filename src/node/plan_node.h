@@ -230,13 +230,15 @@ class ProjectListPlanNode : public MultiChildPlanNode {
     ProjectListPlanNode()
         : MultiChildPlanNode(kProjectList),
           w_ptr_(nullptr),
-          is_window_agg_(false) {}
+          is_window_agg_(false),
+          scan_limit_(0L) {}
     ProjectListPlanNode(const std::string &table, WindowPlanNode *w_ptr,
                         const bool is_window_agg)
         : MultiChildPlanNode(kProjectList),
           table_(table),
           w_ptr_(w_ptr),
-          is_window_agg_(is_window_agg) {}
+          is_window_agg_(is_window_agg),
+          scan_limit_(0L) {}
     ~ProjectListPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -249,11 +251,15 @@ class ProjectListPlanNode : public MultiChildPlanNode {
 
     const bool IsWindowAgg() const { return is_window_agg_; }
 
+    void SetScanLimit(int scan_limit) { scan_limit_ = scan_limit; }
+    const int64_t GetScanLimit() const { return scan_limit_; }
+
  private:
     PlanNodeList projects;
     std::string table_;
     WindowPlanNode *w_ptr_;
     bool is_window_agg_;
+    uint64_t scan_limit_;
 };
 
 class MergePlanNode : public MultiChildPlanNode {

@@ -62,8 +62,8 @@ class TableMgrImpl : public TableMgr {
  private:
     std::shared_ptr<TableStatus> status_;
 };
-
-class EngineTest : public ::testing::Test {};
+enum EngineRunMode { RUN, RUNBATCH, RUNONE };
+class EngineTest : public ::testing::TestWithParam<EngineRunMode> {};
 
 void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
@@ -329,53 +329,20 @@ void StoreData(::fesql::storage::Table* table, int8_t* rows) {
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
 }
 
-TEST_F(EngineTest, test_normal) {
+INSTANTIATE_TEST_CASE_P(EngineRUNAndBatchMode, EngineTest,
+                        testing::Values(RUN, RUNBATCH));
+
+TEST_P(EngineTest, test_normal) {
+    ParamType mode = GetParam();
     int8_t* row1 = NULL;
     uint32_t size1 = 0;
     BuildBuf(&row1, &size1);
     std::shared_ptr<TableStatus> status(new TableStatus());
-    status->table_def.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col0");
-    }
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
-    {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
-    }
+    BuildTableDef(status->table_def);
     ::fesql::type::IndexDef* index = status->table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col0");
-    index->set_second_key("col15");
+    index->set_second_key("col5");
     std::unique_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, status->table_def));
     ASSERT_TRUE(table->Init());
@@ -394,14 +361,83 @@ TEST_F(EngineTest, test_normal) {
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
+
+    LOG(INFO) << "RUN IN MODE" << mode;
     std::vector<int8_t*> output;
-    int32_t ret = session.Run(output, 10);
+    int32_t ret = -1;
+    switch (mode) {
+        case RUN:
+            ret = session.Run(output, 10);
+            break;
+        case RUNBATCH:
+            ret = session.RunBatch(output, 10);
+            break;
+        default: {
+            ASSERT_TRUE(false);
+        }
+    }
+
     ASSERT_EQ(0, ret);
     ASSERT_EQ(2, output.size());
-    int8_t* output1 = output[0];
-    int8_t* output2 = output[1];
-    free(output1);
-    free(output2);
+
+    ::fesql::type::TableDef output_schema;
+    for (auto column : session.GetSchema()) {
+        ::fesql::type::ColumnDef* column_def = output_schema.add_columns();
+        *column_def = column;
+    }
+    std::unique_ptr<storage::RowView> row_view =
+        std::move(std::unique_ptr<storage::RowView>(
+            new storage::RowView(output_schema.columns())));
+
+    row_view->Reset(output[0]);
+    {
+        char* v;
+        uint32_t size;
+        row_view->GetString(0, &v, &size);
+        ASSERT_EQ("0", std::string(v, size));
+    }
+    {
+        int32_t v;
+        row_view->GetInt32(1, &v);
+        ASSERT_EQ(32 + 32 + 1, v);
+    }
+    {
+        int16_t v;
+        row_view->GetInt16(2, &v);
+        ASSERT_EQ(16, v);
+    }
+    {
+        char* v;
+        uint32_t size;
+        row_view->GetString(3, &v, &size);
+        ASSERT_EQ("1", std::string(v, size));
+    }
+
+    row_view->Reset(output[1]);
+    {
+        char* v;
+        uint32_t size;
+        row_view->GetString(0, &v, &size);
+        ASSERT_EQ("0", std::string(v, size));
+    }
+    {
+        int32_t v;
+        row_view->GetInt32(1, &v);
+        ASSERT_EQ(32 + 32 + 1, v);
+    }
+    {
+        int16_t v;
+        row_view->GetInt16(2, &v);
+        ASSERT_EQ(16, v);
+    }
+    {
+        char* v;
+        uint32_t size;
+        row_view->GetString(3, &v, &size);
+        ASSERT_EQ("1", std::string(v, size));
+    }
+    free(output[0]);
+    free(output[1]);
 }
 
 TEST_F(EngineTest, test_window_agg) {
@@ -503,6 +539,105 @@ TEST_F(EngineTest, test_window_agg) {
     }
 }
 
+TEST_F(EngineTest, test_window_agg_batch_run) {
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    BuildTableDef(status->table_def);
+    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+
+    int8_t* rows = NULL;
+    std::vector<fesql::storage::Row> windows;
+    BuildWindow(windows, &rows);
+    StoreData(table.get(), rows);
+    status->table = std::move(table);
+    TableMgrImpl table_mgr(status);
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status get_status;
+    bool ok = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(ok);
+    std::vector<int8_t*> output;
+    int32_t ret = session.RunBatch(output, 100);
+
+    ASSERT_EQ(5, output.size());
+
+    int8_t* output_333 = output[0];
+    int8_t* output_4444 = output[1];
+    int8_t* output_aaa = output[2];
+
+    int8_t* output_1 = output[3];
+    int8_t* output_22 = output[4];
+
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(5, output.size());
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_1 + 2)));
+    ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
+    ASSERT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
+    ASSERT_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
+    ASSERT_EQ(5u, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_22 + 2)));
+    ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
+    ASSERT_EQ(1.1f + 2.2f, *(reinterpret_cast<float*>(output_22 + 7 + 4)));
+    ASSERT_EQ(11.1 + 22.2, *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
+    ASSERT_EQ(5u + 5u,
+              *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L,
+              *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_333 + 2)));
+    ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
+    ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
+    ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
+    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L,
+              *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_4444 + 2)));
+    ASSERT_EQ(3 + 4, *(reinterpret_cast<int32_t*>(output_4444 + 7)));
+    ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
+    ASSERT_EQ(33.3 + 44.4,
+              *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
+    ASSERT_EQ(55u + 55u,
+              *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L,
+              *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_aaa + 2)));
+    ASSERT_EQ(3 + 4 + 5, *(reinterpret_cast<int32_t*>(output_aaa + 7)));
+    ASSERT_EQ(3.3f + 4.4f + 5.5f,
+              *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
+    ASSERT_EQ(33.3 + 44.4 + 55.5,
+              *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
+    ASSERT_EQ(55u + 55u + 55u,
+              *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L + 3L,
+              *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
+    for (auto ptr : output) {
+        free(ptr);
+    }
+}
 TEST_F(EngineTest, test_window_agg_with_limit) {
     std::shared_ptr<TableStatus> status(new TableStatus());
     BuildTableDef(status->table_def);
@@ -572,6 +707,71 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     }
 }
 
+TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    BuildTableDef(status->table_def);
+    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+
+    int8_t* rows = NULL;
+    std::vector<fesql::storage::Row> windows;
+    BuildWindow(windows, &rows);
+    StoreData(table.get(), rows);
+    status->table = std::move(table);
+    TableMgrImpl table_mgr(status);
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 2;";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status get_status;
+    bool ok = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(ok);
+    std::vector<int8_t*> output;
+    int32_t ret = session.RunBatch(output, 100);
+
+    ASSERT_EQ(2, output.size());
+
+    int8_t* output_333 = output[0];
+    int8_t* output_4444 = output[1];
+
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2, output.size());
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_4444 + 2)));
+    ASSERT_EQ(3 + 4, *(reinterpret_cast<int32_t*>(output_4444 + 7)));
+    ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
+    ASSERT_EQ(33.3 + 44.4,
+              *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
+    ASSERT_EQ(55u + 55u,
+              *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L,
+              *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_333 + 2)));
+    ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
+    ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
+    ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
+    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L,
+              *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
+    for (auto ptr : output) {
+        free(ptr);
+    }
+}
 TEST_F(EngineTest, test_multi_windows_agg) {
     std::shared_ptr<TableStatus> status(new TableStatus());
     BuildTableDef(status->table_def);
@@ -711,11 +911,117 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
     ASSERT_TRUE(ok);
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
+    ASSERT_EQ(0, ret);
     int8_t* output_1 = output[4];
     int8_t* output_22 = output[3];
     int8_t* output_333 = output[2];
     int8_t* output_4444 = output[1];
     int8_t* output_aaa = output[0];
+
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(5, output.size());
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_1 + 2)));
+    ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
+    ASSERT_FLOAT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
+    ASSERT_DOUBLE_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
+    ASSERT_EQ(5u, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_22 + 2)));
+    ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
+    ASSERT_FLOAT_EQ(1.1f + 2.2f,
+                    *(reinterpret_cast<float*>(output_22 + 7 + 4)));
+    ASSERT_DOUBLE_EQ(11.1 + 22.2,
+                     *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
+    ASSERT_EQ(5u + 5u,
+              *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L,
+              *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_333 + 2)));
+    ASSERT_EQ(1 + 2 + 3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
+    ASSERT_FLOAT_EQ(1.1f + 2.2f + 3.3f,
+                    *(reinterpret_cast<float*>(output_333 + 7 + 4)));
+    ASSERT_DOUBLE_EQ(11.1 + 22.2 + 33.3,
+                     *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
+    ASSERT_EQ(5u + 5u + 5u,
+              *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L + 3L,
+              *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_4444 + 2)));
+    ASSERT_EQ(2 + 3 + 4, *(reinterpret_cast<int32_t*>(output_4444 + 7)));
+    ASSERT_FLOAT_EQ(2.2f + 3.3f + 4.4f,
+                    *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
+    ASSERT_DOUBLE_EQ(22.2 + 33.3 + 44.4,
+                     *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
+    ASSERT_EQ(5u + 5u + 5u,
+              *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(2L + 3L + 4L,
+              *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_aaa + 2)));
+    ASSERT_EQ(3 + 4 + 5, *(reinterpret_cast<int32_t*>(output_aaa + 7)));
+    ASSERT_FLOAT_EQ(3.3f + 4.4f + 5.5f,
+                    *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
+    ASSERT_DOUBLE_EQ(33.3 + 44.4 + 55.5,
+                     *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
+    ASSERT_EQ(5u + 5u + 5u,
+              *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(3L + 4L + 5L,
+              *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
+
+    for (auto ptr : output) {
+        free(ptr);
+    }
+}
+
+TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    BuildTableDef(status->table_def);
+    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+
+    int8_t* rows = NULL;
+    std::vector<fesql::storage::Row> windows;
+    BuildWindowUnique(windows, &rows);
+    StoreData(table.get(), rows);
+
+    status->table = std::move(table);
+    TableMgrImpl table_mgr(status);
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status get_status;
+    bool ok = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(ok);
+    std::vector<int8_t*> output;
+    int32_t ret = session.RunBatch(output, 10);
+    ASSERT_EQ(0, ret);
+    int8_t* output_1 = output[0];
+    int8_t* output_22 = output[1];
+    int8_t* output_333 = output[2];
+    int8_t* output_4444 = output[3];
+    int8_t* output_aaa = output[4];
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(5, output.size());
@@ -826,6 +1132,110 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     int8_t* output_4444 = output[2];
     // pk:1 ts:1
     int8_t* output_333 = output[3];
+    // pk:2 ts:3
+    int8_t* output_aaa = output[4];
+
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(5, output.size());
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_1 + 2)));
+    ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
+    ASSERT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
+    ASSERT_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
+    ASSERT_EQ(5u, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_22 + 2)));
+    ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
+    ASSERT_EQ(1.1f + 2.2f, *(reinterpret_cast<float*>(output_22 + 7 + 4)));
+    ASSERT_EQ(11.1 + 22.2, *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
+    ASSERT_EQ(5u + 5u,
+              *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L,
+              *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_333 + 2)));
+    ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
+    ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
+    ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
+    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L,
+              *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_4444 + 2)));
+    ASSERT_EQ(3 + 4, *(reinterpret_cast<int32_t*>(output_4444 + 7)));
+    ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
+    ASSERT_EQ(33.3 + 44.4,
+              *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
+    ASSERT_EQ(55u + 55u,
+              *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L + 2L,
+              *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_aaa + 2)));
+    ASSERT_EQ(5, *(reinterpret_cast<int32_t*>(output_aaa + 7)));
+    ASSERT_EQ(5.5f, *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
+    ASSERT_EQ(55.5, *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
+    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(3L,
+              *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
+    for (auto ptr : output) {
+        free(ptr);
+    }
+}
+
+TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    BuildTableDef(status->table_def);
+    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col0");
+    index->set_second_key("col5");
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+
+    int8_t* rows = NULL;
+    std::vector<fesql::storage::Row> windows;
+    BuildWindow(windows, &rows);
+    StoreData(table.get(), rows);
+
+    status->table = std::move(table);
+    TableMgrImpl table_mgr(status);
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status get_status;
+    bool ok = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(ok);
+    std::vector<int8_t*> output;
+    int32_t ret = session.RunBatch(output, 10);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(5, output.size());
+
+    // pk:0 ts:1
+    int8_t* output_1 = output[0];
+    // pk:0 ts:2
+    int8_t* output_22 = output[1];
+
+    // pk:1 ts:1
+    int8_t* output_333 = output[2];
+    // pk:1 ts:2
+    int8_t* output_4444 = output[3];
+
     // pk:2 ts:3
     int8_t* output_aaa = output[4];
 

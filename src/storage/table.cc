@@ -254,6 +254,13 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
     }
 }
 
+bool TableIterator::CurrentTsValid() {
+    if (ts_it_ == NULL) {
+        return false;
+    }
+    return ts_it_->Valid();
+}
+
 bool TableIterator::Valid() {
     if (ts_it_ == NULL) {
         return false;
@@ -275,6 +282,28 @@ bool TableIterator::SeekToNextTsInPks() {
         pk_it_->Next();
     }
     return false;
+}
+void TableIterator::NextTs() {
+    if (ts_it_ == NULL) {
+        return;
+    }
+    ts_it_->Next();
+}
+
+void TableIterator::NextTsInPks() {
+    if (!ts_it_->Valid() && pk_it_ != NULL) {
+        pk_it_->Next();
+        if (SeekToNextTsInPks()) return;
+    }
+    if (pk_it_ != NULL && !pk_it_->Valid()) {
+        while (seg_idx_ + 1 < seg_cnt_) {
+            delete pk_it_;
+            pk_it_ = segments_[++seg_idx_]->GetEntries()->NewIterator();
+            pk_it_->SeekToFirst();
+            if (SeekToNextTsInPks()) return;
+        }
+    }
+    return;
 }
 
 void TableIterator::Next() {

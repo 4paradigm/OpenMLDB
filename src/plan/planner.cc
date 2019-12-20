@@ -132,7 +132,8 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
         }
 
         // add MergeNode if multi ProjectionLists exist
-        if (project_list_map.size() > 1) {
+        int32_t project_list_size = project_list_map.size();
+        if (project_list_size > 1) {
             uint32_t columns_size = 0;
             for (auto project : project_list_map) {
                 columns_size += project.second->GetProjects().size();
@@ -148,6 +149,9 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
             int pos = nullptr == project_list->GetW()
                           ? 0
                           : project_list->GetW()->GetId();
+            if (1 == project_list_size) {
+                project_list->SetScanLimit(scan_node_ptr->GetLimit());
+            }
             project_list->AddChild(scan_node_ptr);
             project_list_vec[pos] = project_list;
         }

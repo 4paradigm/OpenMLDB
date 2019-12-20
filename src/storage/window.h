@@ -11,14 +11,95 @@
 #define SRC_STORAGE_WINDOW_H_
 
 #include <cstdint>
+#include <forward_list>
+#include <iostream>
 #include <vector>
 #include "storage/type_ir_builder.h"
 namespace fesql {
 namespace storage {
+class WindowIteratorImpl;
 
 struct Row {
     int8_t *buf;
     size_t size;
+};
+enum BOUND { UNBOUND, CURRENT, NORMAL };
+/**
+ * Window In Buffer
+ * is window slide during a given buffer
+ * buffer is a vector:
+ *
+ */
+class Window {
+ public:
+    Window(int64_t start_offset, int64_t end_offset)
+        : start_offset_(start_offset),
+          end_offset_(end_offset),
+          start_(0),
+          end_(0),
+          max_size_(0),
+          buffer_({}),
+          keys_({}) {}
+    Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
+        : start_offset_(start_offset),
+          end_offset_(end_offset),
+          start_(0),
+          end_(0),
+          max_size_(max_size),
+          buffer_({}),
+          keys_({}) {}
+    const uint32_t Count() const { return end_ - start_; }
+    virtual void BufferData(uint64_t key, const Row &row) = 0;
+    friend WindowIteratorImpl;
+
+ protected:
+    int64_t start_offset_;
+    int32_t end_offset_;
+    uint32_t start_;
+    uint32_t end_;
+    uint32_t max_size_;
+    std::vector<Row> buffer_;
+    std::vector<uint64_t> keys_;
+};
+
+/**
+ * 历史窗口，窗口内数据从历史某个时刻记录到当前记录
+ */
+class CurrentHistoryWindow : public Window {
+ public:
+    CurrentHistoryWindow(int64_t start_offset) : Window(start_offset, 0) {}
+    CurrentHistoryWindow(int64_t start_offset, uint32_t max_size)
+        : Window(start_offset, 0, max_size) {}
+    void BufferData(uint64_t key, const Row &row) {
+        keys_.push_back(key);
+        buffer_.push_back(row);
+        end_++;
+        int64_t sub = (key + start_offset_);
+        uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
+        while (start_ < end_ &&
+               ((0 != max_size_ && (end_ - start_) > max_size_) ||
+                keys_[start_] <= start_ts)) {
+            start_++;
+        }
+    }
+};
+
+/**
+ * 历史无限窗口，窗口内数据包含所有历史到当前记录
+ */
+class CurrentHistoryUnboundWindow : public Window {
+ public:
+    CurrentHistoryUnboundWindow() : Window(INT64_MIN, 0) {}
+    CurrentHistoryUnboundWindow(uint32_t max_size)
+        : Window(INT64_MIN, 0, max_size) {}
+    void BufferData(uint64_t key, const Row &row) {
+        keys_.push_back(key);
+        buffer_.push_back(row);
+        end_++;
+        while ((0 != max_size_ && (end_ - start_) > max_size_)) {
+            start_++;
+        }
+    }
 };
 
 template <class V>
@@ -71,8 +152,11 @@ class WindowIteratorImpl : public IteratorImpl<Row> {
  public:
     explicit WindowIteratorImpl(const std::vector<Row> &list)
         : IteratorImpl<Row>(list) {}
+
     WindowIteratorImpl(const std::vector<Row> &list, int start, int end)
         : IteratorImpl<Row>(list, start, end) {}
+    WindowIteratorImpl(const Window &window)
+        : IteratorImpl<Row>(window.buffer_, window.start_, window.end_) {}
     ~WindowIteratorImpl() {}
 };
 
