@@ -253,6 +253,7 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::Tab
             PDLOG(WARNING, "%s not found in table_info_", table.name().c_str());
             return false;
         }
+        PDLOG(INFO, "will check table [%s]", table.name().c_str());
         if (table.ttl() != iter->second->ttl()) {
             PDLOG(WARNING, "ttl not equal remote [%d] local [%d]", table.ttl(), iter->second->ttl());
             return false;
@@ -261,10 +262,12 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::Tab
             PDLOG(WARNING, "ttl type not equal remote [%s] local [%s]", table.ttl_type().c_str(), iter->second->ttl_type().c_str());
             return false;
         }
+        /*
         if (table.partition_num() != iter->second->partition_num()) {
             PDLOG(WARNING, "partition num not equal remote [%d] local [%d]", table.partition_num(), iter->second->partition_num());
             return false;
         }
+        */
         if (table.compress_type() != iter->second->compress_type()) {
             PDLOG(WARNING, "compress type not equal");
             return false;
