@@ -62,12 +62,15 @@ class Window {
     std::vector<uint64_t> keys_;
 };
 
+// TODO(chenjing):
+// 可以用一个vector引用初始化window，然后提供一个slide接口，只是滑动窗口边界。
 /**
  * 历史窗口，窗口内数据从历史某个时刻记录到当前记录
  */
 class CurrentHistoryWindow : public Window {
  public:
-    CurrentHistoryWindow(int64_t start_offset) : Window(start_offset, 0) {}
+    explicit CurrentHistoryWindow(int64_t start_offset)
+        : Window(start_offset, 0) {}
     CurrentHistoryWindow(int64_t start_offset, uint32_t max_size)
         : Window(start_offset, 0, max_size) {}
     void BufferData(uint64_t key, const Row &row) {
@@ -90,7 +93,7 @@ class CurrentHistoryWindow : public Window {
 class CurrentHistoryUnboundWindow : public Window {
  public:
     CurrentHistoryUnboundWindow() : Window(INT64_MIN, 0) {}
-    CurrentHistoryUnboundWindow(uint32_t max_size)
+    explicit CurrentHistoryUnboundWindow(uint32_t max_size)
         : Window(INT64_MIN, 0, max_size) {}
     void BufferData(uint64_t key, const Row &row) {
         keys_.push_back(key);
@@ -155,7 +158,7 @@ class WindowIteratorImpl : public IteratorImpl<Row> {
 
     WindowIteratorImpl(const std::vector<Row> &list, int start, int end)
         : IteratorImpl<Row>(list, start, end) {}
-    WindowIteratorImpl(const Window &window)
+    explicit WindowIteratorImpl(const Window &window)
         : IteratorImpl<Row>(window.buffer_, window.start_, window.end_) {}
     ~WindowIteratorImpl() {}
 };

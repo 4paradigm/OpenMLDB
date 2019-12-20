@@ -7,6 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "storage/window.h"
+#include <utility>
 #include "gtest/gtest.h"
 #include "proto/type.pb.h"
 namespace fesql {
@@ -167,7 +168,6 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
         window.BufferData(6000L, row);
         ASSERT_EQ(1u, window.Count());
     }
-
 }
 
 TEST_F(WindowIteratorTest, CurrentHistoryUnboundWindow) {

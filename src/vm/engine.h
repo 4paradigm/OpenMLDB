@@ -20,9 +20,9 @@
 
 #include <map>
 #include <memory>
-#include <vector>
 #include <mutex>  //NOLINT
 #include <string>
+#include <vector>
 #include "base/spin_lock.h"
 #include "proto/common.pb.h"
 #include "vm/sql_compiler.h"
@@ -48,12 +48,12 @@ class RunSession {
         return compile_info_->sql_ctx.schema;
     }
 
-    int32_t Run(std::vector<int8_t*>& buf, uint32_t limit); //NOLINT
+    int32_t Run(std::vector<int8_t*>& buf, uint32_t limit);  // NOLINT
     int32_t RunProjectOp(ProjectOp* project_op,
-                                     std::shared_ptr<TableStatus> status,
-                                     int8_t* row, int8_t* output);
-    int32_t RunOne(Row &in_row, Row &out_row);
-    int32_t RunBatch(std::vector<int8_t*>& buf, uint32_t limit);
+                         std::shared_ptr<TableStatus> status, int8_t* row,
+                         int8_t* output);
+    int32_t RunOne(const Row& in_row, Row& out_row);              // NOLINT
+    int32_t RunBatch(std::vector<int8_t*>& buf, uint32_t limit);  // NOLINT
 
  private:
     inline void SetCompileInfo(std::shared_ptr<CompileInfo> compile_info) {
@@ -77,9 +77,9 @@ class Engine {
 
     ~Engine();
 
-
-    bool Get(const std::string& db, const std::string& sql, RunSession& session,  //NOLINT
-             base::Status& status);  //NOLINT
+    bool Get(const std::string& db, const std::string& sql,
+             RunSession& session,    // NOLINT
+             base::Status& status);  // NOLINT
 
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql);

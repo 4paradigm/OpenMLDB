@@ -430,10 +430,11 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
                         }
                         it->NextTsInPks();
 
-                        //TODO(chenjing): decide window type
-                        ::fesql::storage::CurrentHistoryWindow window(project_op->w.start_offset);
-                        for (auto iter = buffer.rbegin(); count < min && iter != buffer.rend();
-                             iter++) {
+                        // TODO(chenjing): decide window type
+                        ::fesql::storage::CurrentHistoryWindow window(
+                            project_op->w.start_offset);
+                        for (auto iter = buffer.rbegin();
+                             count < min && iter != buffer.rend(); iter++) {
                             window.BufferData(iter->first, iter->second);
                             int8_t* output = NULL;
                             size_t output_size = 0;
@@ -449,7 +450,6 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
                                 .buf = output, .size = output_size});
                             count++;
                         }
-
                     }
                 } else {
                     // iterator whole table

@@ -81,7 +81,6 @@ TEST_F(TableTest, SingleIndexIterator) {
     builder.AppendString("value2", 6);
     table.Put(row.c_str(), row.length());
 
-
     // test NewIterator(key)
     iter = table.NewIterator("key2");
     int count = 0;
@@ -161,8 +160,8 @@ TEST_F(TableTest, SingleIndexIterator) {
 
     // iterator 1st segment of pk key1
     while (iter->CurrentTsValid()) {
-            iter->NextTs();
-            count++;
+        iter->NextTs();
+        count++;
     }
     ASSERT_EQ(count, 3);
     ASSERT_EQ(iter->GetPK().ToString(), "key1");
@@ -178,8 +177,6 @@ TEST_F(TableTest, SingleIndexIterator) {
     }
     ASSERT_EQ(count, 2);
     ASSERT_EQ(iter->GetPK().ToString(), "key2");
-
-//    ASSERT_EQ(key_counters["key2"], 2);
 }
 
 TEST_F(TableTest, MultiIndexIterator) {
@@ -305,7 +302,6 @@ TEST_F(TableTest, MultiIndexIterator) {
     }
     ASSERT_EQ(count, 4);
 
-
     // test NewTraverseIterator(index_name)
     count = 0;
     iter = table.NewTraverseIterator("index1");
@@ -321,18 +317,18 @@ TEST_F(TableTest, MultiIndexIterator) {
     iter = table.NewTraverseIterator("index1");
     iter->SeekToFirst();
     ASSERT_EQ(iter->GetPK().ToString(), "i1_k2");
-    while(iter->CurrentTsValid()) {
+    while (iter->CurrentTsValid()) {
         iter->NextTs();
-        count ++;
+        count++;
     }
     ASSERT_EQ(count, 1);
 
     count = 0;
     iter->NextTsInPks();
     ASSERT_EQ(iter->GetPK().ToString(), "i1_k1");
-    while(iter->CurrentTsValid()) {
+    while (iter->CurrentTsValid()) {
         iter->NextTs();
-        count ++;
+        count++;
     }
     ASSERT_EQ(count, 3);
 
