@@ -303,7 +303,9 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         }
         switch(ttl_type) {
             case ::rtidb::common::TTLType::kAbsoluteTime: {
-                if (!it->Seek(st, st_type)) { return 1; }
+                if (!it->Seek(st, st_type)) {
+                    return 1;
+                }
                 break;
             }
             case ::rtidb::common::TTLType::kAbsAndLat: {
@@ -315,16 +317,24 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
                 break;
             }
             default: {
-                if (!it->Seek(st, st_type, expire_cnt, cnt)) { return 1; }
+                if (!it->Seek(st, st_type, expire_cnt, cnt)) {
+                    return 1; 
+                }
                 break;
             }
         }
     } else {
         it->SeekToFirst();
     }
-
     if (it->Valid()) {
         bool jump_out = false;
+        if (st_type == ::rtidb::api::GetType::kSubKeyGe ||
+            st_type == ::rtidb::api::GetType::kSubKeyGt) {
+            ::rtidb::base::Slice it_value = it->GetValue();
+            value->assign(it_value.data(), it_value.size());
+            *ts = it->GetKey();
+            return 0;
+        }
         switch(real_et_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
                 if (it->GetKey() != et) {
@@ -348,7 +358,9 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
                 PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
                 return -2;
         }
-        if (jump_out) return 1;
+        if (jump_out) {
+            return 1;
+        }
         ::rtidb::base::Slice it_value = it->GetValue();
         value->assign(it_value.data(), it_value.size());
         *ts = it->GetKey();

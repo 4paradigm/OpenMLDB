@@ -172,7 +172,6 @@ bool Table::InitFromMeta() {
         is_leader_ = false;
     }
     if (table_meta_.has_ttl_desc()) {
-        std::cout << "has_ttl_desc" << std::endl;
         abs_ttl_ = table_meta_.ttl_desc().abs_ttl() * 60 * 1000;
         lat_ttl_ = table_meta_.ttl_desc().lat_ttl();
         ttl_type_ = table_meta_.ttl_desc().ttl_type();
