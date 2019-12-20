@@ -74,15 +74,19 @@ bool TabletClient::CreateTable(const std::string& name,
             return false;
         }    
     }
-    // table_meta->set_ttl(ttl);
     table_meta->set_seg_cnt(seg_cnt);
     table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     table_meta->set_schema(schema);
-    // table_meta->set_ttl_type(type);
+    table_meta->set_ttl_type(type);
     ::rtidb::common::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
+    if (type == ::rtidb::common::kAbsoluteTime) {
+        table_meta->set_ttl(abs_ttl);
+    } else {
+        table_meta->set_ttl(lat_ttl);
+    }
     table_meta->set_compress_type(compress_type);
     if (leader) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);

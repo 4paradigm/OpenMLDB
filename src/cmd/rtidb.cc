@@ -2167,10 +2167,12 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                     ttl_desc->set_ttl_type(::rtidb::common::TTLType::kLatestTime);
                     ttl_desc->set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                     ttl_desc->set_abs_ttl(0);
+                    ns_table_info.set_ttl_type("kLatestTime");
                 } else if ((vec[0] == "absolute" || vec[0] == "kAbsoluteTime")) {
                     ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsoluteTime);
                     ttl_desc->set_lat_ttl(0);
                     ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+                    ns_table_info.set_ttl_type("kAbsoluteTime");
                 }
                 else {
                     std::cout << "invalid ttl type" << std::endl;
@@ -2181,10 +2183,12 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                     ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsAndLat);
                     ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
                     ttl_desc->set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+                    ns_table_info.set_ttl_type("kAbsAndLat");
                 } else if ((vec[0] == "absorlat" || vec[0] == "kAbsOrLat")) {
                     ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsOrLat);
                     ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
                     ttl_desc->set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+                    ns_table_info.set_ttl_type("kAbsOrLat");
                 }
                 else {
                     std::cout << "invalid ttl type" << std::endl;
@@ -2195,7 +2199,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                 ttl_desc->set_lat_ttl(0);
                 ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
             }
-            // ns_table_info.set_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+            ns_table_info.set_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
             uint32_t partition_num = boost::lexical_cast<uint32_t>(parts[3]);
             if (partition_num == 0) {
                  std::cout << "partition_num should be large than zero" << std::endl;
