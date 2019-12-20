@@ -37,6 +37,8 @@ using ::rtidb::replica::ReplicatorRole;
 using ::rtidb::zk::ZkClient;
 using ::rtidb::base::SpinMutex;
 
+const uint64_t INVALID_REMOTE_TID = UINT32_MAX;
+
 namespace rtidb {
 namespace tablet {
 

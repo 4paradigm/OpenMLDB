@@ -191,7 +191,7 @@ bool NsClient::AddReplicaNS(const std::string& name,
         request.add_endpoint_group(endpoint);
     }
     request.set_pid(pid);
-    request.set_endpoint(*(endpoint_vec.begin()));
+    request.set_endpoint(endpoint_vec.front());
     ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
     task_info_p->CopyFrom(task_info);
     ::rtidb::nameserver::ReplicaClusterByNsRequest* zone_info_p = request.mutable_zone_info();

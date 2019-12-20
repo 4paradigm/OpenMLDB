@@ -2417,7 +2417,7 @@ void TabletImpl::SendSnapshot(RpcController* controller,
 
 void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
             std::shared_ptr<::rtidb::api::TaskInfo> task) {
-    return SendSnapshotInternal(endpoint, tid, pid, UINT32_MAX, task);
+    return SendSnapshotInternal(endpoint, tid, pid, INVALID_REMOTE_TID, task);
 }
 
 void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
@@ -2436,7 +2436,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
             break;
         }
         FileSender sender(tid, pid, table->GetStorageMode(), endpoint);
-        if (remote_tid != UINT32_MAX) {
+        if (remote_tid != INVALID_REMOTE_TID) {
             FileSender sender_tmp(remote_tid, pid, table->GetStorageMode(), endpoint);
             sender = sender_tmp;
         }
