@@ -3,7 +3,7 @@ package com._4paradigm.rtidb.client;
 import java.util.List;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.tablet.Tablet.TTLType;
+import com._4paradigm.rtidb.common.Common.TTLType;
 import com._4paradigm.rtidb.tablet.Tablet.TableStatus;
 
 public interface TabletClient {
