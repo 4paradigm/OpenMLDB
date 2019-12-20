@@ -3714,8 +3714,8 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
     type_set.insert("int16");
     type_set.insert("uint16");
     try {
-        uint64_t abs_ttl = 0;
-        uint64_t lat_ttl = 0;
+        int64_t abs_ttl = 0;
+        int64_t lat_ttl = 0;
         ::rtidb::common::TTLType type = ::rtidb::common::TTLType::kAbsoluteTime;
         std::vector<std::string> vec;
         ::rtidb::base::SplitString(parts[4], ":", vec);
@@ -3727,7 +3727,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
                 abs_ttl = 0;
                 if (lat_ttl > FLAGS_latest_ttl_max) {
                     std::cout << "Create failed. The max num of latest LatestTime is " 
-                              << FLAGS_latest_ttl_max << std::endl;
+                         << FLAGS_latest_ttl_max << " you input is " << lat_ttl << std::endl;
                     return;
                 }
             } else {
@@ -3740,7 +3740,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
                           << FLAGS_absolute_ttl_max << std::endl;
                 return;
             }
-        }        
+        }
         if (abs_ttl < 0 || lat_ttl < 0) {
             std::cout << "invalid ttl which should be equal or greater than 0" << std::endl;
             return;
