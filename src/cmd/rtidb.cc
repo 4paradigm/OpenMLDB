@@ -2909,13 +2909,13 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
     }
 
     try {
-        uint64_t abs_ttl = 0;
-        uint64_t lat_ttl = 0;
+        int64_t abs_ttl = 0;
+        int64_t lat_ttl = 0;
         ::rtidb::common::TTLType type = ::rtidb::common::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[4], ":", vec);
-            abs_ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
+            abs_ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
             if (vec.size() > 1) {
                 if (vec[0] == "latest") {
                     type = ::rtidb::common::TTLType::kLatestTime;
