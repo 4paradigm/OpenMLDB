@@ -3727,7 +3727,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
                 abs_ttl = 0;
                 if (lat_ttl > FLAGS_latest_ttl_max) {
                     std::cout << "Create failed. The max num of latest LatestTime is " 
-                         << FLAGS_latest_ttl_max << " you input is " << lat_ttl << std::endl;
+                         << FLAGS_latest_ttl_max << std::endl;
                     return;
                 }
             } else {

@@ -410,6 +410,13 @@ bool NsClient::UpdateTTL(const std::string& name,
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
+    if(type == ::rtidb::common::kAbsoluteTime) {
+        request.set_ttl_type("kAbsoluteTime");
+        request.set_value(abs_ttl);
+    } else {
+        request.set_ttl_type("kLatestTime");
+        request.set_value(lat_ttl);
+    }
     if (!ts_name.empty()) {
         request.set_ts_name(ts_name);
     }
