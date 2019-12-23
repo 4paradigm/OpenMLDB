@@ -349,8 +349,11 @@ public:
     virtual TableIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx) override;
 
     virtual void SchedGc() override;
+    
     void GcHead();
     void GcTTL();
+    void GcTTLAndHead();
+    void GcTTLOrHead();
 
     virtual bool IsExpire(const ::rtidb::api::LogEntry& entry) override;
 

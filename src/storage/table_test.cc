@@ -13,6 +13,7 @@
 #include "logging.h"
 
 DECLARE_uint32(max_traverse_cnt);
+DECLARE_int32(gc_safe_offset);
 
 namespace rtidb {
 namespace storage {
@@ -760,6 +761,195 @@ TEST_F(TableTest, UpdateTTL) {
     table.SchedGc();
     ASSERT_EQ(10, table.GetTTL(0, 0).abs_ttl);
     ASSERT_EQ(20, table.GetTTL(0, 1).abs_ttl);
+}
+
+::rtidb::common::ColumnDesc* AddColumnDesc(::rtidb::api::TableMeta& table_meta, std::string name, std::string type, bool add_ts_idx=false, bool is_ts_col=false, uint64_t abs_ttl=0, uint64_t lat_ttl=0) {
+    ::rtidb::common::ColumnDesc* desc = table_meta.add_column_desc();
+    desc->set_name(name);
+    desc->set_type(type);
+    desc->set_add_ts_idx(add_ts_idx);
+    desc->set_is_ts_col(is_ts_col);
+    if (abs_ttl != 0) {
+        desc->set_abs_ttl(abs_ttl);
+    }
+    if (lat_ttl != 0) {
+        desc->set_lat_ttl(lat_ttl);
+    }
+    return desc;
+}
+
+void BuildTableMeta(::rtidb::api::TableMeta& table_meta, ::rtidb::api::TTLType ttl_type, int abs_ttl, int lat_ttl) {
+    table_meta.set_name("table1");
+    table_meta.set_tid(1);
+    table_meta.set_pid(0);
+    ::rtidb::api::TTLDesc* ttl_desc = table_meta.mutable_ttl_desc();
+    ttl_desc->set_ttl_type(ttl_type);
+    if (abs_ttl != 0) {
+        ttl_desc->set_abs_ttl(abs_ttl);
+    }
+    if (lat_ttl != 0) {
+        ttl_desc->set_lat_ttl(lat_ttl);
+    }
+    table_meta.set_seg_cnt(8);
+    table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+}
+
+TEST_F(TableTest, AbsAndLatSetGet) {
+    ::rtidb::api::TableMeta table_meta;
+    BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsAndLat, 10, 12);
+    AddColumnDesc(table_meta, "card", "string", true, false, 0, 0);
+    AddColumnDesc(table_meta, "mcc", "string", true, false, 0, 0);
+    AddColumnDesc(table_meta, "price", "int64", false, 0, 0);
+    AddColumnDesc(table_meta, "ts1", "int64", false, true, 0, 0);
+    AddColumnDesc(table_meta, "ts2", "int64", false, true, 2, 10);
+    MemTable table(table_meta);
+    table.Init();
+
+    // test get and set ttl
+    ASSERT_EQ(10, table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    table.SetTTL(1, 3);
+    ASSERT_EQ(10, table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+    table.SchedGc();
+    ASSERT_EQ(1, table.GetTTL().abs_ttl);
+    ASSERT_EQ(3, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+}
+
+TEST_F(TableTest, AbsOrLatSetGet) {
+    ::rtidb::api::TableMeta table_meta;
+    BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsOrLat, 10, 12);
+    AddColumnDesc(table_meta, "card", "string", true, false, 0, 0);
+    AddColumnDesc(table_meta, "mcc", "string", true, false, 0, 0);
+    AddColumnDesc(table_meta, "price", "int64", false, 0, 0);
+    AddColumnDesc(table_meta, "ts1", "int64", false, true, 0, 0);
+    AddColumnDesc(table_meta, "ts2", "int64", false, true, 2, 10);
+
+
+    MemTable table(table_meta);
+    table.Init();
+    // test get and set ttl
+    ASSERT_EQ(10, table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    table.SetTTL(1, 3);
+    ASSERT_EQ(10, table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+    table.SchedGc();
+    ASSERT_EQ(1, table.GetTTL().abs_ttl);
+    ASSERT_EQ(3, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+}
+
+TEST_F(TableTest, GcAbsOrLat) {
+    ::rtidb::api::TableMeta table_meta;
+    BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsOrLat, 4, 3);
+    AddColumnDesc(table_meta, "idx0", "string", true, false, 0, 0);
+    
+    int32_t offset = FLAGS_gc_safe_offset;
+    FLAGS_gc_safe_offset = 0;
+    MemTable table(table_meta);
+    table.Init();
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    table.Put("test1", now - 3 * (60 * 1000) - 1000, "value1", 6);
+    table.Put("test1", now - 3 * (60 * 1000) - 1000, "value1", 6);
+    table.Put("test1", now - 2 * (60 * 1000) - 1000, "value2", 6);
+    table.Put("test1", now - 1 * (60 * 1000) - 1000, "value3", 6);
+    table.Put("test2", now - 4 * (60 * 1000) - 1000, "value4", 6);
+    table.Put("test2", now - 2 * (60 * 1000) - 1000, "value5", 6);
+    table.Put("test2", now - 1 * (60 * 1000) - 1000, "value6", 6);
+    ASSERT_EQ(7, table.GetRecordCnt());
+    ASSERT_EQ(7, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(3, 0);
+    table.SchedGc();
+    ASSERT_EQ(5, table.GetRecordCnt());
+    ASSERT_EQ(5, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(0, 1);
+    table.SchedGc();
+    ASSERT_EQ(4, table.GetRecordCnt());
+    ASSERT_EQ(4, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(1, 1);
+    table.SchedGc();
+    ASSERT_EQ(2, table.GetRecordCnt());
+    ASSERT_EQ(2, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SchedGc();
+    ASSERT_EQ(0, table.GetRecordCnt());
+    ASSERT_EQ(0, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    FLAGS_gc_safe_offset = offset;
+}
+
+TEST_F(TableTest, GcAbsAndLat) {
+    ::rtidb::api::TableMeta table_meta;
+    BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsAndLat, 3, 3);
+    AddColumnDesc(table_meta, "idx0", "string", true, false, 0, 0);
+    
+    int32_t offset = FLAGS_gc_safe_offset;
+    FLAGS_gc_safe_offset = 0;
+    MemTable table(table_meta);
+    table.Init();
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    table.Put("test1", now - 3 * (60 * 1000) - 1000, "value1", 6);
+    table.Put("test1", now - 3 * (60 * 1000) - 1000, "value1", 6);
+    table.Put("test1", now - 2 * (60 * 1000) - 1000, "value2", 6);
+    table.Put("test1", now - 1 * (60 * 1000) - 1000, "value3", 6);
+    table.Put("test2", now - 4 * (60 * 1000) - 1000, "value4", 6);
+    table.Put("test2", now - 3 * (60 * 1000) - 1000, "value5", 6);
+    table.Put("test2", now - 2 * (60 * 1000) - 1000, "value6", 6);
+    ASSERT_EQ(7, table.GetRecordCnt());
+    ASSERT_EQ(7, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(1, 0);
+    table.SchedGc();
+    ASSERT_EQ(6, table.GetRecordCnt());
+    ASSERT_EQ(6, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(0, 1);
+    table.SchedGc();
+    ASSERT_EQ(6, table.GetRecordCnt());
+    ASSERT_EQ(6, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(1, 1);
+    table.SchedGc();
+    ASSERT_EQ(6, table.GetRecordCnt());
+    ASSERT_EQ(6, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SchedGc();
+    ASSERT_EQ(2, table.GetRecordCnt());
+    ASSERT_EQ(2, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    FLAGS_gc_safe_offset = offset;
 }
 
 }

@@ -341,6 +341,10 @@ bool DiskTable::LoadTable() {
 void DiskTable::SchedGc() {
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         GcHead();
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsAndLat) {
+        GcTTLAndHead();
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsOrLat) {
+        GcTTLOrHead();
     } /*else {
         rocksdb will delete expired key when compact
         GcTTL();
@@ -498,6 +502,12 @@ void DiskTable::GcHead() {
     }
     uint64_t time_used = ::baidu::common::timer::get_micros() / 1000 - start_time;
     PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
+}
+
+void DiskTable::GcTTLOrHead() {
+}
+
+void DiskTable::GcTTLAndHead() {
 }
 
 // ttl as ms
