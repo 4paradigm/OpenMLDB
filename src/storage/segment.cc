@@ -652,7 +652,7 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, uint64_
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                node = entry->entries.SplitByKeyAndPos(time, keep_cnt);
+                node = entry->entries.SplitByKeyOrPos(time, keep_cnt);
             }
         }
         uint64_t entry_gc_idx_cnt = 0;
