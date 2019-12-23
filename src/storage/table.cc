@@ -42,7 +42,7 @@ int Table::InitColumnDesc() {
                     lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().lat_ttl()));
                     new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().lat_ttl()));
                 } else if (column_desc.has_ttl()) {
-                    if (ttl_type_ == ::rtidb::common::TTLType::kAbsoluteTime) {
+                    if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
                         abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
                         new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
                         lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
@@ -177,7 +177,7 @@ bool Table::InitFromMeta() {
         ttl_type_ = table_meta_.ttl_desc().ttl_type();
     } else if (table_meta_.has_ttl_type() || table_meta_.has_ttl()) {
         ttl_type_ = table_meta_.ttl_type();
-        if (ttl_type_ == ::rtidb::common::TTLType::kAbsoluteTime) {
+        if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
             abs_ttl_ = table_meta_.ttl() * 60 * 1000;
             lat_ttl_ = 0;
         } else {

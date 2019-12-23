@@ -55,7 +55,7 @@ inline std::string GenRand() {
 }
 
 void CreateBaseTablet(::rtidb::tablet::TabletImpl& tablet,
-            const ::rtidb::common::TTLType& ttl_type,
+            const ::rtidb::api::TTLType& ttl_type,
             uint64_t ttl, uint64_t start_ts,
             uint32_t tid, uint32_t pid,
             const ::rtidb::common::StorageMode& mode) {
@@ -191,7 +191,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute){
     ::rtidb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init();
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::rtidb::common::TTLType::kAbsoluteTime, 0, 1000,
+        CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kAbsoluteTime, 0, 1000,
             i+1, i % 10, ::rtidb::common::StorageMode::kMemory);
     }
 }
@@ -200,7 +200,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_latest){
     ::rtidb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init();
     for (uint32_t i = 100; i < 200; i++) {
-        CreateBaseTablet(tablet_impl, ::rtidb::common::TTLType::kLatestTime, 10, 1000,
+        CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kLatestTime, 10, 1000,
             i+1, i % 10, ::rtidb::common::StorageMode::kMemory);
     }
 }
@@ -209,7 +209,7 @@ TEST_F(TabletMultiPathTest, HDD_Test_read_write){
     ::rtidb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init();
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::rtidb::common::TTLType::kLatestTime, 10, 1000,
+        CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kLatestTime, 10, 1000,
             i+1, i % 10, ::rtidb::common::StorageMode::kHDD);
     }
 }
@@ -218,7 +218,7 @@ TEST_F(TabletMultiPathTest, SSD_Test_read_write){
     ::rtidb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init();
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::rtidb::common::TTLType::kLatestTime, 10, 1000,
+        CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kLatestTime, 10, 1000,
             i+1, i % 10, ::rtidb::common::StorageMode::kSSD);
     }
 }

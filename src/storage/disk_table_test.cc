@@ -65,7 +65,7 @@ TEST_F(DiskTableTest, Put) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("yjtable1", 1, 1, mapping, 10, 
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -101,7 +101,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
     DiskTable* table = new DiskTable("yjtable2", 1, 2, mapping, 10,
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(3, table->GetIdxCnt());
@@ -225,7 +225,7 @@ TEST_F(DiskTableTest, Delete) {
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
     DiskTable* table = new DiskTable("yjtable2", 1, 2, mapping, 10,
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
@@ -262,7 +262,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 3, mapping, 0,
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -354,7 +354,7 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 3, mapping, 0,
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -433,12 +433,12 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 3, mapping, 5,
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(table->GetTTL().abs_ttl*60*1000, 5*60*1000);
     ASSERT_EQ(table->GetTTL().lat_ttl, 0);
-    ASSERT_EQ(table->GetTTLType(), ::rtidb::common::TTLType::kAbsoluteTime);
+    ASSERT_EQ(table->GetTTLType(), ::rtidb::api::TTLType::kAbsoluteTime);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 10; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -488,12 +488,12 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 3, mapping, 3,
-            ::rtidb::common::TTLType::kLatestTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kLatestTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(table->GetTTL().abs_ttl, 0);
     ASSERT_EQ(table->GetTTL().lat_ttl, 3);
-    ASSERT_EQ(table->GetTTLType(), ::rtidb::common::TTLType::kLatestTime);
+    ASSERT_EQ(table->GetTTLType(), ::rtidb::api::TTLType::kLatestTime);
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -563,7 +563,7 @@ TEST_F(DiskTableTest, Load) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 1, mapping, 10, 
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -591,7 +591,7 @@ TEST_F(DiskTableTest, Load) {
     delete table;
 
     table = new DiskTable("t1", 1, 1, mapping, 10, 
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->LoadTable());
     raw_key = "test35";
@@ -618,7 +618,7 @@ TEST_F(DiskTableTest, CompactFilter) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 1, mapping, 10, 
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -840,7 +840,7 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     table_meta.set_tid(1);
     table_meta.set_pid(0);
     table_meta.set_ttl(10);
-    table_meta.set_ttl_type(::rtidb::common::TTLType::kLatestTime);
+    table_meta.set_ttl_type(::rtidb::api::TTLType::kLatestTime);
     table_meta.set_storage_mode(::rtidb::common::kHDD);
     ::rtidb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
     column_desc->set_name("card");
@@ -983,7 +983,7 @@ TEST_F(DiskTableTest, GcHead) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 3, mapping, 3,
-            ::rtidb::common::TTLType::kLatestTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kLatestTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -1037,7 +1037,7 @@ TEST_F(DiskTableTest, GcTTL) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 3, mapping, 10,
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -1089,7 +1089,7 @@ TEST_F(DiskTableTest, CheckPoint) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 1, mapping, 0, 
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -1125,7 +1125,7 @@ TEST_F(DiskTableTest, CheckPoint) {
     ::rtidb::base::Rename(snapshot_path, data_path);
 
     table = new DiskTable("t1", 1, 1, mapping, 0, 
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     ASSERT_TRUE(table->LoadTable());
     raw_key = "test35";

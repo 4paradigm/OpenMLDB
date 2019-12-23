@@ -34,13 +34,13 @@ public:
     Table(::rtidb::common::StorageMode storage_mode, const std::string& name, uint32_t id, uint32_t pid, 
             uint64_t ttl, bool is_leader, uint64_t ttl_offset,
             const std::map<std::string, uint32_t>& mapping, 
-            ::rtidb::common::TTLType ttl_type, ::rtidb::api::CompressType compress_type) :
+            ::rtidb::api::TTLType ttl_type, ::rtidb::api::CompressType compress_type) :
         storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
         ttl_offset_(ttl_offset), is_leader_(is_leader),
         mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {
-        ::rtidb::common::TTLDesc* ttl_desc = table_meta_.mutable_ttl_desc();
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta_.mutable_ttl_desc();
         ttl_desc->set_ttl_type(ttl_type);
-        if (ttl_type == ::rtidb::common::TTLType::kAbsoluteTime) {
+        if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
             // abs_ttl_.store(ttl);
             // lat_ttl_.store(0);
             // new_abs_ttl_.store(ttl);
@@ -166,11 +166,11 @@ public:
         return column_key_map_;
     }
 
-    inline void SetTTLType(const ::rtidb::common::TTLType& type) {
+    inline void SetTTLType(const ::rtidb::api::TTLType& type) {
         ttl_type_ = type;
     }
 
-    inline ::rtidb::common::TTLType GetTTLType() {
+    inline ::rtidb::api::TTLType GetTTLType() {
         return ttl_type_;
     }
 
@@ -235,7 +235,7 @@ protected:
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_abs_ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> lat_ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_lat_ttl_vec_;
-    ::rtidb::common::TTLType ttl_type_;
+    ::rtidb::api::TTLType ttl_type_;
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;
 };

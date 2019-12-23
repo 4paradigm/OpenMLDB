@@ -248,7 +248,7 @@ public:
 
     // get on value from specified ttl type index
     int32_t GetIndex(uint64_t expire_time, uint64_t expire_cnt,
-                          ::rtidb::common::TTLType ttl_type,
+                          ::rtidb::api::TTLType ttl_type,
                           ::rtidb::storage::TableIterator* it,
                           uint64_t st,
                           const rtidb::api::GetType& st_type,
@@ -259,7 +259,7 @@ public:
 
     // scan specified ttl type index
     int32_t ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
-                          ::rtidb::common::TTLType ttl_type,
+                          ::rtidb::api::TTLType ttl_type,
                           ::rtidb::storage::TableIterator* it,
                           uint32_t limit,
                           uint64_t st,
@@ -280,7 +280,7 @@ public:
                           bool remove_duplicated_record);
 
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt,
-                          ::rtidb::common::TTLType ttl_type,
+                          ::rtidb::api::TTLType ttl_type,
                           ::rtidb::storage::TableIterator* it,
                           uint64_t st,
                           const rtidb::api::GetType& st_type,

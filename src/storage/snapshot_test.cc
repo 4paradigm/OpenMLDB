@@ -119,7 +119,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 3, 8, mapping, 0, ::rtidb::common::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 3, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;;
     int ret = snapshot.MakeSnapshot(table, offset_value);
@@ -243,7 +243,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 4, 8, mapping, 0, ::rtidb::common::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 4, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(4, 4, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -316,7 +316,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     wh->Sync();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 3, 8, mapping, 0, ::rtidb::common::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 3, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(3, 3, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -424,7 +424,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 2, 8, mapping, 0, ::rtidb::common::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 2, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(3, 2, log_part, FLAGS_db_root_path);
@@ -539,7 +539,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
 
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 2, 2, 8, mapping, 0, ::rtidb::common::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 2, 2, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(2, 2, log_part, FLAGS_db_root_path);
@@ -571,7 +571,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 1, 1, 8, mapping, 2, ::rtidb::common::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 1, 1, 8, mapping, 2, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -716,7 +716,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 5, 1, 8, mapping, 4, ::rtidb::common::TTLType::kLatestTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 5, 1, 8, mapping, 4, ::rtidb::api::TTLType::kLatestTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -918,7 +918,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
 
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", tid, 0, 8, mapping, 0, ::rtidb::common::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", tid, 0, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     MemTableSnapshot snapshot(tid, 0, log_part, FLAGS_db_root_path);
     snapshot.Init();
@@ -1089,7 +1089,7 @@ TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* disk_table_ptr = new DiskTable("test", 1, 1, mapping, 0, 
-            ::rtidb::common::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
             FLAGS_hdd_root_path);
     std::shared_ptr<Table> table(disk_table_ptr);
     table->Init();

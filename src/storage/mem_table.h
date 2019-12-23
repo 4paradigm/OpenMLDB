@@ -29,7 +29,7 @@ typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
 class MemTableTraverseIterator : public TableIterator {
 public:
-    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::common::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt, uint32_t ts_index);
+    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt, uint32_t ts_index);
     ~MemTableTraverseIterator();
     virtual bool Valid() override;
     virtual void Next() override;
@@ -50,7 +50,7 @@ private:
     uint32_t seg_idx_;
     KeyEntries::Iterator* pk_it_;
     TimeEntries::Iterator* it_;
-    ::rtidb::common::TTLType ttl_type_;
+    ::rtidb::api::TTLType ttl_type_;
     uint32_t record_idx_;
     uint32_t ts_idx_;
     // uint64_t expire_value_;
@@ -68,7 +68,7 @@ public:
           uint32_t pid,
           uint32_t seg_cnt,
           const std::map<std::string, uint32_t>& mapping,
-          uint64_t ttl, ::rtidb::common::TTLType ttl_type);
+          uint64_t ttl, ::rtidb::api::TTLType ttl_type);
 
     MemTable(const ::rtidb::api::TableMeta& table_meta);
     virtual ~MemTable();

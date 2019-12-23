@@ -537,22 +537,22 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client
         std::string err;
         uint64_t abs_ttl = 0; 
         uint64_t lat_ttl = 0;
-        ::rtidb::common::TTLType type = ::rtidb::common::kLatestTime;
+        ::rtidb::api::TTLType type = ::rtidb::common::kLatestTime;
         if (parts[2] == "absolute") {
-            type = ::rtidb::common::kAbsoluteTime;
+            type = ::rtidb::api::TTLType::kAbsoluteTime;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             if (parts.size() == 5) {
                 ts_name = parts[4];
             }
         } else if (parts[2] == "absandlat") {
-            type = ::rtidb::common::kAbsAndLat;
+            type = ::rtidb::api::TTLType::kAbsAndLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
                 ts_name = parts[5];
             }
         } else if(parts[2] == "absorlat") {
-            type = ::rtidb::common::kAbsOrLat;
+            type = ::rtidb::api::TTLType::kAbsOrLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
@@ -2072,15 +2072,15 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     } else {
         if (ttl_type == "kabsolutetime") {
             ns_table_info.set_ttl_type("kAbsoluteTime");
-            ::rtidb::common::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
-            ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsoluteTime);
+            ::rtidb::api::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
+            ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
             ttl_desc->set_abs_ttl(table_info.ttl());
             ttl_desc->set_lat_ttl(0);
         } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
             ns_table_info.set_ttl_type("kLatestTime");
             default_skiplist_height = FLAGS_latest_default_skiplist_height;
-            ::rtidb::common::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
-            ttl_desc->set_ttl_type(::rtidb::common::TTLType::kLatestTime);
+            ::rtidb::api::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
+            ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
             ttl_desc->set_abs_ttl(0);
             ttl_desc->set_lat_ttl(table_info.ttl());
         } else {
@@ -2158,18 +2158,18 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         }
     } else if (parts.size() > 4) {
         ns_table_info.set_name(parts[1]);
-        ::rtidb::common::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
+        ::rtidb::api::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
         try {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[2], ":", vec);
             if (vec.size() == 2) {
                 if ((vec[0] == "latest" || vec[0] == "kLatestTime")) {
-                    ttl_desc->set_ttl_type(::rtidb::common::TTLType::kLatestTime);
+                    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
                     ttl_desc->set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                     ttl_desc->set_abs_ttl(0);
                     ns_table_info.set_ttl_type("kLatestTime");
                 } else if ((vec[0] == "absolute" || vec[0] == "kAbsoluteTime")) {
-                    ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsoluteTime);
+                    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
                     ttl_desc->set_lat_ttl(0);
                     ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                     ns_table_info.set_ttl_type("kAbsoluteTime");
@@ -2180,12 +2180,12 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                 }
             } else if(vec.size() == 3) {
                 if ((vec[0] == "absandlat" || vec[0] == "kAbsAndLat")) {
-                    ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsAndLat);
+                    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
                     ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
                     ttl_desc->set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                     ns_table_info.set_ttl_type("kAbsAndLat");
                 } else if ((vec[0] == "absorlat" || vec[0] == "kAbsOrLat")) {
-                    ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsOrLat);
+                    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
                     ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 2]));
                     ttl_desc->set_lat_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
                     ns_table_info.set_ttl_type("kAbsOrLat");
@@ -2195,7 +2195,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                     return;
                 }
             } else {
-                ttl_desc->set_ttl_type(::rtidb::common::TTLType::kAbsoluteTime);
+                ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
                 ttl_desc->set_lat_ttl(0);
                 ttl_desc->set_abs_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
             }
@@ -2726,22 +2726,22 @@ void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::
     try {
         uint64_t abs_ttl = 0; 
         uint64_t lat_ttl = 0;
-        ::rtidb::common::TTLType type = ::rtidb::common::kLatestTime;
+        ::rtidb::api::TTLType type = ::rtidb::common::kLatestTime;
         if (parts[3] == "absolute") {
-            type = ::rtidb::common::kAbsoluteTime;
+            type = ::rtidb::api::TTLType::kAbsoluteTime;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
                 ts_name = parts[5];
             }
         } else if (parts[3] == "absandlat") {
-            type = ::rtidb::common::kAbsAndLat;
+            type = ::rtidb::api::TTLType::kAbsAndLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[5]);
             if (parts.size() == 7) {
                 ts_name = parts[6];
             }
         } else if(parts[3] == "absorlat") {
-            type = ::rtidb::common::kAbsOrLat;
+            type = ::rtidb::api::TTLType::kAbsOrLat;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             lat_ttl = boost::lexical_cast<uint64_t>(parts[5]);
             if (parts.size() == 7) {
@@ -2911,14 +2911,14 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
     try {
         int64_t abs_ttl = 0;
         int64_t lat_ttl = 0;
-        ::rtidb::common::TTLType type = ::rtidb::common::TTLType::kAbsoluteTime;
+        ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[4], ":", vec);
             abs_ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
             if (vec.size() > 1) {
                 if (vec[0] == "latest") {
-                    type = ::rtidb::common::TTLType::kLatestTime;
+                    type = ::rtidb::api::TTLType::kLatestTime;
                     lat_ttl = abs_ttl;
                     abs_ttl = 0;
                     if (lat_ttl > FLAGS_latest_ttl_max) {
@@ -3716,13 +3716,13 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
     try {
         int64_t abs_ttl = 0;
         int64_t lat_ttl = 0;
-        ::rtidb::common::TTLType type = ::rtidb::common::TTLType::kAbsoluteTime;
+        ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         std::vector<std::string> vec;
         ::rtidb::base::SplitString(parts[4], ":", vec);
         abs_ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
         if (vec.size() > 1) {
             if (vec[0] == "latest") {
-                type = ::rtidb::common::TTLType::kLatestTime;
+                type = ::rtidb::api::TTLType::kLatestTime;
                 lat_ttl = abs_ttl;
                 abs_ttl = 0;
                 if (lat_ttl > FLAGS_latest_ttl_max) {

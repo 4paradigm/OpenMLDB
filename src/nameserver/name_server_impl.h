@@ -408,7 +408,7 @@ private:
     // update ttl for partition
     bool UpdateTTLOnTablet(const std::string& endpoint,
                            int32_t tid, int32_t pid, 
-                           const ::rtidb::common::TTLType& type, 
+                           const ::rtidb::api::TTLType& type, 
                            uint64_t abs_ttl, uint64_t lat_ttl, const std::string& ts_name);
 
 private:

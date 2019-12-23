@@ -231,9 +231,9 @@ private:
 class DiskTableTraverseIterator : public TableIterator {
 public:
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, 
-                ::rtidb::common::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt);
+                ::rtidb::api::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt);
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-                            ::rtidb::common::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt, int32_t ts_idx);
+                            ::rtidb::api::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt, int32_t ts_idx);
     virtual ~DiskTableTraverseIterator();
     virtual bool Valid() override;
     virtual void Next() override;
@@ -252,7 +252,7 @@ private:
     rocksdb::DB* db_;
     rocksdb::Iterator* it_;
     const rocksdb::Snapshot* snapshot_;
-    ::rtidb::common::TTLType ttl_type_;
+    ::rtidb::api::TTLType ttl_type_;
     uint32_t record_idx_;
     // uint64_t expire_value_;
     TTLDesc expire_value_;
@@ -272,7 +272,7 @@ public:
                 uint32_t pid,
                 const std::map<std::string, uint32_t>& mapping,
                 uint64_t ttl,
-                ::rtidb::common::TTLType ttl_type,
+                ::rtidb::api::TTLType ttl_type,
                 ::rtidb::common::StorageMode storage_mode,
                 const std::string& db_root_path);
 

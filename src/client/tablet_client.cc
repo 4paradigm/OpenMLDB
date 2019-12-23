@@ -42,7 +42,7 @@ bool TabletClient::CreateTable(const std::string& name,
                      uint32_t tid, uint32_t pid,
                      uint64_t abs_ttl, uint64_t lat_ttl, uint32_t seg_cnt,
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
-                     const ::rtidb::common::TTLType& type,
+                     const ::rtidb::api::TTLType& type,
                      bool leader, const std::vector<std::string>& endpoints,
                      uint64_t term, const ::rtidb::api::CompressType compress_type) {
     std::string schema;
@@ -65,7 +65,7 @@ bool TabletClient::CreateTable(const std::string& name,
         if (lat_ttl > FLAGS_latest_ttl_max) {
             return false;
         }    
-    } else if(type == ::rtidb::common::kAbsoluteTime) {
+    } else if(type == ::rtidb::api::TTLType::kAbsoluteTime) {
         if (abs_ttl > FLAGS_absolute_ttl_max) {
             return false;
         }
@@ -78,11 +78,11 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     table_meta->set_schema(schema);
     table_meta->set_ttl_type(type);
-    ::rtidb::common::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+    ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
-    if (type == ::rtidb::common::kAbsoluteTime) {
+    if (type == ::rtidb::api::TTLType::kAbsoluteTime) {
         table_meta->set_ttl(abs_ttl);
     } else {
         table_meta->set_ttl(lat_ttl);
@@ -110,14 +110,14 @@ bool TabletClient::CreateTable(const std::string& name,
                      uint32_t tid, uint32_t pid, uint64_t abs_ttl,
                      uint64_t lat_ttl, bool leader,
                      const std::vector<std::string>& endpoints,
-                     const ::rtidb::common::TTLType& type,
+                     const ::rtidb::api::TTLType& type,
                      uint32_t seg_cnt, uint64_t term, const ::rtidb::api::CompressType compress_type) {
     ::rtidb::api::CreateTableRequest request;
     if (type == ::rtidb::common::kLatestTime) {
         if (lat_ttl > FLAGS_latest_ttl_max) {
             return false;
         }
-    } else if (type == ::rtidb::common::kAbsoluteTime) {
+    } else if (type == ::rtidb::api::TTLType::kAbsoluteTime) {
         if (abs_ttl > FLAGS_absolute_ttl_max) {
             return false;
         }
@@ -131,7 +131,7 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
     // table_meta->set_ttl(ttl);
-    ::rtidb::common::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+    ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);
@@ -464,7 +464,7 @@ bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
 }
 
 bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
-                             const ::rtidb::common::TTLType& type,
+                             const ::rtidb::api::TTLType& type,
                              uint64_t abs_ttl, uint64_t lat_ttl,
                              const std::string& ts_name) {
     ::rtidb::api::UpdateTTLRequest request;
@@ -472,7 +472,7 @@ bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
     request.set_pid(pid);
     // request.set_type(type);
     // request.set_value(ttl);
-    ::rtidb::common::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+    ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
     ttl_desc->set_lat_ttl(lat_ttl);

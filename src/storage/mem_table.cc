@@ -38,7 +38,7 @@ MemTable::MemTable(const std::string& name,
         uint32_t pid,
         uint32_t seg_cnt,
         const std::map<std::string, uint32_t>& mapping,
-        uint64_t ttl, ::rtidb::common::TTLType ttl_type):
+        uint64_t ttl, ::rtidb::api::TTLType ttl_type):
         Table(::rtidb::common::StorageMode::kMemory, name, id,
         pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
         ttl_type, ::rtidb::api::CompressType::kNoCompress),
@@ -51,7 +51,7 @@ MemTable::MemTable(const std::string& name,
 MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) :
         Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(),
                 0, true, 60 * 1000, std::map<std::string, uint32_t>(),
-                ::rtidb::common::TTLType::kAbsoluteTime, 
+                ::rtidb::api::TTLType::kAbsoluteTime, 
                 ::rtidb::api::CompressType::kNoCompress) {
     seg_cnt_ = 8;
     segments_ = NULL; 
@@ -91,9 +91,9 @@ bool MemTable::Init() {
             && table_meta_.key_entry_max_height() > 0) {
         key_entry_max_height_ = table_meta_.key_entry_max_height();
     } else {
-        if (ttl_type_ == ::rtidb::common::TTLType::kLatestTime) {
+        if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
             key_entry_max_height_ = FLAGS_latest_default_skiplist_height;
-        } else if (ttl_type_ == ::rtidb::common::TTLType::kAbsoluteTime) {
+        } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
             key_entry_max_height_ = FLAGS_absolute_default_skiplist_height;
         }
     }
@@ -284,7 +284,7 @@ void MemTable::SchedGc() {
     uint64_t abs_ttl_for_log = abs_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
     uint64_t lat_ttl_for_log = lat_ttl_.load(std::memory_order_relaxed);
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s abs_ttl %lu lat_ttl %lu", name_.c_str(),
-            id_, pid_, ::rtidb::common::TTLType_Name(ttl_type_).c_str(), abs_ttl_for_log, lat_ttl_for_log); 
+            id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), abs_ttl_for_log, lat_ttl_for_log); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     uint64_t time = 0;
     if (abs_ttl_.load(std::memory_order_relaxed) != 0) {
@@ -340,28 +340,28 @@ void MemTable::SchedGc() {
                 continue;
             }
             switch (ttl_type_) {
-                case ::rtidb::common::TTLType::kAbsoluteTime:
+                case ::rtidb::api::TTLType::kAbsoluteTime:
                     if (cur_ttl_map.empty()) {
                         segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                     } else {
                         segment->Gc4TTL(cur_ttl_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                     }
                     break;
-                case ::rtidb::common::TTLType::kLatestTime:
+                case ::rtidb::api::TTLType::kLatestTime:
                     if (cur_ttl_map.empty()) {
                         segment->Gc4Head(lat_ttl_.load(std::memory_order_relaxed), gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                     } else {
                         segment->Gc4Head(cur_ttl_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                     }
                     break;
-                case ::rtidb::common::TTLType::kAbsAndLat:
+                case ::rtidb::api::TTLType::kAbsAndLat:
                     if (cur_ttl_map.empty()) {
                         segment->Gc4TTLAndHead(time, lat_ttl_.load(std::memory_order_relaxed), gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                     } else {
                         segment->Gc4TTLAndHead(cur_ttl_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                     }
                     break;
-                case ::rtidb::common::TTLType::kAbsOrLat:
+                case ::rtidb::api::TTLType::kAbsOrLat:
                     if (cur_ttl_map.empty()) {
                         segment->Gc4TTLOrHead(time, lat_ttl_.load(std::memory_order_relaxed), gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                     } else {
@@ -369,7 +369,7 @@ void MemTable::SchedGc() {
                     }
                     break;
                 default:
-                    PDLOG(WARNING, "not supported ttl type %s", ::rtidb::common::TTLType_Name(ttl_type_).c_str());
+                    PDLOG(WARNING, "not supported ttl type %s", ::rtidb::api::TTLType_Name(ttl_type_).c_str());
             }
             seg_gc_time = ::baidu::common::timer::get_micros() / 1000 - seg_gc_time;
             PDLOG(INFO, "gc segment[%u][%u] done consumed %lu for table %s tid %u pid %u", i, j, seg_gc_time, name_.c_str(), id_, pid_);
@@ -386,7 +386,7 @@ void MemTable::SchedGc() {
 // tll as ms
 uint64_t MemTable::GetExpireTime(uint64_t ttl) {
     if (!enable_gc_.load(std::memory_order_relaxed) || ttl == 0
-            || ttl_type_ == ::rtidb::common::TTLType::kLatestTime) {
+            || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -401,7 +401,7 @@ bool MemTable::IsExpire(const LogEntry& entry) {
     for (auto iter = entry.ts_dimensions().begin(); iter != entry.ts_dimensions().end(); iter++) {
         ts_dimemsions_map.insert(std::make_pair(iter->idx(), iter->ts()));
     }
-    if (ttl_type_ == ::rtidb::common::TTLType::kLatestTime) {
+    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         if (entry.dimensions_size() > 0) {
             for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); ++iter) {
                 auto pos = column_key_map_.find(iter->idx());
@@ -635,7 +635,7 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index, uint32_t ts_index) 
 }
 
 MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, 
-            ::rtidb::common::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt,
+            ::rtidb::api::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt,
             uint32_t ts_index) : segments_(segments),
         seg_cnt_(seg_cnt), seg_idx_(0), pk_it_(NULL), it_(NULL), 
         ttl_type_(ttl_type), record_idx_(0), ts_idx_(0), 
@@ -674,11 +674,11 @@ bool MemTableTraverseIterator::IsExpired() {
     if (!expire_value_.HasExpire(ttl_type_)) {
         return false;
     }
-    if (ttl_type_ == ::rtidb::common::TTLType::kLatestTime) {
+    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return record_idx_ > expire_value_.lat_ttl;
-    } else if (ttl_type_ == ::rtidb::common::TTLType::kAbsoluteTime) {
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
         return it_->GetKey() < expire_value_.abs_ttl;
-    } else if (ttl_type_ == ::rtidb::common::TTLType::kAbsAndLat) {
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsAndLat) {
         return it_->GetKey() < expire_value_.abs_ttl && record_idx_ > expire_value_.lat_ttl;
     } else {
         return it_->GetKey() < expire_value_.abs_ttl || record_idx_ > expire_value_.lat_ttl;
@@ -761,7 +761,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 NextPK();
             }
         } else {
-            if (ttl_type_ == ::rtidb::common::TTLType::kLatestTime) {
+            if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
                 it_->SeekToFirst();
                 record_idx_ = 1;
                 while(it_->Valid() && record_idx_ <= expire_value_.lat_ttl) {

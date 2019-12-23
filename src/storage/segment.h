@@ -32,12 +32,12 @@ class Ticket;
 
 struct TTLDesc {
     TTLDesc(const uint64_t& abs, const uint64_t& lat) : abs_ttl(abs), lat_ttl(lat) {}
-    inline bool HasExpire(::rtidb::common::TTLType ttl_type) const {
+    inline bool HasExpire(::rtidb::api::TTLType ttl_type) const {
         switch(ttl_type) {
-            case ::rtidb::common::TTLType::kAbsoluteTime: return abs_ttl != 0;
-            case ::rtidb::common::TTLType::kLatestTime: return lat_ttl != 0;
-            case ::rtidb::common::TTLType::kAbsAndLat: return abs_ttl != 0 && lat_ttl != 0;
-            case ::rtidb::common::TTLType::kAbsOrLat: return abs_ttl != 0 || lat_ttl != 0;
+            case ::rtidb::api::TTLType::kAbsoluteTime: return abs_ttl != 0;
+            case ::rtidb::api::TTLType::kLatestTime: return lat_ttl != 0;
+            case ::rtidb::api::TTLType::kAbsAndLat: return abs_ttl != 0 && lat_ttl != 0;
+            case ::rtidb::api::TTLType::kAbsOrLat: return abs_ttl != 0 || lat_ttl != 0;
             default: return false;
         }
     }

@@ -171,14 +171,14 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
 
     uint64_t abs_ttl = 0;
     uint64_t lat_ttl = 0;
-    ::rtidb::common::TTLType ttl_type = ::rtidb::common::TTLType::kAbsoluteTime;
+    ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
     if (request->has_ttl_desc()) {
         ttl_type = request->ttl_desc().ttl_type();
         abs_ttl = request->ttl_desc().abs_ttl();
         lat_ttl = request->ttl_desc().lat_ttl();
     } else if (request->has_value()){
         ttl_type = request->type();
-        if (ttl_type == ::rtidb::common::TTLType::kAbsoluteTime) {
+        if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
             abs_ttl = request->value();
             lat_ttl = 0;
         } else {
@@ -196,7 +196,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         response->set_code(132);
         response->set_msg("ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) + ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max));
         PDLOG(WARNING, "ttl is greater than conf value. abs_ttl[%lu] lat_ttl[%lu] ttl_type[%s] max abs_ttl[%u] max lat_ttl[%u]", 
-                        abs_ttl, abs_ttl, ::rtidb::common::TTLType_Name(ttl_type).c_str(), 
+                        abs_ttl, abs_ttl, ::rtidb::api::TTLType_Name(ttl_type).c_str(), 
                         FLAGS_absolute_ttl_max, FLAGS_latest_ttl_max);
         return;
     }
@@ -263,7 +263,7 @@ bool TabletImpl::CheckGetDone(::rtidb::api::GetType type, uint64_t ts,  uint64_t
 }
 
 int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
-                                ::rtidb::common::TTLType ttl_type,
+                                ::rtidb::api::TTLType ttl_type,
                                  ::rtidb::storage::TableIterator* it,
                                  uint64_t st,
                                  const rtidb::api::GetType& st_type,
@@ -280,7 +280,7 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
             && st != et) return -1;
 
     ::rtidb::api::GetType real_et_type = et_type;
-    if (ttl_type == ::rtidb::common::TTLType::kAbsoluteTime || ttl_type == ::rtidb::common::TTLType::kAbsOrLat) {
+    if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type == ::rtidb::api::TTLType::kAbsOrLat) {
         et = std::max(et, expire_time);
     }
     if (et < expire_time && et_type == ::rtidb::api::GetType::kSubKeyGt) {
@@ -302,13 +302,13 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
             return -1;
         }
         switch(ttl_type) {
-            case ::rtidb::common::TTLType::kAbsoluteTime: {
+            case ::rtidb::api::TTLType::kAbsoluteTime: {
                 if (!it->Seek(st, st_type)) {
                     return 1;
                 }
                 break;
             }
-            case ::rtidb::common::TTLType::kAbsAndLat: {
+            case ::rtidb::api::TTLType::kAbsAndLat: {
                 if (st<expire_time) {
                     if (!it->Seek(st, st_type, expire_cnt, cnt)) { return 1; }
                 } else {
@@ -563,7 +563,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
         msg = "tid is zero";
         return -1;
     }
-    ::rtidb::common::TTLType type = ::rtidb::common::TTLType::kAbsoluteTime;
+    ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
     if (table_meta->has_ttl_desc()) {
         type = table_meta->ttl_desc().ttl_type();
         if ((table_meta->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) ||
@@ -574,9 +574,9 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
     } else if (table_meta->has_ttl()){
         uint64_t ttl = table_meta->ttl();
         type = table_meta->ttl_type();
-        if ((type == ::rtidb::common::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+        if ((type == ::rtidb::api::TTLType::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
                 (type == ::rtidb::common::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
-            uint32_t max_ttl = type == ::rtidb::common::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+            uint32_t max_ttl = type == ::rtidb::api::TTLType::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
             msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
             return -1;
         }
@@ -608,9 +608,9 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                     }
                 } else if (column_desc.has_ttl()) {
                     uint64_t ttl = column_desc.ttl();
-                    if ((type == ::rtidb::common::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+                    if ((type == ::rtidb::api::TTLType::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
                             (type == ::rtidb::common::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
-                        uint32_t max_ttl = type == ::rtidb::common::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+                        uint32_t max_ttl = type == ::rtidb::api::TTLType::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
                         msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
                         return -1;
                     }
@@ -686,7 +686,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
 }
 
 int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
-                                 ::rtidb::common::TTLType ttl_type,
+                                 ::rtidb::api::TTLType ttl_type,
                                  ::rtidb::storage::TableIterator* it,
                                  uint32_t limit,
                                  uint64_t st,
@@ -700,7 +700,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
         PDLOG(WARNING, "invalid args");
         return -1;
     }
-    if (ttl_type == ::rtidb::common::TTLType::kAbsoluteTime || ttl_type == ::rtidb::common::TTLType::kAbsOrLat) {
+    if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type == ::rtidb::api::TTLType::kAbsOrLat) {
         et = std::max(et, expire_time);
     }
     rtidb::api::GetType real_st_type = st_type;
@@ -724,7 +724,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             return -1;
         }
         switch (ttl_type) {
-            case ::rtidb::common::TTLType::kAbsoluteTime: 
+            case ::rtidb::api::TTLType::kAbsoluteTime: 
                 it->Seek(st, real_st_type);
                 break;
             default: 
@@ -744,20 +744,20 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
         if (limit > 0 && tmp.size() >= limit) {
             break;
         }
-        if (ttl_type == ::rtidb::common::TTLType::kAbsoluteTime) {
+        if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
             if (remove_duplicated_record && tmp.size() > 0 && 
                 last_time == it->GetKey()) {
                     it->Next();
                     continue;
             }
             last_time = it->GetKey();
-        } else if (ttl_type == ::rtidb::common::TTLType::kLatestTime) {
+        } else if (ttl_type == ::rtidb::api::TTLType::kLatestTime) {
             if (cnt < expire_cnt || expire_cnt == 0) {
                 ++cnt;
             } else {
                 break;
             }
-        } else if (ttl_type == ::rtidb::common::TTLType::kAbsAndLat) {
+        } else if (ttl_type == ::rtidb::api::TTLType::kAbsAndLat) {
             if ((cnt < expire_cnt || expire_cnt == 0) && (it->GetKey() > expire_time || expire_time == 0)) {
                 ++cnt;
             } else {
@@ -811,7 +811,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
 }
 
 int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
-                        ::rtidb::common::TTLType ttl_type,
+                        ::rtidb::api::TTLType ttl_type,
                         ::rtidb::storage::TableIterator* it,
                         uint64_t st,
                         const rtidb::api::GetType& st_type,
@@ -823,7 +823,7 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
         PDLOG(WARNING, "invalid args");
         return -1;
     }
-    if (ttl_type == ::rtidb::common::TTLType::kAbsoluteTime || ttl_type == ::rtidb::common::TTLType::kAbsOrLat) {
+    if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type == ::rtidb::api::TTLType::kAbsOrLat) {
         et = std::max(et, expire_time);
     }
     rtidb::api::GetType real_st_type = st_type;
@@ -847,7 +847,7 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
             return -1;
         }
         switch (ttl_type) {
-            case ::rtidb::common::TTLType::kAbsoluteTime: 
+            case ::rtidb::api::TTLType::kAbsoluteTime: 
                 it->Seek(st, real_st_type);
                 break;
             default: 
@@ -871,13 +871,13 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
             it->Next();
             continue;
         }
-        if (ttl_type == ::rtidb::common::TTLType::kLatestTime) {
+        if (ttl_type == ::rtidb::api::TTLType::kLatestTime) {
             if (cnt < expire_cnt || expire_cnt == 0) {
                 ++cnt;
             } else {
                 break;
             }
-        } else if (ttl_type == ::rtidb::common::TTLType::kAbsAndLat) {
+        } else if (ttl_type == ::rtidb::api::TTLType::kAbsAndLat) {
             if ((cnt < expire_cnt || expire_cnt == 0) && (it->GetKey() > expire_time || expire_time == 0)) {
                 ++cnt;
             } else {
@@ -1714,13 +1714,13 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_compress_type(table->GetCompressType());
             status->set_storage_mode(table->GetStorageMode());
             status->set_name(table->GetName());
-            ::rtidb::common::TTLDesc* ttl_desc = status->mutable_ttl_desc();
+            ::rtidb::api::TTLDesc* ttl_desc = status->mutable_ttl_desc();
             ::rtidb::storage::TTLDesc ttl = table->GetTTL();
             ttl_desc->set_abs_ttl(ttl.abs_ttl);
             ttl_desc->set_lat_ttl(ttl.lat_ttl);
             ttl_desc->set_ttl_type(table->GetTTLType());
             status->set_ttl_type(table->GetTTLType());
-            if (status->ttl_type() == ::rtidb::common::TTLType::kLatestTime) {
+            if (status->ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
                 status->set_ttl(table->GetTTL().lat_ttl);
             } else {
                 status->set_ttl(table->GetTTL().abs_ttl);
@@ -2694,7 +2694,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     PDLOG(INFO, "create table with id %u pid %u name %s abs_ttl %llu lat_ttl %llu type %s", 
                 tid, pid, name.c_str(), table_meta->ttl_desc().abs_ttl(), table_meta->ttl_desc().lat_ttl(),
-                ::rtidb::common::TTLType_Name(table_meta->ttl_desc().ttl_type()).c_str());
+                ::rtidb::api::TTLType_Name(table_meta->ttl_desc().ttl_type()).c_str());
     gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
 }
 
