@@ -304,7 +304,7 @@ message TableMeta {
     repeated rtidb.common.ColumnKey column_key = 16;
     optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
-    optional rtidb.api.TTLDesc ttl_desc = 19;
+    optional TTLDesc ttl_desc = 19;
 }
 
 message CreateTableRequest {
@@ -367,7 +367,7 @@ message UpdateTTLRequest {
     optional TTLType type = 3 [default = kAbsoluteTime, deprecated = true];
     optional uint64 value = 4 [default = 0, deprecated = true];
     optional string ts_name = 5;
-    optional rtidb.api.TTLDesc ttl_desc = 6;
+    optional TTLDesc ttl_desc = 6;
 }
 
 message UpdateTTLResponse {
@@ -478,7 +478,7 @@ message TableStatus {
     optional uint32 skiplist_height = 18;
     optional bytes schema = 19;
     optional rtidb.common.StorageMode storage_mode = 20 [default = kMemory];
-    optional rtidb.api.TTLDesc ttl_desc = 21;
+    optional TTLDesc ttl_desc = 21;
 }
 
 message GetTableStatusResponse {

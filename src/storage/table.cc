@@ -36,11 +36,11 @@ int Table::InitColumnDesc() {
                 key_idx++;
             } else if (column_desc.is_ts_col()) {
                 ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
-                if (column_desc.has_ttl_desc()) {
-                    abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().abs_ttl() * 60 * 1000));
-                    new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().abs_ttl() * 60 * 1000));
-                    lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().lat_ttl()));
-                    new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl_desc().lat_ttl()));
+                if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
+                    abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.abs_ttl() * 60 * 1000));
+                    new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.abs_ttl() * 60 * 1000));
+                    lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.lat_ttl()));
+                    new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.lat_ttl()));
                 } else if (column_desc.has_ttl()) {
                     if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
                         abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));

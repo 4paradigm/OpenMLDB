@@ -537,7 +537,7 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client
         std::string err;
         uint64_t abs_ttl = 0; 
         uint64_t lat_ttl = 0;
-        ::rtidb::api::TTLType type = ::rtidb::common::kLatestTime;
+        ::rtidb::api::TTLType type = ::rtidb::api::kLatestTime;
         if (parts[2] == "absolute") {
             type = ::rtidb::api::TTLType::kAbsoluteTime;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[3]);
@@ -2726,7 +2726,7 @@ void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::
     try {
         uint64_t abs_ttl = 0; 
         uint64_t lat_ttl = 0;
-        ::rtidb::api::TTLType type = ::rtidb::common::kLatestTime;
+        ::rtidb::api::TTLType type = ::rtidb::api::kLatestTime;
         if (parts[3] == "absolute") {
             type = ::rtidb::api::TTLType::kAbsoluteTime;
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
@@ -3981,7 +3981,7 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::clie
             ::rtidb::base::PrintSchema(schema, true);
         }
         printf("\n#ColumnKey\n");
-        std::string ttl_suff = table_meta.ttl_type() == ::rtidb::common::kLatestTime ? "" : "min";
+        std::string ttl_suff = table_meta.ttl_type() == ::rtidb::api::kLatestTime ? "" : "min";
         ::rtidb::base::PrintColumnKey(table_meta.ttl(), ttl_suff, table_meta.column_desc(), table_meta.column_key());
     } else if (!schema.empty()){
         ::rtidb::base::PrintSchema(schema);

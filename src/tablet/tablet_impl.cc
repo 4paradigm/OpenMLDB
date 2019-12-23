@@ -575,7 +575,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
         uint64_t ttl = table_meta->ttl();
         type = table_meta->ttl_type();
         if ((type == ::rtidb::api::TTLType::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
-                (type == ::rtidb::common::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+                (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
             uint32_t max_ttl = type == ::rtidb::api::TTLType::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
             msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
             return -1;
@@ -600,16 +600,16 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                     msg = "ttl column type must be int64, uint64, timestamp";
                     return -1;
                 }
-                if (column_desc.has_ttl_desc()) {
-                    if ((column_desc.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) ||
-                            (column_desc.ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
+                if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
+                    if ((column_desc.abs_ttl() > FLAGS_absolute_ttl_max) ||
+                            (column_desc.lat_ttl() > FLAGS_latest_ttl_max)) {
                         msg = "ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) + ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max);
                         return -1;
                     }
                 } else if (column_desc.has_ttl()) {
                     uint64_t ttl = column_desc.ttl();
                     if ((type == ::rtidb::api::TTLType::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
-                            (type == ::rtidb::common::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+                            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
                         uint32_t max_ttl = type == ::rtidb::api::TTLType::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
                         msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
                         return -1;

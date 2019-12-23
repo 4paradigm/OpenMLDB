@@ -741,8 +741,7 @@ TEST_F(TableTest, UpdateTTL) {
     desc->set_type("int64");
     desc->set_add_ts_idx(false);
     desc->set_is_ts_col(true);
-    ttl_desc = desc->mutable_ttl_desc();
-    ttl_desc->set_abs_ttl(5);
+    desc->set_abs_ttl(5);
     ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
     column_key->set_index_name("card");
     column_key->add_ts_name("ts1");

@@ -36,6 +36,21 @@ enum TableType {
     kTSTable = 2;
 }
 
+enum TTLType {
+    kAbsoluteTime = 1;
+    kRelativeTime = 2;
+    // keep the latest record
+    kLatestTime = 3;
+    kAbsAndLat = 4;
+    kAbsOrLat = 5;
+}
+
+message TTLDesc {
+    optional TTLType ttl_type = 1 [default = kAbsoluteTime];
+    optional uint64 abs_ttl = 2 [default=0];
+    optional uint64 lat_ttl = 3 [default=0];
+}
+
 enum GetType {
     kSubKeyEq = 1;
     kSubKeyLt = 2;
@@ -274,7 +289,7 @@ message TableMeta {
     // time to live for every row
     optional uint64 ttl = 4 [default = 0, deprecated = true];
     optional int32 seg_cnt = 5;
-    optional rtidb.common.TTLType ttl_type = 6 [default = kAbsoluteTime, deprecated = true];
+    optional TTLType ttl_type = 6 [default = kAbsoluteTime, deprecated = true];
     // the slave endpoints
     repeated string replicas = 7;
     optional TableMode mode = 8;
@@ -289,7 +304,7 @@ message TableMeta {
     repeated rtidb.common.ColumnKey column_key = 16;
     optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
-    optional rtidb.api.TTLDesc ttl_desc = 19;
+    optional TTLDesc ttl_desc = 19;
 }
 
 message CreateTableRequest {
@@ -349,10 +364,10 @@ message GetTableSchemaResponse {
 message UpdateTTLRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
-    optional rtidb.common.TTLType type = 3 [default = kAbsoluteTime, deprecated = true];
+    optional TTLType type = 3 [default = kAbsoluteTime, deprecated = true];
     optional uint64 value = 4 [default = 0, deprecated = true];
     optional string ts_name = 5;
-    optional rtidb.api.TTLDesc ttl_desc = 6;
+    optional TTLDesc ttl_desc = 6;
 }
 
 message UpdateTTLResponse {
@@ -458,12 +473,12 @@ message TableStatus {
     optional uint64 record_byte_size = 13;
     optional uint64 record_idx_byte_size = 14;
     optional uint64 record_pk_cnt = 15;
-    optional rtidb.common.TTLType ttl_type = 16 [default = kAbsoluteTime, deprecated = true];
+    optional TTLType ttl_type = 16 [default = kAbsoluteTime, deprecated = true];
     optional CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
     optional bytes schema = 19;
     optional rtidb.common.StorageMode storage_mode = 20 [default = kMemory];
-    optional rtidb.api.TTLDesc ttl_desc = 21;
+    optional TTLDesc ttl_desc = 21;
 }
 
 message GetTableStatusResponse {

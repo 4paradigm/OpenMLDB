@@ -1,4 +1,5 @@
 import "common.proto";
+import "tablet.proto";
 package rtidb.nameserver;
 
 option cc_generic_services = true;
