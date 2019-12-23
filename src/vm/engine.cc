@@ -92,7 +92,7 @@ int32_t RunSession::RunProjectOp(ProjectOp* project_op,
                                  std::shared_ptr<TableStatus> status,
                                  int8_t* row, int8_t* output) {}
 
-int32_t RunSession::RunOne(Row& in_row, Row& out_row) {
+int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();
     std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
     for (auto op : compile_info_->sql_ctx.ops.ops) {
