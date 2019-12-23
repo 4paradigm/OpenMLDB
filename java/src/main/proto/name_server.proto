@@ -44,7 +44,7 @@ message UpdateTTLRequest {
     optional string ttl_type = 2 [default = "kAbsoluteTime", deprecated = true];
     optional uint64 value = 3 [default = 0, deprecated = true];
     optional string ts_name = 4;
-    optional rtidb.common.TTLDesc ttl_desc = 5;
+    optional rtidb.api.TTLDesc ttl_desc = 5;
 }
 
 message UpdateTTLResponse {
@@ -68,7 +68,7 @@ message TableInfo {
     repeated rtidb.common.ColumnKey column_key = 13;
     optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 15;
-    optional rtidb.common.TTLDesc ttl_desc = 16;
+    optional rtidb.api.TTLDesc ttl_desc = 16;
 }
 
 message CreateTableRequest {

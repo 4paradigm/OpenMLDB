@@ -21,7 +21,7 @@ import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TabletClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
-import com._4paradigm.rtidb.common.Common.TTLType;
+import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 
 import io.brpc.client.EndPoint;
 

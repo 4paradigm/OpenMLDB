@@ -14,7 +14,7 @@ import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
-import com._4paradigm.rtidb.common.Common.TTLType;
+import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 import com._4paradigm.rtidb.tablet.Tablet.TableStatus;
 import com.google.protobuf.ByteString;
 

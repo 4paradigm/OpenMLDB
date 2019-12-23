@@ -4,7 +4,7 @@ import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
-import com._4paradigm.rtidb.common.Common.TTLType;
+import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 import com._4paradigm.rtidb.tablet.Tablet.TableStatus;
 import com.google.protobuf.ByteString;
 import org.testng.Assert;
