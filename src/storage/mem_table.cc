@@ -91,9 +91,9 @@ bool MemTable::Init() {
             && table_meta_.key_entry_max_height() > 0) {
         key_entry_max_height_ = table_meta_.key_entry_max_height();
     } else {
-        if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime || ttl_type_ == ::rtidb::api::TTLType::kAbsOrLat) {
             key_entry_max_height_ = FLAGS_latest_default_skiplist_height;
-        } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+        } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type_ == ::rtidb::api::TTLType::kAbsAndLat) {
             key_entry_max_height_ = FLAGS_absolute_default_skiplist_height;
         }
     }
@@ -116,13 +116,13 @@ bool MemTable::Init() {
     if (abs_ttl_ > 0 || lat_ttl_ > 0) {
         enable_gc_ = true;
     } else {
-        for (auto& ttl : abs_ttl_vec_) {
+        for (const auto& ttl : abs_ttl_vec_) {
             if (*ttl > 0) {
                 enable_gc_ = true;
                 break;
             }
         }
-        for (auto& ttl : lat_ttl_vec_) {
+        for (const auto& ttl : lat_ttl_vec_) {
             if (*ttl > 0) {
                 enable_gc_ = true;
                 break;

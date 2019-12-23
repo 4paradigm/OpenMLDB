@@ -758,13 +758,13 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                 break;
             }
         } else if (ttl_type == ::rtidb::api::TTLType::kAbsAndLat) {
-            if ((cnt < expire_cnt || expire_cnt == 0) && (it->GetKey() > expire_time || expire_time == 0)) {
+            if ((cnt < expire_cnt || expire_cnt == 0) || (it->GetKey() > expire_time || expire_time == 0)) {
                 ++cnt;
             } else {
                 break;
             }
         } else {
-            if ((cnt < expire_cnt || expire_cnt == 0) || (it->GetKey() > expire_time || expire_time == 0)) {
+            if ((cnt < expire_cnt || expire_cnt == 0) && (it->GetKey() > expire_time || expire_time == 0)) {
                 ++cnt;
             } else {
                 break;
@@ -878,13 +878,13 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
                 break;
             }
         } else if (ttl_type == ::rtidb::api::TTLType::kAbsAndLat) {
-            if ((cnt < expire_cnt || expire_cnt == 0) && (it->GetKey() > expire_time || expire_time == 0)) {
+            if ((cnt < expire_cnt || expire_cnt == 0) || (it->GetKey() > expire_time || expire_time == 0)) {
                 ++cnt;
             } else {
                 break;
             }
         } else {
-            if ((cnt < expire_cnt || expire_cnt == 0) || (it->GetKey() > expire_time || expire_time == 0)) {
+            if ((cnt < expire_cnt || expire_cnt == 0) && (it->GetKey() > expire_time || expire_time == 0)) {
                 ++cnt;
             } else {
                 break;

@@ -223,6 +223,13 @@ TEST_F(TabletMultiPathTest, SSD_Test_read_write){
     }
 }
 
+TEST_F(TabletMultiPathTest, Memory_Test_read_write_abs_and_lat) {
+
+}
+
+TEST_F(TabletMultiPathTest,  Memory_Test_read_write_abs_or_lat) {
+
+}
 }
 }
 
