@@ -168,8 +168,19 @@ void NameServerImpl::CheckSynTable(const std::string& alias, std::shared_ptr<::r
                 return;
             }
             for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
-                AddReplicaRemoteOP(alias, table_info.name(), table_info.table_partition(idx),
-                        table_info.tid(), table_info.table_partition(idx).pid());
+                ::rtidb::nameserver::TablePartition table_partition = table_info.table_partition(idx);
+                bool has_alive_leader_partition = false;
+                for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
+                    if (table_partition.partition_meta(midx).is_leader() &&
+                            table_partition.partition_meta(midx).is_alive()) {
+                        has_alive_leader_partition = true;
+                        break;
+                    }
+                }
+                if (has_alive_leader_partition) {
+                    AddReplicaRemoteOP(alias, table_info.name(), table_partition,
+                            table_info.tid(), table_partition.pid());
+                }
             }
         } 
     }
