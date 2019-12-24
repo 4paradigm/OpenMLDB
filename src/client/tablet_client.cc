@@ -397,13 +397,19 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t 
 }
 
 bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
-        const std::vector<std::string>& endpoints, uint64_t term) {
+        const std::vector<std::string>& endpoints,
+        uint64_t term, const std::vector<::rtidb::common::EndpointAndTid>* endpoint_tid) {
     ::rtidb::api::ChangeRoleRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (leader) {
         request.set_mode(::rtidb::api::TableMode::kTableLeader);
         request.set_term(term);
+        if ((endpoint_tid != nullptr) && (!endpoint_tid->empty())) {
+            for (auto& endpoint : *endpoint_tid) {
+                request.add_endpoint_tid()->CopyFrom(endpoint);
+            }
+        }
     } else {
         request.set_mode(::rtidb::api::TableMode::kTableFollower);
     }
@@ -722,12 +728,20 @@ bool TabletClient::DropTable(uint32_t id, uint32_t pid, std::shared_ptr<TaskInfo
 }
 
 bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
-            std::shared_ptr<TaskInfo> task_info) {
+        std::shared_ptr<TaskInfo> task_info) {
+    return AddReplica(tid, pid, endpoint, INVALID_TID, task_info);
+}
+
+bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
+        uint32_t remote_tid, std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::ReplicaRequest request;
     ::rtidb::api::AddReplicaResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
+    if(remote_tid != INVALID_TID) {
+        request.set_remote_tid(remote_tid);
+    }
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
@@ -1041,6 +1055,18 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, ::rtidb::common::Sto
     ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
     count = response->count();
     return kv_it;
+}
+
+bool TabletClient::SetMode(bool mode) {
+    ::rtidb::api::SetModeRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_follower(mode);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetMode,
+        &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
 }
 
 }

@@ -33,3 +33,7 @@ enum StorageMode {
     kHDD = 3;
 }
 
+message EndpointAndTid {
+    optional string endpoint = 1;
+    optional uint32 tid = 2;
+}
