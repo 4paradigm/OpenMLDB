@@ -154,7 +154,7 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
         table_info_iter = table_info_.find(table.name());
         if (table_info_iter == table_info_.end()) {
             PDLOG(WARNING, "talbe [%s] not found in table_info", table.name().c_str());
-            break;
+            continue;
         }
         // cache offset
         std::map<uint32_t, uint64_t> pid_offset_map;
@@ -162,6 +162,7 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
             for (auto& meta : part.partition_meta()) {
                 if (meta.is_alive() && meta.is_leader()) {
                     pid_offset_map.insert(std::make_pair(part.pid(), meta.offset()));
+                    break;
                 }
             }
         }
@@ -242,28 +243,27 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::Tab
     for (auto &table : tables) {
         auto iter = table_info_.find(table.name());
         if (iter == table_info_.end()) {
-            PDLOG(WARNING, "%s not found in table_info_", table.name().c_str());
+            PDLOG(WARNING, "table [%s] not found in table_info_", table.name().c_str());
             return false;
         }
-        PDLOG(INFO, "will check table [%s]", table.name().c_str());
         if (table.ttl() != iter->second->ttl()) {
-            PDLOG(WARNING, "ttl not equal remote [%d] local [%d]", table.ttl(), iter->second->ttl());
+            PDLOG(WARNING, "table [%s] ttl not equal, remote [%d] local [%d]", table.name().c_str(), table.ttl(), iter->second->ttl());
             return false;
         }
         if (table.ttl_type() != iter->second->ttl_type()) {
-            PDLOG(WARNING, "ttl type not equal remote [%s] local [%s]", table.ttl_type().c_str(), iter->second->ttl_type().c_str());
+            PDLOG(WARNING, "table [%s] ttl type not equal, remote [%s] local [%s]", table.name().c_str(), table.ttl_type().c_str(), iter->second->ttl_type().c_str());
             return false;
         }
         if (table.table_partition_size() != iter->second->table_partition_size()) {
-            PDLOG(WARNING, "partition num not equal remote [%d] local [%d]", table.table_partition_size(), iter->second->table_partition_size());
+            PDLOG(WARNING, "table [%s] partition num not equal, remote [%d] local [%d]", table.name().c_str(), table.table_partition_size(), iter->second->table_partition_size());
             return false;
         }
         if (table.compress_type() != iter->second->compress_type()) {
-            PDLOG(WARNING, "compress type not equal");
+            PDLOG(WARNING, "table [%s] compress type not equal", table.name().c_str());
             return false;
         }
         if (table.column_desc_size() != iter->second->column_desc_size()) {
-            PDLOG(WARNING, "column desc size not equal");
+            PDLOG(WARNING, "table [%s] column desc size not equal", table.name().c_str());
             return false;
         }
         {
@@ -277,18 +277,18 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::Tab
             for (auto& column : table.column_desc()) {
                 auto iter = tmp_map.find(column.name());
                 if (iter == tmp_map.end()) {
-                    PDLOG(WARNING, "not found column desc [%s] in local cluster", column.name().c_str());
+                    PDLOG(WARNING, "table [%s] not found column desc [%s] in local cluster", table.name().c_str(), column.name().c_str());
                     return false;
                 }
                 if (column.SerializeAsString() != iter->second) {
-                    PDLOG(WARNING, "column desc [%s] not equal", column.name().c_str());
+                    PDLOG(WARNING, "table [%s] column desc [%s] not equal", table.name().c_str(), column.name().c_str());
                     return false;
                 }
 
             }
         }
         if (table.column_desc_v1_size() != iter->second->column_desc_v1_size()) {
-            PDLOG(WARNING, "column desc v1 size not equal");
+            PDLOG(WARNING, "table [%s] column desc v1 size not equal", table.name().c_str());
             return false;
         }
         {
@@ -302,18 +302,18 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::Tab
             for (auto& column_v1 : table.column_desc_v1()) {
                 auto iter = tmp_map.find(column_v1.name());
                 if (iter == tmp_map.end()) {
-                    PDLOG(WARNING, "not found column desc [%s] in local cluster", column_v1.name().c_str());
+                    PDLOG(WARNING, "table [%s] not found column desc [%s] in local cluster", table.name().c_str(), column_v1.name().c_str());
                     return false;
                 }
                 if (column_v1.SerializeAsString() != iter->second) {
-                    PDLOG(WARNING, "column desc [%s] not equal", column_v1.name().c_str());
+                    PDLOG(WARNING, "table [%s] column desc [%s] not equal", table.name().c_str(), column_v1.name().c_str());
                     return false;
                 }
 
             }
         }
         if (table.column_key_size() != iter->second->column_key_size()) {
-            PDLOG(WARNING, "column key size not equal");
+            PDLOG(WARNING, "table [%s] column key size not equal", table.name().c_str());
             return false;
         }
         {
@@ -327,18 +327,18 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::Tab
             for (auto& key : table.column_key()) {
                 auto iter = tmp_map.find(key.index_name());
                 if (iter == tmp_map.end()) {
-                    PDLOG(WARNING, "not found column desc [%s] in local cluster", key.index_name().c_str());
+                    PDLOG(WARNING, "table [%s] not found column desc [%s] in local cluster", table.name().c_str(), key.index_name().c_str());
                     return false;
                 }
                 if (key.SerializeAsString() != iter->second) {
-                    PDLOG(WARNING, "column desc [%s] not equal", key.index_name().c_str());
+                    PDLOG(WARNING, "table [%s] column desc [%s] not equal", table.name().c_str(), key.index_name().c_str());
                     return false;
                 }
 
             }
         }
         if (table.added_column_desc_size() != iter->second->added_column_desc_size()) {
-            PDLOG(WARNING, "added column desc size not equal");
+            PDLOG(WARNING, "table [%s] added column desc size not equal", table.name().c_str());
             return false;
         }
         {
@@ -352,11 +352,11 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::Tab
             for (auto& added_column : table.added_column_desc()) {
                 auto iter = tmp_map.find(added_column.name());
                 if (iter == tmp_map.end()) {
-                    PDLOG(WARNING, "not found column desc [%s] in local cluster", added_column.name().c_str());
+                    PDLOG(WARNING, "table [%s] not found column desc [%s] in local cluster", table.name().c_str(), added_column.name().c_str());
                     return false;
                 }
                 if (added_column.SerializeAsString() != iter->second) {
-                    PDLOG(WARNING, "column desc [%s] not equal", added_column.name().c_str());
+                    PDLOG(WARNING, "table [%s] column desc [%s] not equal", table.name().c_str(), added_column.name().c_str());
                     return false;
                 }
 
