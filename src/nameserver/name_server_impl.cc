@@ -6267,12 +6267,12 @@ void NameServerImpl::ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_i
         follower_endpoint.erase(std::find(follower_endpoint.begin(), follower_endpoint.end(), leader_endpoint));
         tablet_ptr = iter->second;
     }
-    std::vector<::rtidb::common::EndpointAndTid> et;
-    for (const auto& it : change_leader_data.remote_follower()) {
-        et.push_back(it);
+    std::vector<::rtidb::common::EndpointAndTid> endpoint_tid;
+    for (const auto& e: change_leader_data.remote_follower()) {
+        endpoint_tid.push_back(e);
     }
     if (!tablet_ptr->client_->ChangeRole(change_leader_data.tid(), change_leader_data.pid(), true,
-                                         follower_endpoint, cur_term, &et)) {
+                                         follower_endpoint, cur_term, &endpoint_tid)) {
         PDLOG(WARNING, "change leader failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]",
                         change_leader_data.name().c_str(), change_leader_data.tid(),
                         change_leader_data.pid(), leader_endpoint.c_str(), task_info->op_id());
