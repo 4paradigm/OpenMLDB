@@ -86,47 +86,47 @@ message ShowTableRequest {
 
 message ShowTableResponse {
     repeated TableInfo table_info = 1;
-	required int32 code = 2;
-	optional string msg = 3;
+    required int32 code = 2;
+    optional string msg = 3;
 }
 
 message MakeSnapshotNSRequest {
-	required string name = 1;
+    required string name = 1;
     required uint32 pid = 2;
 }
 
 message AddReplicaData {
-	required string name = 1;
+    required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
 }
 
 message AddReplicaNSRequest {
-	required string name = 1;
+    required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
     repeated uint32 pid_group = 4;
 }
 
 message Pair {
-	required string key = 1;
+    required string key = 1;
     required string value = 2;
 }
 
 message ConfSetRequest {
-	required Pair conf = 1;
+    required Pair conf = 1;
 }
 
 message ConfGetRequest {}
 
 message ConfGetResponse {
-	required int32 code = 1;
-	optional string msg = 2;
+    required int32 code = 1;
+    optional string msg = 2;
     repeated Pair conf = 3;
 }
 
 message ChangeLeaderRequest {
-	required string name = 1;
+    required string name = 1;
     required uint32 pid = 2;
     optional string candidate_leader = 3;
 }

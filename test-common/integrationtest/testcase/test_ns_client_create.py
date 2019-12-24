@@ -665,6 +665,73 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(record_cnt, 12)
         self.ns_drop(self.ns_leader, name)
 
+    @ddt.data(
+        ('Create table ok', 'kAbsoluteTime', '3min',
+        ('ttl_desc', {'abs_ttl': 3, 'lat_ttl': 0}),
+        ('column_desc', {'name': 'k1', 'type': 'string', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k2', 'type': 'int32', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k3', 'type': 'double', 'add_ts_idx': 'false'}),
+        ),
+        
+        ('Create table ok','kLatestTime', '3',
+        ('ttl_desc', {'abs_ttl': 0, 'lat_ttl': 3}),
+        ('column_desc', {'name': 'k1', 'type': 'string', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k2', 'type': 'int32', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k3', 'type': 'double', 'add_ts_idx': 'false'}),
+        ),
+
+        ('Create table ok','kAbsAndLat', '3min&&3',
+        ('ttl_desc', {'abs_ttl': 3, 'lat_ttl': 3}),
+        ('column_desc', {'name': 'k1', 'type': 'string', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k2', 'type': 'int32', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k3', 'type': 'double', 'add_ts_idx': 'false'}),
+        ),
+
+        ('Create table ok', 'kAbsOrLat', '2min||5',
+        ('ttl_desc', {'abs_ttl': 2, 'lat_ttl': 5}),
+        ('column_desc', {'name': 'k1', 'type': 'string', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k2', 'type': 'int32', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k3', 'type': 'double', 'add_ts_idx': 'false'}),
+        ),
+    )
+    @ddt.unpack
+    def test_create_one_ts_table_ttl_desc(self, exp_msg, ttl_type, ttl, *eles):
+        """
+        使用ttl_desc方式创建单ts表，检查ttl类型
+        """
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+            "name":name,
+            "partition_num": 3,
+            "replica_num": 3,
+            "ttl_type": ttl_type,
+            "ttl_desc":[],
+            "column_desc":[],
+            "column_key":[]
+        }
+        for item in eles:
+            table_meta[item[0]].append(item[1])
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        infoLogger.info(rs)
+        self.assertIn(exp_msg, rs)
+        self.ns_put_multi(self.ns_leader, name, self.now() - 5 * 60 * 1000, ['card2', '123', '1.1'])
+        self.ns_put_multi(self.ns_leader, name, self.now() - 4 * 60 * 1000, ['card0', '123', '1.1'])
+        self.ns_put_multi(self.ns_leader, name, self.now() - 3 * 60 * 1000, ['card1', '123', '2.2'])
+        self.ns_put_multi(self.ns_leader, name, self.now() - 2 * 60 * 1000, ['card1', '233', '3.3'])
+        self.ns_put_multi(self.ns_leader, name, self.now() - 1 * 60 * 1000, ['card0', '233', '4.4'])
+        self.ns_put_multi(self.ns_leader, name, self.now() - 0 * 60 * 1000, ['card2', '123', '1.1'])
+        time.sleep(2)
+        table_info = self.showtable_with_tablename(self.ns_leader, name)
+        table_info = self.parse_tb(table_info, ' ', [1,2,3], [5,9])
+        record_cnt = 0
+        for k, v in table_info.items():
+            self.assertEqual(v[0], ttl)
+            record_cnt += int(v[1])
+        self.assertEqual(record_cnt, 18)
+        self.ns_drop(self.ns_leader, name)
+
 
 if __name__ == "__main__":
     load(TestCreateTableByNsClient)

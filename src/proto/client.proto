@@ -10,7 +10,7 @@ message TablePartition {
 
 message TableInfo {
     required string name = 1;
-    required uint64 ttl = 2;
+    optional uint64 ttl = 2 [default = 0];
     optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
     repeated rtidb.common.ColumnDesc column_desc = 5;
