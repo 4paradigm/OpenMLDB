@@ -3864,7 +3864,8 @@ void TabletImpl::SetMode(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     follower_.store(request->follower(), std::memory_order_relaxed);
-    PDLOG(INFO, "set tablet mode bool %d", request->follower());
+    std::string mode = request->follower() == true ? "follower" : "normal";
+    PDLOG(INFO, "set tablet mode %s", mode.c_str());
     response->set_code(0);
 }
 
@@ -3878,7 +3879,6 @@ void TabletImpl::AlignTable(RpcController* controller,
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(100);
         response->set_msg("table is not exist");
-        done->Run();
         return;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
@@ -3887,7 +3887,6 @@ void TabletImpl::AlignTable(RpcController* controller,
               request->pid());
         response->set_code(100);
         response->set_msg("table is not exist");
-        done->Run();
         return;
     }
     // replicator.GetLogPart().Get
