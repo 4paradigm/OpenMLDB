@@ -697,7 +697,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                                  std::string* pairs,
                                  uint32_t* count,
                                  bool remove_duplicated_record) {
-    if (it == NULL || pairs == NULL || count == NULL || atleast > limit) {
+    if (it == NULL || pairs == NULL || count == NULL || (atleast > limit && limit != 0)) {
         PDLOG(WARNING, "invalid args");
         return -1;
     }

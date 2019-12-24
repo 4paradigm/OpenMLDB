@@ -40,8 +40,6 @@ class TestCreateTableByNsClient(TestCaseBase):
          'table meta file format error'),
         (None, None, 144000, 8,
          'Message missing required fields: name'),
-        ('"t{}"'.format(time.time()), None, None, 8,
-         'Message missing required fields: ttl'),
     )
     @ddt.unpack
     def test_create_name_ttltype_ttl_seg(self, name, ttl_type, ttl, seg_cnt, exp_msg):
