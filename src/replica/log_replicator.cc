@@ -465,7 +465,7 @@ bool LogReplicator::DelAllReplicateNode() {
     return true;
 }
 
-bool LogReplicator::AppendEntry(LogEntry& entry) {;;
+bool LogReplicator::AppendEntry(LogEntry& entry) {
     std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ == NULL || wh_->GetSize() / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
