@@ -4460,7 +4460,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         return;
     }
     if (has_table && is_leader) {
-        if (!tablet_ptr->client_->ChangeRole(tid, pid, false)) {
+        if (!tablet_ptr->client_->ChangeRole(tid, pid, false, 0)) {
             PDLOG(WARNING, "change role failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
                             name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
