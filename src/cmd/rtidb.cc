@@ -634,7 +634,7 @@ void HandleNSSwitchMode(const std::vector<std::string>& parts, ::rtidb::client::
         return;
     }
     std::string msg;
-    bool ok;
+    bool ok = false;
     if (parts[1] == "normal") {
         ok = client->SwitchMode(::rtidb::nameserver::kNORMAL, msg);
     } else if (parts[1] == "leader") {
