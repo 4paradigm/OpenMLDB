@@ -152,16 +152,21 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
     std::map<std::string, std::shared_ptr<TableInfo>>::iterator table_info_iter;
     for (const auto& table : tables) {
         table_info_iter = table_info_.find(table.name());
-        auto status_iter = ci->last_status.find(table.name());
-        if (status_iter == ci->last_status.end()) {
-            std::map<uint32_t, uint64_t> pid_offset_map;
-            for (auto& part : table_info_iter->second->table_partition()) {
-                for (auto& meta : part.partition_meta()) {
-                    if (meta.is_alive() && meta.is_leader()) {
-                        pid_offset_map.insert(std::make_pair(part.pid(), meta.offset()));
-                    }
+        if (table_info_iter == table_info_.end()) {
+            PDLOG(WARNING, "talbe [%s] not found in table_info", table.name().c_str());
+            break;
+        }
+        // cache offset
+        std::map<uint32_t, uint64_t> pid_offset_map;
+        for (auto& part : table_info_iter->second->table_partition()) {
+            for (auto& meta : part.partition_meta()) {
+                if (meta.is_alive() && meta.is_leader()) {
+                    pid_offset_map.insert(std::make_pair(part.pid(), meta.offset()));
                 }
             }
+        }
+        auto status_iter = ci->last_status.find(table.name());
+        if (status_iter == ci->last_status.end()) {
             std::vector<TablePartition> tbs;
             for (auto& part : table.table_partition()) {
                 ::rtidb::nameserver::TablePartition tb;
@@ -184,19 +189,10 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
             }
             ci->last_status.insert(std::make_pair(table.name(), tbs));
         } else {
-            std::map<uint32_t, uint64_t> pid_offset_map;
             std::map<uint32_t, std::vector<TablePartition>::iterator> part_refer;
             // cache endpoint && part reference
             for (auto iter = status_iter->second.begin(); iter != status_iter->second.end(); iter++) {
                 part_refer.insert(std::make_pair(iter->pid(), iter));
-            }
-            // cache offset
-            for (auto &part : table_info_iter->second->table_partition()) {
-                for (auto &meta : part.partition_meta()) {
-                    if (meta.is_alive() && meta.is_leader()) {
-                        pid_offset_map.insert(std::make_pair(part.pid(), meta.offset()));
-                    }
-                }
             }
             for (auto& part : table.table_partition()) {
                 for (auto& meta : part.partition_meta()) {
@@ -209,6 +205,10 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                             break;
                         }
                         auto iter = part_refer.find(part.pid());
+                        if (iter == part_refer.end()) {
+                            PDLOG(WARNING, "table [%s] pid [%u] not found", table.name().c_str(), part.pid());
+                            break;
+                        }
                         std::string origin_endpoint = iter->second->partition_meta(0).endpoint();
                         if (meta.endpoint() == origin_endpoint) {
                             break;
@@ -236,8 +236,8 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                             DelRemoteReplica(origin_endpoint, table.name(), part.pid());
                         }
                         // update partition meta
-                        part_refer[part.pid()]->clear_partition_meta();
-                        part_refer[part.pid()]->add_partition_meta()->CopyFrom(meta);
+                        iter->second->clear_partition_meta();
+                        iter->second->add_partition_meta()->CopyFrom(meta);
                         PDLOG(INFO, "table [%s] pid[%u] will add remote endpoint %s", table.name().c_str(), part.pid(), meta.endpoint().c_str());
                         AddRemoteReplica(table.name(), meta, table.tid(), part.pid());
                         break;
@@ -924,8 +924,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         PDLOG(INFO, "healthy tablet with endpoint[%s]", it->c_str());
     }
     // handle offline tablet
-    Tablets::iterator tit = tablets_.begin();
-    for (; tit != tablets_.end(); ++tit) {
+    for (Tablets::iterator tit = tablets_.begin(); tit != tablets_.end(); ++tit) {
         if (alive.find(tit->first) == alive.end()
                 && tit->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
             // tablet offline

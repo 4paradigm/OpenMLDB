@@ -2907,13 +2907,6 @@ void TabletImpl::CreateTable(RpcController* controller,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    /*
-    if (follower_.load(std::memory_order_acquire)) {
-        response->set_code(453);
-        response->set_msg("is follower cluster");
-        return;
-    }
-     */
     const ::rtidb::api::TableMeta* table_meta = &request->table_meta();
     std::string msg;
     uint32_t tid = table_meta->tid();
