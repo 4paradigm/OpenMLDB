@@ -262,6 +262,7 @@ public:
                           ::rtidb::api::TTLType ttl_type,
                           ::rtidb::storage::TableIterator* it,
                           uint32_t limit,
+                          uint32_t atleast,
                           uint64_t st,
                           const rtidb::api::GetType& st_type,
                           uint64_t et,

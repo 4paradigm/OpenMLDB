@@ -581,13 +581,19 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
                                  const std::string& idx_name,
                                  const std::string& ts_name,
                                  uint32_t limit,
+                                 uint32_t atleast,
                                  std::string& msg) {
+    if (atleast > limit) {
+        msg = "atleast should be no greater than limit";
+        return NULL;
+    }
     ::rtidb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
     request.set_et(etime);
     request.set_tid(tid);
     request.set_pid(pid);
+    request.set_atleast(atleast);
     if (!idx_name.empty()) {
         request.set_idx_name(idx_name);
     }
@@ -616,8 +622,9 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
                                  uint64_t etime,
                                  const std::string& idx_name,
                                  uint32_t limit,
+                                 uint32_t atleast,
                                  std::string& msg) {
-    return Scan(tid, pid, pk, stime, etime, idx_name, "", limit, msg);
+    return Scan(tid, pid, pk, stime, etime, idx_name, "", limit, atleast, msg);
 }
 
 
@@ -627,7 +634,12 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
              uint64_t stime,
              uint64_t etime,
              uint32_t limit,
+             uint32_t atleast,
              std::string& msg) {
+    if (atleast > limit) {
+        msg = "atleast should be no greater than limit";
+        return NULL;
+    }
     ::rtidb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
@@ -635,6 +647,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_limit(limit);
+    request.set_atleast(atleast);
     request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();

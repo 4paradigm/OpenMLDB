@@ -222,6 +222,7 @@ message ScanRequest {
     optional GetType st_type = 11 [default = kSubKeyLe];
     optional GetType et_type = 12 [default = kSubKeyGt];
     optional bool enable_remove_ts = 13 [default = false];
+    optional uint32 atleast = 14 [default = 0];
 }
 
 message RpcMetric {

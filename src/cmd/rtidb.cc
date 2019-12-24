@@ -1211,14 +1211,14 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     }
 }
 
-void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) { // todo@pxc
     if (parts.size() < 5) {
-        std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]"  << std::endl;
+        std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] [atleast=xxx] | scan table_name key key_name start_time end_time [limit] [atleast=xxx] | scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx] [atleast=xxx]"  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
-        std::cout << "scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
+        std::cout << "scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx] [atleast=xxx]" << std::endl;
         return;
     }  
     bool is_pair_format = parameter_map.empty() ? false : true;
@@ -1229,6 +1229,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
     uint64_t et = 0;
     std::string ts_name;
     uint32_t limit = 0;
+    uint32_t atleast = 0;
     auto iter = parameter_map.begin();
     try{
         if (is_pair_format) {
@@ -1272,12 +1273,16 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             if (iter != parameter_map.end()) {
                 limit = boost::lexical_cast<uint32_t>(iter->second);
             }
+            iter = parameter_map.find("atleast");
+            if (iter != parameter_map.end()) {
+                atleast = boost::lexical_cast<uint32_t>(iter->second);
+            }
         } else {
-            table_name = parts[1];     
+            table_name = parts[1];
             key = parts[2];
         }
     } catch (std::exception const& e) {
-        printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
+        printf("Invalid args. st and et should be uint64_t, limit and atleast should be uint32_t\n");
         return;
     } 
 
@@ -1305,10 +1310,10 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
                 limit = boost::lexical_cast<uint32_t>(parts[5]);
             }
             std::string msg;
-            ::rtidb::base::KvIterator* it = tablet_client->Scan(tid, pid, key,  
+            ::rtidb::base::KvIterator* it = tablet_client->Scan(tid, pid, key,
                     boost::lexical_cast<uint64_t>(parts[3]), 
                     boost::lexical_cast<uint64_t>(parts[4]),
-                    limit, msg);
+                    limit, atleast, msg);
             if (it == NULL) {
                 std::cout << "Fail to scan table. error msg: " << msg << std::endl;
             } else {
@@ -1343,7 +1348,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             }
         }
         it = tablet_client->Scan(tid, pid, key,  
-                st, et, index_name, ts_name, limit, msg);    
+                st, et, index_name, ts_name, limit, atleast, msg);
         if (it == NULL) {
             std::cout << "Fail to scan table. error msg: " << msg << std::endl;
         } else {
@@ -3631,7 +3636,7 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
                 boost::lexical_cast<uint32_t>(parts[2]),
                 parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
                 boost::lexical_cast<uint64_t>(parts[5]),
-                limit, msg);
+                limit, 0, msg);
         if (it == NULL) {
             std::cout << "Fail to scan table. error msg: " << msg << std::endl;
         }else {
@@ -3685,7 +3690,7 @@ void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid,
     for (uint32_t j = 0; j < run_times; j++) {
         for (uint32_t i = 0; i < 500 * 4; i++) {
             std::string key =boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
-            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0, msg);
+            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0, 0, msg);
             delete it;
         }
         client->ShowTp();
@@ -4242,7 +4247,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
     }
     std::string msg;
     ::rtidb::base::KvIterator* it = NULL;
-    it = client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, msg); 
+    it = client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, 0, msg); 
     if (it == NULL) {
         std::cout << "Fail to scan table. error msg: " << msg << std::endl;
     } else {
@@ -4410,7 +4415,7 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
             uint64_t st = ::baidu::common::timer::get_micros() / 1000;
             msg.clear();
             //::rtidb::base::KvIterator* it = client->Scan(tid, pid, key.c_str(), st, et, msg, false);
-            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key.c_str(), st, et, limit, msg);
+            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key.c_str(), st, et, limit, 0, msg);
             delete it;
         }
         client->ShowTp();

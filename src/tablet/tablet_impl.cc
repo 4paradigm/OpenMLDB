@@ -689,6 +689,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                                  ::rtidb::api::TTLType ttl_type,
                                  ::rtidb::storage::TableIterator* it,
                                  uint32_t limit,
+                                 uint32_t atleast,
                                  uint64_t st,
                                  const rtidb::api::GetType& st_type,
                                  uint64_t et,
@@ -696,7 +697,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                                  std::string* pairs,
                                  uint32_t* count,
                                  bool remove_duplicated_record) {
-    if (it == NULL || pairs == NULL || count == NULL) {
+    if (it == NULL || pairs == NULL || count == NULL || atleast > limit) {
         PDLOG(WARNING, "invalid args");
         return -1;
     }
@@ -770,28 +771,30 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                 break;
             }
         }
-        bool jump_out = false;
-        switch(real_et_type) {
-            case ::rtidb::api::GetType::kSubKeyEq:
-                if (it->GetKey() != et) {
-                    jump_out = true;
-                }
-                break;
-            case ::rtidb::api::GetType::kSubKeyGt:
-                if (it->GetKey() <= et) {
-                    jump_out = true;
-                }
-                break;
-            case ::rtidb::api::GetType::kSubKeyGe:
-                if (it->GetKey() < et) {
-                    jump_out = true;
-                }
-                break;
-            default:
-                PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
-                return -2;
+        if (atleast <= 0 || tmp.size() >= atleast) {
+            bool jump_out = false;
+            switch(real_et_type) {
+                case ::rtidb::api::GetType::kSubKeyEq:
+                    if (it->GetKey() != et) {
+                        jump_out = true;
+                    }
+                    break;
+                case ::rtidb::api::GetType::kSubKeyGt:
+                    if (it->GetKey() <= et) {
+                        jump_out = true;
+                    }
+                    break;
+                case ::rtidb::api::GetType::kSubKeyGe:
+                    if (it->GetKey() < et) {
+                        jump_out = true;
+                    }
+                    break;
+                default:
+                    PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
+                    return -2;
+            }
+            if (jump_out) break;
         }
-        if (jump_out) break;
         ::rtidb::base::Slice it_value = it->GetValue();
         tmp.push_back(std::make_pair(it->GetKey(), it_value));
         total_block_size += it_value.size();
@@ -997,6 +1000,7 @@ void TabletImpl::Scan(RpcController* controller,
     code = ScanIndex(expire_time, expire_cnt,
                         table->GetTTLType(),
                         it, request->limit(),
+                        request->atleast(),
                         request->st(), request->st_type(),
                         request->et(), request->et_type(),
                         pairs, &count, remove_duplicated_record);
