@@ -17,6 +17,7 @@
 namespace rtidb {
 namespace client {
 using ::rtidb::api::TaskInfo;
+const uint64_t INVALID_REMOTE_TID = UINT32_MAX;
 
 class TabletClient {
 

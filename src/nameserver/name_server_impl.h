@@ -190,7 +190,7 @@ public:
             Closure* done);
 
     void AddReplicaSimplyRemoteOP(const std::string& name, 
-            const ::rtidb::nameserver::PartitionMeta& partition_meta,
+            const std::string& endpoint, 
             uint32_t tid, uint32_t pid); 
 
     void AddReplicaRemoteOP(const std::string& alias,
@@ -485,13 +485,12 @@ private:
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
                     const std::string& des_endpoint);
 
-    std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& endpoint, const std::string& name, uint32_t pid, const ::rtidb::nameserver::PartitionMeta& partition_meta, uint64_t op_index, ::rtidb::api::OPType op_type); 
- 
+    std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& endpoint, const std::string& name, uint32_t remote_tid, uint32_t pid, uint64_t op_index, ::rtidb::api::OPType op_type); 
 
     std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& name,  uint32_t pid,
             const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
 
-    void AddTableInfo(const std::string& endpoint, const std::string& name, uint32_t pid, const ::rtidb::nameserver::PartitionMeta& partition_meta, std::shared_ptr<::rtidb::api::TaskInfo> task_info); 
+    void AddTableInfo(const std::string& endpoint, const std::string& name, uint32_t pid, uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task_info); 
 
     void AddTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
