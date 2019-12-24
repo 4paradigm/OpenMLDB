@@ -294,13 +294,13 @@ bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
     if (!follower_->load(std::memory_order_relaxed)) {
-        std::lock_guard<std::mutex> lock(wmu_);
         if (!FLAGS_zk_cluster.empty() && request->term() < term_.load(std::memory_order_relaxed)) {
             PDLOG(WARNING, "leader id not match. request term  %lu, cur term %lu, tid %u, pid %u",
                             request->term(), term_.load(std::memory_order_relaxed), request->tid(), request->pid());
             return false;
         }
     }
+    std::lock_guard<std::mutex> lock(wmu_);
     uint64_t last_log_offset = GetOffset();
     if (request->pre_log_index() == 0 && request->entries_size() == 0) {
         response->set_log_offset(last_log_offset);
