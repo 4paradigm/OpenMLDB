@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include <random>
+#include "bm/base_bm.h"
 #include "benchmark/benchmark.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -98,60 +98,6 @@ static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     }
 }
 
-template <class T>
-class Repeater {
- public:
-    Repeater() : idx_(0), values_({}) {}
-    explicit Repeater(T value) : idx_(0), values_({value}) {}
-    explicit Repeater(const std::vector<T>& values)
-        : idx_(0), values_(values) {}
-
-    virtual T GetValue() {
-        T value = values_[idx_];
-        idx_ = (idx_ + 1) % values_.size();
-        return value;
-    }
-
-    uint32_t idx_;
-    std::vector<T> values_;
-};
-
-template <class T>
-class NumberRepeater : public Repeater<T> {
- public:
-    void Range(T min, T max, T step) {
-        this->values_.clear();
-        for (T v = min; v <= max; v += step) {
-            this->values_.push_back(v);
-        }
-    }
-};
-
-template <class T>
-class IntRepeater : public NumberRepeater<T> {
- public:
-    void Random(T min, T max, int32_t random_size) {
-        this->values_.clear();
-        std::default_random_engine e;
-        std::uniform_int_distribution<T> u(min, max);
-        for (int i = 0; i < random_size; ++i) {
-            this->values_.push_back(u(e));
-        }
-    }
-};
-
-template <class T>
-class RealRepeater : public NumberRepeater<T> {
- public:
-    void Random(T min, T max, int32_t random_size) {
-        std::default_random_engine e;
-        std::uniform_real_distribution<T> u(min, max);
-        for (int i = 0; i < random_size; ++i) {
-            this->values_.push_back(u(e));
-        }
-    }
-};
-
 static void BuildBuf(int8_t** buf, uint32_t* size,
                      ::fesql::type::TableDef& table) {  // NOLINT
     BuildTableDef(table);
@@ -187,18 +133,18 @@ static void Data_WindowCase1(TableStatus* status, int32_t data_size) {
         new ::fesql::storage::Table(1, 1, status->table_def));
     ASSERT_TRUE(table->Init());
 
-    Repeater<std::string> col0(std::vector<std::string>({"hello"}));
-    IntRepeater<int32_t> col1;
+    ::fesql::bm::Repeater<std::string> col0(std::vector<std::string>({"hello"}));
+    ::fesql::bm::IntRepeater<int32_t> col1;
     col1.Range(1, 100, 1);
-    IntRepeater<int16_t> col2;
+    ::fesql::bm::IntRepeater<int16_t> col2;
     col2.Range(1u, 100u, 2);
-    RealRepeater<float> col3;
+    ::fesql::bm::RealRepeater<float> col3;
     col3.Range(1.0, 100.0, 3.0f);
-    RealRepeater<double> col4;
+    ::fesql::bm::RealRepeater<double> col4;
     col4.Range(100.0, 10000.0, 10.0);
-    IntRepeater<int64_t> col5;
+    ::fesql::bm::IntRepeater<int64_t> col5;
     col5.Range(1576571615000 - 100000000, 1576571615000, 1000);
-    Repeater<std::string> col6({"astring", "bstring", "cstring", "dstring",
+    ::fesql::bm::Repeater<std::string> col6({"astring", "bstring", "cstring", "dstring",
                                 "estring", "fstring", "gstring", "hstring"});
 
     for (int i = 0; i < data_size; ++i) {
