@@ -1057,7 +1057,7 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, ::rtidb::common::Sto
     return kv_it;
 }
 
-bool TabletClient::SetMode(const bool mode) {
+bool TabletClient::SetMode(bool mode) {
     ::rtidb::api::SetModeRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_follower(mode);

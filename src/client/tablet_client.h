@@ -229,7 +229,7 @@ public:
 
     void ShowTp();
 
-    bool SetMode(const bool mode);
+    bool SetMode(bool mode);
 
 private:
     std::string endpoint_;
