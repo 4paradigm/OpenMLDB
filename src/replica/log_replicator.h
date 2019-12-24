@@ -118,7 +118,6 @@ private:
     // the term for leader judgement
     std::atomic<uint64_t> log_offset_;
     std::atomic<uint32_t> binlog_index_;
-    std::atomic<bool>* follower_;
     LogParts* logs_;
     WriteHandle* wh_;
     ReplicatorRole role_;
@@ -133,8 +132,10 @@ private:
     std::atomic<int> snapshot_log_part_index_;
     std::atomic<uint64_t> snapshot_last_offset_;
 
-    std::mutex wmu_;
     std::shared_ptr<Table> table_;
+
+    std::mutex wmu_;
+    std::atomic<bool>* follower_;
 };
 
 } // end of replica
