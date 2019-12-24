@@ -5,7 +5,6 @@
 // Date 2017-09-18
 //
 
-#include <nameserver/name_server_impl.h>
 #include "client/ns_client.h"
 #include "base/strings.h"
 
