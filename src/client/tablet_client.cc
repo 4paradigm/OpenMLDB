@@ -398,7 +398,7 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t 
 
 bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
         const std::vector<std::string>& endpoints,
-        uint64_t term, std::vector<::rtidb::common::EndpointAndTid>* endpoint_tid) {
+        uint64_t term, const std::vector<::rtidb::common::EndpointAndTid>* endpoint_tid) {
     ::rtidb::api::ChangeRoleRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
@@ -407,7 +407,7 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
         request.set_term(term);
         if ((endpoint_tid != nullptr) && (!endpoint_tid->empty())) {
             for (auto& endpoint : *endpoint_tid) {
-                request.add_et()->CopyFrom(endpoint);
+                request.add_endpoint_tid()->CopyFrom(endpoint);
             }
         }
     } else {

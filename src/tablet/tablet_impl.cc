@@ -1673,7 +1673,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
         if (replicator->AddReplicateNode(vec) < 0) {
             PDLOG(WARNING,"add replicator failed. tid[%u] pid[%u]", tid, pid);
         }
-        for (auto& e : request->et()) {
+        for (auto& e : request->endpoint_tid()) {
             std::vector<std::string> endpoints{e.endpoint()};
             replicator->AddReplicateNode(endpoints, e.tid());
         }

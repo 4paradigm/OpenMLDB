@@ -3488,7 +3488,6 @@ TEST_F(TabletImplTest, DelRecycle) {
     sleep(30);
 
     std::string now_time = ::rtidb::base::GetNowTime();
-    int64_t ti = ::rtidb::base::ParseTimeToSecond(now_time, "%Y%m%d%H%M%S");
     ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/99_3_"+now_time+"/binlog/");
     ::rtidb::base::MkdirRecur("/tmp/gtest/recycle/100_4_binlog_"+now_time+"/binlog/");
     file_vec.clear();

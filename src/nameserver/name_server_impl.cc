@@ -175,16 +175,6 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                 tb.set_record_cnt(part.record_cnt());
                 PartitionMeta* m = tb.add_partition_meta();
                 m->set_endpoint("");
-                for (auto& meta : part.partition_meta()) {
-                    if (meta.is_leader() && meta.is_alive()) {
-                        auto offset_iter = pid_offset_map.find(part.pid());
-                        if (offset_iter == pid_offset_map.end()) {
-                            // table partition leader is offline, so skip below process
-                            PDLOG(WARNING, "table [%s] tid[%u] pid[%u] not found in local table info", table.name().c_str(), table.tid(), part.pid());
-                            break;
-                        }
-                    }
-                }
                 tbs.push_back(tb);
             }
             ci->last_status.insert(std::make_pair(table.name(), tbs));
