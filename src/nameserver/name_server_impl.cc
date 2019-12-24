@@ -2852,8 +2852,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    std::lock_guard<std::mutex> lock(mu_);
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
-        std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
             response->set_msg("nameserver is follower");
@@ -6556,10 +6556,13 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
     int code = 0;
     std::string rpc_msg("ok");
     do {
-        if (nsc_.find(request->alias()) != nsc_.end()) {
-            code = 400;
-            rpc_msg = "replica cluster alias duplicate";
-            break;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (nsc_.find(request->alias()) != nsc_.end()) {
+                code = 400;
+                rpc_msg = "replica cluster alias duplicate";
+                break;
+            }
         }
         std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(*request);
         if ((code = cluster_info->Init(rpc_msg)) != 0) {
@@ -6879,6 +6882,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         if (nsc_.size() > 0) {
             response->set_code(555);
             response->set_msg("zone not empty");
+            return;
         }
     }
     std::lock_guard<std::mutex> lock(mu_);

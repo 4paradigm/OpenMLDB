@@ -642,6 +642,7 @@ void HandleNSSwitchMode(const std::vector<std::string>& parts, ::rtidb::client::
     }
     if (!ok) {
         std::cout << "Fail to swith mode. error msg: " << msg << std::endl;
+        return;
     }
     std::cout << "switchmode ok" << std::endl;
 }
