@@ -296,6 +296,9 @@ public class TTLTest extends TestCaseBase {
             Assert.assertEquals(it.getCount(), 1);
             Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", curTime - 10 * 60 * 1000 - 1, "ts1", null);
             Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(tableSyncClient.count(name, new Object[]{"card0", "mcc0"}, "card_mcc", "ts1", true), 3);
+            Assert.assertEquals(tableSyncClient.count(name, new Object[]{"card0", "mcc0"}, "card_mcc", "ts2", true), 2);
+            Assert.assertEquals(tableSyncClient.count(name, new Object[]{"card0", "mcc0"}, "card_mcc", "ts3", true), 1);
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
@@ -358,6 +361,9 @@ public class TTLTest extends TestCaseBase {
             Assert.assertEquals(it.getCount(), 1);
             Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", curTime - 10 * 60 * 1000 - 1, "ts1", null);
             Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(tableSyncClient.count(name, new Object[]{"card0", "mcc0"}, "card_mcc", "ts1", true), 3);
+            Assert.assertEquals(tableSyncClient.count(name, new Object[]{"card0", "mcc0"}, "card_mcc", "ts2", true), 2);
+            Assert.assertEquals(tableSyncClient.count(name, new Object[]{"card0", "mcc0"}, "card_mcc", "ts3", true), 1);
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
