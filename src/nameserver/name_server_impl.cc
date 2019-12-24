@@ -205,6 +205,12 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                         auto offset_iter = pid_offset_map.find(part.pid());
                         if (offset_iter == pid_offset_map.end()) {
                             // table partition leader is offline
+                            PDLOG(WARNING, "table [%s] pid [%u] leader is offline in leader cluster , do nothing", table.name().c_str(), part.pid());
+                            break;
+                        }
+                        auto iter = part_refer.find(part.pid());
+                        std::string origin_endpoint = iter->second->partition_meta(0).endpoint();
+                        if (meta.endpoint() == origin_endpoint) {
                             break;
                         }
                         auto delete_offset_iter = ci->delete_offset_map_.find(temp_key);
@@ -222,21 +228,17 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                                 break;
                             }
                             PDLOG(INFO, "erase key [%s] in delete offset", temp_key.c_str());
-                            ci->delete_offset_map_.erase(temp_key);
-                        }
-                        std::string origin_endpoint = part_refer[part.pid()]->partition_meta(0).endpoint();
-                        if (meta.endpoint() == origin_endpoint) {
-                            PDLOG(INFO, "do not need update alias [%s] table [%s]", ci->cluster_add_.alias().c_str(), table.name().c_str());
-                            break;
+                            ci->delete_offset_map_.erase(delete_offset_iter);
                         }
                         // table partition leader if offline
                         if (origin_endpoint.size() > 0) {
-                            PDLOG(INFO, "table [%s] pid[%u] will update endpoint %s", table.name().c_str(), part.pid(), meta.endpoint().c_str());
+                            PDLOG(INFO, "table [%s] pid[%u] will remove endpoint %s", table.name().c_str(), part.pid(), origin_endpoint.c_str());
                             DelRemoteReplica(origin_endpoint, table.name(), part.pid());
                         }
                         // update partition meta
                         part_refer[part.pid()]->clear_partition_meta();
                         part_refer[part.pid()]->add_partition_meta()->CopyFrom(meta);
+                        PDLOG(INFO, "table [%s] pid[%u] will add remote endpoint %s", table.name().c_str(), part.pid(), meta.endpoint().c_str());
                         AddRemoteReplica(table.name(), meta, table.tid(), part.pid());
                         break;
                     }
@@ -6277,7 +6279,7 @@ void NameServerImpl::ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_i
         tablet_ptr = iter->second;
     }
     std::vector<::rtidb::common::EndpointAndTid> et;
-    for (auto it : change_leader_data.remote_follower()) {
+    for (const auto& it : change_leader_data.remote_follower()) {
         et.push_back(it);
     }
     if (!tablet_ptr->client_->ChangeRole(change_leader_data.tid(), change_leader_data.pid(), true,
@@ -6575,10 +6577,13 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             code = 455;
             break;
         }
-        if ((tables.empty()) && !CompareTableInfo(tables)) {
-            rpc_msg = "compare table info error";
-            code = 567;
-            break;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if ((tables.empty()) && !CompareTableInfo(tables)) {
+                rpc_msg = "compare table info error";
+                code = 567;
+                break;
+            }
         }
         if (!cluster_info->AddReplicaClusterByNs(request->alias(), zone_info_.zone_name(), zone_info_.zone_term(), rpc_msg)) {
             code = 300;
@@ -6694,8 +6699,7 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
     }
     std::lock_guard<std::mutex> lock(mu_);
 
-    auto it = nsc_.begin();
-    for (; it != nsc_.end(); ++it) {
+    for (auto it = nsc_.begin(); it != nsc_.end(); ++it) {
         auto* status = response->add_replicas();
         auto replica = status->mutable_replica();
         replica->set_alias(it->first);
@@ -6727,6 +6731,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
         if (it == nsc_.end()) {
             code = 404;
             rpc_msg = "replica name not found";
+            PDLOG(WARNING, "replica name [%s] not found when remove replica clsuter", request->alias().c_str());
             break;
         }
         it->second->state_ = kClusterRemove;
@@ -6734,21 +6739,24 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             for (auto part_iter = iter->second.begin(); part_iter != iter->second.end(); part_iter++) {
                 for (auto meta : part_iter->partition_meta()) {
                     if (meta.endpoint().empty()) {
-                        continue;
+                        break;
                     }
                     DelRemoteReplica(meta.endpoint(), iter->first, part_iter->pid());
                 }
             }
         }
         if (!it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
+            PDLOG(WARNING, "send remove replica cluster request to replica clsute failed");
             break;
         }
         if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
             code = 452;
             rpc_msg = "del zk failed";
+            PDLOG(WARNING, "del replica zk node [%s] failed, when remove repcluster", request->alias().c_str());
             break;
         }
         nsc_.erase(it);
+        PDLOG(INFO, "success remove replica cluster [%s]", request->alias().c_str());
     } while(0);
     response->set_code(code);
     response->set_msg(rpc_msg);
@@ -6826,7 +6834,7 @@ void NameServerImpl::CheckClusterInfo() {
             }
             tmp_nsc = nsc_;
         }
-        for (auto i : tmp_nsc) {
+        for (const auto& i : tmp_nsc) {
             i.second->CheckZkClient();
         }
         std::string msg;
@@ -6836,6 +6844,7 @@ void NameServerImpl::CheckClusterInfo() {
                 PDLOG(WARNING, "check %s showtable has error: %s", i.first.c_str(), msg.c_str());
                 continue;
             }
+            std::lock_guard<std::mutex> lock(mu_);
             if ((tables.size() > 0) && !CompareTableInfo(tables)) {
                 // todo :: add cluster statsu, need show in showreplica
                 PDLOG(WARNING, "compare %s table info has error", i.first.c_str());
@@ -6861,18 +6870,11 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (request->sm() >= kFOLLOWER) { // request->sm() > rFOLLOWER
+    if (request->sm() >= kFOLLOWER) {
         response->set_code(505);
         response->set_msg("unkown server status");
         return;
     }
-    /*
-    if (request->sm() == rFOLLOWER) {
-        response->set_code(506);
-        response->set_msg("only switch NORMAL or LEADER mode");
-        return;
-    }
-     */
     if (mode_.load(std::memory_order_acquire) == request->sm()) {
         response->set_code(0);
         return;
@@ -6905,6 +6907,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
             return;
         }
     }
+    PDLOG(INFO, "current cluster mode is [%s]", ServerMode_Name(zone_info_.mode()).c_str());
     zone_info_.set_mode(request->sm());
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         // notify table leave follower mode, leader table will be writeable.
@@ -6913,7 +6916,9 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
     } else {
         mode_.store(request->sm(), std::memory_order_release);
     }
+    PDLOG(INFO, "set new cluster mode [%s]", ServerMode_Name(request->sm()).c_str());
     response->set_code(0);
+    return;
 }
 
 void NameServerImpl::DistributeTabletMode() {

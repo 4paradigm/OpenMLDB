@@ -3639,7 +3639,6 @@ int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api:
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
         return -1;
     }
-    PDLOG(DEBUG, "task status [%s]--------------", ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
     return 0;
 }
 
