@@ -130,6 +130,7 @@ public class ParseParquetUtil {
                         logger.error("incorrect format for timestamp!");
                         throw new RuntimeException("incorrect format for timestamp!");
                     }
+
                 }
             }
         }
