@@ -1,7 +1,11 @@
-/* Compile with:
+/*-------------------------------------------------------------------------
+ * Copyright (C) 2019, 4paradigm
+ * memsql_client_bm.cc
  *
- * cc multi_threaded_inserts.c -lmysqlclient -pthread -o mti
- */
+ * Author: chenjing
+ * Date: 2019/12/24
+ *--------------------------------------------------------------------------
+ **/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,32 +16,25 @@
 
 namespace fesql {
 namespace bm {
-
-const static char *host = "172.17.0.2";
-const static char *user = "root";
-const static char *passwd = "";
-const static size_t port = 3306;
-
-int32_t insert(MYSQL *conn_ptr) {
-    return mysql_query(conn_ptr,
-                       "insert into tbl values (null), (null), (null),"
-                       "(null), (null), (null), (null), (null)");
-}
-
-static bool init(MYSQL &conn) {
+const static std::string host = "172.17.0.2";  // NOLINT
+const static std::string user = "root";        // NOLINT
+const static std::string passwd = "";          // NOLINT
+const static size_t port = 3306;               // NOLINT
+static bool init(MYSQL &conn) {                // NOLINT
     mysql_init(&conn);
     mysql_options(&conn, MYSQL_DEFAULT_AUTH, "mysql_native_password");
 
     DLOG(INFO) << ("Connecting to MemSQL...");
-    if (mysql_real_connect(&conn, host, user, passwd, NULL, port, NULL, 0) !=
-        &conn) {
+    if (mysql_real_connect(&conn, host.c_str(), user.c_str(), passwd.c_str(),
+                           NULL, port, NULL, 0) != &conn) {
         printf("Could not connect to the MemSQL database!\n");
         return false;
     }
     return true;
 }
 
-static bool init_db(MYSQL &conn, const char *db_sql, const char *use_sql) {
+static bool init_db(MYSQL &conn, const char *db_sql,  // NOLINT
+                    const char *use_sql) {
     DLOG(INFO) << ("Creating database 'test'...");
     if (mysql_query(&conn, db_sql) || mysql_query(&conn, use_sql)) {
         LOG(WARNING) << ("Could not create 'test' database!");
@@ -47,7 +44,7 @@ static bool init_db(MYSQL &conn, const char *db_sql, const char *use_sql) {
     return true;
 }
 
-static bool init_tbl(MYSQL &conn, const char *schema_sql) {
+static bool init_tbl(MYSQL &conn, const char *schema_sql) {  // NOLINT
     DLOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
     if (mysql_query(&conn, schema_sql)) {
         LOG(WARNING)
@@ -58,7 +55,7 @@ static bool init_tbl(MYSQL &conn, const char *schema_sql) {
     return true;
 }
 
-static bool create_index(MYSQL &conn, const char *index_sql) {
+static bool create_index(MYSQL &conn, const char *index_sql) {  // NOLINT
     DLOG(INFO) << ("Creating table 'tbl' index in database 'test'...\n");
     if (mysql_query(&conn, index_sql)) {
         LOG(WARNING)
@@ -68,7 +65,7 @@ static bool create_index(MYSQL &conn, const char *index_sql) {
     }
     return true;
 }
-static bool repeated_insert_tbl(MYSQL &conn, const char *insert_sql,
+static bool repeated_insert_tbl(MYSQL &conn, const char *insert_sql,  // NOLINT
                                 int32_t record_size) {
     DLOG(INFO) << ("Running inserts ...\n");
     int32_t fail = 0;
@@ -84,22 +81,7 @@ static bool repeated_insert_tbl(MYSQL &conn, const char *insert_sql,
     return true;
 }
 
-static bool insert_tbl(MYSQL &conn, std::vector<std::string> sqls) {
-    LOG(INFO) << ("Running inserts ...\n");
-    int32_t fail = 0;
-    for (std::string sql : sqls) {
-        if (mysql_query(&conn, sql.c_str())) {
-            fail++;
-            LOG(WARNING)
-                << ("Could not insert 'tbl' table in the 'test' "
-                    "database!\n");
-        }
-    }
-    LOG(INFO) << "Insert tbl, fail cnt: " << fail;
-    return true;
-}
-
-static bool delete_tbl(MYSQL &conn, const char *delete_tbl) {
+static bool delete_tbl(MYSQL &conn, const char *delete_tbl) {  // NOLINT
     if (mysql_query(&conn, delete_tbl)) {
         LOG(WARNING) << ("Could not delete tbl 'test'!\n");
         mysql_close(&conn);
@@ -109,7 +91,7 @@ static bool delete_tbl(MYSQL &conn, const char *delete_tbl) {
     return true;
 }
 
-static bool drop_tbl(MYSQL &conn, const char *drop_tbl) {
+static bool drop_tbl(MYSQL &conn, const char *drop_tbl) {  // NOLINT
     if (mysql_query(&conn, drop_tbl)) {
         LOG(WARNING) << ("Could not drop table tbl 'test'!\n");
         mysql_close(&conn);
@@ -119,7 +101,7 @@ static bool drop_tbl(MYSQL &conn, const char *drop_tbl) {
     return true;
 }
 
-static bool drop_db(MYSQL &conn, const char *drop_db) {
+static bool drop_db(MYSQL &conn, const char *drop_db) {  // NOLINT
     if (mysql_query(&conn, drop_db)) {
         LOG(WARNING) << ("Could not drop the testing database 'test'!\n");
         mysql_close(&conn);
@@ -143,10 +125,6 @@ static void BM_SIMPLE_INSERT(benchmark::State &state) {  // NOLINT
 
     const char *schema_insert_sql =
         "insert into tbl values(1,1,1,1,1,\"key1\", \"string1\");";
-
-    const char *select_sql =
-        "select col_str64, col_i64, col_i32, col_i16, col_f, col_d, col_str255 "
-        "from tbl;";
     const char *delete_sql = "delete from tbl";
     const char *drop_tbl_sql = "drop table tbl";
     const char *drop_db_sql = "drop database test";
@@ -195,9 +173,6 @@ static void BM_INSERT_WITH_INDEX(benchmark::State &state) {  // NOLINT
     const char *schema_insert_sql =
         "insert into tbl values(1,1,1,1,1,\"key1\", \"string1\");";
 
-    const char *select_sql =
-        "select col_str64, col_i64, col_i32, col_i16, col_f, col_d, col_str255 "
-        "from tbl;";
     const char *delete_sql = "delete from tbl";
     const char *drop_tbl_sql = "drop table tbl";
     const char *drop_db_sql = "drop database test";
@@ -299,7 +274,7 @@ failure:
     mysql_close(&conn);
 }
 
-static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {
+static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
     const char *db_sql = "create database test";
     const char *use_sql = "use test";
     const char *schema_sql =
@@ -401,8 +376,8 @@ failure:
     mysql_close(&conn);
 }
 BENCHMARK(BM_SIMPLE_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
-// BENCHMARK(BM_SIMPLE_INSERT);
-// BENCHMARK(BM_INSERT_WITH_INDEX);
+BENCHMARK(BM_SIMPLE_INSERT);
+BENCHMARK(BM_INSERT_WITH_INDEX);
 BENCHMARK(BM_WINDOW_CASE1_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
 // BENCHMARK(BM_INSERT_SINGLE_THREAD);
 }  // namespace bm

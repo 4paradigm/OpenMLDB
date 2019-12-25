@@ -11,6 +11,7 @@
 #define SRC_BM_BASE_BM_H_
 
 #include <random>
+#include <vector>
 namespace fesql {
 namespace bm {
 template <class T>

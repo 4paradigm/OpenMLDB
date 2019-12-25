@@ -6,20 +6,18 @@
  * Date: 2019/12/25
  *--------------------------------------------------------------------------
  **/
-/* Compile with:
- *
- * cc multi_threaded_inserts.c -lmysqlclient -pthread -o mti
- */
 
 #include "bm/fesql_client_bm_case.h"
+#include <memory>
+#include <string>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 namespace fesql {
 namespace bm {
 
-std::string host = "127.0.0.1";
-const static size_t dbms_port = 6603;
-const static size_t tablet_port = 7703;
+const std::string host = "127.0.0.1";    // NOLINT
+const static size_t dbms_port = 6603;    // NOLINT
+const static size_t tablet_port = 7703;  // NOLINT
 
 static bool feql_dbms_sdk_init(::fesql::sdk::DBMSSdk **dbms_sdk) {
     DLOG(INFO) << "Connect to Tablet dbms sdk... ";
@@ -32,8 +30,8 @@ static bool feql_dbms_sdk_init(::fesql::sdk::DBMSSdk **dbms_sdk) {
     return true;
 }
 
-static bool fesql_server_init(brpc::Server &tablet_server,
-                              brpc::Server &dbms_server,
+static bool fesql_server_init(brpc::Server &tablet_server,  // NOLINT
+                              brpc::Server &dbms_server,    // NOLINT
                               ::fesql::tablet::TabletServerImpl *tablet,
                               ::fesql::dbms::DBMSServerImpl *dbms) {
     DLOG(INFO) << ("Start FeSQL tablet server...");
@@ -73,8 +71,9 @@ static bool init_db(::fesql::sdk::DBMSSdk *dbms_sdk, std::string db_name) {
     return true;
 }
 
-static bool init_tbl(::fesql::sdk::DBMSSdk *dbms_sdk, std::string &db_name,
-                     std::string &schema_sql) {
+static bool init_tbl(::fesql::sdk::DBMSSdk *dbms_sdk,
+                     const std::string &db_name,
+                     const std::string &schema_sql) {
     DLOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
     // create table db1
     ::fesql::sdk::DatabaseDef db;
@@ -93,7 +92,8 @@ static bool init_tbl(::fesql::sdk::DBMSSdk *dbms_sdk, std::string &db_name,
     return true;
 }
 static bool repeated_insert_tbl(::fesql::sdk::TabletSdk *tablet_sdk,
-                                std::string &db_name, std::string &insert_sql,
+                                const std::string &db_name,
+                                const std::string &insert_sql,
                                 int32_t record_size) {
     DLOG(INFO) << ("Running inserts ...\n");
     int32_t fail = 0;
@@ -112,7 +112,7 @@ static bool repeated_insert_tbl(::fesql::sdk::TabletSdk *tablet_sdk,
 }
 
 void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
-                         int64_t record_size) {  // NOLINT
+                        int64_t record_size) {  // NOLINT
     std::string db_name = "test";
     std::string schema_sql =
         "create table tbl (\n"
@@ -207,7 +207,7 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
             query.sql = select_sql;
             std::unique_ptr<::fesql::sdk::ResultSet> rs =
                 sdk->SyncQuery(query, query_status);
-            ASSERT_TRUE(0 != rs);
+            ASSERT_TRUE(0 != rs); //NOLINT
             ASSERT_EQ(0, query_status.code);
             ASSERT_EQ(record_size, rs->GetRowCnt());
         }
@@ -343,7 +343,7 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
             query.is_batch_mode = is_batch_mode;
             std::unique_ptr<::fesql::sdk::ResultSet> rs =
                 sdk->SyncQuery(query, query_status);
-            ASSERT_TRUE(0 != rs);
+            ASSERT_TRUE(0!=rs); //NOLINT
             ASSERT_EQ(0, query_status.code);
             ASSERT_EQ(record_size, rs->GetRowCnt());
         }
@@ -356,4 +356,4 @@ failure:
 }
 
 }  // namespace bm
-};  // namespace fesql
+}  // namespace fesql

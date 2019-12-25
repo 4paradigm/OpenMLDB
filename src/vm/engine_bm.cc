@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#include "bm/base_bm.h"
 #include "benchmark/benchmark.h"
+#include "bm/base_bm.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -133,7 +133,8 @@ static void Data_WindowCase1(TableStatus* status, int32_t data_size) {
         new ::fesql::storage::Table(1, 1, status->table_def));
     ASSERT_TRUE(table->Init());
 
-    ::fesql::bm::Repeater<std::string> col0(std::vector<std::string>({"hello"}));
+    ::fesql::bm::Repeater<std::string> col0(
+        std::vector<std::string>({"hello"}));
     ::fesql::bm::IntRepeater<int32_t> col1;
     col1.Range(1, 100, 1);
     ::fesql::bm::IntRepeater<int16_t> col2;
@@ -144,8 +145,9 @@ static void Data_WindowCase1(TableStatus* status, int32_t data_size) {
     col4.Range(100.0, 10000.0, 10.0);
     ::fesql::bm::IntRepeater<int64_t> col5;
     col5.Range(1576571615000 - 100000000, 1576571615000, 1000);
-    ::fesql::bm::Repeater<std::string> col6({"astring", "bstring", "cstring", "dstring",
-                                "estring", "fstring", "gstring", "hstring"});
+    ::fesql::bm::Repeater<std::string> col6({"astring", "bstring", "cstring",
+                                             "dstring", "estring", "fstring",
+                                             "gstring", "hstring"});
 
     for (int i = 0; i < data_size; ++i) {
         std::string str1 = col0.GetValue();
@@ -316,8 +318,8 @@ static void BM_EngineWindowSumFeature1(benchmark::State& state) {  // NOLINT
     }
 }
 
-
-static void BM_EngineRunBatchWindowSumFeature1(benchmark::State& state) {  // NOLINT
+static void BM_EngineRunBatchWindowSumFeature1(
+    benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
 
@@ -335,7 +337,7 @@ static void BM_EngineRunBatchWindowSumFeature1(benchmark::State& state) {  // NO
         "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
-            std::to_string(limit_cnt) + ";";
+        std::to_string(limit_cnt) + ";";
     Engine engine(&table_mgr);
     RunSession session;
     base::Status query_status;
@@ -348,7 +350,8 @@ static void BM_EngineRunBatchWindowSumFeature1(benchmark::State& state) {  // NO
         }
     }
 }
-static void BM_EngineRunBatchWindowSumFeature5(benchmark::State& state) {  // NOLINT
+static void BM_EngineRunBatchWindowSumFeature5(
+    benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
 
@@ -370,7 +373,7 @@ static void BM_EngineRunBatchWindowSumFeature5(benchmark::State& state) {  // NO
         "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
-            std::to_string(limit_cnt) + ";";
+        std::to_string(limit_cnt) + ";";
     Engine engine(&table_mgr);
     RunSession session;
     base::Status query_status;
@@ -447,7 +450,7 @@ BENCHMARK(BM_EngineWindowSumFeature5)
     ->Args({10000, 10000});
 
 BENCHMARK(BM_EngineRunBatchWindowSumFeature1)
-->Args({1, 2})
+    ->Args({1, 2})
     ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})
@@ -458,7 +461,7 @@ BENCHMARK(BM_EngineRunBatchWindowSumFeature1)
     ->Args({10000, 10000});
 
 BENCHMARK(BM_EngineRunBatchWindowSumFeature5)
-->Args({1, 2})
+    ->Args({1, 2})
     ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})
