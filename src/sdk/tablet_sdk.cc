@@ -277,6 +277,7 @@ std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(
     ::fesql::tablet::QueryRequest request;
     request.set_sql(query.sql);
     request.set_db(query.db);
+    request.set_is_batch(query.is_batch_mode);
     brpc::Controller cntl;
     ResultSetImpl* rs = new ResultSetImpl();
     stub.Query(&cntl, &request, &(rs->response_), NULL);

@@ -9,6 +9,7 @@ option java_outer_classname = "Tablet";
 message QueryRequest {
     optional string sql = 1;
     optional string db = 2;
+    optional bool is_batch = 3;
 }
 
 message QueryResponse {

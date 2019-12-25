@@ -91,7 +91,7 @@ void StartTablet(int argc, char *argv[]) {
     std::ostringstream oss;
     oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
         << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
-    LOG(INFO) << "start tablet on port " << FLAGS_port << " with version "
+    DLOG(INFO) << "start tablet on port " << FLAGS_port << " with version "
               << oss.str();
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
@@ -118,7 +118,7 @@ void StartDBMS(char *argv[]) {
     std::ostringstream oss;
     oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
         << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
-    LOG(INFO) << "start dbms on port " << FLAGS_port << " with version "
+    DLOG(INFO) << "start dbms on port " << FLAGS_port << " with version "
               << oss.str();
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();

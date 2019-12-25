@@ -28,7 +28,7 @@ static bool init(MYSQL &conn) {
     mysql_init(&conn);
     mysql_options(&conn, MYSQL_DEFAULT_AUTH, "mysql_native_password");
 
-    LOG(INFO) << ("Connecting to MemSQL...");
+    DLOG(INFO) << ("Connecting to MemSQL...");
     if (mysql_real_connect(&conn, host, user, passwd, NULL, port, NULL, 0) !=
         &conn) {
         printf("Could not connect to the MemSQL database!\n");
@@ -38,7 +38,7 @@ static bool init(MYSQL &conn) {
 }
 
 static bool init_db(MYSQL &conn, const char *db_sql, const char *use_sql) {
-    LOG(INFO) << ("Creating database 'test'...");
+    DLOG(INFO) << ("Creating database 'test'...");
     if (mysql_query(&conn, db_sql) || mysql_query(&conn, use_sql)) {
         LOG(WARNING) << ("Could not create 'test' database!");
         mysql_close(&conn);
@@ -48,7 +48,7 @@ static bool init_db(MYSQL &conn, const char *db_sql, const char *use_sql) {
 }
 
 static bool init_tbl(MYSQL &conn, const char *schema_sql) {
-    LOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
+    DLOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
     if (mysql_query(&conn, schema_sql)) {
         LOG(WARNING)
             << ("Could not create 'tbl' table in the 'test' database!\n");
@@ -59,7 +59,7 @@ static bool init_tbl(MYSQL &conn, const char *schema_sql) {
 }
 
 static bool create_index(MYSQL &conn, const char *index_sql) {
-    LOG(INFO) << ("Creating table 'tbl' index in database 'test'...\n");
+    DLOG(INFO) << ("Creating table 'tbl' index in database 'test'...\n");
     if (mysql_query(&conn, index_sql)) {
         LOG(WARNING)
             << ("Could not create 'tbl' index in the 'test' database!\n");
@@ -70,7 +70,7 @@ static bool create_index(MYSQL &conn, const char *index_sql) {
 }
 static bool repeated_insert_tbl(MYSQL &conn, const char *insert_sql,
                                 int32_t record_size) {
-    LOG(INFO) << ("Running inserts ...\n");
+    DLOG(INFO) << ("Running inserts ...\n");
     int32_t fail = 0;
     for (int i = 0; i < record_size; ++i) {
         if (mysql_query(&conn, insert_sql)) {
@@ -313,7 +313,6 @@ static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {
         "        col_str255 VARCHAR(255)\n"
         "    );";
 
-
     const char *select_sql =
         "SELECT "
         "SUM(col_i32) OVER w1 as sum_col_i32, \n"
@@ -401,10 +400,10 @@ static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {
 failure:
     mysql_close(&conn);
 }
- BENCHMARK(BM_SIMPLE_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
+BENCHMARK(BM_SIMPLE_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
 // BENCHMARK(BM_SIMPLE_INSERT);
 // BENCHMARK(BM_INSERT_WITH_INDEX);
-//BENCHMARK(BM_WINDOW_CASE1_QUERY)->Arg(100)->Arg(1000)->Arg(10000);
+BENCHMARK(BM_WINDOW_CASE1_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
 // BENCHMARK(BM_INSERT_SINGLE_THREAD);
 }  // namespace bm
 };  // namespace fesql

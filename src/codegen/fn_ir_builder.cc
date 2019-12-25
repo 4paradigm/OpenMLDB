@@ -166,7 +166,7 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnDef *fn_def,
             return false;
         }
     }
-    LOG(INFO) << "build fn " << fn_def->name_ << " header done";
+    DLOG(INFO) << "build fn " << fn_def->name_ << " header done";
     return true;
 }
 

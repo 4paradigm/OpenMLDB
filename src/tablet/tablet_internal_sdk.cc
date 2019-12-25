@@ -37,7 +37,7 @@ bool TabletInternalSDK::Init() {
         LOG(WARNING) << "fail to init tablet sdk with ret " << ret;
         return false;
     }
-    LOG(INFO) << "init tablet sdk with endpoint " << endpoint_ << " done";
+    DLOG(INFO) << "init tablet sdk with endpoint " << endpoint_ << " done";
     return true;
 }
 

@@ -88,9 +88,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 RunSession::RunSession() {}
 RunSession::~RunSession() {}
 
-int32_t RunSession::RunProjectOp(ProjectOp* project_op,
-                                 std::shared_ptr<TableStatus> status,
-                                 int8_t* row, int8_t* output) {}
+
 
 int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();

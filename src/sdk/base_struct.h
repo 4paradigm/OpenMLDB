@@ -60,6 +60,7 @@ enum DataType {
 struct Query {
     std::string sql;
     std::string db;
+    bool is_batch_mode = false;
 };
 
 class Value {

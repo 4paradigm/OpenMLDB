@@ -35,7 +35,9 @@ bool OpGenerator::Gen(const ::fesql::node::PlanNodeList& trees,
                       const std::string& db, ::llvm::Module* module,
                       OpVector* ops, base::Status& status) {
     if (module == NULL || ops == NULL) {
-        LOG(WARNING) << "module or ops is null";
+        status.msg = "module or ops is null";
+        status.code = common::kNullPointer;
+        LOG(WARNING) << status.msg;
         return false;
     }
 
@@ -76,7 +78,9 @@ bool OpGenerator::GenSQL(const ::fesql::node::SelectPlanNode* tree,
                          const std::string& db, ::llvm::Module* module,
                          OpVector* ops, base::Status& status) {
     if (module == NULL || ops == NULL || tree == NULL) {
-        LOG(WARNING) << "input args has null";
+        status.msg = "input args has null";
+        status.code = common::kNullPointer;
+        LOG(WARNING) << status.msg;
         return false;
     }
 

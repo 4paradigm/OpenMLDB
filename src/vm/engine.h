@@ -49,9 +49,6 @@ class RunSession {
     }
 
     int32_t Run(std::vector<int8_t*>& buf, uint32_t limit);  // NOLINT
-    int32_t RunProjectOp(ProjectOp* project_op,
-                         std::shared_ptr<TableStatus> status, int8_t* row,
-                         int8_t* output);
     int32_t RunOne(const Row& in_row, Row& out_row);              // NOLINT
     int32_t RunBatch(std::vector<int8_t*>& buf, uint32_t limit);  // NOLINT
 

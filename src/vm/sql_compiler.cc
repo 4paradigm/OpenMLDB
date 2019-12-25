@@ -37,7 +37,7 @@ SQLCompiler::SQLCompiler(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
 SQLCompiler::~SQLCompiler() {}
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
-    LOG(INFO) << "start to compile sql " << ctx.sql;
+    DLOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::NodeManager nm;
     ::fesql::node::PlanNodeList trees;
     bool ok = Parse(ctx, nm, trees, status);
@@ -57,10 +57,16 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
 
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
-    if (jit_expected.takeError()) {
-        LOG(WARNING) << "fail to init jit let";
-        return false;
+    {
+        ::llvm::Error e = jit_expected.takeError();
+        if (e) {
+            status.msg = "fail to init jit let";
+            status.code = common::kJitError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
     }
+
     ctx.jit = std::move(*jit_expected);
     ctx.jit->Init();
     if (false == ctx.jit->OptModule(m.get())) {

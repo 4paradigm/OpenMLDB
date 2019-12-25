@@ -53,7 +53,7 @@ void DBMSServerImpl::AddGroup(RpcController* ctr,
     ::fesql::common::Status* status = response->mutable_status();
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
-    LOG(INFO) << "create group " << request->name() << " done";
+    DLOG(INFO) << "create group " << request->name() << " done";
 }
 
 void DBMSServerImpl::AddTable(RpcController* ctr,
@@ -157,7 +157,7 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
     tid_ += 1;
-    LOG(INFO) << "create table " << request->table().name() << " done";
+    DLOG(INFO) << "create table " << request->table().name() << " done";
 }
 void DBMSServerImpl::GetSchema(RpcController* ctr,
                                const GetSchemaRequest* request,
@@ -195,7 +195,7 @@ void DBMSServerImpl::GetSchema(RpcController* ctr,
             ::fesql::common::Status* status = response->mutable_status();
             status->set_code(::fesql::common::kOk);
             status->set_msg("ok");
-            LOG(INFO) << "show table " << request->name() << " done";
+            DLOG(INFO) << "show table " << request->name() << " done";
             return;
         }
     }
@@ -233,7 +233,7 @@ void DBMSServerImpl::AddDatabase(RpcController* ctr,
     ::fesql::common::Status* status = response->mutable_status();
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
-    LOG(INFO) << "create database " << request->name() << " done";
+    DLOG(INFO) << "create database " << request->name() << " done";
 }
 
 void DBMSServerImpl::IsExistDatabase(RpcController* ctr,

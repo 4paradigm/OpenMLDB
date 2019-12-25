@@ -1,20 +1,19 @@
+/*-------------------------------------------------------------------------
+ * Copyright (C) 2019, 4paradigm
+ * fesql_case.cc
+ *
+ * Author: chenjing
+ * Date: 2019/12/25
+ *--------------------------------------------------------------------------
+ **/
 /* Compile with:
  *
  * cc multi_threaded_inserts.c -lmysqlclient -pthread -o mti
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "benchmark/benchmark.h"
-#include "bm/base_bm.h"
-#include "brpc/server.h"
-#include "dbms/dbms_server_impl.h"
+#include "bm/fesql_client_bm_case.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "mysql/mysql.h"
-#include "sdk/dbms_sdk.h"
-#include "sdk/tablet_sdk.h"
-#include "tablet/tablet_server_impl.h"
 namespace fesql {
 namespace bm {
 
@@ -23,7 +22,7 @@ const static size_t dbms_port = 6603;
 const static size_t tablet_port = 7703;
 
 static bool feql_dbms_sdk_init(::fesql::sdk::DBMSSdk **dbms_sdk) {
-    LOG(INFO) << "Connect to Tablet dbms sdk... ";
+    DLOG(INFO) << "Connect to Tablet dbms sdk... ";
     const std::string endpoint = host + ":" + std::to_string(dbms_port);
     *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     if (nullptr == *dbms_sdk) {
@@ -32,11 +31,12 @@ static bool feql_dbms_sdk_init(::fesql::sdk::DBMSSdk **dbms_sdk) {
     }
     return true;
 }
+
 static bool fesql_server_init(brpc::Server &tablet_server,
                               brpc::Server &dbms_server,
                               ::fesql::tablet::TabletServerImpl *tablet,
                               ::fesql::dbms::DBMSServerImpl *dbms) {
-    LOG(INFO) << ("Start FeSQL tablet server...");
+    DLOG(INFO) << ("Start FeSQL tablet server...");
     if (!tablet->Init()) {
         LOG(WARNING) << "Fail to start FeSQL server";
     }
@@ -49,7 +49,7 @@ static bool fesql_server_init(brpc::Server &tablet_server,
     }
     tablet_server.Start(tablet_port, &options);
 
-    LOG(INFO) << ("Start FeSQL dbms server...");
+    DLOG(INFO) << ("Start FeSQL dbms server...");
     if (dbms_server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG(WARNING) << "Fail to add dbms service";
         return false;
@@ -61,7 +61,7 @@ static bool fesql_server_init(brpc::Server &tablet_server,
 }
 
 static bool init_db(::fesql::sdk::DBMSSdk *dbms_sdk, std::string db_name) {
-    LOG(INFO) << ("Creating database 'test'...");
+    DLOG(INFO) << ("Creating database 'test'...");
     // create database
     fesql::sdk::Status status;
     ::fesql::sdk::DatabaseDef db;
@@ -75,7 +75,7 @@ static bool init_db(::fesql::sdk::DBMSSdk *dbms_sdk, std::string db_name) {
 
 static bool init_tbl(::fesql::sdk::DBMSSdk *dbms_sdk, std::string &db_name,
                      std::string &schema_sql) {
-    LOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
+    DLOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
     // create table db1
     ::fesql::sdk::DatabaseDef db;
     db.name = db_name;
@@ -92,39 +92,27 @@ static bool init_tbl(::fesql::sdk::DBMSSdk *dbms_sdk, std::string &db_name,
     }
     return true;
 }
-static bool repeated_insert_tbl(MYSQL &conn, const char *insert_sql,
+static bool repeated_insert_tbl(::fesql::sdk::TabletSdk *tablet_sdk,
+                                std::string &db_name, std::string &insert_sql,
                                 int32_t record_size) {
-    LOG(INFO) << ("Running inserts ...\n");
+    DLOG(INFO) << ("Running inserts ...\n");
     int32_t fail = 0;
     for (int i = 0; i < record_size; ++i) {
-        if (mysql_query(&conn, insert_sql)) {
+        ::fesql::sdk::Status status;
+        tablet_sdk->SyncInsert(db_name, insert_sql, status);
+        if (0 != status.code) {
             fail++;
             LOG(WARNING)
                 << ("Could not insert 'tbl' table in the 'test' "
                     "database!\n");
         }
     }
-    LOG(INFO) << "Insert tbl, fail cnt: " << fail;
+    DLOG(INFO) << "Insert tbl, fail cnt: " << fail;
     return true;
 }
 
-static bool insert_tbl(MYSQL &conn, std::vector<std::string> sqls) {
-    LOG(INFO) << ("Running inserts ...\n");
-    int32_t fail = 0;
-    for (std::string sql : sqls) {
-        if (mysql_query(&conn, sql.c_str())) {
-            fail++;
-            LOG(WARNING)
-                << ("Could not insert 'tbl' table in the 'test' "
-                    "database!\n");
-        }
-    }
-    LOG(INFO) << "Insert tbl, fail cnt: " << fail;
-    return true;
-}
-
-static void BM_SIMPLE_QUERY(benchmark::State &state) {  // NOLINT
-    int64_t record_size = state.range(0);
+void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
+                         int64_t record_size) {  // NOLINT
     std::string db_name = "test";
     std::string schema_sql =
         "create table tbl (\n"
@@ -189,24 +177,40 @@ static void BM_SIMPLE_QUERY(benchmark::State &state) {  // NOLINT
                   << ", fail cnt: " << fail;
     }
 
-    {
-        LOG(INFO) << "Running query ...\n" << select_sql;
-        int32_t fail = 0;
-        int32_t total_cnt = 0;
-        for (auto _ : state) {
-            total_cnt++;
+    switch (mode) {
+        case BENCHMARK: {
+            {
+                LOG(INFO) << "Running query ...\n" << select_sql;
+                int32_t fail = 0;
+                int32_t total_cnt = 0;
+                for (auto _ : *state_ptr) {
+                    total_cnt++;
 
+                    ::fesql::sdk::Query query;
+                    sdk::Status query_status;
+                    query.db = "test";
+                    query.sql = select_sql;
+                    std::unique_ptr<::fesql::sdk::ResultSet> rs =
+                        sdk->SyncQuery(query, query_status);
+                    if (!sdk->SyncQuery(query, query_status)) {
+                        fail++;
+                    }
+                }
+                LOG(INFO) << "Total cnt: " << total_cnt
+                          << ", fail cnt: " << fail;
+            }
+        }
+        case TEST: {
             ::fesql::sdk::Query query;
             sdk::Status query_status;
             query.db = "test";
             query.sql = select_sql;
             std::unique_ptr<::fesql::sdk::ResultSet> rs =
                 sdk->SyncQuery(query, query_status);
-            if (!sdk->SyncQuery(query, query_status)) {
-                fail++;
-            }
+            ASSERT_TRUE(0 != rs);
+            ASSERT_EQ(0, query_status.code);
+            ASSERT_EQ(record_size, rs->GetRowCnt());
         }
-        LOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
     }
 
 failure:
@@ -214,9 +218,8 @@ failure:
         delete dbms_sdk;
     }
 }
-
-static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
-    int64_t record_size = state.range(0);
+void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode, int64_t record_size) {
     std::string db_name = "test";
     std::string schema_sql =
         "create table tbl (\n"
@@ -238,7 +241,8 @@ static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
         "window w1 as (PARTITION BY col_str64 \n"
         "                  ORDER BY col_i64\n"
         "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW) "
-        "limit " + std::to_string(record_size) + ";";
+        "limit " +
+        std::to_string(record_size) + ";";
 
     brpc::Server tablet_server;
     brpc::Server dbms_server;
@@ -289,7 +293,7 @@ static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
             {"aaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbb", "ccccccccccccccccccc",
              "ddddddddddddddddd"});
         int32_t fail = 0;
-        LOG(INFO) << "Running insert ...\n" << select_sql;
+        DLOG(INFO) << "Running insert ...\n" << select_sql;
         for (int i = 0; i < record_size; ++i) {
             std::ostringstream oss;
             oss << "insert into tbl values (" << col_i32.GetValue() << ", "
@@ -298,7 +302,7 @@ static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
                 << "\"" << col_str64.GetValue() << "\", "
                 << "\"" << col_str255.GetValue() << "\""
                 << ");";
-            LOG(INFO) << oss.str();
+            //            LOG(INFO) << oss.str();
             ::fesql::sdk::Status insert_status;
             int32_t fail = 0;
             sdk->SyncInsert("test", oss.str().c_str(), insert_status);
@@ -306,29 +310,43 @@ static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
                 fail += 1;
             }
         }
-        LOG(INFO) << "Insert cnt: " << record_size << ", fail cnt: " << fail;
-        std::cout << "Insert cnt: " << record_size << ", fail cnt: " << fail << std::endl;
+        DLOG(INFO) << "Insert cnt: " << record_size << ", fail cnt: " << fail;
     }
 
-    {
-        LOG(INFO) << "Running query ...\n" << select_sql;
-        int32_t fail = 0;
-        int32_t total_cnt = 0;
-        for (auto _ : state) {
-            total_cnt++;
+    switch (mode) {
+        case BENCHMARK: {
+            DLOG(INFO) << "Running query ...\n" << select_sql;
+            int32_t fail = 0;
+            int32_t total_cnt = 0;
+            for (auto _ : *state_ptr) {
+                total_cnt++;
 
+                ::fesql::sdk::Query query;
+                sdk::Status query_status;
+                query.db = "test";
+                query.sql = select_sql;
+                query.is_batch_mode = is_batch_mode;
+
+                benchmark::DoNotOptimize(sdk->SyncQuery(query, query_status));
+                if (0 != query_status.code) {
+                    fail++;
+                }
+            }
+            DLOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
+            break;
+        }
+        case TEST: {
             ::fesql::sdk::Query query;
             sdk::Status query_status;
             query.db = "test";
             query.sql = select_sql;
+            query.is_batch_mode = is_batch_mode;
             std::unique_ptr<::fesql::sdk::ResultSet> rs =
                 sdk->SyncQuery(query, query_status);
-            if (!sdk->SyncQuery(query, query_status)) {
-                fail++;
-            }
+            ASSERT_TRUE(0 != rs);
+            ASSERT_EQ(0, query_status.code);
+            ASSERT_EQ(record_size, rs->GetRowCnt());
         }
-        LOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
-        std::cout << "Total cnt: " << total_cnt << ", fail cnt: " << fail << std::endl;
     }
 
 failure:
@@ -337,12 +355,5 @@ failure:
     }
 }
 
-// BENCHMARK(BM_SIMPLE_INSERT);
-// BENCHMARK(BM_INSERT_WITH_INDEX);
-BENCHMARK(BM_WINDOW_CASE1_QUERY)->Arg(100)->Arg(1000)->Arg(10000);
-BENCHMARK(BM_SIMPLE_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
-// BENCHMARK(BM_INSERT_SINGLE_THREAD);
 }  // namespace bm
 };  // namespace fesql
-
-BENCHMARK_MAIN();

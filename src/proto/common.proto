@@ -25,6 +25,7 @@ enum StatusCode {
     kFunError = 40;
     kCodegenError = 50;
     kOpGenError = 60;
+    kJitError = 70;
 }
 
 message Status {

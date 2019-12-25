@@ -362,7 +362,7 @@ TEST_P(EngineTest, test_normal) {
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
 
-    LOG(INFO) << "RUN IN MODE" << mode;
+    DLOG(INFO) << "RUN IN MODE" << mode;
     std::vector<int8_t*> output;
     int32_t ret = -1;
     switch (mode) {

@@ -157,7 +157,7 @@ bool RowFnLetIRBuilder::BuildFnHeader(
         return false;
     }
     *fn = f;
-    LOG(INFO) << "create fn header " << name << " done";
+    DLOG(INFO) << "create fn header " << name << " done";
     return true;
 }
 
