@@ -37,7 +37,7 @@ using ::rtidb::replica::ReplicatorRole;
 using ::rtidb::zk::ZkClient;
 using ::rtidb::base::SpinMutex;
 
-const uint64_t INVALID_REMOTE_TID = UINT32_MAX;
+const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 namespace rtidb {
 namespace tablet {
@@ -237,6 +237,16 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void SetMode(RpcController* controller,
+            const ::rtidb::api::SetModeRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void AlignTable(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     inline void SetServer(brpc::Server* server) {
         server_ = server;
     }
@@ -399,6 +409,7 @@ private:
     brpc::Server* server_;
     std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_root_paths_;
     std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_recycle_root_paths_;
+    std::atomic<bool> follower_;
 };
 
 }

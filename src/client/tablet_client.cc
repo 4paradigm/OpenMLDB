@@ -405,13 +405,19 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t 
 }
 
 bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
-        const std::vector<std::string>& endpoints, uint64_t term) {
+        const std::vector<std::string>& endpoints,
+        uint64_t term, const std::vector<::rtidb::common::EndpointAndTid>* endpoint_tid) {
     ::rtidb::api::ChangeRoleRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (leader) {
         request.set_mode(::rtidb::api::TableMode::kTableLeader);
         request.set_term(term);
+        if ((endpoint_tid != nullptr) && (!endpoint_tid->empty())) {
+            for (auto& endpoint : *endpoint_tid) {
+                request.add_endpoint_tid()->CopyFrom(endpoint);
+            }
+        }
     } else {
         request.set_mode(::rtidb::api::TableMode::kTableFollower);
     }
@@ -1057,6 +1063,18 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, ::rtidb::common::Sto
     ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
     count = response->count();
     return kv_it;
+}
+
+bool TabletClient::SetMode(bool mode) {
+    ::rtidb::api::SetModeRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_follower(mode);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetMode,
+        &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
 }
 
 }

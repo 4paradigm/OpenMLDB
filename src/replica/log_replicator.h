@@ -47,7 +47,7 @@ public:
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role,
-                  std::shared_ptr<Table> table);
+                  std::shared_ptr<Table> table, std::atomic<bool>* follower);
 
     ~LogReplicator();
 
@@ -132,8 +132,10 @@ private:
     std::atomic<int> snapshot_log_part_index_;
     std::atomic<uint64_t> snapshot_last_offset_;
 
-    std::mutex wmu_;
     std::shared_ptr<Table> table_;
+
+    std::mutex wmu_;
+    std::atomic<bool>* follower_;
 };
 
 } // end of replica

@@ -15,9 +15,11 @@
 #include "base/schema_codec.h"
 
 namespace rtidb {
+
+const uint32_t INVALID_TID = UINT32_MAX;
 namespace client {
 using ::rtidb::api::TaskInfo;
-const uint64_t INVALID_REMOTE_TID = UINT32_MAX;
+const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 class TabletClient {
 
@@ -189,10 +191,11 @@ public:
 
     bool LoadTable(const ::rtidb::api::TableMeta& table_meta, std::shared_ptr<TaskInfo> task_info);
 
-    bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term = 0);
+    bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term);
 
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
-                    const std::vector<std::string>& endpoints, uint64_t term = 0);
+                    const std::vector<std::string>& endpoints, uint64_t term,
+                    const std::vector<::rtidb::common::EndpointAndTid>* et = nullptr);
 
     bool UpdateTTL(uint32_t tid, uint32_t pid, 
                    const ::rtidb::api::TTLType& type,
@@ -230,6 +233,8 @@ public:
                 const std::string& pk, uint64_t ts, uint32_t limit, uint32_t& count);
 
     void ShowTp();
+
+    bool SetMode(bool mode);
 
 private:
     std::string endpoint_;

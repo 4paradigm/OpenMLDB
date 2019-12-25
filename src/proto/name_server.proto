@@ -11,6 +11,18 @@ enum CompressType {
     kSnappy = 1;
 }
 
+enum ServerMode {
+    kNORMAL = 0;
+    kLEADER = 1;
+    kFOLLOWER = 2;
+}
+
+enum ClusterStatus {
+    kClusterHealthy = 0;
+    kClusterOffline = 1;
+    kClusterRemove = 2;
+}
+
 message ColumnDesc {
     required string name = 1;
     required string type = 2;
@@ -25,7 +37,7 @@ message PartitionMeta {
     optional uint64 record_cnt = 5;
     optional uint64 record_byte_size = 6;
     optional bool tablet_has_partition = 7 [default = true];
-    optional uint32 remote_tid = 8;
+    optional uint32 remote_tid = 8 [default = 4294967295]; // 4294967295 is UINT32 max value
 }
 
 message TermPair {
@@ -248,7 +260,7 @@ message ChangeLeaderData {
     optional string leader = 6;
     repeated string follower = 7;
     optional string candidate_leader = 8;
-    repeated string remote_follower = 9;
+    repeated rtidb.common.EndpointAndTid remote_follower = 9;
 }
 
 message OPStatus {
@@ -315,6 +327,7 @@ message GeneralRequest {}
 message ClusterAddAge {
     optional ClusterAddress replica = 1;
     optional uint64 age = 2;
+    optional string state = 3;
 }
 message ShowReplicaClusterResponse {
     repeated ClusterAddAge replicas = 1;
@@ -330,7 +343,7 @@ message ReplicaClusterByNsRequest {
     optional string zone_name = 1;
     optional string replica_alias = 2;
     optional uint64 zone_term = 3;
-    optional bool follower = 4;
+    optional ServerMode mode = 4;
 }
 
 message AddReplicaClusterByNsResponse {
@@ -338,6 +351,10 @@ message AddReplicaClusterByNsResponse {
     repeated TableInfo table_info = 2;
     required int32 code = 3;
     optional string msg = 4;
+}
+
+message SwitchModeRequest {
+    optional ServerMode sm = 1;
 }
 
 service NameServer {
@@ -369,7 +386,7 @@ service NameServer {
     rpc RemoveReplicaCluster(RemoveReplicaOfRequest) returns (GeneralResponse);
     rpc AddReplicaClusterByNs(ReplicaClusterByNsRequest) returns (AddReplicaClusterByNsResponse);
     rpc RemoveReplicaClusterByNs(ReplicaClusterByNsRequest) returns (GeneralResponse);
-    
+    rpc SwitchMode(SwitchModeRequest) returns (GeneralResponse);
     rpc GetTaskStatus(rtidb.api.TaskStatusRequest) returns (rtidb.api.TaskStatusResponse);
     rpc DeleteOPTask(rtidb.api.DeleteTaskRequest) returns (rtidb.api.GeneralResponse);
     rpc CreateTableInfo(CreateTableInfoRequest) returns (CreateTableInfoResponse);

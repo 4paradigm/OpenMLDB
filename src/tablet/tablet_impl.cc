@@ -81,7 +81,9 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size),
     io_pool_(FLAGS_io_pool_size), snapshot_pool_(1), server_(NULL),
-    mode_root_paths_(), mode_recycle_root_paths_(){}
+    mode_root_paths_(), mode_recycle_root_paths_(){
+    follower_.store(false);
+}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -588,6 +590,12 @@ void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
+    if (follower_.load(std::memory_order_relaxed)) {
+        response->set_code(453);
+        response->set_msg("is follower cluster");
+        done->Run();
+        return;
+    }
     if (request->time() == 0 && request->ts_dimensions_size() == 0) {
         response->set_code(114);
         response->set_msg("ts must be greater than zero");
@@ -1544,6 +1552,11 @@ void TabletImpl::Delete(RpcController* controller,
               ::rtidb::api::GeneralResponse* response,
               Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    if (follower_.load(std::memory_order_relaxed)) {
+        response->set_code(453);
+        response->set_msg("is follower cluster");
+        return;
+    }
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         PDLOG(DEBUG, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
@@ -1659,6 +1672,10 @@ void TabletImpl::ChangeRole(RpcController* controller,
         }
         if (replicator->AddReplicateNode(vec) < 0) {
             PDLOG(WARNING,"add replicator failed. tid[%u] pid[%u]", tid, pid);
+        }
+        for (auto& e : request->endpoint_tid()) {
+            std::vector<std::string> endpoints{e.endpoint()};
+            replicator->AddReplicateNode(endpoints, e.tid());
         }
     } else {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -1827,14 +1844,12 @@ void TabletImpl::AppendEntries(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
-    /**
-    if (table->IsLeader()) {
+    if (!follower_.load(std::memory_order_relaxed) && table->IsLeader()) {
         PDLOG(WARNING, "table is leader. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(102);
         response->set_msg("table is leader");
         return;
     }
-    */
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         response->set_code(104);
         response->set_msg("table is loading");
@@ -3362,12 +3377,12 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      endpoints,
                                                      ReplicatorRole::kLeaderNode, 
-                                                     table);
+                                                     table, &follower_);
     } else {
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      std::vector<std::string>(), 
                                                      ReplicatorRole::kFollowerNode,
-                                                     table);
+                                                     table, &follower_);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u", table_meta->tid(), table_meta->pid());
@@ -3448,12 +3463,12 @@ int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_met
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      endpoints,
                                                      ReplicatorRole::kLeaderNode, 
-                                                     table);
+                                                     table, &follower_);
     } else {
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      std::vector<std::string>(), 
                                                      ReplicatorRole::kFollowerNode,
-                                                     table);
+                                                     table, &follower_);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u", table_meta->tid(), table_meta->pid());
@@ -3638,7 +3653,6 @@ int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api:
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
         return -1;
     }
-    PDLOG(DEBUG, "task status [%s]--------------", ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
     return 0;
 }
 
@@ -3908,6 +3922,40 @@ bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
         }
     }
     return true;
+}
+
+void TabletImpl::SetMode(RpcController* controller,
+        const ::rtidb::api::SetModeRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    follower_.store(request->follower(), std::memory_order_relaxed);
+    std::string mode = request->follower() == true ? "follower" : "normal";
+    PDLOG(INFO, "set tablet mode %s", mode.c_str());
+    response->set_code(0);
+}
+
+void TabletImpl::AlignTable(RpcController* controller,
+        const ::rtidb::api::GeneralRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(100);
+        response->set_msg("table is not exist");
+        return;
+    }
+    std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
+    if (!replicator) {
+        PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(),
+              request->pid());
+        response->set_code(100);
+        response->set_msg("table is not exist");
+        return;
+    }
+    // replicator.GetLogPart().Get
 }
 
 }
