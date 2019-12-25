@@ -255,11 +255,11 @@ class TestCaseBase(unittest.TestCase):
         result = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_scan_result(result)
 
-    def ns_scan_multi_with_pair(self, endpoint, name, pk, idx_name, start_time, end_time, ts_name, limit = '0'):
-        cmd = 'scan {} {} {} {} {} {} {}'.format('table_name='+name, 'key='+pk, 'index_name='+idx_name, 'st='+start_time, 'et='+end_time, 'ts_name='+ts_name, 'limit='+limit)
+    def ns_scan_multi_with_pair(self, endpoint, name, pk, idx_name, start_time, end_time, ts_name, limit = '0', atleast = '0'):
+        cmd = 'scan {} {} {} {} {} {} {} {}'.format('table_name='+name, 'key='+pk, 'index_name='+idx_name, 'st='+start_time, 'et='+end_time, 'ts_name='+ts_name, 'limit='+limit, 'atleast='+atleast)
         result = self.run_client(endpoint, cmd, 'ns_client')
+        print(result)
         return self.parse_scan_result(result)
-
 
     def ns_delete(self, endpoint, name, key, idx_name = ''):
         cmd = 'delete {} {} {}'.format(name, key, idx_name);

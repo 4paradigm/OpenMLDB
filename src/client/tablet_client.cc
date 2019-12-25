@@ -583,7 +583,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
                                  uint32_t limit,
                                  uint32_t atleast,
                                  std::string& msg) {
-    if (atleast > limit) {
+    if (limit!=0 && atleast > limit) {
         msg = "atleast should be no greater than limit";
         return NULL;
     }
@@ -636,7 +636,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
              uint32_t limit,
              uint32_t atleast,
              std::string& msg) {
-    if (atleast > limit) {
+    if (limit!=0 && atleast > limit) {
         msg = "atleast should be no greater than limit";
         return NULL;
     }

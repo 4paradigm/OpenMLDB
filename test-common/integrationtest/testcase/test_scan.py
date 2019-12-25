@@ -106,5 +106,6 @@ class TestScan(TestCaseBase):
             self.assertEqual(rs3[1]['key'], 'testkey0')
             self.assertEqual(rs3[1]['data'], 'testvalue0')
 
+
 if __name__ == "__main__":
     load(TestScan)
