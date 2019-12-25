@@ -46,7 +46,7 @@ public:
                    const std::vector<std::string>& endpoints,
                    std::shared_ptr<MemTable> table): role_(role),
     path_(path), endpoints_(endpoints), 
-    replicator_(path_, endpoints_, role_, table) {
+    replicator_(path_, endpoints_, role_, table, &follower_) {
     }
 
     ~MockTabletImpl() {
@@ -98,6 +98,7 @@ private:
     std::string path_;
     std::vector<std::string> endpoints_;
     LogReplicator replicator_;
+    std::atomic<bool> follower_;
 };
 
 bool ReceiveEntry(const ::rtidb::api::LogEntry& entry) {
@@ -120,10 +121,11 @@ TEST_F(LogReplicatorTest,  Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
+    std::atomic<bool> follower;
     mapping.insert(std::make_pair("idx", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
     table->Init();
-    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
 }
@@ -132,10 +134,11 @@ TEST_F(LogReplicatorTest,  BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
+    std::atomic<bool> follower;
     mapping.insert(std::make_pair("idx", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
     table->Init();
-    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
     bool ok = replicator.Init();
     ::rtidb::api::LogEntry entry;
     entry.set_term(1);
@@ -174,7 +177,8 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:17527");
     std::string folder = "/tmp/" + GenRand() + "/";
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
+    std::atomic<bool> follower;
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     // put the first row
@@ -315,7 +319,8 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:18527");
     std::string folder = "/tmp/" + GenRand() + "/";
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
+    std::atomic<bool> follower;
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;

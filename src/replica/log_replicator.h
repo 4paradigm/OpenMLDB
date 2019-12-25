@@ -47,7 +47,7 @@ public:
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role,
-                  std::shared_ptr<Table> table);
+                  std::shared_ptr<Table> table, std::atomic<bool>* follower);
 
     ~LogReplicator();
 
@@ -74,6 +74,8 @@ public:
     // add replication
     int AddReplicateNode(const std::vector<std::string>& endpoint_vec);
     // add replication with tid
+    int AddReplicateNode(const std::vector<std::string>& endpoint_vec, uint32_t tid);
+
     int AddReplicateNode(const std::vector<std::string>& endpoint_vec, uint32_t tid);
 
     int DelReplicateNode(const std::string& endpoint);
@@ -133,8 +135,10 @@ private:
     std::atomic<int> snapshot_log_part_index_;
     std::atomic<uint64_t> snapshot_last_offset_;
 
-    std::mutex wmu_;
     std::shared_ptr<Table> table_;
+
+    std::mutex wmu_;
+    std::atomic<bool>* follower_;
 };
 
 } // end of replica
