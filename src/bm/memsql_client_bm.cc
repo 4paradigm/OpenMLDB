@@ -376,10 +376,7 @@ failure:
     mysql_close(&conn);
 }
 BENCHMARK(BM_SIMPLE_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
-BENCHMARK(BM_SIMPLE_INSERT);
-BENCHMARK(BM_INSERT_WITH_INDEX);
 BENCHMARK(BM_WINDOW_CASE1_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
-// BENCHMARK(BM_INSERT_SINGLE_THREAD);
 }  // namespace bm
 };  // namespace fesql
 

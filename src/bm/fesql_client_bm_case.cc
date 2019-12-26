@@ -119,7 +119,7 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
         "create table tbl (\n"
         "        col_i32 int,\n"
         "        col_i16 int,\n"
-        "        col_i64 bigint\n"
+        "        col_i64 bigint,\n"
         "        col_f float,\n"
         "        col_d double,\n"
         "        col_str64 string,\n"
@@ -192,7 +192,8 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
                     query.db = "test";
                     query.sql = select_sql;
                     query.is_batch_mode = is_batch_mode;
-                    benchmark::DoNotOptimize(sdk->SyncQuery(query, query_status));
+                    benchmark::DoNotOptimize(
+                        sdk->SyncQuery(query, query_status));
                     if (0 != query_status.code) {
                         fail++;
                     }
@@ -200,6 +201,7 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
                 LOG(INFO) << "Total cnt: " << total_cnt
                           << ", fail cnt: " << fail;
             }
+            break;
         }
         case TEST: {
             ::fesql::sdk::Query query;
@@ -209,7 +211,7 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
             query.is_batch_mode = is_batch_mode;
             std::unique_ptr<::fesql::sdk::ResultSet> rs =
                 sdk->SyncQuery(query, query_status);
-            ASSERT_TRUE(0 != rs); //NOLINT
+            ASSERT_TRUE(0 != rs);  // NOLINT
             ASSERT_EQ(0, query_status.code);
             ASSERT_EQ(record_size, rs->GetRowCnt());
         }
@@ -345,7 +347,7 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
             query.is_batch_mode = is_batch_mode;
             std::unique_ptr<::fesql::sdk::ResultSet> rs =
                 sdk->SyncQuery(query, query_status);
-            ASSERT_TRUE(0!=rs); //NOLINT
+            ASSERT_TRUE(0 != rs);  // NOLINT
             ASSERT_EQ(0, query_status.code);
             ASSERT_EQ(record_size, rs->GetRowCnt());
         }

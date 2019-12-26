@@ -8,8 +8,8 @@ target_link_libraries(base_bm_test gflags gtest pthread)
 add_test(base_bm_test base_bm_test --gtest_output=xml:${CMAKE_BINARY_DIR}/base_bm_test.xml)
 list(APPEND test_list base_bm_test)
 
-#add_executable(memsql_client_bm memsql_client_bm.cc)
-#target_link_libraries(memsql_client_bm benchmark mysqlclient ${COMMON_LIBS} gtest pthread)
+add_executable(memsql_client_bm memsql_client_bm.cc)
+target_link_libraries(memsql_client_bm benchmark mysqlclient ${COMMON_LIBS} gtest pthread)
 
 
 add_library(fesql_client_bm_case STATIC fesql_client_bm_case.cc)
