@@ -114,6 +114,7 @@ static bool repeated_insert_tbl(::fesql::sdk::TabletSdk *tablet_sdk,
 void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode,
                         int64_t record_size) {  // NOLINT
+    bool failure_flag = false;
     std::string db_name = "test";
     std::string schema_sql =
         "create table tbl (\n"
@@ -144,11 +145,17 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
     if (!fesql_server_init(tablet_server, dbms_server, &table_server_impl,
                            &dbms_server_impl)) {
         LOG(WARNING) << "Fail to init server";
+        if (TEST == mode) {
+            FAIL();
+        }
         return;
     }
 
     if (!feql_dbms_sdk_init(&dbms_sdk)) {
         LOG(WARNING) << "Fail to create to dbms sdk";
+        if (TEST == mode) {
+            FAIL();
+        }
         return;
     }
 
@@ -156,13 +163,18 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
         ::fesql::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
     if (!sdk) {
         LOG(WARNING) << "Fail to create to tablet sdk";
+        failure_flag = true;
         goto failure;
     }
 
     if (false == init_db(dbms_sdk, db_name)) {
+        LOG(WARNING) << "Fail to create db";
+        failure_flag = true;
         goto failure;
     }
     if (false == init_tbl(dbms_sdk, db_name, schema_sql)) {
+        LOG(WARNING) << "Fail to create table";
+        failure_flag = true;
         goto failure;
     }
     {
@@ -216,14 +228,17 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
             ASSERT_EQ(record_size, rs->GetRowCnt());
         }
     }
-
 failure:
     if (nullptr != dbms_sdk) {
         delete dbms_sdk;
     }
+    if (TEST == mode) {
+        ASSERT_FALSE(failure_flag);
+    }
 }
 void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode, int64_t record_size) {
+    bool failure_flag = false;
     std::string db_name = "test";
     std::string schema_sql =
         "create table tbl (\n"
@@ -257,11 +272,17 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
     if (!fesql_server_init(tablet_server, dbms_server, &table_server_impl,
                            &dbms_server_impl)) {
         LOG(WARNING) << "Fail to init server";
+        if (TEST == mode) {
+            FAIL();
+        }
         return;
     }
 
     if (!feql_dbms_sdk_init(&dbms_sdk)) {
         LOG(WARNING) << "Fail to create to dbms sdk";
+        if (TEST == mode) {
+            FAIL();
+        }
         return;
     }
 
@@ -269,13 +290,16 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
         ::fesql::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
     if (!sdk) {
         LOG(WARNING) << "Fail to create to tablet sdk";
+        failure_flag = true;
         goto failure;
     }
 
     if (false == init_db(dbms_sdk, db_name)) {
+        failure_flag = true;
         goto failure;
     }
     if (false == init_tbl(dbms_sdk, db_name, schema_sql)) {
+        failure_flag = true;
         goto failure;
     }
 
@@ -356,6 +380,9 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
 failure:
     if (nullptr != dbms_sdk) {
         delete dbms_sdk;
+    }
+    if (TEST == mode) {
+        ASSERT_FALSE(failure_flag);
     }
 }
 

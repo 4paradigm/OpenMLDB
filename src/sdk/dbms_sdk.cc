@@ -219,7 +219,7 @@ void DBMSSdkImpl::ExecuteScript(
     node::NodePointVector parser_trees;
     parser.parse(request.sql, parser_trees, &node_manager, sql_status);
     if (0 != sql_status.code) {
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << sql_status.msg;
         status.code = sql_status.code;
         status.msg = sql_status.msg;
         return;
