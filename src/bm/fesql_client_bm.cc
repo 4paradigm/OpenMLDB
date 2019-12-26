@@ -20,13 +20,13 @@ static void BM_SIMPLE_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     int64_t record_size = state.range(0);
-    SIMPLE_CASE1_QUERY(&state, BENCHMARK, record_size, false);
+    SIMPLE_CASE1_QUERY(&state, BENCHMARK, false, record_size);
 }
 static void BM_SIMPLE_BATCH_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     int64_t record_size = state.range(0);
-    SIMPLE_CASE1_QUERY(&state, BENCHMARK, record_size, true);
+    SIMPLE_CASE1_QUERY(&state, BENCHMARK, false, record_size);
 }
 
 static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
