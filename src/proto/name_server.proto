@@ -86,13 +86,13 @@ message TableInfo {
 
 message CreateTableRequest {
     required TableInfo table_info = 1;
-    optional ReplicaClusterByNsRequest zone_info = 2;
+    optional ZoneInfo zone_info = 2;
     optional rtidb.api.TaskInfo task_info = 3;
 }
 
 message DropTableRequest {
     required string name = 1;
-    optional ReplicaClusterByNsRequest zone_info = 2;
+    optional ZoneInfo zone_info = 2;
     optional rtidb.api.TaskInfo task_info = 3;
 }
 
@@ -100,13 +100,13 @@ message LoadTableRequest {
     optional string name = 1;
     optional string endpoint = 2;
     optional uint32 pid = 3;
-    optional ReplicaClusterByNsRequest zone_info = 4;
+    optional ZoneInfo zone_info = 4;
     optional rtidb.api.TaskInfo task_info = 5;
 }
 
 message CreateTableInfoRequest {
     optional TableInfo table_info = 1;
-    optional ReplicaClusterByNsRequest zone_info = 22;
+    optional ZoneInfo zone_info = 2;
 }
 
 message ShowTableRequest {
@@ -139,7 +139,7 @@ message AddReplicaNSRequest {
     optional uint32 remote_tid = 6; //for remote
     repeated string endpoint_group = 7; //for remote
     optional TablePartition table_partition = 8; //for remote
-    optional ReplicaClusterByNsRequest zone_info = 9; //for remote
+    optional ZoneInfo zone_info = 9; //for remote
     optional rtidb.api.TaskInfo task_info = 10; //for remote
 }
 
@@ -340,6 +340,10 @@ message RemoveReplicaOfRequest {
 }
 
 message ReplicaClusterByNsRequest {
+    optional ZoneInfo zone_info = 1;
+}
+
+message ZoneInfo {
     optional string zone_name = 1;
     optional string replica_alias = 2;
     optional uint64 zone_term = 3;

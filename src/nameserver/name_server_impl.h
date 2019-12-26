@@ -60,9 +60,9 @@ public:
 
     int Init(std::string& msg);
 
-    bool CreateTableRemote(const ::rtidb::api::TaskInfo& task_info, const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info); 
+    bool CreateTableRemote(const ::rtidb::api::TaskInfo& task_info, const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ZoneInfo& zone_info); 
 
-    bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info, const std::string& name, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info); 
+    bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info, const std::string& name, const ::rtidb::nameserver::ZoneInfo& zone_info); 
    
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
 
@@ -99,7 +99,6 @@ struct Task {
 struct OPData {
     ::rtidb::api::OPInfo op_info_;
     std::list<std::shared_ptr<Task>> task_list_;
-    int32_t for_replica_cluster = 0;  //default 0. if 1, for multi cluster 
 };
 
 class NameServerImplTest;
@@ -135,12 +134,12 @@ public:
             GeneralResponse* response, 
             Closure* done); 
 
-    void CreateTableInternel(std::shared_ptr<GeneralResponse> response, 
+    void CreateTableInternel(GeneralResponse& response, 
             std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, 
             const std::vector<::rtidb::base::ColumnDesc>& columns,
             uint64_t cur_term,
             uint32_t tid,
-            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr = std::make_shared<::rtidb::api::TaskInfo>());
+            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
     void CreateTableInfoSimply(RpcController* controller, 
             const CreateTableInfoRequest* request, 
@@ -158,9 +157,9 @@ public:
         Closure* done);
 
     void DropTableInternel(const std::string name,
-            std::shared_ptr<GeneralResponse> response,
+            GeneralResponse& response,
             std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr = std::make_shared<::rtidb::api::TaskInfo>()); 
+            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr); 
 
     void DropTable(RpcController* controller,
         const DropTableRequest* request,
@@ -454,11 +453,7 @@ private:
     std::shared_ptr<Task> CreateRecoverSnapshotTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
 
-	std::shared_ptr<Task> CreateSendSnapshotTask(const std::string& endpoint,
-                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
-                    const std::string& des_endpoint);
-
-    std::shared_ptr<Task> CreateSendSnapshotRemoteTask(const std::string& endpoint,
+    std::shared_ptr<Task> CreateSendSnapshotTask(const std::string& endpoint,
             uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t remote_tid, 
             uint32_t pid, const std::string& des_endpoint);
 
@@ -552,8 +547,6 @@ private:
 
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
-    int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type, std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
-
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type, std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr, std::vector<uint64_t> rep_cluster_op_id_vec);
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(uint64_t op_id, ::rtidb::api::TaskType task_type);
@@ -641,7 +634,7 @@ private:
     Tablets tablets_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
-    ReplicaClusterByNsRequest zone_info_;
+    ZoneInfo zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;

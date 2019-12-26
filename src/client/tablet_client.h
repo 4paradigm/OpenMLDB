@@ -171,10 +171,7 @@ public:
     bool MakeSnapshot(uint32_t tid, uint32_t pid, 
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
-    bool SendSnapshot(uint32_t tid, uint32_t pid, const std::string& endpoint, 
-                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
-
-    bool SendSnapshot(uint32_t tid, uint32_t pid, const std::string& endpoint, uint32_t remote_tid, 
+    bool SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid, const std::string& endpoint, 
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool PauseSnapshot(uint32_t tid, uint32_t pid, 

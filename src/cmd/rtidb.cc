@@ -3392,7 +3392,8 @@ void HandleClientSendSnapshot(const std::vector<std::string> parts, ::rtidb::cli
         return;
     }
     try {
-        bool ok = client->SendSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
+        bool ok = client->SendSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[1]),
+                boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
         if (ok) {
             std::cout << "SendSnapshot ok" << std::endl;
         }else {

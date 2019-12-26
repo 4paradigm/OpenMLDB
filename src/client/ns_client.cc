@@ -179,7 +179,7 @@ bool NsClient::AddReplica(const std::string& name, const std::set<uint32_t>& pid
 bool NsClient::AddReplicaNS(const std::string& name, 
         const std::vector<std::string>& endpoint_vec,
         uint32_t pid,
-        const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+        const ::rtidb::nameserver::ZoneInfo& zone_info, 
         const ::rtidb::api::TaskInfo& task_info) {
     if (endpoint_vec.empty()) {
         return false;
@@ -194,7 +194,7 @@ bool NsClient::AddReplicaNS(const std::string& name,
     request.set_endpoint(endpoint_vec.front());
     ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
     task_info_p->CopyFrom(task_info);
-    ::rtidb::nameserver::ReplicaClusterByNsRequest* zone_info_p = request.mutable_zone_info();
+    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaNSFromRemote,
             &request, &response, FLAGS_request_timeout_ms, 1);
@@ -482,7 +482,7 @@ bool NsClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
 bool NsClient::LoadTable(const std::string& name,
         const std::string& endpoint,
         uint32_t pid, 
-        const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+        const ::rtidb::nameserver::ZoneInfo& zone_info, 
         const ::rtidb::api::TaskInfo& task_info) {
     ::rtidb::nameserver::LoadTableRequest request;
     ::rtidb::nameserver::GeneralResponse response;
@@ -491,7 +491,7 @@ bool NsClient::LoadTable(const std::string& name,
     request.set_pid(pid);
     ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
     task_info_p->CopyFrom(task_info);
-    ::rtidb::nameserver::ReplicaClusterByNsRequest* zone_info_p = request.mutable_zone_info();
+    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::LoadTable, &request, &response, FLAGS_request_timeout_ms, 3);
     if (ok && response.code() == 0) {
@@ -500,12 +500,12 @@ bool NsClient::LoadTable(const std::string& name,
     return false;
 }
 
-bool NsClient::CreateRemoteTableInfo(const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+bool NsClient::CreateRemoteTableInfo(const ::rtidb::nameserver::ZoneInfo& zone_info, 
         ::rtidb::nameserver::TableInfo& table_info,
         std::string& msg) {
     ::rtidb::nameserver::CreateTableInfoRequest request;
     ::rtidb::nameserver::CreateTableInfoResponse response;
-    ::rtidb::nameserver::ReplicaClusterByNsRequest* zone_info_p = request.mutable_zone_info();
+    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
     ::rtidb::nameserver::TableInfo* table_info_p = request.mutable_table_info();
     table_info_p->CopyFrom(table_info);
@@ -518,12 +518,12 @@ bool NsClient::CreateRemoteTableInfo(const ::rtidb::nameserver::ReplicaClusterBy
     return false;
 }
 
-bool NsClient::CreateRemoteTableInfoSimply(const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+bool NsClient::CreateRemoteTableInfoSimply(const ::rtidb::nameserver::ZoneInfo& zone_info, 
         ::rtidb::nameserver::TableInfo& table_info,
         std::string& msg) {
     ::rtidb::nameserver::CreateTableInfoRequest request;
     ::rtidb::nameserver::CreateTableInfoResponse response;
-    ::rtidb::nameserver::ReplicaClusterByNsRequest* zone_info_p = request.mutable_zone_info();
+    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
     ::rtidb::nameserver::TableInfo* table_info_p = request.mutable_table_info();
     table_info_p->CopyFrom(table_info);
@@ -538,13 +538,13 @@ bool NsClient::CreateRemoteTableInfoSimply(const ::rtidb::nameserver::ReplicaClu
 
 bool NsClient::DropTableRemote(const ::rtidb::api::TaskInfo& task_info, 
         const std::string& name, 
-        const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+        const ::rtidb::nameserver::ZoneInfo& zone_info, 
         std::string& msg) {
     ::rtidb::nameserver::DropTableRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
     task_info_p->CopyFrom(task_info);
-    ::rtidb::nameserver::ReplicaClusterByNsRequest* zone_info_p = request.mutable_zone_info();
+    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
     request.set_name(name);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable, &request, &response, FLAGS_request_timeout_ms, 3);
@@ -557,13 +557,13 @@ bool NsClient::DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
 
 bool NsClient::CreateTableRemote(const ::rtidb::api::TaskInfo& task_info, 
         const ::rtidb::nameserver::TableInfo& table_info, 
-        const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info, 
+        const ::rtidb::nameserver::ZoneInfo& zone_info, 
         std::string& msg) {
     ::rtidb::nameserver::CreateTableRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     ::rtidb::api::TaskInfo* task_info_p = request.mutable_task_info();
     task_info_p->CopyFrom(task_info);
-    ::rtidb::nameserver::ReplicaClusterByNsRequest* zone_info_p = request.mutable_zone_info();
+    ::rtidb::nameserver::ZoneInfo* zone_info_p = request.mutable_zone_info();
     zone_info_p->CopyFrom(zone_info);
     ::rtidb::nameserver::TableInfo* table_info_p;
     table_info_p = request.mutable_table_info();
@@ -578,11 +578,12 @@ bool NsClient::CreateTableRemote(const ::rtidb::api::TaskInfo& task_info,
 
 bool NsClient::AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t term, std::string& msg) {
     ::rtidb::nameserver::ReplicaClusterByNsRequest request;
+    ::rtidb::nameserver::ZoneInfo* zone_info= request.mutable_zone_info();
     ::rtidb::nameserver::AddReplicaClusterByNsResponse response;
-    request.set_replica_alias(alias);
-    request.set_zone_name(name);
-    request.set_zone_term(term);
-    request.set_mode(::rtidb::nameserver::kFOLLOWER);
+    zone_info->set_replica_alias(alias);
+    zone_info->set_zone_name(name);
+    zone_info->set_zone_term(term);
+    zone_info->set_mode(::rtidb::nameserver::kFOLLOWER);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaClusterByNs,
                                     &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -647,11 +648,12 @@ bool NsClient::RemoveReplicaCluster(const std::string& alias, std::string& msg) 
 bool NsClient::RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name,
     const uint64_t term, int& code, std::string& msg) {
     ::rtidb::nameserver::ReplicaClusterByNsRequest request;
+    ::rtidb::nameserver::ZoneInfo* zone_info= request.mutable_zone_info();
     ::rtidb::nameserver::GeneralResponse response;
-    request.set_replica_alias(alias);
-    request.set_zone_term(term);
-    request.set_zone_name(zone_name);
-    request.set_mode(::rtidb::nameserver::kNORMAL);
+    zone_info->set_replica_alias(alias);
+    zone_info->set_zone_term(term);
+    zone_info->set_zone_name(zone_name);
+    zone_info->set_mode(::rtidb::nameserver::kNORMAL);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RemoveReplicaClusterByNs,
         &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();

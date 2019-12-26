@@ -2413,13 +2413,8 @@ void TabletImpl::SendSnapshot(RpcController* controller,
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }    
         sync_snapshot_set_.insert(sync_snapshot_key);
-        if (request->has_remote_tid()) {
-            task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
-                        request->endpoint(), tid, pid, request->remote_tid(), task_ptr));
-        } else {
-            task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
-                        request->endpoint(), tid, pid, task_ptr));
-        }
+        task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
+                    request->endpoint(), tid, pid, request->remote_tid(), task_ptr));
         response->set_code(0);
         response->set_msg("ok");
         return;
@@ -2428,11 +2423,6 @@ void TabletImpl::SendSnapshot(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
-}
-
-void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
-            std::shared_ptr<::rtidb::api::TaskInfo> task) {
-    return SendSnapshotInternal(endpoint, tid, pid, INVALID_REMOTE_TID, task);
 }
 
 void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
@@ -2450,11 +2440,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
             PDLOG(WARNING, "fail to get db root path for table tid %u, pid %u", tid, pid);
             break;
         }
-        FileSender sender(tid, pid, table->GetStorageMode(), endpoint);
-        if (remote_tid != INVALID_REMOTE_TID) {
-            FileSender sender_tmp(remote_tid, pid, table->GetStorageMode(), endpoint);
-            sender = sender_tmp;
-        }
+        FileSender sender(remote_tid, pid, table->GetStorageMode(), endpoint);
         if (!sender.Init()) {
             PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
             break;
