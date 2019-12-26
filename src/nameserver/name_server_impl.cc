@@ -5038,14 +5038,6 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         return;
     }
     
-    // ::rtidb::api::TTLType ttl_type;
-    // bool ok = ::rtidb::api::TTLType_Parse(request->ttl_type(), &ttl_type);
-    // if (!ok) {
-    //     PDLOG(WARNING, "fail to parse ttl_type %s", request->ttl_type().c_str());
-    //     response->set_code(307);
-    //     response->set_msg("invalid parameter");
-    //     return;
-    // }
     std::string ts_name;
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         ts_name = request->ts_name();

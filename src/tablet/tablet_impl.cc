@@ -701,13 +701,16 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
         PDLOG(WARNING, "invalid args");
         return -1;
     }
-    if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type == ::rtidb::api::TTLType::kAbsOrLat) {
-        et = std::max(et, expire_time);
-    }
     rtidb::api::GetType real_st_type = st_type;
     rtidb::api::GetType real_et_type = et_type;
     if (et < expire_time && et_type == ::rtidb::api::GetType::kSubKeyGt) {
         real_et_type = ::rtidb::api::GetType::kSubKeyGe;
+    }
+    uint64_t real_et = 0;
+    if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type == ::rtidb::api::TTLType::kAbsOrLat) {
+        real_et = std::max(et, expire_time);
+    } else {
+        real_et = et;
     }
     if (st_type == ::rtidb::api::GetType::kSubKeyEq) {
         real_st_type = ::rtidb::api::GetType::kSubKeyLe;
@@ -720,7 +723,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     }
     uint32_t cnt = 0;
     if (st > 0) {
-        if (st < et) {
+        if (st < expire_time || st < et) {
             PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
             return -1;
         }
@@ -740,7 +743,6 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
     tmp.reserve(FLAGS_scan_reserve_size);
     uint32_t total_block_size = 0;
-
     while(it->Valid()) {
         if (limit > 0 && tmp.size() >= limit) {
             break;
@@ -775,17 +777,17 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             bool jump_out = false;
             switch(real_et_type) {
                 case ::rtidb::api::GetType::kSubKeyEq:
-                    if (it->GetKey() != et) {
+                    if (it->GetKey() != real_et) {
                         jump_out = true;
                     }
                     break;
                 case ::rtidb::api::GetType::kSubKeyGt:
-                    if (it->GetKey() <= et) {
+                    if (it->GetKey() <= real_et) {
                         jump_out = true;
                     }
                     break;
                 case ::rtidb::api::GetType::kSubKeyGe:
-                    if (it->GetKey() < et) {
+                    if (it->GetKey() < real_et) {
                         jump_out = true;
                     }
                     break;
@@ -826,13 +828,13 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
         PDLOG(WARNING, "invalid args");
         return -1;
     }
-    if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type == ::rtidb::api::TTLType::kAbsOrLat) {
-        et = std::max(et, expire_time);
-    }
     rtidb::api::GetType real_st_type = st_type;
     rtidb::api::GetType real_et_type = et_type;
     if (et < expire_time && et_type == ::rtidb::api::GetType::kSubKeyGt) {
         real_et_type = ::rtidb::api::GetType::kSubKeyGe;
+    }
+    if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type == ::rtidb::api::TTLType::kAbsOrLat) {
+        et = std::max(et, expire_time);
     }
     if (st_type == ::rtidb::api::GetType::kSubKeyEq) {
         real_st_type = ::rtidb::api::GetType::kSubKeyLe;
