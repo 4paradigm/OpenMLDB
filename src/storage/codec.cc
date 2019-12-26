@@ -146,9 +146,10 @@ bool RowBuilder::AppendNULL() {
         } else if (str_addr_length_ == 2) {
             *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
         } else if (str_addr_length_ == 3) {
-            *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ & 0x0F00;
-            *(reinterpret_cast<uint8_t*>(ptr + 1)) = str_offset_ & 0x00F0;
-            *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x000F;
+            *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
+            *(reinterpret_cast<uint8_t*>(ptr + 1)) =
+                (str_offset_ & 0xFF00) >> 8;
+            *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x00FF;
         } else {
             *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
         }
@@ -223,9 +224,9 @@ bool RowBuilder::AppendString(const char* val, uint32_t length) {
     } else if (str_addr_length_ == 2) {
         *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset_;
     } else if (str_addr_length_ == 3) {
-        *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ & 0x0F00;
-        *(reinterpret_cast<uint8_t*>(ptr + 1)) = str_offset_ & 0x00F0;
-        *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x000F;
+        *(reinterpret_cast<uint8_t*>(ptr)) = str_offset_ >> 16;
+        *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset_ & 0x00FF00) >> 8;
+        *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset_ & 0x0000FF;
     } else {
         *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
     }
