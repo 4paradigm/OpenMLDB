@@ -117,12 +117,12 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
     std::string schema_sql =
         "create table tbl (\n"
         "        col_i32 int,\n"
-        "        col_i16 int,\n"
-        "        col_i64 bigint,\n"
-        "        col_f float,\n"
-        "        col_d double,\n"
-        "        col_str64 string,\n"
-        "        col_str255 string,\n"
+//        "        col_i16 int,\n"
+        "        col_i64 bigint\n"
+//        "        col_f float,\n"
+//        "        col_d double,\n"
+//        "        col_str64 string,\n"
+//        "        col_str255 string,\n"
         "       index(key=(col_str64), ts=col_i64, ttl=60d)"
         "    );";
 

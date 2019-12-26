@@ -115,12 +115,12 @@ static void BM_SIMPLE_INSERT(benchmark::State &state) {  // NOLINT
     const char *schema_sql =
         "create table tbl (\n"
         "        col_i32 int,\n"
-        "        col_i16 smallint,\n"
-        "        col_i64 bigint,\n"
-        "        col_f float,\n"
-        "        col_d double,\n"
-        "        col_str64 VARCHAR(64),\n"
-        "        col_str255 VARCHAR(255)\n"
+//        "        col_i16 smallint,\n"
+        "        col_i64 bigint\n"
+//        "        col_f float,\n"
+//        "        col_d double,\n"
+//        "        col_str64 VARCHAR(64),\n"
+//        "        col_str255 VARCHAR(255)\n"
         "    );";
 
     const char *schema_insert_sql =
