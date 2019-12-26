@@ -124,6 +124,7 @@ private:
     ReplicatorRole role_;
     std::vector<std::string> endpoints_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
+    std::vector<std::string> local_endpoints_;
 
     std::atomic<uint64_t> term_;
     // sync mutex

@@ -39,12 +39,13 @@ LogReplicator::LogReplicator(const std::string& path,
                              const ReplicatorRole& role,
                              std::shared_ptr<Table> table, std::atomic<bool>* follower):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
-    endpoints_(endpoints), nodes_(), term_(0), mu_(), cv_(),
+    endpoints_(endpoints), nodes_(), local_endpoints_(), term_(0), mu_(), cv_(),
     wmu_(), follower_(follower){
     table_ = table;
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
     snapshot_last_offset_.store(0, std::memory_order_relaxed);
+    follower_offset_.store(0);
 }
 
 LogReplicator::~LogReplicator() {
@@ -393,6 +394,9 @@ int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec
         }
         nodes_.push_back(replicate_node);
         endpoints_.push_back(endpoint);
+        if (tid == UINT32_MAX) {
+            local_endpoints_.push_back(endpoint);
+        }
         PDLOG(INFO, "add ReplicateNode with endpoint %s ok. tid[%u] pid[%u]",
                     endpoint.c_str(), table_->GetId(), table_->GetPid());
     }
@@ -420,6 +424,7 @@ int LogReplicator::DelReplicateNode(const std::string& endpoint) {
         node = *it;
         nodes_.erase(it);
         endpoints_.erase(std::remove(endpoints_.begin(), endpoints_.end(), endpoint), endpoints_.end());
+        local_endpoints_.erase(std::remove(local_endpoints_.begin(), local_endpoints_.end(), endpoint), local_endpoints_.end());
         PDLOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]", 
                     endpoint.c_str(), table_->GetId(), table_->GetPid());
 
@@ -455,6 +460,7 @@ bool LogReplicator::DelAllReplicateNode() {
                     nodes_.size(), table_->GetId(), table_->GetPid());
         nodes_.clear();
         endpoints_.clear();
+        local_endpoints_.clear();
     }
     std::vector<std::shared_ptr<ReplicateNode>>::iterator it = copied_nodes.begin();
     for (; it !=  copied_nodes.end(); ++it) {
@@ -484,6 +490,9 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
         return false;
     }
     log_offset_.fetch_add(1, std::memory_order_relaxed);
+    if (local_endpoints_.empty()) {
+        follower_offset_.store(cur_offset + 1, std::memory_order_relaxed);
+    }
     return true;
 }
 
