@@ -16,8 +16,8 @@
 
 namespace fesql {
 namespace bm {
-// const static std::string host = "172.17.0.2";  // NOLINT
-const static std::string host = "127.0.0.1";  // NOLINT
+ const static std::string host = "172.17.0.2";  // NOLINT
+//const static std::string host = "127.0.0.1";  // NOLINT
 const static std::string user = "root";       // NOLINT
 const static std::string passwd = "";         // NOLINT
 const static size_t port = 3306;              // NOLINT
@@ -384,8 +384,114 @@ static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
 failure:
     mysql_close(&conn);
 }
+
+static void BM_WINDOW_CASE2_QUERY(benchmark::State &state) {  // NOLINT
+    const char *db_sql = "create database test";
+    const char *use_sql = "use test";
+    const char *schema_sql =
+        "create table tbl (\n"
+        "        col_i32 int,\n"
+        "        col_i16 smallint,\n"
+        "        col_i64 bigint,\n"
+        "        col_f float,\n"
+        "        col_d double,\n"
+        "        col_str64 VARCHAR(64),\n"
+        "        col_str255 VARCHAR(255)\n"
+        "    );";
+
+    const char *select_sql =
+        "SELECT "
+        "sum(col_i32) OVER w1 as sum_col_i32, \n"
+        "sum(col_i16) OVER w1 as sum_col_i16, \n"
+        "sum(col_f) OVER w1 as sum_col_f, \n"
+        "sum(col_d) OVER w1 as sum_col_d \n"
+        "FROM tbl\n"
+        "window w1 as (PARTITION BY col_str64 \n"
+        "                  ORDER BY col_i64\n"
+        "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
+    const char *delete_sql = "delete from tbl";
+    const char *drop_tbl_sql = "drop table tbl";
+    const char *drop_db_sql = "drop database test";
+
+    int64_t record_size = state.range(0);
+    MYSQL conn;
+
+    if (!init(conn)) goto failure;
+    if (!use_db(conn, use_sql)) goto failure;
+    if (!init_tbl(conn, schema_sql)) goto failure;
+    {
+        const char *index_sql =
+            "CREATE INDEX col_str64_index ON tbl (col_str64);";
+        if (!create_index(conn, index_sql)) goto failure;
+    }
+
+    {
+        const char *index_sql = "CREATE INDEX col_i64_index ON tbl (col_i64);";
+        if (!create_index(conn, index_sql)) goto failure;
+    }
+
+    {
+        IntRepeater<int32_t> col_i32;
+        col_i32.Range(0, 100, 1);
+        IntRepeater<int16_t> col_i16;
+        col_i16.Range(0u, 100u, 1u);
+        IntRepeater<int64_t> col_i64;
+        col_i64.Range(1576571615000 - record_size * 1000, 1576571615000, 1000);
+        RealRepeater<float> col_f;
+        col_f.Range(0, 1000, 2.0f);
+        RealRepeater<double> col_d;
+        col_d.Range(0, 10000, 10.0);
+        ::fesql::bm::Repeater<std::string> col_str64(
+            {"astring", "bstring", "cstring", "dstring", "estring", "fstring",
+             "gstring", "hstring", "istring", "jstring"});
+        ::fesql::bm::Repeater<std::string> col_str255(
+            {"aaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbb", "ccccccccccccccccccc",
+             "ddddddddddddddddd"});
+        int32_t fail = 0;
+        for (int i = 0; i < record_size; ++i) {
+            std::ostringstream oss;
+            oss << "insert into tbl values (" << col_i32.GetValue() << ", "
+                << col_i16.GetValue() << ", " << col_i64.GetValue() << ", "
+                << col_f.GetValue() << ", " << col_d.GetValue() << ", "
+                << "\"" << col_str64.GetValue() << "\", "
+                << "\"" << col_str255.GetValue() << "\""
+                << ");";
+            LOG(INFO) << oss.str();
+            if (!repeated_insert_tbl(conn, oss.str().c_str(), 1)) {
+                fail += 1;
+            }
+        }
+        LOG(INFO) << "Insert cnt: " << record_size << ", fail cnt: " << fail;
+    }
+    {
+        LOG(INFO) << "Running query ...\n" << select_sql;
+        int32_t fail = 0;
+        int32_t total_cnt = 0;
+        for (auto _ : state) {
+            total_cnt++;
+
+            if (mysql_query(&conn, select_sql)) {
+                fail++;
+            } else {
+                MYSQL_RES *result = mysql_store_result(&conn);
+                mysql_free_result(result);
+            }
+        }
+        LOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
+    }
+
+    if (!delete_tbl(conn, delete_sql)) goto failure;
+    if (!drop_tbl(conn, drop_tbl_sql)) goto failure;
+//    if (!drop_db(conn, drop_db_sql)) goto failure;
+    mysql_close(&conn);
+
+    failure:
+    mysql_close(&conn);
+}
+
 BENCHMARK(BM_SIMPLE_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
 BENCHMARK(BM_WINDOW_CASE1_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
+BENCHMARK(BM_WINDOW_CASE2_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
 }  // namespace bm
 };  // namespace fesql
 

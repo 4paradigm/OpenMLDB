@@ -27,6 +27,8 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
                         int64_t record_size);
 void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode, int64_t record_size);
+void WINDOW_CASE2_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode, int64_t record_size);
 }  // namespace bm
 }  // namespace fesql
 #endif  // SRC_BM_FESQL_CLIENT_BM_CASE_H_

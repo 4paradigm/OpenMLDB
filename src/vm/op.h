@@ -69,7 +69,7 @@ struct ProjectOp : public OpNode {
     std::string db;
     uint32_t tid;
     uint32_t pid;
-    uint64_t scan_limit;
+    uint32_t scan_limit;
     int8_t* fn;
     std::string fn_name;
     bool window_agg;

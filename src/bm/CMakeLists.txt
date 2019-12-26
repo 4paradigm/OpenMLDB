@@ -35,3 +35,13 @@ target_link_libraries(fesql_client_bm
         fesql_storage fesql_vm fesql_analyser fesql_parser fesql_planner fesql_codegen fesql_udf
         fesql_node
         fesql_proto brpc protobuf benchmark gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread)
+
+add_executable(fesql_client_batch_run_bm fesql_client_batch_run_bm.cc)
+target_link_libraries(fesql_client_batch_run_bm
+        fesql_client_bm_case
+        fesql_sdk
+        fesql_dbms
+        fesql_tablet
+        fesql_storage fesql_vm fesql_analyser fesql_parser fesql_planner fesql_codegen fesql_udf
+        fesql_node
+        fesql_proto brpc protobuf benchmark gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread)

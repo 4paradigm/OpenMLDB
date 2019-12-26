@@ -366,7 +366,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
     }
     return 0;
 }
-int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
+int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();
     std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
     for (auto op : compile_info_->sql_ctx.ops.ops) {
@@ -396,20 +396,22 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
                 // out buffers
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[project_op->idx];
+                uint64_t min = limit > 0 ? limit : INT64_MAX;
+                if (project_op->scan_limit != 0 &&
+                    min > project_op->scan_limit) {
+                    min = project_op->scan_limit;
+                }
+                if (min != 0 && INT64_MAX != min) {
+                    out_buffers.reserve(min);
+                }
 
                 if (project_op->window_agg) {
-                    uint64_t min = limit > 0 ? limit : INT64_MAX;
-                    if (project_op->scan_limit != 0 &&
-                        min > project_op->scan_limit) {
-                        min = project_op->scan_limit;
-                    }
-
                     // iterator whole table
                     std::unique_ptr<::fesql::storage::TableIterator> it =
                         status->table->NewTraverseIterator(
                             project_op->w.index_name);
                     it->SeekToFirst();
-                    uint32_t count = 0;
+                    uint64_t count = 0;
                     while (it->Valid() && count < min) {
                         std::vector<std::pair<uint64_t, Row>> buffer;
                         // TODO(chenjing): resize or reserve with count
@@ -428,6 +430,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
                         // TODO(chenjing): decide window type
                         ::fesql::storage::CurrentHistoryWindow window(
                             project_op->w.start_offset);
+                        window.Reserve(buffer.size());
                         for (auto iter = buffer.rbegin();
                              count < min && iter != buffer.rend(); iter++) {
                             window.BufferData(iter->first, iter->second);
@@ -451,12 +454,8 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
                     std::unique_ptr<::fesql::storage::TableIterator> it =
                         status->table->NewTraverseIterator();
                     it->SeekToFirst();
-                    uint64_t min = limit > 0 ? limit : INT64_MAX;
-                    if (project_op->scan_limit != 0 &&
-                        min > project_op->scan_limit) {
-                        min = project_op->scan_limit;
-                    }
-                    uint32_t count = 0;
+
+                    uint64_t count = 0;
                     while (it->Valid() && count++ < min) {
                         ::fesql::storage::Slice value = it->GetValue();
                         ::fesql::storage::Row row(
@@ -510,12 +509,13 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
             }
         }
     }
+    buf.reserve(temp_buffers[op_size-1].size());
     for (auto row : temp_buffers[op_size - 1]) {
         buf.push_back(row.buf);
     }
     return 0;
 }
-int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
+int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();
     std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
     for (auto op : compile_info_->sql_ctx.ops.ops) {
@@ -533,7 +533,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 std::unique_ptr<::fesql::storage::TableIterator> it =
                     status->table->NewTraverseIterator();
                 it->SeekToFirst();
-                uint32_t min = limit;
+                uint64_t min = limit;
                 if (min > scan_op->limit) {
                     min = scan_op->limit;
                 }
