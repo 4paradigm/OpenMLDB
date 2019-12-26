@@ -490,7 +490,7 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
         return false;
     }
     log_offset_.fetch_add(1, std::memory_order_relaxed);
-    if (local_endpoints_.empty()) {
+    if (local_endpoints_.empty()) { // if local replica are dead, leader direct sync to remote replica
         follower_offset_.store(cur_offset + 1, std::memory_order_relaxed);
     }
     return true;
