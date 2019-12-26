@@ -7298,7 +7298,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         }
         {
             std::lock_guard<std::mutex> lock(mu_);
-            if ((tables.empty()) && !CompareTableInfo(tables)) {
+            if (!tables.empty() && !CompareTableInfo(tables)) {
                 rpc_msg = "compare table info error";
                 code = 567;
                 break;
