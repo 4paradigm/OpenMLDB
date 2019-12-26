@@ -23,6 +23,7 @@ namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
 void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode,
                         int64_t record_size);
 void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode, int64_t record_size);

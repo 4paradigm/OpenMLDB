@@ -393,10 +393,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
                     std::move(std::unique_ptr<storage::RowView>(
                         new storage::RowView(status->table_def.columns())));
 
-                // in out buffers
-                OpNode* prev = project_op->children[0];
-                std::vector<::fesql::storage::Row>& in_buffers =
-                    temp_buffers[prev->idx];
+                // out buffers
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[project_op->idx];
 

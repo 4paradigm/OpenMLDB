@@ -21,13 +21,20 @@ class FeSQL_CASE_Test : public ::testing::Test {
 };
 
 TEST_F(FeSQL_CASE_Test, SIMPLE_QUERY_CASE1_TEST) {
-    SIMPLE_CASE1_QUERY(nullptr, TEST, 10);
-    SIMPLE_CASE1_QUERY(nullptr, TEST, 99);
-    SIMPLE_CASE1_QUERY(nullptr, TEST, 100);
-    SIMPLE_CASE1_QUERY(nullptr, TEST, 101);
-    SIMPLE_CASE1_QUERY(nullptr, TEST, 1000);
+    SIMPLE_CASE1_QUERY(nullptr, TEST, false, 10);
+    SIMPLE_CASE1_QUERY(nullptr, TEST, false, 99);
+    SIMPLE_CASE1_QUERY(nullptr, TEST, false, 100);
+    SIMPLE_CASE1_QUERY(nullptr, TEST, false, 101);
+    SIMPLE_CASE1_QUERY(nullptr, TEST, false, 1000);
 }
 
+TEST_F(FeSQL_CASE_Test, SIMPLE_QUERY_CASE1_BATCH_TEST) {
+    SIMPLE_CASE1_QUERY(nullptr, TEST, true, 10);
+    SIMPLE_CASE1_QUERY(nullptr, TEST, true, 99);
+    SIMPLE_CASE1_QUERY(nullptr, TEST, true, 100);
+    SIMPLE_CASE1_QUERY(nullptr, TEST, true, 101);
+    SIMPLE_CASE1_QUERY(nullptr, TEST, true, 1000);
+}
 TEST_F(FeSQL_CASE_Test, WINDOW_CASE1_QUERY_TEST) {
     WINDOW_CASE1_QUERY(nullptr, TEST, false, 10);
     WINDOW_CASE1_QUERY(nullptr, TEST, false, 99);

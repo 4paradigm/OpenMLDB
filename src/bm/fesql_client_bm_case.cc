@@ -112,17 +112,18 @@ static bool repeated_insert_tbl(::fesql::sdk::TabletSdk *tablet_sdk,
 }
 
 void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode,
                         int64_t record_size) {  // NOLINT
     std::string db_name = "test";
     std::string schema_sql =
         "create table tbl (\n"
         "        col_i32 int,\n"
-//        "        col_i16 int,\n"
+        "        col_i16 int,\n"
         "        col_i64 bigint\n"
-//        "        col_f float,\n"
-//        "        col_d double,\n"
-//        "        col_str64 string,\n"
-//        "        col_str255 string,\n"
+        "        col_f float,\n"
+        "        col_d double,\n"
+        "        col_str64 string,\n"
+        "        col_str255 string,\n"
         "       index(key=(col_str64), ts=col_i64, ttl=60d)"
         "    );";
 
@@ -190,9 +191,9 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
                     sdk::Status query_status;
                     query.db = "test";
                     query.sql = select_sql;
-                    std::unique_ptr<::fesql::sdk::ResultSet> rs =
-                        sdk->SyncQuery(query, query_status);
-                    if (!sdk->SyncQuery(query, query_status)) {
+                    query.is_batch_mode = is_batch_mode;
+                    benchmark::DoNotOptimize(sdk->SyncQuery(query, query_status));
+                    if (0 != query_status.code) {
                         fail++;
                     }
                 }
@@ -205,6 +206,7 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
             sdk::Status query_status;
             query.db = "test";
             query.sql = select_sql;
+            query.is_batch_mode = is_batch_mode;
             std::unique_ptr<::fesql::sdk::ResultSet> rs =
                 sdk->SyncQuery(query, query_status);
             ASSERT_TRUE(0 != rs); //NOLINT
