@@ -3020,7 +3020,7 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
         return;
     }
 
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
+    ::rtidb::nameserver::TableInfo* table_info = response->mutable_table_info();
     table_info->CopyFrom(request->table_info());
     uint32_t tablets_size = 0;
     {
@@ -3083,8 +3083,6 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
         table_index_++;
         table_info->set_tid(table_index_);
     }
-    ::rtidb::nameserver::TableInfo* table_info_p = response->mutable_table_info();
-    table_info_p->CopyFrom(*table_info);
     response->set_code(0);
     response->set_msg("ok");
 }
@@ -3463,13 +3461,13 @@ void NameServerImpl::AddReplicaSimplyRemoteOP(const std::string& name,
         return;
     }
     std::shared_ptr<OPData> op_data;
-    AddReplicaNSRequest cur_request;
-    cur_request.set_name(name);
-    cur_request.set_pid(pid);
-    cur_request.set_endpoint(endpoint);
-    cur_request.set_remote_tid(remote_tid);
+    AddReplicaData data;
+    data.set_name(name);
+    data.set_pid(pid);
+    data.set_endpoint(endpoint);
+    data.set_remote_tid(remote_tid);
     std::string value;
-    cur_request.SerializeToString(&value);
+    data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kAddReplicaSimplyRemoteOP, value, op_data, 
                 name, pid) < 0) {
         PDLOG(WARNING, "create AddReplicaOP data failed. table[%s] pid[%u]",
@@ -3492,33 +3490,33 @@ void NameServerImpl::AddReplicaSimplyRemoteOP(const std::string& name,
 }
 
 int NameServerImpl::CreateAddReplicaSimplyRemoteOPTask(std::shared_ptr<OPData> op_data) {
-    AddReplicaNSRequest request;
-    if (!request.ParseFromString(op_data->op_info_.data())) {
-        PDLOG(WARNING, "parse request failed. data[%s]", op_data->op_info_.data().c_str());
+    AddReplicaData add_replica_data;
+    if (!add_replica_data.ParseFromString(op_data->op_info_.data())) {
+        PDLOG(WARNING, "parse add_replica_data failed. data[%s]", op_data->op_info_.data().c_str());
         return -1;
     }
-    auto pos = table_info_.find(request.name());
+    auto pos = table_info_.find(add_replica_data.name());
     if (pos == table_info_.end()) {
-        PDLOG(WARNING, "table[%s] is not exist!", request.name().c_str());
+        PDLOG(WARNING, "table[%s] is not exist!", add_replica_data.name().c_str());
         return -1;
     }
     uint32_t tid = pos->second->tid();
-    uint32_t pid = request.pid();
+    uint32_t pid = add_replica_data.pid();
     std::string leader_endpoint;
     if (GetLeader(pos->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
-        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request.name().c_str(), pid);
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", add_replica_data.name().c_str(), pid);
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
     std::shared_ptr<Task> task = CreateAddReplicaRemoteTask(leader_endpoint, op_index, 
-                ::rtidb::api::OPType::kAddReplicaSimplyRemoteOP, tid, request.remote_tid(), pid, request.endpoint());
+                ::rtidb::api::OPType::kAddReplicaSimplyRemoteOP, tid, add_replica_data.remote_tid(), pid, add_replica_data.endpoint());
     if (!task) {
         PDLOG(WARNING, "create addreplica task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
-                tid, request.remote_tid(), pid);
+                tid, add_replica_data.remote_tid(), pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateAddTableInfoTask(request.endpoint(), request.name(), request.remote_tid(), pid, 
+    task = CreateAddTableInfoTask(add_replica_data.endpoint(), add_replica_data.name(), add_replica_data.remote_tid(), pid, 
             op_index, ::rtidb::api::OPType::kAddReplicaSimplyRemoteOP);
     if (!task) {
         PDLOG(WARNING, "create addtableinfo task failed. tid[%u] pid[%u]", tid, pid);
@@ -3526,7 +3524,7 @@ int NameServerImpl::CreateAddReplicaSimplyRemoteOPTask(std::shared_ptr<OPData> o
     }
     op_data->task_list_.push_back(task);
     PDLOG(INFO, "create AddReplicaOP task ok. tid[%u] pid[%u] endpoint[%s]", 
-                    tid, pid, request.endpoint().c_str());
+                    tid, pid, add_replica_data.endpoint().c_str());
     return 0;
 }
 
@@ -3541,17 +3539,16 @@ void NameServerImpl::AddReplicaRemoteOP(const std::string& alias,
         return;
     }
     std::shared_ptr<OPData> op_data;
-    AddReplicaNSRequest cur_request;
-    cur_request.set_alias(alias);
-    cur_request.set_name(name);
-    cur_request.set_endpoint("");
-    cur_request.set_pid(pid);
-    cur_request.set_remote_tid(remote_tid);
-    ::rtidb::nameserver::TablePartition* table_partition_ptr = cur_request.mutable_table_partition();
+    AddReplicaData data;
+    data.set_alias(alias);
+    data.set_name(name);
+    data.set_pid(pid);
+    data.set_remote_tid(remote_tid);
+    ::rtidb::nameserver::TablePartition* table_partition_ptr = data.mutable_table_partition();
     table_partition_ptr->CopyFrom(table_partition);
 
     std::string value;
-    cur_request.SerializeToString(&value);
+    data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kAddReplicaRemoteOP, value, op_data, 
                 name, pid) < 0) {
         PDLOG(WARNING, "create AddReplicaOP data failed. table[%s] pid[%u]",
@@ -3574,22 +3571,22 @@ void NameServerImpl::AddReplicaRemoteOP(const std::string& alias,
 }
 
 int NameServerImpl::CreateAddReplicaRemoteOPTask(std::shared_ptr<OPData> op_data) {
-    AddReplicaNSRequest request;
-    if (!request.ParseFromString(op_data->op_info_.data())) {
-        PDLOG(WARNING, "parse request failed. data[%s]", op_data->op_info_.data().c_str());
+    AddReplicaData add_replica_data;
+    if (!add_replica_data.ParseFromString(op_data->op_info_.data())) {
+        PDLOG(WARNING, "parse add_replica_data failed. data[%s]", op_data->op_info_.data().c_str());
         return -1;
     }
-    auto pos = table_info_.find(request.name());
+    auto pos = table_info_.find(add_replica_data.name());
     if (pos == table_info_.end()) {
-        PDLOG(WARNING, "table[%s] is not exist!", request.name().c_str());
+        PDLOG(WARNING, "table[%s] is not exist!", add_replica_data.name().c_str());
         return -1;
     }
     uint32_t tid = pos->second->tid();
-    uint32_t pid = request.pid();
-    uint32_t remote_tid = request.remote_tid();
-    std::string name = request.name();
-    std::string alias = request.alias();
-    ::rtidb::nameserver::TablePartition table_partition = request.table_partition();
+    uint32_t pid = add_replica_data.pid();
+    uint32_t remote_tid = add_replica_data.remote_tid();
+    std::string name = add_replica_data.name();
+    std::string alias = add_replica_data.alias();
+    ::rtidb::nameserver::TablePartition table_partition = add_replica_data.table_partition();
     std::string endpoint;
     for (int meta_idx = 0; meta_idx < table_partition.partition_meta_size(); meta_idx++) {
         if (table_partition.partition_meta(meta_idx).is_leader()) {

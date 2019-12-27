@@ -127,7 +127,10 @@ message MakeSnapshotNSRequest {
 message AddReplicaData {
 	required string name = 1;
     required uint32 pid = 2;
-    required string endpoint = 3;
+    optional string endpoint = 3;
+    optional uint32 remote_tid = 4; //for remote
+    optional string alias = 5; //for remote 
+    optional TablePartition table_partition = 6; //for remote
 }
 
 message AddReplicaNSRequest {
@@ -135,12 +138,9 @@ message AddReplicaNSRequest {
     required uint32 pid = 2;
     required string endpoint = 3;
     repeated uint32 pid_group = 4;
-    optional string alias = 5; //for remote 
-    optional uint32 remote_tid = 6; //for remote
-    repeated string endpoint_group = 7; //for remote
-    optional TablePartition table_partition = 8; //for remote
-    optional ZoneInfo zone_info = 9; //for remote
-    optional rtidb.api.TaskInfo task_info = 10; //for remote
+    repeated string endpoint_group = 5; //for remote
+    optional ZoneInfo zone_info = 6; //for remote
+    optional rtidb.api.TaskInfo task_info = 7; //for remote
 }
 
 message Pair {
