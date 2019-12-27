@@ -96,6 +96,7 @@ bool LogReplicator::Init() {
                 return false;
             }
             nodes_.push_back(replicate_node);
+            local_endpoints_.push_back(*it);
             PDLOG(INFO, "add replica node with endpoint %s", it->c_str());
         }
         PDLOG(INFO, "init leader node for path %s ok", path_.c_str());
