@@ -1706,13 +1706,6 @@ void TabletImpl::AddReplica(RpcController* controller,
             response->set_msg("add task failed");
             return;
         }
-        /**
-          if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kAddReplica, task_ptr) < 0) {
-          response->set_code(-1);
-          response->set_msg("add task failed");
-          return;
-        }
-        */
     }
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     do {
@@ -3682,7 +3675,6 @@ int TabletImpl::AddOPMultiTask(const ::rtidb::api::TaskInfo& task_info,
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
         return -1;
     }
-    PDLOG(DEBUG, "task status [%s]--------------", ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
     return 0;
 }
 

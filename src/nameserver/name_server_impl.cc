@@ -201,6 +201,7 @@ void NameServerImpl::CheckSynTable(const std::string& alias, std::shared_ptr<::r
             PDLOG(WARNING, "create remote table_info erro, wrong msg is [%s]", msg.c_str()); 
             return;
         }
+        std::lock_guard<std::mutex> lock(mu_);
         for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
             ::rtidb::nameserver::TablePartition table_partition = table_info.table_partition(idx);
             AddReplicaRemoteOP(alias, table_info.name(), table_partition,
@@ -1296,11 +1297,9 @@ int NameServerImpl::UpdateTaskStatusRemote(bool is_recover_op) {
                 }
             }
         } else {
-            std::string msg;
             if (response.has_msg()) {
-                msg = response.msg();
+                PDLOG(WARNING, "get task status faild : [%s]", response.msg().c_str());
             }
-            PDLOG(WARNING, "get task status faild : [%s]", msg.c_str());
         }
     }
     return 0;
@@ -1400,31 +1399,31 @@ void NameServerImpl::UpdateTaskMapStatus(uint64_t remote_op_id,
     for (auto& task_info : iter->second) {
         for (int idx = 0; idx < task_info->rep_cluster_op_id_size(); idx++) {
             uint64_t rep_cluster_op_id = task_info->rep_cluster_op_id(idx);
-            if (idx < task_info->rep_cluster_op_id_size() - 1) {
-                if (rep_cluster_op_id == op_id &&  
-                        (status == ::rtidb::api::kFailed ||
-                         status == ::rtidb::api::kCanceled)) {
-                    task_info->set_status(status);
-                    if (status == ::rtidb::api::kFailed) {
-                        PDLOG(DEBUG, "update task status from[kDoing] to[kFailed]. op_id[%lu], task_type[%s]", 
-                                task_info->op_id(), 
-                                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
-                    } else {
-                        PDLOG(DEBUG, "update task status from[kDoing] to[kCanceled]. op_id[%lu], task_type[%s]", 
-                                task_info->op_id(), 
-                                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+            if (rep_cluster_op_id == op_id) {
+                if (idx < task_info->rep_cluster_op_id_size() - 1) {
+                    if (status == ::rtidb::api::kFailed ||
+                             status == ::rtidb::api::kCanceled) {
+                        task_info->set_status(status);
+                        if (status == ::rtidb::api::kFailed) {
+                            PDLOG(DEBUG, "update task status from[kDoing] to[kFailed]. op_id[%lu], task_type[%s]", 
+                                    task_info->op_id(), 
+                                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+                        } else {
+                            PDLOG(DEBUG, "update task status from[kDoing] to[kCanceled]. op_id[%lu], task_type[%s]", 
+                                    task_info->op_id(), 
+                                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+                        }
                     }
-                }
-            } else {
-                if (rep_cluster_op_id == op_id &&  
-                        status == ::rtidb::api::kDone &&
-                        task_info->status() != ::rtidb::api::kFailed &&
-                        task_info->status() != ::rtidb::api::kCanceled) {
-                    task_info->set_status(status);
-                    PDLOG(DEBUG, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
-                            task_info->op_id(), 
-                            ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+                } else {
+                    if (status == ::rtidb::api::kDone &&
+                            task_info->status() != ::rtidb::api::kFailed &&
+                            task_info->status() != ::rtidb::api::kCanceled) {
+                        task_info->set_status(status);
+                        PDLOG(DEBUG, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                                task_info->op_id(), 
+                                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
 
+                    }
                 }
             }
         }
@@ -1433,6 +1432,7 @@ void NameServerImpl::UpdateTaskMapStatus(uint64_t remote_op_id,
 
 int NameServerImpl::DeleteTask() {
     std::vector<uint64_t> done_task_vec;
+    std::vector<uint64_t> done_task_vec_remote;
     std::vector<std::shared_ptr<TabletClient>> client_vec;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -1443,7 +1443,11 @@ int NameServerImpl::DeleteTask() {
             std::shared_ptr<OPData> op_data = op_list.front();
             if (op_data->task_list_.empty()) {
                 done_task_vec.push_back(op_data->op_info_.op_id());
-                // for multi cluster
+                // for multi cluster -- leader cluster judge
+                if (op_data->op_info_.for_replica_cluster() == 1) {
+                    done_task_vec_remote.push_back(op_data->op_info_.op_id());            
+                }
+                // for multi cluster -- replica cluster judge
                 if (op_data->op_info_.has_remote_op_id()) {
                     UpdateTaskMapStatus(op_data->op_info_.remote_op_id(), 
                             op_data->op_info_.op_id(), ::rtidb::api::TaskStatus::kDone); 
@@ -1453,7 +1457,11 @@ int NameServerImpl::DeleteTask() {
                 if (task->task_info_->status() == ::rtidb::api::kFailed ||
                         op_data->op_info_.task_status() == ::rtidb::api::kCanceled) {
                     done_task_vec.push_back(op_data->op_info_.op_id());
-                    // for multi cluster
+                    // for multi cluster -- leader cluster judge
+                    if (op_data->op_info_.for_replica_cluster() == 1) {
+                        done_task_vec_remote.push_back(op_data->op_info_.op_id());            
+                    }
+                    // for multi cluster -- replica cluster judge
                     PDLOG(WARNING, "task failed or canceled. op_id[%lu], task_type[%s]", 
                             task->task_info_->op_id(), 
                             ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
@@ -1484,7 +1492,7 @@ int NameServerImpl::DeleteTask() {
         }
         PDLOG(DEBUG, "tablet[%s] delete op success", (*iter)->GetEndpoint().c_str()); 
     }
-    DeleteTaskRemote(done_task_vec, has_failed);
+    DeleteTaskRemote(done_task_vec_remote, has_failed);
     if (!has_failed) {
         DeleteTask(done_task_vec);        
     }
@@ -1492,6 +1500,9 @@ int NameServerImpl::DeleteTask() {
 }
 
 int NameServerImpl::DeleteTaskRemote(std::vector<uint64_t>& done_task_vec, bool& has_failed) {
+    if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
+        return 0;
+    }
     std::vector<std::shared_ptr<::rtidb::client::NsClient>> client_vec;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -1976,7 +1987,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         ttl_type = ::rtidb::api::TTLType::kLatestTime;
     } else if (table_info->ttl_type() != "kAbsoluteTime") {
         return -1;
-        PDLOG(WARNING, "ttl tpye format is wrong");
+        PDLOG(WARNING, "ttl tpye [%s] format is wrong", table_info->ttl_type().c_str());
     }
     ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
     if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
@@ -2642,8 +2653,8 @@ void NameServerImpl::DropTable(RpcController* controller,
         table_info = iter->second;
     }
 
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_zone_info() && request->has_task_info() && request->task_info().IsInitialized()) {
-        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
         {
             std::lock_guard<std::mutex> lock(mu_);
             std::vector<uint64_t> rep_cluster_op_id_vec;
@@ -2660,7 +2671,6 @@ void NameServerImpl::DropTable(RpcController* controller,
         response->set_code(0);
         response->set_msg("ok");
     } else {
-        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
         DropTableInternel(request->name(), *response, table_info, task_ptr);
         response->set_code(response->code());
         response->set_msg(response->msg());
@@ -3533,7 +3543,6 @@ void NameServerImpl::AddReplicaRemoteOP(const std::string& alias,
         const ::rtidb::nameserver::TablePartition& table_partition,
         uint32_t remote_tid, 
         uint32_t pid) {
-    std::lock_guard<std::mutex> lock(mu_);
     if (!running_.load(std::memory_order_acquire)) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -4346,7 +4355,7 @@ int NameServerImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::
     task_ptr.reset(task_info.New());
     task_ptr->CopyFrom(task_info);
     task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-    for (auto& op_id : rep_cluster_op_id_vec) {
+    for (auto op_id : rep_cluster_op_id_vec) {
         task_ptr->add_rep_cluster_op_id(op_id);
     }
     auto iter = task_map_.find(task_info.op_id());
