@@ -329,7 +329,6 @@ TEST_F(CodecTest, ManyCol) {
             ASSERT_DOUBLE_EQ(d, 1.3);
         }
     }
-
 }
 
 
