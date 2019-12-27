@@ -158,7 +158,6 @@ static void BM_SIMPLE_INSERT(benchmark::State &state) {  // NOLINT
 
     if (!delete_tbl(conn, delete_sql)) goto failure;
     if (!drop_tbl(conn, drop_tbl_sql)) goto failure;
-    //    if (!drop_db(conn, drop_db_sql)) goto failure;
     mysql_close(&conn);
 
 failure:
@@ -217,7 +216,6 @@ static void BM_INSERT_WITH_INDEX(benchmark::State &state) {  // NOLINT
 
     if (!delete_tbl(conn, delete_sql)) goto failure;
     if (!drop_tbl(conn, drop_tbl_sql)) goto failure;
-    //    if (!drop_db(conn, drop_db_sql)) goto failure;
     mysql_close(&conn);
 
 failure:
@@ -283,9 +281,8 @@ failure:
     mysql_close(&conn);
 }
 
-static void BM_WINDOW_CASE_QUERY(benchmark::State &state,
-                                 const char *select_sql) {  // NOLINT
-
+static void BM_WINDOW_CASE_QUERY(benchmark::State &state,  // NOLINT
+                                 const char *select_sql) {
     const char *db_sql = "create database test";
     const char *use_sql = "use test";
     const char *schema_sql =
@@ -389,8 +386,9 @@ static void BM_WINDOW_CASE0_QUERY(benchmark::State &state) {  // NOLINT
         "                  ORDER BY col_i64\n"
         "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
     std::string query_type = "sum_col_i32";
-    std::string label = query_type + "/group " + std::to_string(state.range(0)) +
-        "/max window size " + std::to_string(state.range(1));
+    std::string label = query_type + "/group " +
+                        std::to_string(state.range(0)) + "/max window size " +
+                        std::to_string(state.range(1));
     state.SetLabel(label);
     BM_WINDOW_CASE_QUERY(state, select_sql);
 }
@@ -404,8 +402,9 @@ static void BM_WINDOW_CASE3_QUERY(benchmark::State &state) {  // NOLINT
         "                  ORDER BY col_i64\n"
         "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
     std::string query_type = "max_col_i32";
-    std::string label = query_type + "/group " + std::to_string(state.range(0)) +
-        "/max window size " + std::to_string(state.range(1));
+    std::string label = query_type + "/group " +
+                        std::to_string(state.range(0)) + "/max window size " +
+                        std::to_string(state.range(1));
     state.SetLabel(label);
     BM_WINDOW_CASE_QUERY(state, select_sql);
 }
@@ -432,8 +431,9 @@ static void BM_WINDOW_CASE2_QUERY(benchmark::State &state) {  // NOLINT
         "                  ORDER BY col_i64\n"
         "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW);";
     std::string query_type = "sum 5 cols";
-    std::string label = query_type + "/group " + std::to_string(state.range(0)) +
-        "/max window size " + std::to_string(state.range(1));
+    std::string label = query_type + "/group " +
+                        std::to_string(state.range(0)) + "/max window size " +
+                        std::to_string(state.range(1));
     state.SetLabel(label);
     BM_WINDOW_CASE_QUERY(state, select_sql);
 }

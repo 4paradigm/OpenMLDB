@@ -8,6 +8,8 @@
  **/
 #include "udf/udf.h"
 #include <stdint.h>
+#include <algorithm>
+#include <vector>
 #include "proto/type.pb.h"
 #include "storage/type_ir_builder.h"
 #include "storage/window.h"
@@ -152,7 +154,6 @@ void RegisterUDFToModule(::llvm::Module *m) {
     m->getOrInsertFunction("sum_int64", i64_ty, i8_ptr_ty);
     m->getOrInsertFunction("sum_float", float_ty, i8_ptr_ty);
     m->getOrInsertFunction("sum_double", double_ty, i8_ptr_ty);
-
 
     m->getOrInsertFunction("max_int16", i16_ty, i8_ptr_ty);
     m->getOrInsertFunction("max_int32", i32_ty, i8_ptr_ty);

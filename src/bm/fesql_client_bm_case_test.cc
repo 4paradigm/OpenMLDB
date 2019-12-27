@@ -39,27 +39,27 @@ TEST_F(FeSQL_CASE_Test, WINDOW_CASE0_QUERY_TEST) {
 }
 
 TEST_F(FeSQL_CASE_Test, WINDOW_CASE0_QUERY_BATCH_TEST) {
-    WINDOW_CASE0_QUERY(nullptr, TEST, true, 10,10);
+    WINDOW_CASE0_QUERY(nullptr, TEST, true, 10, 10);
     WINDOW_CASE0_QUERY(nullptr, TEST, true, 1, 100);
     WINDOW_CASE0_QUERY(nullptr, TEST, true, 2, 1000);
 }
 
 TEST_F(FeSQL_CASE_Test, WINDOW_CASE1_QUERY_TEST) {
     WINDOW_CASE1_QUERY(nullptr, TEST, false, 10, 10);
-    WINDOW_CASE1_QUERY(nullptr, TEST, false, 1,100);
+    WINDOW_CASE1_QUERY(nullptr, TEST, false, 1, 100);
     WINDOW_CASE1_QUERY(nullptr, TEST, false, 2, 1000);
 }
 
 TEST_F(FeSQL_CASE_Test, WINDOW_CASE1_QUERY_BATCH_TEST) {
-    WINDOW_CASE1_QUERY(nullptr, TEST, true, 10,10);
-    WINDOW_CASE1_QUERY(nullptr, TEST, true, 1,100);
-    WINDOW_CASE1_QUERY(nullptr, TEST, true, 2,1000);
+    WINDOW_CASE1_QUERY(nullptr, TEST, true, 10, 10);
+    WINDOW_CASE1_QUERY(nullptr, TEST, true, 1, 100);
+    WINDOW_CASE1_QUERY(nullptr, TEST, true, 2, 1000);
 }
 
 TEST_F(FeSQL_CASE_Test, WINDOW_CASE2_QUERY_BATCH_TEST) {
-    WINDOW_CASE2_QUERY(nullptr, TEST, true, 10,10);
-    WINDOW_CASE2_QUERY(nullptr, TEST, true, 1,100);
-    WINDOW_CASE2_QUERY(nullptr, TEST, true, 2,1000);
+    WINDOW_CASE2_QUERY(nullptr, TEST, true, 10, 10);
+    WINDOW_CASE2_QUERY(nullptr, TEST, true, 1, 100);
+    WINDOW_CASE2_QUERY(nullptr, TEST, true, 2, 1000);
 }
 }  // namespace bm
 }  // namespace fesql

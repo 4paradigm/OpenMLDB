@@ -214,18 +214,15 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundWindowTest) {
 }
 
 TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
-
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
     Row row({.buf = ptr});
 
-
-
     // history current_ts -1000 ~ current_ts
     {
         std::vector<Row> rows;
-        std::vector<uint64_t > keys;
+        std::vector<uint64_t> keys;
         rows.push_back(row);
         keys.push_back(1L);
         rows.push_back(row);
@@ -259,7 +256,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
         rows.push_back(row);
         keys.push_back(6000L);
         ASSERT_EQ(rows.size(), keys.size());
-        CurrentHistorySlideWindow window(-1000L, rows, keys,0);
+        CurrentHistorySlideWindow window(-1000L, rows, keys, 0);
         ASSERT_TRUE(window.Slide());
         ASSERT_EQ(1u, window.Count());
 
@@ -307,7 +304,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
     // history current_ts -1000 ~ current_ts max_size = 5
     {
         std::vector<Row> rows;
-        std::vector<uint64_t > keys;
+        std::vector<uint64_t> keys;
         rows.push_back(row);
         keys.push_back(1L);
         rows.push_back(row);
@@ -333,7 +330,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
         rows.push_back(row);
         keys.push_back(6000L);
         ASSERT_EQ(rows.size(), keys.size());
-        CurrentHistorySlideWindow window(-1000L, 5, rows, keys,0);
+        CurrentHistorySlideWindow window(-1000L, 5, rows, keys, 0);
         ASSERT_TRUE(window.Slide());
         ASSERT_EQ(1u, window.Count());
         ASSERT_TRUE(window.Slide());
@@ -364,11 +361,11 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
     // history current_ts -1000 ~ current_ts max_size = 3
     {
         std::vector<Row> rows;
-        std::vector<uint64_t > keys;
+        std::vector<uint64_t> keys;
         rows.reserve(7);
         keys.reserve(7);
 
-        //reserve rows
+        // reserve rows
         rows.push_back(row);
         keys.push_back(1);
         rows.push_back(row);
@@ -385,7 +382,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
         rows.push_back(row);
         keys.push_back(3L);
         ASSERT_EQ(rows.size(), keys.size());
-        CurrentHistorySlideWindow window(-1000L, 2, rows, keys,4);
+        CurrentHistorySlideWindow window(-1000L, 2, rows, keys, 4);
         ASSERT_TRUE(window.Slide());
         ASSERT_EQ(1u, window.Count());
         ASSERT_TRUE(window.Slide());
@@ -438,8 +435,8 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundSlideWindowTest) {
         rows.push_back(row);
         keys.push_back(6000L);
         ASSERT_EQ(rows.size(), keys.size());
-//        std::reverse(rows.begin(), rows.end());
-//        std::reverse(keys.begin(), keys.end());
+        //        std::reverse(rows.begin(), rows.end());
+        //        std::reverse(keys.begin(), keys.end());
 
         // history current_ts -1000 ~ current_ts
         CurrentHistoryUnboundSlideWindow window(rows, keys, 0);
@@ -514,8 +511,8 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundSlideWindowTest) {
         rows.push_back(row);
         keys.push_back(6000L);
 
-//        std::reverse(rows.begin(), rows.end());
-//        std::reverse(keys.begin(), keys.end());
+        //        std::reverse(rows.begin(), rows.end());
+        //        std::reverse(keys.begin(), keys.end());
         ASSERT_EQ(rows.size(), keys.size());
 
         // history current_ts -1000 ~ current_ts

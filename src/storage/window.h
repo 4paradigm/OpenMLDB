@@ -76,7 +76,8 @@ class Window {
 class SlideWindow {
  public:
     SlideWindow(int64_t start_offset, int64_t end_offset,
-                std::vector<Row> &buffer, std::vector<uint64_t> &keys, uint32_t start)
+                const std::vector<Row> &buffer,
+                const std::vector<uint64_t> &keys, uint32_t start)
         : start_offset_(start_offset),
           end_offset_(end_offset),
           start_(start),
@@ -87,7 +88,8 @@ class SlideWindow {
         window_end_ = buffer.size();
     }
     SlideWindow(int64_t start_offset, int64_t end_offset, uint32_t max_size,
-                std::vector<Row> &buffer, std::vector<uint64_t> &keys, uint32_t start)
+                const std::vector<Row> &buffer,
+                const std::vector<uint64_t> &keys, uint32_t start)
         : start_offset_(start_offset),
           end_offset_(end_offset),
           start_(start),
@@ -108,8 +110,8 @@ class SlideWindow {
     uint32_t end_;
     uint32_t max_size_;
     uint32_t window_end_;
-    std::vector<Row> &buffer_;
-    std::vector<uint64_t> &keys_;
+    const std::vector<Row> &buffer_;
+    const std::vector<uint64_t> &keys_;
 };
 
 // TODO(chenjing):
@@ -165,12 +167,13 @@ class CurrentHistoryUnboundWindow : public Window {
  */
 class CurrentHistorySlideWindow : public SlideWindow {
  public:
-    CurrentHistorySlideWindow(int64_t start_offset, std::vector<Row> &buffer,
-                              std::vector<uint64_t> &keys, uint32_t start)
+    CurrentHistorySlideWindow(int64_t start_offset,
+                              const std::vector<Row> &buffer,
+                              const std::vector<uint64_t> &keys, uint32_t start)
         : SlideWindow(start_offset, 0, buffer, keys, start) {}
     CurrentHistorySlideWindow(int64_t start_offset, uint32_t max_size,
-                              std::vector<Row> &buffer,
-                              std::vector<uint64_t> &keys, uint32_t start)
+                              const std::vector<Row> &buffer,
+                              const std::vector<uint64_t> &keys, uint32_t start)
         : SlideWindow(start_offset, 0, max_size, buffer, keys, start) {}
     bool Slide() {
         if (end_ >= window_end_) {
@@ -194,13 +197,15 @@ class CurrentHistorySlideWindow : public SlideWindow {
  */
 class CurrentHistoryUnboundSlideWindow : public SlideWindow {
  public:
-    CurrentHistoryUnboundSlideWindow(std::vector<Row> &buffer,
-                                     std::vector<uint64_t> &keys, uint32_t start)
+    CurrentHistoryUnboundSlideWindow(const std::vector<Row> &buffer,
+                                     const std::vector<uint64_t> &keys,
+                                     uint32_t start)
         : SlideWindow(INT64_MIN, 0, buffer, keys, start) {}
 
     CurrentHistoryUnboundSlideWindow(uint32_t max_size,
-                                     std::vector<Row> &buffer,
-                                     std::vector<uint64_t> &keys, uint32_t start)
+                                     const std::vector<Row> &buffer,
+                                     const std::vector<uint64_t> &keys,
+                                     uint32_t start)
         : SlideWindow(INT64_MIN, 0, max_size, buffer, keys, start) {}
     bool Slide() {
         if (end_ >= window_end_) {

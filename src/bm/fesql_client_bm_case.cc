@@ -10,6 +10,7 @@
 #include "bm/fesql_client_bm_case.h"
 #include <memory>
 #include <string>
+#include <vector>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 namespace fesql {
@@ -111,7 +112,7 @@ static bool repeated_insert_tbl(::fesql::sdk::TabletSdk *tablet_sdk,
     return true;
 }
 
-void static SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
+static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
                               bool is_batch_mode, std::string select_sql,
                               int64_t group_size, int64_t window_max_size) {
     int64_t record_size = group_size * window_max_size;
@@ -232,27 +233,7 @@ failure:
         ASSERT_FALSE(failure_flag);
     }
 }
-
-void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
-                        bool is_batch_mode, int64_t group_size,
-                        int64_t window_max_size) {  // NOLINT
-    int64_t record_size = group_size * window_max_size;
-    std::string select_sql =
-        "select col_str64, col_i64, col_i32, col_i16, col_f, col_d, col_str255 "
-        "from tbl limit " +
-        std::to_string(record_size) + ";";
-    if (BENCHMARK == mode) {
-        std::string query_type = "select 5 cols";
-        std::string label = query_type + "/group " +
-                            std::to_string(group_size) + "/max window size " +
-                            std::to_string(window_max_size);
-        state_ptr->SetLabel(label);
-    }
-    SIMPLE_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
-                      window_max_size);
-}
-
-void static WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
+static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
                               bool is_batch_mode, std::string select_sql,
                               int64_t group_size, int64_t max_window_size) {
     int64_t record_size = group_size * max_window_size;
@@ -396,6 +377,24 @@ failure:
         ASSERT_FALSE(failure_flag);
     }
 }
+void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode, int64_t group_size,
+                        int64_t window_max_size) {  // NOLINT
+    int64_t record_size = group_size * window_max_size;
+    std::string select_sql =
+        "select col_str64, col_i64, col_i32, col_i16, col_f, col_d, col_str255 "
+        "from tbl limit " +
+        std::to_string(record_size) + ";";
+    if (BENCHMARK == mode) {
+        std::string query_type = "select 5 cols";
+        std::string label = query_type + "/group " +
+                            std::to_string(group_size) + "/max window size " +
+                            std::to_string(window_max_size);
+        state_ptr->SetLabel(label);
+    }
+    SIMPLE_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
+                      window_max_size);
+}
 
 void WINDOW_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode, int64_t group_size,
@@ -473,7 +472,7 @@ void WINDOW_CASE2_QUERY(benchmark::State *state_ptr, MODE mode,
         std::string query_type = "sum 4 cols";
         std::string label =
             query_type + "/group " + std::to_string(state_ptr->range(0)) +
-                "/max window size " + std::to_string(state_ptr->range(1));
+            "/max window size " + std::to_string(state_ptr->range(1));
         state_ptr->SetLabel(label);
     }
 

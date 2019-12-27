@@ -84,11 +84,10 @@ TEST_F(UDFTest, UDF_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2 + 4,
-                                            fesql::type::kInt16, buf));
+            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl),
+                                            2 + 4, fesql::type::kInt16, buf));
         ASSERT_EQ(2 + 22 + 222, fesql::udf::v1::sum_int32(col));
     }
-
 
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
@@ -96,9 +95,9 @@ TEST_F(UDFTest, UDF_sum_test) {
         list_ref.iterator = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2,
-                                            fesql::type::kFloat, buf));
+        ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2,
+                         fesql::type::kFloat, buf));
         ASSERT_EQ(3.1f + 33.1f + 333.1f, fesql::udf::v1::sum_float(col));
     }
 
@@ -108,9 +107,9 @@ TEST_F(UDFTest, UDF_sum_test) {
         list_ref.iterator = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4,
-                                            fesql::type::kDouble, buf));
+        ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4,
+                         fesql::type::kDouble, buf));
         ASSERT_EQ(4.1 + 44.1 + 444.1, fesql::udf::v1::sum_double(col));
     }
 
@@ -120,9 +119,9 @@ TEST_F(UDFTest, UDF_sum_test) {
         list_ref.iterator = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl),  2 + 4 + 2 + 4 + 8,
-                                            fesql::type::kInt64, buf));
+        ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4 + 8,
+                         fesql::type::kInt64, buf));
         ASSERT_EQ(5L + 55L + 555L, fesql::udf::v1::sum_int64(col));
     }
 }
@@ -149,8 +148,8 @@ TEST_F(UDFTest, UDF_max_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2 + 4,
-                                            fesql::type::kInt16, buf));
+            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl),
+                                            2 + 4, fesql::type::kInt16, buf));
         ASSERT_EQ(222, fesql::udf::v1::max_int32(col));
     }
 
@@ -160,10 +159,10 @@ TEST_F(UDFTest, UDF_max_test) {
         list_ref.iterator = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2,
-                                            fesql::type::kFloat, buf));
-        ASSERT_EQ( 333.1f, fesql::udf::v1::max_float(col));
+        ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2,
+                         fesql::type::kFloat, buf));
+        ASSERT_EQ(333.1f, fesql::udf::v1::max_float(col));
     }
 
     {
@@ -172,9 +171,9 @@ TEST_F(UDFTest, UDF_max_test) {
         list_ref.iterator = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4,
-                                            fesql::type::kDouble, buf));
+        ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4,
+                         fesql::type::kDouble, buf));
         ASSERT_EQ(444.1, fesql::udf::v1::max_double(col));
     }
 
@@ -184,13 +183,12 @@ TEST_F(UDFTest, UDF_max_test) {
         list_ref.iterator = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl),  2 + 4 + 2 + 4 + 8,
-                                            fesql::type::kInt64, buf));
+        ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4 + 8,
+                         fesql::type::kInt64, buf));
         ASSERT_EQ(555L, fesql::udf::v1::max_int64(col));
     }
 }
-
 
 TEST_F(UDFTest, UDF_min_test) {
     WindowIteratorImpl impl(rows);
@@ -214,8 +212,8 @@ TEST_F(UDFTest, UDF_min_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2 + 4,
-                                            fesql::type::kInt16, buf));
+            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl),
+                                            2 + 4, fesql::type::kInt16, buf));
         ASSERT_EQ(2, fesql::udf::v1::min_int32(col));
     }
 
@@ -225,10 +223,10 @@ TEST_F(UDFTest, UDF_min_test) {
         list_ref.iterator = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2,
-                                            fesql::type::kFloat, buf));
-        ASSERT_EQ( 3.1f, fesql::udf::v1::min_float(col));
+        ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2,
+                         fesql::type::kFloat, buf));
+        ASSERT_EQ(3.1f, fesql::udf::v1::min_float(col));
     }
 
     {
@@ -237,9 +235,9 @@ TEST_F(UDFTest, UDF_min_test) {
         list_ref.iterator = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4,
-                                            fesql::type::kDouble, buf));
+        ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4,
+                         fesql::type::kDouble, buf));
         ASSERT_EQ(4.1, fesql::udf::v1::min_double(col));
     }
 
@@ -249,9 +247,9 @@ TEST_F(UDFTest, UDF_min_test) {
         list_ref.iterator = buf;
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
-        ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl),  2 + 4 + 2 + 4 + 8,
-                                            fesql::type::kInt64, buf));
+        ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4 + 8,
+                         fesql::type::kInt64, buf));
         ASSERT_EQ(5L, fesql::udf::v1::min_int64(col));
     }
 }
