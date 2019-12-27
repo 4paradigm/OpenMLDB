@@ -1249,8 +1249,8 @@ int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
             }
             std::string endpoint = iter->first;
             for (const auto& op_list : task_vec_) {
-                std::string msg = "tablet";
-                if (UpdateTask(op_list, endpoint, msg, is_recover_op, response) < 0) {
+                std::string endpoint_role = "tablet";
+                if (UpdateTask(op_list, endpoint, endpoint_role, is_recover_op, response) < 0) {
                     continue;
                 }                
             }
@@ -1291,8 +1291,8 @@ int NameServerImpl::UpdateTaskStatusRemote(bool is_recover_op) {
                 if (index <= FLAGS_name_server_task_max_concurrency) {
                     continue;
                 }
-                std::string msg = "replica cluster";
-                if (UpdateTask(op_list, endpoint, msg, is_recover_op, response) < 0) {
+                std::string endpoint_role = "replica cluster";
+                if (UpdateTask(op_list, endpoint, endpoint_role, is_recover_op, response) < 0) {
                     continue;
                 }
             }
@@ -1499,7 +1499,7 @@ int NameServerImpl::DeleteTask() {
     return 0;
 }
 
-int NameServerImpl::DeleteTaskRemote(std::vector<uint64_t>& done_task_vec, bool& has_failed) {
+int NameServerImpl::DeleteTaskRemote(const std::vector<uint64_t>& done_task_vec, bool& has_failed) {
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         return 0;
     }

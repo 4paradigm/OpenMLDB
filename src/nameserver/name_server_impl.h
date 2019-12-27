@@ -336,7 +336,7 @@ public:
 
     int UpdateTaskStatus(bool is_recover_op);
 
-    int DeleteTaskRemote(std::vector<uint64_t>& done_task_vec, bool& has_failed);
+    int DeleteTaskRemote(const std::vector<uint64_t>& done_task_vec, bool& has_failed);
 
     void UpdateTaskMapStatus(uint64_t remote_op_id, 
             uint64_t op_id,
