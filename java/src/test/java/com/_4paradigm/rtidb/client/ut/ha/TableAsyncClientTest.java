@@ -777,7 +777,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             it = sf.get();
             Assert.assertEquals(it.getCount(), 1);
             Assert.assertTrue(it.valid());
-            Assert.assertEquals(new Object[] {"card1", "mcc4", 1.0d, expired - 1000}, it.getDecodedValue());
+            Assert.assertEquals(new Object[] {"card1", "mcc4", 1.0d, expired - 2000}, it.getDecodedValue());
         }catch (Exception e) {
             e.printStackTrace();
             Assert.fail();

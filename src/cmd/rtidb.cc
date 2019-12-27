@@ -2250,7 +2250,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
             std::cout << "Invalid args. pid should be uint32_t" << std::endl;
             return;
         } 
-        // ns_table_info.set_ttl_type(type);
         bool has_index = false;
         std::set<std::string> name_set;
         for (uint32_t i = 5; i < parts.size(); i++) {
