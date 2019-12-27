@@ -4335,6 +4335,40 @@ TEST_F(TabletImplTest, ScanAtLeastWithAbsAndLat) {
                 &closure);
         ASSERT_EQ(0, presponse.code());
     }
+
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts1");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(100, srp->count());
+    }
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts2");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(80, srp->count());
+    }
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts3");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(70, srp->count());
+    }
     ::rtidb::api::ScanRequest sr;
     ::rtidb::api::ScanResponse srp;
     // test atleast more than et and no ttl
@@ -4618,6 +4652,41 @@ TEST_F(TabletImplTest, ScanAtLeastWithAbsOrLat) {
         tablet.Put(NULL, &prequest, &presponse,
                 &closure);
         ASSERT_EQ(0, presponse.code());
+    }
+
+    
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts1");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(100, srp->count());
+    }
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts2");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(50, srp->count());
+    }
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts3");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(60, srp->count());
     }
     ::rtidb::api::ScanRequest sr;
     ::rtidb::api::ScanResponse srp;
