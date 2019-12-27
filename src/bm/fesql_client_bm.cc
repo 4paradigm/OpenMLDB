@@ -19,37 +19,25 @@ namespace bm {
 static void BM_SIMPLE_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    int64_t record_size = state.range(0);
-    SIMPLE_CASE1_QUERY(&state, BENCHMARK, false, record_size);
-}
-static void BM_SIMPLE_BATCH_QUERY(benchmark::State &state) {  // NOLINT
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    int64_t record_size = state.range(0);
-    SIMPLE_CASE1_QUERY(&state, BENCHMARK, true, record_size);
+    SIMPLE_CASE1_QUERY(&state, BENCHMARK, false, state.range(0), state.range(1));
 }
 
 static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    int64_t record_size = state.range(0);
-    ::fesql::bm::WINDOW_CASE1_QUERY(&state, BENCHMARK, false, record_size);
-}
-static void BM_WINDOW_CASE1_BATCH_QUERY(benchmark::State &state) {  // NOLINT
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    int64_t record_size = state.range(0);
-    ::fesql::bm::WINDOW_CASE1_QUERY(&state, BENCHMARK, true, record_size);
+    ::fesql::bm::WINDOW_CASE1_QUERY(&state, BENCHMARK, false, state.range(0), state.range(1));
 }
 
-static void BM_WINDOW_CASE2_BATCH_QUERY(benchmark::State &state) {  // NOLINT
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    int64_t record_size = state.range(0);
-    ::fesql::bm::WINDOW_CASE2_QUERY(&state, BENCHMARK, true, record_size);
-}
 BENCHMARK(BM_SIMPLE_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
-BENCHMARK(BM_WINDOW_CASE1_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
+BENCHMARK(BM_WINDOW_CASE1_QUERY)
+->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({10, 10})
+    ->Args({10, 100})
+    ->Args({10, 1000});
+
+
 }  // namespace bm
 };  // namespace fesql
 
