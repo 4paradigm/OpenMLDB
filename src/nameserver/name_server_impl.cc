@@ -2843,8 +2843,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
+        std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
             response->set_msg("nameserver is follower");
@@ -6568,7 +6568,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         }
         {
             std::lock_guard<std::mutex> lock(mu_);
-            if ((tables.empty()) && !CompareTableInfo(tables)) {
+            if (!tables.empty() && !CompareTableInfo(tables)) {
                 rpc_msg = "compare table info error";
                 code = 567;
                 break;
