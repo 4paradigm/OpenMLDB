@@ -55,6 +55,11 @@ public:
 
     void CheckZkClient();
 
+    ClusterStatus GetClusterStatus() {
+        std::lock_guard<std::mutex> lock(mu_);
+        return state_;
+    }
+
     void UpdateNSClient(const std::vector<std::string>& children);
 
     int Init(std::string& msg);

@@ -42,7 +42,8 @@ namespace nameserver {
 const std::string OFFLINE_LEADER_ENDPOINT = "OFFLINE_LEADER_ENDPOINT";
 const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
-ClusterInfo::ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd) : mu_() {
+ClusterInfo::ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd) : client_(), delete_offset_map_(),
+    last_status(), zk_client_(), mu_(), session_term_(), task_id_() {
     cluster_add_.CopyFrom(cd);
     state_ = kClusterHealthy;
     ctime_ = ::baidu::common::timer::get_micros() / 1000;
@@ -85,6 +86,7 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
     std::lock_guard<std::mutex> lock(mu_);
     client_ = tmp_ptr;
     ctime_ = ::baidu::common::timer::get_micros() / 1000;
+    state_ = kClusterHealthy;
 }
 
 int ClusterInfo::Init(std::string& msg) {
@@ -547,7 +549,6 @@ void NameServerImpl::RecoverClusterInfo() {
             PDLOG(WARNING, "%s init failed, error: %s", alias.c_str(), rpc_msg.c_str());
             // todo :: add cluster status, need show in showreplica
             cluster_info->state_ = kClusterOffline;
-            continue;
         }
         nsc_.insert(std::make_pair(alias, cluster_info));
     }
@@ -6714,8 +6715,10 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
     }
     int code = 0;
     std::string rpc_msg = "ok";
-    std::lock_guard<std::mutex> lock(mu_);
+    std::shared_ptr<::rtidb::client::NsClient> ctr;
+    ClusterStatus state = kClusterHealthy;
     do {
+        std::lock_guard<std::mutex> lock(mu_);
         auto it = nsc_.find(request->alias());
         if (it == nsc_.end()) {
             code = 404;
@@ -6723,7 +6726,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             PDLOG(WARNING, "replica name [%s] not found when remove replica clsuter", request->alias().c_str());
             break;
         }
-        it->second->state_ = kClusterRemove;
+        state = it->second->GetClusterStatus();
         for (auto iter = it->second->last_status.begin(); iter != it->second->last_status.end(); iter++) {
             for (auto part_iter = iter->second.begin(); part_iter != iter->second.end(); part_iter++) {
                 for (auto meta : part_iter->partition_meta()) {
@@ -6734,19 +6737,21 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
                 }
             }
         }
-        if (!it->second->RemoveReplicaClusterByNs(it->first, zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
-            PDLOG(WARNING, "send remove replica cluster request to replica clsute failed");
-            break;
-        }
         if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
             code = 452;
             rpc_msg = "del zk failed";
             PDLOG(WARNING, "del replica zk node [%s] failed, when remove repcluster", request->alias().c_str());
             break;
         }
+        ctr = it->second->client_;
         nsc_.erase(it);
         PDLOG(INFO, "success remove replica cluster [%s]", request->alias().c_str());
     } while(0);
+    if ((code == 0) && (state == kClusterHealthy)) {
+        if (!ctr->RemoveReplicaClusterByNs(request->alias(), zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
+            PDLOG(WARNING, "send remove replica cluster request to replica clsute failed");
+        }
+    }
     response->set_code(code);
     response->set_msg(rpc_msg);
     return;
@@ -6821,7 +6826,11 @@ void NameServerImpl::CheckClusterInfo() {
             if (nsc_.size() < 1) {
                 break;
             }
-            tmp_nsc = nsc_;
+            for (auto i : nsc_) {
+                if (i.second->GetClusterStatus() == kClusterHealthy) {
+                    tmp_nsc.insert(std::make_pair(i.first, i.second));
+                }
+            }
         }
         for (const auto& i : tmp_nsc) {
             i.second->CheckZkClient();
