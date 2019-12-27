@@ -74,6 +74,9 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
     std::vector<std::string> tmp_children(children.begin(), children.end());
     std::sort(tmp_children.begin(), tmp_children.end());
     std::string endpoint;
+    if (tmp_children[0] == client_->GetEndpoint()) {
+        return;
+    }
     if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/leader/" + tmp_children[0], endpoint)) {
         PDLOG(WARNING, "get replica cluster leader ns failed");
         return;
@@ -6715,7 +6718,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
     }
     int code = 0;
     std::string rpc_msg = "ok";
-    std::shared_ptr<::rtidb::client::NsClient> ctr;
+    std::shared_ptr<::rtidb::client::NsClient> c_ptr;
     ClusterStatus state = kClusterHealthy;
     do {
         std::lock_guard<std::mutex> lock(mu_);
@@ -6743,12 +6746,12 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             PDLOG(WARNING, "del replica zk node [%s] failed, when remove repcluster", request->alias().c_str());
             break;
         }
-        ctr = it->second->client_;
+        c_ptr = it->second->client_;
         nsc_.erase(it);
         PDLOG(INFO, "success remove replica cluster [%s]", request->alias().c_str());
     } while(0);
     if ((code == 0) && (state == kClusterHealthy)) {
-        if (!ctr->RemoveReplicaClusterByNs(request->alias(), zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
+        if (!c_ptr->RemoveReplicaClusterByNs(request->alias(), zone_info_.zone_name(), zone_info_.zone_term(), code, rpc_msg)) {
             PDLOG(WARNING, "send remove replica cluster request to replica clsute failed");
         }
     }
