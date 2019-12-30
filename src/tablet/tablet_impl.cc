@@ -2203,7 +2203,7 @@ void TabletImpl::SchedMakeSnapshot() {
                 if (iter->first == 0 && inner->first == 0) {
                     continue;
                 }
-                if (inner->second->GetStorageMode()==::rtidb::common::StorageMode::kMemory) {
+                if (inner->second->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
                     table_set.push_back(std::make_pair(iter->first, inner->first));
                 }
             }
@@ -2226,7 +2226,7 @@ void TabletImpl::SchedMakeDiskTableSnapshot() {
                 if (iter->first == 0 && inner->first == 0) {
                     continue;
                 }
-                if (inner->second->GetStorageMode()!=::rtidb::common::StorageMode::kMemory) {
+                if (inner->second->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
                     table_set.push_back(std::make_pair(iter->first, inner->first));
                 }
             }
