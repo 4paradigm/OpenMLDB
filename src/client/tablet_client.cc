@@ -130,7 +130,6 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    // table_meta->set_ttl(ttl);
     ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
