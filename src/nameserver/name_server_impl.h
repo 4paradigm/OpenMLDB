@@ -36,6 +36,7 @@ using ::rtidb::zk::ZkClient;
 using ::rtidb::zk::DistLock;
 using ::rtidb::api::TabletState;
 using ::rtidb::client::TabletClient;
+using ::rtidb::client::NsClient;
 
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 
@@ -59,9 +60,9 @@ public:
 
     int Init(std::string& msg);
 
-    bool CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info); 
+    bool CreateTableRemote(const ::rtidb::api::TaskInfo& task_info, const ::rtidb::nameserver::TableInfo& table_info, const ::rtidb::nameserver::ZoneInfo& zone_info); 
 
-    bool DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, const std::string& name, const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info); 
+    bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info, const std::string& name, const ::rtidb::nameserver::ZoneInfo& zone_info); 
    
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, std::string& msg);
 
@@ -98,7 +99,6 @@ struct Task {
 struct OPData {
     ::rtidb::api::OPInfo op_info_;
     std::list<std::shared_ptr<Task>> task_list_;
-    bool for_replica_cluster = false;
 };
 
 class NameServerImplTest;
@@ -129,12 +129,27 @@ public:
             ::rtidb::api::TaskStatusResponse* response,
             Closure* done);
 
-    void CreateTableInternel(std::shared_ptr<GeneralResponse> response, 
+    void LoadTable(RpcController* controller, 
+            const LoadTableRequest* request, 
+            GeneralResponse* response, 
+            Closure* done); 
+
+    void CreateTableInternel(GeneralResponse& response, 
             std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, 
             const std::vector<::rtidb::base::ColumnDesc>& columns,
             uint64_t cur_term,
             uint32_t tid,
-            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr = std::make_shared<::rtidb::api::TaskInfo>());
+            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+
+    void CreateTableInfoSimply(RpcController* controller, 
+            const CreateTableInfoRequest* request, 
+            CreateTableInfoResponse* response, 
+            Closure* done);
+
+    void CreateTableInfo(RpcController* controller, 
+            const CreateTableInfoRequest* request, 
+            CreateTableInfoResponse* response, 
+            Closure* done);
 
     void CreateTable(RpcController* controller,
         const CreateTableRequest* request,
@@ -142,9 +157,9 @@ public:
         Closure* done);
 
     void DropTableInternel(const std::string name,
-            std::shared_ptr<GeneralResponse> response,
+            GeneralResponse& response,
             std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr = std::make_shared<::rtidb::api::TaskInfo>()); 
+            std::shared_ptr<::rtidb::api::TaskInfo> task_ptr); 
 
     void DropTable(RpcController* controller,
         const DropTableRequest* request,
@@ -171,17 +186,28 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    void AddRemoteReplica(const std::string& name, 
-            const ::rtidb::nameserver::PartitionMeta& partition_meta,
+    void AddReplicaSimplyRemoteOP(const std::string& name, 
+            const std::string& endpoint, 
             uint32_t tid, uint32_t pid); 
 
+    void AddReplicaRemoteOP(const std::string& alias,
+            const std::string& name,
+            const ::rtidb::nameserver::TablePartition& table_partition,
+            uint32_t remote_tid,
+            uint32_t pid); 
+ 
     void AddReplicaNS(RpcController* controller,
             const AddReplicaNSRequest* request,
             GeneralResponse* response,
             Closure* done);
 
-    int DelRemoteReplica(const std::string& endpoint,
-            const std::string table_name,
+    void AddReplicaNSFromRemote(RpcController* controller,
+            const AddReplicaNSRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    int DelReplicaRemoteOP(const std::string& endpoint,
+            const std::string name,
             uint32_t pid); 
     
     void DelReplicaNS(RpcController* controller,
@@ -300,7 +326,7 @@ public:
 
     void CheckZkClient();
 
-    int UpdateTaskStatusForReplicaCluster(bool is_recover_op);
+    int UpdateTaskStatusRemote(bool is_recover_op);
 
     int UpdateTask(const std::list<std::shared_ptr<OPData>>& op_list, 
         const std::string& endpoint, 
@@ -310,7 +336,11 @@ public:
 
     int UpdateTaskStatus(bool is_recover_op);
 
-    int DeleteTaskForReplicaCluster();
+    int DeleteTaskRemote(const std::vector<uint64_t>& done_task_vec, bool& has_failed);
+
+    void UpdateTaskMapStatus(uint64_t remote_op_id, 
+            uint64_t op_id,
+            const ::rtidb::api::TaskStatus& status); 
 
     int DeleteTask();
 
@@ -322,9 +352,9 @@ public:
 
     void CheckClusterInfo();
 
-    bool CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, const ::rtidb::nameserver::TableInfo& table_info, const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info);
+    bool CreateTableRemote(const ::rtidb::api::TaskInfo& task_info, const ::rtidb::nameserver::TableInfo& table_info, const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info);
     
-    bool DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_info, const std::string& name, const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info);
+    bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info, const std::string& name, const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info);
 
 private:
 
@@ -347,9 +377,11 @@ private:
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
-    int CreateAddRemoteReplicaOPTask(std::shared_ptr<OPData> op_data);
+    int CreateAddReplicaSimplyRemoteOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data);
+
+    int CreateAddReplicaRemoteOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data);
 
@@ -357,7 +389,7 @@ private:
 
     int CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data);
 
-    int CreateDelRemoteReplicaOPTask(std::shared_ptr<OPData> op_data);
+    int CreateDelReplicaRemoteOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data);
 
@@ -377,9 +409,9 @@ private:
 
     bool SkipDoneTask(std::shared_ptr<OPData> op_data);
 
-    int CreateTableForReplicaClusterTask(std::shared_ptr<OPData> op_data);
+    int CreateTableRemoteTask(std::shared_ptr<OPData> op_data);
     
-    int DropTableForReplicaClusterTask(std::shared_ptr<OPData> op_data);
+    int DropTableRemoteTask(std::shared_ptr<OPData> op_data);
 
     // Get the lock
     void OnLocked();
@@ -421,34 +453,42 @@ private:
     std::shared_ptr<Task> CreateRecoverSnapshotTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
 
-	std::shared_ptr<Task> CreateSendSnapshotTask(const std::string& endpoint,
-                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
-                    const std::string& des_endpoint);
+    std::shared_ptr<Task> CreateSendSnapshotTask(const std::string& endpoint,
+            uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t remote_tid, 
+            uint32_t pid, const std::string& des_endpoint);
 
-    std::shared_ptr<Task> CreateLoadTableTask(const std::string& endpoint,
-                    uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name,
-                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader,
-                    ::rtidb::common::StorageMode storage_mode);
+    std::shared_ptr<Task> CreateLoadTableTask(const std::string& endpoint, 
+            uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name,
+            uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader,
+            ::rtidb::common::StorageMode storage_mode);
 
-    std::shared_ptr<Task> CreateAddRemoteReplicaTask(const std::string& endpoint, 
-                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t remote_tid, uint32_t pid,
-                    const std::string& des_endpoint);
+    std::shared_ptr<Task> CreateLoadTableRemoteTask(const std::string& alias, 
+            const std::string& name,
+            const std::string& endpoint,
+            uint32_t pid,
+            uint64_t op_index, 
+            ::rtidb::api::OPType op_type); 
 
+    std::shared_ptr<Task> CreateAddReplicaRemoteTask(const std::string& endpoint, 
+            uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t remote_tid, uint32_t pid,
+            const std::string& des_endpoint, uint64_t task_id = INVALID_PARENT_ID);
+
+    std::shared_ptr<Task> CreateAddReplicaNSRemoteTask(const std::string& alias, 
+            const std::string& name, 
+            const std::vector<std::string>& endpoint_vec,
+            uint32_t pid,
+            uint64_t op_index, ::rtidb::api::OPType op_type); 
 
     std::shared_ptr<Task> CreateAddReplicaTask(const std::string& endpoint, 
-                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
-                    const std::string& des_endpoint);
+            uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
+            const std::string& des_endpoint);
 
-    std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& endpoint,
-        const std::string& name, uint32_t pid, const std::shared_ptr<PartitionMeta> partition_meta,
-        uint64_t op_index, ::rtidb::api::OPType op_type);
- 
+    std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& endpoint, const std::string& name, uint32_t remote_tid, uint32_t pid, uint64_t op_index, ::rtidb::api::OPType op_type); 
 
     std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& name,  uint32_t pid,
             const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
 
-    void AddTableInfo(const std::string& endpoint, const std::string& name, uint32_t pid,
-        const std::shared_ptr<PartitionMeta> partition_meta, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+    void AddTableInfo(const std::string& endpoint, const std::string& name, uint32_t pid, uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task_info); 
 
     void AddTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
@@ -495,24 +535,25 @@ private:
                     const std::string& name, uint32_t pid, const std::string& endpoint,
                     uint64_t offset_delta, uint32_t concurrency);
 
-    std::shared_ptr<Task> CreateTableForReplicaClusterTask(const ::rtidb::nameserver::TableInfo& table_info,
+    std::shared_ptr<Task> CreateTableRemoteTask(const ::rtidb::nameserver::TableInfo& table_info,
             const std::string& alias,
             uint64_t op_index,
             ::rtidb::api::OPType op_type);
 
-    std::shared_ptr<Task> DropTableForReplicaClusterTask(const std::string& name,
+    std::shared_ptr<Task> DropTableRemoteTask(const std::string& name,
             const std::string& alias,
             uint64_t op_index,
             ::rtidb::api::OPType op_type);
 
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
-    int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type, std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
+    int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type, std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr, std::vector<uint64_t> rep_cluster_op_id_vec);
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(uint64_t op_id, ::rtidb::api::TaskType task_type);
     
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
-                    const std::string& name, uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID);
+                    const std::string& name, uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID, 
+                    uint64_t remote_op_id = INVALID_PARENT_ID);
     int AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency = FLAGS_name_server_task_concurrency);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid,
@@ -539,19 +580,24 @@ private:
                     const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency);
     int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency);
-    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid,
-                    const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency);
-    int CreateReLoadTableOP(const std::string& name, uint32_t pid,
-                    const std::string& endpoint, uint64_t parent_id, uint32_t concurrency);
-    int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid,
+    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, 
+            const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency);
+    int CreateReLoadTableOP(const std::string& name, uint32_t pid, 
+            const std::string& endpoint, uint64_t parent_id, uint32_t concurrency);
+    int CreateReLoadTableOP(const std::string& name, uint32_t pid, 
+            const std::string& endpoint, uint64_t parent_id, uint32_t concurrency, uint64_t remote_op_id, uint64_t& rep_cluter_op_id);
+    int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, 
+
                     const std::string& endpoint, bool is_leader, bool is_alive, uint64_t parent_id, uint32_t concurrency);
     int CreateOfflineReplicaOP(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint32_t concurrency = FLAGS_name_server_task_concurrency);
-    int CreateTableForReplicaClusterOP(const ::rtidb::nameserver::TableInfo& table_info,
+    int CreateTableRemoteOP(const ::rtidb::nameserver::TableInfo& table_info,
+            const ::rtidb::nameserver::TableInfo& remote_table_info,
             const std::string& alias,
             uint64_t parent_id = INVALID_PARENT_ID,
             uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
-    int DropTableForReplicaClusterOP(const std::string& name,
+
+    int DropTableRemoteOP(const std::string& name,
             const std::string& alias,
             uint64_t parent_id = INVALID_PARENT_ID,
             uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
@@ -575,6 +621,8 @@ private:
                            const ::rtidb::api::TTLType& type,
                            uint64_t ttl, const std::string& ts_name);
 
+    void CheckSynTable(const std::string& alias, std::shared_ptr<::rtidb::client::NsClient> ns_client);
+
     bool CompareTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables);
 
     void CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std::vector<::rtidb::nameserver::TableInfo>& tables);
@@ -586,7 +634,7 @@ private:
     Tablets tablets_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
-    ReplicaClusterByNsRequest zone_info_;
+    ZoneInfo zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;

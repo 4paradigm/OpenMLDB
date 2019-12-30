@@ -1701,7 +1701,7 @@ void TabletImpl::AddReplica(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kAddReplica, task_ptr) < 0) {
+        if (AddOPMultiTask(request->task_info(), ::rtidb::api::TaskType::kAddReplica, task_ptr) < 0) {
             response->set_code(-1);
             response->set_msg("add task failed");
             return;
@@ -2407,7 +2407,7 @@ void TabletImpl::SendSnapshot(RpcController* controller,
         }    
         sync_snapshot_set_.insert(sync_snapshot_key);
         task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
-                    request->endpoint(), tid, pid, task_ptr));
+                    request->endpoint(), tid, pid, request->remote_tid(), task_ptr));
         response->set_code(0);
         response->set_msg("ok");
         return;
@@ -2419,7 +2419,7 @@ void TabletImpl::SendSnapshot(RpcController* controller,
 }
 
 void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
-            std::shared_ptr<::rtidb::api::TaskInfo> task) {
+            uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task) {
     bool has_error = true;
     do {
         std::shared_ptr<Table> table = GetTable(tid, pid);
@@ -2433,7 +2433,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
             PDLOG(WARNING, "fail to get db root path for table tid %u, pid %u", tid, pid);
             break;
         }
-        FileSender sender(tid, pid, table->GetStorageMode(), endpoint);
+        FileSender sender(remote_tid, pid, table->GetStorageMode(), endpoint);
         if (!sender.Init()) {
             PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
             break;
@@ -3643,6 +3643,50 @@ std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindTask(
     }
     for (auto& task : iter->second) {
         if (task->op_id() == op_id && task->task_type() == task_type) {
+            return task;
+        }
+    }
+    return std::shared_ptr<::rtidb::api::TaskInfo>();
+}
+
+int TabletImpl::AddOPMultiTask(const ::rtidb::api::TaskInfo& task_info, 
+        ::rtidb::api::TaskType task_type,
+        std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (FindMultiTask(task_info)) {
+        PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
+                        task_info.op_id(),
+                        ::rtidb::api::OPType_Name(task_info.op_type()).c_str(),
+                        ::rtidb::api::TaskType_Name(task_info.task_type()).c_str());
+        return -1;
+    }
+    task_ptr.reset(task_info.New());
+    task_ptr->CopyFrom(task_info);
+    task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+    auto iter = task_map_.find(task_info.op_id());
+    if (iter == task_map_.end()) {
+        task_map_.insert(std::make_pair(task_info.op_id(), 
+                std::list<std::shared_ptr<::rtidb::api::TaskInfo>>()));
+    }
+    task_map_[task_info.op_id()].push_back(task_ptr);
+    if (task_info.task_type() != task_type) {
+        PDLOG(WARNING, "task type is not match. type is[%s]", 
+                        ::rtidb::api::TaskType_Name(task_info.task_type()).c_str());
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+        return -1;
+    }
+    return 0;
+}
+
+std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindMultiTask(const ::rtidb::api::TaskInfo& task_info) {
+    auto iter = task_map_.find(task_info.op_id());
+    if (iter == task_map_.end()) {
+        return std::shared_ptr<::rtidb::api::TaskInfo>();
+    }
+    for (auto& task : iter->second) {
+        if (task->op_id() == task_info.op_id() && 
+                task->task_type() == task_info.task_type() &&
+                task->task_id() == task_info.task_id()) {
             return task;
         }
     }
