@@ -2847,8 +2847,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
+        std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
             response->set_msg("nameserver is follower");
