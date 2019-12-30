@@ -55,11 +55,6 @@ public:
 
     void CheckZkClient();
 
-    ClusterStatus GetClusterStatus() {
-        std::lock_guard<std::mutex> lock(mu_);
-        return state_;
-    }
-
     void UpdateNSClient(const std::vector<std::string>& children);
 
     int Init(std::string& msg);
@@ -72,12 +67,12 @@ public:
 
     bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, int& code, std::string& msg);
 
-    std::shared_ptr<::rtidb::client::NsClient> client_;
+    std::atomic<::rtidb::client::NsClient*> client_;
     std::map<std::string, uint64_t> delete_offset_map_;
     std::map<std::string, std::vector<TablePartition>> last_status;
     ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t ctime_;
-    ClusterStatus state_;
+    std::atomic<ClusterStatus> state_;
 private:
     std::shared_ptr<ZkClient> zk_client_;
     std::mutex mu_;
