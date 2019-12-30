@@ -494,6 +494,7 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
     row.push_back("record_cnt");
     row.push_back("memused");
     row.push_back("storage_mode");
+    row.push_back("ready_num");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (const auto& value : tables) {
@@ -544,6 +545,11 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
                     row.push_back(::rtidb::common::StorageMode_Name(value.storage_mode()));
                 } else {
                     row.push_back("kMemory");
+                }
+                if (value.alias_pair_size()) {
+                    row.push_back(std::to_string(value.alias_pair(0).ready_num()));
+                } else {
+                    row.push_back("-");
                 }
                 tp.AddRow(row);
             }

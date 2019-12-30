@@ -82,6 +82,12 @@ message TableInfo {
     repeated rtidb.common.ColumnKey column_key = 13;
     optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 15;
+    repeated AliasPair alias_pair = 16; //for replica cluster
+}
+
+message AliasPair {
+    required string alias = 1; 
+    required int32 ready_num = 2 [default = 0]; //0 ok, -1 failed
 }
 
 message CreateTableRequest {
