@@ -3659,14 +3659,16 @@ int NameServerImpl::CreateAddReplicaRemoteOPTask(std::shared_ptr<OPData> op_data
             endpoint_vec.push_back(table_partition.partition_meta(meta_idx).endpoint());
         }
     }
-    task = CreateAddReplicaNSRemoteTask(alias, name, endpoint_vec, pid, op_index, 
-            ::rtidb::api::OPType::kAddReplicaRemoteOP);
-    if (!task) {
-        PDLOG(WARNING, "create addreplicaNS remote task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
-                tid, remote_tid, pid);
-        return -1;
+    if (!endpoint_vec.empty()) {
+        task = CreateAddReplicaNSRemoteTask(alias, name, endpoint_vec, pid, op_index, 
+                ::rtidb::api::OPType::kAddReplicaRemoteOP);
+        if (!task) {
+            PDLOG(WARNING, "create addreplicaNS remote task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
+                    tid, remote_tid, pid);
+            return -1;
+        }
+        op_data->task_list_.push_back(task);
     }
-    op_data->task_list_.push_back(task);
 
     task = CreateAddTableInfoTask(endpoint, name, remote_tid, pid, 
             op_index, ::rtidb::api::OPType::kAddReplicaRemoteOP);
