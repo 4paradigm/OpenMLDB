@@ -83,33 +83,38 @@ public class ParseParquetUtil {
             }
             columnName = schema.getFieldName(i);
             columnType = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
-            switch (columnType) {
-                case INT32:
-                    map.put(columnName, group.getInteger(index, 0));
-                    break;
-                case INT64:
-                    map.put(columnName, group.getLong(index, 0));
-                    break;
-                case INT96:
-                    Binary binary = group.getInt96(index, 0);
-                    map.put(columnName, new DateTime(getTimestamp(binary)));
-                    break;
-                case FLOAT:
-                    map.put(columnName, group.getFloat(index, 0));
-                    break;
-                case DOUBLE:
-                    map.put(columnName, group.getDouble(index, 0));
-                    break;
-                case BOOLEAN:
-                    map.put(columnName, group.getBoolean(index, 0));
-                    break;
-                case BINARY:
-                    map.put(columnName, new String(group.getBinary(index, 0).getBytes()));
-                    break;
-                case FIXED_LEN_BYTE_ARRAY:
-                    map.put(columnName, new String(group.getBinary(index, 0).getBytes()));
-                    break;
-                default:
+            try {
+                switch (columnType) {
+                    case INT32:
+                        map.put(columnName, group.getInteger(index, 0));
+                        break;
+                    case INT64:
+                        map.put(columnName, group.getLong(index, 0));
+                        break;
+                    case INT96:
+                        Binary binary = group.getInt96(index, 0);
+                        map.put(columnName, new DateTime(getTimestamp(binary)));
+                        break;
+                    case FLOAT:
+                        map.put(columnName, group.getFloat(index, 0));
+                        break;
+                    case DOUBLE:
+                        map.put(columnName, group.getDouble(index, 0));
+                        break;
+                    case BOOLEAN:
+                        map.put(columnName, group.getBoolean(index, 0));
+                        break;
+                    case BINARY:
+                        map.put(columnName, new String(group.getBinary(index, 0).getBytes()));
+                        break;
+                    case FIXED_LEN_BYTE_ARRAY:
+                        map.put(columnName, new String(group.getBinary(index, 0).getBytes()));
+                        break;
+                    default:
+
+                }
+            } catch (Exception e) {
+                map.put(columnName, null);
             }
             if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
                 hasTs = true;
@@ -125,6 +130,7 @@ public class ParseParquetUtil {
                         logger.error("incorrect format for timestamp!");
                         throw new RuntimeException("incorrect format for timestamp!");
                     }
+
                 }
             }
         }
