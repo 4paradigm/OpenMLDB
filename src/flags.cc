@@ -58,8 +58,8 @@ DEFINE_uint32(go_back_max_try_cnt, 10, "config max try time of go back");
 
 // local db config
 DEFINE_string(db_root_path, "/tmp/", "the root path of db");
-DEFINE_string(ssd_root_path, "/tmp/ssd/", "the root ssd path of db");
-DEFINE_string(hdd_root_path, "/tmp/hdd/", "the root hdd path of db");
+DEFINE_string(ssd_root_path, "", "the root ssd path of db");
+DEFINE_string(hdd_root_path, "", "the root hdd path of db");
 
 // thread pool config
 DEFINE_int32(scan_concurrency_limit, 8, "the limit of scan concurrency");
