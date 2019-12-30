@@ -48,7 +48,7 @@
 # snapshot conf
 # 每天23点做snapshot
 --make_snapshot_time=23
---make_disktable_snapshot_interval=1440
+--make_disktable_snapshot_interval=360
 #--make_snapshot_check_interval=600000
 #--make_snapshot_threshold_offset=100000
 
