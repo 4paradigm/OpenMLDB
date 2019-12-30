@@ -3461,21 +3461,30 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
             }
         }
         if (mode_.load(std::memory_order_acquire) == kLEADER && nsc_.size() > 0) {
-            std::lock_guard<std::mutex> lock(mu_);
-            for (auto& kv : nsc_) {
+            decltype(nsc_) tmp_nsc;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                tmp_nsc = nsc_;
+            }
+            for (const auto& kv : tmp_nsc) {
+                if (kv.second->state_ != kClusterHealthy) {
+                    PDLOG(INFO, "cluster[%s] is not Healthy", kv.first.c_str()); 
+                    continue;
+                }
                 ::rtidb::nameserver::TableInfo remote_table_info(table_info_no_alias_pair);
                 std::string msg;
                 if (!kv.second->client_->CreateRemoteTableInfoSimply(zone_info_, remote_table_info, msg)) {
                     PDLOG(WARNING, "create remote table_info erro, wrong msg is [%s]", msg.c_str()); 
                     return;
                 }
+                std::lock_guard<std::mutex> lock(mu_);
                 if(CreateTableRemoteOP(table_info_no_alias_pair, remote_table_info, kv.first, 
                             INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster)) {
                     PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
                     response.set_code(503);
                     response.set_msg( "create table for replica cluster failed");
                     break;
-                }
+                } 
             }
             if (response.code() != 0) {
                 break;    
