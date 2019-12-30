@@ -326,6 +326,8 @@ private:
 
     void SchedMakeSnapshot();
 
+    void SchedMakeDiskTableSnapshot();
+
     void CheckZkClient();
 
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
