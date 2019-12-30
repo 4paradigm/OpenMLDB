@@ -3729,13 +3729,13 @@ bool TabletImpl::ChooseDBRootPath(uint32_t tid, uint32_t pid,
 
     if (paths.size() == 1) {
         path.assign(paths[0]);
-        return true;
+        return path.size();
     }
 
     std::string key = std::to_string(tid) + std::to_string(pid);
     uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % paths.size();
     path.assign(paths[index]);
-    return true;
+    return path.size();
 }
 
 
