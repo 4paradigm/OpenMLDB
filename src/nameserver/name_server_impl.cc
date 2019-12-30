@@ -3888,7 +3888,7 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
             }
             break;
         }
-    }        
+    }  
     std::vector<uint64_t> rep_cluster_op_id_vec;
     for (int idx = 0; idx < request->endpoint_group_size(); idx++) {
         std::string endpoint = request->endpoint_group(idx);
@@ -3926,7 +3926,7 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
                 op_data->op_info_.op_id(), request->name().c_str(), pid);
     }
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
-    if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kAddReplica, task_ptr, rep_cluster_op_id_vec) < 0) {
+    if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kAddReplicaNSRemote, task_ptr, rep_cluster_op_id_vec) < 0) {
         response->set_code(504);
         response->set_msg("add task in replica cluster ns failed");
         return;
@@ -6224,7 +6224,7 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaNSRemoteTask(const std::st
     std::shared_ptr<Task> task = std::make_shared<Task>(it->second->client_->GetEndpoint(), std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::rtidb::api::TaskType::kAddReplica);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kAddReplicaNSRemote);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(it->second->client_->GetEndpoint());
     boost::function<bool ()> fun = boost::bind(&NsClient::AddReplicaNS, it->second->client_, name, endpoint_vec, pid,  
