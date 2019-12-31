@@ -2109,6 +2109,11 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             return -1;
         }
     }
+    if (ttl_desc->ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
+        ttl_desc->set_lat_ttl(0);
+    } else if (ttl_desc->ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+        ttl_desc->set_abs_ttl(0);
+    }
     ns_table_info.set_ttl(table_info.ttl());
     std::string compress_type = table_info.compress_type();
     std::transform(compress_type.begin(), compress_type.end(), compress_type.begin(), ::tolower);
@@ -2280,14 +2285,12 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         return;
     }
     if (ns_table_info.has_ttl_desc()) {
-        if (ns_table_info.ttl_desc().ttl_type() != ::rtidb::api::kLatestTime
-            && ns_table_info.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) {
+        if (ns_table_info.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) {
             std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
                       << FLAGS_absolute_ttl_max << std::endl;
             return;
         } 
-        if (ns_table_info.ttl_desc().ttl_type() != ::rtidb::api::kAbsoluteTime
-            && ns_table_info.ttl_desc().lat_ttl() > FLAGS_latest_ttl_max) {
+        if (ns_table_info.ttl_desc().lat_ttl() > FLAGS_latest_ttl_max) {
             std::cout << "Create failed. The max num of latest LatestTime is " 
                       << FLAGS_latest_ttl_max << std::endl;
             return;
