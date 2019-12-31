@@ -184,6 +184,8 @@ public:
         return result;
     }
 
+
+
     Node<K,V>* SplitByPos(uint64_t pos) {
         Node<K, V>* pos_node = head_->GetNext(0);
         for (uint64_t idx = 0; idx < pos; idx++) {
@@ -229,8 +231,7 @@ public:
                 return NULL;
             }
             if (compare_(pos_node->GetKey(), key) >= 0) { // find key before pos, use key
-                pos = idx;
-                break;
+                return Split(pos_node->GetKey());
             }
             pre_pos_node = pos_node;
             pos_node = pos_node->GetNext(0);
@@ -238,7 +239,7 @@ public:
         if (pos_node == NULL) {
             return NULL;
         }
-        return Split(pos_node->GetKey());
+        return SplitOnPosNode(pos, pos_node);
     }
 
     Node<K,V>* SplitByKeyAndPos(const K& key, uint64_t pos) {
@@ -259,7 +260,7 @@ public:
             return NULL;
         }
         if (find_key) { // find key before pos, split by pos
-            return Split(pos_node->GetKey());
+            return SplitOnPosNode(pos, pos_node);
         } else { // find pos without key, split by key
             return Split(key);
         }
@@ -518,7 +519,32 @@ private:
     uint8_t GetMaxHeight() const {
         return max_height_.load(std::memory_order_relaxed);
     }
-    
+
+    Node<K,V>* SplitOnPosNode(uint64_t pos, Node<K, V>* pos_node) {
+        Node<K, V>* node = head_;
+        Node<K, V>* pre = head_;
+        pos++;
+        uint64_t cnt = 0;
+        while (node != NULL) {
+            if (cnt == pos) {
+                tail_.store(pre, std::memory_order_release);
+                for (uint8_t i = 0; i < pre->Height(); i++) {
+                    pre->SetNext(i, NULL);
+                }
+                return node;
+            }
+            for (uint8_t i = 1; i < node->Height(); i++) {
+                Node<K, V>* next = node->GetNext(i);
+                if (next != NULL && compare_(pos_node->GetKey(), next->GetKey()) <= 0) {
+                    node->SetNext(i, NULL);
+                }
+            }
+            pre = node;
+            node = node->GetNext(0);
+            cnt++;
+        }
+        return NULL;
+    }
 
 private:
     uint8_t const MaxHeight;
