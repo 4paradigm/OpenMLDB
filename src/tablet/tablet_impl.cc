@@ -153,7 +153,7 @@ bool TabletImpl::Init() {
     }
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
-    snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
+    snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
@@ -2237,7 +2237,7 @@ void TabletImpl::SchedMakeDiskTableSnapshot() {
         MakeSnapshotInternal(iter->first, iter->second, std::shared_ptr<::rtidb::api::TaskInfo>());
     }
     // delay task one hour later avoid execute  more than one time
-    snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
+    snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
 }
 
 void TabletImpl::SendData(RpcController* controller,
