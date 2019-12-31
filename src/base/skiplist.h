@@ -221,6 +221,51 @@ public:
         return NULL;
     }
 
+    Node<K,V>* SplitByKeyOrPos(const K& key, uint64_t pos) {
+        Node<K, V>* pre_pos_node = head_;
+        Node<K, V>* pos_node = head_->GetNext(0);
+        for (uint64_t idx = 0; idx < pos; idx++) {
+            if (pos_node == NULL) { // doesnt find key or pos, just return
+                return NULL;
+            }
+            if (compare_(pos_node->GetKey(), key) >= 0) { // find key before pos, use key
+                pos = idx;
+                break;
+            }
+            pre_pos_node = pos_node;
+            pos_node = pos_node->GetNext(0);
+        }
+        if (pos_node == NULL) {
+            return NULL;
+        }
+        return Split(pos_node->GetKey());
+    }
+
+    Node<K,V>* SplitByKeyAndPos(const K& key, uint64_t pos) {
+        Node<K, V>* pre_pos_node = head_;
+        Node<K, V>* pos_node = head_->GetNext(0);
+        bool find_key = false;
+        for (uint64_t idx = 0; idx < pos; idx++) {
+            if (pos_node == NULL) { // doesnt find pos, just return
+                return NULL;
+            }
+            if (compare_(pos_node->GetKey(), key) >= 0) { // find key before pos, mark it
+                find_key = true;
+            }
+            pre_pos_node = pos_node;
+            pos_node = pos_node->GetNext(0);
+        }
+        if (pos_node == NULL) {
+            return NULL;
+        }
+        if (find_key) { // find key before pos, split by pos
+            return Split(pos_node->GetKey());
+        } else { // find pos without key, split by key
+            return Split(key);
+        }
+    }
+
+
     Node<K, V>* FindNodeAtPos(uint64_t pos, Node<K, V>** nodes) {
         Node<K, V>* pos_node = head_->GetNext(0);
         for (uint64_t idx = 0; idx < pos; idx++) {
@@ -262,77 +307,6 @@ public:
             }
             pre[i]->SetNext(i, NULL);
         }
-    }
-
-    Node<K,V>* SplitByKeyAndPos(const K& key, const uint64_t& pos) {
-        Node<K, V>* keypre[MaxHeight] = {NULL};
-        Node<K, V>* pospre[MaxHeight] = {NULL};
-        Node<K, V>* node = GetLast();
-        if (node == NULL || compare_(node->GetKey(), key) < 0) {
-            return NULL;
-        }
-        Node<K, V>* keytail = FindLessOrEqual(key, keypre);
-        Node<K, V>* postail = FindNodeAtPos(pos, pospre);
-        Node<K, V>* keytarget = NULL;
-        Node<K, V>* postarget = NULL;
-        if (keytail!=NULL) {
-            keytarget = keytail->GetNextNoBarrier(0);
-        }
-        if (postail!=NULL) {
-            postarget = postail->GetNextNoBarrier(0);
-        }
-        if(keytarget == NULL || postarget == NULL) {
-            return NULL;
-        }
-        if (compare_(keytarget->GetKey(), postarget->GetKey()) > 0) {
-            tail_.store(keytail, std::memory_order_release);
-            SplitOnTarget(keypre);
-            return keytarget;
-        } else {
-            tail_.store(postail, std::memory_order_release);
-            SplitOnTarget(pospre);
-            return postarget;
-        }     
-    }
-
-    Node<K,V>* SplitByKeyOrPos(const K& key, const uint64_t& pos) {
-        Node<K, V>* keypre[MaxHeight] = {NULL};
-        Node<K, V>* pospre[MaxHeight] = {NULL};
-        Node<K, V>* node = GetLast();
-        Node<K, V>* keytail = NULL;
-        Node<K, V>* postail = NULL;
-        Node<K, V>* keytarget = NULL;
-        Node<K, V>* postarget = NULL;
-        if (node != NULL) {
-            keytail = FindLessOrEqual(key, keypre);
-        }
-        postail = FindNodeAtPos(pos, pospre);
-        if (keytail!=NULL) {
-            keytarget = keytail->GetNextNoBarrier(0);
-        }
-        if (postail!=NULL) {
-            postarget = postail->GetNextNoBarrier(0);
-        }
-        if(keytarget == NULL && postarget == NULL) {
-            return NULL;
-        }
-        if (keytarget==NULL) {
-            tail_.store(postail, std::memory_order_release);
-            SplitOnTarget(pospre);
-            return postarget;
-        } else if (postarget==NULL) {
-            tail_.store(keytail, std::memory_order_release);
-            SplitOnTarget(keypre);
-            return keytarget;
-        } else if (compare_(keytarget->GetKey(), postarget->GetKey()) < 0) {
-            tail_.store(keytail, std::memory_order_release);
-            SplitOnTarget(keypre);
-            return keytarget;
-        } else {
-            tail_.store(postail, std::memory_order_release);
-            SplitOnTarget(pospre);
-            return postarget;
-        }     
     }
     
     const V& Get(const K& key) {

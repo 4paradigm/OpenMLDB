@@ -2280,12 +2280,14 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         return;
     }
     if (ns_table_info.has_ttl_desc()) {
-        if (ns_table_info.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) {
+        if (ns_table_info.ttl_desc().ttl_type() != ::rtidb::api::kLatestTime
+            && ns_table_info.ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) {
             std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
                       << FLAGS_absolute_ttl_max << std::endl;
             return;
         } 
-        if (ns_table_info.ttl_desc().lat_ttl() > FLAGS_latest_ttl_max) {
+        if (ns_table_info.ttl_desc().ttl_type() != ::rtidb::api::kAbsoluteTime
+            && ns_table_info.ttl_desc().lat_ttl() > FLAGS_latest_ttl_max) {
             std::cout << "Create failed. The max num of latest LatestTime is " 
                       << FLAGS_latest_ttl_max << std::endl;
             return;
