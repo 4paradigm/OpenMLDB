@@ -55,11 +55,6 @@ public:
 
     void CheckZkClient();
 
-    ClusterStatus GetClusterStatus() {
-        std::lock_guard<std::mutex> lock(mu_);
-        return state_;
-    }
-
     void UpdateNSClient(const std::vector<std::string>& children);
 
     int Init(std::string& msg);
@@ -77,7 +72,7 @@ public:
     std::map<std::string, std::vector<TablePartition>> last_status;
     ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t ctime_;
-    ClusterStatus state_;
+    std::atomic<ClusterStatus> state_;
 private:
     std::shared_ptr<ZkClient> zk_client_;
     std::mutex mu_;

@@ -45,7 +45,7 @@ const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 ClusterInfo::ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd) : client_(), delete_offset_map_(),
     last_status(), zk_client_(), mu_(), session_term_(), task_id_() {
     cluster_add_.CopyFrom(cd);
-    state_ = kClusterHealthy;
+    state_ = kClusterOffline;
     ctime_ = ::baidu::common::timer::get_micros() / 1000;
 }
 
@@ -86,10 +86,9 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
         PDLOG(WARNING, "replica cluster ns client init failed");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    client_ = tmp_ptr;
+    std::atomic_store_explicit(&client_, tmp_ptr, std::memory_order_relaxed);
     ctime_ = ::baidu::common::timer::get_micros() / 1000;
-    state_ = kClusterHealthy;
+    state_.store(kClusterHealthy, std::memory_order_relaxed);
 }
 
 int ClusterInfo::Init(std::string& msg) {
@@ -135,7 +134,7 @@ bool ClusterInfo::DropTableForReplicaCluster(const ::rtidb::api::TaskInfo& task_
         const std::string& name, 
         const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info) {
     std::string msg;
-    if (!client_->DropTableForReplicaCluster(task_info, name, zone_info, msg)) {
+    if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)->DropTableForReplicaCluster(task_info, name, zone_info, msg)) {
         PDLOG(WARNING, "drop table for replica cluster failed!, msg is: %s", msg.c_str());
         return false;
     }
@@ -146,7 +145,7 @@ bool ClusterInfo::CreateTableForReplicaCluster(const ::rtidb::api::TaskInfo& tas
         const ::rtidb::nameserver::TableInfo& table_info, 
         const ::rtidb::nameserver::ReplicaClusterByNsRequest& zone_info) {
     std::string msg;
-    if (!client_->CreateTableForReplicaCluster(task_info, table_info, zone_info, msg)) {
+    if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)->CreateTableForReplicaCluster(task_info, table_info, zone_info, msg)) {
         PDLOG(WARNING, "create table for replica cluster failed!, msg is: %s", msg.c_str());
         return false;
     }
@@ -372,7 +371,7 @@ bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::Tab
 }
 bool ClusterInfo::AddReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term,
         std::string& msg) {
-    if (!client_->AddReplicaClusterByNs(alias, zone_name, term, msg)) {
+    if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)->AddReplicaClusterByNs(alias, zone_name, term, msg)) {
         PDLOG(WARNING, "send MakeReplicaCluster request failed");
         return false;
     }
@@ -381,7 +380,7 @@ bool ClusterInfo::AddReplicaClusterByNs(const std::string& alias, const std::str
 
 bool ClusterInfo::RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name,
     const uint64_t term, int& code, std::string& msg) {
-    return client_->RemoveReplicaClusterByNs(alias, zone_name, term, code, msg);
+    return std::atomic_load_explicit(&client_, std::memory_order_relaxed)->RemoveReplicaClusterByNs(alias, zone_name, term, code, msg);
   }
 
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
@@ -547,6 +546,7 @@ void NameServerImpl::RecoverClusterInfo() {
         cluster_add.ParseFromString(value);
         std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info = std::make_shared<::rtidb::nameserver::ClusterInfo>(cluster_add);
         PDLOG(INFO, "zk add %s|%s", cluster_add.zk_endpoints().c_str(), cluster_add.zk_path().c_str());
+        cluster_info->state_ = kClusterHealthy;
 
         if (cluster_info->Init(rpc_msg) != 0) {
             PDLOG(WARNING, "%s init failed, error: %s", alias.c_str(), rpc_msg.c_str());
@@ -1137,7 +1137,7 @@ int NameServerImpl::UpdateTaskStatusForReplicaCluster(bool is_recover_op) {
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = nsc_.begin(); iter != nsc_.end(); ++iter) {
-            client_map.insert(std::make_pair(iter->first, iter->second->client_));
+            client_map.insert(std::make_pair(iter->first, std::atomic_load_explicit(&iter->second->client_, std::memory_order_relaxed)));
         }
     }
     uint64_t last_task_rpc_version = task_rpc_version_.load(std::memory_order_acquire);
@@ -1407,7 +1407,10 @@ int NameServerImpl::DeleteTaskForReplicaCluster() {
             return 0;
         }
         for (auto iter = nsc_.begin(); iter != nsc_.end(); ++iter) {
-            client_vec.push_back(iter->second->client_);
+            if (iter->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+                continue;
+            }
+            client_vec.push_back(std::atomic_load_explicit(&iter->second->client_, std::memory_order_relaxed));
         }
     }
     bool has_failed = false;
@@ -6565,7 +6568,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             break;
         }
         std::vector<::rtidb::nameserver::TableInfo> tables;
-        if (!cluster_info->client_->ShowTable("", tables, rpc_msg)) {
+        if (!std::atomic_load_explicit(&cluster_info->client_, std::memory_order_relaxed)->ShowTable("", tables, rpc_msg)) {
             rpc_msg = "showtable error when add replica cluster";
             code = 455;
             break;
@@ -6599,7 +6602,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
                 break;
             }
         }
-        cluster_info->state_ = kClusterHealthy;
+        cluster_info->state_.store(kClusterHealthy, std::memory_order_relaxed);
         std::lock_guard<std::mutex> lock(mu_);
         nsc_.insert(std::make_pair(request->alias(), cluster_info));
     } while (0);
@@ -6684,11 +6687,16 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
         ShowReplicaClusterResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
+    if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
+    }
+    if (mode_.load(std::memory_order_relaxed) == kFOLLOWER) {
+        response->set_code(300);
+        response->set_msg("cur nameserver is not leader, is follower cluster");
+        PDLOG(WARNING, "cur nameserver is not leader");
     }
     std::lock_guard<std::mutex> lock(mu_);
 
@@ -6698,7 +6706,7 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
         replica->set_alias(it->first);
         replica->set_zk_path(it->second->cluster_add_.zk_path());
         replica->set_zk_endpoints(it->second->cluster_add_.zk_endpoints());
-        status->set_state(ClusterStatus_Name(it->second->state_));
+        status->set_state(ClusterStatus_Name(it->second->state_.load(std::memory_order_relaxed)));
         status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_);
     }
     response->set_code(0);
@@ -6729,7 +6737,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             PDLOG(WARNING, "replica name [%s] not found when remove replica clsuter", request->alias().c_str());
             break;
         }
-        state = it->second->GetClusterStatus();
+        state = it->second->state_.load(std::memory_order_relaxed);
         for (auto iter = it->second->last_status.begin(); iter != it->second->last_status.end(); iter++) {
             for (auto part_iter = iter->second.begin(); part_iter != iter->second.end(); part_iter++) {
                 for (auto meta : part_iter->partition_meta()) {
@@ -6746,7 +6754,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             PDLOG(WARNING, "del replica zk node [%s] failed, when remove repcluster", request->alias().c_str());
             break;
         }
-        c_ptr = it->second->client_;
+        c_ptr = std::atomic_load_explicit(&it->second->client_, std::memory_order_relaxed);
         nsc_.erase(it);
         PDLOG(INFO, "success remove replica cluster [%s]", request->alias().c_str());
     } while(0);
@@ -6830,7 +6838,7 @@ void NameServerImpl::CheckClusterInfo() {
                 break;
             }
             for (auto i : nsc_) {
-                if (i.second->GetClusterStatus() == kClusterHealthy) {
+                if (i.second->state_.load(std::memory_order_relaxed) == kClusterHealthy) {
                     tmp_nsc.insert(std::make_pair(i.first, i.second));
                 }
             }
@@ -6841,7 +6849,7 @@ void NameServerImpl::CheckClusterInfo() {
         std::string msg;
         for (auto i : tmp_nsc) {
             std::vector<::rtidb::nameserver::TableInfo> tables;
-            if (!i.second->client_->ShowTable("", tables, msg)) {
+            if (!std::atomic_load_explicit(&i.second->client_, std::memory_order_relaxed)->ShowTable("", tables, msg)) {
                 PDLOG(WARNING, "check %s showtable has error: %s", i.first.c_str(), msg.c_str());
                 continue;
             }
