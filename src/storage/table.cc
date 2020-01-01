@@ -36,29 +36,22 @@ int Table::InitColumnDesc() {
                 key_idx++;
             } else if (column_desc.is_ts_col()) {
                 ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
+                uint64_t abs_ttl = abs_ttl_.load();
+                uint64_t lat_ttl = lat_ttl_.load();
                 if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
-                    abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.abs_ttl() * 60 * 1000));
-                    new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.abs_ttl() * 60 * 1000));
-                    lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.lat_ttl()));
-                    new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.lat_ttl()));
+                    abs_ttl = column_desc.abs_ttl() * 60 * 1000;
+                    lat_ttl = column_desc.lat_ttl();
                 } else if (column_desc.has_ttl()) {
                     if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
-                        abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
-                        new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
-                        lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
-                        new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+                        lat_ttl = 0;
                     } else {
-                        abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
-                        new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
-                        lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl()));
-                        new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl()));
+                        abs_ttl = 0;
                     }
-                } else {
-                    abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(abs_ttl_.load()));
-                    new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(abs_ttl_.load()));
-                    lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(lat_ttl_.load()));
-                    new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(lat_ttl_.load()));
                 }
+                abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(abs_ttl));
+                new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(abs_ttl));
+                lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(lat_ttl));
+                new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(lat_ttl));
                 ts_idx++;
             }
         }

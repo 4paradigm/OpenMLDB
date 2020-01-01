@@ -31,7 +31,7 @@ class Segment;
 class Ticket;
 
 struct TTLDesc {
-    TTLDesc(const uint64_t& abs, const uint64_t& lat) : abs_ttl(abs), lat_ttl(lat) {}
+    TTLDesc(const uint64_t abs, const uint64_t lat) : abs_ttl(abs), lat_ttl(lat) {}
     inline bool HasExpire(::rtidb::api::TTLType ttl_type) const {
         switch(ttl_type) {
             case ::rtidb::api::TTLType::kAbsoluteTime: return abs_ttl != 0;
@@ -44,6 +44,7 @@ struct TTLDesc {
     const uint64_t abs_ttl;
     const uint64_t lat_ttl;
 };
+
 struct DataBlock {
     // dimension count down
     uint8_t dim_cnt_down;

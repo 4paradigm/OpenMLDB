@@ -546,7 +546,7 @@ void Segment::Gc4TTL(const std::map<uint32_t, TTLDesc>& ttl_desc, uint64_t& gc_i
  void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64_t& gc_idx_cnt, 
         uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     if (time == 0 || keep_cnt == 0) {
-        PDLOG(WARNING, "[Gc4TTLAndHead] segment gc4ttlandhead is disabled");
+        PDLOG(INFO, "[Gc4TTLAndHead] segment gc4ttlandhead is disabled");
         return;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
@@ -633,7 +633,7 @@ void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
 void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, uint64_t& gc_idx_cnt, 
         uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     if (time == 0 && keep_cnt == 0) {
-        PDLOG(WARNING, "[Gc4TTLOrHead] segment gc4ttlorhead is disabled");
+        PDLOG(INFO, "[Gc4TTLOrHead] segment gc4ttlorhead is disabled");
         return;
     } else if (time == 0) {
         Gc4Head(keep_cnt, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);

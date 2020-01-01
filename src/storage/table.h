@@ -41,17 +41,9 @@ public:
         ::rtidb::api::TTLDesc* ttl_desc = table_meta_.mutable_ttl_desc();
         ttl_desc->set_ttl_type(ttl_type);
         if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
-            // abs_ttl_.store(ttl);
-            // lat_ttl_.store(0);
-            // new_abs_ttl_.store(ttl);
-            // new_lat_ttl_.store(0);
             ttl_desc->set_abs_ttl(ttl/(60*1000));
             ttl_desc->set_lat_ttl(0);
         } else {
-            // abs_ttl_.store(0);
-            // lat_ttl_.store(ttl/(60*1000));
-            // new_abs_ttl_.store(0);
-            // new_lat_ttl_.store(ttl/(60*1000));
             ttl_desc->set_abs_ttl(0);
             ttl_desc->set_lat_ttl(ttl/(60*1000));
         }
