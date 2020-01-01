@@ -43,9 +43,11 @@ int Table::InitColumnDesc() {
                     lat_ttl = column_desc.lat_ttl();
                 } else if (column_desc.has_ttl()) {
                     if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+                        abs_ttl = column_desc.ttl() * 60 * 1000;
                         lat_ttl = 0;
                     } else {
                         abs_ttl = 0;
+                        lat_ttl = column_desc.ttl();
                     }
                 }
                 abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(abs_ttl));
