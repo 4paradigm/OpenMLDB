@@ -50,6 +50,7 @@ DECLARE_bool(binlog_notify_on_put);
 DECLARE_int32(task_pool_size);
 DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
+DECLARE_int32(make_disktable_snapshot_interval);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_string(recycle_bin_root_path);
 DECLARE_string(recycle_ssd_bin_root_path);
@@ -116,6 +117,11 @@ bool TabletImpl::Init() {
         return false;
     }
 
+    if (FLAGS_make_disktable_snapshot_interval <= 0) {
+        PDLOG(WARNING, "make_disktable_snapshot_interval[%d] is illegal.", FLAGS_make_disktable_snapshot_interval);
+        return false;
+    }
+
     if (!CreateMultiDir(mode_root_paths_[::rtidb::common::kMemory])) {
         PDLOG(WARNING, "fail to create db root path %s", FLAGS_db_root_path.c_str());
         return false;
@@ -147,6 +153,7 @@ bool TabletImpl::Init() {
     }
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+    snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
@@ -2196,7 +2203,9 @@ void TabletImpl::SchedMakeSnapshot() {
                 if (iter->first == 0 && inner->first == 0) {
                     continue;
                 }
-                table_set.push_back(std::make_pair(iter->first, inner->first));
+                if (inner->second->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
+                    table_set.push_back(std::make_pair(iter->first, inner->first));
+                }
             }
         }
     }
@@ -2206,6 +2215,29 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     // delay task one hour later avoid execute  more than one time
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+}
+
+void TabletImpl::SchedMakeDiskTableSnapshot() {
+    std::vector<std::pair<uint32_t, uint32_t> > table_set;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
+            for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
+                if (iter->first == 0 && inner->first == 0) {
+                    continue;
+                }
+                if (inner->second->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
+                    table_set.push_back(std::make_pair(iter->first, inner->first));
+                }
+            }
+        }
+    }
+    for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
+        PDLOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
+        MakeSnapshotInternal(iter->first, iter->second, std::shared_ptr<::rtidb::api::TaskInfo>());
+    }
+    // delay task one hour later avoid execute  more than one time
+    snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
 }
 
 void TabletImpl::SendData(RpcController* controller,
