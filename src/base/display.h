@@ -605,5 +605,78 @@ static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& statu
     tp.Print(true);
 }
 
+static void PrintTableInfomation(std::vector<::rtidb::nameserver::TableInfo>& tables) {
+    if (tables.size() < 1) {
+        return;
+    }
+    ::rtidb::nameserver::TableInfo table = tables[0];
+    std::vector<std::string> row;
+    row.push_back("attribute");
+    row.push_back("value");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+
+    std::string name = table.name();
+    std::string replica_num = std::to_string(table.replica_num());
+    std::string partition_num = std::to_string(table.partition_num());
+    std::string ttl = std::to_string(table.ttl());
+    std::string ttl_type = table.ttl_type();
+    std::string compress_type = ::rtidb::nameserver::CompressType_Name(table_status.compress_type());
+    std::string storage_mode = ::rtidb::api::StorageMode_Name(table_status.storage_mode());
+    uint32_t record_cnt = 0;
+    uint32_t memused = 0;
+    uint32_t diskused = 0;
+    for (int idx = 0; idx < table.table_partition_size(); idx++) {
+        for (int meta_idx = 0; meta_idx < table.table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (table.table_partition(idx).partition_meta(meta_idx).is_leader() 
+                    && table.table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                record_cnt += table.table_partition(idx).partition_meta(meta_idx).record_cnt();
+                memused += table.table_partition(idx).partition_meta(meta_idx).record_byte_size();
+                break;
+            }
+        }
+    }
+    row.clear();
+    row.push_back("name");
+    row.push_back(name);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("replica_num");
+    row.push_back(replica_num);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("partition_num");
+    row.push_back(partition_num);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("ttl");
+    row.push_back(ttl);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("ttl_type");
+    row.push_back(ttl_type);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("compress_type");
+    row.push_back(compress_type);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("storage_mode");
+    row.push_back(storage_mode);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("record_cnt");
+    row.push_back(record_cnt);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("memused");
+    row.push_back(::rtidb::base::HumanReadableString(memused));
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("diskused");
+    row.push_back(::rtidb::base::HumanReadableString(diskused));
+    tp.Print(true);
+}
+
 }
 }

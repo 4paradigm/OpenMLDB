@@ -468,6 +468,7 @@ message TableStatus {
     optional uint32 skiplist_height = 18;
     optional bytes schema = 19;
     optional rtidb.common.StorageMode storage_mode = 20 [default = kMemory];
+    optional uint64 diskused = 21 [default = 0];
 }
 
 message GetTableStatusResponse {

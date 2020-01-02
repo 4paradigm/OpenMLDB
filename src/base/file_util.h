@@ -163,6 +163,29 @@ inline static bool RemoveDir(const std::string& path) {
     return true;
 }
 
+static bool GetDirSizeRecur(const std::string& path, uint64_t& size) {
+    std::vector<std::string> file_vec;
+    if (GetFileName(path, file_vec) < 0) {
+        return false;
+    }
+    for (auto file : file_vec) {
+        struct stat stat_buf;
+        if (lstat(file.c_str(), &stat_buf) < 0) {
+            PDLOG(WARNING, "stat path %s failed err[%d: %s]",
+                        path.c_str(), errno, strerror(errno));
+            return false;
+        }
+        if (S_ISREG(stat_buf.st_mode)) {
+            size += stat_buf.st_size;
+        } else if (S_ISDIR(stat_buf.st_mode)) {
+            if (!GetSizeRecur(file, size)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 }
 }
 
