@@ -5015,7 +5015,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         const ::rtidb::nameserver::UpdateTTLRequest* request,
         ::rtidb::nameserver::UpdateTTLResponse* response,
         Closure* done) {
-    brpc::ClosureGuard done_guard(done);    
+    brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(300);
         response->set_msg("nameserver is not leader");
@@ -5030,14 +5030,19 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         return;
     }
     // validation
-    if (table->ttl_desc().ttl_type() != request->ttl_desc().ttl_type()) {
-        PDLOG(WARNING, "table ttl type mismatch, expect %s bug %s", ::rtidb::api::TTLType_Name(table->ttl_desc().ttl_type()).c_str(),
+    ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
+    if (table->has_ttl_desc()) {
+        ttl_type = table->ttl_desc().ttl_type();
+    } else if (table->ttl_type() == "kLatestTime") {
+        ttl_type = ::rtidb::api::TTLType::kLatestTime;
+    }
+    if (ttl_type != request->ttl_desc().ttl_type()) {
+        PDLOG(WARNING, "table ttl type mismatch, expect %s but %s",::rtidb::api::TTLType_Name(ttl_type).c_str(),
             ::rtidb::api::TTLType_Name(request->ttl_desc().ttl_type()).c_str());
         response->set_code(112);
         response->set_msg("ttl type mismatch");
         return;
     }
-    
     std::string ts_name;
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         ts_name = request->ts_name();
@@ -5116,7 +5121,7 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
     if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
         PDLOG(WARNING, "parse change leader data failed. op_id[%lu] data[%s]", 
                         task_info->op_id(), op_data->op_info_.data().c_str());
-        task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
     std::string leader_endpoint = change_leader_data.leader();
