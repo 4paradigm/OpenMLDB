@@ -134,7 +134,7 @@ bool ClusterInfo::DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
         const std::string& name, 
         const ::rtidb::nameserver::ZoneInfo& zone_info) {
     std::string msg;
-    if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)->DropTableForReplicaCluster(task_info, name, zone_info, msg)) {
+    if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)->DropTableRemote(task_info, name, zone_info, msg)) {
         PDLOG(WARNING, "drop table for replica cluster failed!, msg is: %s", msg.c_str());
         return false;
     }
@@ -145,7 +145,7 @@ bool ClusterInfo::CreateTableRemote(const ::rtidb::api::TaskInfo& task_info,
         const ::rtidb::nameserver::TableInfo& table_info, 
         const ::rtidb::nameserver::ZoneInfo& zone_info) {
     std::string msg;
-    if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)->CreateTableForReplicaCluster(task_info, table_info, zone_info, msg)) {
+    if (!std::atomic_load_explicit(&client_, std::memory_order_relaxed)->CreateTableRemote(task_info, table_info, zone_info, msg)) {
         PDLOG(WARNING, "create table for replica cluster failed!, msg is: %s", msg.c_str());
         return false;
     }
