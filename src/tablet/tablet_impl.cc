@@ -3101,6 +3101,15 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
 
 int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta, bool is_load, std::string& msg) {
     std::vector<std::string> endpoints;
+    ::rtidb::api::TTLType ttl_type = table_meta->ttl_type();
+    if (table_meta->has_ttl_desc()) {
+        ttl_type = table_meta->ttl_desc().ttl_type();
+    }
+    if (ttl_type == ::rtidb::api::kAbsAndLat || ttl_type == ::rtidb::api::kAbsOrLat) {
+        PDLOG(WARNING, "disktable doesn't support abs&&lat, abs||lat in this version");
+        msg.assign("disktable doesn't support abs&&lat, abs||lat in this version");
+        return -1;
+    }
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));
     }
