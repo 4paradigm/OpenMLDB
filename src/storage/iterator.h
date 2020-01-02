@@ -28,8 +28,8 @@ public:
     virtual void SeekToLast() {};
     virtual void Seek(const std::string& pk, uint64_t time) {}
     virtual void Seek(const uint64_t time) {}
-    virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t max_cnt, uint32_t& cnt) { return false; } // seek to time use type and count the number of next add to cnt
-    virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type) { return false; } // seek to time use type
+    // virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t max_cnt, uint32_t& cnt) { return false; } // seek to time use type and count the number of next add to cnt
+    // virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type) { return false; } // seek to time use type
     virtual void seek(uint64_t time, uint32_t max) {}
     virtual uint64_t GetCount() const { return 0; }
 };

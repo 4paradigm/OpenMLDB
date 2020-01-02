@@ -694,61 +694,6 @@ void DiskTableIterator::Seek(const uint64_t ts) {
     }
 }
 
-bool DiskTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type) {
-    switch(type) {
-        case ::rtidb::api::GetType::kSubKeyEq:
-            Seek(time);
-            return Valid() && ts_ == time;
-        case ::rtidb::api::GetType::kSubKeyLe:
-            Seek(time);
-            return true;
-        case ::rtidb::api::GetType::kSubKeyLt:
-            Seek(time - 1);
-            return true;
-        case ::rtidb::api::GetType::kSubKeyGe:
-            SeekToFirst();
-            return Valid() && ts_ >= time;
-        case ::rtidb::api::GetType::kSubKeyGt:
-            SeekToFirst();
-            return Valid() && ts_ > time;
-        default:
-            return false;
-    }
-    return false;
-}
-
-bool DiskTableIterator::Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t max_cnt, uint32_t& cnt) {
-    SeekToFirst();
-    while(Valid() && (cnt < max_cnt || max_cnt == 0)) {
-        switch(type) {
-            case ::rtidb::api::GetType::kSubKeyEq:
-                if (ts_ <= time) {
-                    return ts_ == time;
-                }
-                break;
-            case ::rtidb::api::GetType::kSubKeyLe:
-                if (ts_ <= time) {
-                    return true;
-                }
-                break;
-            case ::rtidb::api::GetType::kSubKeyLt:
-                if (ts_ < time) {
-                    return true;
-                }
-                break;
-            case ::rtidb::api::GetType::kSubKeyGe:
-                return ts_ >= time;
-            case ::rtidb::api::GetType::kSubKeyGt:
-                return ts_ > time;
-            default:
-                return false;
-        }
-        it_->Next();
-        ++cnt;
-    }
-    return false;
-}
-
 DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, 
         const rocksdb::Snapshot* snapshot, ::rtidb::api::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt) : 
         db_(db), it_(it), snapshot_(snapshot), ttl_type_(ttl_type), record_idx_(0), expire_value_(TTLDesc(expire_time, expire_cnt)),

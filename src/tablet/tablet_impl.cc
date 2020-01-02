@@ -303,21 +303,21 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
         }
         switch(ttl_type) {
             case ::rtidb::api::TTLType::kAbsoluteTime: {
-                if (!it->Seek(st, st_type)) {
+                if (!Seek(it, st, st_type)) {
                     return 1;
                 }
                 break;
             }
             case ::rtidb::api::TTLType::kAbsAndLat: {
                 if (st<expire_time) {
-                    if (!it->Seek(st, st_type, expire_cnt, cnt)) { return 1; }
+                    if (!SeekWithCount(it, st, st_type, expire_cnt, cnt)) { return 1; }
                 } else {
-                    if (!it->Seek(st, st_type)) { return 1;}
+                    if (!Seek(it, st, st_type)) { return 1;}
                 }
                 break;
             }
             default: {
-                if (!it->Seek(st, st_type, expire_cnt, cnt)) {
+                if (!SeekWithCount(it, st, st_type, expire_cnt, cnt)) {
                     return 1; 
                 }
                 break;
@@ -729,10 +729,10 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
         }
         switch (ttl_type) {
             case ::rtidb::api::TTLType::kAbsoluteTime: 
-                it->Seek(st, real_st_type);
+                Seek(it, st, real_st_type);
                 break;
             default: 
-                it->Seek(st, real_st_type, expire_cnt, cnt);
+                SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
                 break;
         }
     } else {
@@ -755,24 +755,20 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             }
             last_time = it->GetKey();
         } else if (ttl_type == ::rtidb::api::TTLType::kLatestTime) {
-            if (cnt < expire_cnt || expire_cnt == 0) {
-                ++cnt;
-            } else {
+            if (expire_cnt != 0 && cnt >= expire_cnt) {
                 break;
             }
         } else if (ttl_type == ::rtidb::api::TTLType::kAbsAndLat) {
-            if ((cnt < expire_cnt || expire_cnt == 0) || (it->GetKey() > expire_time || expire_time == 0)) {
-                ++cnt;
-            } else {
+            if ((expire_cnt != 0 && cnt >= expire_cnt) && (expire_time != 0 && it->GetKey() < expire_time)) {
                 break;
             }
         } else {
-            if ((cnt < expire_cnt || expire_cnt == 0) && (it->GetKey() > expire_time || expire_time == 0)) {
-                ++cnt;
-            } else {
+            if ((expire_cnt != 0 && cnt >= expire_cnt) || (expire_time != 0 && it->GetKey() < expire_time)) {
                 break;
             }
         }
+        ++cnt;
+
         if (atleast <= 0 || tmp.size() >= atleast) {
             bool jump_out = false;
             switch(real_et_type) {
@@ -853,10 +849,10 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
         }
         switch (ttl_type) {
             case ::rtidb::api::TTLType::kAbsoluteTime: 
-                it->Seek(st, real_st_type);
+                Seek(it, st, real_st_type);
                 break;
             default: 
-                it->Seek(st, real_st_type, expire_cnt, cnt);
+                SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
                 break;
         }
     } else {
@@ -877,24 +873,19 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
             continue;
         }
         if (ttl_type == ::rtidb::api::TTLType::kLatestTime) {
-            if (cnt < expire_cnt || expire_cnt == 0) {
-                ++cnt;
-            } else {
+            if (expire_cnt != 0 && cnt >= expire_cnt) {
                 break;
             }
         } else if (ttl_type == ::rtidb::api::TTLType::kAbsAndLat) {
-            if ((cnt < expire_cnt || expire_cnt == 0) || (it->GetKey() > expire_time || expire_time == 0)) {
-                ++cnt;
-            } else {
+            if ((expire_cnt != 0 && cnt >= expire_cnt) && (expire_time != 0 && it->GetKey() < expire_time)) {
                 break;
             }
         } else {
-            if ((cnt < expire_cnt || expire_cnt == 0) && (it->GetKey() > expire_time || expire_time == 0)) {
-                ++cnt;
-            } else {
+            if ((expire_cnt != 0 && cnt >= expire_cnt) || (expire_time != 0 && it->GetKey() < expire_time)) {
                 break;
             }
         }
+        ++cnt;
         bool jump_out = false;
         last_key = it->GetKey();
         switch(real_et_type) {
@@ -3541,6 +3532,69 @@ bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
         }
     }
     return true;
+}
+
+bool TabletImpl::SeekWithCount(::rtidb::storage::TableIterator* it, const uint64_t time,
+        const ::rtidb::api::GetType& type, uint32_t max_cnt, uint32_t& cnt) {
+    if (it == NULL) {
+        return false;
+    }
+    it->SeekToFirst();
+    while(it->Valid() && (cnt < max_cnt || max_cnt == 0)) {
+        switch(type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                if (it->GetKey() <= time) {
+                    return it->GetKey() == time;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyLe:
+                if (it->GetKey() <= time) {
+                    return true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyLt:
+                if (it->GetKey() < time) {
+                    return true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyGe:
+                return it->GetKey() >= time;
+            case ::rtidb::api::GetType::kSubKeyGt:
+                return it->GetKey() > time;
+            default:
+                return false;
+        }
+        it->Next();
+        ++cnt;
+    }
+    return false;
+}
+
+bool TabletImpl::Seek(::rtidb::storage::TableIterator* it, const uint64_t time,
+        const ::rtidb::api::GetType& type) {
+    if (it == NULL) {
+        return false;
+    }
+    switch(type) {
+        case ::rtidb::api::GetType::kSubKeyEq:
+            it->Seek(time);
+            return it->Valid() && it->GetKey() == time;
+        case ::rtidb::api::GetType::kSubKeyLe:
+            it->Seek(time);
+            return it->Valid();
+        case ::rtidb::api::GetType::kSubKeyLt:
+            it->Seek(time - 1);
+            return it->Valid();
+        case ::rtidb::api::GetType::kSubKeyGe:
+            it->SeekToFirst();
+            return it->Valid() && it->GetKey() >= time;
+        case ::rtidb::api::GetType::kSubKeyGt:
+            it->SeekToFirst();
+            return it->Valid() && it->GetKey() > time;
+        default:
+            return false;
+    }
+    return false;
 }
 
 }

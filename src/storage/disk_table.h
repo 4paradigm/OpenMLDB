@@ -215,8 +215,6 @@ public:
     virtual uint64_t GetKey() const override;
     virtual void SeekToFirst() override;
     virtual void Seek(const uint64_t time) override;
-    virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type, uint32_t max_cnt, uint32_t& cnt) override;
-    virtual bool Seek(const uint64_t time, ::rtidb::api::GetType type) override;
 
 private:
     rocksdb::DB* db_;
@@ -254,7 +252,6 @@ private:
     const rocksdb::Snapshot* snapshot_;
     ::rtidb::api::TTLType ttl_type_;
     uint32_t record_idx_;
-    // uint64_t expire_value_;
     TTLDesc expire_value_;
     std::string pk_;
     uint64_t ts_;

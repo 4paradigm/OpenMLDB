@@ -357,6 +357,11 @@ private:
             const ::rtidb::common::StorageMode& mode,
             std::string& path);
 
+    bool SeekWithCount(::rtidb::storage::TableIterator* it, const uint64_t time,
+            const ::rtidb::api::GetType& type, uint32_t max_cnt, uint32_t& cnt);
+
+    bool Seek(::rtidb::storage::TableIterator* it, const uint64_t time,
+            const ::rtidb::api::GetType& type);
 
 private:
     Tables tables_;
