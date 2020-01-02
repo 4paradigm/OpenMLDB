@@ -265,12 +265,13 @@ bool TabletImpl::CheckGetDone(::rtidb::api::GetType type, uint64_t ts,  uint64_t
 int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
                                 ::rtidb::api::TTLType ttl_type,
                                  ::rtidb::storage::TableIterator* it,
-                                 uint64_t st,
-                                 const rtidb::api::GetType& st_type,
-                                 uint64_t et,
-                                 const rtidb::api::GetType& et_type,
+                                 const ::rtidb::api::GetRequest* request,
                                  std::string* value,
                                  uint64_t* ts) {
+    uint64_t st = request->ts();
+    const rtidb::api::GetType& st_type = request->type();
+    uint64_t et = request->et();
+    const rtidb::api::GetType& et_type = request->et_type();
     if (it == NULL || value == NULL || ts == NULL) {
         PDLOG(WARNING, "invalid args");
         return -1;
@@ -435,12 +436,7 @@ void TabletImpl::Get(RpcController* controller,
     uint64_t ts = 0;
     int32_t code = 0;
     code = GetIndex(table->GetExpireTime(ttl.abs_ttl*60*1000), ttl.lat_ttl,
-                    table->GetTTLType(),
-                    it, request->ts(),
-                    request->type(),
-                    request->et(),
-                    request->et_type(),
-                    value, &ts);
+                    table->GetTTLType(), it, request, value, &ts);
     delete it;
     response->set_ts(ts);
     response->set_code(code);
@@ -688,15 +684,17 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
 int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                                  ::rtidb::api::TTLType ttl_type,
                                  ::rtidb::storage::TableIterator* it,
-                                 uint32_t limit,
-                                 uint32_t atleast,
-                                 uint64_t st,
-                                 const rtidb::api::GetType& st_type,
-                                 uint64_t et,
-                                 const rtidb::api::GetType& et_type,
+                                 const ::rtidb::api::ScanRequest* request,
                                  std::string* pairs,
-                                 uint32_t* count,
-                                 bool remove_duplicated_record) {
+                                 uint32_t* count) {
+    uint32_t limit = request->limit();
+    uint32_t atleast = request->atleast();
+    uint64_t st = request->st();
+    const rtidb::api::GetType& st_type = request->st_type();
+    uint64_t et = request->et();
+    const rtidb::api::GetType& et_type = request->et_type();
+    bool remove_duplicated_record = request->has_enable_remove_duplicated_record() 
+                                    && request->enable_remove_duplicated_record();
     if (it == NULL || pairs == NULL || count == NULL || (atleast > limit && limit != 0)) {
         PDLOG(WARNING, "invalid args");
         return -1;
@@ -817,12 +815,14 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
 int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
                         ::rtidb::api::TTLType ttl_type,
                         ::rtidb::storage::TableIterator* it,
-                        uint64_t st,
-                        const rtidb::api::GetType& st_type,
-                        uint64_t et,
-                        const rtidb::api::GetType& et_type,
-                        uint32_t* count,
-                        bool remove_duplicated_record) {
+                        const ::rtidb::api::CountRequest* request,
+                        uint32_t* count) {
+    uint64_t st = request->st();
+    const rtidb::api::GetType& st_type = request->st_type();
+    uint64_t et = request->et();
+    const rtidb::api::GetType& et_type = request->et_type();
+    bool remove_duplicated_record = request->has_enable_remove_duplicated_record()
+                                    && request->enable_remove_duplicated_record();
     if (it == NULL || count == NULL) {
         PDLOG(WARNING, "invalid args");
         return -1;
@@ -993,17 +993,8 @@ void TabletImpl::Scan(RpcController* controller,
     int32_t code = 0;
     uint64_t expire_time = table->GetExpireTime(ttl.abs_ttl*60*1000);
     uint64_t expire_cnt = ttl.lat_ttl;
-    bool remove_duplicated_record = false;
-    if (request->has_enable_remove_duplicated_record()) {
-        remove_duplicated_record = request->enable_remove_duplicated_record();
-    }
-    code = ScanIndex(expire_time, expire_cnt,
-                        table->GetTTLType(),
-                        it, request->limit(),
-                        request->atleast(),
-                        request->st(), request->st_type(),
-                        request->et(), request->et_type(),
-                        pairs, &count, remove_duplicated_record);
+    code = ScanIndex(expire_time, expire_cnt, table->GetTTLType(),
+                        it, request, pairs, &count);
     delete it;
     response->set_code(code);
     response->set_count(count);
@@ -1113,15 +1104,9 @@ void TabletImpl::Count(RpcController* controller,
     ::rtidb::storage::TTLDesc ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
     uint32_t count = 0;
     int32_t code = 0;
-    bool remove_duplicated_record = false;
-    if (request->has_enable_remove_duplicated_record()) {
-        remove_duplicated_record = request->enable_remove_duplicated_record();
-    }
     code = CountIndex(table->GetExpireTime(ttl.abs_ttl*60*1000),
                         ttl.lat_ttl, table->GetTTLType(), it,
-                        request->st(), request->st_type(),
-                        request->et(), request->et_type(),
-                        &count, remove_duplicated_record);
+                        request, &count);
     delete it;
     response->set_code(code);
     response->set_count(count);

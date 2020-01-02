@@ -127,8 +127,13 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
     // get the st kSubKeyGt
     {
         //for the legacy
-        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it, 100 + base_ts, ::rtidb::api::GetType::kSubKeyGt, 100 + base_ts, ::rtidb::api::GetType::kSubKeyEq,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(100 + base_ts);
+        request.set_type(::rtidb::api::GetType::kSubKeyGt);
+        request.set_et(100 + base_ts);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 900 + base_ts);
         ASSERT_EQ(value, "value900");
@@ -137,8 +142,13 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
     // get the st kSubKeyLe
     {
         //for the legacy
-        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it, 100 + base_ts, ::rtidb::api::GetType::kSubKeyLe, 100 + base_ts, ::rtidb::api::GetType::kSubKeyGe,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(100 + base_ts);
+        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_et(100 + base_ts);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 100 + base_ts);
         ASSERT_EQ(value, "value100");
@@ -147,8 +157,13 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
     // get the st 900kSubKeyLe
     {
         //for the legacy
-        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it, 900 + base_ts, ::rtidb::api::GetType::kSubKeyLe, 100 + base_ts, ::rtidb::api::GetType::kSubKeyGe,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(900 + base_ts);
+        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_et(100 + base_ts);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 900 + base_ts);
         ASSERT_EQ(value, "value900");
@@ -157,8 +172,13 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
     // get the st 899kSubKeyLe
     {
         //for the legacy
-        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it, 899 + base_ts, ::rtidb::api::GetType::kSubKeyLe, 100 + base_ts, ::rtidb::api::GetType::kSubKeyGe,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(899 + base_ts);
+        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_et(100 + base_ts);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 800 + base_ts);
         ASSERT_EQ(value, "value800");
@@ -167,8 +187,13 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
     // get the st 800 kSubKeyLe
     {
         //for the legacy
-        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it, 899 + base_ts, ::rtidb::api::GetType::kSubKeyLe, 800 + base_ts, ::rtidb::api::GetType::kSubKeyGe,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(899 + base_ts);
+        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_et(800 + base_ts);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 800 + base_ts);
         ASSERT_EQ(value, "value800");
@@ -177,8 +202,13 @@ void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts
     // get the st 800 kSubKeyLe
     {
         //for the legacy
-        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it, 899 + base_ts, ::rtidb::api::GetType::kSubKeyLe, 800 + base_ts, ::rtidb::api::GetType::kSubKeyGt,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(899 + base_ts);
+        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_et(800 + base_ts);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyGt);
+        code = tablet_impl.GetIndex(expired_ts, 0, ::rtidb::api::TTLType::kAbsoluteTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(1, code);
     }
 
@@ -194,8 +224,13 @@ void RunGetLatestIndexAssert(::rtidb::storage::TableIterator* it) {
     // get the st kSubKeyGt
     {
         //for the legacy
-        code = tablet_impl.GetIndex(0, 10, ::rtidb::api::TTLType::kLatestTime, it, 1100, ::rtidb::api::GetType::kSubKeyGt, 1100, ::rtidb::api::GetType::kSubKeyEq,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(1100);
+        request.set_type(::rtidb::api::GetType::kSubKeyGt);
+        request.set_et(1100);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        code = tablet_impl.GetIndex(0, 10, ::rtidb::api::TTLType::kLatestTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 1900);
         ASSERT_EQ(value, "value900");
@@ -203,8 +238,13 @@ void RunGetLatestIndexAssert(::rtidb::storage::TableIterator* it) {
 
     // get the st == et
     {
-        code = tablet_impl.GetIndex(0, 10, ::rtidb::api::TTLType::kLatestTime, it, 1100, ::rtidb::api::GetType::kSubKeyEq, 1100, ::rtidb::api::GetType::kSubKeyEq,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(1100);
+        request.set_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_et(1100);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        code = tablet_impl.GetIndex(0, 10, ::rtidb::api::TTLType::kLatestTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 1100);
         ASSERT_EQ(value, "value100");
@@ -212,23 +252,37 @@ void RunGetLatestIndexAssert(::rtidb::storage::TableIterator* it) {
 
     // get the st < et
     {
-        code = tablet_impl.GetIndex(0, 10, ::rtidb::api::TTLType::kLatestTime, it, 1100, ::rtidb::api::GetType::kSubKeyEq, 1101, ::rtidb::api::GetType::kSubKeyEq,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(1100);
+        request.set_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_et(1101);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        code = tablet_impl.GetIndex(0, 10, ::rtidb::api::TTLType::kLatestTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(-1, code);
     }
 
     // get the st > et
     {
-        code = 0;
-        code = tablet_impl.GetIndex(0, 10, ::rtidb::api::TTLType::kLatestTime, it, 1101, ::rtidb::api::GetType::kSubKeyEq, 1100, ::rtidb::api::GetType::kSubKeyEq,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(1101);
+        request.set_type(::rtidb::api::GetType::kSubKeyEq);
+        request.set_et(1100);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        code = tablet_impl.GetIndex(0, 10, ::rtidb::api::TTLType::kLatestTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(-1, code);
     }
 
     // get the st > et
     {
-        code = tablet_impl.GetIndex(0, 10, ::rtidb::api::TTLType::kLatestTime, it, 1201, ::rtidb::api::GetType::kSubKeyLe, 1200, ::rtidb::api::GetType::kSubKeyEq,
-                &value, &ts);
+        ::rtidb::api::GetRequest request;
+        request.set_ts(1201);
+        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        request.set_et(1200);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
+        code = tablet_impl.GetIndex(0, 10, ::rtidb::api::TTLType::kLatestTime, it,
+                &request, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 1200);
         ASSERT_EQ(value, "value200");
