@@ -39,11 +39,11 @@
 #--task_pool_size=8
 
 --db_root_path=./db
---ssd_root_path=./db
---hdd_root_path=./db
+#--ssd_root_path=./db
+#--hdd_root_path=./db
 --recycle_bin_root_path=./recycle
---recycle_ssd_bin_root_path=./recycle
---recycle_hdd_bin_root_path=./recycle
+#--recycle_ssd_bin_root_path=./recycle
+#--recycle_hdd_bin_root_path=./recycle
 
 # snapshot conf
 # 每天23点做snapshot

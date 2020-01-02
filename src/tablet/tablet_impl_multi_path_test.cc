@@ -171,12 +171,55 @@ void CreateBaseTablet(::rtidb::tablet::TabletImpl& tablet,
     ASSERT_EQ(0, drs.code());
 }
 
+void CreateTableWithoutDBRootPath(::rtidb::tablet::TabletImpl& tablet,
+            const ::rtidb::api::TTLType& ttl_type,
+            uint64_t ttl, uint64_t start_ts,
+            uint32_t tid, uint32_t pid,
+            const ::rtidb::common::StorageMode& mode) {
+    ::rtidb::api::CreateTableRequest crequest;
+    ::rtidb::api::TableMeta* table_meta = crequest.mutable_table_meta();
+    table_meta->set_name("table");
+    table_meta->set_tid(tid);
+    table_meta->set_pid(pid);
+    table_meta->set_ttl(ttl);
+    table_meta->set_seg_cnt(8);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta->set_storage_mode(mode);
+    table_meta->set_key_entry_max_height(8);
+    table_meta->set_ttl_type(ttl_type);
+    ::rtidb::api::CreateTableResponse cresponse;
+    MockClosure closure;
+    tablet.CreateTable(NULL, &crequest, &cresponse,
+                &closure);
+    ASSERT_EQ(138, cresponse.code());
+}
+
 class TabletMultiPathTest : public ::testing::Test {
 
 public:
     TabletMultiPathTest() {}
     ~TabletMultiPathTest() {}
 };
+
+TEST_F(TabletMultiPathTest, CreateWithoutDBPath) {
+    std::string old_db_path = FLAGS_db_root_path;
+    std::string old_ssd_db_path = FLAGS_ssd_root_path;
+    std::string old_hdd_db_path = FLAGS_hdd_root_path;
+    FLAGS_ssd_root_path="";
+    FLAGS_db_root_path="";
+    FLAGS_hdd_root_path="";
+    ::rtidb::tablet::TabletImpl tablet_impl;
+    tablet_impl.Init();
+    CreateTableWithoutDBRootPath(tablet_impl, ::rtidb::api::TTLType::kAbsoluteTime, 0, 1000,
+            100, 0, ::rtidb::common::StorageMode::kMemory);
+    CreateTableWithoutDBRootPath(tablet_impl, ::rtidb::api::TTLType::kAbsoluteTime, 0, 1000,
+            101, 0, ::rtidb::common::StorageMode::kSSD);
+    CreateTableWithoutDBRootPath(tablet_impl, ::rtidb::api::TTLType::kAbsoluteTime, 0, 1000,
+            102, 0, ::rtidb::common::StorageMode::kHDD);
+    FLAGS_db_root_path = old_db_path;
+    FLAGS_ssd_root_path = old_ssd_db_path;
+    FLAGS_hdd_root_path = old_hdd_db_path;
+}
 
 TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute){
     ::rtidb::tablet::TabletImpl tablet_impl;
