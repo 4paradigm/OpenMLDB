@@ -19,6 +19,7 @@ namespace rtidb {
 const uint32_t INVALID_TID = UINT32_MAX;
 namespace client {
 using ::rtidb::api::TaskInfo;
+const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 class TabletClient {
 
@@ -163,13 +164,14 @@ public:
 
     bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
             uint32_t remote_tid, std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
+    
     bool DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool MakeSnapshot(uint32_t tid, uint32_t pid, 
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
-    bool SendSnapshot(uint32_t tid, uint32_t pid, const std::string& endpoint, 
+    bool SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid, const std::string& endpoint, 
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool PauseSnapshot(uint32_t tid, uint32_t pid, 

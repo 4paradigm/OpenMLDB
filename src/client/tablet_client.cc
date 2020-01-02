@@ -330,12 +330,13 @@ bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid,
     return false;
 }
 
-bool TabletClient::SendSnapshot(uint32_t tid, uint32_t pid, const std::string& endpoint,
-        std::shared_ptr<TaskInfo> task_info) {
+bool TabletClient::SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid, 
+        const std::string& endpoint, std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::SendSnapshotRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
+    request.set_remote_tid(remote_tid);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
@@ -729,7 +730,7 @@ bool TabletClient::DropTable(uint32_t id, uint32_t pid, std::shared_ptr<TaskInfo
 
 bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
         std::shared_ptr<TaskInfo> task_info) {
-    return AddReplica(tid, pid, endpoint, INVALID_TID, task_info);
+    return AddReplica(tid, pid, endpoint, INVALID_REMOTE_TID, task_info);
 }
 
 bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
@@ -739,7 +740,7 @@ bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& end
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
-    if(remote_tid != INVALID_TID) {
+    if(remote_tid != INVALID_REMOTE_TID) {
         request.set_remote_tid(remote_tid);
     }
     if (task_info) {
