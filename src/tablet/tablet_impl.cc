@@ -748,7 +748,7 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             break;
         }
         if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
-            if (expire_time != 0 && it->GetKey() < expire_time) {
+            if (expire_time != 0 && it->GetKey() <= expire_time) {
                 break;
             }
             if (remove_duplicated_record && tmp.size() > 0 && 
@@ -762,11 +762,11 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                 break;
             }
         } else if (ttl_type == ::rtidb::api::TTLType::kAbsAndLat) {
-            if ((expire_cnt != 0 && cnt >= expire_cnt) && (expire_time != 0 && it->GetKey() < expire_time)) {
+            if ((expire_cnt != 0 && cnt >= expire_cnt) && (expire_time != 0 && it->GetKey() <= expire_time)) {
                 break;
             }
         } else {
-            if ((expire_cnt != 0 && cnt >= expire_cnt) || (expire_time != 0 && it->GetKey() < expire_time)) {
+            if ((expire_cnt != 0 && cnt >= expire_cnt) || (expire_time != 0 && it->GetKey() <= expire_time)) {
                 break;
             }
         }
@@ -875,16 +875,20 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
             it->Next();
             continue;
         }
-        if (ttl_type == ::rtidb::api::TTLType::kLatestTime) {
+        if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
+            if (expire_time != 0 && it->GetKey() <= expire_time) {
+                break;
+            }
+        } else if (ttl_type == ::rtidb::api::TTLType::kLatestTime) {
             if (expire_cnt != 0 && cnt >= expire_cnt) {
                 break;
             }
         } else if (ttl_type == ::rtidb::api::TTLType::kAbsAndLat) {
-            if ((expire_cnt != 0 && cnt >= expire_cnt) && (expire_time != 0 && it->GetKey() < expire_time)) {
+            if ((expire_cnt != 0 && cnt >= expire_cnt) && (expire_time != 0 && it->GetKey() <= expire_time)) {
                 break;
             }
         } else {
-            if ((expire_cnt != 0 && cnt >= expire_cnt) || (expire_time != 0 && it->GetKey() < expire_time)) {
+            if ((expire_cnt != 0 && cnt >= expire_cnt) || (expire_time != 0 && it->GetKey() <= expire_time)) {
                 break;
             }
         }
