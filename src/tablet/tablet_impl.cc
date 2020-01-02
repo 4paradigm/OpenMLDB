@@ -748,6 +748,9 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             break;
         }
         if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
+            if (expire_time != 0 && it->GetKey() < expire_time) {
+                break;
+            }
             if (remove_duplicated_record && tmp.size() > 0 && 
                 last_time == it->GetKey()) {
                     it->Next();
