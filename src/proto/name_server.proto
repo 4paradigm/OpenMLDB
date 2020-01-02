@@ -86,8 +86,8 @@ message TableInfo {
 }
 
 message AliasPair {
-    required string alias = 1; 
-    required int32 ready_num = 2 [default = 0]; //0 ok, -1 failed
+    optional string alias = 1; 
+    optional int32 ready_num = 2 [default = 0]; //0 ok, -1 failed
 }
 
 message CreateTableRequest {

@@ -6364,7 +6364,7 @@ void NameServerImpl::AddTableInfo(const std::string& alias,
         }
     }
     if (alias != "") {
-        //TODO
+        //TODO task状态为fail时，及时更新ready_num为-1
         /**
         if (alias_pair->ready_num() == -1) {
         } 
