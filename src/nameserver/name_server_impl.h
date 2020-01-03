@@ -483,12 +483,12 @@ private:
             uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
             const std::string& des_endpoint);
 
-    std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& endpoint, const std::string& name, uint32_t remote_tid, uint32_t pid, uint64_t op_index, ::rtidb::api::OPType op_type); 
+    std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& alias, const std::string& endpoint, const std::string& name, uint32_t remote_tid, uint32_t pid, uint64_t op_index, ::rtidb::api::OPType op_type); 
 
     std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& name,  uint32_t pid,
             const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
 
-    void AddTableInfo(const std::string& endpoint, const std::string& name, uint32_t pid, uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task_info); 
+    void AddTableInfo(const std::string& alias, const std::string& endpoint, const std::string& name, uint32_t pid, uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task_info); 
 
     void AddTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
@@ -621,7 +621,7 @@ private:
                            const ::rtidb::api::TTLType& type,
                            uint64_t ttl, const std::string& ts_name);
 
-    void CheckSynTable(const std::string& alias, std::shared_ptr<::rtidb::client::NsClient> ns_client);
+    void CheckSyncTable(const std::string& alias, const std::vector<::rtidb::nameserver::TableInfo> tables, const std::shared_ptr<::rtidb::client::NsClient> ns_client);
 
     bool CompareTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables);
 

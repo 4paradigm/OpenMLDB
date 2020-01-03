@@ -94,6 +94,7 @@ enum TaskType {
     kCheckBinlogSyncProgress = 18;
     kCreateTableRemote = 19; 
     kDropTableRemote = 20; 
+    kAddReplicaNSRemote = 21; 
 }
 
 enum TaskStatus {
