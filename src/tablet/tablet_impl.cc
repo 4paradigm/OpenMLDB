@@ -863,8 +863,6 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
     }
 
     uint64_t last_key = 0;
-    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
-    tmp.reserve(FLAGS_scan_reserve_size);
     uint32_t internal_cnt = 0;
 
     while(it->Valid()) {

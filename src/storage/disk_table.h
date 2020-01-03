@@ -214,7 +214,7 @@ public:
     virtual std::string GetPK() const override;
     virtual uint64_t GetKey() const override;
     virtual void SeekToFirst() override;
-    virtual void Seek(const uint64_t time) override;
+    virtual void Seek(uint64_t time) override;
 
 private:
     rocksdb::DB* db_;

@@ -2295,6 +2295,12 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                       << FLAGS_latest_ttl_max << std::endl;
             return;
         }
+        if ((ns_table_info.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsAndLat
+            ||ns_table_info.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsOrLat)
+            && ns_table_info.storage_mode() != ::rtidb::common::StorageMode::kMemory) {
+            std::cout << "Create failed. Disktable doesn't support abs&&lat, abs||lat in this version." << std::endl;
+            return;
+        }
     } else {
         if (ns_table_info.ttl_type() == "kAbsoluteTime") {
             if (ns_table_info.ttl() > FLAGS_absolute_ttl_max) {
