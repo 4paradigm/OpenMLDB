@@ -244,6 +244,106 @@ TEST_F(SegmentTest, TestGc4TTL) {
     ASSERT_EQ(2 * GetRecordSize(5), gc_record_byte_size);
 }
 
+TEST_F(SegmentTest, TestGc4TTLAndHead) {
+    Segment segment;
+    segment.Put("PK1", 9766, "test1", 5);
+    segment.Put("PK1", 9767, "test2", 5);
+    segment.Put("PK1", 9768, "test3", 5);
+    segment.Put("PK1", 9769, "test4", 5);
+    segment.Put("PK2", 9765, "test1", 5);
+    segment.Put("PK2", 9766, "test2", 5);
+    segment.Put("PK2", 9767, "test3", 5);
+    uint64_t gc_idx_cnt = 0;
+    uint64_t gc_record_cnt = 0;
+    uint64_t gc_record_byte_size = 0;
+    segment.Gc4TTLAndHead(0, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(0, gc_idx_cnt);
+    ASSERT_EQ(0, gc_record_cnt);
+    ASSERT_EQ(0, gc_record_byte_size);
+    segment.Gc4TTLAndHead(9765, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(0, gc_idx_cnt);
+    ASSERT_EQ(0, gc_record_cnt);
+    ASSERT_EQ(0, gc_record_byte_size);
+    gc_idx_cnt = 0;
+    gc_record_cnt = 0;
+    gc_record_byte_size = 0;
+    segment.Gc4TTLAndHead(0, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(0, gc_idx_cnt);
+    ASSERT_EQ(0, gc_record_cnt);
+    ASSERT_EQ(0, gc_record_byte_size);
+    gc_idx_cnt = 0;
+    gc_record_cnt = 0;
+    gc_record_byte_size = 0;
+    segment.Gc4TTLAndHead(9765, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(0, gc_idx_cnt);
+    ASSERT_EQ(0, gc_record_cnt);
+    ASSERT_EQ(0, gc_record_byte_size);
+    gc_idx_cnt = 0;
+    gc_record_cnt = 0;
+    gc_record_byte_size = 0;
+    segment.Gc4TTLAndHead(9766, 2, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(2, gc_idx_cnt);
+    ASSERT_EQ(2, gc_record_cnt);
+    ASSERT_EQ(2 * GetRecordSize(5), gc_record_byte_size);
+    gc_idx_cnt = 0;
+    gc_record_cnt = 0;
+    gc_record_byte_size = 0;
+    segment.Gc4TTLAndHead(9770, 1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(3, gc_idx_cnt);
+    ASSERT_EQ(3, gc_record_cnt);
+    ASSERT_EQ(3 * GetRecordSize(5), gc_record_byte_size);
+}
+
+TEST_F(SegmentTest, TestGc4TTLOrHead) {
+    Segment segment;
+    segment.Put("PK1", 9766, "test1", 5);
+    segment.Put("PK1", 9767, "test2", 5);
+    segment.Put("PK1", 9768, "test3", 5);
+    segment.Put("PK1", 9769, "test4", 5);
+    segment.Put("PK2", 9765, "test1", 5);
+    segment.Put("PK2", 9766, "test2", 5);
+    segment.Put("PK2", 9767, "test3", 5);
+    uint64_t gc_idx_cnt = 0;
+    uint64_t gc_record_cnt = 0;
+    uint64_t gc_record_byte_size = 0;
+    segment.Gc4TTLOrHead(0, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(0, gc_idx_cnt);
+    ASSERT_EQ(0, gc_record_cnt);
+    ASSERT_EQ(0, gc_record_byte_size);
+    segment.Gc4TTLOrHead(9765, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(1, gc_idx_cnt);
+    ASSERT_EQ(1, gc_record_cnt);
+    ASSERT_EQ(GetRecordSize(5), gc_record_byte_size);
+    gc_idx_cnt = 0;
+    gc_record_cnt = 0;
+    gc_record_byte_size = 0;
+    segment.Gc4TTLOrHead(0, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(1, gc_idx_cnt);
+    ASSERT_EQ(1, gc_record_cnt);
+    ASSERT_EQ(GetRecordSize(5), gc_record_byte_size);
+    gc_idx_cnt = 0;
+    gc_record_cnt = 0;
+    gc_record_byte_size = 0;
+    segment.Gc4TTLOrHead(9765, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(0, gc_idx_cnt);
+    ASSERT_EQ(0, gc_record_cnt);
+    ASSERT_EQ(0, gc_record_byte_size);
+    gc_idx_cnt = 0;
+    gc_record_cnt = 0;
+    gc_record_byte_size = 0;
+    segment.Gc4TTLOrHead(9766, 2, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(2, gc_idx_cnt);
+    ASSERT_EQ(2, gc_record_cnt);
+    ASSERT_EQ(2 * GetRecordSize(5), gc_record_byte_size);
+    gc_idx_cnt = 0;
+    gc_record_cnt = 0;
+    gc_record_byte_size = 0;
+    segment.Gc4TTLOrHead(9770, 1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(3, gc_idx_cnt);
+    ASSERT_EQ(3, gc_record_cnt);
+    ASSERT_EQ(3 * GetRecordSize(5), gc_record_byte_size);
+}
+
 TEST_F(SegmentTest, TestStat) {
     Segment segment;
     segment.Put("PK", 9768, "test1", 5);

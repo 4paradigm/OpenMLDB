@@ -13,6 +13,7 @@
 #include "logging.h"
 
 DECLARE_uint32(max_traverse_cnt);
+DECLARE_int32(gc_safe_offset);
 
 namespace rtidb {
 namespace storage {
@@ -27,7 +28,7 @@ public:
 TEST_F(TableTest, Put) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     table->Put("test", 9537, "test", 4);
     ASSERT_EQ(1, table->GetRecordCnt());
@@ -49,7 +50,7 @@ TEST_F(TableTest, MultiDimissionPut0) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(3, table->GetIdxCnt());
     ASSERT_EQ(0, table->GetRecordIdxCnt());
@@ -77,7 +78,7 @@ TEST_F(TableTest, MultiDimissionPut1) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(3, table->GetIdxCnt());
     DataBlock* db = new DataBlock(3, "helloworld", 10);
@@ -93,7 +94,7 @@ TEST_F(TableTest, MultiDimissionPut1) {
 TEST_F(TableTest, Release) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     table->Put("test", 9537, "test", 4);
     table->Put("test2", 9537, "test", 4);
@@ -106,25 +107,25 @@ TEST_F(TableTest, IsExpired) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     // table ttl is 1
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t now_time = ::baidu::common::timer::get_micros() / 1000;
     ::rtidb::api::LogEntry entry;
     uint64_t ts_time = now_time; 
     entry.set_ts(ts_time);
-    ASSERT_FALSE(entry.ts() < table->GetExpireTime(1));
+    ASSERT_FALSE(entry.ts() < table->GetExpireTime(1*60*1000));
     
     // ttl_offset_ is 60 * 1000
     ts_time = now_time - 4 * 60 * 1000; 
     entry.set_ts(ts_time);
-    ASSERT_TRUE(entry.ts() < table->GetExpireTime(1));
+    ASSERT_TRUE(entry.ts() < table->GetExpireTime(1*60*1000));
     delete table;
 }
 
 TEST_F(TableTest, Iterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
@@ -149,7 +150,7 @@ TEST_F(TableTest, Iterator) {
 TEST_F(TableTest, Iterator_GetSize) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
@@ -182,7 +183,7 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(3, table->GetIdxCnt());
     DataBlock* db = new DataBlock(3, "helloworld", 10);
@@ -203,8 +204,7 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
 TEST_F(TableTest, SchedGcHead) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
-    table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1, ::rtidb::api::TTLType::kLatestTime);
     table->Init();
     table->Put("test", 2, "test1", 5);
     uint64_t bytes = table->GetRecordByteSize();
@@ -224,8 +224,7 @@ TEST_F(TableTest, SchedGcHead1) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     uint64_t keep_cnt = 500;
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, keep_cnt);
-    table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, keep_cnt, ::rtidb::api::TTLType::kLatestTime);
     table->Init();
 	uint64_t ts = 0;
     for (int i = 0; i < 10; i++) {
@@ -261,7 +260,7 @@ TEST_F(TableTest, SchedGcHead1) {
 TEST_F(TableTest, SchedGc) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1, ::rtidb::api::TTLType::kLatestTime);
     table->Init();
 
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -293,7 +292,7 @@ TEST_F(TableTest, SchedGc) {
 TEST_F(TableTest, OffSet) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     table->SetTimeOffset(-60 * 4);
@@ -332,7 +331,7 @@ TEST_F(TableTest, OffSet) {
 TEST_F(TableTest, TableDataCnt) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     ASSERT_EQ(table->GetRecordCnt(), 0);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -349,7 +348,7 @@ TEST_F(TableTest, TableDataCnt) {
 TEST_F(TableTest, TableUnref) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1 ,8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1 ,8 , mapping, 1, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     table->Put("test", 9527, "test", 4);
     delete table;
@@ -358,7 +357,7 @@ TEST_F(TableTest, TableUnref) {
 TEST_F(TableTest, TableIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk", 9527, "test1", 5);
@@ -402,9 +401,8 @@ TEST_F(TableTest, TableIterator) {
     delete it;
     delete table;
 
-    MemTable* table1 = new MemTable("tx_log", 1, 1, 8, mapping, 2);
+    MemTable* table1 = new MemTable("tx_log", 1, 1, 8, mapping, 2, ::rtidb::api::TTLType::kLatestTime);
     table1->Init();
-    table1->SetTTLType(::rtidb::api::TTLType::kLatestTime);
 
     table1->Put("pk", 9527, "test1", 5);
     table1->Put("pk1", 9527, "test2", 5);
@@ -431,7 +429,7 @@ TEST_F(TableTest, TableIterator) {
 TEST_F(TableTest, TableIteratorNoPk) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
 
     table->Put("pk10", 9527, "test10", 5);
@@ -476,7 +474,7 @@ TEST_F(TableTest, TableIteratorNoPk) {
 TEST_F(TableTest, TableIteratorCount) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     for (int i = 0; i < 100000; i = i + 2) {
         std::string key = "pk" + std::to_string(i);
@@ -717,7 +715,8 @@ TEST_F(TableTest, UpdateTTL) {
     table_meta.set_name("table1");
     table_meta.set_tid(1);
     table_meta.set_pid(0);
-    table_meta.set_ttl(10);
+    ::rtidb::api::TTLDesc* ttl_desc = table_meta.mutable_ttl_desc();
+    ttl_desc->set_abs_ttl(10);
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
@@ -743,7 +742,7 @@ TEST_F(TableTest, UpdateTTL) {
     desc->set_type("int64");
     desc->set_add_ts_idx(false);
     desc->set_is_ts_col(true);
-    desc->set_ttl(5);
+    desc->set_abs_ttl(5);
     ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
     column_key->set_index_name("card");
     column_key->add_ts_name("ts1");
@@ -754,14 +753,203 @@ TEST_F(TableTest, UpdateTTL) {
 
     MemTable table(table_meta);
     table.Init();
-    ASSERT_EQ(10, table.GetTTL(0, 0));
-    ASSERT_EQ(5, table.GetTTL(0, 1));
-    table.SetTTL(1, 20);
-    ASSERT_EQ(10, table.GetTTL(0, 0));
-    ASSERT_EQ(5, table.GetTTL(0, 1));
+    ASSERT_EQ(10, table.GetTTL(0, 0).abs_ttl);
+    ASSERT_EQ(5, table.GetTTL(0, 1).abs_ttl);
+    table.SetTTL(1, 20, 0);
+    ASSERT_EQ(10, table.GetTTL(0, 0).abs_ttl);
+    ASSERT_EQ(5, table.GetTTL(0, 1).abs_ttl);
     table.SchedGc();
-    ASSERT_EQ(10, table.GetTTL(0, 0));
-    ASSERT_EQ(20, table.GetTTL(0, 1));
+    ASSERT_EQ(10, table.GetTTL(0, 0).abs_ttl);
+    ASSERT_EQ(20, table.GetTTL(0, 1).abs_ttl);
+}
+
+::rtidb::common::ColumnDesc* AddColumnDesc(::rtidb::api::TableMeta& table_meta, std::string name, std::string type, bool add_ts_idx=false, bool is_ts_col=false, uint64_t abs_ttl=0, uint64_t lat_ttl=0) {
+    ::rtidb::common::ColumnDesc* desc = table_meta.add_column_desc();
+    desc->set_name(name);
+    desc->set_type(type);
+    desc->set_add_ts_idx(add_ts_idx);
+    desc->set_is_ts_col(is_ts_col);
+    if (abs_ttl != 0) {
+        desc->set_abs_ttl(abs_ttl);
+    }
+    if (lat_ttl != 0) {
+        desc->set_lat_ttl(lat_ttl);
+    }
+    return desc;
+}
+
+void BuildTableMeta(::rtidb::api::TableMeta& table_meta, ::rtidb::api::TTLType ttl_type, int abs_ttl, int lat_ttl) {
+    table_meta.set_name("table1");
+    table_meta.set_tid(1);
+    table_meta.set_pid(0);
+    ::rtidb::api::TTLDesc* ttl_desc = table_meta.mutable_ttl_desc();
+    ttl_desc->set_ttl_type(ttl_type);
+    if (abs_ttl != 0) {
+        ttl_desc->set_abs_ttl(abs_ttl);
+    }
+    if (lat_ttl != 0) {
+        ttl_desc->set_lat_ttl(lat_ttl);
+    }
+    table_meta.set_seg_cnt(8);
+    table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+}
+
+TEST_F(TableTest, AbsAndLatSetGet) {
+    ::rtidb::api::TableMeta table_meta;
+    BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsAndLat, 10, 12);
+    AddColumnDesc(table_meta, "card", "string", true, false, 0, 0);
+    AddColumnDesc(table_meta, "mcc", "string", true, false, 0, 0);
+    AddColumnDesc(table_meta, "price", "int64", false, 0, 0);
+    AddColumnDesc(table_meta, "ts1", "int64", false, true, 0, 0);
+    AddColumnDesc(table_meta, "ts2", "int64", false, true, 2, 10);
+    MemTable table(table_meta);
+    table.Init();
+
+    // test get and set ttl
+    ASSERT_EQ(10, table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    table.SetTTL(1, 3);
+    ASSERT_EQ(10, table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+    table.SchedGc();
+    ASSERT_EQ(1, table.GetTTL().abs_ttl);
+    ASSERT_EQ(3, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+}
+
+TEST_F(TableTest, AbsOrLatSetGet) {
+    ::rtidb::api::TableMeta table_meta;
+    BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsOrLat, 10, 12);
+    AddColumnDesc(table_meta, "card", "string", true, false, 0, 0);
+    AddColumnDesc(table_meta, "mcc", "string", true, false, 0, 0);
+    AddColumnDesc(table_meta, "price", "int64", false, 0, 0);
+    AddColumnDesc(table_meta, "ts1", "int64", false, true, 0, 0);
+    AddColumnDesc(table_meta, "ts2", "int64", false, true, 2, 10);
+
+
+    MemTable table(table_meta);
+    table.Init();
+    // test get and set ttl
+    ASSERT_EQ(10, table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    table.SetTTL(1, 3);
+    ASSERT_EQ(10, table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+    table.SchedGc();
+    ASSERT_EQ(1, table.GetTTL().abs_ttl);
+    ASSERT_EQ(3, table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+}
+
+TEST_F(TableTest, GcAbsOrLat) {
+    ::rtidb::api::TableMeta table_meta;
+    BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsOrLat, 4, 3);
+    AddColumnDesc(table_meta, "idx0", "string", true, false, 0, 0);
+    
+    int32_t offset = FLAGS_gc_safe_offset;
+    FLAGS_gc_safe_offset = 0;
+    MemTable table(table_meta);
+    table.Init();
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    table.Put("test1", now - 3 * (60 * 1000) - 1000, "value1", 6);
+    table.Put("test1", now - 3 * (60 * 1000) - 1000, "value1", 6);
+    table.Put("test1", now - 2 * (60 * 1000) - 1000, "value2", 6);
+    table.Put("test1", now - 1 * (60 * 1000) - 1000, "value3", 6);
+    table.Put("test2", now - 4 * (60 * 1000) - 1000, "value4", 6);
+    table.Put("test2", now - 2 * (60 * 1000) - 1000, "value5", 6);
+    table.Put("test2", now - 1 * (60 * 1000) - 1000, "value6", 6);
+    ASSERT_EQ(7, table.GetRecordCnt());
+    ASSERT_EQ(7, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(3, 0);
+    table.SchedGc();
+    ASSERT_EQ(5, table.GetRecordCnt());
+    ASSERT_EQ(5, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(0, 1);
+    table.SchedGc();
+    ASSERT_EQ(4, table.GetRecordCnt());
+    ASSERT_EQ(4, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(1, 1);
+    table.SchedGc();
+    ASSERT_EQ(2, table.GetRecordCnt());
+    ASSERT_EQ(2, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SchedGc();
+    ASSERT_EQ(0, table.GetRecordCnt());
+    ASSERT_EQ(0, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    FLAGS_gc_safe_offset = offset;
+}
+
+TEST_F(TableTest, GcAbsAndLat) {
+    ::rtidb::api::TableMeta table_meta;
+    BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsAndLat, 3, 3);
+    AddColumnDesc(table_meta, "idx0", "string", true, false, 0, 0);
+    
+    int32_t offset = FLAGS_gc_safe_offset;
+    FLAGS_gc_safe_offset = 0;
+    MemTable table(table_meta);
+    table.Init();
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    table.Put("test1", now - 3 * (60 * 1000) - 1000, "value1", 6);
+    table.Put("test1", now - 3 * (60 * 1000) - 1000, "value1", 6);
+    table.Put("test1", now - 2 * (60 * 1000) - 1000, "value2", 6);
+    table.Put("test1", now - 1 * (60 * 1000) - 1000, "value3", 6);
+    table.Put("test2", now - 4 * (60 * 1000) - 1000, "value4", 6);
+    table.Put("test2", now - 3 * (60 * 1000) - 1000, "value5", 6);
+    table.Put("test2", now - 2 * (60 * 1000) - 1000, "value6", 6);
+    ASSERT_EQ(7, table.GetRecordCnt());
+    ASSERT_EQ(7, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(1, 0);
+    table.SchedGc();
+    ASSERT_EQ(6, table.GetRecordCnt());
+    ASSERT_EQ(6, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(0, 1);
+    table.SchedGc();
+    ASSERT_EQ(6, table.GetRecordCnt());
+    ASSERT_EQ(6, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SetTTL(1, 1);
+    table.SchedGc();
+    ASSERT_EQ(6, table.GetRecordCnt());
+    ASSERT_EQ(6, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    table.SchedGc();
+    ASSERT_EQ(2, table.GetRecordCnt());
+    ASSERT_EQ(2, table.GetRecordIdxCnt());
+    ASSERT_EQ(2, table.GetRecordPkCnt());
+    FLAGS_gc_safe_offset = offset;
 }
 
 }

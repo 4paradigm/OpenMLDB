@@ -36,13 +36,24 @@ int Table::InitColumnDesc() {
                 key_idx++;
             } else if (column_desc.is_ts_col()) {
                 ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
-                if (column_desc.has_ttl()) {
-                    ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
-                    new_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
-                } else {
-                    ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl() * 60 * 1000));
-                    new_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl() * 60 * 1000));
+                uint64_t abs_ttl = abs_ttl_.load();
+                uint64_t lat_ttl = lat_ttl_.load();
+                if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
+                    abs_ttl = column_desc.abs_ttl() * 60 * 1000;
+                    lat_ttl = column_desc.lat_ttl();
+                } else if (column_desc.has_ttl()) {
+                    if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+                        abs_ttl = column_desc.ttl() * 60 * 1000;
+                        lat_ttl = 0;
+                    } else {
+                        abs_ttl = 0;
+                        lat_ttl = column_desc.ttl();
+                    }
                 }
+                abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(abs_ttl));
+                new_abs_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(abs_ttl));
+                lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(lat_ttl));
+                new_lat_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(lat_ttl));
                 ts_idx++;
             }
         }
@@ -117,5 +128,71 @@ int Table::InitColumnDesc() {
     }
     return 0;
 }
+
+void Table::UpdateTTL() {
+    if (abs_ttl_.load(std::memory_order_relaxed) != new_abs_ttl_.load(std::memory_order_relaxed)) {
+        uint64_t ttl_for_logger = abs_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+        uint64_t new_ttl_for_logger = new_abs_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+        PDLOG(INFO, "update abs_ttl form %lu to %lu, table %s tid %u pid %u",
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_);
+        abs_ttl_.store(new_abs_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    }
+    if (lat_ttl_.load(std::memory_order_relaxed) != new_lat_ttl_.load(std::memory_order_relaxed)) {
+        uint64_t ttl_for_logger = lat_ttl_.load(std::memory_order_relaxed);
+        uint64_t new_ttl_for_logger = new_lat_ttl_.load(std::memory_order_relaxed);
+        PDLOG(INFO, "update lat_ttl form %lu to %lu, table %s tid %u pid %u",
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_);
+        lat_ttl_.store(new_lat_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    }
+    for (uint32_t i = 0; i < abs_ttl_vec_.size(); i++) {
+        if (abs_ttl_vec_[i]->load(std::memory_order_relaxed) != new_abs_ttl_vec_[i]->load(std::memory_order_relaxed)) {
+            uint64_t ttl_for_logger = abs_ttl_vec_[i]->load(std::memory_order_relaxed) / 1000 / 60;
+            uint64_t new_ttl_for_logger = new_abs_ttl_vec_[i]->load(std::memory_order_relaxed) / 1000 / 60;
+            PDLOG(INFO, "update abs_ttl form %lu to %lu, table %s tid %u pid %u ts_index %u",
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_, i);
+            abs_ttl_vec_[i]->store(new_abs_ttl_vec_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
+        if (lat_ttl_vec_[i]->load(std::memory_order_relaxed) != new_lat_ttl_vec_[i]->load(std::memory_order_relaxed)) {
+            uint64_t ttl_for_logger = lat_ttl_vec_[i]->load(std::memory_order_relaxed);
+            uint64_t new_ttl_for_logger = new_lat_ttl_vec_[i]->load(std::memory_order_relaxed);
+            PDLOG(INFO, "update lat_ttl form %lu to %lu, table %s tid %u pid %u ts_index %u",
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_, i);
+            lat_ttl_vec_[i]->store(new_lat_ttl_vec_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
+    }
+}
+
+bool Table::InitFromMeta() {
+    if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
+        is_leader_ = false;
+    }
+    if (table_meta_.has_ttl_desc()) {
+        abs_ttl_ = table_meta_.ttl_desc().abs_ttl() * 60 * 1000;
+        lat_ttl_ = table_meta_.ttl_desc().lat_ttl();
+        ttl_type_ = table_meta_.ttl_desc().ttl_type();
+    } else if (table_meta_.has_ttl_type() || table_meta_.has_ttl()) {
+        ttl_type_ = table_meta_.ttl_type();
+        if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+            abs_ttl_ = table_meta_.ttl() * 60 * 1000;
+            lat_ttl_ = 0;
+        } else {
+            abs_ttl_ = 0;
+            lat_ttl_ = table_meta_.ttl();
+        }
+    } else {
+        PDLOG(WARNING, "init table with no ttl_desc");
+    }
+    new_abs_ttl_.store(abs_ttl_.load());
+    new_lat_ttl_.store(lat_ttl_.load());
+    if (InitColumnDesc() < 0) {
+        PDLOG(WARNING, "init column desc failed, tid %u pid %u", id_, pid_);
+        return false;
+    }
+    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
+    if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
+    idx_cnt_ = mapping_.size();
+    return true;
+}
+
 }
 }

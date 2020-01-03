@@ -38,19 +38,21 @@ MemTable::MemTable(const std::string& name,
         uint32_t pid,
         uint32_t seg_cnt,
         const std::map<std::string, uint32_t>& mapping,
-        uint64_t ttl): Table(::rtidb::common::StorageMode::kMemory, name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::CompressType::kNoCompress), seg_cnt_(seg_cnt),
-    segments_(NULL), 
-    enable_gc_(false), 
-    record_cnt_(0), time_offset_(0),
-    segment_released_(false), record_byte_size_(0)
-{
-}
+        uint64_t ttl, ::rtidb::api::TTLType ttl_type):
+        Table(::rtidb::common::StorageMode::kMemory, name, id,
+        pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
+        ttl_type, ::rtidb::api::CompressType::kNoCompress),
+        seg_cnt_(seg_cnt),
+        segments_(NULL), 
+        enable_gc_(false), 
+        record_cnt_(0), time_offset_(0),
+        segment_released_(false), record_byte_size_(0) {}
 
 MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) :
         Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(),
                 0, true, 60 * 1000, std::map<std::string, uint32_t>(),
-                ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::CompressType::kNoCompress) {
+                ::rtidb::api::TTLType::kAbsoluteTime, 
+                ::rtidb::api::CompressType::kNoCompress) {
     seg_cnt_ = 8;
     segments_ = NULL; 
     enable_gc_ = false;
@@ -79,34 +81,22 @@ MemTable::~MemTable() {
 bool MemTable::Init() {
     key_entry_max_height_ = FLAGS_key_entry_max_height;
     ttl_offset_ = FLAGS_gc_safe_offset * 60 * 1000;
+    if(!InitFromMeta()) {
+        return false;
+    }
     if (table_meta_.seg_cnt() > 0) {
         seg_cnt_ = table_meta_.seg_cnt();
     }
-    if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
-        is_leader_ = false;
-    }
-    if (InitColumnDesc() < 0) {
-        PDLOG(WARNING, "init column desc failed");
-        return false;
-    }
-    if (table_meta_.has_ttl()) {
-        ttl_ = table_meta_.ttl() * 60 * 1000;
-        new_ttl_.store(ttl_.load());
-    }    
-    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
-    if (table_meta_.has_ttl_type()) ttl_type_ = table_meta_.ttl_type();
-    if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
     if (table_meta_.has_key_entry_max_height() && table_meta_.key_entry_max_height() <= FLAGS_skiplist_max_height
             && table_meta_.key_entry_max_height() > 0) {
         key_entry_max_height_ = table_meta_.key_entry_max_height();
     } else {
-        if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime || ttl_type_ == ::rtidb::api::TTLType::kAbsOrLat) {
             key_entry_max_height_ = FLAGS_latest_default_skiplist_height;
-        } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+        } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type_ == ::rtidb::api::TTLType::kAbsAndLat) {
             key_entry_max_height_ = FLAGS_absolute_default_skiplist_height;
         }
     }
-    idx_cnt_ = mapping_.size();
 
     segments_ = new Segment**[idx_cnt_];
     for (uint32_t i = 0; i < idx_cnt_; i++) {
@@ -123,18 +113,24 @@ bool MemTable::Init() {
             }
         }
     }
-    if (ttl_ > 0) {
+    if (abs_ttl_ > 0 || lat_ttl_ > 0) {
         enable_gc_ = true;
     } else {
-        for (auto& ttl : ttl_vec_) {
+        for (const auto& ttl : abs_ttl_vec_) {
+            if (*ttl > 0) {
+                enable_gc_ = true;
+                break;
+            }
+        }
+        for (const auto& ttl : lat_ttl_vec_) {
             if (*ttl > 0) {
                 enable_gc_ = true;
                 break;
             }
         }
     }
-    PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
-                id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
+    PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , abs_ttl %d, lat_ttl %d", name_.c_str(),
+                id_, pid_, seg_cnt_, abs_ttl_.load() / (60 * 1000), lat_ttl_.load());
     return true;
 }
 
@@ -285,40 +281,43 @@ uint64_t MemTable::Release() {
 
 void MemTable::SchedGc() {
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t ttl_for_log = ttl_.load(std::memory_order_relaxed) / 1000 / 60;
-    PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
-            id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_for_log); 
+    uint64_t abs_ttl_for_log = abs_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+    uint64_t lat_ttl_for_log = lat_ttl_.load(std::memory_order_relaxed);
+    PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s abs_ttl %lu lat_ttl %lu", name_.c_str(),
+            id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), abs_ttl_for_log, lat_ttl_for_log); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     uint64_t time = 0;
-    if (ttl_.load(std::memory_order_relaxed) != 0) {
-        time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_.load(std::memory_order_relaxed);
+    if (abs_ttl_.load(std::memory_order_relaxed) != 0) {
+        time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - abs_ttl_.load(std::memory_order_relaxed);
     }        
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
-        std::map<uint32_t, uint64_t> cur_ttl_map;
+        std::map<uint32_t, TTLDesc> cur_ttl_map;
         if (!column_key_map_.empty()) {
             auto pos = column_key_map_.find(i);
             if (pos == column_key_map_.end()) {
                 continue;
             }
             for (auto ts_idx : pos->second) {
-                if (ts_idx >= ttl_vec_.size()) {
+                if (ts_idx >= abs_ttl_vec_.size()) {
                     continue;
                 }
-                if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
-                    if (ttl_vec_[ts_idx]->load(std::memory_order_relaxed) == 0) {
-                        cur_ttl_map.insert(std::make_pair(ts_idx, 0));
+                uint64_t expire_time = 0;
+                uint64_t expire_cnt = 0;
+                if (ts_idx < abs_ttl_vec_.size()) {
+                    if (abs_ttl_vec_[ts_idx]->load(std::memory_order_relaxed) == 0) {
+                        expire_time = 0;
                     } else {
-                        cur_ttl_map.insert(std::make_pair(ts_idx, 
-                                    cur_time + time_offset_.load(std::memory_order_relaxed) - 
-                                    ttl_offset_ - ttl_vec_[ts_idx]->load(std::memory_order_relaxed)));
+                        expire_time = cur_time + time_offset_.load(std::memory_order_relaxed) - 
+                                    ttl_offset_ - abs_ttl_vec_[ts_idx]->load(std::memory_order_relaxed);
                     }
-                } else {
-                    cur_ttl_map.insert(std::make_pair(ts_idx, 
-                                ttl_vec_[ts_idx]->load(std::memory_order_relaxed) / 60 / 1000));
                 }
+                if (ts_idx < lat_ttl_vec_.size()) {
+                    expire_cnt = lat_ttl_vec_[ts_idx]->load(std::memory_order_relaxed);
+                }
+                cur_ttl_map.insert(std::make_pair(ts_idx, TTLDesc(expire_time, expire_cnt)));
             }
         }
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -326,11 +325,12 @@ void MemTable::SchedGc() {
             Segment* segment = segments_[i][j];
             segment->IncrGcVersion();
             segment->GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-            if (new_ttl_.load(std::memory_order_relaxed) > 0) {
+            if (new_abs_ttl_.load(std::memory_order_relaxed) > 0 || new_lat_ttl_.load(std::memory_order_relaxed) > 0) {
                 enable_gc_ = true;
             } else {
-                for (uint32_t i = 0; i < new_ttl_vec_.size(); i++) {
-                    if (new_ttl_vec_[i]->load(std::memory_order_relaxed) > 0) {
+                for (uint32_t i = 0; i < new_abs_ttl_vec_.size(); i++) {
+                    if (new_abs_ttl_vec_[i]->load(std::memory_order_relaxed) > 0 ||
+                        new_lat_ttl_vec_[i]->load(std::memory_order_relaxed) > 0) {
                         enable_gc_ = true;
                         break;
                     }
@@ -349,9 +349,23 @@ void MemTable::SchedGc() {
                     break;
                 case ::rtidb::api::TTLType::kLatestTime:
                     if (cur_ttl_map.empty()) {
-                        segment->Gc4Head(ttl_.load(std::memory_order_relaxed) / 60 / 1000, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                        segment->Gc4Head(lat_ttl_.load(std::memory_order_relaxed), gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                     } else {
                         segment->Gc4Head(cur_ttl_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    }
+                    break;
+                case ::rtidb::api::TTLType::kAbsAndLat:
+                    if (cur_ttl_map.empty()) {
+                        segment->Gc4TTLAndHead(time, lat_ttl_.load(std::memory_order_relaxed), gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    } else {
+                        segment->Gc4TTLAndHead(cur_ttl_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    }
+                    break;
+                case ::rtidb::api::TTLType::kAbsOrLat:
+                    if (cur_ttl_map.empty()) {
+                        segment->Gc4TTLOrHead(time, lat_ttl_.load(std::memory_order_relaxed), gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    } else {
+                        segment->Gc4TTLOrHead(cur_ttl_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                     }
                     break;
                 default:
@@ -366,31 +380,17 @@ void MemTable::SchedGc() {
     record_byte_size_.fetch_sub(gc_record_byte_size, std::memory_order_relaxed);
     PDLOG(INFO, "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for table %s tid %u pid %u",
             gc_idx_cnt, gc_record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
-    if (ttl_.load(std::memory_order_relaxed) != new_ttl_.load(std::memory_order_relaxed)) {
-        uint64_t ttl_for_logger = ttl_.load(std::memory_order_relaxed) / 1000 / 60;
-        uint64_t new_ttl_for_logger = new_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
-        PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u", 
-                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_);
-        ttl_.store(new_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    }
-    for (uint32_t i = 0; i < ttl_vec_.size(); i++) {
-        if (ttl_vec_[i]->load(std::memory_order_relaxed) != new_ttl_vec_[i]->load(std::memory_order_relaxed)) {
-            uint64_t ttl_for_logger = ttl_vec_[i]->load(std::memory_order_relaxed) / 1000 / 60;
-            uint64_t new_ttl_for_logger = new_ttl_vec_[i]->load(std::memory_order_relaxed) / 1000 / 60;
-            PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u ts_index %u",
-                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_, i);
-            ttl_vec_[i]->store(new_ttl_vec_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
-        }
-    }
+    UpdateTTL();
 }
 
+// tll as ms
 uint64_t MemTable::GetExpireTime(uint64_t ttl) {
     if (!enable_gc_.load(std::memory_order_relaxed) || ttl == 0
             || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl * 60 * 1000;
+    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl;
 }
 
 bool MemTable::IsExpire(const LogEntry& entry) {
@@ -457,12 +457,12 @@ bool MemTable::IsExpire(const LogEntry& entry) {
         }
     } else {
         if (ts_dimemsions_map.empty()) {
-            if (entry.ts() >= GetExpireTime(GetTTL())) {
+            if (entry.ts() >= GetExpireTime(GetTTL().abs_ttl*60*1000)) {
                 return false;
             }
         } else {
             for (auto kv : ts_dimemsions_map) {
-                if (kv.second >= GetExpireTime(GetTTL(0, kv.first))) {
+                if (kv.second >= GetExpireTime(GetTTL(0, kv.first).abs_ttl*60*1000)) {
                     return false;
                 }
             }
@@ -602,16 +602,13 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
     if (pos != column_key_map_.end() && !pos->second.empty()) {
         return NewTraverseIterator(index, pos->second.front());
     }
-    
-    uint64_t expire_value = 0;
-    if (!enable_gc_.load(std::memory_order_relaxed)) {
-        expire_value = 0;
-    } else if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        expire_value = GetTTL(index, 0);
-    } else {
-        expire_value = GetExpireTime(GetTTL(index, 0));
+    uint64_t expire_time = 0;
+    uint64_t expire_cnt = 0;
+    if (enable_gc_.load(std::memory_order_relaxed)) {
+        expire_time = GetExpireTime(GetTTL(index, 0).abs_ttl*60*1000);
+        expire_cnt = GetTTL(index, 0).lat_ttl;
     }
-    return new MemTableTraverseIterator(segments_[index], seg_cnt_, ttl_type_, expire_value, 0);
+    return new MemTableTraverseIterator(segments_[index], seg_cnt_, ttl_type_, expire_time, expire_cnt, 0);
 }
 
 TableIterator* MemTable::NewTraverseIterator(uint32_t index, uint32_t ts_index) {
@@ -628,23 +625,21 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index, uint32_t ts_index) 
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", ts_index, index, id_, pid_);
         return NULL;
     }
-    uint64_t expire_value = 0;
-    if (!enable_gc_.load(std::memory_order_relaxed)) {
-        expire_value = 0;
-    } else if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        expire_value = GetTTL(index, ts_index);
-    } else {
-        expire_value = GetExpireTime(GetTTL(index, ts_index));
+    uint64_t expire_time = 0;
+    uint64_t expire_cnt = 0;
+    if (enable_gc_.load(std::memory_order_relaxed)) {
+        expire_time = GetExpireTime(GetTTL(index, ts_index).abs_ttl*60*1000);
+        expire_cnt = GetTTL(index, ts_index).lat_ttl;
     }
-    return new MemTableTraverseIterator(segments_[index], seg_cnt_, ttl_type_, expire_value, ts_index);
+    return new MemTableTraverseIterator(segments_[index], seg_cnt_, ttl_type_, expire_time, expire_cnt, ts_index);
 }
 
 MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, 
-            ::rtidb::api::TTLType ttl_type, uint64_t expire_value, 
+            ::rtidb::api::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt,
             uint32_t ts_index) : segments_(segments),
         seg_cnt_(seg_cnt), seg_idx_(0), pk_it_(NULL), it_(NULL), 
         ttl_type_(ttl_type), record_idx_(0), ts_idx_(0), 
-        expire_value_(expire_value), ticket_(), traverse_cnt_(0) {
+        expire_value_(TTLDesc(expire_time, expire_cnt)), ticket_(), traverse_cnt_(0) {
     uint32_t idx = 0;
     if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
         ts_idx_ = idx;
@@ -676,13 +671,18 @@ uint64_t MemTableTraverseIterator::GetCount() const {
 }
 
 bool MemTableTraverseIterator::IsExpired() {
-    if (expire_value_ == 0) {
+    if (!expire_value_.HasExpire(ttl_type_)) {
         return false;
     }
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        return record_idx_ > expire_value_;
+        return record_idx_ > expire_value_.lat_ttl;
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+        return it_->GetKey() <= expire_value_.abs_ttl;
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsAndLat) {
+        return it_->GetKey() <= expire_value_.abs_ttl && record_idx_ > expire_value_.lat_ttl;
+    } else {
+        return it_->GetKey() <= expire_value_.abs_ttl || record_idx_ > expire_value_.lat_ttl;
     }
-    return it_->GetKey() < expire_value_;
 }
 
 void MemTableTraverseIterator::NextPK() {
@@ -764,7 +764,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
                 it_->SeekToFirst();
                 record_idx_ = 1;
-                while(it_->Valid() && record_idx_ <= expire_value_) {
+                while(it_->Valid() && record_idx_ <= expire_value_.lat_ttl) {
                     traverse_cnt_++;
                     if (it_->GetKey() < ts) {
                         return;

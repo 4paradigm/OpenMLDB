@@ -237,66 +237,27 @@ public:
         server_ = server;
     }
 
-    // scan the latest index
-    int32_t ScanLatestIndex(uint64_t ttl,
-                            ::rtidb::storage::TableIterator* it,
-                            uint32_t limit,
-                            uint64_t st,
-                            const rtidb::api::GetType& st_type,
-                            uint64_t et,
-                            const rtidb::api::GetType& et_type,
-                            std::string* pairs,
-                            uint32_t* count);
-
-    int32_t CountLatestIndex(uint64_t ttl, 
-                            ::rtidb::storage::TableIterator* it,
-                            uint64_t st,
-                            const ::rtidb::api::GetType& st_type,
-                            uint64_t et,
-                            const ::rtidb::api::GetType& et_type,
-                            uint32_t* count,
-                            bool remove_duplicated_record);
-
-    // get one value from latest index
-    int32_t GetLatestIndex(uint64_t ttl,
-                           ::rtidb::storage::TableIterator* it,
-                           uint64_t st,
-                           const rtidb::api::GetType& st_type,
-                           uint64_t et,
-                           const rtidb::api::GetType& et_type,
-                           std::string* value,
-                           uint64_t* ts);
-
-    // get one value from time index
-    int32_t GetTimeIndex(uint64_t expire_ts,
-                         ::rtidb::storage::TableIterator* it,
-                         uint64_t st,
-                         const rtidb::api::GetType& st_type,
-                         uint64_t et,
-                         const rtidb::api::GetType& et_type,
-                         std::string* value,
-                         uint64_t* ts);
-
-    // scan the time index 
-    int32_t ScanTimeIndex(uint64_t expire_ts, 
+    // get on value from specified ttl type index
+    int32_t GetIndex(uint64_t expire_time, uint64_t expire_cnt,
+                          ::rtidb::api::TTLType ttl_type,
                           ::rtidb::storage::TableIterator* it,
-                          uint32_t limit,
-                          uint64_t st,
-                          const rtidb::api::GetType& st_type,
-                          uint64_t et,
-                          const rtidb::api::GetType& et_type,
+                          const ::rtidb::api::GetRequest* request,
+                          std::string* value,
+                          uint64_t* ts);
+
+    // scan specified ttl type index
+    int32_t ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
+                          ::rtidb::api::TTLType ttl_type,
+                          ::rtidb::storage::TableIterator* it,
+                          const ::rtidb::api::ScanRequest* request,
                           std::string* pairs,
-                          uint32_t* count,
-                          bool remove_duplicated_record);
+                          uint32_t* count);
 
-    int32_t CountTimeIndex(uint64_t expire_ts, 
+    int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt,
+                          ::rtidb::api::TTLType ttl_type,
                           ::rtidb::storage::TableIterator* it,
-                          uint64_t st,
-                          const rtidb::api::GetType& st_type,
-                          uint64_t et,
-                          const rtidb::api::GetType& et_type,
-                          uint32_t* count,
-                          bool remove_duplicated_record);
+                          const ::rtidb::api::CountRequest* request,
+                          uint32_t* count);
 private:
 
     bool CreateMultiDir(const std::vector<std::string>& dirs);
@@ -367,6 +328,11 @@ private:
             const ::rtidb::common::StorageMode& mode,
             std::string& path);
 
+    bool SeekWithCount(::rtidb::storage::TableIterator* it, const uint64_t time,
+            const ::rtidb::api::GetType& type, uint32_t max_cnt, uint32_t& cnt);
+
+    bool Seek(::rtidb::storage::TableIterator* it, const uint64_t time,
+            const ::rtidb::api::GetType& type);
 
 private:
     Tables tables_;

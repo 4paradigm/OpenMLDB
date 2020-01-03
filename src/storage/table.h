@@ -36,8 +36,18 @@ public:
             const std::map<std::string, uint32_t>& mapping, 
             ::rtidb::api::TTLType ttl_type, ::rtidb::api::CompressType compress_type) :
         storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
-        ttl_(ttl), new_ttl_(ttl), ttl_offset_(ttl_offset), is_leader_(is_leader),
-        mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {}
+        ttl_offset_(ttl_offset), is_leader_(is_leader),
+        mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta_.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(ttl_type);
+        if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
+            ttl_desc->set_abs_ttl(ttl/(60*1000));
+            ttl_desc->set_lat_ttl(0);
+        } else {
+            ttl_desc->set_abs_ttl(0);
+            ttl_desc->set_lat_ttl(ttl/(60*1000));
+        }
+    }
     virtual ~Table() {}
     virtual bool Init() = 0;
 
@@ -152,51 +162,60 @@ public:
         ttl_type_ = type;
     }
 
-    inline ::rtidb::api::TTLType& GetTTLType() {
+    inline ::rtidb::api::TTLType GetTTLType() {
         return ttl_type_;
     }
 
-    uint64_t GetTTL() {
+    TTLDesc GetTTL() {
         return GetTTL(0);
     }
 
-    uint64_t GetTTL(uint32_t index) {
-        uint64_t ttl = ttl_.load(std::memory_order_relaxed);
+    TTLDesc GetTTL(uint32_t index) {
         auto pos = column_key_map_.find(index);
         if (pos != column_key_map_.end() && !pos->second.empty()) {
-            if (pos->second.front() < ttl_vec_.size()) {
-                ttl = ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed);
+            if (pos->second.front() < abs_ttl_vec_.size()) {
+                return TTLDesc(abs_ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed)/(60*1000),
+                    lat_ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed));
             }
         }
-        return ttl / (60 * 1000);
+        return TTLDesc(abs_ttl_.load(std::memory_order_relaxed)/(60*1000),
+            lat_ttl_.load(std::memory_order_relaxed));
     }
 
-    uint64_t GetTTL(uint32_t index, uint32_t ts_index) {
-        uint64_t ttl = ttl_.load(std::memory_order_relaxed);
-        if (ts_index < ttl_vec_.size()) {
-            ttl = ttl_vec_[ts_index]->load(std::memory_order_relaxed);
+    TTLDesc GetTTL(uint32_t index, uint32_t ts_index) {
+        if (ts_index < abs_ttl_vec_.size()) {
+            return TTLDesc(abs_ttl_vec_[ts_index]->load(std::memory_order_relaxed)/(60*1000),
+                    lat_ttl_vec_[ts_index]->load(std::memory_order_relaxed));
         }
-        return ttl / (60 * 1000);
+        return TTLDesc(abs_ttl_.load(std::memory_order_relaxed)/(60*1000),
+            lat_ttl_.load(std::memory_order_relaxed));
     }
 
-    inline void SetTTL(uint64_t ttl) {
-        new_ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
+    inline void SetTTL(const uint64_t& abs_ttl, const uint64_t lat_ttl) {
+        new_abs_ttl_.store(abs_ttl * 60 * 1000, std::memory_order_relaxed);
+        new_lat_ttl_.store(lat_ttl, std::memory_order_relaxed);
     }
 
-    inline void SetTTL(uint32_t ts_idx, uint64_t ttl) {
-        if (ts_idx < new_ttl_vec_.size()) {
-            new_ttl_vec_[ts_idx]->store(ttl * 60 * 1000, std::memory_order_relaxed);
+    inline void SetTTL(const uint32_t ts_idx, const uint64_t& abs_ttl, const uint64_t& lat_ttl) {
+        if (ts_idx < new_abs_ttl_vec_.size()) {
+            new_abs_ttl_vec_[ts_idx]->store(abs_ttl * 60 * 1000, std::memory_order_relaxed);
+            new_lat_ttl_vec_[ts_idx]->store(lat_ttl, std::memory_order_relaxed);
         }
     }
 
 protected:
+    void UpdateTTL();
+    bool InitFromMeta();
+
     ::rtidb::common::StorageMode storage_mode_;
     std::string name_;
     uint32_t id_;
     uint32_t pid_;
     uint32_t idx_cnt_;
-    std::atomic<uint64_t> ttl_;
-    std::atomic<uint64_t> new_ttl_;
+    std::atomic<uint64_t> abs_ttl_;
+    std::atomic<uint64_t> new_abs_ttl_;
+    std::atomic<uint64_t> lat_ttl_;
+    std::atomic<uint64_t> new_lat_ttl_;
     uint64_t ttl_offset_;
     bool is_leader_;
     std::atomic<uint32_t> table_status_;
@@ -204,8 +223,10 @@ protected:
     std::map<std::string, uint32_t> mapping_;
     std::map<std::string, uint8_t> ts_mapping_;
     std::map<uint32_t, std::vector<uint32_t>> column_key_map_;
-    std::vector<std::shared_ptr<std::atomic<uint64_t>>> ttl_vec_;
-    std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_ttl_vec_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> abs_ttl_vec_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_abs_ttl_vec_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> lat_ttl_vec_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_lat_ttl_vec_;
     ::rtidb::api::TTLType ttl_type_;
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;

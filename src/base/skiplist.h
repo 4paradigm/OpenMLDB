@@ -195,32 +195,48 @@ public:
         if (pos_node == NULL) {
             return NULL;
         }
-        Node<K, V>* node = head_;
-        Node<K, V>* pre = head_;
-        // read form head node, so let pos plus one
-        pos++;
-        uint64_t cnt = 0;
-        while (node != NULL) {
-            if (cnt == pos) {
-                tail_.store(pre, std::memory_order_release);
-                for (uint8_t i = 0; i < pre->Height(); i++) {
-                    pre->SetNext(i, NULL);
-                }
-                return node;
-            }
-            for (uint8_t i = 1; i < node->Height(); i++) {
-                Node<K, V>* next = node->GetNext(i);
-                if (next != NULL && compare_(pos_node->GetKey(), next->GetKey()) <= 0) {
-                    node->SetNext(i, NULL);
-                }
-            }
-            pre = node;
-            node = node->GetNext(0);
-            cnt++;
-        }
-        return NULL;
+        return SplitOnPosNode(pos, pos_node);
     }
-    
+
+    Node<K,V>* SplitByKeyOrPos(const K& key, uint64_t pos) {
+        Node<K, V>* pos_node = head_->GetNext(0);
+        for (uint64_t idx = 0; idx < pos; idx++) {
+            if (pos_node == NULL) { // doesnt find key or pos, just return
+                return NULL;
+            }
+            if (compare_(pos_node->GetKey(), key) >= 0) { // find key before pos, use key
+                return Split(pos_node->GetKey());
+            }
+            pos_node = pos_node->GetNext(0);
+        }
+        if (pos_node == NULL) {
+            return NULL;
+        }
+        return SplitOnPosNode(pos, pos_node);
+    }
+
+    Node<K,V>* SplitByKeyAndPos(const K& key, uint64_t pos) {
+        Node<K, V>* pos_node = head_->GetNext(0);
+        bool find_key = false;
+        for (uint64_t idx = 0; idx < pos; idx++) {
+            if (pos_node == NULL) { // doesnt find pos, just return
+                return NULL;
+            }
+            if (compare_(pos_node->GetKey(), key) >= 0) { // find key before pos, mark it
+                find_key = true;
+            }
+            pos_node = pos_node->GetNext(0);
+        }
+        if (pos_node == NULL) {
+            return NULL;
+        }
+        if (find_key) { // find key before pos, split by pos
+            return SplitOnPosNode(pos, pos_node);
+        } else { // find pos without key, split by key
+            return Split(key);
+        }
+    }
+
     const V& Get(const K& key) {
         Node<K,V>* node = FindEqual(key);
         return node->GetValue();
@@ -430,7 +446,32 @@ private:
     uint8_t GetMaxHeight() const {
         return max_height_.load(std::memory_order_relaxed);
     }
-    
+
+    Node<K,V>* SplitOnPosNode(uint64_t pos, Node<K, V>* pos_node) {
+        Node<K, V>* node = head_;
+        Node<K, V>* pre = head_;
+        pos++;
+        uint64_t cnt = 0;
+        while (node != NULL) {
+            if (cnt == pos) {
+                tail_.store(pre, std::memory_order_release);
+                for (uint8_t i = 0; i < pre->Height(); i++) {
+                    pre->SetNext(i, NULL);
+                }
+                return node;
+            }
+            for (uint8_t i = 1; i < node->Height(); i++) {
+                Node<K, V>* next = node->GetNext(i);
+                if (next != NULL && compare_(pos_node->GetKey(), next->GetKey()) <= 0) {
+                    node->SetNext(i, NULL);
+                }
+            }
+            pre = node;
+            node = node->GetNext(0);
+            cnt++;
+        }
+        return NULL;
+    }
 
 private:
     uint8_t const MaxHeight;

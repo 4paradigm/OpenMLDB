@@ -1,9 +1,6 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import com._4paradigm.rtidb.client.GetFuture;
-import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.PutFuture;
-import com._4paradigm.rtidb.client.ScanFuture;
+import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.common.Common;
@@ -87,6 +84,27 @@ public class TableAsyncClientTest extends TestCaseBase {
         TableInfo table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
                 .setSegCnt(8).setName(name).setTtl(0)
                 .addColumnDesc(col0).addColumnDesc(col1).addColumnDesc(col2)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        return name;
+    }
+
+    private String createSchemaTable(Tablet.TTLDesc ttl) {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        Common.ColumnKey colKey1 = Common.ColumnKey.newBuilder().setIndexName("card").addTsName("ts").build();
+        Common.ColumnKey colKey2 = Common.ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts").build();
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name).setTtlDesc(ttl)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                .addColumnKey(colKey1).addColumnKey(colKey2)
+                .setPartitionNum(1).setReplicaNum(1)
                 .build();
         boolean ok = nsc.createTable(table);
         Assert.assertTrue(ok);
@@ -725,5 +743,84 @@ public class TableAsyncClientTest extends TestCaseBase {
             nsc.dropTable(name);
         }
     }
+    @Test
+    public void testMultiTTLAnd() {
+        Tablet.TTLDesc.Builder builder = Tablet.TTLDesc.newBuilder();
+        builder.setAbsTtl(1);
+        builder.setLatTtl(2);
+        builder.setTtlType(Tablet.TTLType.kAbsAndLat);
+        // string, string, amt, ts
+        String name = createSchemaTable(builder.build());
+        long now = System.currentTimeMillis();
+        long expired = now - 1 * 60  * 1000;
+        try {
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc1", 1.0d, now}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc3", 1.0d, now - 1000}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc3", 1.0d, now - 1000}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc4", 1.0d, expired - 2000}));
+            ScanOption option = new ScanOption();
+            option.setIdxName("card");
+            ScanFuture sf = tableAsyncClient.scan(name, "card1", now, 0);
+            KvIterator it = sf.get();
+            Assert.assertEquals(it.getCount(), 3);
+            Assert.assertTrue(it.valid());
+            Assert.assertEquals(new Object[] {"card1", "mcc1", 1.0d, now}, it.getDecodedValue());
+            it.next();
+            Assert.assertTrue(it.valid());
+            Assert.assertEquals(new Object[] {"card1", "mcc3", 1.0d, now - 1000}, it.getDecodedValue());
+            it.next();
+            Assert.assertTrue(it.valid());
+            Assert.assertEquals(new Object[] {"card1", "mcc3", 1.0d, now - 1000}, it.getDecodedValue());
+            option = new ScanOption();
+            option.setIdxName("mcc");
+            sf = tableAsyncClient.scan(name, "mcc4", now, 0, option);
+            it = sf.get();
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Assert.assertEquals(new Object[] {"card1", "mcc4", 1.0d, expired - 2000}, it.getDecodedValue());
+        }catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+    }
+
+
+    @Test
+    public void testMultiTTLOr() {
+        Tablet.TTLDesc.Builder builder = Tablet.TTLDesc.newBuilder();
+        builder.setAbsTtl(1);
+        builder.setLatTtl(2);
+        builder.setTtlType(Tablet.TTLType.kAbsOrLat);
+        // string, string, amt, ts
+        String name = createSchemaTable(builder.build());
+        long now = System.currentTimeMillis();
+        long expired = now - 1 * 60  * 1000;
+        try {
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc1", 1.0d, now}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc3", 1.0d, now - 1000}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc3", 1.0d, now - 1000}));
+            Assert.assertTrue(tableSyncClient.put(name, new Object[] {"card1", "mcc4", 1.0d, expired - 1000}));
+            ScanFuture sf = tableAsyncClient.scan(name, "card1", now, 0);
+            KvIterator it = sf.get();
+            Assert.assertEquals(it.getCount(), 2);
+            Assert.assertTrue(it.valid());
+            Assert.assertEquals(new Object[] {"card1", "mcc1", 1.0d, now}, it.getDecodedValue());
+            it.next();
+            Assert.assertTrue(it.valid());
+            Assert.assertEquals(new Object[] {"card1", "mcc3", 1.0d, now - 1000}, it.getDecodedValue());
+            it.next();
+            Assert.assertFalse(it.valid());
+
+            ScanOption option = new ScanOption();
+            option.setIdxName("mcc");
+            sf = tableAsyncClient.scan(name, "mcc4", now, 0, option);
+            it = sf.get();
+            Assert.assertEquals(it.getCount(), 0);
+        }catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+    }
+
 
 }
