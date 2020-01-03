@@ -50,6 +50,8 @@ class TbCluster(object):
             exe_shell("echo '--binlog_sync_wait_time=10' >> {}".format(rtidb_flags))
             exe_shell("echo '--zk_session_timeout=2000' >> {}".format(rtidb_flags))
             exe_shell("echo '--make_snapshot_threshold_offset=0' >> {}".format(rtidb_flags))
+            exe_shell("echo '--ssd_root_path={}/ssd_db/' >> {}".format(tb_path, rtidb_flags))
+            exe_shell("echo '--hdd_root_path={}/hdd_db/' >> {}".format(tb_path, rtidb_flags))
             exe_shell("ulimit -c unlimited")
             cmd = '{}/rtidb --flagfile={}/conf/tablet.flags'.format(test_path, tb_path)
             infoLogger.info('start rtidb: {}'.format(cmd))
