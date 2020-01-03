@@ -2972,7 +2972,7 @@ void NameServerImpl::UpdateTableStatus() {
                         }
                         partition_meta->set_record_cnt(record_cnt);
                         if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() && 
-                                kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                                kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) { // todo @pxc add diskused
                                 table_partition->set_record_cnt(record_cnt);
                                 table_partition->set_record_byte_size(table_status.record_byte_size() + 
                                     table_status.record_idx_byte_size());

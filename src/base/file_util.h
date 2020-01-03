@@ -178,7 +178,7 @@ static bool GetDirSizeRecur(const std::string& path, uint64_t& size) {
         if (S_ISREG(stat_buf.st_mode)) {
             size += stat_buf.st_size;
         } else if (S_ISDIR(stat_buf.st_mode)) {
-            if (!GetSizeRecur(file, size)) {
+            if (!GetDirSizeRecur(file, size)) {
                 return false;
             }
         }

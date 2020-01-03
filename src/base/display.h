@@ -621,8 +621,8 @@ static void PrintTableInfomation(std::vector<::rtidb::nameserver::TableInfo>& ta
     std::string partition_num = std::to_string(table.partition_num());
     std::string ttl = std::to_string(table.ttl());
     std::string ttl_type = table.ttl_type();
-    std::string compress_type = ::rtidb::nameserver::CompressType_Name(table_status.compress_type());
-    std::string storage_mode = ::rtidb::api::StorageMode_Name(table_status.storage_mode());
+    std::string compress_type = ::rtidb::nameserver::CompressType_Name(table.compress_type());
+    std::string storage_mode = ::rtidb::common::StorageMode_Name(table.storage_mode());
     uint32_t record_cnt = 0;
     uint32_t memused = 0;
     uint32_t diskused = 0;
@@ -666,7 +666,7 @@ static void PrintTableInfomation(std::vector<::rtidb::nameserver::TableInfo>& ta
     tp.AddRow(row);
     row.clear();
     row.push_back("record_cnt");
-    row.push_back(record_cnt);
+    row.push_back(std::to_string(record_cnt));
     tp.AddRow(row);
     row.clear();
     row.push_back("memused");
