@@ -3802,6 +3802,37 @@ bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
     return true;
 }
 
+bool TabletImpl::ChooseTableRootPath(uint32_t tid, uint32_t pid,
+        const ::rtidb::common::StorageMode& mode,
+        std::string& path) {
+    std::string root_path;
+    bool ok = ChooseDBRootPath(tid, pid, mode, root_path);
+    if (!ok) {
+        PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
+        return false;
+    }
+    path = root_path + "/" + std::to_string(tid) + 
+                        "_" + std::to_string(pid);
+    if (!::rtidb::base::IsExists(path)) {
+        PDLOG(WARNING, "table db path doesn`t exist. tid %u, pid %u", tid, pid);
+        return false;
+    }
+    return true;
+}
+
+bool TabletImpl::GetTableRootSize(uint32_t tid, uint32_t pid, const
+        ::rtidb::common::StorageMode& mode, uint64_t& size) {
+    std::string table_path;
+    if (!ChooseTableRootPath(tid, pid, mode, table_path)) {
+        return false;
+    }
+    if (!::rtidb::base::GetDirSizeRecur(table_path, size)) {
+        PDLOG(WARNING, "get table root size failed. tid %u, pid %u", tid, pid);
+        return false;
+    }
+    return true;
+}
+
 }
 }
 
