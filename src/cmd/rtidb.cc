@@ -617,10 +617,10 @@ void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts, ::rtidb
     std::string msg;
     bool ret = client->RemoveReplicaCluster(parts[1], msg);
     if (!ret) {
-        std::cout << "failed to kick. error msg: " << msg << std::endl;
+        std::cout << "remove failed. error msg: " << msg << std::endl;
         return;
     }
-    std::cout << "kick ok" << std::endl;
+    std::cout << "remove replica cluster ok" << std::endl;
 }
 
 void HandleNSSwitchMode(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {

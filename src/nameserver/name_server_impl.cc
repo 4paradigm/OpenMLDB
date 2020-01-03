@@ -7400,7 +7400,7 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
             }
         }
         std::string zone_info;
-        request->SerializeToString(&zone_info);
+        request->zone_info().SerializeToString(&zone_info);
         if (zk_client_->IsExistNode(zk_zone_data_path_ + "/follower") > 0) {
             if (!zk_client_->CreateNode(zk_zone_data_path_ + "/follower", zone_info)) {
                 PDLOG(WARNING, "write follower to zk failed, alias: %s", request->zone_info().replica_alias().c_str());
