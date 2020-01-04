@@ -5030,15 +5030,27 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         return;
     }
     // validation
-    ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
+    ::rtidb::api::TTLType old_ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
+    ::rtidb::api::TTLType new_ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
+    uint64_t abs_ttl = request->value();
+    uint64_t lat_ttl = 0;
     if (table->has_ttl_desc()) {
-        ttl_type = table->ttl_desc().ttl_type();
+        old_ttl_type = table->ttl_desc().ttl_type();
     } else if (table->ttl_type() == "kLatestTime") {
-        ttl_type = ::rtidb::api::TTLType::kLatestTime;
+        old_ttl_type = ::rtidb::api::TTLType::kLatestTime;
     }
-    if (ttl_type != request->ttl_desc().ttl_type()) {
-        PDLOG(WARNING, "table ttl type mismatch, expect %s but %s",::rtidb::api::TTLType_Name(ttl_type).c_str(),
-            ::rtidb::api::TTLType_Name(request->ttl_desc().ttl_type()).c_str());
+    if (request->has_ttl_desc()) {
+        new_ttl_type = request->ttl_desc().ttl_type();
+        abs_ttl = request->ttl_desc().abs_ttl();
+        lat_ttl = request->ttl_desc().lat_ttl();
+    } else if (request->ttl_type() == "kLatestTime") {
+        new_ttl_type = ::rtidb::api::TTLType::kLatestTime;
+        abs_ttl = 0;
+        lat_ttl = request->value();
+    }
+    if (old_ttl_type != new_ttl_type) {
+        PDLOG(WARNING, "table ttl type mismatch, expect %s but %s",::rtidb::api::TTLType_Name(old_ttl_type).c_str(),
+            ::rtidb::api::TTLType_Name(new_ttl_type);
         response->set_code(112);
         response->set_msg("ttl type mismatch");
         return;
@@ -5086,12 +5098,18 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
     table_info.CopyFrom(*table);
     if (ts_name.empty()) {
         table_info.set_ttl(request->value());
+        ::rtidb::api::TTLDesc* ttl_desc = table_info.mutable_ttl_desc();
+        ttl_desc->set_abs_ttl(abs_ttl);
+        ttl_desc->set_lat_ttl(lat_ttl);
+        ttl_desc->set_ttl_type(new_ttl_type);
     } else {
         for (int i = 0; i < table_info.column_desc_v1_size(); i++) {
             if (table_info.column_desc_v1(i).is_ts_col() 
                     && table_info.column_desc_v1(i).name() == ts_name) {
                 ::rtidb::common::ColumnDesc* column_desc = table_info.mutable_column_desc_v1(i);
                 column_desc->set_ttl(request->value());
+                column_desc->set_abs_ttl(abs_ttl);
+                column_desc->set_lat_ttl(lat_ttl);
             }
         }
     }
