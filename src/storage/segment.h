@@ -31,8 +31,11 @@ class Segment;
 class Ticket;
 
 struct TTLDesc {
+    TTLDesc() = default;
+    
     TTLDesc(const uint64_t abs, const uint64_t lat) : abs_ttl(abs), lat_ttl(lat) {}
-    inline bool HasExpire(::rtidb::api::TTLType ttl_type) const {
+
+    inline bool HasExpire(const ::rtidb::api::TTLType& ttl_type) const {
         switch(ttl_type) {
             case ::rtidb::api::TTLType::kAbsoluteTime: return abs_ttl != 0;
             case ::rtidb::api::TTLType::kLatestTime: return lat_ttl != 0;
@@ -41,8 +44,19 @@ struct TTLDesc {
             default: return false;
         }
     }
-    const uint64_t abs_ttl;
-    const uint64_t lat_ttl;
+
+    inline std::string ToString(const ::rtidb::api::TTLType& ttl_type) const {
+        switch(ttl_type) {
+            case ::rtidb::api::TTLType::kAbsoluteTime: return std::to_string(abs_ttl)+"min";
+            case ::rtidb::api::TTLType::kLatestTime: return std::to_string(lat_ttl);
+            case ::rtidb::api::TTLType::kAbsAndLat: return std::to_string(abs_ttl)+"min&&" +std::to_string(lat_ttl);
+            case ::rtidb::api::TTLType::kAbsOrLat: return std::to_string(abs_ttl)+"min||" +std::to_string(lat_ttl);
+            default: return "";
+        }
+    }
+
+    uint64_t abs_ttl;
+    uint64_t lat_ttl;
 };
 
 struct DataBlock {

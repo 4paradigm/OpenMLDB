@@ -993,8 +993,25 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::rtidb::cl
             ::rtidb::base::PrintSchema(tables[0]);
         }
         printf("\n#ColumnKey\n");
-        std::string ttl_suff = tables[0].ttl_type() == "kLatestTime" ? "" : "min";
-        ::rtidb::base::PrintColumnKey(tables[0].ttl(), ttl_suff, tables[0].column_desc_v1(), tables[0].column_key());
+         ::rtidb::api::TTLType ttl_type;
+        uint64_t abs_ttl = 0;
+        uint64_t lat_ttl = 0;
+        if (tables[0].has_ttl_desc()) {
+            ttl_type = tables[0].ttl_desc().ttl_type();
+            abs_ttl = tables[0].ttl_desc().abs_ttl();
+            lat_ttl = tables[0].ttl_desc().lat_ttl();
+        } else {
+            if (tables[0].ttl_type() == "kAbsoluteTime") {
+                ttl_type = ::rtidb::api::kAbsoluteTime;
+                abs_ttl = tables[0].ttl();
+            } else {
+                ttl_type = ::rtidb::api::kLatestTime;
+                lat_ttl = tables[0].ttl();
+            }
+        }
+        ::rtidb::storage::TTLDesc ttl_desc(abs_ttl, lat_ttl);
+        ::rtidb::base::PrintColumnKey(ttl_type, ttl_desc, tables[0].column_desc_v1(), tables[0].column_key());
+        
     } else if (tables[0].column_desc_size() > 0) {
         if (tables[0].added_column_desc_size() == 0) {
             ::rtidb::base::PrintSchema(tables[0].column_desc());
@@ -4012,8 +4029,25 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::clie
             ::rtidb::base::PrintSchema(schema, true);
         }
         printf("\n#ColumnKey\n");
+        ::rtidb::api::TTLType ttl_type;
+        uint64_t abs_ttl = 0;
+        uint64_t lat_ttl = 0;
+        if (table_meta.has_ttl_desc()) {
+            ttl_type = table_meta.ttl_desc().ttl_type();
+            abs_ttl = table_meta.ttl_desc().abs_ttl();
+            lat_ttl = table_meta.ttl_desc().lat_ttl();
+        } else {
+            if (table_meta.ttl_type() == ::rtidb::api::kAbsoluteTime) {
+                ttl_type = ::rtidb::api::kAbsoluteTime;
+                abs_ttl = table_meta.ttl();
+            } else {
+                ttl_type = ::rtidb::api::kLatestTime;
+                lat_ttl = table_meta.ttl();
+            }
+        }
+        ::rtidb::storage::TTLDesc ttl_desc(abs_ttl, lat_ttl);
         std::string ttl_suff = table_meta.ttl_type() == ::rtidb::api::kLatestTime ? "" : "min";
-        ::rtidb::base::PrintColumnKey(table_meta.ttl(), ttl_suff, table_meta.column_desc(), table_meta.column_key());
+        ::rtidb::base::PrintColumnKey(ttl_type, ttl_desc, table_meta.column_desc(), table_meta.column_key());
     } else if (!schema.empty()){
         ::rtidb::base::PrintSchema(schema);
     } else {

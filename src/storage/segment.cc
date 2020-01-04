@@ -543,7 +543,7 @@ void Segment::Gc4TTL(const std::map<uint32_t, TTLDesc>& ttl_desc, uint64_t& gc_i
     delete it;
 }
 
- void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64_t& gc_idx_cnt, 
+void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64_t& gc_idx_cnt, 
         uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     if (time == 0 || keep_cnt == 0) {
         PDLOG(INFO, "[Gc4TTLAndHead] segment gc4ttlandhead is disabled");
@@ -555,7 +555,15 @@ void Segment::Gc4TTL(const std::map<uint32_t, TTLDesc>& ttl_desc, uint64_t& gc_i
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry* entry = (KeyEntry*)it->GetValue();
-        ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
+        ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+        it->Next();
+        if (node == NULL) {
+            continue;
+        } else if (node->GetKey() > time) {
+            PDLOG(DEBUG, "[Gc4TTLAndHead] segment gc with key %lu need not ttl, last node key %lu", time, node->GetKey());
+            continue;
+        }
+        node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (entry->refs_.load(std::memory_order_acquire) <= 0) {
@@ -566,13 +574,13 @@ void Segment::Gc4TTL(const std::map<uint32_t, TTLDesc>& ttl_desc, uint64_t& gc_i
         FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
         gc_idx_cnt += entry_gc_idx_cnt;
-        it->Next();
     }
     PDLOG(DEBUG, "[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lld, count %lld", time, keep_cnt,
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
 }
+
 void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
         uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     if (!ttl_desc.empty()) {
@@ -604,6 +612,7 @@ void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
+        Slice key = it->GetKey();
         it->Next();
         for (const auto& kv : ttl_desc) {
             auto pos = ts_idx_map_.find(kv.first);
@@ -648,24 +657,37 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, uint64_
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry* entry = (KeyEntry*)it->GetValue();
-        ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
+        Slice key = it->GetKey();
+        it->Next();
+        ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+        if (node == NULL) {
+            continue;
+        }
+        ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (entry->refs_.load(std::memory_order_acquire) <= 0) {
                 node = entry->entries.SplitByKeyOrPos(time, keep_cnt);
             }
+            if (entry->entries.IsEmpty()) {
+                entry_node = entries_->Remove(key);
+            }
+        }
+        if (entry_node != NULL) {
+            std::lock_guard<std::mutex> lock(gc_mu_);
+            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
         uint64_t entry_gc_idx_cnt = 0;
         FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
         gc_idx_cnt += entry_gc_idx_cnt;
-        it->Next();
     }
     PDLOG(DEBUG, "[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lld, count %lld", time, keep_cnt,
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
 }
+
 void Segment::Gc4TTLOrHead(const std::map<uint32_t, TTLDesc>& ttl_desc, 
         uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     if (!ttl_desc.empty()) {
@@ -706,7 +728,10 @@ void Segment::Gc4TTLOrHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
                 continue;
             }
             KeyEntry* entry = entry_arr[pos->second];
-            ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
+            ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+            if (node == NULL) {
+                continue;
+            }
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 if (entry->refs_.load(std::memory_order_acquire) <= 0) {
