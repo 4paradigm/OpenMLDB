@@ -219,9 +219,14 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         table->SetTTL(iter->second, abs_ttl, lat_ttl);
         PDLOG(INFO, "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu, ts_name %u",
                 request->tid(), request->pid(), abs_ttl, lat_ttl, request->ts_name().c_str());
-    } else {
+    } else if (!table->GetTSMapping().size()){
         table->SetTTL(abs_ttl, lat_ttl);
         PDLOG(INFO, "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu", request->tid(), request->pid(), abs_ttl, lat_ttl);
+    } else {
+        PDLOG(WARNING, "set ttl without ts name,  table tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(137);
+        response->set_msg("set ttl need to specify ts column");
+        return;
     }
     response->set_code(0);
     response->set_msg("ok");
