@@ -658,14 +658,9 @@ static void PrintTableInfomation(std::vector<::rtidb::nameserver::TableInfo>& ta
     uint32_t memused = 0;
     uint32_t diskused = 0;
     for (int idx = 0; idx < table.table_partition_size(); idx++) {
-        for (int meta_idx = 0; meta_idx < table.table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (table.table_partition(idx).partition_meta(meta_idx).is_leader() 
-                    && table.table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                record_cnt += table.table_partition(idx).partition_meta(meta_idx).record_cnt();
-                memused += table.table_partition(idx).partition_meta(meta_idx).record_byte_size();
-                break;
-            }
-        }
+        record_cnt += table.table_partition(idx).record_cnt();
+        memused += table.table_partition(idx).record_byte_size();
+        diskused += table.table_partition(idx).diskused();
     }
     row.clear();
     row.push_back("name");

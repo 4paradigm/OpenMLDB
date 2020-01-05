@@ -2994,11 +2994,13 @@ void NameServerImpl::UpdateTableStatus() {
                             }
                         }
                         partition_meta->set_record_cnt(record_cnt);
+                        partition_meta->set_diskused(table_status.diskused());
                         if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() && 
                                 kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) { // todo @pxc add diskused
                                 table_partition->set_record_cnt(record_cnt);
                                 table_partition->set_record_byte_size(table_status.record_byte_size() + 
                                     table_status.record_idx_byte_size());
+                                table_partition->set_diskused(table_status.diskused());
                         }
                         tablet_has_partition = true;
                     }

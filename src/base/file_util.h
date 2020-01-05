@@ -163,9 +163,35 @@ inline static bool RemoveDir(const std::string& path) {
     return true;
 }
 
+inline static int GetChildFileName(const std::string& path, std::vector<std::string>& file_vec) {
+    if (path.empty()) {
+        return -1;
+    }
+    DIR *dir = opendir(path.c_str());
+    if (dir == NULL) {
+        return -1;
+    }
+    struct dirent *ptr;
+    struct stat stat_buf;
+    while ((ptr = readdir(dir)) != NULL) {
+        if(strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
+            continue;
+        }
+        std::string file_path = path + "/" + ptr->d_name;
+        int ret = lstat(file_path.c_str(), &stat_buf);
+        if (ret == -1) {
+            closedir(dir);
+            return -1;
+        }
+        file_vec.push_back(file_path);
+    }
+    closedir(dir);
+    return 0;
+}
+
 static bool GetDirSizeRecur(const std::string& path, uint64_t& size) {
     std::vector<std::string> file_vec;
-    if (GetFileName(path, file_vec) < 0) {
+    if (GetChildFileName(path, file_vec) < 0) {
         return false;
     }
     for (auto file : file_vec) {
@@ -178,6 +204,7 @@ static bool GetDirSizeRecur(const std::string& path, uint64_t& size) {
         if (S_ISREG(stat_buf.st_mode)) {
             size += stat_buf.st_size;
         } else if (S_ISDIR(stat_buf.st_mode)) {
+            size += stat_buf.st_size;
             if (!GetDirSizeRecur(file, size)) {
                 return false;
             }

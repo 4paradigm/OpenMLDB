@@ -1704,7 +1704,6 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             }
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
-
             status->set_compress_type(table->GetCompressType());
             status->set_storage_mode(table->GetStorageMode());
             status->set_name(table->GetName());
@@ -1714,6 +1713,12 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             ttl_desc->set_lat_ttl(ttl.lat_ttl);
             ttl_desc->set_ttl_type(table->GetTTLType());
             status->set_ttl_type(table->GetTTLType());
+            uint64_t size = 0;
+            if (!GetTableRootSize(table->GetId(), table->GetPid(), table->GetStorageMode(), size)) {
+                PDLOG(WARNING, "get table root size failed. tid[%u] pid[%u]", table->GetId(), table->GetPid());
+            } else {
+                status->set_diskused(size);
+            }
             if (status->ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
                 status->set_ttl(table->GetTTL().lat_ttl);
             } else {
