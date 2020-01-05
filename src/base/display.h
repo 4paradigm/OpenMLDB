@@ -180,7 +180,6 @@ static void PrintSchema(const std::string& schema) {
 static void PrintColumnKey(const ::rtidb::api::TTLType& ttl_type, const ::rtidb::storage::TTLDesc& ttl_desc,
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& column_key_field) {
-// static void PrintColumnKey(::rtidb::nameserver::TableInfo& table) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("index_name");
@@ -266,7 +265,7 @@ static void PrintColumnKey(const ::rtidb::api::TTLType& ttl_type, const ::rtidb:
     tp.Print(true);
 }
 
-static void FillTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema, 
+static void FillTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
                   const char* row,
                   const uint32_t row_size,
                   std::vector<std::string>& vrow) {
@@ -333,7 +332,7 @@ static void FillTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
     }
 }
 
-static void FillTableRow(uint32_t full_schema_size, 
+static void FillTableRow(uint32_t full_schema_size,
         const std::vector<::rtidb::base::ColumnDesc>& base_schema,
         const char* row,
         const uint32_t row_size,
@@ -407,8 +406,8 @@ static void FillTableRow(uint32_t full_schema_size,
 }
 
 static void ShowTableRows(const std::vector<ColumnDesc>& base_columns,
-        const std::vector<ColumnDesc>& raw, 
-        ::rtidb::base::KvIterator* it, 
+        const std::vector<ColumnDesc>& raw,
+        ::rtidb::base::KvIterator* it,
         const ::rtidb::nameserver::CompressType compress_type) {
     bool has_ts_col = SchemaCodec::HasTSCol(raw);
     std::vector<std::string> row;
@@ -451,14 +450,14 @@ static void ShowTableRows(const std::vector<ColumnDesc>& base_columns,
     tp.Print(true);
 }
 
-static void ShowTableRows(const std::vector<ColumnDesc>& raw, 
-                   ::rtidb::base::KvIterator* it, 
+static void ShowTableRows(const std::vector<ColumnDesc>& raw,
+                   ::rtidb::base::KvIterator* it,
                    const ::rtidb::nameserver::CompressType compress_type) {
     std::vector<ColumnDesc> base_columns;
     return ShowTableRows(base_columns, raw, it, compress_type);
 }
 
-static void ShowTableRows(const std::string& key, ::rtidb::base::KvIterator* it, 
+static void ShowTableRows(const std::string& key, ::rtidb::base::KvIterator* it,
                 const ::rtidb::nameserver::CompressType compress_type) {
     ::baidu::common::TPrinter tp(4, FLAGS_max_col_display_length);
     std::vector<std::string> row;
