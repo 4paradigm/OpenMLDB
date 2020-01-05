@@ -3585,6 +3585,7 @@ bool TabletImpl::GetTableRootSize(uint32_t tid, uint32_t pid, const
         return false;
     }
     return true;
+}
 
 bool TabletImpl::SeekWithCount(::rtidb::storage::TableIterator* it, const uint64_t time,
         const ::rtidb::api::GetType& type, uint32_t max_cnt, uint32_t& cnt) {
