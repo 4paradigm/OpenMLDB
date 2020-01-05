@@ -41,6 +41,14 @@ enum TTLType {
     kRelativeTime = 2;
     // keep the latest record
     kLatestTime = 3;
+    kAbsAndLat = 4;
+    kAbsOrLat = 5;
+}
+
+message TTLDesc {
+    optional TTLType ttl_type = 1 [default = kAbsoluteTime];
+    optional uint64 abs_ttl = 2 [default=0];
+    optional uint64 lat_ttl = 3 [default=0];
 }
 
 enum GetType {
@@ -143,21 +151,21 @@ message TSDimension {
 }
 
 message PutRequest {
-	// the prefix key
+    // the prefix key
     // abandoned
-	optional string pk = 1;
-	// the subfix key
-	optional int64 time = 2;
-	optional bytes value = 3;
-	optional uint32 tid = 4;
+    optional string pk = 1;
+    // the subfix key
+    optional int64 time = 2;
+    optional bytes value = 3;
+    optional uint32 tid = 4;
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7;
 }
 
 message PutResponse {
-	optional int32 code = 1;
-	optional string msg = 2;
+    optional int32 code = 1;
+    optional string msg = 2;
 }
 
 message DeleteRequest {
@@ -183,18 +191,18 @@ message TaskStatusRequest {
 }
 
 message TaskStatusResponse {
-	optional int32 code = 1;
-	optional string msg = 2;
+    optional int32 code = 1;
+    optional string msg = 2;
     repeated TaskInfo task = 3;
 }
 
 message DeleteTaskRequest {
-	repeated uint64 op_id = 1;
+    repeated uint64 op_id = 1;
 }
 
 message GeneralResponse {
-	optional int32 code = 1;
-	optional string msg = 2;
+    optional int32 code = 1;
+    optional string msg = 2;
 }
 
 message ScanRequest {
@@ -214,52 +222,53 @@ message ScanRequest {
     optional GetType st_type = 11 [default = kSubKeyLe];
     optional GetType et_type = 12 [default = kSubKeyGt];
     optional bool enable_remove_ts = 13 [default = false];
+    optional uint32 atleast = 14 [default = 0];
 }
 
 message RpcMetric {
-	// the time start send rpc request
-	optional int64 sqtime = 1;
-	// the time server receive rpc request
-	optional int64 rqtime = 2;
-	// the time server start to caculate
-	optional int64 sctime = 3;
-	// the time server start send response
-	optional int64 sptime = 4;
-	// the time client receive response
-	optional int64 rptime = 5;
-	// the time server start first iterator
-	optional int64 sitime = 6;
-	// the time server start encode
-	optional int64 setime = 7;
+    // the time start send rpc request
+    optional int64 sqtime = 1;
+    // the time server receive rpc request
+    optional int64 rqtime = 2;
+    // the time server start to caculate
+    optional int64 sctime = 3;
+    // the time server start send response
+    optional int64 sptime = 4;
+    // the time client receive response
+    optional int64 rptime = 5;
+    // the time server start first iterator
+    optional int64 sitime = 6;
+    // the time server start encode
+    optional int64 setime = 7;
 }
 
 message TraverseRequest {
-	optional uint32 tid = 1;
-	optional uint32 pid = 2;
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
     optional string idx_name = 3;
-	optional uint32 limit = 4 [default=100];
-	optional string pk = 5;
-	optional uint64 ts = 6;
+    optional uint32 limit = 4 [default=100];
+    optional string pk = 5;
+    optional uint64 ts = 6;
     optional bool enable_remove_duplicated_record = 7 [default=false];
     optional string ts_name = 8;
 }
 
 message TraverseResponse {
-	optional bytes pairs = 1;
-	optional string msg = 2;
-	optional int32 code = 3;
-	optional uint32 count = 4;
+    optional bytes pairs = 1;
+    optional string msg = 2;
+    optional int32 code = 3;
+    optional uint32 count = 4;
     optional string pk = 5;
     optional uint64 ts = 6;
     optional bool is_finish = 7;
 }
 
 message ScanResponse {
-	optional bytes pairs = 1;
-	optional string msg = 2;
-	optional int32 code = 3;
-	optional uint32 count = 4;
-	optional RpcMetric metric = 6 [deprecated = true];
+    optional bytes pairs = 1;
+    optional string msg = 2;
+    optional int32 code = 3;
+    optional uint32 count = 4;
+    optional RpcMetric metric = 6 [deprecated = true];
 }
 
 message ReplicaRequest {
@@ -275,16 +284,16 @@ message AddReplicaResponse {
 }
 
 message TableMeta {
-	optional int32 tid = 1;
-	optional string name = 2;
-	optional int32 pid = 3;
-	// time to live for every row
-	optional uint64 ttl = 4;
-	optional int32 seg_cnt = 5;
-	optional TTLType ttl_type = 6 [default = kAbsoluteTime];
+    optional int32 tid = 1;
+    optional string name = 2;
+    optional int32 pid = 3;
+    // time to live for every row
+    optional uint64 ttl = 4 [default = 0, deprecated = true];
+    optional int32 seg_cnt = 5;
+    optional TTLType ttl_type = 6 [default = kAbsoluteTime, deprecated = true];
     // the slave endpoints
-	repeated string replicas = 7;
-	optional TableMode mode = 8;
+    repeated string replicas = 7;
+    optional TableMode mode = 8;
     optional bool wal = 9; // unused
     // term for change role
     optional uint64 term = 10 [default = 0];
@@ -296,6 +305,7 @@ message TableMeta {
     repeated rtidb.common.ColumnKey column_key = 16;
     optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
+    optional TTLDesc ttl_desc = 19;
 }
 
 message CreateTableRequest {
@@ -308,8 +318,8 @@ message UpdateTableMetaForAddFieldRequest {
     optional string schema = 3;
 }
 message CreateTableResponse {
-	optional int32 code = 1;
-	optional string msg = 2;
+    optional int32 code = 1;
+    optional string msg = 2;
 }
 
 message LoadTableRequest {
@@ -318,14 +328,14 @@ message LoadTableRequest {
 }
 
 message DropTableRequest {
-	optional int32 tid = 1;
-	optional int32 pid = 2;
+    optional int32 tid = 1;
+    optional int32 pid = 2;
     optional TaskInfo task_info = 3;
 }
 
 message DropTableResponse {
-	optional int32 code = 1;
-	optional string msg = 2;
+    optional int32 code = 1;
+    optional string msg = 2;
 }
 
 message GetTableSchemaRequest {
@@ -355,9 +365,10 @@ message GetTableSchemaResponse {
 message UpdateTTLRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
-    optional TTLType type = 3;
-    optional uint64 value = 4;
+    optional TTLType type = 3 [default = kAbsoluteTime, deprecated = true];
+    optional uint64 value = 4 [default = 0, deprecated = true];
     optional string ts_name = 5;
+    optional TTLDesc ttl_desc = 6;
 }
 
 message UpdateTTLResponse {
@@ -453,7 +464,7 @@ message TableStatus {
     optional uint64 offset = 3;
     optional TableMode mode = 4;
     optional TableState state = 5;
-    optional uint64 ttl = 6;
+    optional uint64 ttl = 6 [default = 0, deprecated = true];
     optional bool is_expire = 7;
     optional int64 time_offset = 8;
     optional uint64 record_cnt = 9;
@@ -463,12 +474,13 @@ message TableStatus {
     optional uint64 record_byte_size = 13;
     optional uint64 record_idx_byte_size = 14;
     optional uint64 record_pk_cnt = 15;
-    optional TTLType ttl_type = 16;
+    optional TTLType ttl_type = 16 [default = kAbsoluteTime, deprecated = true];
     optional CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
     optional bytes schema = 19;
     optional rtidb.common.StorageMode storage_mode = 20 [default = kMemory];
-    optional uint64 diskused = 21 [default = 0];
+    optional TTLDesc ttl_desc = 21;
+    optional uint64 diskused = 22 [default = 0];
 }
 
 message GetTableStatusResponse {

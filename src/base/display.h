@@ -13,6 +13,7 @@
 #include "proto/name_server.pb.h"
 #include "tprinter.h"
 #include "base/schema_codec.h"
+#include "storage/segment.h"
 
 DECLARE_uint32(max_col_display_length);
 
@@ -176,10 +177,10 @@ static void PrintSchema(const std::string& schema, bool has_column_key) {
 static void PrintSchema(const std::string& schema) {
     return PrintSchema(schema, false);
 }
-
-static void PrintColumnKey(uint64_t ttl, const std::string& ttl_suff,
+static void PrintColumnKey(const ::rtidb::api::TTLType& ttl_type, const ::rtidb::storage::TTLDesc& ttl_desc,
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& column_key_field) {
+// static void PrintColumnKey(::rtidb::nameserver::TableInfo& table) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("index_name");
@@ -188,13 +189,19 @@ static void PrintColumnKey(uint64_t ttl, const std::string& ttl_suff,
     row.push_back("ttl");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
-    std::map<std::string, uint64_t> ttl_map;
+    std::map<std::string, ::rtidb::storage::TTLDesc> ttl_map;
     for (const auto& column_desc : column_desc_field) {
         if (column_desc.is_ts_col()) {
-            if (column_desc.has_ttl()) {
-                ttl_map.insert(std::make_pair(column_desc.name(), column_desc.ttl()));
+            if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
+                ttl_map.insert(std::make_pair(column_desc.name(), ::rtidb::storage::TTLDesc(column_desc.abs_ttl(), column_desc.lat_ttl())));
+            } else if (column_desc.has_ttl()) {
+                if (ttl_type == ::rtidb::api::kAbsoluteTime) {
+                    ttl_map.insert(std::make_pair(column_desc.name(), ::rtidb::storage::TTLDesc(column_desc.ttl(), 0)));
+                } else {
+                    ttl_map.insert(std::make_pair(column_desc.name(), ::rtidb::storage::TTLDesc(0, column_desc.ttl())));
+                }
             } else {
-                ttl_map.insert(std::make_pair(column_desc.name(), ttl));
+                ttl_map.insert(std::make_pair(column_desc.name(), ttl_desc));
             }
         }
     }
@@ -222,16 +229,16 @@ static void PrintColumnKey(uint64_t ttl, const std::string& ttl_suff,
                     row_copy[0] = std::to_string(idx);
                     row_copy.push_back(ts_name);
                     if (ttl_map.find(ts_name) != ttl_map.end()) {
-                        row_copy.push_back(std::to_string(ttl_map[ts_name]) + ttl_suff);
+                        row_copy.push_back(ttl_map[ts_name].ToString(ttl_type));
                     } else {
-                        row_copy.push_back(std::to_string(ttl) + ttl_suff);
+                        row_copy.push_back(ttl_desc.ToString(ttl_type));
                     }
                     tp.AddRow(row_copy);
                     idx++;
                 }
             } else {
                 row.push_back("-");
-                row.push_back(std::to_string(ttl) + ttl_suff);
+                row.push_back(ttl_desc.ToString(ttl_type));
                 tp.AddRow(row);
                 idx++;
             }
@@ -245,11 +252,11 @@ static void PrintColumnKey(uint64_t ttl, const std::string& ttl_suff,
                 row.push_back(column_desc.name());
                 if (ttl_map.empty()) {
                     row.push_back("-");
-                    row.push_back(std::to_string(ttl) + ttl_suff);
+                    row.push_back(ttl_desc.ToString(ttl_type));
                 } else {
                     auto iter = ttl_map.begin();
                     row.push_back(iter->first);
-                    row.push_back(std::to_string(iter->second) + ttl_suff);
+                    row.push_back(iter->second.ToString(ttl_type));
                 }
                 tp.AddRow(row);
                 idx++;
@@ -509,10 +516,22 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
                 } else {
                     row.push_back("follower");
                 }
-                if (value.ttl_type() == "kLatestTime") {
-                    row.push_back(std::to_string(value.ttl()));
+                if (value.has_ttl_desc()) {
+                    if (value.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+                        row.push_back(std::to_string(value.ttl_desc().lat_ttl()));
+                    } else if (value.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsAndLat) {
+                        row.push_back(std::to_string(value.ttl_desc().abs_ttl()) + "min&&" + std::to_string(value.ttl_desc().lat_ttl()));
+                    } else if (value.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsOrLat) {
+                        row.push_back(std::to_string(value.ttl_desc().abs_ttl()) + "min||" + std::to_string(value.ttl_desc().lat_ttl()));
+                    } else {
+                        row.push_back(std::to_string(value.ttl_desc().abs_ttl()) + "min");
+                    }
                 } else {
-                    row.push_back(std::to_string(value.ttl()) + "min");
+                    if (value.ttl_type() == "kLatestTime") {
+                        row.push_back(std::to_string(value.ttl()));
+                    } else {
+                        row.push_back(std::to_string(value.ttl()) + "min");
+                    }
                 }
                 if (value.table_partition(idx).partition_meta(meta_idx).is_alive()) {
                     row.push_back("yes");
@@ -534,7 +553,7 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
                 } else {
                     row.push_back("-");
                 }
-				if (value.table_partition(idx).partition_meta(meta_idx).has_record_byte_size() &&
+                if (value.table_partition(idx).partition_meta(meta_idx).has_record_byte_size() &&
                         (!value.has_storage_mode() || value.storage_mode() == ::rtidb::common::StorageMode::kMemory)) {
                     row.push_back(::rtidb::base::HumanReadableString(value.table_partition(idx).partition_meta(meta_idx).record_byte_size()));
                 } else {
@@ -581,10 +600,22 @@ static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& statu
         } else {
             row.push_back("false");
         }
-        if (table_status.ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
-            row.push_back(std::to_string(table_status.ttl()));
+        if (table_status.has_ttl_desc()) {
+            if (table_status.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+                row.push_back(std::to_string(table_status.ttl_desc().lat_ttl()));
+            } else if (table_status.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsAndLat) {
+                row.push_back(std::to_string(table_status.ttl_desc().abs_ttl()) + "min&&" + std::to_string(table_status.ttl_desc().lat_ttl()));
+            } else if (table_status.ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsOrLat) {
+                row.push_back(std::to_string(table_status.ttl_desc().abs_ttl()) + "min||" + std::to_string(table_status.ttl_desc().lat_ttl()));
+            } else {
+                row.push_back(std::to_string(table_status.ttl_desc().abs_ttl()) + "min");
+            }
         } else {
-            row.push_back(std::to_string(table_status.ttl()) + "min");
+            if (table_status.ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+                row.push_back(std::to_string(table_status.ttl()));
+            } else {
+                row.push_back(std::to_string(table_status.ttl()) + "min");
+            }
         }
         row.push_back(std::to_string(table_status.time_offset()) + "s");
         if (!table_status.has_storage_mode() || table_status.storage_mode() == ::rtidb::common::StorageMode::kMemory) {

@@ -1,4 +1,5 @@
 import "common.proto";
+import "tablet.proto";
 package rtidb.nameserver;
 
 option cc_generic_services = true;
@@ -44,9 +45,10 @@ message TablePartition {
 
 message UpdateTTLRequest {
     optional string name = 1;
-    optional string ttl_type = 2;
-    optional uint64 value = 3;
+    optional string ttl_type = 2 [default = "kAbsoluteTime", deprecated = true];
+    optional uint64 value = 3 [default = 0, deprecated = true];
     optional string ts_name = 4;
+    optional rtidb.api.TTLDesc ttl_desc = 5;
 }
 
 message UpdateTTLResponse {
@@ -56,12 +58,12 @@ message UpdateTTLResponse {
 
 message TableInfo {
     optional string name = 1;
-    optional uint64 ttl = 2 [default = 0];
+    optional uint64 ttl = 2 [default = 0, deprecated = true];
     optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
     optional uint32 tid = 5;
     repeated ColumnDesc column_desc = 6 [deprecated = true];
-    optional string ttl_type = 7 [default = "kAbsoluteTime"];
+    optional string ttl_type = 7 [default = "kAbsoluteTime", deprecated = true];
     optional uint32 partition_num = 8;
     optional uint32 replica_num = 9; // contain the leader
     optional CompressType compress_type = 10 [default = kNoCompress];
@@ -70,6 +72,7 @@ message TableInfo {
     repeated rtidb.common.ColumnKey column_key = 13;
     optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 15;
+    optional rtidb.api.TTLDesc ttl_desc = 16;
 }
 
 message CreateTableRequest {
@@ -86,47 +89,47 @@ message ShowTableRequest {
 
 message ShowTableResponse {
     repeated TableInfo table_info = 1;
-	required int32 code = 2;
-	optional string msg = 3;
+    required int32 code = 2;
+    optional string msg = 3;
 }
 
 message MakeSnapshotNSRequest {
-	required string name = 1;
+    required string name = 1;
     required uint32 pid = 2;
 }
 
 message AddReplicaData {
-	required string name = 1;
+    required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
 }
 
 message AddReplicaNSRequest {
-	required string name = 1;
+    required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
     repeated uint32 pid_group = 4;
 }
 
 message Pair {
-	required string key = 1;
+    required string key = 1;
     required string value = 2;
 }
 
 message ConfSetRequest {
-	required Pair conf = 1;
+    required Pair conf = 1;
 }
 
 message ConfGetRequest {}
 
 message ConfGetResponse {
-	required int32 code = 1;
-	optional string msg = 2;
+    required int32 code = 1;
+    optional string msg = 2;
     repeated Pair conf = 3;
 }
 
 message ChangeLeaderRequest {
-	required string name = 1;
+    required string name = 1;
     required uint32 pid = 2;
     optional string candidate_leader = 3;
 }

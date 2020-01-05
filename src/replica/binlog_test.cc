@@ -76,7 +76,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     ::rtidb::client::TabletClient client(leader_point);
     client.Init();
     std::vector<std::string> endpoints;
-    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints,
+    bool ret = client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints,
                     ::rtidb::api::TTLType::kAbsoluteTime, 16, 0, ::rtidb::api::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     
