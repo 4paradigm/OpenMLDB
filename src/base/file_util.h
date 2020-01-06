@@ -194,7 +194,7 @@ static bool GetDirSizeRecur(const std::string& path, uint64_t& size) {
     if (GetChildFileName(path, file_vec) < 0) {
         return false;
     }
-    for (auto file : file_vec) {
+    for (const auto &file : file_vec) {
         struct stat stat_buf;
         if (lstat(file.c_str(), &stat_buf) < 0) {
             PDLOG(WARNING, "stat path %s failed err[%d: %s]",
