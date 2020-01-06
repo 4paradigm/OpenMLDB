@@ -3604,7 +3604,7 @@ void TabletImpl::GetDiskused() {
             }
         }
     }
-    for (auto table : tables) {
+    for (const auto &table : tables) {
         uint64_t size = 0;
         if (!GetTableRootSize(table->GetId(), table->GetPid(), table->GetStorageMode(), size)) {
             PDLOG(WARNING, "get table root size failed. tid[%u] pid[%u]", table->GetId(), table->GetPid());
