@@ -2873,7 +2873,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             std::lock_guard<std::mutex> lock(mu_);
             task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
         }
-        return;
+        return code;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     {
