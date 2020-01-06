@@ -2780,6 +2780,9 @@ void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::
             abs_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
                 ts_name = parts[5];
+            } else if (parts.size() > 6) {
+                std::cout << "Bad setttl format, eg setttl tid pid type ttl [ts_name]" << std::endl;
+                return;
             }
         } else if (parts[3] == "absandlat") {
             type = ::rtidb::api::TTLType::kAbsAndLat;
@@ -2795,10 +2798,13 @@ void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::
             if (parts.size() == 7) {
                 ts_name = parts[6];
             }
-        } else {
+        } else if (parts[3] == "latest"){
             lat_ttl = boost::lexical_cast<uint64_t>(parts[4]);
             if (parts.size() == 6) {
                 ts_name = parts[5];
+            } else if (parts.size() > 6) {
+                std::cout << "Bad setttl format, eg setttl tid pid type ttl [ts_name]" << std::endl;
+                return;
             }
         }
         bool ok = client->UpdateTTL(boost::lexical_cast<uint32_t>(parts[1]),
