@@ -612,7 +612,6 @@ void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
-        Slice key = it->GetKey();
         it->Next();
         for (const auto& kv : ttl_desc) {
             auto pos = ts_idx_map_.find(kv.first);
@@ -620,7 +619,14 @@ void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
                 continue;
             }
             KeyEntry* entry = entry_arr[pos->second];
-            ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
+            ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+            if (node == NULL) {
+                continue;
+            } else if (node->GetKey() > kv.second.abs_ttl) {
+                PDLOG(DEBUG, "[Gc4TTLAndHead] segment gc with key %lu ts_idx %lu need not ttl, node key %lu",
+                             kv.second.abs_ttl, pos->second, node->GetKey());
+                continue;
+            }
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 if (entry->refs_.load(std::memory_order_acquire) <= 0) {
