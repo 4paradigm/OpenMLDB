@@ -127,9 +127,18 @@ public:
         table_status_.store(table_status, std::memory_order_relaxed);
     }
 
+    inline uint64_t GetDiskused() {
+        return diskused_.load(std::memory_order_relaxed);
+    }
+
+    inline void SetDiskused(uint64_t size) {
+        diskused_.store(size, std::memory_order_relaxed);
+    }
+
     inline void SetSchema(const std::string& schema) {
         schema_.assign(schema);
     }
+
     inline const std::string& GetSchema() {
         return schema_;
     }
@@ -212,6 +221,7 @@ protected:
     uint32_t id_;
     uint32_t pid_;
     uint32_t idx_cnt_;
+    std::atomic<uint64_t> diskused_;
     std::atomic<uint64_t> abs_ttl_;
     std::atomic<uint64_t> new_abs_ttl_;
     std::atomic<uint64_t> lat_ttl_;
