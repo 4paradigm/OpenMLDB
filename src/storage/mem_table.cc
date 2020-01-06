@@ -60,6 +60,7 @@ MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) :
     time_offset_ = 0;
     segment_released_ = false;
     record_byte_size_ = 0; 
+    diskused_ = 0;
     table_meta_.CopyFrom(table_meta);
 }
 

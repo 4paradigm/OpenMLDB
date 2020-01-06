@@ -658,7 +658,10 @@ static void PrintTableInfomation(std::vector<::rtidb::nameserver::TableInfo>& ta
     std::string replica_num = std::to_string(table.replica_num());
     std::string partition_num = std::to_string(table.partition_num());
     std::string compress_type = ::rtidb::nameserver::CompressType_Name(table.compress_type());
-    std::string storage_mode = ::rtidb::common::StorageMode_Name(table.storage_mode());
+    std::string storage_mode = "kMemory";
+    if (table.has_storage_mode()) {
+         storage_mode = ::rtidb::common::StorageMode_Name(table.storage_mode());
+    }
     uint32_t record_cnt = 0;
     uint32_t memused = 0;
     uint32_t diskused = 0;

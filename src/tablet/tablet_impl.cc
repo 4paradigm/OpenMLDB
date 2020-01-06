@@ -155,7 +155,7 @@ bool TabletImpl::Init() {
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
-    task_pool_.DelayTask(0, boost::bind(&TabletImpl::GetDiskused, this));
+    task_pool_.AddTask(boost::bind(&TabletImpl::GetDiskused, this));
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
@@ -3595,16 +3595,21 @@ bool TabletImpl::GetTableRootSize(uint32_t tid, uint32_t pid, const
 }
 
 void TabletImpl::GetDiskused() {
-    std::lock_guard<std::mutex> lock(mu_);
-    for (auto it = tables_.begin(); it != tables_.end(); ++it) {
-        for (auto pit = it->second.begin(); pit != it->second.end(); ++pit) {
-            std::shared_ptr<Table> table = pit->second;
-            uint64_t size = 0;
-            if (!GetTableRootSize(table->GetId(), table->GetPid(), table->GetStorageMode(), size)) {
-                PDLOG(WARNING, "get table root size failed. tid[%u] pid[%u]", table->GetId(), table->GetPid());
-            } else {
-                table->SetDiskused(size);
+    std::vector<std::shared_ptr<Table>> tables;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto it = tables_.begin(); it != tables_.end(); ++it) {
+            for (auto pit = it->second.begin(); pit != it->second.end(); ++pit) {
+                tables.push_back(pit->second);
             }
+        }
+    }
+    for (auto table : tables) {
+        uint64_t size = 0;
+        if (!GetTableRootSize(table->GetId(), table->GetPid(), table->GetStorageMode(), size)) {
+            PDLOG(WARNING, "get table root size failed. tid[%u] pid[%u]", table->GetId(), table->GetPid());
+        } else {
+            table->SetDiskused(size);
         }
     }
     task_pool_.DelayTask(FLAGS_get_table_diskused_interval, boost::bind(&TabletImpl::GetDiskused, this));
