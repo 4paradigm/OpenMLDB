@@ -97,9 +97,12 @@ TEST_F(FileUtilTest, GetDirSizeRecur) {
     }
     if(f!=nullptr)
         fclose(f);
+
+    struct stat stat_buf;
+    lstat("/tmp/gtest/testsize/test/", &stat_buf);
     uint64_t size = 0;
     GetDirSizeRecur(std::string("/tmp/gtest/testsize"), size);
-    ASSERT_EQ(size, 2000+1000+5000+100+40);
+    ASSERT_EQ(size, 2000+1000+5000+100+stat_buf.st_size);
 }
 
 } // namespace base
