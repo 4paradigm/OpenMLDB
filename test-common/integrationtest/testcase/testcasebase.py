@@ -658,6 +658,7 @@ class TestCaseBase(unittest.TestCase):
     def find_new_tb_leader(self, tname, tid, pid):
         rs = self.showtable(self.ns_leader, tname)
         infoLogger.info(rs)
+        new_leader = ""
         for (key, value) in rs.items():
             if key[1] == str(tid) and key[2] == str(pid):
                 infoLogger.info(value)
