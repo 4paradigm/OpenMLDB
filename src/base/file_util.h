@@ -189,6 +189,38 @@ inline static int GetChildFileName(const std::string& path, std::vector<std::str
     return 0;
 }
 
+inline static bool IsFolder(const std::string& path) {
+    struct stat s;
+    return stat(path.c_str(), &s) == 0 && (s.st_mode & S_IFDIR);
+}
+
+inline static bool RemoveDirRecursive(const std::string& path) {
+    std::vector<std::string> file_vec;
+    if(GetChildFileName(path, file_vec) != 0) {
+        return false;
+    }
+    for (auto file : file_vec) {
+        if(IsFolder(file)) {
+            if(!RemoveDirRecursive(file)) {
+                return false;
+            }
+        } else if(remove(file.c_str()) != 0){
+            return false;
+        }
+    }
+    return rmdir(path.c_str()) == 0;
+}
+
+inline static std::string ParseFileNameFromPath(const std::string& path) {
+    size_t index = path.rfind('/');
+    if (index == std::string::npos) {
+        index = 0;
+    }else {
+        index += 1;
+    }
+    return path.substr(index, path.length() - index);
+}
+
 static bool GetDirSizeRecur(const std::string& path, uint64_t& size) {
     std::vector<std::string> file_vec;
     if (GetChildFileName(path, file_vec) < 0) {
@@ -201,13 +233,13 @@ static bool GetDirSizeRecur(const std::string& path, uint64_t& size) {
                         path.c_str(), errno, strerror(errno));
             return false;
         }
-        if (S_ISREG(stat_buf.st_mode)) {
-            size += stat_buf.st_size;
-        } else if (S_ISDIR(stat_buf.st_mode)) {
+        if(IsFolder(file)) {
             size += stat_buf.st_size;
             if (!GetDirSizeRecur(file, size)) {
                 return false;
             }
+        } else {
+            size += stat_buf.st_size;
         }
     }
     return true;
