@@ -450,7 +450,6 @@ message GetTableStatusRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional bool need_schema = 3 [default = false];
-    // optional bool need_diskused = 4 [default = false];
 }
 
 message TsIdxStatus {
