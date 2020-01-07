@@ -5052,7 +5052,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
     }
     if (old_ttl_type != new_ttl_type) {
         PDLOG(WARNING, "table ttl type mismatch, expect %s but %s",::rtidb::api::TTLType_Name(old_ttl_type).c_str(),
-            ::rtidb::api::TTLType_Name(new_ttl_type));
+            ::rtidb::api::TTLType_Name(new_ttl_type).c_str());
         response->set_code(112);
         response->set_msg("ttl type mismatch");
         return;

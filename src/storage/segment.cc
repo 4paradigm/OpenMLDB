@@ -627,6 +627,7 @@ void Segment::Gc4TTLAndHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
                              kv.second.abs_ttl, pos->second, node->GetKey());
                 continue;
             }
+            node = NULL;
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 if (entry->refs_.load(std::memory_order_acquire) <= 0) {
@@ -669,6 +670,7 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, uint64_
         if (node == NULL) {
             continue;
         }
+        node = NULL;
         ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -738,6 +740,7 @@ void Segment::Gc4TTLOrHead(const std::map<uint32_t, TTLDesc>& ttl_desc,
             if (node == NULL) {
                 continue;
             }
+            node = NULL;
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 if (entry->refs_.load(std::memory_order_acquire) <= 0) {
