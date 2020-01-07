@@ -24,7 +24,6 @@ if [ $2 = "ns_client" -o $2 = "disk" ]; then
 else    
     sed -i 's/cluster_mode\ \=.*/cluster_mode\ \=\ single/g' ${testconfpath}
 fi
-exit
 
 python ${testpath}/runall.py -R="${runlist}" -N="${norunlist}"
 code=$?
