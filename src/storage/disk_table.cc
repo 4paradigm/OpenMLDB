@@ -47,6 +47,7 @@ DiskTable::DiskTable(const ::rtidb::api::TableMeta& table_meta,
     if (!options_template_initialized) {
         initOptionTemplate();
     }
+    diskused_ = 0;
     write_opts_.disableWAL = FLAGS_disable_wal;
     db_ = nullptr;
 }

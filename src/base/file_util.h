@@ -163,6 +163,88 @@ inline static bool RemoveDir(const std::string& path) {
     return true;
 }
 
+inline static int GetChildFileName(const std::string& path, std::vector<std::string>& file_vec) {
+    if (path.empty()) {
+        return -1;
+    }
+    DIR *dir = opendir(path.c_str());
+    if (dir == NULL) {
+        return -1;
+    }
+    struct dirent *ptr;
+    struct stat stat_buf;
+    while ((ptr = readdir(dir)) != NULL) {
+        if(strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
+            continue;
+        }
+        std::string file_path = path + "/" + ptr->d_name;
+        int ret = lstat(file_path.c_str(), &stat_buf);
+        if (ret == -1) {
+            closedir(dir);
+            return -1;
+        }
+        file_vec.push_back(file_path);
+    }
+    closedir(dir);
+    return 0;
+}
+
+inline static bool IsFolder(const std::string& path) {
+    struct stat s;
+    return stat(path.c_str(), &s) == 0 && (s.st_mode & S_IFDIR);
+}
+
+inline static bool RemoveDirRecursive(const std::string& path) {
+    std::vector<std::string> file_vec;
+    if(GetChildFileName(path, file_vec) != 0) {
+        return false;
+    }
+    for (auto file : file_vec) {
+        if(IsFolder(file)) {
+            if(!RemoveDirRecursive(file)) {
+                return false;
+            }
+        } else if(remove(file.c_str()) != 0){
+            return false;
+        }
+    }
+    return rmdir(path.c_str()) == 0;
+}
+
+inline static std::string ParseFileNameFromPath(const std::string& path) {
+    size_t index = path.rfind('/');
+    if (index == std::string::npos) {
+        index = 0;
+    }else {
+        index += 1;
+    }
+    return path.substr(index, path.length() - index);
+}
+
+static bool GetDirSizeRecur(const std::string& path, uint64_t& size) {
+    std::vector<std::string> file_vec;
+    if (GetChildFileName(path, file_vec) < 0) {
+        return false;
+    }
+    for (const auto &file : file_vec) {
+        struct stat stat_buf;
+        if (lstat(file.c_str(), &stat_buf) < 0) {
+            PDLOG(WARNING, "stat path %s failed err[%d: %s]",
+                        path.c_str(), errno, strerror(errno));
+            return false;
+        }
+        if(IsFolder(file)) {
+            size += stat_buf.st_size;
+            if (!GetDirSizeRecur(file, size)) {
+                return false;
+            }
+        } else {
+            size += stat_buf.st_size;
+        }
+    }
+    return true;
+}
+
 }
 }
 

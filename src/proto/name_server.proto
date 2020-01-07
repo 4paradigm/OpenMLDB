@@ -25,6 +25,8 @@ message PartitionMeta {
     optional uint64 record_cnt = 5;
     optional uint64 record_byte_size = 6;
     optional bool tablet_has_partition = 7 [default = true];
+    optional uint64 diskused = 8 [default = 0];
+
 }
 
 message TermPair {
@@ -38,6 +40,7 @@ message TablePartition {
     repeated TermPair term_offset = 3;
     optional uint64 record_cnt = 4;
     optional uint64 record_byte_size = 5;
+    optional uint64 diskused = 6 [default = 0];
 }
 
 message UpdateTTLRequest {

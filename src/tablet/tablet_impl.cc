@@ -56,6 +56,7 @@ DECLARE_string(recycle_bin_root_path);
 DECLARE_string(recycle_ssd_bin_root_path);
 DECLARE_string(recycle_hdd_bin_root_path);
 DECLARE_int32(make_snapshot_threshold_offset);
+DECLARE_uint32(get_table_diskused_interval);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -154,6 +155,7 @@ bool TabletImpl::Init() {
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
+    task_pool_.AddTask(boost::bind(&TabletImpl::GetDiskused, this));
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
@@ -1691,8 +1693,8 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             const ::rtidb::api::GetTableStatusRequest* request,
             ::rtidb::api::GetTableStatusResponse* response,
             Closure* done) {
-    brpc::ClosureGuard done_guard(done);        
-    std::lock_guard<std::mutex> lock(mu_);        
+    brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
     for (auto it = tables_.begin(); it != tables_.end(); ++it) {
         if (request->has_tid() && request->tid() != it->first) {
             continue;
@@ -1709,7 +1711,6 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             }
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
-
             status->set_compress_type(table->GetCompressType());
             status->set_storage_mode(table->GetStorageMode());
             status->set_name(table->GetName());
@@ -1719,6 +1720,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             ttl_desc->set_lat_ttl(ttl.lat_ttl);
             ttl_desc->set_ttl_type(table->GetTTLType());
             status->set_ttl_type(table->GetTTLType());
+            status->set_diskused(table->GetDiskused());
             if (status->ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
                 status->set_ttl(table->GetTTL().lat_ttl);
             } else {
@@ -3559,6 +3561,58 @@ bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
         }
     }
     return true;
+}
+
+bool TabletImpl::ChooseTableRootPath(uint32_t tid, uint32_t pid,
+        const ::rtidb::common::StorageMode& mode,
+        std::string& path) {
+    std::string root_path;
+    bool ok = ChooseDBRootPath(tid, pid, mode, root_path);
+    if (!ok) {
+        PDLOG(WARNING, "table db path doesn't found. tid %u, pid %u", tid, pid);
+        return false;
+    }
+    path = root_path + "/" + std::to_string(tid) + 
+                        "_" + std::to_string(pid);
+    if (!::rtidb::base::IsExists(path)) {
+        PDLOG(WARNING, "table db path doesn`t exist. tid %u, pid %u", tid, pid);
+        return false;
+    }
+    return true;
+}
+
+bool TabletImpl::GetTableRootSize(uint32_t tid, uint32_t pid, const
+        ::rtidb::common::StorageMode& mode, uint64_t& size) {
+    std::string table_path;
+    if (!ChooseTableRootPath(tid, pid, mode, table_path)) {
+        return false;
+    }
+    if (!::rtidb::base::GetDirSizeRecur(table_path, size)) {
+        PDLOG(WARNING, "get table root size failed. tid %u, pid %u", tid, pid);
+        return false;
+    }
+    return true;
+}
+
+void TabletImpl::GetDiskused() {
+    std::vector<std::shared_ptr<Table>> tables;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto it = tables_.begin(); it != tables_.end(); ++it) {
+            for (auto pit = it->second.begin(); pit != it->second.end(); ++pit) {
+                tables.push_back(pit->second);
+            }
+        }
+    }
+    for (const auto &table : tables) {
+        uint64_t size = 0;
+        if (!GetTableRootSize(table->GetId(), table->GetPid(), table->GetStorageMode(), size)) {
+            PDLOG(WARNING, "get table root size failed. tid[%u] pid[%u]", table->GetId(), table->GetPid());
+        } else {
+            table->SetDiskused(size);
+        }
+    }
+    task_pool_.DelayTask(FLAGS_get_table_diskused_interval, boost::bind(&TabletImpl::GetDiskused, this));
 }
 
 bool TabletImpl::SeekWithCount(::rtidb::storage::TableIterator* it, const uint64_t time,

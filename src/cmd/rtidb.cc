@@ -1669,6 +1669,22 @@ void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::clien
     std::cout << "add table field ok" << std::endl;
 }
 
+void HandleNSInfo(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "info format error. eg: info tablename" << std::endl;
+        return;
+    }
+    std::string name = parts[1];
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(name, tables, msg);
+    if (!ret) {
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
+        return;
+    }
+    ::rtidb::base::PrintTableInfomation(tables);
+}
+
 bool HasIsTsCol(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& list) {
     if (list.empty()) {
         return false;
@@ -2376,6 +2392,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("setttl - set table ttl\n");
         printf("updatetablealive - update table alive status\n");
         printf("addtablefield - add field to the schema table \n");
+        printf("info - show information of the table\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -2547,6 +2564,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: addtablefield table_name col_name col_type\n");
             printf("ex: addtablefield test card string\n");
             printf("ex: addtablefield test money float\n");
+        } else if (parts[1] == "info") {
+            printf("desc: show information of the table\n");
+            printf("usage: info table_name \n");
+            printf("ex: info test\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -4703,6 +4724,8 @@ void StartNsClient() {
             HandleNSClientCancelOP(parts, &client);
         } else if (parts[0] == "addtablefield") {
             HandleNSAddTableField(parts, &client);
+        } else if (parts[0] == "info") {
+            HandleNSInfo(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

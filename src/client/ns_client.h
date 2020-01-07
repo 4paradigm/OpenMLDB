@@ -91,6 +91,7 @@ public:
                    uint64_t abs_ttl, uint64_t lat_ttl,
                    const std::string& ts_name,
                    std::string& msg);
+
 private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;

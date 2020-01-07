@@ -289,6 +289,8 @@ private:
 
     void SchedMakeDiskTableSnapshot();
 
+    void GetDiskused();
+
     void CheckZkClient();
 
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
@@ -327,6 +329,13 @@ private:
     bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
             const ::rtidb::common::StorageMode& mode,
             std::string& path);
+
+    bool ChooseTableRootPath(uint32_t tid, uint32_t pid,
+            const ::rtidb::common::StorageMode& mode,
+            std::string& path);
+
+    bool GetTableRootSize(uint32_t tid, uint32_t pid, const
+            ::rtidb::common::StorageMode& mode, uint64_t& size);
 
     bool SeekWithCount(::rtidb::storage::TableIterator* it, const uint64_t time,
             const ::rtidb::api::GetType& type, uint32_t max_cnt, uint32_t& cnt);

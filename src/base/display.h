@@ -499,7 +499,7 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
     row.push_back("offset");
     row.push_back("record_cnt");
     row.push_back("memused");
-    row.push_back("storage_mode");
+    row.push_back("diskused");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (const auto& value : tables) {
@@ -558,11 +558,7 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
                 } else {
                     row.push_back("-");
                 }
-                if (value.has_storage_mode()) {
-                    row.push_back(::rtidb::common::StorageMode_Name(value.storage_mode()));
-                } else {
-                    row.push_back("kMemory");
-                }
+                row.push_back(::rtidb::base::HumanReadableString(value.table_partition(idx).partition_meta(meta_idx).diskused()));
                 tp.AddRow(row);
             }
         }
@@ -632,6 +628,88 @@ static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& statu
         }
         tp.AddRow(row);
     }
+    tp.Print(true);
+}
+
+static void PrintTableInfomation(std::vector<::rtidb::nameserver::TableInfo>& tables) {
+    if (tables.size() < 1) {
+        return;
+    }
+    ::rtidb::nameserver::TableInfo table = tables[0];
+    std::vector<std::string> row;
+    row.push_back("attribute");
+    row.push_back("value");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    uint64_t abs_ttl = table.ttl();
+    uint64_t lat_ttl = 0;
+    ::rtidb::api::TTLType ttl_type = ::rtidb::api::kAbsoluteTime;
+    if (table.has_ttl_desc()) {
+        ttl_type = table.ttl_desc().ttl_type();
+        abs_ttl = table.ttl_desc().abs_ttl();
+        lat_ttl = table.ttl_desc().lat_ttl();
+    } else if (table.ttl_type() == "kLatestTime"){
+        ttl_type = ::rtidb::api::kLatestTime;
+        abs_ttl = 0;
+        lat_ttl = table.ttl();
+    }
+    ::rtidb::storage::TTLDesc ttl_desc(abs_ttl, lat_ttl);
+    std::string name = table.name();
+    std::string replica_num = std::to_string(table.replica_num());
+    std::string partition_num = std::to_string(table.partition_num());
+    std::string compress_type = ::rtidb::nameserver::CompressType_Name(table.compress_type());
+    std::string storage_mode = "kMemory";
+    if (table.has_storage_mode()) {
+         storage_mode = ::rtidb::common::StorageMode_Name(table.storage_mode());
+    }
+    uint32_t record_cnt = 0;
+    uint32_t memused = 0;
+    uint32_t diskused = 0;
+    for (int idx = 0; idx < table.table_partition_size(); idx++) {
+        record_cnt += table.table_partition(idx).record_cnt();
+        memused += table.table_partition(idx).record_byte_size();
+        diskused += table.table_partition(idx).diskused();
+    }
+    row.clear();
+    row.push_back("name");
+    row.push_back(name);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("replica_num");
+    row.push_back(replica_num);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("partition_num");
+    row.push_back(partition_num);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("ttl");
+    row.push_back(ttl_desc.ToString(ttl_type));
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("ttl_type");
+    row.push_back(::rtidb::api::TTLType_Name(ttl_type));
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("compress_type");
+    row.push_back(compress_type);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("storage_mode");
+    row.push_back(storage_mode);
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("record_cnt");
+    row.push_back(std::to_string(record_cnt));
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("memused");
+    row.push_back(::rtidb::base::HumanReadableString(memused));
+    tp.AddRow(row);
+    row.clear();
+    row.push_back("diskused");
+    row.push_back(::rtidb::base::HumanReadableString(diskused));
+    tp.AddRow(row);
     tp.Print(true);
 }
 
