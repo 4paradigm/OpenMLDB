@@ -119,7 +119,6 @@ static bool drop_db(MYSQL &conn, const char *drop_db) {  // NOLINT
     return true;
 }
 static void BM_SIMPLE_INSERT(benchmark::State &state) {  // NOLINT
-    const char *db_sql = "create database test";
     const char *use_sql = "use test";
     const char *schema_sql =
         "create table tbl (\n"
@@ -136,7 +135,6 @@ static void BM_SIMPLE_INSERT(benchmark::State &state) {  // NOLINT
         "insert into tbl values(1,1,1,1,1,\"key1\", \"string1\");";
     const char *delete_sql = "delete from tbl";
     const char *drop_tbl_sql = "drop table tbl";
-    const char *drop_db_sql = "drop database test";
 
     MYSQL conn;
     if (!init(conn)) goto failure;
@@ -165,7 +163,6 @@ failure:
 }
 
 static void BM_INSERT_WITH_INDEX(benchmark::State &state) {  // NOLINT
-    const char *db_sql = "create database test";
     const char *use_sql = "use test";
     const char *schema_sql =
         "create table tbl (\n"
@@ -183,7 +180,6 @@ static void BM_INSERT_WITH_INDEX(benchmark::State &state) {  // NOLINT
 
     const char *delete_sql = "delete from tbl";
     const char *drop_tbl_sql = "drop table tbl";
-    const char *drop_db_sql = "drop database test";
 
     MYSQL conn;
     if (!init(conn)) goto failure;
@@ -223,7 +219,6 @@ failure:
 }
 
 static void BM_SIMPLE_QUERY(benchmark::State &state) {  // NOLINT
-    const char *db_sql = "create database test";
     const char *use_sql = "use test";
     const char *schema_sql =
         "create table tbl (\n"
@@ -244,7 +239,6 @@ static void BM_SIMPLE_QUERY(benchmark::State &state) {  // NOLINT
         "from tbl;";
     const char *delete_sql = "delete from tbl";
     const char *drop_tbl_sql = "drop table tbl";
-    const char *drop_db_sql = "drop database test";
 
     int64_t record_size = state.range(0);
     MYSQL conn;
@@ -283,7 +277,6 @@ failure:
 
 static void BM_WINDOW_CASE_QUERY(benchmark::State &state,  // NOLINT
                                  const char *select_sql) {
-    const char *db_sql = "create database test";
     const char *use_sql = "use test";
     const char *schema_sql =
         "create table tbl (\n"
@@ -298,7 +291,6 @@ static void BM_WINDOW_CASE_QUERY(benchmark::State &state,  // NOLINT
 
     const char *delete_sql = "delete from tbl";
     const char *drop_tbl_sql = "drop table tbl";
-    const char *drop_db_sql = "drop database test";
 
     int64_t group_size = state.range(0);
     int64_t window_max_size = state.range(1);
@@ -370,7 +362,6 @@ static void BM_WINDOW_CASE_QUERY(benchmark::State &state,  // NOLINT
 
     if (!delete_tbl(conn, delete_sql)) goto failure;
     if (!drop_tbl(conn, drop_tbl_sql)) goto failure;
-    //    if (!drop_db(conn, drop_db_sql)) goto failure;
     mysql_close(&conn);
 
 failure:

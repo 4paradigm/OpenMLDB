@@ -232,7 +232,6 @@ class IteratorV {
 template <class V>
 class IteratorImpl : public IteratorV<V> {
  public:
-    IteratorImpl() : list_{}, start_(0), end_(0), pos_(0) {}
     explicit IteratorImpl(const std::vector<V> &list)
         : list_(list), start_(0), end_(list.size()), pos_(0) {}
     explicit IteratorImpl(const IteratorImpl<V> &impl)
@@ -280,10 +279,10 @@ class WindowIteratorImpl : public IteratorImpl<Row> {
 };
 
 template <class V, class R>
-class WrapIteratorImpl : public IteratorImpl<V> {
+class WrapIteratorImpl : public IteratorV<V> {
  public:
     explicit WrapIteratorImpl(const IteratorImpl<R> &root)
-        : IteratorImpl<V>(), root_(root) {}
+        : IteratorV<V>(), root_(root) {}
 
     ~WrapIteratorImpl() {}
     const bool Valid() const { return root_.Valid(); }
@@ -291,11 +290,6 @@ class WrapIteratorImpl : public IteratorImpl<V> {
     V Next() { return GetField(root_.Next()); }
     virtual const V GetField(R row) const = 0;
     void reset() { root_.reset(); }
-
-    IteratorImpl<V> *range(int start, int end) {
-        return root_.range(start, end);
-    }
-
  protected:
     IteratorImpl<R> root_;
 };
