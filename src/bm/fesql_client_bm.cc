@@ -30,7 +30,11 @@ static void BM_WINDOW_CASE1_QUERY(benchmark::State &state) {  // NOLINT
                                     state.range(1));
 }
 
-BENCHMARK(BM_SIMPLE_QUERY)->Arg(10)->Arg(100)->Arg(1000)->Arg(10000);
+BENCHMARK(BM_SIMPLE_QUERY)
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000});
 BENCHMARK(BM_WINDOW_CASE1_QUERY)
     ->Args({1, 100})
     ->Args({1, 1000})
