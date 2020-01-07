@@ -252,7 +252,7 @@ class ProjectListPlanNode : public MultiChildPlanNode {
     const bool IsWindowAgg() const { return is_window_agg_; }
 
     void SetScanLimit(int scan_limit) { scan_limit_ = scan_limit; }
-    const int64_t GetScanLimit() const { return scan_limit_; }
+    const uint64_t GetScanLimit() const { return scan_limit_; }
 
  private:
     PlanNodeList projects;

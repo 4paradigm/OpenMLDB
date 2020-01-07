@@ -48,24 +48,25 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
             break;
         }
         case 2: {
-            str_offset = *(row_with_offset + field_offset * addr_space);
+            str_offset = *(reinterpret_cast<const uint16_t*>(
+                row_with_offset + field_offset * addr_space));
             if (next_str_field_offset > 0) {
-                next_str_offset =
-                    *(row_with_offset + next_str_field_offset * addr_space);
+                next_str_offset = *(reinterpret_cast<const uint16_t*>(
+                    row_with_offset + next_str_field_offset * addr_space));
             }
             break;
         }
         case 3: {
             const int8_t* cur_row_with_offset =
                 row_with_offset + field_offset * addr_space;
-            str_offset = (uint8_t)(*(cur_row_with_offset));
+            str_offset = (uint8_t)(*cur_row_with_offset);
             str_offset =
                 (str_offset << 8) + (uint8_t)(*(cur_row_with_offset + 1));
             str_offset =
                 (str_offset << 8) + (uint8_t)(*(cur_row_with_offset + 2));
             if (next_str_field_offset > 0) {
                 const int8_t* next_row_with_offset =
-                    row_with_offset + field_offset * addr_space;
+                    row_with_offset + next_str_field_offset * addr_space;
                 next_str_offset = (uint8_t)(*(next_row_with_offset));
                 next_str_offset = (next_str_offset << 8) +
                                   (uint8_t)(*(next_row_with_offset + 1));
@@ -75,11 +76,11 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
             break;
         }
         case 4: {
-            str_offset =
-                (uint32_t)(*(row_with_offset + field_offset * addr_space));
+            str_offset = *(reinterpret_cast<const uint32_t*>(
+                row_with_offset + field_offset * addr_space));
             if (next_str_field_offset > 0) {
-                next_str_offset =
-                    *(row_with_offset + next_str_field_offset * addr_space);
+                next_str_offset = *(reinterpret_cast<const uint32_t*>(
+                    row_with_offset + next_str_field_offset * addr_space));
             }
             break;
         }
@@ -90,7 +91,8 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
     const int8_t* ptr = row + str_offset;
     *data = (int8_t*)(ptr);  // NOLINT
     if (next_str_field_offset <= 0) {
-        uint32_t total_length = (uint32_t)(*(row + VERSION_LENGTH));
+        uint32_t total_length =
+            *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
         *size = total_length - str_offset;
     } else {
         *size = next_str_offset - str_offset;
@@ -123,12 +125,11 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, int8_t* val,
         }
 
         case 3: {
-            *(reinterpret_cast<uint8_t*>(ptr_offset)) =
-                str_body_offset & 0x0F00;
+            *(reinterpret_cast<uint8_t*>(ptr_offset)) = str_body_offset >> 16;
             *(reinterpret_cast<uint8_t*>(ptr_offset + 1)) =
-                str_body_offset & 0x00F0;
+                (str_body_offset & 0xFF00) >> 8;
             *(reinterpret_cast<uint8_t*>(ptr_offset + 2)) =
-                str_body_offset & 0x000F;
+                str_body_offset & 0x00FF;
             break;
         }
 

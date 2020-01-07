@@ -170,7 +170,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
     }
 }
 
-TEST_F(WindowIteratorTest, CurrentHistoryUnboundWindow) {
+TEST_F(WindowIteratorTest, CurrentHistoryUnboundWindowTest) {
     std::vector<std::pair<uint64_t, Row>> rows;
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
@@ -212,6 +212,347 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundWindow) {
     window.BufferData(6000L, row);
     ASSERT_EQ(16u, window.Count());
 }
+
+TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row({.buf = ptr});
+
+    // history current_ts -1000 ~ current_ts
+    {
+        std::vector<Row> rows;
+        std::vector<uint64_t> keys;
+        rows.push_back(row);
+        keys.push_back(1L);
+        rows.push_back(row);
+        keys.push_back(2L);
+        rows.push_back(row);
+        keys.push_back(3L);
+        rows.push_back(row);
+        keys.push_back(40L);
+        rows.push_back(row);
+        keys.push_back(500L);
+        rows.push_back(row);
+        keys.push_back(1000L);
+        rows.push_back(row);
+        keys.push_back(1001L);
+        rows.push_back(row);
+        keys.push_back(1002L);
+        rows.push_back(row);
+        keys.push_back(1003L);
+        rows.push_back(row);
+        keys.push_back(1004L);
+        rows.push_back(row);
+        keys.push_back(1005L);
+        rows.push_back(row);
+        keys.push_back(1500L);
+        rows.push_back(row);
+        keys.push_back(2004L);
+        rows.push_back(row);
+        keys.push_back(3000L);
+        rows.push_back(row);
+        keys.push_back(5000L);
+        rows.push_back(row);
+        keys.push_back(6000L);
+        ASSERT_EQ(rows.size(), keys.size());
+        CurrentHistorySlideWindow window(-1000L, rows, keys, 0);
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(1u, window.Count());
+
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(2u, window.Count());
+
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(3u, window.Count());
+
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(4u, window.Count());
+
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(5u, window.Count());
+
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(6u, window.Count());
+
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(6u, window.Count());
+
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(6u, window.Count());
+
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(6u, window.Count());
+
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(7u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(8u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(7u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(3u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(2u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(1u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(1u, window.Count());
+        ASSERT_FALSE(window.Slide());
+    }
+
+    // history current_ts -1000 ~ current_ts max_size = 5
+    {
+        std::vector<Row> rows;
+        std::vector<uint64_t> keys;
+        rows.push_back(row);
+        keys.push_back(1L);
+        rows.push_back(row);
+        keys.push_back(2L);
+        rows.push_back(row);
+        keys.push_back(3L);
+        rows.push_back(row);
+        keys.push_back(40L);
+        rows.push_back(row);
+        keys.push_back(500L);
+        rows.push_back(row);
+        keys.push_back(1000L);
+        rows.push_back(row);
+        keys.push_back(1001L);
+        rows.push_back(row);
+        keys.push_back(1500L);
+        rows.push_back(row);
+        keys.push_back(2004L);
+        rows.push_back(row);
+        keys.push_back(3000L);
+        rows.push_back(row);
+        keys.push_back(5000L);
+        rows.push_back(row);
+        keys.push_back(6000L);
+        ASSERT_EQ(rows.size(), keys.size());
+        CurrentHistorySlideWindow window(-1000L, 5, rows, keys, 0);
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(1u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(2u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(3u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(4u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(5u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(5u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(5u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(3u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(2u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(2u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(1u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(1u, window.Count());
+        ASSERT_FALSE(window.Slide());
+    }
+
+    // history current_ts -1000 ~ current_ts max_size = 3
+    {
+        std::vector<Row> rows;
+        std::vector<uint64_t> keys;
+        rows.reserve(7);
+        keys.reserve(7);
+
+        // reserve rows
+        rows.push_back(row);
+        keys.push_back(1);
+        rows.push_back(row);
+        keys.push_back(1L);
+        rows.push_back(row);
+        keys.push_back(1);
+        rows.push_back(row);
+        keys.push_back(1L);
+
+        rows.push_back(row);
+        keys.push_back(1L);
+        rows.push_back(row);
+        keys.push_back(2L);
+        rows.push_back(row);
+        keys.push_back(3L);
+        ASSERT_EQ(rows.size(), keys.size());
+        CurrentHistorySlideWindow window(-1000L, 2, rows, keys, 4);
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(1u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(2u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(2u, window.Count());
+        ASSERT_FALSE(window.Slide());
+    }
+}
+
+TEST_F(WindowIteratorTest, CurrentHistoryUnboundSlideWindowTest) {
+    int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+    *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+    *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
+    Row row({.buf = ptr});
+
+    {
+        std::vector<Row> rows;
+        std::vector<uint64_t> keys;
+        rows.push_back(row);
+        keys.push_back(1L);
+        rows.push_back(row);
+        keys.push_back(2L);
+        rows.push_back(row);
+        keys.push_back(3L);
+        rows.push_back(row);
+        keys.push_back(40L);
+        rows.push_back(row);
+        keys.push_back(500L);
+        rows.push_back(row);
+        keys.push_back(1000L);
+        rows.push_back(row);
+        keys.push_back(1001L);
+        rows.push_back(row);
+        keys.push_back(1002L);
+        rows.push_back(row);
+        keys.push_back(1003L);
+        rows.push_back(row);
+        keys.push_back(1004L);
+        rows.push_back(row);
+        keys.push_back(1005L);
+        rows.push_back(row);
+        keys.push_back(1500L);
+        rows.push_back(row);
+        keys.push_back(2004L);
+        rows.push_back(row);
+        keys.push_back(3000L);
+        rows.push_back(row);
+        keys.push_back(5000L);
+        rows.push_back(row);
+        keys.push_back(6000L);
+        ASSERT_EQ(rows.size(), keys.size());
+        //        std::reverse(rows.begin(), rows.end());
+        //        std::reverse(keys.begin(), keys.end());
+
+        // history current_ts -1000 ~ current_ts
+        CurrentHistoryUnboundSlideWindow window(rows, keys, 0);
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(1u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(2u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(3u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(4u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(5u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(6u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(7u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(8u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(9u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(10u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(11u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(12u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(13u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(14u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(15u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(16u, window.Count());
+        ASSERT_FALSE(window.Slide());
+    }
+
+    {
+        std::vector<Row> rows;
+        std::vector<uint64_t> keys;
+        rows.push_back(row);
+        keys.push_back(1L);
+        rows.push_back(row);
+        keys.push_back(2L);
+        rows.push_back(row);
+        keys.push_back(3L);
+        rows.push_back(row);
+        keys.push_back(40L);
+        rows.push_back(row);
+        keys.push_back(500L);
+        rows.push_back(row);
+        keys.push_back(1000L);
+        rows.push_back(row);
+        keys.push_back(1001L);
+        rows.push_back(row);
+        keys.push_back(1002L);
+        rows.push_back(row);
+        keys.push_back(1003L);
+        rows.push_back(row);
+        keys.push_back(1004L);
+        rows.push_back(row);
+        keys.push_back(1005L);
+        rows.push_back(row);
+        keys.push_back(1500L);
+        rows.push_back(row);
+        keys.push_back(2004L);
+        rows.push_back(row);
+        keys.push_back(3000L);
+        rows.push_back(row);
+        keys.push_back(5000L);
+        rows.push_back(row);
+        keys.push_back(6000L);
+
+        //        std::reverse(rows.begin(), rows.end());
+        //        std::reverse(keys.begin(), keys.end());
+        ASSERT_EQ(rows.size(), keys.size());
+
+        // history current_ts -1000 ~ current_ts
+        CurrentHistoryUnboundSlideWindow window(10, rows, keys, 0);
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(1u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(2u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(3u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(4u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(5u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(6u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(7u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(8u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(9u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(10u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(10u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(10u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(10u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(10u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(10u, window.Count());
+        ASSERT_TRUE(window.Slide());
+        ASSERT_EQ(10u, window.Count());
+        ASSERT_FALSE(window.Slide());
+    }
+}
+
 }  // namespace storage
 }  // namespace fesql
 int main(int argc, char** argv) {

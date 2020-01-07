@@ -10,6 +10,7 @@
 #include "bm/fesql_client_bm_case.h"
 #include <memory>
 #include <string>
+#include <vector>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 namespace fesql {
@@ -111,9 +112,11 @@ static bool repeated_insert_tbl(::fesql::sdk::TabletSdk *tablet_sdk,
     return true;
 }
 
-void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
-                        bool is_batch_mode,
-                        int64_t record_size) {  // NOLINT
+static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
+                              bool is_batch_mode, std::string select_sql,
+                              int64_t group_size, int64_t window_max_size) {
+    int64_t record_size = group_size * window_max_size;
+    bool failure_flag = false;
     std::string db_name = "test";
     std::string schema_sql =
         "create table tbl (\n"
@@ -130,11 +133,6 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
     const char *schema_insert_sql =
         "insert into tbl values(1,1,1,1,1,\"key1\", \"string1\");";
 
-    std::string select_sql =
-        "select col_str64, col_i64, col_i32, col_i16, col_f, col_d, col_str255 "
-        "from tbl limit " +
-        std::to_string(record_size) + ";";
-
     brpc::Server tablet_server;
     brpc::Server dbms_server;
     ::fesql::tablet::TabletServerImpl table_server_impl;
@@ -144,11 +142,17 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
     if (!fesql_server_init(tablet_server, dbms_server, &table_server_impl,
                            &dbms_server_impl)) {
         LOG(WARNING) << "Fail to init server";
+        if (TEST == mode) {
+            FAIL();
+        }
         return;
     }
 
     if (!feql_dbms_sdk_init(&dbms_sdk)) {
         LOG(WARNING) << "Fail to create to dbms sdk";
+        if (TEST == mode) {
+            FAIL();
+        }
         return;
     }
 
@@ -156,13 +160,18 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
         ::fesql::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
     if (!sdk) {
         LOG(WARNING) << "Fail to create to tablet sdk";
+        failure_flag = true;
         goto failure;
     }
 
     if (false == init_db(dbms_sdk, db_name)) {
+        LOG(WARNING) << "Fail to create db";
+        failure_flag = true;
         goto failure;
     }
     if (false == init_tbl(dbms_sdk, db_name, schema_sql)) {
+        LOG(WARNING) << "Fail to create table";
+        failure_flag = true;
         goto failure;
     }
     {
@@ -216,14 +225,19 @@ void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
             ASSERT_EQ(record_size, rs->GetRowCnt());
         }
     }
-
 failure:
     if (nullptr != dbms_sdk) {
         delete dbms_sdk;
     }
+    if (TEST == mode) {
+        ASSERT_FALSE(failure_flag);
+    }
 }
-void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
-                        bool is_batch_mode, int64_t record_size) {
+static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
+                              bool is_batch_mode, std::string select_sql,
+                              int64_t group_size, int64_t max_window_size) {
+    int64_t record_size = group_size * max_window_size;
+    bool failure_flag = false;
     std::string db_name = "test";
     std::string schema_sql =
         "create table tbl (\n"
@@ -237,17 +251,6 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
         "       index(key=(col_str64), ts=col_i64, ttl=60d)"
         "    );";
 
-    std::string select_sql =
-        "SELECT "
-        "sum(col_i32) OVER w1 as sum_col_i32, \n"
-        "sum(col_f) OVER w1 as sum_col_f \n"
-        "FROM tbl\n"
-        "window w1 as (PARTITION BY col_str64 \n"
-        "                  ORDER BY col_i64\n"
-        "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW) "
-        "limit " +
-        std::to_string(record_size) + ";";
-
     brpc::Server tablet_server;
     brpc::Server dbms_server;
     ::fesql::tablet::TabletServerImpl table_server_impl;
@@ -257,11 +260,17 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
     if (!fesql_server_init(tablet_server, dbms_server, &table_server_impl,
                            &dbms_server_impl)) {
         LOG(WARNING) << "Fail to init server";
+        if (TEST == mode) {
+            FAIL();
+        }
         return;
     }
 
     if (!feql_dbms_sdk_init(&dbms_sdk)) {
         LOG(WARNING) << "Fail to create to dbms sdk";
+        if (TEST == mode) {
+            FAIL();
+        }
         return;
     }
 
@@ -269,13 +278,16 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
         ::fesql::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
     if (!sdk) {
         LOG(WARNING) << "Fail to create to tablet sdk";
+        failure_flag = true;
         goto failure;
     }
 
     if (false == init_db(dbms_sdk, db_name)) {
+        failure_flag = true;
         goto failure;
     }
     if (false == init_tbl(dbms_sdk, db_name, schema_sql)) {
+        failure_flag = true;
         goto failure;
     }
 
@@ -290,9 +302,13 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
         col_f.Range(0, 1000, 2.0f);
         RealRepeater<double> col_d;
         col_d.Range(0, 10000, 10.0);
-        ::fesql::bm::Repeater<std::string> col_str64(
-            {"astring", "bstring", "cstring", "dstring", "estring", "fstring",
-             "gstring", "hstring", "istring", "jstring"});
+        std::vector<std::string> groups;
+        {
+            for (int i = 0; i < group_size; ++i) {
+                groups.push_back("group" + std::to_string(i));
+            }
+        }
+        ::fesql::bm::Repeater<std::string> col_str64(groups);
         ::fesql::bm::Repeater<std::string> col_str255(
             {"aaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbb", "ccccccccccccccccccc",
              "ddddddddddddddddd"});
@@ -357,6 +373,142 @@ failure:
     if (nullptr != dbms_sdk) {
         delete dbms_sdk;
     }
+    if (TEST == mode) {
+        ASSERT_FALSE(failure_flag);
+    }
+}
+void SIMPLE_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode, int64_t group_size,
+                        int64_t window_max_size) {  // NOLINT
+    int64_t record_size = group_size * window_max_size;
+    std::string select_sql =
+        "select col_str64, col_i64, col_i32, col_i16, col_f, col_d, col_str255 "
+        "from tbl limit " +
+        std::to_string(record_size) + ";";
+    if (BENCHMARK == mode) {
+        std::string query_type = "select 5 cols";
+        std::string label = query_type + "/group " +
+                            std::to_string(group_size) + "/max window size " +
+                            std::to_string(window_max_size);
+        state_ptr->SetLabel(label);
+    }
+    SIMPLE_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
+                      window_max_size);
+}
+
+void WINDOW_CASE0_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode, int64_t group_size,
+                        int64_t window_max_size) {
+    int64_t record_size = group_size * window_max_size;
+    std::string select_sql =
+        "SELECT "
+        "sum(col_i32) OVER w1 as sum_col_i32 \n"
+        "FROM tbl\n"
+        "window w1 as (PARTITION BY col_str64 \n"
+        "                  ORDER BY col_i64\n"
+        "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW) "
+        "limit " +
+        std::to_string(record_size) + ";";
+    if (BENCHMARK == mode) {
+        std::string query_type = "sum_col_i32";
+        std::string label = query_type + "/group " +
+                            std::to_string(group_size) + "/max window size " +
+                            std::to_string(window_max_size);
+        state_ptr->SetLabel(label);
+    }
+    WINDOW_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
+                      window_max_size);
+}
+
+void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode, int64_t group_size,
+                        int64_t window_max_size) {
+    int64_t record_size = group_size * window_max_size;
+    std::string select_sql =
+        "SELECT "
+        "sum(col_i32) OVER w1 as sum_col_i32, \n"
+        "sum(col_f) OVER w1 as sum_col_f \n"
+        "FROM tbl\n"
+        "window w1 as (PARTITION BY col_str64 \n"
+        "                  ORDER BY col_i64\n"
+        "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW) "
+        "limit " +
+        std::to_string(record_size) + ";";
+    if (BENCHMARK == mode) {
+        std::string query_type = "sum 2 cols";
+        std::string label = query_type + "/group " +
+                            std::to_string(group_size) + "/max window size " +
+                            std::to_string(window_max_size);
+        state_ptr->SetLabel(label);
+    }
+    WINDOW_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
+                      window_max_size);
+}
+
+/**
+ * sum 5 col
+ * @param state_ptr
+ * @param mode
+ * @param is_batch_mode
+ * @param record_size
+ */
+void WINDOW_CASE2_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode, int64_t group_size,
+                        int64_t window_max_size) {
+    int64_t record_size = group_size * window_max_size;
+    std::string select_sql =
+        "SELECT "
+        "sum(col_i32) OVER w1 as sum_col_i32, \n"
+        "sum(col_i16) OVER w1 as sum_col_i16, \n"
+        "sum(col_f) OVER w1 as sum_col_f, \n"
+        "sum(col_d) OVER w1 as sum_col_d \n"
+        "FROM tbl\n"
+        "window w1 as (PARTITION BY col_str64 \n"
+        "                  ORDER BY col_i64\n"
+        "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW) "
+        "limit " +
+        std::to_string(record_size) + ";";
+    if (BENCHMARK == mode) {
+        std::string query_type = "sum 4 cols";
+        std::string label =
+            query_type + "/group " + std::to_string(state_ptr->range(0)) +
+            "/max window size " + std::to_string(state_ptr->range(1));
+        state_ptr->SetLabel(label);
+    }
+
+    WINDOW_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
+                      window_max_size);
+}
+
+/**
+ * max i32
+ * @param state_ptr
+ * @param mode
+ * @param is_batch_mode
+ * @param record_size
+ */
+void WINDOW_CASE3_QUERY(benchmark::State *state_ptr, MODE mode,
+                        bool is_batch_mode, int64_t group_size,
+                        int64_t window_max_size) {
+    int64_t record_size = group_size * window_max_size;
+    std::string select_sql =
+        "SELECT "
+        "max(col_i32) OVER w1 as max_col_i32 \n"
+        "FROM tbl\n"
+        "window w1 as (PARTITION BY col_str64 \n"
+        "                  ORDER BY col_i64\n"
+        "                  ROWS BETWEEN 86400000 PRECEDING AND CURRENT ROW) "
+        "limit " +
+        std::to_string(record_size) + ";";
+    if (BENCHMARK == mode) {
+        std::string query_type = "max_col_i32";
+        std::string label = query_type + "/group " +
+                            std::to_string(group_size) + "/max window size " +
+                            std::to_string(window_max_size);
+        state_ptr->SetLabel(label);
+    }
+    WINDOW_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
+                      window_max_size);
 }
 
 }  // namespace bm

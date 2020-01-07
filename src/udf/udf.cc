@@ -8,6 +8,8 @@
  **/
 #include "udf/udf.h"
 #include <stdint.h>
+#include <algorithm>
+#include <vector>
 #include "proto/type.pb.h"
 #include "storage/type_ir_builder.h"
 #include "storage/window.h"
@@ -43,11 +45,65 @@ V sum(int8_t *input) {
     return result;
 }
 
+template <class V>
+V max(int8_t *input) {
+    V result = 0;
+    if (nullptr == input) {
+        return result;
+    }
+    ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
+    ColumnIteratorImpl<V> *col = (ColumnIteratorImpl<V> *)(list_ref->iterator);
+
+    if (col->Valid()) {
+        result = col->Next();
+    }
+    while (col->Valid()) {
+        V v = col->Next();
+        if (v > result) {
+            result = v;
+        }
+    }
+    return result;
+}
+
+template <class V>
+V min(int8_t *input) {
+    V result = 0;
+    if (nullptr == input) {
+        return result;
+    }
+    ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
+    ColumnIteratorImpl<V> *col = (ColumnIteratorImpl<V> *)(list_ref->iterator);
+
+    if (col->Valid()) {
+        result = col->Next();
+    }
+    while (col->Valid()) {
+        V v = col->Next();
+        if (v < result) {
+            result = v;
+        }
+    }
+    return result;
+}
+
 int16_t sum_int16(int8_t *input) { return sum<int16_t>(input); }
 int32_t sum_int32(int8_t *input) { return sum<int32_t>(input); }
 int64_t sum_int64(int8_t *input) { return sum<int64_t>(input); }
 float sum_float(int8_t *input) { return sum<float>(input); }
 double sum_double(int8_t *input) { return sum<double>(input); }
+
+int16_t max_int16(int8_t *input) { return max<int16_t>(input); }
+int32_t max_int32(int8_t *input) { return max<int32_t>(input); }
+int64_t max_int64(int8_t *input) { return max<int64_t>(input); }
+float max_float(int8_t *input) { return max<float>(input); }
+double max_double(int8_t *input) { return max<double>(input); }
+
+int16_t min_int16(int8_t *input) { return min<int16_t>(input); }
+int32_t min_int32(int8_t *input) { return min<int32_t>(input); }
+int64_t min_int64(int8_t *input) { return min<int64_t>(input); }
+float min_float(int8_t *input) { return min<float>(input); }
+double min_double(int8_t *input) { return min<double>(input); }
 
 }  // namespace v1
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
@@ -64,6 +120,18 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "sum_int64", reinterpret_cast<void *>(&v1::sum_int64));
     AddSymbol(jd, mi, "sum_double", reinterpret_cast<void *>(&v1::sum_double));
     AddSymbol(jd, mi, "sum_float", reinterpret_cast<void *>(&v1::sum_float));
+
+    AddSymbol(jd, mi, "max_int16", reinterpret_cast<void *>(&v1::max_int16));
+    AddSymbol(jd, mi, "max_int32", reinterpret_cast<void *>(&v1::max_int32));
+    AddSymbol(jd, mi, "max_int64", reinterpret_cast<void *>(&v1::max_int64));
+    AddSymbol(jd, mi, "max_double", reinterpret_cast<void *>(&v1::max_double));
+    AddSymbol(jd, mi, "max_float", reinterpret_cast<void *>(&v1::max_float));
+
+    AddSymbol(jd, mi, "min_int16", reinterpret_cast<void *>(&v1::min_int16));
+    AddSymbol(jd, mi, "min_int32", reinterpret_cast<void *>(&v1::min_int32));
+    AddSymbol(jd, mi, "min_int64", reinterpret_cast<void *>(&v1::min_int64));
+    AddSymbol(jd, mi, "min_double", reinterpret_cast<void *>(&v1::min_double));
+    AddSymbol(jd, mi, "min_float", reinterpret_cast<void *>(&v1::min_float));
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT
@@ -78,12 +146,26 @@ void RegisterUDFToModule(::llvm::Module *m) {
     ::llvm::Type *float_ty = ::llvm::Type::getFloatTy(m->getContext());
     ::llvm::Type *double_ty = ::llvm::Type::getDoubleTy(m->getContext());
     ::llvm::Type *i8_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
+
     m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
+
     m->getOrInsertFunction("sum_int16", i16_ty, i8_ptr_ty);
     m->getOrInsertFunction("sum_int32", i32_ty, i8_ptr_ty);
     m->getOrInsertFunction("sum_int64", i64_ty, i8_ptr_ty);
     m->getOrInsertFunction("sum_float", float_ty, i8_ptr_ty);
     m->getOrInsertFunction("sum_double", double_ty, i8_ptr_ty);
+
+    m->getOrInsertFunction("max_int16", i16_ty, i8_ptr_ty);
+    m->getOrInsertFunction("max_int32", i32_ty, i8_ptr_ty);
+    m->getOrInsertFunction("max_int64", i64_ty, i8_ptr_ty);
+    m->getOrInsertFunction("max_float", float_ty, i8_ptr_ty);
+    m->getOrInsertFunction("max_double", double_ty, i8_ptr_ty);
+
+    m->getOrInsertFunction("min_int16", i16_ty, i8_ptr_ty);
+    m->getOrInsertFunction("min_int32", i32_ty, i8_ptr_ty);
+    m->getOrInsertFunction("min_int64", i64_ty, i8_ptr_ty);
+    m->getOrInsertFunction("min_float", float_ty, i8_ptr_ty);
+    m->getOrInsertFunction("min_double", double_ty, i8_ptr_ty);
 }
 }  // namespace udf
 }  // namespace fesql

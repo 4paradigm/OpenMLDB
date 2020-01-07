@@ -48,9 +48,9 @@ class RunSession {
         return compile_info_->sql_ctx.schema;
     }
 
-    int32_t Run(std::vector<int8_t*>& buf, uint32_t limit);  // NOLINT
+    int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
     int32_t RunOne(const Row& in_row, Row& out_row);              // NOLINT
-    int32_t RunBatch(std::vector<int8_t*>& buf, uint32_t limit);  // NOLINT
+    int32_t RunBatch(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
 
  private:
     inline void SetCompileInfo(std::shared_ptr<CompileInfo> compile_info) {

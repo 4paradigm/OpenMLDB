@@ -88,8 +88,6 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 RunSession::RunSession() {}
 RunSession::~RunSession() {}
 
-
-
 int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();
     std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
@@ -366,7 +364,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
     }
     return 0;
 }
-int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
+int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();
     std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
     for (auto op : compile_info_->sql_ctx.ops.ops) {
@@ -396,47 +394,65 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
                 // out buffers
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[project_op->idx];
+                uint64_t min = limit > 0 ? limit : INT64_MAX;
+                if (project_op->scan_limit != 0 &&
+                    min > project_op->scan_limit) {
+                    min = project_op->scan_limit;
+                }
+                if (min != 0 && INT64_MAX != min) {
+                    out_buffers.reserve(min);
+                }
 
                 if (project_op->window_agg) {
-                    uint64_t min = limit > 0 ? limit : INT64_MAX;
-                    if (project_op->scan_limit != 0 &&
-                        min > project_op->scan_limit) {
-                        min = project_op->scan_limit;
-                    }
-
                     // iterator whole table
                     std::unique_ptr<::fesql::storage::TableIterator> it =
                         status->table->NewTraverseIterator(
                             project_op->w.index_name);
                     it->SeekToFirst();
-                    uint32_t count = 0;
+                    uint64_t count = 0;
                     while (it->Valid() && count < min) {
-                        std::vector<std::pair<uint64_t, Row>> buffer;
-                        // TODO(chenjing): resize or reserve with count
-                        buffer.reserve(10000);
-                        while (it->CurrentTsValid()) {
+                        //                        std::vector<std::pair<uint64_t,
+                        //                        Row>> buffer;
+                        std::vector<Row> rows;
+                        std::vector<uint64_t> keys;
+                        // TODO(chenjing): resize or reserve with getCount()
+                        // from storage api
+                        //                        buffer.reserve(10000);
+                        rows.resize(10000);
+                        keys.resize(10000);
+                        uint32_t start = 10000-1;
+                        while (start >= 0 && it->CurrentTsValid()) {
                             ::fesql::storage::Slice value = it->GetValue();
                             ::fesql::storage::Row row(
                                 {.buf = reinterpret_cast<int8_t*>(
                                      const_cast<char*>(value.data())),
                                  .size = value.size()});
-                            buffer.push_back(std::make_pair(it->GetKey(), row));
+                            //                            buffer.push_back(std::make_pair(it->GetKey(),
+                            //                            row));
+                            rows[start] = row;
+                            keys[start] = (it->GetKey());
+                            start--;
                             it->NextTs();
                         }
                         it->NextTsInPks();
 
+                        DLOG(INFO) << "buffer size: " << rows.size();
                         // TODO(chenjing): decide window type
-                        ::fesql::storage::CurrentHistoryWindow window(
-                            project_op->w.start_offset);
-                        for (auto iter = buffer.rbegin();
-                             count < min && iter != buffer.rend(); iter++) {
-                            window.BufferData(iter->first, iter->second);
+                        ::fesql::storage::CurrentHistorySlideWindow window(
+                            project_op->w.start_offset, rows, keys, start+1);
+                        //                        window.Reserve(buffer.size());
+                        //                        for (auto iter =
+                        //                        buffer.rbegin();
+                        //                             count < min && iter !=
+                        //                             buffer.rend(); iter++) {
+                        while (count < min && window.Slide()) {
+//                            window.BufferData(iter->first, iter->second);
                             int8_t* output = NULL;
                             size_t output_size = 0;
                             // handle window
                             fesql::storage::WindowIteratorImpl impl(window);
                             uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl),
-                                               iter->second.size, &output);
+                                               0, &output);
                             if (ret != 0) {
                                 LOG(WARNING) << "fail to run udf " << ret;
                                 return 1;
@@ -451,12 +467,8 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
                     std::unique_ptr<::fesql::storage::TableIterator> it =
                         status->table->NewTraverseIterator();
                     it->SeekToFirst();
-                    uint64_t min = limit > 0 ? limit : INT64_MAX;
-                    if (project_op->scan_limit != 0 &&
-                        min > project_op->scan_limit) {
-                        min = project_op->scan_limit;
-                    }
-                    uint32_t count = 0;
+
+                    uint64_t count = 0;
                     while (it->Valid() && count++ < min) {
                         ::fesql::storage::Slice value = it->GetValue();
                         ::fesql::storage::Row row(
@@ -510,12 +522,13 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint32_t limit) {
             }
         }
     }
+    buf.reserve(temp_buffers[op_size - 1].size());
     for (auto row : temp_buffers[op_size - 1]) {
         buf.push_back(row.buf);
     }
     return 0;
 }
-int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
+int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();
     std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
     for (auto op : compile_info_->sql_ctx.ops.ops) {
@@ -533,7 +546,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint32_t limit) {
                 std::unique_ptr<::fesql::storage::TableIterator> it =
                     status->table->NewTraverseIterator();
                 it->SeekToFirst();
-                uint32_t min = limit;
+                uint64_t min = limit;
                 if (min > scan_op->limit) {
                     min = scan_op->limit;
                 }

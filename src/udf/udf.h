@@ -27,6 +27,18 @@ int64_t sum_int64(int8_t *input);
 float sum_float(int8_t *input);
 double sum_double(int8_t *input);
 
+int16_t max_int16(int8_t *input);
+int32_t max_int32(int8_t *input);
+int64_t max_int64(int8_t *input);
+float max_float(int8_t *input);
+double max_double(int8_t *input);
+
+int16_t min_int16(int8_t *input);
+int32_t min_int32(int8_t *input);
+int64_t min_int64(int8_t *input);
+float min_float(int8_t *input);
+double min_double(int8_t *input);
+
 #ifdef __cplusplus
 }
 #endif
