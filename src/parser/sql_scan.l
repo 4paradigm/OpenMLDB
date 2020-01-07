@@ -74,6 +74,7 @@ self [,()\[\].\:\+\-\*\/\%\^\<\>\=]
 
 %x COMMENT
 %s FUN
+%s FUN_INDENT
 %s BTWMODE
 
 ident_start [A-Za-z\200-\377_]
@@ -83,7 +84,7 @@ identifier {ident_start}{ident_cont}*
 %%
 
 "%%sql\n" {columnpos = 1; BEGIN INITIAL;}
-"%%fun\n" {columnpos = 1;BEGIN FUN;}
+"%%fun\n" {columnpos = 1;BEGIN FUN_INDENT;}
 
  /* keywords */
 
@@ -155,7 +156,7 @@ DUAL	{ return DUAL; }
 EACH	{ return EACH; }
 ELSE	{ return ELSE; }
 ELSEIF	{ return ELSEIF; }
-<FUN>END {return FUNDEFEND;}
+<FUN_INDENT>END {return FUNDEFEND;}
 END	{return END; }
 ENUM { return ENUM; }
 ESCAPED	{ return ESCAPED; }
@@ -330,7 +331,8 @@ ZEROFILL	{ return ZEROFILL; }
 
 
  /* function definition */
-<FUN>"def" {
+<FUN_INDENT>"def" {
+            BEGIN FUN;
             return DEF;
        }
 
@@ -341,10 +343,12 @@ ZEROFILL	{ return ZEROFILL; }
     }
 
 
-<FUN>{newline} { columnpos = 1; return NEWLINE;}
+<FUN>{newline} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINE;}
+<FUN_INDENT>{newline} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINE;}
 
-<FUN>{indent} {
+<FUN_INDENT>{indent} {
         yylval->intval = strlen(yytext);
+        BEGIN FUN;
         return INDENT;
 }
 

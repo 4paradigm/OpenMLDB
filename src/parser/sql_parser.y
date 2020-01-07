@@ -473,8 +473,8 @@ func_stmt:
          ;
 
 fn_def :
-       DEF INDENT  VARNAME'(' plist ')' ':' types {
-            $$ = node_manager->MakeFnDefNode($3, $5, $8);
+       DEF VARNAME'(' plist ')' ':' types {
+            $$ = node_manager->MakeFnDefNode($2, $4, $7);
        };
 
 assign_stmt: VARNAME '=' expr {
@@ -482,8 +482,8 @@ assign_stmt: VARNAME '=' expr {
            };
 
 return_stmt:
-           RETURN INDENT expr {
-            $$ = node_manager->MakeReturnStmtNode($3);
+           RETURN expr {
+            $$ = node_manager->MakeReturnStmtNode($2);
            };
 
 types:  I32

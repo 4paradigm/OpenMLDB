@@ -94,7 +94,17 @@ INSTANTIATE_TEST_CASE_P(
         "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n\ndef "
         "test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n",
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
-        "d\nend"));
+        "d\nend",
+        // 变量赋值
+        "%%fun\ndef test(x:i32,y:i32):i32\n    result=1\n    c=x+y\n"
+        "    result=c\n    return result\nend",
+        "%%fun\ndef test(x:i32,y:i32):i32\n\tresult=1\n\tc=x+y\n"
+        "\tresult=c\n\treturn result\nend",
+        "%%fun\ndef test(x:i32,y:i32):i32\n    result = 1\n\tc = x + y\n"
+        "\tresult=c\n\treturn result\nend",
+        "%%fun\ndef test(x:i32,y:i32):i32\n\tresult=1\n\tc = x+y\n"
+        "\tresult=c\n\treturn result\nend"
+        ));
 
 INSTANTIATE_TEST_CASE_P(
     SQLCreate, SqlParserTest,
