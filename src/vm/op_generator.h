@@ -69,6 +69,7 @@ class OpGenerator {
                      OpNode** op,
                      Status& status);  // NOLINT
     bool GenMerge(const ::fesql::node::MergePlanNode* node,
+                    const std::vector<OpNode*> children,
                      ::llvm::Module* module,
                      OpNode** op,
                      Status& status);  // NOLINT

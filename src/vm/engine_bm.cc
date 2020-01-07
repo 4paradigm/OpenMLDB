@@ -16,6 +16,7 @@
  */
 
 #include "benchmark/benchmark.h"
+#include "bm/base_bm.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -56,8 +57,7 @@ class TableMgrImpl : public TableMgr {
     std::shared_ptr<TableStatus> status_;
 };
 
-static void BuildBuf(int8_t** buf, uint32_t* size,
-                     ::fesql::type::TableDef& table) { // NOLINT
+static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
@@ -96,7 +96,11 @@ static void BuildBuf(int8_t** buf, uint32_t* size,
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col6");
     }
+}
 
+static void BuildBuf(int8_t** buf, uint32_t* size,
+                     ::fesql::type::TableDef& table) {  // NOLINT
+    BuildTableDef(table);
     ::fesql::type::IndexDef* index = table.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col6");
@@ -116,6 +120,54 @@ static void BuildBuf(int8_t** buf, uint32_t* size,
     *size = total_size;
 }
 
+static void Data_WindowCase1(TableStatus* status, int32_t data_size) {
+    DLOG(INFO) << "insert window data";
+    BuildTableDef(status->table_def);
+    // Build index
+    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col0");
+    index->set_second_key("col5");
+
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+
+    ::fesql::bm::Repeater<std::string> col0(
+        std::vector<std::string>({"hello"}));
+    ::fesql::bm::IntRepeater<int32_t> col1;
+    col1.Range(1, 100, 1);
+    ::fesql::bm::IntRepeater<int16_t> col2;
+    col2.Range(1u, 100u, 2);
+    ::fesql::bm::RealRepeater<float> col3;
+    col3.Range(1.0, 100.0, 3.0f);
+    ::fesql::bm::RealRepeater<double> col4;
+    col4.Range(100.0, 10000.0, 10.0);
+    ::fesql::bm::IntRepeater<int64_t> col5;
+    col5.Range(1576571615000 - 100000000, 1576571615000, 1000);
+    ::fesql::bm::Repeater<std::string> col6({"astring", "bstring", "cstring",
+                                             "dstring", "estring", "fstring",
+                                             "gstring", "hstring"});
+
+    for (int i = 0; i < data_size; ++i) {
+        std::string str1 = col0.GetValue();
+        std::string str2 = col6.GetValue();
+        storage::RowBuilder builder(status->table_def.columns());
+        uint32_t total_size = builder.CalTotalLength(str1.size() + str2.size());
+        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
+        builder.SetBuffer(ptr, total_size);
+        builder.AppendString(str1.c_str(), str1.size());
+        builder.AppendInt32(col1.GetValue());
+        builder.AppendInt16(col2.GetValue());
+        builder.AppendFloat(col3.GetValue());
+        builder.AppendDouble(col4.GetValue());
+        builder.AppendInt64(col5.GetValue());
+        builder.AppendString(str2.c_str(), str2.size());
+        table->Put(reinterpret_cast<char*>(ptr), total_size);
+        free(ptr);
+    }
+    status->table = std::move(table);
+}
 static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
@@ -128,9 +180,10 @@ static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
+    delete ptr;
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
-    const std::string sql ="SELECT col4 FROM t1 limit 2;";
+    const std::string sql = "SELECT col4 FROM t1 limit 2;";
     Engine engine(&table_mgr);
     RunSession session;
     base::Status query_status;
@@ -138,10 +191,9 @@ static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
         benchmark::DoNotOptimize(session.Run(output, 2));
-        int8_t* output1 = output[0];
-        int8_t* output2 = output[1];
-        free(output1);
-        free(output2);
+        for (int8_t* row : output) {
+            free(row);
+        }
     }
 }
 
@@ -157,9 +209,10 @@ static void BM_EngineSimpleSelectVarchar(benchmark::State& state) {  // NOLINT
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
+    delete ptr;
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
-    const std::string sql ="SELECT col6 FROM t1 limit 1;";
+    const std::string sql = "SELECT col6 FROM t1 limit 1;";
     Engine engine(&table_mgr);
     RunSession session;
     base::Status query_status;
@@ -167,8 +220,9 @@ static void BM_EngineSimpleSelectVarchar(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
         benchmark::DoNotOptimize(session.Run(output, 2));
-        int8_t* output1 = output[0];
-        free(output1);
+        for (int8_t* row : output) {
+            free(row);
+        }
     }
 }
 
@@ -184,9 +238,10 @@ static void BM_EngineSimpleSelectInt32(benchmark::State& state) {  // NOLINT
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
+    delete ptr;
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
-    const std::string sql ="SELECT col1 FROM t1 limit 1;";
+    const std::string sql = "SELECT col1 FROM t1 limit 1;";
     Engine engine(&table_mgr);
     RunSession session;
     base::Status query_status;
@@ -194,8 +249,9 @@ static void BM_EngineSimpleSelectInt32(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
         benchmark::DoNotOptimize(session.Run(output, 2));
-        int8_t* output1 = output[0];
-        free(output1);
+        for (int8_t* row : output) {
+            free(row);
+        }
     }
 }
 
@@ -211,6 +267,7 @@ static void BM_EngineSimpleUDF(benchmark::State& state) {  // NOLINT
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
+    delete ptr;
     status->table = std::move(table);
     TableMgrImpl table_mgr(status);
     const std::string sql =
@@ -223,8 +280,146 @@ static void BM_EngineSimpleUDF(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
         benchmark::DoNotOptimize(session.Run(output, 2));
-        int8_t* output1 = output[0];
-        free(output1);
+        for (int8_t* row : output) {
+            free(row);
+        }
+    }
+}
+
+static void BM_EngineWindowSumFeature1(benchmark::State& state) {  // NOLINT
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+
+    // prepare data into table
+    std::shared_ptr<TableStatus> status(new TableStatus());
+
+    int64_t limit_cnt = state.range(0);
+    int64_t size = state.range(1);
+    Data_WindowCase1(status.get(), size);
+    TableMgrImpl table_mgr(status);
+
+    const std::string sql =
+        "SELECT "
+        "sum(col4) OVER w1 as w1_col4_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status query_status;
+    engine.Get(sql, "db", session, query_status);
+    for (auto _ : state) {
+        std::vector<int8_t*> output(2);
+        benchmark::DoNotOptimize(session.Run(output, limit_cnt));
+        for (int8_t* row : output) {
+            free(row);
+        }
+    }
+}
+
+static void BM_EngineRunBatchWindowSumFeature1(
+    benchmark::State& state) {  // NOLINT
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+
+    // prepare data into table
+    std::shared_ptr<TableStatus> status(new TableStatus());
+
+    int64_t limit_cnt = state.range(0);
+    int64_t size = state.range(1);
+    Data_WindowCase1(status.get(), size);
+    TableMgrImpl table_mgr(status);
+
+    const std::string sql =
+        "SELECT "
+        "sum(col4) OVER w1 as w1_col4_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status query_status;
+    engine.Get(sql, "db", session, query_status);
+    for (auto _ : state) {
+        std::vector<int8_t*> output(2);
+        benchmark::DoNotOptimize(session.RunBatch(output, limit_cnt));
+        for (int8_t* row : output) {
+            free(row);
+        }
+    }
+}
+static void BM_EngineRunBatchWindowSumFeature5(
+    benchmark::State& state) {  // NOLINT
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+
+    // prepare data into table
+    std::shared_ptr<TableStatus> status(new TableStatus());
+
+    int64_t limit_cnt = state.range(0);
+    int64_t size = state.range(1);
+    Data_WindowCase1(status.get(), size);
+    TableMgrImpl table_mgr(status);
+
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status query_status;
+    engine.Get(sql, "db", session, query_status);
+    for (auto _ : state) {
+        std::vector<int8_t*> output(2);
+        benchmark::DoNotOptimize(session.RunBatch(output, limit_cnt));
+        for (int8_t* row : output) {
+            free(row);
+        }
+    }
+}
+
+static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+
+    // prepare data into table
+    std::shared_ptr<TableStatus> status(new TableStatus());
+
+    int64_t limit_cnt = state.range(0);
+    int64_t size = state.range(1);
+    Data_WindowCase1(status.get(), size);
+    TableMgrImpl table_mgr(status);
+
+    const std::string sql =
+        "SELECT "
+        "sum(col1) OVER w1 as w1_col1_sum, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col4) OVER w1 as w1_col4_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum, "
+        "sum(col5) OVER w1 as w1_col5_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN "
+        "30d "
+        "PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status query_status;
+    engine.Get(sql, "db", session, query_status);
+    for (auto _ : state) {
+        std::vector<int8_t*> output(2);
+        benchmark::DoNotOptimize(session.Run(output, limit_cnt));
+        for (int8_t* row : output) {
+            free(row);
+        }
     }
 }
 
@@ -232,6 +427,50 @@ BENCHMARK(BM_EngineSimpleSelectVarchar);
 BENCHMARK(BM_EngineSimpleSelectDouble);
 BENCHMARK(BM_EngineSimpleSelectInt32);
 BENCHMARK(BM_EngineSimpleUDF);
+BENCHMARK(BM_EngineWindowSumFeature1)
+    ->Args({1, 2})
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+
+BENCHMARK(BM_EngineWindowSumFeature5)
+    ->Args({1, 2})
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+
+BENCHMARK(BM_EngineRunBatchWindowSumFeature1)
+    ->Args({1, 2})
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+
+BENCHMARK(BM_EngineRunBatchWindowSumFeature5)
+    ->Args({1, 2})
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 10000})
+    ->Args({100, 100})
+    ->Args({1000, 1000})
+    ->Args({10000, 10000});
+
 }  // namespace vm
 }  // namespace fesql
 

@@ -50,26 +50,25 @@ struct TestString {
     char* data;
 };
 
-void PrintInt16(int16_t val) { printf("int16_t %d\n", val); }
+void PrintInt16(int16_t val) { std::cout << "int16_" << val << std::endl; }
 
-void PrintInt32(int32_t val) { printf("int32_t %d\n", val); }
+void PrintInt32(int32_t val) { std::cout << "int32" << val << std::endl; }
 
 void PrintPtr(int8_t* ptr) { printf("ptr %p\n", ptr); }
 
 void PrintString(int8_t* ptr) {
     TestString* ts = reinterpret_cast<TestString*>(ptr);
-    printf("char* start %p\n", ts->data);
-    printf("char* size %d\n", ts->size);
     std::string str(ts->data, ts->size);
     std::cout << "content " << str << std::endl;
-    printf("ptr %p\n", ptr);
 }
 
 template <class T>
 T PrintList(int8_t* input) {
     T sum = 0;
     if (nullptr == input) {
-        std::cout << "list is null";
+        std::cout << "list is null" << std::endl;
+    } else {
+        std::cout << "list ptr is ok" << std::endl;
     }
     ::fesql::storage::ListRef* list_ref =
         reinterpret_cast<::fesql::storage::ListRef*>(input);
@@ -94,6 +93,8 @@ int32_t PrintListString(int8_t* input) {
     int32_t cnt = 0;
     if (nullptr == input) {
         std::cout << "list is null";
+    } else {
+        std::cout << "list ptr is ok" << std::endl;
     }
     ::fesql::storage::ListRef* col_string =
         reinterpret_cast<::fesql::storage::ListRef*>(input);
@@ -827,7 +828,8 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
     *size = total_size;
 }
 
-void BuildWindow(int8_t** buf) {
+void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
+                 int8_t** buf) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
     {
@@ -862,8 +864,6 @@ void BuildWindow(int8_t** buf) {
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col6");
     }
-
-    std::vector<fesql::storage::Row> rows;
 
     {
         storage::RowBuilder builder(table.columns());
@@ -981,42 +981,48 @@ TEST_F(BufIRBuilderTest, encode_ir_builder) {
 
 TEST_F(BufIRBuilderTest, native_test_load_int16_col) {
     int8_t* ptr = NULL;
-    BuildWindow(&ptr);
+    std::vector<fesql::storage::Row> rows;
+    BuildWindow(rows, &ptr);
     RunColCase<int16_t>(16 * 5, ::fesql::type::kInt16, "col2", ptr);
     free(ptr);
 }
 
 TEST_F(BufIRBuilderTest, native_test_load_int32_col) {
     int8_t* ptr = NULL;
-    BuildWindow(&ptr);
+    std::vector<fesql::storage::Row> rows;
+    BuildWindow(rows, &ptr);
     RunColCase<int32_t>(32 * 5, ::fesql::type::kInt32, "col1", ptr);
     free(ptr);
 }
 
 TEST_F(BufIRBuilderTest, native_test_load_int64_col) {
     int8_t* ptr = NULL;
-    BuildWindow(&ptr);
+    std::vector<fesql::storage::Row> rows;
+    BuildWindow(rows, &ptr);
     RunColCase<int64_t>(64 * 5, ::fesql::type::kInt64, "col5", ptr);
     free(ptr);
 }
 
 TEST_F(BufIRBuilderTest, native_test_load_float_col) {
     int8_t* ptr = NULL;
-    BuildWindow(&ptr);
+    std::vector<fesql::storage::Row> rows;
+    BuildWindow(rows, &ptr);
     RunColCase<float>(2.1f * 5, ::fesql::type::kFloat, "col3", ptr);
     free(ptr);
 }
 
 TEST_F(BufIRBuilderTest, native_test_load_double_col) {
     int8_t* ptr = NULL;
-    BuildWindow(&ptr);
+    std::vector<fesql::storage::Row> rows;
+    BuildWindow(rows, &ptr);
     RunColCase<double>(3.1f * 5, ::fesql::type::kDouble, "col4", ptr);
     free(ptr);
 }
 
 TEST_F(BufIRBuilderTest, native_test_load_string_col) {
     int8_t* ptr = NULL;
-    BuildWindow(&ptr);
+    std::vector<fesql::storage::Row> rows;
+    BuildWindow(rows, &ptr);
     RunColCase<int32_t>(5, ::fesql::type::kVarchar, "col6", ptr);
     free(ptr);
 }

@@ -36,4 +36,4 @@ list(APPEND test_list engine_test)
 
 add_executable(engine_bm engine_bm.cc)
 target_link_libraries(engine_bm  ${vm_deps_libs}
-     benchmark protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+     benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread)

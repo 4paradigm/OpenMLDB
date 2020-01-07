@@ -62,6 +62,13 @@ TEST_F(TableTest, SingleIndexIterator) {
     row.clear();
     row.resize(size);
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.AppendString("key1", 4);
+    builder.AppendInt64(33);
+    builder.AppendString("value2", 6);
+    table.Put(row.c_str(), row.length());
+    row.clear();
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
     builder.AppendString("key2", 4);
     builder.AppendInt64(11);
     builder.AppendString("value2", 6);
@@ -115,7 +122,7 @@ TEST_F(TableTest, SingleIndexIterator) {
         iter->Next();
         count++;
     }
-    ASSERT_EQ(count, 4);
+    ASSERT_EQ(count, 5);
 
     // test NewTraverseIterator(index_name)
     iter = table.NewTraverseIterator("index1");
@@ -125,9 +132,9 @@ TEST_F(TableTest, SingleIndexIterator) {
         iter->Next();
         count++;
     }
-    ASSERT_EQ(count, 4);
+    ASSERT_EQ(count, 5);
 
-    // test NewTraverseIterator(key, ts)
+    // test NewIterator(key, ts)
     iter = table.NewIterator("key2", 30);
     count = 0;
     while (iter->Valid()) {
@@ -145,6 +152,31 @@ TEST_F(TableTest, SingleIndexIterator) {
     iter = table.NewIterator("key2", 0);
     count = 0;
     ASSERT_FALSE(iter->Valid());
+
+    // test NewTraverseIterator(index_name) with current Ts valid
+    iter = table.NewTraverseIterator("index1");
+    std::map<std::string, int32_t> key_counters;
+    iter->SeekToFirst();
+
+    // iterator 1st segment of pk key1
+    while (iter->CurrentTsValid()) {
+        iter->NextTs();
+        count++;
+    }
+    ASSERT_EQ(count, 3);
+    ASSERT_EQ(iter->GetPK().ToString(), "key1");
+
+    // iterator 2nd segment of pk key1
+    count = 0;
+    iter->NextTsInPks();
+    ASSERT_TRUE(iter->Valid());
+    ASSERT_TRUE(iter->CurrentTsValid());
+    while (iter->CurrentTsValid()) {
+        iter->NextTs();
+        count++;
+    }
+    ASSERT_EQ(count, 2);
+    ASSERT_EQ(iter->GetPK().ToString(), "key2");
 }
 
 TEST_F(TableTest, MultiIndexIterator) {
@@ -280,6 +312,26 @@ TEST_F(TableTest, MultiIndexIterator) {
     }
     ASSERT_EQ(count, 4);
 
+    // test NewTraverseIterator(index_name)
+    count = 0;
+    iter = table.NewTraverseIterator("index1");
+    iter->SeekToFirst();
+    ASSERT_EQ(iter->GetPK().ToString(), "i1_k2");
+    while (iter->CurrentTsValid()) {
+        iter->NextTs();
+        count++;
+    }
+    ASSERT_EQ(count, 1);
+
+    count = 0;
+    iter->NextTsInPks();
+    ASSERT_EQ(iter->GetPK().ToString(), "i1_k1");
+    while (iter->CurrentTsValid()) {
+        iter->NextTs();
+        count++;
+    }
+    ASSERT_EQ(count, 3);
+
     // test NewIterator(key, ts)
     iter = table.NewIterator("i1_k1", 30);
     count = 0;
@@ -335,8 +387,8 @@ TEST_F(TableTest, FullTableTest) {
     char value[12];
     for (int i = 0; i < entry_count; ++i) {
         row.resize(size);
-        sprintf(key, "key%03d", i % 10);  //NOLINT
-        sprintf(value, "value%03d", i % 100);  //NOLINT
+        sprintf(key, "key%03d", i % 10);       // NOLINT
+        sprintf(value, "value%03d", i % 100);  // NOLINT
         builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
         builder.AppendString(key, 6);
         builder.AppendInt64(i % 10);

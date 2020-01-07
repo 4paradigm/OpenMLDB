@@ -35,7 +35,10 @@ class TableIterator {
     void Seek(uint64_t time);
     void Seek(const std::string& key, uint64_t ts);
     bool Valid();
+    bool CurrentTsValid();
     void Next();
+    void NextTs();
+    void NextTsInPks();
     Slice GetValue() const;
     uint64_t GetKey() const;
     Slice GetPK() const;
@@ -89,6 +92,10 @@ class Table {
         uint32_t ts_pos;
         std::vector<ColInfo> keys;
     };
+
+    const std::map<std::string, IndexSt>& GetIndexMap() const {
+        return index_map_;
+    }
 
  private:
     std::unique_ptr<TableIterator> NewIndexIterator(const std::string& pk,

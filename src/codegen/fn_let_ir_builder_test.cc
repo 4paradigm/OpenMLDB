@@ -131,7 +131,6 @@ void AddFunc(const std::string& fn, ::llvm::Module* m) {
     ASSERT_TRUE(ok);
 }
 
-
 TEST_F(FnLetIRBuilderTest, test_primary) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -150,8 +149,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     ret = planner.CreatePlanTree(list, trees, status);
     ASSERT_EQ(0, ret);
     ::fesql::node::ProjectListPlanNode* pp_node_ptr =
-        (::fesql::node::ProjectListPlanNode*)(trees[0]
-                                                  ->GetChildren()[0]);
+        (::fesql::node::ProjectListPlanNode*)(trees[0]->GetChildren()[0]);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
@@ -402,7 +400,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     free(ptr);
 }
 
-void BuildWindow(int8_t** buf) {
+void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
+                 int8_t** buf) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
     {
@@ -438,8 +437,6 @@ void BuildWindow(int8_t** buf) {
         column->set_name("col6");
     }
 
-    std::vector<fesql::storage::Row> rows;
-
     {
         storage::RowBuilder builder(table.columns());
         std::string str = "1";
@@ -447,11 +444,11 @@ void BuildWindow(int8_t** buf) {
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
 
         builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
+        builder.AppendInt32(1);
+        builder.AppendInt16(2);
+        builder.AppendFloat(3.1f);
+        builder.AppendDouble(4.1);
+        builder.AppendInt64(5);
         builder.AppendString(str.c_str(), 1);
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
@@ -461,11 +458,11 @@ void BuildWindow(int8_t** buf) {
         uint32_t total_size = builder.CalTotalLength(str.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
+        builder.AppendInt32(11);
+        builder.AppendInt16(22);
+        builder.AppendFloat(33.1f);
+        builder.AppendDouble(44.1);
+        builder.AppendInt64(55);
         builder.AppendString(str.c_str(), str.size());
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
@@ -475,11 +472,11 @@ void BuildWindow(int8_t** buf) {
         uint32_t total_size = builder.CalTotalLength(str.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
+        builder.AppendInt32(111);
+        builder.AppendInt16(222);
+        builder.AppendFloat(333.1f);
+        builder.AppendDouble(444.1);
+        builder.AppendInt64(555);
         builder.AppendString(str.c_str(), str.size());
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
@@ -489,11 +486,11 @@ void BuildWindow(int8_t** buf) {
         uint32_t total_size = builder.CalTotalLength(str.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
+        builder.AppendInt32(1111);
+        builder.AppendInt16(2222);
+        builder.AppendFloat(3333.1f);
+        builder.AppendDouble(4444.1);
+        builder.AppendInt64(5555);
         builder.AppendString("4444", str.size());
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
@@ -505,11 +502,11 @@ void BuildWindow(int8_t** buf) {
         uint32_t total_size = builder.CalTotalLength(str.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
+        builder.AppendInt32(11111);
+        builder.AppendInt16(22222);
+        builder.AppendFloat(33333.1f);
+        builder.AppendDouble(44444.1);
+        builder.AppendInt64(55555);
         builder.AppendString(str.c_str(), str.size());
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
@@ -519,12 +516,8 @@ void BuildWindow(int8_t** buf) {
     *buf = reinterpret_cast<int8_t*>(w);
 }
 
-TEST_F(FnLetIRBuilderTest, test_extern_agg_udf_project) {
-    ::fesql::node::NodePointVector list;
-    ::fesql::parser::FeSQLParser parser;
-    ::fesql::node::NodeManager manager;
-    ::fesql::base::Status status;
-    int ret = parser.parse(
+TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
+    std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum , "
         "sum(col3) OVER w1 as w1_col3_sum, "
@@ -533,8 +526,13 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_udf_project) {
         "sum(col5) OVER w1 as w1_col5_sum  "
         "FROM t1 WINDOW "
         "w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
-        "FOLLOWING) limit 10;",
-        list, &manager, status);
+        "FOLLOWING) limit 10;";
+
+    ::fesql::node::NodePointVector list;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::node::NodeManager manager;
+    ::fesql::base::Status status;
+    int ret = parser.parse(sql, list, &manager, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
     ::fesql::plan::SimplePlanner planner(&manager);
@@ -586,19 +584,183 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_udf_project) {
         (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    BuildWindow(&ptr);
+    std::vector<fesql::storage::Row> window;
+    BuildWindow(window, &ptr);
+    int8_t* output = NULL;
+    int32_t ret2 = decode(ptr, 0, &output);
+    ASSERT_EQ(1 + 11 + 111 + 1111 + 11111,
+              *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
+              *reinterpret_cast<float*>(output + 7 + 4));
+    ASSERT_EQ(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
+              *reinterpret_cast<double*>(output + 7 + 4 + 4));
+    ASSERT_EQ(2 + 22 + 222 + 2222 + 22222,
+              *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 8));
+    ASSERT_EQ(5 + 55 + 555 + 5555 + 55555,
+              *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
+    free(ptr);
+}
+TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
+    std::string sql =
+        "SELECT "
+        "min(col1) OVER w1 as w1_col1_min , "
+        "min(col3) OVER w1 as w1_col3_min, "
+        "min(col4) OVER w1 as w1_col4_min,  "
+        "min(col2) OVER w1 as w1_col2_min,  "
+        "min(col5) OVER w1 as w1_col5_min  "
+        "FROM t1 WINDOW "
+        "w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "FOLLOWING) limit 10;";
+    ::fesql::node::NodePointVector list;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::node::NodeManager manager;
+    ::fesql::base::Status status;
+    int ret = parser.parse(sql, list, &manager, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+    ::fesql::plan::SimplePlanner planner(&manager);
+
+    ::fesql::node::PlanNodeList plan;
+    ret = planner.CreatePlanTree(list, plan, status);
+    ASSERT_EQ(0, ret);
+    ::fesql::node::ProjectListPlanNode* pp_node_ptr =
+        (::fesql::node::ProjectListPlanNode*)(plan[0]->GetChildren()[0]);
+
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_project", *ctx);
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "int" and take an argument of "int".
+    ::fesql::udf::RegisterUDFToModule(m.get());
+    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
+    std::vector<::fesql::type::ColumnDef> schema;
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(5u, schema.size());
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    auto& jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+
+    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::udf::InitUDFSymbol(jd, mi);
+    {
+        ::llvm::StringRef symbol("malloc");
+        ::llvm::orc::SymbolMap symbol_map;
+        ::llvm::JITEvaluatedSymbol jit_symbol(
+            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
+            ::llvm::JITSymbolFlags());
+        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
+        // add malloc
+        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
+        if (err) {
+            ASSERT_TRUE(false);
+        }
+    }
+
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
+
+    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+
+    int8_t* ptr = NULL;
+    std::vector<fesql::storage::Row> window;
+    BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, 0, &output);
     ASSERT_EQ(ret2, 0u);
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output + 2));
-    ASSERT_EQ(32 * 5, *reinterpret_cast<uint32_t*>(output + 7));
-    ASSERT_EQ(2.1f * 5, *reinterpret_cast<float*>(output + 7 + 4));
-    ASSERT_EQ(3.1f * 5, *reinterpret_cast<double*>(output + 7 + 4 + 4));
-    ASSERT_EQ(16 * 5, *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 8));
-    ASSERT_EQ(64L * 5, *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
+    ASSERT_EQ(1, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(3.1f, *reinterpret_cast<float*>(output + 7 + 4));
+    ASSERT_EQ(4.1, *reinterpret_cast<double*>(output + 7 + 4 + 4));
+    ASSERT_EQ(2, *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 8));
+    ASSERT_EQ(5, *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
     free(ptr);
 }
+TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
+    std::string sql =
+        "SELECT "
+        "max(col1) OVER w1 as w1_col1_max , "
+        "max(col3) OVER w1 as w1_col3_max, "
+        "max(col4) OVER w1 as w1_col4_max,  "
+        "max(col2) OVER w1 as w1_col2_max,  "
+        "max(col5) OVER w1 as w1_col5_max  "
+        "FROM t1 WINDOW "
+        "w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "FOLLOWING) limit 10;";
 
+    ::fesql::node::NodePointVector list;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::node::NodeManager manager;
+    ::fesql::base::Status status;
+    int ret = parser.parse(sql, list, &manager, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+    ::fesql::plan::SimplePlanner planner(&manager);
+
+    ::fesql::node::PlanNodeList plan;
+    ret = planner.CreatePlanTree(list, plan, status);
+    ASSERT_EQ(0, ret);
+    ::fesql::node::ProjectListPlanNode* pp_node_ptr =
+        (::fesql::node::ProjectListPlanNode*)(plan[0]->GetChildren()[0]);
+
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_project", *ctx);
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "int" and take an argument of "int".
+    ::fesql::udf::RegisterUDFToModule(m.get());
+    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
+    std::vector<::fesql::type::ColumnDef> schema;
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(5u, schema.size());
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    auto& jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+
+    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::udf::InitUDFSymbol(jd, mi);
+    {
+        ::llvm::StringRef symbol("malloc");
+        ::llvm::orc::SymbolMap symbol_map;
+        ::llvm::JITEvaluatedSymbol jit_symbol(
+            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
+            ::llvm::JITSymbolFlags());
+        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
+        // add malloc
+        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
+        if (err) {
+            ASSERT_TRUE(false);
+        }
+    }
+
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
+
+    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+
+    int8_t* ptr = NULL;
+    std::vector<fesql::storage::Row> window;
+    BuildWindow(window, &ptr);
+    int8_t* output = NULL;
+    int32_t ret2 = decode(ptr, 0, &output);
+    ASSERT_EQ(ret2, 0u);
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(11111, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(33333.1f, *reinterpret_cast<float*>(output + 7 + 4));
+    ASSERT_EQ(44444.1, *reinterpret_cast<double*>(output + 7 + 4 + 4));
+    ASSERT_EQ(22222, *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 8));
+    ASSERT_EQ(55555, *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
+    free(ptr);
+}
 }  // namespace codegen
 }  // namespace fesql
 

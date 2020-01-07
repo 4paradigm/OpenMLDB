@@ -4,5 +4,5 @@
 PWD=`pwd`
 export PATH=${PWD}/thirdparty/bin:$PATH
 mkdir -p build && cd build 
-cmake ..  && make -j6
+cmake ..  && make -j1
 

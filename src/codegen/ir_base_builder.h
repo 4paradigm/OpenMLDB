@@ -28,8 +28,10 @@ namespace codegen {
 
 bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
                  ::llvm::Type** output);
-bool GetLLVMListType(::llvm::Module *m,
-                     const ::fesql::type::Type& type, ::llvm::Type** output);
+bool GetLLVMListType(::llvm::Module* m, const ::fesql::type::Type& type,
+                     ::llvm::Type** output);
+bool GetLLVMColumnIteratorSize(const ::fesql::type::Type& v_type,
+                               uint32_t* size);
 
 bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output);
 bool GetFullType(::llvm::Type* type, ::fesql::type::Type* base,
@@ -38,13 +40,13 @@ bool GetFullType(::llvm::Type* type, ::fesql::type::Type* base,
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
 
-inline bool GetConstFloat(::llvm::LLVMContext& ctx, float val, // NOLINT
+inline bool GetConstFloat(::llvm::LLVMContext& ctx, float val,  // NOLINT
                           ::llvm::Value** output) {
     *output = ::llvm::ConstantFP::get(ctx, ::llvm::APFloat(val));
     return true;
 }
 
-inline bool GetConstDouble(::llvm::LLVMContext& ctx, double val, // NOLINT
+inline bool GetConstDouble(::llvm::LLVMContext& ctx, double val,  // NOLINT
                            ::llvm::Value** output) {
     *output = ::llvm::ConstantFP::get(ctx, ::llvm::APFloat(val));
     return true;

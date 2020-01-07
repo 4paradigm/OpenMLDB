@@ -35,7 +35,9 @@ bool OpGenerator::Gen(const ::fesql::node::PlanNodeList& trees,
                       const std::string& db, ::llvm::Module* module,
                       OpVector* ops, base::Status& status) {
     if (module == NULL || ops == NULL) {
-        LOG(WARNING) << "module or ops is null";
+        status.msg = "module or ops is null";
+        status.code = common::kNullPointer;
+        LOG(WARNING) << status.msg;
         return false;
     }
 
@@ -59,8 +61,6 @@ bool OpGenerator::Gen(const ::fesql::node::PlanNodeList& trees,
                     dynamic_cast<const ::fesql::node::SelectPlanNode*>(node);
                 bool ok = GenSQL(select_plan, db, module, ops, status);
                 if (!ok) {
-                    status.code = (common::kCodegenError);
-                    status.msg = ("Fail to codegen select sql");
                     return false;
                 }
                 break;
@@ -78,7 +78,9 @@ bool OpGenerator::GenSQL(const ::fesql::node::SelectPlanNode* tree,
                          const std::string& db, ::llvm::Module* module,
                          OpVector* ops, base::Status& status) {
     if (module == NULL || ops == NULL || tree == NULL) {
-        LOG(WARNING) << "input args has null";
+        status.msg = "input args has null";
+        status.code = common::kNullPointer;
+        LOG(WARNING) << status.msg;
         return false;
     }
 
@@ -170,10 +172,11 @@ bool OpGenerator::RoutingNode(
                 LOG(WARNING) << status.msg;
                 return false;
             }
-            GenMerge(merge_node, module, &cur_op, status);
+            GenMerge(merge_node, children, module, &cur_op, status);
+            break;
         }
         default: {
-            status.msg = "not supported plan node" +
+            status.msg = "not supported plan node " +
                          node::NameOfPlanNodeType(node->GetType());
             status.code = common::kNullPointer;
             LOG(WARNING) << status.msg;
@@ -309,37 +312,102 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     pop->tid = table_status->tid;
     pop->db = table_status->db;
     pop->pid = table_status->pid;
+    pop->scan_limit = node->GetScanLimit();
     // handle window info
     if (nullptr != node->GetW()) {
         pop->window_agg = true;
         table_status->InitColumnInfos();
+
+        // validate and get col info of window keys
         for (auto key : node->GetW()->GetKeys()) {
             auto it = table_status->col_infos.find(key);
             if (it == table_status->col_infos.end()) {
-                status.msg = "column " + key + " is not exist in table " +
+                status.msg = "key column " + key + " is not exist in table " +
                              table_status->table_def.name();
                 status.code = common::kColumnNotFound;
                 LOG(WARNING) << status.msg;
                 delete pop;
                 return false;
             }
-            pop->w.keys.push_back(it->second);
+            pop->w.keys.insert(it->second);
         }
-        for (auto order : node->GetW()->GetOrders()) {
+
+        // validate and get col info of window order
+        if (!node->GetW()->GetOrders().empty()) {
+            if (node->GetW()->GetOrders().size() > 1) {
+                status.msg =
+                    "currently not support multiple ts columns in window";
+                status.code = common::kColumnNotFound;
+                LOG(WARNING) << status.msg;
+                delete pop;
+                return false;
+            }
+            auto order = node->GetW()->GetOrders()[0];
             auto it = table_status->col_infos.find(order);
             if (it == table_status->col_infos.end()) {
-                status.msg = "column " + order + " is not exist in table " +
+                status.msg = "ts column " + order + " is not exist in table " +
                              table_status->table_def.name();
                 status.code = common::kColumnNotFound;
                 LOG(WARNING) << status.msg;
                 delete pop;
                 return false;
             }
-            pop->w.orders.push_back(it->second);
+            pop->w.order.first = it->second.first;
+            pop->w.order.second = it->second.second;
+            pop->w.has_order = true;
+            pop->w.is_range_between = node->GetW()->IsRangeBetween();
+        } else {
+            pop->w.has_order = false;
+        }
+
+        // validate index
+        auto index_map = table_status->table->GetIndexMap();
+        bool index_check = false;
+        for (auto iter = index_map.cbegin(); iter != index_map.cend(); iter++) {
+            auto col_infos = iter->second.keys;
+            // keys size match
+            if (col_infos.size() != node->GetW()->GetKeys().size()) {
+                continue;
+            }
+            // keys match
+            bool match_keys = true;
+            for (auto col_info : col_infos) {
+                if (pop->w.keys.find(std::make_pair(
+                        col_info.type, col_info.pos)) == pop->w.keys.end()) {
+                    match_keys = false;
+                    break;
+                }
+            }
+            if (!match_keys) {
+                continue;
+            }
+            // skip validate when order cols empty
+            if (!pop->w.has_order) {
+                index_check = true;
+                pop->w.index_name = iter->second.name;
+                break;
+            }
+            // ts col match
+            auto ts_iter = pop->w.order;
+            // ts col match
+            if (ts_iter.second == iter->second.ts_pos) {
+                index_check = true;
+                pop->w.index_name = iter->second.name;
+                break;
+            }
+            // currently not support multi orders
+        }
+
+        if (!index_check) {
+            status.msg =
+                "fail to generate project operator: index is not match window";
+            status.code = common::kIndexNotFound;
+            LOG(WARNING) << status.msg;
+            delete pop;
+            return false;
         }
         pop->w.start_offset = node->GetW()->GetStartOffset();
         pop->w.end_offset = node->GetW()->GetEndOffset();
-        pop->w.is_range_between = node->GetW()->IsRangeBetween();
 
         ::fesql::codegen::BufIRBuilder buf_if_builder(&table_status->table_def,
                                                       nullptr, nullptr);
@@ -384,6 +452,7 @@ bool OpGenerator::GenFnDef(::llvm::Module* module,
     return ok;
 }
 bool OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
+                           const std::vector<OpNode*> children,
                            ::llvm::Module* module, OpNode** op,
                            Status& status) {  // NOLINT
     if (node == NULL || module == NULL || NULL == op) {
@@ -392,8 +461,23 @@ bool OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
         LOG(WARNING) << status.msg;
         return false;
     }
+
+    if (children.empty()) {
+        status.code = common::kOpGenError;
+        status.msg = "merge children is empty";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
     MergeOp* merge_op = new MergeOp();
-    merge_op->type = kOpLimit;
+    merge_op->pos_mapping = node->GetPosMapping();
+    merge_op->output_schema.resize(merge_op->pos_mapping.size());
+    merge_op->output_schema.clear();
+    for (auto pair : merge_op->pos_mapping) {
+        merge_op->output_schema.push_back(
+            children[pair.first]->output_schema[pair.second]);
+    }
+    merge_op->type = kOpMerge;
     merge_op->fn = nullptr;
     *op = merge_op;
     return true;

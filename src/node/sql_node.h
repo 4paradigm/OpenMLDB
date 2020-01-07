@@ -39,7 +39,7 @@ inline const std::string CmdTypeName(const CmdType &type) {
             return "use database";
         case kCmdCreateDatabase:
             return "create database";
-        case kCmdCreateTable:
+        case kCmdSource:
             return "create table";
         case kCmdCreateGroup:
             return "create group";

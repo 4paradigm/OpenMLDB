@@ -395,6 +395,7 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
         LOG(WARNING) << "fail to get string type";
         return false;
     }
+
     // alloca memory on stack
     ::llvm::Value* string_ref = builder.CreateAlloca(str_type);
     ::llvm::Value* data_ptr_ptr =
@@ -474,6 +475,7 @@ bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Type* i8_ty = builder.getInt8Ty();
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Type* i32_ty = builder.getInt32Ty();
 
@@ -483,20 +485,31 @@ bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
         LOG(WARNING) << "fail to get list type";
         return false;
     }
+    uint32_t col_iterator_size;
+    ok = GetLLVMColumnIteratorSize(type, &col_iterator_size);
+    if (!ok) {
+        LOG(WARNING) << "fail to get col iterator size";
+    }
+    // alloca memory on stack for col iterator
+    ::llvm::ArrayType* array_type =
+        ::llvm::ArrayType::get(i8_ty, col_iterator_size);
+    ::llvm::Value* col_iter = builder.CreateAlloca(array_type);
     // alloca memory on stack
     ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
-    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty);
+    data_ptr_ptr = builder.CreatePointerCast(
+        data_ptr_ptr, col_iter->getType()->getPointerTo());
+    builder.CreateStore(col_iter, data_ptr_ptr, false);
+    col_iter = builder.CreatePointerCast(col_iter, i8_ptr_ty);
 
     ::llvm::Value* val_offset = builder.getInt32(offset);
     ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(type));
 
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         fn_name, i32_ty, i8_ptr_ty, i32_ty, i32_ty, i8_ptr_ty);
-    builder.CreateCall(
-        callee, ::llvm::ArrayRef<::llvm::Value*>{row_ptr, val_offset,
-                                                 val_type_id, data_ptr_ptr});
+    builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
+                                   row_ptr, val_offset, val_type_id, col_iter});
     *output = list_ref;
     return true;
 }
@@ -511,6 +524,8 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
     }
 
     ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Type* i8_ty = builder.getInt8Ty();
+    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Type* i32_ty = builder.getInt32Ty();
 
     ::llvm::Type* list_ref_type = NULL;
@@ -519,30 +534,38 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
         LOG(WARNING) << "fail to get list type";
         return false;
     }
+    uint32_t col_iterator_size;
+    ok = GetLLVMColumnIteratorSize(type, &col_iterator_size);
+    if (!ok) {
+        LOG(WARNING) << "fail to get col iterator size";
+    }
+    // alloca memory on stack for col iterator
+    ::llvm::ArrayType* array_type =
+        ::llvm::ArrayType::get(i8_ty, col_iterator_size);
+    ::llvm::Value* col_iter = builder.CreateAlloca(array_type);
+
     // alloca memory on stack
     ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
 
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
-    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+    builder.CreateStore(col_iter, data_ptr_ptr, false);
+    //    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty);
 
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         "fesql_storage_get_str_col", i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty,
-        i32_ty, i8_ptr_ty->getPointerTo());
+        i32_ty, i8_ptr_ty);
 
     ::llvm::Value* str_offset = builder.getInt32(offset);
     ::llvm::Value* next_str_offset = builder.getInt32(next_str_field_offset);
     ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(type));
     // get the data ptr
-    data_ptr_ptr =
-        builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty->getPointerTo());
-    // get the size ptr
     // TODO(wangtaize) add status check
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
                                    window_ptr, str_offset, next_str_offset,
                                    builder.getInt32(str_field_start_offset_),
-                                   val_type_id, data_ptr_ptr});
+                                   val_type_id, col_iter});
     *output = list_ref;
     return true;
 }

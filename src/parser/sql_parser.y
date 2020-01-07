@@ -638,7 +638,7 @@ cmd_stmt:
 			|CREATE TABLE file_path
 			{
 
-				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateTable, $3);
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdSource, $3);
 				free($3);
 			}
 			|SHOW DATABASES

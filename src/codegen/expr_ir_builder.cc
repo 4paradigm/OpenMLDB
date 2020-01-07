@@ -356,7 +356,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
         return false;
     }
 
-    LOG(INFO) << "build unary"
+    DLOG(INFO) << "build unary"
               << ::fesql::node::ExprTypeName(node->GetExprType());
     ::llvm::Value* left = NULL;
     bool ok = Build(node->children[0], &left);
@@ -380,7 +380,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         return false;
     }
 
-    LOG(INFO) << "build binary " << ::fesql::node::FnNodeName(node->GetType());
+    DLOG(INFO) << "build binary " << ::fesql::node::FnNodeName(node->GetType());
     ::llvm::Value* left = NULL;
     bool ok = Build(node->children[0], &left);
     if (!ok) {

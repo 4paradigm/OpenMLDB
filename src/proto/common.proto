@@ -21,8 +21,11 @@ enum StatusCode {
     kPlanError = 31;
     kCallMethodError = 32;
     kColumnNotFound = 33;
+    kIndexNotFound=34;
     kFunError = 40;
     kCodegenError = 50;
+    kOpGenError = 60;
+    kJitError = 70;
 }
 
 message Status {

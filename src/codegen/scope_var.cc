@@ -25,7 +25,7 @@ ScopeVar::ScopeVar() {}
 ScopeVar::~ScopeVar() {}
 
 bool ScopeVar::Enter(const std::string& name) {
-    LOG(INFO) << "enter scope " << name;
+    DLOG(INFO) << "enter scope " << name;
     Scope scope;
     scope.name = name;
     if (scopes_.size() <= 0) {

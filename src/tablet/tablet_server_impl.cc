@@ -34,7 +34,7 @@ TabletServerImpl::~TabletServerImpl() {}
 bool TabletServerImpl::Init() {
     engine_ = std::move(std::unique_ptr<vm::Engine>(
         new vm::Engine(dynamic_cast<vm::TableMgr*>(this))));
-    LOG(INFO) << "init tablet ok";
+    DLOG(INFO) << "init tablet ok";
     return true;
 }
 
@@ -84,7 +84,7 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
         }
     }
     status->set_code(common::kOk);
-    LOG(INFO) << "create table with name " << request->table().name()
+    DLOG(INFO) << "create table with name " << request->table().name()
               << " done";
 }
 
@@ -220,14 +220,18 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         if (!ok) {
             status->set_msg(base_status.msg);
             status->set_code(base_status.code);
-            LOG(WARNING) << status->msg();
             return;
         }
     }
 
     std::vector<int8_t*> buf;
-    buf.reserve(100);
-    int32_t code = session.Run(buf, 100);
+    int32_t code;
+    if (request->is_batch()) {
+        code = session.RunBatch(buf, UINT32_MAX);
+    } else {
+        code = session.Run(buf, UINT32_MAX);
+    }
+
     if (code != 0) {
         LOG(WARNING) << "fail to run sql " << request->sql();
         status->set_code(common::kSQLError);
@@ -265,7 +269,7 @@ void TabletServerImpl::GetTableSchema(RpcController* ctrl,
         return;
     }
     *(response->mutable_schema()) = table.get()->table_def;
-    LOG(INFO) << response->schema().name();
+//    DLOG(INFO) << response->schema().name();
     return;
 }
 

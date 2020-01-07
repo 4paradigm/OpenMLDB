@@ -11,6 +11,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 namespace fesql {
 namespace plan {
 
@@ -73,12 +74,13 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
     // prepare project list plan node
     const node::NodePointVector &select_expr_list = root->GetSelectList();
     if (false == select_expr_list.empty()) {
-        for (auto expr : select_expr_list) {
+        for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
+            auto expr = select_expr_list[pos];
             node::ProjectPlanNode *project_node_ptr =
                 (node::ProjectPlanNode *)(node_manager_->MakePlanNode(
                     node::kProject));
 
-            CreateProjectPlanNode(expr, table_node_ptr->GetOrgTableName(),
+            CreateProjectPlanNode(expr, pos, table_node_ptr->GetOrgTableName(),
                                   project_node_ptr, status);
             if (0 != status.code) {
                 return status.code;
@@ -128,18 +130,35 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
                 current_node = limit_plan_ptr;
             }
         }
+
         // add MergeNode if multi ProjectionLists exist
-        if (project_list_map.size() > 1) {
+        int32_t project_list_size = project_list_map.size();
+        if (project_list_size > 1) {
+            uint32_t columns_size = 0;
+            for (auto project : project_list_map) {
+                columns_size += project.second->GetProjects().size();
+            }
             node::PlanNode *merge_node =
-                node_manager_->MakePlanNode(node::kPlanTypeMerge);
+                node_manager_->MakeMergeNode(columns_size);
             current_node->AddChild(merge_node);
             current_node = merge_node;
         }
-
+        std::vector<node::ProjectListPlanNode *> project_list_vec(w_id);
         for (auto &v : project_list_map) {
             node::ProjectListPlanNode *project_list = v.second;
+            int pos = nullptr == project_list->GetW()
+                          ? 0
+                          : project_list->GetW()->GetId();
+            if (1 == project_list_size) {
+                project_list->SetScanLimit(scan_node_ptr->GetLimit());
+            }
             project_list->AddChild(scan_node_ptr);
-            current_node->AddChild(project_list);
+            project_list_vec[pos] = project_list;
+        }
+        for (auto project_list : project_list_vec) {
+            if (nullptr != project_list) {
+                current_node->AddChild(project_list);
+            }
         }
     }
 
@@ -261,7 +280,7 @@ void Planner::CreateWindowPlanNode(
     }
 }  // namespace plan
 void Planner::CreateProjectPlanNode(
-    const SQLNode *root, const std::string &table_name,
+    const SQLNode *root, const uint32_t pos, const std::string &table_name,
     node::ProjectPlanNode *plan_tree,
     Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
@@ -285,6 +304,7 @@ void Planner::CreateProjectPlanNode(
             } else {
                 plan_tree->SetName(target_ptr->GetName());
             }
+            plan_tree->SetPos(pos);
             plan_tree->SetExpression(target_ptr->GetVal());
             plan_tree->SetTable(table_name);
             return;
