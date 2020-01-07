@@ -631,7 +631,7 @@ static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& statu
     tp.Print(true);
 }
 
-static void PrintTableInfomation(std::vector<::rtidb::nameserver::TableInfo>& tables) {
+static void PrintTableInformation(std::vector<::rtidb::nameserver::TableInfo>& tables) {
     if (tables.size() < 1) {
         return;
     }
@@ -662,9 +662,9 @@ static void PrintTableInfomation(std::vector<::rtidb::nameserver::TableInfo>& ta
     if (table.has_storage_mode()) {
          storage_mode = ::rtidb::common::StorageMode_Name(table.storage_mode());
     }
-    uint32_t record_cnt = 0;
-    uint32_t memused = 0;
-    uint32_t diskused = 0;
+    uint64_t record_cnt = 0;
+    uint64_t memused = 0;
+    uint64_t diskused = 0;
     for (int idx = 0; idx < table.table_partition_size(); idx++) {
         record_cnt += table.table_partition(idx).record_cnt();
         memused += table.table_partition(idx).record_byte_size();

@@ -1682,7 +1682,7 @@ void HandleNSInfo(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
     }
-    ::rtidb::base::PrintTableInfomation(tables);
+    ::rtidb::base::PrintTableInformation(tables);
 }
 
 bool HasIsTsCol(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& list) {
