@@ -142,8 +142,12 @@ class NsCluster(object):
                 if 'leader' in line:
                     ns_leader = line.strip().split(" ")[0].strip()
                     self.ns_leader = ns_leader
-                    exe_shell('echo "{}" > {}/ns_leader'.format(ns_leader, self.test_path))
-                    exe_shell('echo "{}" >> {}/ns_leader'.format(self.ns_edp_path[ns_leader], self.test_path))
+                    if not is_remote:
+                        exe_shell('echo "{}" > {}/ns_leader'.format(ns_leader, self.test_path))
+                        exe_shell('echo "{}" >> {}/ns_leader'.format(self.ns_edp_path[ns_leader], self.test_path))
+                    else:
+                        exe_shell('echo "{}" > {}/ns_leader_remote'.format(ns_leader, self.test_path))
+                        exe_shell('echo "{}" >> {}/ns_leader_remote'.format(self.ns_edp_path[ns_leader] + 'remote', self.test_path))
                     return ns_leader
             time.sleep(2)
 
