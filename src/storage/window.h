@@ -50,7 +50,6 @@ class Window {
           keys_({}) {}
     const uint32_t Count() const { return end_ - start_; }
     virtual void BufferData(uint64_t key, const Row &row) = 0;
-    virtual void SlideWindow() = 0;
     friend WindowIteratorImpl;
     void Reserve(uint64_t size) {
         buffer_.reserve(size);
