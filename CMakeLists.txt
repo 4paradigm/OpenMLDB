@@ -52,4 +52,3 @@ if (COVERAGE_ENABLE)
             DEPENDENCIES ${test_list})
     endif()
 endif()
-

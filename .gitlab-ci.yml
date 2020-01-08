@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/fesql_build_base:0.8
+image: develop-registry.4pd.io/fesql_build_base:0.9
 variables:
     GIT_SUBMODULE_STRATEGY: normal
 

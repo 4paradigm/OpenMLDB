@@ -411,42 +411,29 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                     it->SeekToFirst();
                     uint64_t count = 0;
                     while (it->Valid() && count < min) {
-                        //                        std::vector<std::pair<uint64_t,
-                        //                        Row>> buffer;
-                        std::vector<Row> rows;
-                        std::vector<uint64_t> keys;
+                        std::vector<std::pair<uint64_t, Row>> buffer;
                         // TODO(chenjing): resize or reserve with getCount()
                         // from storage api
-                        //                        buffer.reserve(10000);
-                        rows.resize(10000);
-                        keys.resize(10000);
-                        uint32_t start = 10000-1;
-                        while (start >= 0 && it->CurrentTsValid()) {
+                        buffer.reserve(10000);
+                        while (it->CurrentTsValid()) {
                             ::fesql::storage::Slice value = it->GetValue();
                             ::fesql::storage::Row row(
                                 {.buf = reinterpret_cast<int8_t*>(
                                      const_cast<char*>(value.data())),
                                  .size = value.size()});
-                            //                            buffer.push_back(std::make_pair(it->GetKey(),
-                            //                            row));
-                            rows[start] = row;
-                            keys[start] = (it->GetKey());
-                            start--;
+                            buffer.push_back(std::make_pair(it->GetKey(), row));
                             it->NextTs();
                         }
                         it->NextTsInPks();
 
-                        DLOG(INFO) << "buffer size: " << rows.size();
+                        DLOG(INFO) << "buffer size: " << buffer.size();
                         // TODO(chenjing): decide window type
-                        ::fesql::storage::CurrentHistorySlideWindow window(
-                            project_op->w.start_offset, rows, keys, start+1);
-                        //                        window.Reserve(buffer.size());
-                        //                        for (auto iter =
-                        //                        buffer.rbegin();
-                        //                             count < min && iter !=
-                        //                             buffer.rend(); iter++) {
-                        while (count < min && window.Slide()) {
-//                            window.BufferData(iter->first, iter->second);
+                        ::fesql::storage::CurrentHistoryWindow window(
+                            project_op->w.start_offset);
+                        window.Reserve(buffer.size());
+                        for (auto iter = buffer.rbegin();
+                             count < min && iter != buffer.rend(); iter++) {
+                            window.BufferData(iter->first, iter->second);
                             int8_t* output = NULL;
                             size_t output_size = 0;
                             // handle window
