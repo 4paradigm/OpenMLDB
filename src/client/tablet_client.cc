@@ -470,7 +470,7 @@ bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_type(type);
-    if (ttl_type == ::rtidb::api::TTLType::kLatestTime) {
+    if (type == ::rtidb::api::TTLType::kLatestTime) {
         request.set_value(lat_ttl);
     } else {
         request.set_value(abs_ttl);
