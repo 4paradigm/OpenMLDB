@@ -55,11 +55,30 @@ class TestCaseBase(unittest.TestCase):
         infoLogger.info(cls.ns_slaver)
         infoLogger.info(conf.cluster_mode)
 
+        # remote env 
+        cls.ns_leader_r = utils.exe_shell('head -n 1 {}/ns_leader_remote'.format(cls.testpath))
+        cls.ns_leader_path_r = utils.exe_shell('tail -n 1 {}/ns_leader_remote'.format(cls.testpath))
+        cls.ns_slaver_r = [i for i in conf.ns_endpoints_r if i != cls.ns_leader_r][0]
+        cls.leader_r, cls.slave1_r, cls.slave2_r = (i for i in conf.tb_endpoints_r)
+        cls.ns_path_dict_r = {conf.ns_endpoints_r[0]: cls.testpath + '/ns1remote',
+                            conf.ns_endpoints_r[1]: cls.testpath + '/ns2remote'}
+        cls.node_path_dict_r = {cls.leader_r: cls.testpath + '/tablet1remote',
+                              cls.slave1_r: cls.testpath + '/tablet2remote',
+                              cls.slave2_r: cls.testpath + '/tablet3remote',
+                              cls.ns_leader_r: cls.ns_path_dict_r[cls.ns_leader_r],
+                              cls.ns_slaver_r: cls.ns_path_dict_r[cls.ns_slaver_r]}
+        infoLogger.info('*'*88)
+        infoLogger.info([i for i in conf.ns_endpoints_r]) 
+        infoLogger.info(cls.ns_slaver_r)
+
     @classmethod
     def tearDownClass(cls):
         for edp in conf.tb_endpoints:
             utils.exe_shell('rm -rf {}/recycle/*'.format(cls.node_path_dict[edp]))
             utils.exe_shell('rm -rf {}/db/*'.format(cls.node_path_dict[edp]))
+        for edp in conf.tb_endpoints_r:
+            utils.exe_shell('rm -rf {}/recycle/*'.format(cls.node_path_dict_r[edp]))
+            utils.exe_shell('rm -rf {}/db/*'.format(cls.node_path_dict_r[edp]))
         infoLogger.info('\n' + '=' * 50 + ' TEST {} FINISHED '.format(cls) + '=' * 50 + '\n' * 5)
 
     def setUp(self):
@@ -75,6 +94,16 @@ class TestCaseBase(unittest.TestCase):
             self.pid = random.randint(1, 1000)
             self.clear_ns_table(self.ns_leader)
             for edp in conf.tb_endpoints:
+                self.clear_tb_table(edp)
+            #remote env
+            self.alias = 'rem'
+            self.ns_leader_r = utils.exe_shell('head -n 1 {}/ns_leader_remote'.format(self.testpath))
+            nss_r = copy.deepcopy(conf.ns_endpoints_r)
+            nss_r.remove(self.ns_leader_r)
+            self.ns_slaver_r = nss_r[0]
+            self.ns_leader_path_r = utils.exe_shell('tail -n 1 {}/ns_leader_remote'.format(self.testpath))
+            self.clear_ns_table(self.ns_leader_r)
+            for edp in conf.tb_endpoints_r:
                 self.clear_tb_table(edp)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
@@ -93,6 +122,20 @@ class TestCaseBase(unittest.TestCase):
                     time.sleep(10)
             if conf.cluster_mode == "cluster":
                 self.clear_ns_table(self.ns_leader)
+
+            #remote env
+            rs_r = self.showtablet(self.ns_leader_r)
+            for edp in conf.tb_endpoints_r:
+                if rs_r[edp][0] != 'kTabletHealthy':
+                    infoLogger.info("Endpoint offline !!!! " * 10 + edp)
+                    self.stop_client(edp)
+                    time.sleep(1)
+                    self.start_client(edp)
+                    time.sleep(10)
+            if conf.cluster_mode == "cluster":
+                self.clear_ns_table(self.ns_leader_r)
+                self.remove_replica_cluster(self.ns_leader, self.alias)
+                time.sleep(3)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         infoLogger.info('\n\n' + '=' * 50 + ' TEARDOWN FINISHED ' + '=' * 50 + '\n' * 5)
@@ -223,6 +266,18 @@ class TestCaseBase(unittest.TestCase):
         cmd = "curl -d \'{\"tid\":%s, \"pid\":%s}\'  http://%s/TabletServer/ExecuteGc" % (tid, pid, endpoint)
         utils.exe_shell(cmd)
         time.sleep(2)
+
+    def ns_switch_mode(self, endpoint, mode):
+        cmd = 'switchmode ' + mode
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def add_replica_cluster(self, endpoint, zk_endpoints, zk_root_path, alias):
+        cmd = 'addrepcluster {} {} {}'.format(zk_endpoints, zk_root_path, alias)
+        return self.run_client(endpoint, cmd, 'ns_client')
+    
+    def remove_replica_cluster(self, endpoint, alias):
+        cmd = 'removerepcluster ' + alias
+        return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_create(self, endpoint, metadata_path):
         return self.run_client(endpoint, 'create ' + metadata_path, 'ns_client')
