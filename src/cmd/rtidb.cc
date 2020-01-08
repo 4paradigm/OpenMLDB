@@ -1230,7 +1230,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
 
 void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 5) {
-        std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] [atleast=xxx] | scan table_name key key_name start_time end_time [limit] [atleast=xxx] | scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx] [atleast=xxx]"  << std::endl;
+        std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx] [atleast=xxx]"  << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;

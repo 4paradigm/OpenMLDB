@@ -5086,8 +5086,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         for (int32_t j = 0; j < table_partition.partition_meta_size(); j++) {
             const PartitionMeta& meta = table_partition.partition_meta(j);
             all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(),
-                    table_partition.pid(), request->ttl_desc().ttl_type(),
-                    request->ttl_desc().abs_ttl(), request->ttl_desc().lat_ttl(), ts_name);
+                    table_partition.pid(), new_ttl_type, abs_ttl, lat_ttl, ts_name);
         }
     }
     if (!all_ok) {

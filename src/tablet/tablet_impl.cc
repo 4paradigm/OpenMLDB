@@ -219,7 +219,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
             return;
         }
         table->SetTTL(iter->second, abs_ttl, lat_ttl);
-        PDLOG(INFO, "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu, ts_name %u",
+        PDLOG(INFO, "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu, ts_name %s",
                 request->tid(), request->pid(), abs_ttl, lat_ttl, request->ts_name().c_str());
     } else if (!table->GetTSMapping().size()){
         table->SetTTL(abs_ttl, lat_ttl);

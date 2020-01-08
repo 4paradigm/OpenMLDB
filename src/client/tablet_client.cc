@@ -469,8 +469,13 @@ bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
     ::rtidb::api::UpdateTTLRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
-    // request.set_type(type);
-    // request.set_value(ttl);
+    if (ttl_type == ::rtidb::api::TTLType::kLatestTime) {
+        request.set_value(lat_ttl);
+        request.set_type("kLatestTime");
+    } else {
+        request.set_value(abs_ttl);
+        request.set_type("kAbsoluteTime");
+    }
     ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
