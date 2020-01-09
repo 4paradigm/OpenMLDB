@@ -8,11 +8,24 @@
  **/
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "udf/udf.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
+#include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 #include "node/node_manager.h"
+#include "storage/type_ir_builder.h"
+#include "vm/jit.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -80,13 +93,16 @@ void BinaryArithmeticExprCheck(::fesql::type::Type left_type,
                 arithmetic_ir_builder.BuildSubExpr(arg0, arg1, &output, status);
             break;
         case fesql::node::kFnOpMulti:
-            ok = arithmetic_ir_builder.BuildMultiExpr(arg0, arg1, &output,status);
+            ok = arithmetic_ir_builder.BuildMultiExpr(arg0, arg1, &output,
+                                                      status);
             break;
         case fesql::node::kFnOpDiv:
-            ok = arithmetic_ir_builder.BuildFDivExpr(arg0, arg1, &output, status);
+            ok = arithmetic_ir_builder.BuildFDivExpr(arg0, arg1, &output,
+                                                     status);
             break;
         case fesql::node::kFnOpMod:
-            ok = arithmetic_ir_builder.BuildModExpr(arg0, arg1, &output, status);
+            ok =
+                arithmetic_ir_builder.BuildModExpr(arg0, arg1, &output, status);
             break;
             break;
         case fesql::node::kFnOpAnd:
@@ -98,7 +114,12 @@ void BinaryArithmeticExprCheck(::fesql::type::Type left_type,
     ASSERT_TRUE(ok);
     builder.CreateRet(output);
     m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(LLJITBuilder().create());
+    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
+    auto &jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+
+    ::fesql::udf::InitCLibSymbol(jd, mi);
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
@@ -424,16 +445,16 @@ TEST_F(ArithmeticIRBuilderTest, test_multi_double_x_expr) {
 TEST_F(ArithmeticIRBuilderTest, test_fdiv_int32_x_expr) {
     BinaryArithmeticExprCheck<int32_t, int16_t, double>(
         ::fesql::type::kInt32, ::fesql::type::kInt16, ::fesql::type::kDouble, 2,
-        3, 2.0/3.0, ::fesql::node::kFnOpDiv);
+        3, 2.0 / 3.0, ::fesql::node::kFnOpDiv);
 
     BinaryArithmeticExprCheck<int32_t, int32_t, double>(
         ::fesql::type::kInt32, ::fesql::type::kInt32, ::fesql::type::kDouble, 2,
-        3, 2.0/3.0, ::fesql::node::kFnOpDiv);
+        3, 2.0 / 3.0, ::fesql::node::kFnOpDiv);
 
     BinaryArithmeticExprCheck<int32_t, int64_t, double>(
         ::fesql::type::kInt32, ::fesql::type::kInt64, ::fesql::type::kDouble, 2,
         8000000000L, 2.0 / 8000000000.0, ::fesql::node::kFnOpDiv);
-//
+    //
     BinaryArithmeticExprCheck<int32_t, float, double>(
         ::fesql::type::kInt32, ::fesql::type::kFloat, ::fesql::type::kDouble, 2,
         3.0f, 2.0 / 3.0, ::fesql::node::kFnOpDiv);
@@ -441,7 +462,6 @@ TEST_F(ArithmeticIRBuilderTest, test_fdiv_int32_x_expr) {
         ::fesql::type::kInt32, ::fesql::type::kDouble, ::fesql::type::kDouble,
         2, 12345678.5, 2.0 / 12345678.5, ::fesql::node::kFnOpDiv);
 }
-
 
 TEST_F(ArithmeticIRBuilderTest, test_mod_int32_x_expr) {
     BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
@@ -456,9 +476,51 @@ TEST_F(ArithmeticIRBuilderTest, test_mod_int32_x_expr) {
         ::fesql::type::kInt32, ::fesql::type::kInt64, ::fesql::type::kInt64, 12,
         50000L, 12L, ::fesql::node::kFnOpMod);
 
-//    BinaryArithmeticExprCheck<int32_t, float, float>(
-//        ::fesql::type::kInt32, ::fesql::type::kFloat, ::fesql::type::kFloat, 12,
-//        5.1f, 1.8f, ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<int32_t, float, float>(
+        ::fesql::type::kInt32, ::fesql::type::kFloat, ::fesql::type::kFloat, 12,
+        5.1f, fmod(12.0f, 5.1f), ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<int32_t, double, double>(
+        ::fesql::type::kInt32, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        12, 5.1, fmod(12.0, 5.1), ::fesql::node::kFnOpMod);
+}
+
+TEST_F(ArithmeticIRBuilderTest, test_mod_float_x_expr) {
+    BinaryArithmeticExprCheck<int16_t, float, float>(
+        ::fesql::type::kInt16, ::fesql::type::kFloat, ::fesql::type::kFloat, 12,
+        5.1f, fmod(12.0f, 5.1f), ::fesql::node::kFnOpMod);
+
+    BinaryArithmeticExprCheck<int32_t, float, float>(
+        ::fesql::type::kInt32, ::fesql::type::kFloat, ::fesql::type::kFloat, 12,
+        5.1f, fmod(12.0f, 5.1f), ::fesql::node::kFnOpMod);
+
+    BinaryArithmeticExprCheck<int64_t , float, float>(
+        ::fesql::type::kInt64, ::fesql::type::kFloat, ::fesql::type::kFloat,
+        12L, 5.1f, fmod(12.0f, 5.1f), ::fesql::node::kFnOpMod);
+
+    BinaryArithmeticExprCheck<float , float, float>(
+        ::fesql::type::kFloat, ::fesql::type::kFloat, ::fesql::type::kFloat,
+        12.0f, 5.1f, fmod(12.0f, 5.1f), ::fesql::node::kFnOpMod);
+}
+
+TEST_F(ArithmeticIRBuilderTest, test_mod_double_x_expr) {
+    BinaryArithmeticExprCheck<int16_t, double, double>(
+        ::fesql::type::kInt16, ::fesql::type::kDouble, ::fesql::type::kDouble, 12,
+        5.1, fmod(12.0, 5.1), ::fesql::node::kFnOpMod);
+
+    BinaryArithmeticExprCheck<int32_t, double, double>(
+        ::fesql::type::kInt32, ::fesql::type::kDouble, ::fesql::type::kDouble, 12,
+        5.1, fmod(12.0, 5.1), ::fesql::node::kFnOpMod);
+
+    BinaryArithmeticExprCheck<int64_t , double, double>(
+        ::fesql::type::kInt64, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        12L, 5.1, fmod(12.0, 5.1), ::fesql::node::kFnOpMod);
+
+    BinaryArithmeticExprCheck<float , double, double>(
+        ::fesql::type::kFloat, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        12.0f, 5.1, fmod(12.0, 5.1), ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<double , double, double>(
+        ::fesql::type::kDouble, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        12.0, 5.1, fmod(12.0, 5.1), ::fesql::node::kFnOpMod);
 
 }
 }  // namespace codegen

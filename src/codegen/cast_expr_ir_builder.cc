@@ -122,5 +122,30 @@ bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
     return true;
 }
 
+bool CastExprIRBuilder::isStringCast(llvm::Type* type) {
+    if (nullptr == type) {
+        return false;
+    }
+
+    ::fesql::type::Type fesql_type;
+    if (false == GetTableType(type, &fesql_type)) {
+        return false;
+    }
+
+    return ::fesql::type::kVarchar == fesql_type;
+}
+/**
+ * TODO(chenjing): string cast implement
+ * cast fesql type to string
+ * @param value
+ * @param casted_value
+ * @param status
+ * @return
+ */
+bool CastExprIRBuilder::StringCast(llvm::Value* value,
+                                   llvm::Value** casted_value,
+                                   base::Status& status) {
+}
+
 }  // namespace codegen
 }  // namespace fesql

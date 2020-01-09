@@ -116,6 +116,12 @@ enum FnOperator {
     kFnOpAnd,
     kFnOpOr,
     kFnOpNot,
+    kFnOpEq,
+    kFnOpNeq,
+    kFnOpLt,
+    kFnOpLe,
+    kFnOpGt,
+    kFnOpGe,
     kFnOpBracket,
     kFnOpNone
 };

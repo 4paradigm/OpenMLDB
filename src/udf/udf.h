@@ -46,6 +46,9 @@ double min_double(int8_t *input);
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);               // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,            // NOLINT
                    ::llvm::orc::MangleAndInterner &mi);  // NOLINT
+void InitCLibSymbol(vm::FeSQLJIT *jit_ptr);               // NOLINT
+void InitCLibSymbol(::llvm::orc::JITDylib &jd,            // NOLINT
+                   ::llvm::orc::MangleAndInterner &mi);  // NOLINT
 bool AddSymbol(::llvm::orc::JITDylib &jd,                // NOLINT
                ::llvm::orc::MangleAndInterner &mi,       // NOLINT
                const std::string &fn_name, void *fn_ptr);

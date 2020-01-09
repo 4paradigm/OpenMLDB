@@ -59,6 +59,10 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
             *output = ::llvm::Type::getDoubleTy(m->getContext());
             return true;
         }
+        case ::fesql::type::kBool: {
+            *output = ::llvm::Type::getInt1Ty(m->getContext());
+            return true;
+        }
         case ::fesql::type::kVarchar: {
             std::string name = "fe.string_ref";
             ::llvm::StringRef sr(name);

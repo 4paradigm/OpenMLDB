@@ -21,6 +21,7 @@
 #include <utility>
 extern "C" {
 #include <cstdlib>
+#include <cmath>
 }
 #include "glog/logging.h"
 #include "llvm/ExecutionEngine/JITSymbol.h"
@@ -141,6 +142,12 @@ bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
         return true;
     }
 }
+
+
+bool InitBasicSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
+                     ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
+}
+
 
 }  // namespace vm
 }  // namespace fesql

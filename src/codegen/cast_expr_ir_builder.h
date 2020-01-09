@@ -29,8 +29,15 @@ class CastExprIRBuilder {
     bool UnSafeCastDouble(::llvm::Value* value, ::llvm::Type* type,
                     ::llvm::Value** output, base::Status& status);  // NOLINT
 
+    bool StringCast(llvm::Value* value, llvm::Value** casted_value,
+                    base::Status& status);
+
     bool isSafeCast(::llvm::Type* src, ::llvm::Type* dist);
     bool isIFCast(::llvm::Type* src, ::llvm::Type* dist);
+    bool isStringCast(llvm::Type* type);
+
+
+
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;

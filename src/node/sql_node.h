@@ -64,12 +64,32 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "Multi";
         case kFnOpDiv:
             return "DIV";
+        case kFnOpFDiv:
+            return "FDIV";
+        case kFnOpAnd:
+            return "AND";
+        case kFnOpOr:
+            return "Or";
+        case kFnOpNot:
+            return "NOT";
+        case kFnOpEq:
+            return "==";
+        case kFnOpNeq:
+            return "!=";
+        case kFnOpGt:
+            return ">";
+        case kFnOpGe:
+            return ">=";
+        case kFnOpLt:
+            return "<";
+        case kFnOpLe:
+            return "<=";
         case kFnOpBracket:
             return "()";
         case kFnOpNone:
             return "NONE";
         default:
-            return "NONE";
+            return "UNKNOWN";
     }
 }
 

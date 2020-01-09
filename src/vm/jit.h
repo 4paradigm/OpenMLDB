@@ -69,6 +69,9 @@ class FeSQLJITBuilder
 };
 
 
+
+bool InitBasicSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
+                     ::llvm::orc::MangleAndInterner& mi);
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_JIT_H_

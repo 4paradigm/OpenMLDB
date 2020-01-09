@@ -237,9 +237,10 @@ bool ArithmeticIRBuilder::BuildModExpr(llvm::Value* left,
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
-    //TODO(chenjing): support FRem, unresolved IR error
     if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateSRem(casted_left, casted_right);
+    } else if (casted_left->getType()->isFloatingPointTy()) {
+        *output = builder.CreateFRem(casted_left, casted_right);
     } else {
         status.msg = "fail to codegen mul expr: value types are invalid";
         status.code = common::kCodegenError;
