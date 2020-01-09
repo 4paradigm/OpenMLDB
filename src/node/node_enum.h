@@ -111,6 +111,11 @@ enum FnOperator {
     kFnOpMinus,
     kFnOpMulti,
     kFnOpDiv,
+    kFnOpFDiv,
+    kFnOpMod,
+    kFnOpAnd,
+    kFnOpOr,
+    kFnOpNot,
     kFnOpBracket,
     kFnOpNone
 };

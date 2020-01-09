@@ -18,30 +18,8 @@ CastExprIRBuilder::~CastExprIRBuilder() {}
 
 bool CastExprIRBuilder::isIFCast(::llvm::Type* src, ::llvm::Type* dist) {
     return src->isIntegerTy() && (dist->isFloatTy() || dist->isDoubleTy());
-//    ::fesql::type::Type src_type;
-//    ::fesql::type::Type dist_type;
-//    ::fesql::codegen::GetTableType(src, &src_type);
-//    ::fesql::codegen::GetTableType(dist, &dist_type);
-//
-//    switch (src_type) {
-//        case ::fesql::type::kInt16:
-//        case ::fesql::type::kInt32:
-//        case ::fesql::type::kInt64:
-//        {
-//            switch (dist_type) {
-//                case ::fesql::type::kFloat:
-//                case ::fesql::type::kDouble:
-//                    return true;
-//                default:{
-//                    return false;
-//                }
-//            }
-//        }
-//        default: {
-//            return false;
-//        }
-//    }
 }
+
 bool CastExprIRBuilder::isSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
     if (NULL == src || NULL == dist) {
         LOG(WARNING) << "cast type is null";
@@ -143,5 +121,6 @@ bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
     *output = cast_value;
     return true;
 }
+
 }  // namespace codegen
 }  // namespace fesql

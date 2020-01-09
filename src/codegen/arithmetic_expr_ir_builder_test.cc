@@ -79,6 +79,18 @@ void BinaryArithmeticExprCheck(::fesql::type::Type left_type,
             ok =
                 arithmetic_ir_builder.BuildSubExpr(arg0, arg1, &output, status);
             break;
+        case fesql::node::kFnOpMulti:
+            ok = arithmetic_ir_builder.BuildMultiExpr(arg0, arg1, &output,status);
+            break;
+        case fesql::node::kFnOpDiv:
+            ok = arithmetic_ir_builder.BuildFDivExpr(arg0, arg1, &output, status);
+            break;
+        case fesql::node::kFnOpMod:
+            ok = arithmetic_ir_builder.BuildModExpr(arg0, arg1, &output, status);
+            break;
+            break;
+        case fesql::node::kFnOpAnd:
+        case fesql::node::kFnOpOr:
         default: {
             FAIL();
         }
@@ -306,6 +318,149 @@ TEST_F(ArithmeticIRBuilderTest, test_sub_double_x_expr) {
         1.0, 12345678.5, 1.0 - 12345678.5, ::fesql::node::kFnOpMinus);
 }
 
+TEST_F(ArithmeticIRBuilderTest, test_mul_int16_x_expr) {
+    BinaryArithmeticExprCheck<int16_t, int16_t, int16_t>(
+        ::fesql::type::kInt16, ::fesql::type::kInt16, ::fesql::type::kInt16, 2,
+        3, 2 * 3, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<int16_t, int32_t, int32_t>(
+        ::fesql::type::kInt16, ::fesql::type::kInt32, ::fesql::type::kInt32, 2,
+        3, 2 * 3, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<int16_t, int64_t, int64_t>(
+        ::fesql::type::kInt16, ::fesql::type::kInt64, ::fesql::type::kInt64, 2,
+        8000000000L, 2L * 8000000000L, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<int16_t, float, float>(
+        ::fesql::type::kInt16, ::fesql::type::kFloat, ::fesql::type::kFloat, 2,
+        12345678.5f, 2.0f * 12345678.5f, ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<int16_t, double, double>(
+        ::fesql::type::kInt16, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        2, 12345678.5, 2.0 * 12345678.5, ::fesql::node::kFnOpMulti);
+}
+TEST_F(ArithmeticIRBuilderTest, test_multi_int32_x_expr) {
+    BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
+        ::fesql::type::kInt32, ::fesql::type::kInt16, ::fesql::type::kInt32, 2,
+        3, 2 * 3, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<int32_t, int32_t, int32_t>(
+        ::fesql::type::kInt32, ::fesql::type::kInt32, ::fesql::type::kInt32, 2,
+        3, 2 * 3, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<int32_t, int64_t, int64_t>(
+        ::fesql::type::kInt32, ::fesql::type::kInt64, ::fesql::type::kInt64, 2,
+        8000000000L, 2L * 8000000000L, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<int32_t, float, float>(
+        ::fesql::type::kInt32, ::fesql::type::kFloat, ::fesql::type::kFloat, 2,
+        12345678.5f, 2.0f * 12345678.5f, ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<int32_t, double, double>(
+        ::fesql::type::kInt32, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        2, 12345678.5, 2.0 * 12345678.5, ::fesql::node::kFnOpMulti);
+}
+TEST_F(ArithmeticIRBuilderTest, test_multi_int64_x_expr) {
+    BinaryArithmeticExprCheck<int64_t, int16_t, int64_t>(
+        ::fesql::type::kInt64, ::fesql::type::kInt16, ::fesql::type::kInt64,
+        8000000000L, 2L, 8000000000L * 2L, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<int64_t, int32_t, int64_t>(
+        ::fesql::type::kInt64, ::fesql::type::kInt32, ::fesql::type::kInt64,
+        8000000000L, 2, 8000000000L * 2L, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<int64_t, int64_t, int64_t>(
+        ::fesql::type::kInt64, ::fesql::type::kInt64, ::fesql::type::kInt64, 2L,
+        8000000000L, 2L * 8000000000L, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<int64_t, float, float>(
+        ::fesql::type::kInt64, ::fesql::type::kFloat, ::fesql::type::kFloat, 2L,
+        12345678.5f, 2.0f * 12345678.5f, ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<int64_t, double, double>(
+        ::fesql::type::kInt64, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        2, 12345678.5, 2.0 * 12345678.5, ::fesql::node::kFnOpMulti);
+}
+
+TEST_F(ArithmeticIRBuilderTest, test_multi_float_x_expr) {
+    BinaryArithmeticExprCheck<float, int16_t, float>(
+        ::fesql::type::kFloat, ::fesql::type::kInt16, ::fesql::type::kFloat,
+        2.0f, 3.0f, 2.0f * 3.0f, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<float, int32_t, float>(
+        ::fesql::type::kFloat, ::fesql::type::kInt32, ::fesql::type::kFloat,
+        8000000000L, 2, 8000000000.0f * 2.0f, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<float, int64_t, float>(
+        ::fesql::type::kFloat, ::fesql::type::kInt64, ::fesql::type::kFloat,
+        2.0f, 200000L, 2.0f * 200000.0f, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<float, float, float>(
+        ::fesql::type::kFloat, ::fesql::type::kFloat, ::fesql::type::kFloat,
+        2.0f, 12345678.5f, 2.0f * 12345678.5f, ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<float, double, double>(
+        ::fesql::type::kFloat, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        2.0f, 12345678.5, 2.0 * 12345678.5, ::fesql::node::kFnOpMulti);
+}
+TEST_F(ArithmeticIRBuilderTest, test_multi_double_x_expr) {
+    BinaryArithmeticExprCheck<double, int16_t, double>(
+        ::fesql::type::kDouble, ::fesql::type::kInt16, ::fesql::type::kDouble,
+        2.0, 3, 2.0 * 3.0, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<double, int32_t, double>(
+        ::fesql::type::kDouble, ::fesql::type::kInt32, ::fesql::type::kDouble,
+        8000000000L, 2, 8000000000.0 * 2.0, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<double, int64_t, double>(
+        ::fesql::type::kDouble, ::fesql::type::kInt64, ::fesql::type::kDouble,
+        2.0f, 200000L, 2.0 * 200000.0, ::fesql::node::kFnOpMulti);
+
+    BinaryArithmeticExprCheck<double, float, double>(
+        ::fesql::type::kDouble, ::fesql::type::kFloat, ::fesql::type::kDouble,
+        2.0, 12345678.5f, 2.0 * static_cast<double>(12345678.5f),
+        ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<double, double, double>(
+        ::fesql::type::kDouble, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        2.0, 12345678.5, 2.0 * 12345678.5, ::fesql::node::kFnOpMulti);
+}
+
+TEST_F(ArithmeticIRBuilderTest, test_fdiv_int32_x_expr) {
+    BinaryArithmeticExprCheck<int32_t, int16_t, double>(
+        ::fesql::type::kInt32, ::fesql::type::kInt16, ::fesql::type::kDouble, 2,
+        3, 2.0/3.0, ::fesql::node::kFnOpDiv);
+
+    BinaryArithmeticExprCheck<int32_t, int32_t, double>(
+        ::fesql::type::kInt32, ::fesql::type::kInt32, ::fesql::type::kDouble, 2,
+        3, 2.0/3.0, ::fesql::node::kFnOpDiv);
+
+    BinaryArithmeticExprCheck<int32_t, int64_t, double>(
+        ::fesql::type::kInt32, ::fesql::type::kInt64, ::fesql::type::kDouble, 2,
+        8000000000L, 2.0 / 8000000000.0, ::fesql::node::kFnOpDiv);
+//
+    BinaryArithmeticExprCheck<int32_t, float, double>(
+        ::fesql::type::kInt32, ::fesql::type::kFloat, ::fesql::type::kDouble, 2,
+        3.0f, 2.0 / 3.0, ::fesql::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<int32_t, double, double>(
+        ::fesql::type::kInt32, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        2, 12345678.5, 2.0 / 12345678.5, ::fesql::node::kFnOpDiv);
+}
+
+
+TEST_F(ArithmeticIRBuilderTest, test_mod_int32_x_expr) {
+    BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
+        ::fesql::type::kInt32, ::fesql::type::kInt16, ::fesql::type::kInt32, 12,
+        5, 2, ::fesql::node::kFnOpMod);
+
+    BinaryArithmeticExprCheck<int32_t, int32_t, int32_t>(
+        ::fesql::type::kInt32, ::fesql::type::kInt32, ::fesql::type::kInt32, 12,
+        5, 2, ::fesql::node::kFnOpMod);
+
+    BinaryArithmeticExprCheck<int32_t, int64_t, int64_t>(
+        ::fesql::type::kInt32, ::fesql::type::kInt64, ::fesql::type::kInt64, 12,
+        50000L, 12L, ::fesql::node::kFnOpMod);
+
+//    BinaryArithmeticExprCheck<int32_t, float, float>(
+//        ::fesql::type::kInt32, ::fesql::type::kFloat, ::fesql::type::kFloat, 12,
+//        5.1f, 1.8f, ::fesql::node::kFnOpMod);
+
+}
 }  // namespace codegen
 }  // namespace fesql
 int main(int argc, char **argv) {

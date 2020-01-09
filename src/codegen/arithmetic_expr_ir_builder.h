@@ -21,24 +21,28 @@ class ArithmeticIRBuilder {
     ArithmeticIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~ArithmeticIRBuilder();
 
-    bool inferBaseType(::fesql::type::Type left, ::fesql::type::Type right, ::fesql::type::Type *base) {
-        if (left == right) {
-            *base = left;
-            return true;
-        }
-
-        return false;
-    }
     bool BuildAddExpr(::llvm::Value* left, ::llvm::Value *right,
                       ::llvm::Value** output, base::Status& status);  // NOLINT
     bool BuildSubExpr(::llvm::Value* left, ::llvm::Value *right,
                       ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool BuildMultiExpr(::llvm::Value* left, ::llvm::Value *right,
+                      ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool BuildFDivExpr(::llvm::Value* left, ::llvm::Value *right,
+                      ::llvm::Value** output, base::Status& status);  // NOLINT
+
+    bool BuildModExpr(llvm::Value* left, llvm::Value* right,
+                      llvm::Value** output, base::Status status);
 
  private:
-    bool CastTypes(::llvm::Value* left, ::llvm::Value* right,
+    bool IsAcceptType(::llvm::Type* type);
+    bool inferBaseTypes(::llvm::Value* left, ::llvm::Value* right,
                                         ::llvm::Value** casted_left,
                                         ::llvm::Value** casted_right,
                                         ::fesql::base::Status& status);
+    bool inferBaseDoubleTypes(::llvm::Value* left, ::llvm::Value* right,
+                                                  ::llvm::Value** casted_left,
+                                                  ::llvm::Value** casted_right,
+                                                  ::fesql::base::Status& status);
     CastExprIRBuilder _cast_expr_ir_builder;
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
