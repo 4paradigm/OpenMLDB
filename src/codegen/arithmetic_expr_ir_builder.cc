@@ -83,16 +83,16 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     }
     ::llvm::IRBuilder<> builder(block_);
     if (casted_left->getType()->isIntegerTy()) {
-        builder.CreateAdd(casted_left, casted_right);
-    } else if (casted_left->getType()->isFloatTy()) {
-        builder.CreateFAdd(casted_left, casted_right);
+        *output = builder.CreateAdd(casted_left, casted_right);
+    } else if (casted_left->getType()->isFloatTy() || casted_left->getType()->isDoubleTy()) {
+        *output = builder.CreateFAdd(casted_left, casted_right);
     } else {
         status.msg = "fail to codegen add expr: value type isn't compatible";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
     }
-    return false;
+    return true;
 }
 
 bool ArithmeticIRBuilder::BuildSubExpr(
@@ -107,16 +107,16 @@ bool ArithmeticIRBuilder::BuildSubExpr(
     }
     ::llvm::IRBuilder<> builder(block_);
     if (casted_left->getType()->isIntegerTy()) {
-        builder.CreateSub(casted_left, casted_right);
-    } else if (casted_left->getType()->isFloatTy()) {
-        builder.CreateFSub(casted_left, casted_right);
+        *output = builder.CreateSub(casted_left, casted_right);
+    } else if (casted_left->getType()->isFloatTy() || casted_left->getType()->isDoubleTy()) {
+        *output = builder.CreateFSub(casted_left, casted_right);
     } else {
         status.msg = "fail to codegen sub expr: value type isn't compatible";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
     }
-    return false;
+    return true;
 }
 
 }  // namespace codegen

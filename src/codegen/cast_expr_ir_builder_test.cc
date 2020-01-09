@@ -9,12 +9,11 @@
 #include "codegen/cast_expr_ir_builder.h"
 #include <memory>
 #include "gtest/gtest.h"
-#include "ir_base_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 #include "node/node_manager.h"
-#include "type_ir_builder.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
