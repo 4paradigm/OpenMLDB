@@ -214,6 +214,22 @@ TEST_F(TableTest, SchedGcHead) {
     ASSERT_EQ(2, table->GetRecordIdxCnt());
     ASSERT_EQ(1, table->GetRecordPkCnt());
     table->SchedGc();
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test");
+        entry.set_ts(1);
+        entry.set_value("test2");
+        ASSERT_TRUE(table->IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test");
+        entry.set_ts(2);
+        entry.set_value("test1");
+        ASSERT_FALSE(table->IsExpire(entry));
+    }
     ASSERT_EQ(1, table->GetRecordCnt());
     ASSERT_EQ(1, table->GetRecordIdxCnt());
     ASSERT_EQ(bytes, table->GetRecordByteSize());
@@ -340,6 +356,22 @@ TEST_F(TableTest, TableDataCnt) {
     ASSERT_EQ(table->GetRecordCnt(), 2);
     ASSERT_EQ(table->GetRecordIdxCnt(), 2);
     table->SchedGc();
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test");
+        entry.set_ts(now - 1 * (60 * 1000) - 1);
+        entry.set_value("test");
+        ASSERT_TRUE(table->IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test");
+        entry.set_ts(now);
+        entry.set_value("tes2");
+        ASSERT_FALSE(table->IsExpire(entry));
+    }
     ASSERT_EQ(table->GetRecordCnt(), 1);
     ASSERT_EQ(table->GetRecordIdxCnt(), 1);
     delete table;
@@ -903,10 +935,50 @@ TEST_F(TableTest, GcAbsOrLat) {
     ASSERT_EQ(2, table.GetRecordCnt());
     ASSERT_EQ(2, table.GetRecordIdxCnt());
     ASSERT_EQ(2, table.GetRecordPkCnt());
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 5 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_TRUE(table.IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 3 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_TRUE(table.IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 2 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_TRUE(table.IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 1 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_FALSE(table.IsExpire(entry));
+    }
     table.SchedGc();
     ASSERT_EQ(0, table.GetRecordCnt());
     ASSERT_EQ(0, table.GetRecordIdxCnt());
     ASSERT_EQ(2, table.GetRecordPkCnt());
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 1 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_TRUE(table.IsExpire(entry));
+    }
     FLAGS_gc_safe_offset = offset;
 }
 
@@ -935,6 +1007,30 @@ TEST_F(TableTest, GcAbsAndLat) {
     ASSERT_EQ(6, table.GetRecordCnt());
     ASSERT_EQ(6, table.GetRecordIdxCnt());
     ASSERT_EQ(2, table.GetRecordPkCnt());
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 4 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_TRUE(table.IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 3 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_FALSE(table.IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 2 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_FALSE(table.IsExpire(entry));
+    }
     table.SetTTL(0, 1);
     table.SchedGc();
     ASSERT_EQ(6, table.GetRecordCnt());
@@ -949,6 +1045,30 @@ TEST_F(TableTest, GcAbsAndLat) {
     ASSERT_EQ(2, table.GetRecordCnt());
     ASSERT_EQ(2, table.GetRecordIdxCnt());
     ASSERT_EQ(2, table.GetRecordPkCnt());
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 3 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_TRUE(table.IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 2 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_TRUE(table.IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        entry.set_pk("test1");
+        entry.set_ts(now - 1 * (60 * 1000) - 1000);
+        entry.set_value("value1");
+        ASSERT_FALSE(table.IsExpire(entry));
+    }
     FLAGS_gc_safe_offset = offset;
 }
 
