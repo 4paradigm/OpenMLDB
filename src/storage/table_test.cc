@@ -832,18 +832,42 @@ TEST_F(TableTest, AbsAndLatSetGet) {
     BuildTableMeta(table_meta, ::rtidb::api::TTLType::kAbsAndLat, 10, 12);
     AddColumnDesc(table_meta, "card", "string", true, false, 0, 0);
     AddColumnDesc(table_meta, "mcc", "string", true, false, 0, 0);
-    AddColumnDesc(table_meta, "price", "int64", false, 0, 0);
+    AddColumnDesc(table_meta, "price", "int64", false, false, 0, 0);
     AddColumnDesc(table_meta, "ts1", "int64", false, true, 0, 0);
     AddColumnDesc(table_meta, "ts2", "int64", false, true, 2, 10);
+    ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
+    column_key->set_index_name("card");
+    column_key->add_ts_name("ts1");
+    column_key = table_meta.add_column_key();
+    column_key->set_index_name("mcc");
+    column_key->add_ts_name("ts1");
+    column_key->add_ts_name("ts2");
     MemTable table(table_meta);
     table.Init();
-
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    for (int i = 0; i < 10; i++) {
+        ::rtidb::api::PutRequest request;
+        ::rtidb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card");
+        dim = request.add_dimensions();
+        dim->set_idx(1);
+        dim->set_key("mcc");
+        ::rtidb::api::TSDimension* ts = request.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(now - i * (60 * 1000));
+        ts = request.add_ts_dimensions();
+        ts->set_idx(1);
+        ts->set_ts(now - i * (60 * 1000));
+        std::string value = "value";
+        table.Put(request.dimensions(), request.ts_dimensions(), value);
+    }
     // test get and set ttl
     ASSERT_EQ(10, table.GetTTL().abs_ttl);
     ASSERT_EQ(12, table.GetTTL().lat_ttl);
     ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
     ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
-    table.SetTTL(1, 3);
+    table.SetTTL(0, 1, 3);
     ASSERT_EQ(10, table.GetTTL().abs_ttl);
     ASSERT_EQ(12, table.GetTTL().lat_ttl);
     ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
@@ -853,12 +877,48 @@ TEST_F(TableTest, AbsAndLatSetGet) {
     ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
     ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
     table.SchedGc();
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        ::rtidb::api::Dimension* dim = entry.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card");
+        dim = entry.add_dimensions();
+        dim->set_idx(1);
+        dim->set_key("mcc");
+        ::rtidb::api::TSDimension* ts = entry.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(now - 10 * (60 * 1000));
+        ts = entry.add_ts_dimensions();
+        ts->set_idx(1);
+        ts->set_ts(now - 2 * (60 * 1000));
+        entry.set_value("value");
+        ASSERT_FALSE(table.IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        ::rtidb::api::Dimension* dim = entry.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card");
+        dim = entry.add_dimensions();
+        dim->set_idx(1);
+        dim->set_key("mcc");
+        ::rtidb::api::TSDimension* ts = entry.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(now - 12 * (60 * 1000));
+        ts = entry.add_ts_dimensions();
+        ts->set_idx(1);
+        ts->set_ts(now - 10 * (60 * 1000));
+        entry.set_value("value");
+        ASSERT_TRUE(table.IsExpire(entry));
+    }
     ASSERT_EQ(1, table.GetTTL().abs_ttl);
     ASSERT_EQ(3, table.GetTTL().lat_ttl);
     ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
     ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
-    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
-    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(1, table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(3, table.GetTTL(1, 0).lat_ttl);
     ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
     ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
 }
@@ -871,16 +931,40 @@ TEST_F(TableTest, AbsOrLatSetGet) {
     AddColumnDesc(table_meta, "price", "int64", false, 0, 0);
     AddColumnDesc(table_meta, "ts1", "int64", false, true, 0, 0);
     AddColumnDesc(table_meta, "ts2", "int64", false, true, 2, 10);
-
+    ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
+    column_key->set_index_name("card");
+    column_key->add_ts_name("ts1");
+    column_key = table_meta.add_column_key();
+    column_key->set_index_name("mcc");
+    column_key->add_ts_name("ts1");
+    column_key->add_ts_name("ts2");
 
     MemTable table(table_meta);
     table.Init();
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    for (int i = 0; i < 10; i++) {
+        ::rtidb::api::PutRequest request;
+        ::rtidb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card");
+        dim = request.add_dimensions();
+        dim->set_idx(1);
+        dim->set_key("mcc");
+        ::rtidb::api::TSDimension* ts = request.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(now - i * (60 * 1000));
+        ts = request.add_ts_dimensions();
+        ts->set_idx(1);
+        ts->set_ts(now - i * (60 * 1000));
+        std::string value = "value";
+        table.Put(request.dimensions(), request.ts_dimensions(), value);
+    }
     // test get and set ttl
     ASSERT_EQ(10, table.GetTTL().abs_ttl);
     ASSERT_EQ(12, table.GetTTL().lat_ttl);
     ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
     ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
-    table.SetTTL(1, 3);
+    table.SetTTL(0, 1, 3);
     ASSERT_EQ(10, table.GetTTL().abs_ttl);
     ASSERT_EQ(12, table.GetTTL().lat_ttl);
     ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
@@ -890,12 +974,48 @@ TEST_F(TableTest, AbsOrLatSetGet) {
     ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
     ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
     table.SchedGc();
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        ::rtidb::api::Dimension* dim = entry.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card");
+        dim = entry.add_dimensions();
+        dim->set_idx(1);
+        dim->set_key("mcc");
+        ::rtidb::api::TSDimension* ts = entry.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(now - 10 * (60 * 1000));
+        ts = entry.add_ts_dimensions();
+        ts->set_idx(1);
+        ts->set_ts(now - 2 * (60 * 1000));
+        entry.set_value("value");
+        ASSERT_FALSE(table.IsExpire(entry));
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(0);
+        ::rtidb::api::Dimension* dim = entry.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("card");
+        dim = entry.add_dimensions();
+        dim->set_idx(1);
+        dim->set_key("mcc");
+        ::rtidb::api::TSDimension* ts = entry.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(now - 12 * (60 * 1000));
+        ts = entry.add_ts_dimensions();
+        ts->set_idx(1);
+        ts->set_ts(now - 10 * (60 * 1000));
+        entry.set_value("value");
+        ASSERT_TRUE(table.IsExpire(entry));
+    }
     ASSERT_EQ(1, table.GetTTL().abs_ttl);
     ASSERT_EQ(3, table.GetTTL().lat_ttl);
     ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
     ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
-    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
-    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(1, table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(3, table.GetTTL(1, 0).lat_ttl);
     ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
     ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
 }
