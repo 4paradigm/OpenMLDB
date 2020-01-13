@@ -1,0 +1,62 @@
+import "type.proto";
+import "common.proto";
+
+package fesql.batch;
+option cc_generic_services = true;
+
+
+message DataSource {
+    optional string url = 1;
+    optional type.TableDef schema = 2;
+}
+
+message DataSink {
+    optional string url = 1;
+    optional type.TableDef schema = 2;
+}
+
+message JobDesc {
+    optional string sql = 1;
+    repeated DataSource inputs = 2;
+    repeated DataSink outputs = 3;
+    // the endpoint of worker
+    repeated string workers = 4;
+}
+
+message TaskDesc {
+
+}
+
+message StartRequest {
+    optional JobDesc job = 1;
+}
+
+message StartResponse {
+    optional common.Status status = 1;
+}
+
+message AssignRoleRequest {
+    optional BatchRole role = 1;
+}
+
+message AssignRoleResponse {
+    optional common.Status status = 1;
+}
+
+message RunTaskRequest {
+    // a human readable id
+    optional string id = 1;
+    optional string sql = 2;
+}
+
+message RunTaskResponse {
+    optional common.Status status = 1;
+}
+
+service BatchLet {
+    // start the driver container
+    rpc StartDriver(StartRequest) returns(StartRequest);
+
+    // run a task on worker
+    rpc RunTask(RunTaskRequest) returns();
+}
