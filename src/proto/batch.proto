@@ -35,14 +35,6 @@ message StartResponse {
     optional common.Status status = 1;
 }
 
-message AssignRoleRequest {
-    optional BatchRole role = 1;
-}
-
-message AssignRoleResponse {
-    optional common.Status status = 1;
-}
-
 message RunTaskRequest {
     // a human readable id
     optional string id = 1;
@@ -58,5 +50,5 @@ service BatchLet {
     rpc StartDriver(StartRequest) returns(StartRequest);
 
     // run a task on worker
-    rpc RunTask(RunTaskRequest) returns();
+    rpc RunTask(RunTaskRequest) returns(RunTaskResponse);
 }
