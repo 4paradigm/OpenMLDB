@@ -160,6 +160,12 @@ public:
     }
 
 private:
+
+    inline bool CheckAbsolute(const LogEntry& entry, const std::map<uint32_t, uint64_t>& ts_dimemsions_map);
+
+    inline bool CheckLatest(const LogEntry& entry, const std::map<uint32_t, uint64_t>& ts_dimemsions_map);
+
+private:
     uint32_t seg_cnt_;
     Segment*** segments_;
     std::atomic<bool> enable_gc_;

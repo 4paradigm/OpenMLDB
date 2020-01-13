@@ -394,6 +394,78 @@ uint64_t MemTable::GetExpireTime(uint64_t ttl) {
     return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl;
 }
 
+inline bool MemTable::CheckLatest(const LogEntry& entry, const std::map<uint32_t, uint64_t>& ts_dimemsions_map) {
+    if (entry.dimensions_size() > 0) {
+        for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); ++iter) {
+            auto pos = column_key_map_.find(iter->idx());
+            if (pos != column_key_map_.end()) {
+                for (auto ts_idx : pos->second) {
+                    auto inner_pos = ts_dimemsions_map.find(ts_idx);
+                    if (inner_pos == ts_dimemsions_map.end()) {
+                        continue;
+                    }
+                    ::rtidb::storage::Ticket ticket;
+                    ::rtidb::storage::TableIterator* it = NewIterator(iter->idx(), ts_idx, iter->key(), ticket);
+                    it->SeekToLast();
+                    if (it->Valid()) {
+                        if (inner_pos->second >= it->GetKey()) {
+                            delete it;
+                            return false;
+                        }
+                    }
+                    delete it;
+                }    
+            } else {
+                uint64_t ts = 0;
+                ::rtidb::storage::TableIterator* it = NULL;
+                ::rtidb::storage::Ticket ticket;
+                if (ts_dimemsions_map.empty()) {
+                    ts = entry.ts();
+                    it = NewIterator(iter->idx(), iter->key(), ticket);
+                } else {
+                    ts = ts_dimemsions_map.begin()->second;
+                    it = NewIterator(iter->idx(), ts_dimemsions_map.begin()->first, iter->key(), ticket);
+                }
+                it->SeekToLast();
+                if (it->Valid()) {
+                    if (ts >= it->GetKey()) {
+                        delete it;
+                        return false;
+                    }
+                }
+                delete it;
+            }
+        }
+    } else {
+        ::rtidb::storage::Ticket ticket;
+        ::rtidb::storage::TableIterator* it = NewIterator(entry.pk(), ticket);
+        it->SeekToLast();
+        if (it->Valid()) {
+            if (entry.ts() >= it->GetKey()) {
+                delete it;
+                return false;
+            }
+        }
+        delete it;
+    }
+    return true;
+}
+
+inline bool MemTable::CheckAbsolute(const LogEntry& entry, const std::map<uint32_t, uint64_t>& ts_dimemsions_map) {
+    if (ts_dimemsions_map.empty()) {
+        if (entry.ts() >= GetExpireTime(GetTTL().abs_ttl*60*1000)) {
+            return false;
+        }
+    } else {
+        for (auto kv : ts_dimemsions_map) {
+            if (kv.second >= GetExpireTime(GetTTL(0, kv.first).abs_ttl*60*1000)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool MemTable::IsExpire(const LogEntry& entry) {
     if (!enable_gc_.load(std::memory_order_relaxed)) { 
         return false;
@@ -402,72 +474,12 @@ bool MemTable::IsExpire(const LogEntry& entry) {
     for (auto iter = entry.ts_dimensions().begin(); iter != entry.ts_dimensions().end(); iter++) {
         ts_dimemsions_map.insert(std::make_pair(iter->idx(), iter->ts()));
     }
-    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        if (entry.dimensions_size() > 0) {
-            for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); ++iter) {
-                auto pos = column_key_map_.find(iter->idx());
-                if (pos != column_key_map_.end()) {
-                    for (auto ts_idx : pos->second) {
-                        auto inner_pos = ts_dimemsions_map.find(ts_idx);
-                        if (inner_pos == ts_dimemsions_map.end()) {
-                            continue;
-                        }
-                        ::rtidb::storage::Ticket ticket;
-                        ::rtidb::storage::TableIterator* it = NewIterator(iter->idx(), ts_idx, iter->key(), ticket);
-                        it->SeekToLast();
-                        if (it->Valid()) {
-                            if (inner_pos->second >= it->GetKey()) {
-                                delete it;
-                                return false;
-                            }
-                        }
-                        delete it;
-                    }    
-                } else {
-                    uint64_t ts = 0;
-                    ::rtidb::storage::TableIterator* it = NULL;
-                    ::rtidb::storage::Ticket ticket;
-                    if (ts_dimemsions_map.empty()) {
-                        ts = entry.ts();
-                        it = NewIterator(iter->idx(), iter->key(), ticket);
-                    } else {
-                        ts = ts_dimemsions_map.begin()->second;
-                        it = NewIterator(iter->idx(), ts_dimemsions_map.begin()->first, iter->key(), ticket);
-                    }
-                    it->SeekToLast();
-                    if (it->Valid()) {
-                        if (ts >= it->GetKey()) {
-                            delete it;
-                            return false;
-                        }
-                    }
-                    delete it;
-                }
-            }
-        } else {
-            ::rtidb::storage::Ticket ticket;
-            ::rtidb::storage::TableIterator* it = NewIterator(entry.pk(), ticket);
-            it->SeekToLast();
-            if (it->Valid()) {
-                if (entry.ts() >= it->GetKey()) {
-                    delete it;
-                    return false;
-                }
-            }
-            delete it;
-        }
+    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime || ttl_type_ == ::rtidb::api::TTLType::kAbsAndLat) {
+        return CheckLatest(entry, ts_dimemsions_map);
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsOrLat) {
+        return CheckAbsolute(entry, ts_dimemsions_map) && CheckLatest(entry, ts_dimemsions_map);
     } else {
-        if (ts_dimemsions_map.empty()) {
-            if (entry.ts() >= GetExpireTime(GetTTL().abs_ttl*60*1000)) {
-                return false;
-            }
-        } else {
-            for (auto kv : ts_dimemsions_map) {
-                if (kv.second >= GetExpireTime(GetTTL(0, kv.first).abs_ttl*60*1000)) {
-                    return false;
-                }
-            }
-        }
+        return CheckAbsolute(entry, ts_dimemsions_map);
     }
     return true;
 }
