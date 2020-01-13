@@ -44,6 +44,8 @@ include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib64)
 add_subdirectory(src)
+#TODO add flag
+add_subdirectory(experiments)
 
 if (COVERAGE_ENABLE)
     if(CMAKE_COMPILER_IS_GNUCXX)
