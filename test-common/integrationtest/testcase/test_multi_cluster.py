@@ -14,10 +14,10 @@ class TestMultiCluster(TestCaseBase):
 
     @ddt.data(
         ['kMemory'],
-        #['kSSD'],
-        #['kHDD'],
+        ['kSSD'],
+        ['kHDD'],
     )
-    @multi_dimension(False)
+    @multi_dimension(True)
     @ddt.unpack
     def test_create_after_add_rep_cluster(self, storage_mode):
         """
@@ -64,7 +64,7 @@ class TestMultiCluster(TestCaseBase):
         self.assertEqual(column_key[0], ["0", "card", "card", "ts1", "0min"])
         self.assertEqual(column_key[1], ["1", "card", "card", "ts2", "0min"])
         self.assertEqual(column_key[2], ["2", "mcc", "mcc", "ts2", "0min"])
-        time.sleep(3)
+        time.sleep(30)
 
         (schema, column_key) = self.ns_showschema(self.ns_leader_r, name)
         self.assertEqual(len(schema), 5)
@@ -224,7 +224,7 @@ class TestMultiCluster(TestCaseBase):
         self.assertIn('switchmode ok', msg)
         msg = self.add_replica_cluster(self.ns_leader, conf.zk_endpoint, zk_root_path, self.alias)
         self.assertIn('adrepcluster ok', msg)
-        time.sleep(60)
+        time.sleep(30)
 
         (schema, column_key) = self.ns_showschema(self.ns_leader_r, name)
         self.assertEqual(len(schema), 5)

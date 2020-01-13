@@ -1730,7 +1730,7 @@ bool HasIsTsCol(const google::protobuf::RepeatedPtrField<::rtidb::common::Column
         return false;
     }
     for (auto it = list.begin(); it != list.end(); it++) {
-        if (it->has_is_ts_col()) {
+        if (it->has_is_ts_col() && it->is_ts_col()) {
             return true;
         }
     }
