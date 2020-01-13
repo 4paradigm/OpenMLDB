@@ -1813,6 +1813,13 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(request->name());
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
+        response->set_code(100);
+        response->set_msg("table is not exist");
+        return;
+    }
     std::shared_ptr<OPData> op_data;
     std::string value;
     request->SerializeToString(&value);

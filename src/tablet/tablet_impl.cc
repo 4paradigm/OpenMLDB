@@ -2639,7 +2639,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         std::string db_path = root_path + "/" + std::to_string(tid) + 
                         "_" + std::to_string(pid);
         if (!::rtidb::base::IsExists(db_path)) {
-            PDLOG(WARNING, "table db path is not exist. tid %u, pid %u", tid, pid);
+            PDLOG(WARNING, "table db path is not exist. tid %u, pid %u, path %s", tid, pid, db_path.c_str());
             response->set_code(130);
             response->set_msg("table db path is not exist");
             break;
@@ -2716,6 +2716,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
         std::string manifest_file = snapshot_path + "MANIFEST";
         if (Snapshot::GetLocalManifest(manifest_file, manifest) == 0) {
             std::string snapshot_dir = snapshot_path + manifest.name();
+            PDLOG(INFO, "rename dir %s to %s. tid %u pid %u", snapshot_dir.c_str(), data_path.c_str(), tid, pid);
             if (!::rtidb::base::Rename(snapshot_dir, data_path)) {
                 PDLOG(WARNING, "rename dir failed. tid %u pid %u path %s", tid, pid, snapshot_dir.c_str());
                 break; 
@@ -2850,8 +2851,8 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
     std::string root_path;
     std::string recycle_bin_root_path;
     int32_t code = -1;
-    std::shared_ptr<Table> table = GetTable(tid, pid);
     do {
+        std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
             PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
             break;
@@ -2866,6 +2867,18 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             PDLOG(WARNING, "fail to get recycle bin root path. tid %u pid %u", tid, pid);
             break;
         }
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            tables_[tid].erase(pid);
+            replicators_[tid].erase(pid);
+            snapshots_[tid].erase(pid);
+        }
+
+        if (replicator) {
+            replicator->DelAllReplicateNode();
+            PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
+        }
         code = 0;
     } while (0);
     if (code < 0) {
@@ -2874,18 +2887,6 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
         }
         return code;
-    }
-    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        tables_[tid].erase(pid);
-        replicators_[tid].erase(pid);
-        snapshots_[tid].erase(pid);
-    }
-
-    if (replicator) {
-        replicator->DelAllReplicateNode();
-        PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
     }
 
     std::string source_path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
