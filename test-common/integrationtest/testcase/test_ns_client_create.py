@@ -623,13 +623,6 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('column_desc', {'name': 'k2', 'type': 'int32', 'add_ts_idx': 'true'}),
         ('column_desc', {'name': 'k3', 'type': 'double', 'add_ts_idx': 'false'}),
         ),
-        
-    @ddt.data(
-        ('Create table ok',
-        ('column_desc', {'name': 'k1', 'type': 'string', 'add_ts_idx': 'true'}),
-        ('column_desc', {'name': 'k2', 'type': 'int32', 'add_ts_idx': 'true'}),
-        ('column_desc', {'name': 'k3', 'type': 'double', 'add_ts_idx': 'false'}),
-        ),
         ('Create table ok',
         ('column_desc', {'name': 'k1', 'type': 'string'}),
         ('column_desc', {'name': 'k2', 'type': 'int32'}),
