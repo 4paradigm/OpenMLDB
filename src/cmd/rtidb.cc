@@ -1374,7 +1374,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         ::rtidb::base::KvIterator* it = NULL;
         std::string msg;
         if(is_pair_format) {
-            it = tablet_client->Scan(tid, pid, key, st, et, limit, msg);
+            it = tablet_client->Scan(tid, pid, key, st, et, limit, atleast, msg);
         } else {
             try {
                 st = boost::lexical_cast<uint64_t>(parts[3]);
@@ -1382,7 +1382,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
                 if (parts.size() > 5) {
                     limit = boost::lexical_cast<uint32_t>(parts[5]);
                 }
-                it = tablet_client->Scan(tid, pid, key, st, et, limit, msg);
+                it = tablet_client->Scan(tid, pid, key, st, et, limit, atleast, msg);
             } catch (std::exception const& e) {
                 printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
                 return;
@@ -4857,10 +4857,8 @@ void StartNsClient() {
             HandleNSClientCancelOP(parts, &client);
         } else if (parts[0] == "addtablefield") {
             HandleNSAddTableField(parts, &client);
-<<<<<<< HEAD
         } else if (parts[0] == "info") {
             HandleNSInfo(parts, &client);
-=======
         } else if (parts[0] == "addrepcluster") {
             HandleNSAddReplicaCluster(parts, &client);
         } else if (parts[0] == "showrepcluster") {
@@ -4869,7 +4867,6 @@ void StartNsClient() {
             HandleNSRemoveReplicaCluster(parts, &client);
         } else if (parts[0] == "switchmode") {
             HandleNSSwitchMode(parts, &client);
->>>>>>> develop
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

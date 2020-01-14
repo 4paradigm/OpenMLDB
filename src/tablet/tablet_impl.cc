@@ -3808,6 +3808,8 @@ bool TabletImpl::Seek(::rtidb::storage::TableIterator* it, const uint64_t time,
             return false;
     }
     return false;
+}
+
 void TabletImpl::SetMode(RpcController* controller,
         const ::rtidb::api::SetModeRequest* request,
         ::rtidb::api::GeneralResponse* response,

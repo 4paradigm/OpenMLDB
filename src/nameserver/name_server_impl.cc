@@ -1274,38 +1274,7 @@ int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
                 std::string endpoint_role = "tablet";
                 if (UpdateTask(op_list, endpoint, endpoint_role, is_recover_op, response) < 0) {
                     continue;
-<<<<<<< HEAD
                 }
-                bool has_op_task = false;
-                for (int idx = 0; idx < response.task_size(); idx++) {
-                    if (op_data->op_info_.op_id() == response.task(idx).op_id() &&
-                           task->task_info_->task_type() == response.task(idx).task_type()) {
-                        has_op_task = true;
-                        if (response.task(idx).status() != ::rtidb::api::kInited &&
-                                task->task_info_->status() != response.task(idx).status()) {
-                            PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]",
-                                        ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(),
-                                        ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(),
-                                        response.task(idx).op_id(),
-                                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-                            task->task_info_->set_status(response.task(idx).status());
-                        }
-                        break;
-                    }
-                }
-                if (!has_op_task && (is_recover_op || task->task_info_->is_rpc_send())) {
-                    if (task->task_info_->has_endpoint() && task->task_info_->endpoint() == iter->first) {
-                        PDLOG(WARNING, "not found op in tablet. update task status from[kDoing] to[kFailed]. "
-                                       "op_id[%lu], task_type[%s] endpoint[%s]",
-                                        op_data->op_info_.op_id(),
-                                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
-                                        iter->first.c_str());
-                        task->task_info_->set_status(::rtidb::api::kFailed);
-                    }
-                }
-=======
-                }                
->>>>>>> develop
             }
         }
     }
@@ -1636,23 +1605,7 @@ void NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
                 task_vec_[index].pop_front();
                 PDLOG(INFO, "delete op[%lu] in running op", op_id);
             } else {
-<<<<<<< HEAD
-                if (zk_client_->DeleteNode(node)) {
-                    PDLOG(INFO, "delete zk op node[%s] success.", node.c_str());
-                    op_data->op_info_.set_end_time(::baidu::common::timer::now_time());
-                    if (op_data->op_info_.task_status() == ::rtidb::api::kDoing) {
-                        op_data->op_info_.set_task_status(::rtidb::api::kDone);
-                        op_data->task_list_.clear();
-                    }
-                    done_op_list_.push_back(op_data);
-                    task_vec_[index].pop_front();
-                    PDLOG(INFO, "delete op[%lu] in running op", op_id);
-                } else {
-                    PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str());
-                }
-=======
                 PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
->>>>>>> develop
             }
         }
     }
@@ -3053,33 +3006,6 @@ void NameServerImpl::LoadTable(RpcController* controller,
             return;
         }
     }
-<<<<<<< HEAD
-    if (table_info->has_ttl_desc()) {
-        if ((table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) || (table_info->ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
-            response->set_code(307);
-            uint32_t max_ttl = table_info->ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
-            uint64_t ttl = table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max ? table_info->ttl_desc().abs_ttl() : table_info->ttl_desc().lat_ttl();
-            response->set_msg("invalid parameter");
-            PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
-                            ttl, ::rtidb::api::TTLType_Name(table_info->ttl_desc().ttl_type()).c_str(), max_ttl);
-            return;
-        }
-    } else if (table_info->has_ttl()) {
-        if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max)
-                || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
-            response->set_code(307);
-            uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
-            response->set_msg("invalid parameter");
-            PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
-                            table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
-            return;
-        }
-    }
-    if (table_info->table_partition_size() > 0) {
-        std::set<uint32_t> pid_set;
-        for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-            pid_set.insert(table_info->table_partition(idx).pid());
-=======
     std::string name = request->name();
     std::string endpoint = request->endpoint();
     uint32_t pid = request->pid();
@@ -3093,7 +3019,6 @@ void NameServerImpl::LoadTable(RpcController* controller,
             response->set_code(305);
             response->set_msg("create op failed");
             return; 
->>>>>>> develop
         }
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
         std::vector<uint64_t> rep_cluster_op_id_vec = {rep_cluster_op_id};
@@ -3108,12 +3033,6 @@ void NameServerImpl::LoadTable(RpcController* controller,
         response->set_code(0);
         response->set_msg("ok");
     } else {
-<<<<<<< HEAD
-        if (SetPartitionInfo(*table_info) < 0) {
-            response->set_code(314);
-            response->set_msg("set partition info failed");
-            PDLOG(WARNING, "set partition info failed");
-=======
         PDLOG(WARNING, "request has no zone_info or task_info!"); 
         response->set_code(504);
         response->set_msg("add task in replica cluster ns failed");
@@ -3146,7 +3065,6 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
                     request->zone_info().zone_name().c_str(), request->zone_info().zone_term());
->>>>>>> develop
             return;
         }
     } else {
@@ -3419,14 +3337,26 @@ void NameServerImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max) 
-            || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
-        response->set_code(307);
-        uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
-        response->set_msg("invalid parameter");
-        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
-                table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
-        return;
+    if (table_info->has_ttl_desc()) {
+        if ((table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) || (table_info->ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
+            response->set_code(307);
+            uint32_t max_ttl = table_info->ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+            uint64_t ttl = table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max ? table_info->ttl_desc().abs_ttl() : table_info->ttl_desc().lat_ttl();
+            response->set_msg("invalid parameter");
+            PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
+                            ttl, ::rtidb::api::TTLType_Name(table_info->ttl_desc().ttl_type()).c_str(), max_ttl);
+            return;
+        }
+    } else if (table_info->has_ttl()) {
+        if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max)
+                || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
+            response->set_code(307);
+            uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+            response->set_msg("invalid parameter");
+            PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
+                            table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
+            return;
+        }
     }
     if (!request->has_zone_info()) { 
         if (FillColumnKey(*table_info) < 0) {

@@ -4959,6 +4959,8 @@ TEST_F(TabletImplTest, ScanAtLeastWithAbsOrLat) {
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, srp.count());
     }
+}
+
 TEST_F(TabletImplTest, DelRecycle) {
     uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
     std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
