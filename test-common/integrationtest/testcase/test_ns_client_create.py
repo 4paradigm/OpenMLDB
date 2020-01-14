@@ -10,10 +10,12 @@ from libs.logger import infoLogger
 import collections
 
 
+
 @ddt.ddt
 class TestCreateTableByNsClient(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
+        
 
     @ddt.data(
         ('"t{}"'.format(time.time()), None, 144000, 8,
@@ -129,7 +131,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertNotIn('testvalue0', self.get(self.slave1, tid, pid, 'testkey0', 0))
         self.assertIn('testvalue1', self.get(self.slave1, tid, pid, 'testkey0', 0))
         self.ns_drop(self.ns_leader, name)
-
+        
 
     def test_create_name_repeat(self):
         """
@@ -614,7 +616,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(pid_map[self.slave1], 29)
         self.assertEqual(pid_map[self.slave2], 29)
         self.clear_ns_table(self.ns_leader);
-        
+
     @ddt.data(
         ('Create table ok',
         ('column_desc', {'name': 'k1', 'type': 'string', 'add_ts_idx': 'true'}),
@@ -622,6 +624,12 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('column_desc', {'name': 'k3', 'type': 'double', 'add_ts_idx': 'false'}),
         ),
         
+    @ddt.data(
+        ('Create table ok',
+        ('column_desc', {'name': 'k1', 'type': 'string', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k2', 'type': 'int32', 'add_ts_idx': 'true'}),
+        ('column_desc', {'name': 'k3', 'type': 'double', 'add_ts_idx': 'false'}),
+        ),
         ('Create table ok',
         ('column_desc', {'name': 'k1', 'type': 'string'}),
         ('column_desc', {'name': 'k2', 'type': 'int32'}),

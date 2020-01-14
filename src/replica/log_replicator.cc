@@ -37,14 +37,15 @@ const static ::rtidb::base::DefaultComparator scmp;
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
-                             std::shared_ptr<Table> table):path_(path), log_path_(),
+                             std::shared_ptr<Table> table, std::atomic<bool>* follower):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
-    endpoints_(endpoints), nodes_(), term_(0), mu_(), cv_(),
-    wmu_(){
+    endpoints_(endpoints), nodes_(), local_endpoints_(), term_(0), mu_(), cv_(),
+    wmu_(), follower_(follower){
     table_ = table;
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
     snapshot_last_offset_.store(0, std::memory_order_relaxed);
+    follower_offset_.store(0);
 }
 
 LogReplicator::~LogReplicator() {
@@ -89,12 +90,13 @@ bool LogReplicator::Init() {
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
             std::shared_ptr<ReplicateNode> replicate_node = std::make_shared<ReplicateNode>
-                    (*it, logs_, log_path_, table_->GetId(), table_->GetPid(), &term_, &log_offset_, &mu_, &cv_);
+                    (*it, logs_, log_path_, table_->GetId(), table_->GetPid(), &term_, &log_offset_, &mu_, &cv_, false, &follower_offset_);
             if (replicate_node->Init() < 0) {
                 PDLOG(WARNING, "init replicate node %s error", it->c_str());
                 return false;
             }
             nodes_.push_back(replicate_node);
+            local_endpoints_.push_back(*it);
             PDLOG(INFO, "add replica node with endpoint %s", it->c_str());
         }
         PDLOG(INFO, "init leader node for path %s ok", path_.c_str());
@@ -293,12 +295,14 @@ bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
 
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
-    std::lock_guard<std::mutex> lock(wmu_);
-    if (!FLAGS_zk_cluster.empty() && request->term() < term_.load(std::memory_order_relaxed)) {
-        PDLOG(WARNING, "leader id not match. request term  %lu, cur term %lu, tid %u, pid %u",
-                        request->term(), term_.load(std::memory_order_relaxed), request->tid(), request->pid());
-        return false;
+    if (!follower_->load(std::memory_order_relaxed)) {
+        if (!FLAGS_zk_cluster.empty() && request->term() < term_.load(std::memory_order_relaxed)) {
+            PDLOG(WARNING, "leader id not match. request term  %lu, cur term %lu, tid %u, pid %u",
+                            request->term(), term_.load(std::memory_order_relaxed), request->tid(), request->pid());
+            return false;
+        }
     }
+    std::lock_guard<std::mutex> lock(wmu_);
     uint64_t last_log_offset = GetOffset();
     if (request->pre_log_index() == 0 && request->entries_size() == 0) {
         response->set_log_offset(last_log_offset);
@@ -350,6 +354,10 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
 }
 
 int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec) {
+    return AddReplicateNode(endpoint_vec, UINT32_MAX);
+}
+
+int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec, uint32_t tid) {
     if (endpoint_vec.empty()) {
         return 1;
     }
@@ -367,9 +375,16 @@ int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec
                 return 1;
             }
         }
-        std::shared_ptr<ReplicateNode> replicate_node = std::make_shared<ReplicateNode>(
-                            endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(),
-                            &term_, &log_offset_, &mu_, &cv_);
+        std::shared_ptr<ReplicateNode> replicate_node;
+        if (tid == UINT32_MAX) {
+            replicate_node = std::make_shared<ReplicateNode>(
+                    endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(),
+                    &term_, &log_offset_, &mu_, &cv_, false, &follower_offset_);
+        } else {
+            replicate_node = std::make_shared<ReplicateNode>(
+                    endpoint, logs_, log_path_, tid, table_->GetPid(),
+                    &term_, &log_offset_, &mu_, &cv_, true, &follower_offset_);
+        }
         if (replicate_node->Init() < 0) {
             PDLOG(WARNING, "init replicate node %s error", endpoint.c_str());
             return -1;
@@ -380,6 +395,9 @@ int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec
         }
         nodes_.push_back(replicate_node);
         endpoints_.push_back(endpoint);
+        if (tid == UINT32_MAX) {
+            local_endpoints_.push_back(endpoint);
+        }
         PDLOG(INFO, "add ReplicateNode with endpoint %s ok. tid[%u] pid[%u]",
                     endpoint.c_str(), table_->GetId(), table_->GetPid());
     }
@@ -407,6 +425,7 @@ int LogReplicator::DelReplicateNode(const std::string& endpoint) {
         node = *it;
         nodes_.erase(it);
         endpoints_.erase(std::remove(endpoints_.begin(), endpoints_.end(), endpoint), endpoints_.end());
+        local_endpoints_.erase(std::remove(local_endpoints_.begin(), local_endpoints_.end(), endpoint), local_endpoints_.end());
         PDLOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]", 
                     endpoint.c_str(), table_->GetId(), table_->GetPid());
 
@@ -442,6 +461,7 @@ bool LogReplicator::DelAllReplicateNode() {
                     nodes_.size(), table_->GetId(), table_->GetPid());
         nodes_.clear();
         endpoints_.clear();
+        local_endpoints_.clear();
     }
     std::vector<std::shared_ptr<ReplicateNode>>::iterator it = copied_nodes.begin();
     for (; it !=  copied_nodes.end(); ++it) {
@@ -471,6 +491,9 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
         return false;
     }
     log_offset_.fetch_add(1, std::memory_order_relaxed);
+    if (local_endpoints_.empty()) { // if local replica are dead, leader direct sync to remote replica
+        follower_offset_.store(cur_offset + 1, std::memory_order_relaxed);
+    }
     return true;
 }
 

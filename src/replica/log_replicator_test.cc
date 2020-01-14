@@ -46,7 +46,7 @@ public:
                    const std::vector<std::string>& endpoints,
                    std::shared_ptr<MemTable> table): role_(role),
     path_(path), endpoints_(endpoints), 
-    replicator_(path_, endpoints_, role_, table) {
+    replicator_(path_, endpoints_, role_, table, &follower_) {
     }
 
     ~MockTabletImpl() {
@@ -93,11 +93,19 @@ public:
         replicator_.Notify();
     }
 
+    void SetMode(bool follower) {
+        follower_.store(follower);
+    }
+
+    bool GetMode() {
+        return follower_.load(std::memory_order_relaxed);
+    }
 private:
     ReplicatorRole role_;
     std::string path_;
     std::vector<std::string> endpoints_;
     LogReplicator replicator_;
+    std::atomic<bool> follower_;
 };
 
 bool ReceiveEntry(const ::rtidb::api::LogEntry& entry) {
@@ -120,10 +128,11 @@ TEST_F(LogReplicatorTest,  Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
+    std::atomic<bool> follower(false);
     mapping.insert(std::make_pair("idx", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
-    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
 }
@@ -132,10 +141,11 @@ TEST_F(LogReplicatorTest,  BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
+    std::atomic<bool> follower(false);
     mapping.insert(std::make_pair("idx", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
-    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
     bool ok = replicator.Init();
     ::rtidb::api::LogEntry entry;
     entry.set_term(1);
@@ -174,7 +184,8 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:17527");
     std::string folder = "/tmp/" + GenRand() + "/";
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
+    std::atomic<bool> follower(false);
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     // put the first row
@@ -292,6 +303,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
 	brpc::ServerOptions options;
 	brpc::Server server0;
 	brpc::Server server1;
+    brpc::Server server2;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
     std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
@@ -315,7 +327,8 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:18527");
     std::string folder = "/tmp/" + GenRand() + "/";
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
+    std::atomic<bool> follower(false);
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
@@ -337,6 +350,9 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     std::vector<std::string> vec;
     vec.push_back("127.0.0.1:18528");
     leader.AddReplicateNode(vec);
+    vec.clear();
+    vec.push_back("127.0.0.1:18529");
+    leader.AddReplicateNode(vec, 2);
     sleep(2);
 
     std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
@@ -356,7 +372,36 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     	}
         PDLOG(INFO, "start follower");
     }
+    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>("test", 2, 1, 8, mapping, 0);
+    t9->Init();
+    {
+        std::string follower_addr = "127.0.0.1:18529";
+        std::string folder = "/tmp/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t9);
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+        follower->SetMode(true);
+        if (server2.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+            ASSERT_TRUE(false);
+        }
+        if (server2.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+        }
+        PDLOG(INFO, "start follower");
+    }
     sleep(20);
+    int result = server1.Stop(10000);
+    ASSERT_EQ(0, result);
+    sleep(2);
+    entry.Clear();
+    entry.set_pk("test_pk");
+    entry.set_value("value5");
+    entry.set_ts(9523);
+    ok = leader.AppendEntry(entry);
+    ASSERT_TRUE(ok);
+    leader.Notify();
+
+    sleep(2);
     leader.DelAllReplicateNode();
     ASSERT_EQ(4, t8->GetRecordCnt());
     ASSERT_EQ(4, t8->GetRecordIdxCnt());
@@ -391,6 +436,222 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
         std::string value_str3(value.data(), value.size());
         ASSERT_EQ("value4", value_str3);
         ASSERT_EQ(9524, it->GetKey());
+    }
+    ASSERT_EQ(4, t9->GetRecordCnt());
+    ASSERT_EQ(4, t9->GetRecordIdxCnt());
+    {
+        Ticket ticket;
+        // check 18527
+        TableIterator* it = t9->NewIterator("test_pk", ticket);
+        it->Seek(9527);
+        ASSERT_TRUE(it->Valid());
+        ::rtidb::base::Slice value = it->GetValue();
+        std::string value_str(value.data(), value.size());
+        ASSERT_EQ("value1", value_str);
+        ASSERT_EQ(9527, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str1(value.data(), value.size());
+        ASSERT_EQ("value2", value_str1);
+        ASSERT_EQ(9526, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str2(value.data(), value.size());
+        ASSERT_EQ("value3", value_str2);
+        ASSERT_EQ(9525, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str3(value.data(), value.size());
+        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ(9524, it->GetKey());
+    }
+}
+
+TEST_F(LogReplicatorTest,  Leader_Remove_local_follower) {
+    brpc::ServerOptions options;
+    brpc::Server server0;
+    brpc::Server server1;
+    brpc::Server server2;
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx", 0));
+    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
+    t7->Init();
+    {
+        std::string follower_addr = "127.0.0.1:18527";
+        std::string folder = "/tmp/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode,
+                                                      folder, g_endpoints, t7);
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+        if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+            ASSERT_TRUE(false);
+        }
+        if (server0.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+        }
+        PDLOG(INFO, "start follower");
+    }
+
+    std::vector<std::string> endpoints;
+    endpoints.push_back("127.0.0.1:18527");
+    std::string folder = "/tmp/" + GenRand() + "/";
+    std::atomic<bool> follower(false);
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
+    bool ok = leader.Init();
+    ASSERT_TRUE(ok);
+    ::rtidb::api::LogEntry entry;
+    entry.set_pk("test_pk");
+    entry.set_value("value1");
+    entry.set_ts(9527);
+    ok = leader.AppendEntry(entry);
+    entry.set_value("value2");
+    entry.set_ts(9526);
+    ok = leader.AppendEntry(entry);
+    entry.set_value("value3");
+    entry.set_ts(9525);
+    ok = leader.AppendEntry(entry);
+    entry.set_value("value4");
+    entry.set_ts(9524);
+    ok = leader.AppendEntry(entry);
+    ASSERT_TRUE(ok);
+    leader.Notify();
+    std::vector<std::string> vec;
+    vec.push_back("127.0.0.1:18528");
+    leader.AddReplicateNode(vec);
+    vec.clear();
+    vec.push_back("127.0.0.1:18529");
+    leader.AddReplicateNode(vec, 2);
+    sleep(2);
+
+    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
+    t8->Init();
+    {
+        std::string follower_addr = "127.0.0.1:18528";
+        std::string folder = "/tmp/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t8);
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+        if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+            ASSERT_TRUE(false);
+        }
+        if (server1.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+        }
+        PDLOG(INFO, "start follower");
+    }
+    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>("test", 2, 1, 8, mapping, 0);
+    t9->Init();
+    {
+        std::string follower_addr = "127.0.0.1:18529";
+        std::string folder = "/tmp/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, g_endpoints, t9);
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+        follower->SetMode(true);
+        if (server2.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+            ASSERT_TRUE(false);
+        }
+        if (server2.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+        }
+        PDLOG(INFO, "start follower");
+    }
+    sleep(20);
+    leader.DelReplicateNode("127.0.0.1:18528");
+    int result = server1.Stop(10000);
+    ASSERT_EQ(0, result);
+    sleep(2);
+    entry.Clear();
+    entry.set_pk("test_pk");
+    entry.set_value("value5");
+    entry.set_ts(9523);
+    ok = leader.AppendEntry(entry);
+    ASSERT_TRUE(ok);
+    leader.Notify();
+
+    sleep(4);
+    leader.DelAllReplicateNode();
+    ASSERT_EQ(4, t8->GetRecordCnt());
+    ASSERT_EQ(4, t8->GetRecordIdxCnt());
+    {
+        Ticket ticket;
+        // check 18527
+        TableIterator* it = t8->NewIterator("test_pk", ticket);
+        it->Seek(9527);
+        ASSERT_TRUE(it->Valid());
+        ::rtidb::base::Slice value = it->GetValue();
+        std::string value_str(value.data(), value.size());
+        ASSERT_EQ("value1", value_str);
+        ASSERT_EQ(9527, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str1(value.data(), value.size());
+        ASSERT_EQ("value2", value_str1);
+        ASSERT_EQ(9526, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str2(value.data(), value.size());
+        ASSERT_EQ("value3", value_str2);
+        ASSERT_EQ(9525, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str3(value.data(), value.size());
+        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ(9524, it->GetKey());
+    }
+    ASSERT_EQ(5, t9->GetRecordCnt());
+    ASSERT_EQ(5, t9->GetRecordIdxCnt());
+    {
+        Ticket ticket;
+        // check 18527
+        TableIterator* it = t9->NewIterator("test_pk", ticket);
+        it->Seek(9527);
+        ASSERT_TRUE(it->Valid());
+        ::rtidb::base::Slice value = it->GetValue();
+        std::string value_str(value.data(), value.size());
+        ASSERT_EQ("value1", value_str);
+        ASSERT_EQ(9527, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str1(value.data(), value.size());
+        ASSERT_EQ("value2", value_str1);
+        ASSERT_EQ(9526, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str2(value.data(), value.size());
+        ASSERT_EQ("value3", value_str2);
+        ASSERT_EQ(9525, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str3(value.data(), value.size());
+        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ(9524, it->GetKey());
+
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str4(value.data(), value.size());
+        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ(9523, it->GetKey());
     }
 }
 

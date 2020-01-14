@@ -32,7 +32,8 @@ public:
                   const std::string& log_path,
                   uint32_t tid, uint32_t pid,
                   std::atomic<uint64_t>* term, std::atomic<uint64_t>* leader_log_offset,
-                  bthread::Mutex* mu, bthread::ConditionVariable* cv);
+                  bthread::Mutex* mu, bthread::ConditionVariable* cv, bool rep_follower,
+                  std::atomic<uint64_t>* follower_offset);
     int Init();
 
     int Start();
@@ -78,6 +79,8 @@ private:
     bthread::Mutex* mu_;
     bthread::ConditionVariable* cv_;
     uint32_t go_back_cnt_;
+    std::atomic<bool> rep_node_;
+    std::atomic<uint64_t>* follower_offset_; // max local cluster follower offset
 };
 
 }

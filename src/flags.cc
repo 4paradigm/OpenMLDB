@@ -20,6 +20,7 @@ DEFINE_uint32(get_table_status_interval, 2000, "config the interval of get table
 DEFINE_uint32(get_table_diskused_interval, 600000, "config the interval of get table diskused");
 DEFINE_int32(name_server_task_pool_size, 8, "config the size of name server task pool");
 DEFINE_uint32(name_server_task_concurrency, 2, "config the concurrency of name_server_task");
+DEFINE_uint32(name_server_task_concurrency_for_replica_cluster, 2, "config the concurrency of name_server_task for replica cluster");
 DEFINE_uint32(name_server_task_max_concurrency, 8, "config the max concurrency of name_server_task");
 DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
 DEFINE_uint32(name_server_op_execute_timeout, 2*60*60*1000, "config the timeout of nameserver op");
@@ -88,8 +89,9 @@ DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000, "config the max deleted k
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 DEFINE_string(recycle_ssd_bin_root_path, "/tmp/ssd_recycle", "specify the ssd root path of recycle bin");
-DEFINE_bool(recycle_bin_enabled, true, "enable the recycle bin storage");
 DEFINE_string(recycle_hdd_bin_root_path, "/tmp/hdd_recycle", "specify the hdd root path of recycle bin");
+DEFINE_bool(recycle_bin_enabled, true, "enable the recycle bin storage");
+DEFINE_uint32(recycle_ttl, 0, "ttl of recycle in minute");
 
 DEFINE_uint32(latest_ttl_max, 1000, "the max ttl of latest");
 DEFINE_uint32(absolute_ttl_max, 60*24*365*30 , "the max ttl of absolute time");
@@ -107,3 +109,6 @@ DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");
 DEFINE_uint32(load_table_batch, 30, "set laod table batch size");
 DEFINE_uint32(load_table_thread_num, 3, "set load tabale thread pool size");
 DEFINE_uint32(load_table_queue_size, 1000, "set load tabale queue size");
+
+// multiple data center
+DEFINE_uint32(get_replica_status_interval, 10000, "config the interval to sync replica cluster status time");

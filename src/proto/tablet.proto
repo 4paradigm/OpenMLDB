@@ -74,6 +74,11 @@ enum OPType {
     kReLoadTableOP = 12;
     kUpdatePartitionStatusOP = 13;
     kRecoverTableOP = 14;
+    kCreateTableRemoteOP = 15; 
+    kDropTableRemoteOP = 16; 
+    kAddReplicaSimplyRemoteOP = 17; 
+    kDelReplicaRemoteOP = 18; 
+    kAddReplicaRemoteOP = 19; 
 }
 
 enum TaskType {
@@ -95,6 +100,9 @@ enum TaskType {
     kUpdateLeaderInfo = 16;
     kRecoverTable = 17;
     kCheckBinlogSyncProgress = 18;
+    kCreateTableRemote = 19; 
+    kDropTableRemote = 20; 
+    kAddReplicaNSRemote = 21; 
 }
 
 enum TaskStatus {
@@ -117,6 +125,8 @@ message TaskInfo {
     required TaskStatus status = 4;
     optional string endpoint = 5;
     optional bool is_rpc_send = 6 [default=false];
+    repeated uint64 rep_cluster_op_id = 7; //for multi cluster
+    optional uint64 task_id = 8 [default=0];// for multi cluster 
 }
 
 message OPInfo {
@@ -131,6 +141,8 @@ message OPInfo {
     optional uint32 pid = 9;
     optional uint64 parent_id = 10;
     optional uint32 vec_idx = 11;   // the index in task_vec
+    optional uint64 remote_op_id = 12;//for multi cluster
+    optional int32 for_replica_cluster = 13 [default = 0];//for multi cluster, default 0. if 1, for multi cluster
 }
 
 message Manifest {
@@ -276,6 +288,7 @@ message ReplicaRequest {
     optional uint32 pid = 2;
     optional string endpoint = 3;
     optional TaskInfo task_info = 4;
+    optional uint32 remote_tid = 5; //for remote
 }
 
 message AddReplicaResponse {
@@ -420,6 +433,7 @@ message ChangeRoleRequest {
     optional uint64 term = 3;
     optional TableMode mode = 4;
     repeated string replicas = 5;
+    repeated rtidb.common.EndpointAndTid endpoint_tid = 6;
 }
 
 message SendSnapshotRequest {
@@ -427,6 +441,7 @@ message SendSnapshotRequest {
     required uint32 pid = 2;
     required string endpoint = 3;
     optional TaskInfo task_info = 4;
+    optional uint32 remote_tid = 5;
 }
 
 message SendDataRequest {
@@ -582,6 +597,10 @@ message CheckFileRequest {
     optional rtidb.common.StorageMode storage_mode = 6 [default = kMemory];
 }
 
+message SetModeRequest {
+    optional bool follower = 1;
+}
+
 message ConnectZKRequest {}
 message DisConnectZKRequest {}
 
@@ -635,4 +654,5 @@ service TabletServer {
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
     rpc UpdateTableMetaForAddField (UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
+    rpc SetMode(SetModeRequest) returns (GeneralResponse);
 }

@@ -622,7 +622,56 @@ void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::
     tp.Print(true);
 }
 
-void HandleNSShowNameServer(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client, 
+void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+
+    if (FLAGS_interactive) {
+        printf("Drop replica %s? yes/no\n", parts[1].c_str());
+        std::string input;
+        std::cin >> input;
+        std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+        if (input != "yes") {
+            printf("'drop %s' cmd is canceled!\n", parts[1].c_str());
+            return;
+        }
+    }
+    std::string msg;
+    bool ret = client->RemoveReplicaCluster(parts[1], msg);
+    if (!ret) {
+        std::cout << "remove failed. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "remove replica cluster ok" << std::endl;
+}
+
+void HandleNSSwitchMode(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    if ((parts[1] == "normal") || (parts[1] == "leader")) {
+    } else {
+        std::cout << "invalid mode type"  << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ok = false;
+    if (parts[1] == "normal") {
+        ok = client->SwitchMode(::rtidb::nameserver::kNORMAL, msg);
+    } else if (parts[1] == "leader") {
+        ok = client->SwitchMode(::rtidb::nameserver::kLEADER, msg);
+    }
+    if (!ok) {
+        std::cout << "Fail to swith mode. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "switchmode ok" << std::endl;
+}
+
+void HandleNSShowNameServer(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client,
         std::shared_ptr<ZkClient> zk_client) {
     if (FLAGS_zk_cluster.empty() || !zk_client) {
         std::cout << "Show nameserver failed. zk_cluster is empty" << std::endl;
@@ -1322,26 +1371,34 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         return;
     }
     if (tables[0].column_desc_size() == 0 && tables[0].column_desc_v1_size() == 0) {
-        try {
-            if (parts.size() > 5) {
-                limit = boost::lexical_cast<uint32_t>(parts[5]);
-            }
-            std::string msg;
-            ::rtidb::base::KvIterator* it = tablet_client->Scan(tid, pid, key,
-                    boost::lexical_cast<uint64_t>(parts[3]), 
-                    boost::lexical_cast<uint64_t>(parts[4]),
-                    limit, atleast, msg);
-            if (it == NULL) {
-                std::cout << "Fail to scan table. error msg: " << msg << std::endl;
-            } else {
-                ::rtidb::base::ShowTableRows(key, it, tables[0].compress_type());
-                delete it;
-            }
-        } catch (std::exception const& e) {
-            printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
-            return;
-        } 
+        ::rtidb::base::KvIterator* it = NULL;
+        std::string msg;
+        if(is_pair_format) {
+            it = tablet_client->Scan(tid, pid, key, st, et, limit, msg);
+        } else {
+            try {
+                st = boost::lexical_cast<uint64_t>(parts[3]);
+                et = boost::lexical_cast<uint64_t>(parts[4]);
+                if (parts.size() > 5) {
+                    limit = boost::lexical_cast<uint32_t>(parts[5]);
+                }
+                it = tablet_client->Scan(tid, pid, key, st, et, limit, msg);
+            } catch (std::exception const& e) {
+                printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
+                return;
+            } 
+        }
+        if (it == NULL) {
+            std::cout << "Fail to scan table. error msg: " << msg << std::endl;
+        } else {
+            ::rtidb::base::ShowTableRows(key, it, tables[0].compress_type());
+             delete it;
+        }
     } else {
+        if (parts.size() < 6) {
+            std::cout << "scan format error. eg: scan table_name key col_name start_time end_time [limit]" << std::endl;
+            return;
+        }
         std::vector<::rtidb::base::ColumnDesc> columns;
         if (tables[0].added_column_desc_size() > 0) {
             if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns, tables[0].added_column_desc_size()) < 0) {
@@ -1358,10 +1415,15 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         std::string msg;
         if (!is_pair_format) {
             index_name = parts[3];
-            st = boost::lexical_cast<uint64_t>(parts[4]);
-            et = boost::lexical_cast<uint64_t>(parts[5]);
-            if (parts.size() > 6) {
-                limit = boost::lexical_cast<uint32_t>(parts[6]);
+            try {
+                st = boost::lexical_cast<uint64_t>(parts[4]);
+                et = boost::lexical_cast<uint64_t>(parts[5]);
+                if (parts.size() > 6) {
+                    limit = boost::lexical_cast<uint32_t>(parts[6]);
+                }
+            } catch (std::exception const& e) {
+                printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
+                return;
             }
         }
         it = tablet_client->Scan(tid, pid, key,  
@@ -1626,6 +1688,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
     tp.Print(true);
 }
 
+
 void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() != 4) {
         std::cout << "addtablefield format error. eg: addtablefield tablename column_name column_type" << std::endl;
@@ -1685,6 +1748,45 @@ void HandleNSInfo(const std::vector<std::string>& parts, ::rtidb::client::NsClie
     ::rtidb::base::PrintTableInformation(tables);
 }
 
+void HandleNSAddReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "addrepcluster format error. eg: addrepcluster zk_endpoints zk_path alias_name";
+        return;
+    }
+    std::string zk_endpoints, zk_path, alias, msg;
+    zk_endpoints = parts[1];
+    zk_path = parts[2];
+    alias = parts[3];
+    if (!client->AddReplicaCluster(zk_endpoints, zk_path, alias, msg)) {
+        std::cout << "addrepcluster failed. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "adrepcluster ok" << std::endl;
+}
+
+void HandleShowReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    std::vector<std::string> row = {"zk_endpoints", "zk_path", "alias", "state", "age"};
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+
+    std::vector<::rtidb::nameserver::ClusterAddAge> cluster_info;
+    std::string msg;
+    bool ok = client->ShowReplicaCluster(cluster_info, msg);
+    if (!ok) {
+        std::cout << "Fail to show replica. error msg: " << msg << std::endl;
+        return;
+    }
+    for (auto i : cluster_info) {
+        std::vector<std::string> row;
+        row.push_back(i.replica().zk_endpoints());
+        row.push_back(i.replica().zk_path());
+        row.push_back(i.replica().alias());
+        row.push_back(i.state());
+        row.push_back(::rtidb::base::HumanReadableTime(i.age()));
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
 bool HasIsTsCol(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& list) {
     if (list.empty()) {
         return false;
@@ -2393,6 +2495,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("updatetablealive - update table alive status\n");
         printf("addtablefield - add field to the schema table \n");
         printf("info - show information of the table\n");
+        printf("addrepcluster - add remote replica cluster\n");
+        printf("showrepcluster - show remote replica cluster\n");
+        printf("removerepcluster - remove remote replica cluste \n");
+        printf("switchmode - switch cluster mode\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -2568,6 +2674,23 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("desc: show information of the table\n");
             printf("usage: info table_name \n");
             printf("ex: info test\n");
+        } else if (parts[1] == "addrepcluster") {
+            printf("desc: add remote replica cluster\n");
+            printf("usage: addrepcluster zk_endpoints zk_path cluster_alias\n");
+            printf("ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /rtidb_cluster prod_dc01\n");
+        } else if (parts[1] == "showrepcluster") {
+            printf("desc: show remote replica cluster\n");
+            printf("usage: showrepcluster\n");
+            printf("ex: showrepcluster");
+        } else if (parts[1] == "removerepcluster") {
+            printf("desc: remove remote replica cluster\n");
+            printf("usage: removerepcluster cluster_alias\n");
+            printf("ex: removerepcluster prod_dc01\n");
+        } else if (parts[1] == "switchmode") {
+            printf("desc: switch cluster mode\n");
+            printf("usage: switchmode normal|leader\n");
+            printf("ex: switchmode normal\n");
+            printf("ex: switchmode leader\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -2723,6 +2846,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     row.push_back("execute_time");
     row.push_back("end_time");
     row.push_back("cur_task");
+    row.push_back("for_replica_cluster");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     ::rtidb::nameserver::ShowOPStatusResponse response;
@@ -2749,11 +2873,14 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
         std::vector<std::string> row;
         row.push_back(std::to_string(response.op_status(idx).op_id()));
         row.push_back(response.op_status(idx).op_type());
-        if (response.op_status(idx).has_name() && response.op_status(idx).has_pid()) {
+        if (response.op_status(idx).has_name()) {
             row.push_back(response.op_status(idx).name());
-            row.push_back(std::to_string(response.op_status(idx).pid()));
         } else {
             row.push_back("-");
+        }
+        if (response.op_status(idx).has_pid() && (response.op_status(idx).pid() != ::rtidb::client::INVALID_PID)) {
+            row.push_back(std::to_string(response.op_status(idx).pid()));
+        } else {
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).status());
@@ -2781,6 +2908,11 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).task_type());
+        if (response.op_status(idx).for_replica_cluster() == 1) {
+            row.push_back("yes");
+        } else {
+            row.push_back("no");
+        }
         tp.AddRow(row);
     }
     tp.Print(true);
@@ -3436,7 +3568,8 @@ void HandleClientSendSnapshot(const std::vector<std::string> parts, ::rtidb::cli
         return;
     }
     try {
-        bool ok = client->SendSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
+        bool ok = client->SendSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[1]),
+                boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
         if (ok) {
             std::cout << "SendSnapshot ok" << std::endl;
         }else {
@@ -4724,8 +4857,19 @@ void StartNsClient() {
             HandleNSClientCancelOP(parts, &client);
         } else if (parts[0] == "addtablefield") {
             HandleNSAddTableField(parts, &client);
+<<<<<<< HEAD
         } else if (parts[0] == "info") {
             HandleNSInfo(parts, &client);
+=======
+        } else if (parts[0] == "addrepcluster") {
+            HandleNSAddReplicaCluster(parts, &client);
+        } else if (parts[0] == "showrepcluster") {
+            HandleShowReplicaCluster(parts, &client);
+        } else if (parts[0] == "removerepcluster") {
+            HandleNSRemoveReplicaCluster(parts, &client);
+        } else if (parts[0] == "switchmode") {
+            HandleNSSwitchMode(parts, &client);
+>>>>>>> develop
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

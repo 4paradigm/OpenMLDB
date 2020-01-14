@@ -23,6 +23,7 @@
 #include <list>
 #include <brpc/server.h>
 #include <mutex>
+#include "base/spinlock.h"
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
@@ -34,6 +35,9 @@ using ::rtidb::storage::Snapshot;
 using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
 using ::rtidb::zk::ZkClient;
+using ::rtidb::base::SpinMutex;
+
+const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 namespace rtidb {
 namespace tablet {
@@ -233,6 +237,16 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void SetMode(RpcController* controller,
+            const ::rtidb::api::SetModeRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void AlignTable(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     inline void SetServer(brpc::Server* server) {
         server_ = server;
     }
@@ -283,7 +297,7 @@ private:
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
-                        std::shared_ptr<::rtidb::api::TaskInfo> task);
+                        uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();
 
@@ -306,12 +320,17 @@ private:
     int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta);
 
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
-                    std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
+            std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
             uint64_t op_id, ::rtidb::api::TaskType task_type);
 
-    int CheckDimessionPut(const ::rtidb::api::PutRequest* request, uint32_t idx_cnt);
+    int AddOPMultiTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
+            std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
+
+    std::shared_ptr<::rtidb::api::TaskInfo> FindMultiTask(const ::rtidb::api::TaskInfo& task_info); 
+
+   int CheckDimessionPut(const ::rtidb::api::PutRequest* request, uint32_t idx_cnt);
     
     // sync log data from page cache to disk 
     void SchedSyncDisk(uint32_t tid, uint32_t pid);
@@ -343,9 +362,14 @@ private:
     bool Seek(::rtidb::storage::TableIterator* it, const uint64_t time,
             const ::rtidb::api::GetType& type);
 
+    void DelRecycle(const std::string &path);
+    
+    void SchedDelRecycle();
+
 private:
     Tables tables_;
     std::mutex mu_;
+    SpinMutex spin_mutex_;
     ThreadPool gc_pool_;
     Replicators replicators_;
     Snapshots snapshots_;
@@ -360,6 +384,7 @@ private:
     brpc::Server* server_;
     std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_root_paths_;
     std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_recycle_root_paths_;
+    std::atomic<bool> follower_;
 };
 
 }

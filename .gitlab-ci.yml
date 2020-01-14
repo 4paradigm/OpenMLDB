@@ -15,6 +15,7 @@ build_rtidb_and_case:
         expire_in: 2h
         paths:
             - build/bin/rtidb
+
 cpp_ut:
     stage: ut
     script:
@@ -76,7 +77,7 @@ ns_one_demension:
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - bash steps/integration_test.sh 0 "ns_client"
+        - bash steps/integration_test.sh 0 "ns_client" "disk"
     artifacts:
         reports:
             junit:
@@ -90,8 +91,36 @@ ns_multi_demension:
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
-        - bash steps/integration_test.sh 1 "ns_client"
+        - bash steps/integration_test.sh 1 "ns_client" "disk"
     artifacts:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+
+disk_table:
+    stage: it-ns
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
+        - bash steps/integration_test.sh 0 "disk"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+
+disktable-java:
+    stage: ut
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/auto_test.sh
+    artifacts:
+        reports:
+            junit:
+                - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
+                - rtidb-auto-test/target/surefire-reports/TEST-*.xml
+                - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
+                - rtidb-auto-test/target/failsafe-reports/TEST-*.xml

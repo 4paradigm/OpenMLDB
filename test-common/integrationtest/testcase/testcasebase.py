@@ -67,9 +67,13 @@ class TestCaseBase(unittest.TestCase):
             self, self._testMethodDoc, '\n' + '|' * 50 + ' SETUP STARTED ' + '|' * 50 + '\n'))
         try:
             self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
+            nss = copy.deepcopy(conf.ns_endpoints)
+            nss.remove(self.ns_leader)
+            self.ns_slaver = nss[0]
             self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
             self.tid = random.randint(1, 1000)
             self.pid = random.randint(1, 1000)
+            self.clear_ns_table(self.ns_leader)
             for edp in conf.tb_endpoints:
                 self.clear_tb_table(edp)
         except Exception as e:
@@ -170,6 +174,21 @@ class TestCaseBase(unittest.TestCase):
     def get_manifest(nodepath, tid, pid):
         realpath = nodepath + "/db"
         return TestCaseBase.get_manifest_by_realpath(realpath, tid, pid)
+
+    @staticmethod
+    def get_table_meta_no_db(nodepath, tid, pid):
+        table_meta_dict = {}
+        with open('{}/{}_{}/table_meta.txt'.format(nodepath, tid, pid)) as f:
+            for l in f:
+                if 'tid: ' in l:
+                    table_meta_dict['tid'] = l.split(':')[1].strip()
+                elif 'name: ' in l:
+                    table_meta_dict['name'] = l.split(':')[1][2:-2].strip()
+                elif 'compress_type: ' in l:
+                    table_meta_dict['compress_type'] = l.split(':')[1].strip()
+                elif 'key_entry_max_height: ' in l:
+                    table_meta_dict['key_entry_max_height'] = l.split(':')[1].strip()
+        return table_meta_dict
 
     @staticmethod
     def get_table_meta(nodepath, tid, pid):
