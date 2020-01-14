@@ -535,6 +535,7 @@ message GetTermPairRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional rtidb.common.StorageMode storage_mode = 3 [default = kMemory];
+    optional bool multi_dc = 4 [default = false];
 }
 
 message GetTermPairResponse {

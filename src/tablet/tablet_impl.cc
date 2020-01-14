@@ -3074,7 +3074,7 @@ void TabletImpl::GetTermPair(RpcController* controller,
     if (request->has_storage_mode()) {
         mode = request->storage_mode();
     }
-	if (!table) {
+	if (!table || request->multi_dc()) {
 		response->set_code(0);
 		response->set_has_table(false);
 		response->set_msg("table is not exist");
