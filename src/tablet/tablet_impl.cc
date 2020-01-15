@@ -2009,7 +2009,7 @@ void TabletImpl::SchedMakeSnapshot() {
 void TabletImpl::SchedMakeDiskTableSnapshot() {
     std::vector<std::pair<uint32_t, uint32_t> > table_set;
     {
-        std::lock_guard<std::mutex> lock(mu_);
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
             for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
                 if (iter->first == 0 && inner->first == 0) {
