@@ -514,6 +514,17 @@ SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
     }
 }
 
+DatasetNode* NodeManager::MakeDataset(const std::string& table) {
+    DatasetNode* db = new DatasetNode(table);
+    batch_plan_node_list_.push_back(db);
+    return db;
+}
+
+MapNode* NodeManager::MakeMapNode(const NodePointVector& nodes) {
+    MapNode* mn = new MapNode(nodes);
+    batch_plan_node_list_.push_back(mn);
+    return mn;
+}
 
 }  // namespace node
 }  // namespace fesql

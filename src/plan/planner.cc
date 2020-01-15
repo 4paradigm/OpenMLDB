@@ -470,6 +470,8 @@ void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
     plan->SetCmdNode(dynamic_cast<const node::CmdNode *>(root));
 }
 
+
+
 void TransformTableDef(const std::string &table_name,
                        const NodePointVector &column_desc_list,
                        type::TableDef *table,
@@ -584,6 +586,8 @@ std::string GenerateName(const std::string prefix, int id) {
         prefix + "_" + std::to_string(id) + "_" + std::to_string(t);
     return name;
 }
+
+
 
 }  // namespace  plan
 }  // namespace fesql

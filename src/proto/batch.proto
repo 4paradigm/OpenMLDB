@@ -1,9 +1,9 @@
 import "type.proto";
 import "common.proto";
+import "plan.proto"
 
 package fesql.batch;
 option cc_generic_services = true;
-
 
 message DataSource {
     optional string url = 1;
@@ -24,7 +24,7 @@ message JobDesc {
 }
 
 message TaskDesc {
-
+    optional plan.GraphDesc graph = 1;
 }
 
 message StartRequest {
@@ -39,6 +39,7 @@ message RunTaskRequest {
     // a human readable id
     optional string id = 1;
     optional string sql = 2;
+    optional TaskDesc task = 3;
 }
 
 message RunTaskResponse {

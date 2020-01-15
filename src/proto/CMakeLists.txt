@@ -18,6 +18,9 @@ set(TABLET_PB_CC
 set(BATCH_PB_CC
     ${CMAKE_CURRENT_BINARY_DIR}/batch.pb.cc)
 
+set(PLAN_PB_CC
+    ${CMAKE_CURRENT_BINARY_DIR}/plan.pb.cc)
+
 add_custom_command(OUTPUT ${COMMON_PB_CC}
         COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/common.proto
         )
@@ -36,10 +39,16 @@ add_custom_command(OUTPUT ${TABLET_PB_CC}
 add_custom_command(OUTPUT ${BATCH_PB_CC}
         COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/batch.proto )
 
+add_custom_command(OUTPUT ${PLAN_PB_CC}
+        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/plan.proto )
+
+
 ADD_CUSTOM_TARGET(run_gen_proto DEPENDS ${TABLET_PB_CC} ${DBMS_PB_CC}
     ${COMMON_PB_CC}
     ${TYPE_PB_CC} 
-    ${BATCH_PB_CC})
+    ${BATCH_PB_CC}
+    ${PLAN_PB_CC}
+    )
 
 add_library(fesql_proto STATIC ${TYPE_PB_CC} ${COMMON_PB_CC} ${DBMS_PB_CC}
-    ${TABLET_PB_CC} ${BATCH_PB_CC})
+    ${TABLET_PB_CC} ${BATCH_PB_CC} ${PLAN_PB_CC})

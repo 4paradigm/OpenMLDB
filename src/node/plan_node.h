@@ -19,6 +19,7 @@
 #include "node/node_enum.h"
 namespace fesql {
 namespace node {
+
 std::string NameOfPlanNodeType(const PlanType &type);
 
 class PlanNode {
@@ -225,6 +226,7 @@ class WindowPlanNode : public LeafPlanNode {
     std::vector<std::string> keys_;
     std::vector<std::string> orders_;
 };
+
 class ProjectListPlanNode : public MultiChildPlanNode {
  public:
     ProjectListPlanNode()

@@ -32,7 +32,7 @@ enum OpType {
     kOpProject = 1,
     kOpScan,
     kOpLimit,
-    kOpMerge,
+    kOpMerge
 };
 
 struct OpNode {
