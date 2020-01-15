@@ -7467,6 +7467,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
                 if (!CompareTableInfo(tables)) {
                     rpc_msg = "compare table info error";
                     code = 567;
+                    break;
                 }
                 if (!CompareSnapshotOffset(tables, rpc_msg, code)) {
                     break;
