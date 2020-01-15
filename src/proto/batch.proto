@@ -1,6 +1,6 @@
 import "type.proto";
 import "common.proto";
-import "plan.proto"
+import "plan.proto";
 
 package fesql.batch;
 option cc_generic_services = true;

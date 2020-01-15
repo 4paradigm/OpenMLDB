@@ -97,11 +97,9 @@ TEST_F(BitcodeTest, write_read_module) {
         WriteBitcodeToFile(*M, buf_wrapper);
         std::string irbuf;
         raw_string_ostream irbuf_wrapper(irbuf);
-
         M->print(irbuf_wrapper, NULL);
         irbuf_wrapper.flush();
         std::cout << "ir size " << irbuf.size() << std::endl;
-
         buf_wrapper.flush();
     }
     {

@@ -37,7 +37,7 @@ endif()
 llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
 add_definitions('-g')
 add_definitions('-Wall')
-add_definitions('-std=c++11')
+add_definitions('-std=c++14')
 add_definitions(${LLVM_DEFINITIONS})
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
