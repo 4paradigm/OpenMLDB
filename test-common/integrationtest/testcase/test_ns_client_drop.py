@@ -35,7 +35,7 @@ class TestNsDropTable(TestCaseBase):
 
         rs1 = self.showtable(self.ns_leader, name)
         self.ns_drop(self.ns_leader, name)
-        time.sleep(1)
+        time.sleep(2)
         rs2 = self.showtable(self.ns_leader, name)
         rs3 = self.get_table_status(self.leader)
 
