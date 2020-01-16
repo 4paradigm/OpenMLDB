@@ -325,10 +325,20 @@ def RecoverData():
 
     # ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
     for key in leader_table:
-        # print key
+        # get table info
         table = leader_table[key]
         print "table leader: {}".format(table)
-        cmd_loadtable = "--cmd=loadtable " + table[0] + " " + table[1] + " " + table[2] + " " + table[5].split("min")[0] + " 8"
+        cmd_info = list(common_cmd)
+        cmd_info.append("--cmd=info " + table[0])
+        code, stdout,stderr = RunWithRetuncode(cmd_info)
+        if code != 0:
+            print "fail to get table info"
+            return
+        lines = stdout.split('\n')
+        storage_mode = lines[11].split()[1]
+
+        # print key
+        cmd_loadtable = "--cmd=loadtable " + table[0] + " " + table[1] + " " + table[2] + " " + table[5].split("min")[0] + " 8" + " true " + storage_mode
         # print cmd_loadtable
         loadtable = list(tablet_cmd)
         loadtable.append(cmd_loadtable)
