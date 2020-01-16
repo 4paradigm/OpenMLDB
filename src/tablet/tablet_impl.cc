@@ -2733,7 +2733,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
             break;
         }
         // load snapshot data
-        std::shared_ptr<Table> table = GetTable(tid, pid);        
+        std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
             PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
             break; 
@@ -2779,7 +2779,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
         } else {
            DeleteTableInternal(tid, pid, std::shared_ptr<::rtidb::api::TaskInfo>());
         }
-    } while (0);    
+    } while (0);
     if (task_ptr) {
         std::lock_guard<std::mutex> lock(mu_);
         task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
