@@ -1234,7 +1234,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     put_request.set_pid(0);
     m1_t1->Put(NULL, &put_request, &put_response, &closure);
     ASSERT_EQ(0, put_response.code());
-    sleep(4);
+    sleep(8);
     for (auto& tablet : tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
