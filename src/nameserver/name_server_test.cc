@@ -1168,9 +1168,8 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     m1_t1->Put(NULL, &put_request, &put_response, &closure);
     ASSERT_EQ(0, put_response.code());
     sleep(4);
+    std::vector<shared_ptr<TabletImpl>> tablets{m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2};
     {
-        ::rtidb::api::ScanResponse* scan_response = new ::rtidb::api::ScanResponse();
-        std::vector<shared_ptr<TabletImpl>> tablets{m1_t2, m1_t1, f1_t1, f2_t1};
         ::rtidb::api::TraverseRequest traverse_request;
         ::rtidb::api::TraverseResponse traverse_response;
         traverse_request.set_pid(0);
@@ -1190,7 +1189,6 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     scan_request.set_tid(tid);
     scan_request.set_pid(0);
     ::rtidb::api::ScanResponse* scan_response = new ::rtidb::api::ScanResponse();
-    std::vector<shared_ptr<TabletImpl>> tablets{m1_t2, m1_t1, f1_t1, f2_t1};
     sleep(4);
     for (auto& tablet : tablets) {
         printf("*****************\n");
@@ -1225,6 +1223,14 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         ASSERT_EQ(0, general_response.code());
         general_response.Clear();
         show_table_response.Clear();
+        sleep(6);
+        RecoverTableRequest recover_table_request;
+        recover_table_request.set_name(name);
+        recover_table_request.set_pid(0);
+        recover_table_request.set_endpoint(leader_ep);
+        i->RecoverTable(NULL, &recover_table_request, &general_response, &closure);
+        ASSERT_EQ(0, general_response.code());
+        general_response.Clear();
     }
     sleep(10);
     put_request.set_pk(pk);
@@ -1236,9 +1242,42 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     ASSERT_EQ(0, put_response.code());
     sleep(8);
     for (auto& tablet : tablets) {
+        printf("*****************\n");
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
         ASSERT_EQ(2, scan_response->count());
+        scan_response->Clear();
+    }
+    {
+        ChangeLeaderRequest change_leader_request;
+        change_leader_request.set_name(name);
+        change_leader_request.set_pid(0);
+        change_leader_request.set_candidate_leader(m1_t2_ep);
+        m1_ns1->ChangeLeader(NULL, &change_leader_request, &general_response, &closure);
+        ASSERT_EQ(0, general_response.code());
+        sleep(6);
+        general_response.Clear();
+        RecoverTableRequest recover_table_request;
+        recover_table_request.set_name(name);
+        recover_table_request.set_pid(0);
+        recover_table_request.set_endpoint(m1_t1_ep);
+        m1_ns1->RecoverTable(NULL, &recover_table_request, &general_response, &closure);
+        ASSERT_EQ(0, general_response.code());
+        general_response.Clear();
+    }
+    put_request.set_pk(pk);
+    put_request.set_time(3);
+    put_request.set_value("c" );
+    put_request.set_tid(tid);
+    put_request.set_pid(0);
+    m1_t2->Put(NULL, &put_request, &put_response, &closure);
+    ASSERT_EQ(0, put_response.code());
+    sleep(18);
+    for (auto& tablet : tablets) {
+        printf("*****************\n");
+        tablet->Scan(NULL, &scan_request, scan_response, &closure);
+        ASSERT_EQ(0, scan_response->code());
+        ASSERT_EQ(3, scan_response->count());
         scan_response->Clear();
     }
 
