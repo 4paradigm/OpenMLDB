@@ -662,6 +662,7 @@ class TestCaseBase(unittest.TestCase):
                 infoLogger.info(value)
                 if value[0] == "leader" and value[2] == "yes":
                     new_leader = key[3]
+                    infoLogger.debug('------new leader:' + new_leader + '-----------')
         self.new_tb_leader = new_leader
         return new_leader
 
