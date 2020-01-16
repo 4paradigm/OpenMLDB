@@ -665,7 +665,6 @@ private:
     uint64_t session_term_;
     std::atomic<uint64_t> task_rpc_version_;
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
-    std::map<std::string, std::map<std::uint32_t, uint64_t>> snapshot_offset_map_;
 };
 
 }
