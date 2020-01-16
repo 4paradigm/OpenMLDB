@@ -254,6 +254,7 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
         for (auto& alias_pair : table_info_iter->second->alias_pair()) {
             if (alias_pair.alias() == ci->cluster_add_.alias()) {
                 ready_num = alias_pair.ready_num();
+                break;
             }
         }
         auto status_iter = ci->last_status.find(table.name());
@@ -268,9 +269,10 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                 m->set_endpoint("");
                 if (ready_num > 0) {
                     for (auto& meta : part.partition_meta()) {
-                        if (meta.is_alive() && meta.is_leader()) {}
-                        m->set_endpoint(meta.endpoint());
-                        break;
+                        if (meta.is_alive() && meta.is_leader()) {
+                            m->set_endpoint(meta.endpoint());
+                            break;
+                        }
                     }
                 }
                 tbs.push_back(tb);
@@ -7609,7 +7611,6 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
     }
     response->set_code(0);
     response->set_msg("ok");
-    return;
 }
 
 void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
