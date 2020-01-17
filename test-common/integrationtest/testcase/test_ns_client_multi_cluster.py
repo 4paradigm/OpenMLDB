@@ -64,7 +64,7 @@ class TestMultiCluster(TestCaseBase):
         self.assertEqual(column_key[0], ["0", "card", "card", "ts1", "0min"])
         self.assertEqual(column_key[1], ["1", "card", "card", "ts2", "0min"])
         self.assertEqual(column_key[2], ["2", "mcc", "mcc", "ts2", "0min"])
-        time.sleep(30)
+        time.sleep(40)
 
         (schema, column_key) = self.ns_showschema(self.ns_leader_r, name)
         self.assertEqual(len(schema), 5)
@@ -224,7 +224,7 @@ class TestMultiCluster(TestCaseBase):
         self.assertIn('switchmode ok', msg)
         msg = self.add_replica_cluster(self.ns_leader, conf.zk_endpoint, zk_root_path, self.alias)
         self.assertIn('adrepcluster ok', msg)
-        time.sleep(30)
+        time.sleep(40)
 
         (schema, column_key) = self.ns_showschema(self.ns_leader_r, name)
         self.assertEqual(len(schema), 5)
