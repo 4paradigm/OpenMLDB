@@ -10,6 +10,7 @@ import libs.ddt as ddt
 
 
 @ddt.ddt
+@multi_dimension(False)
 class TestAutoRecoverTable(TestCaseBase):
 
     def createtable_put(self, data_count, data_thread=2):

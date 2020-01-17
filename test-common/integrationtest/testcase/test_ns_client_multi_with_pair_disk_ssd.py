@@ -9,6 +9,7 @@ from libs.test_loader import load
 import libs.utils as utils
 
 @ddt.ddt
+ @multi_dimension(False)
 class TestHasTsCol(TestCaseBase):
     @ddt.data(
         ['kSSD'],
