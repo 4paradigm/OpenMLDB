@@ -10,6 +10,7 @@ from libs.deco import multi_dimension
 import libs.ddt as ddt
 
 @ddt.ddt
+@multi_dimension(False)
 class TestOfflineEndpoint(TestCaseBase):
 
     def test_offlineendpoint_master_killed(self):
