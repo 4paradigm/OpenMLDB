@@ -3428,6 +3428,7 @@ void HandleClientLoadTable(const std::vector<std::string> parts, ::rtidb::client
         ::rtidb::common::StorageMode storage_mode = ::rtidb::common::StorageMode::kMemory;
         if (parts.size() > 7) {
             std::string storage_str;
+            storage_str.resize(parts[7].size());
             std::transform(parts[7].begin(), parts[7].end(), storage_str.begin(), ::tolower);
             if (storage_str == "kssd" || storage_str == "ssd") {
                 storage_mode = ::rtidb::common::StorageMode::kSSD;
