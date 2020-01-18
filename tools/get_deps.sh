@@ -474,7 +474,7 @@ else
     -DARROW_ORC=OFF -DARROW_PARQUET=ON -DARROW_PLASMA=OFF\
     -DARROW_PLASMA_JAVA_CLIENT=OFF -DARROW_PYTHON=OFF -DARROW_BUILD_TESTS=OFF \
     -DARROW_BUILD_UTILITIES=OFF ..
-    make -j4 parquet && make install 
+    make -j4 parquet_static && make install 
     cd ${DEPS_SOURCE}
     touch arrow_succ
 fi

@@ -13,4 +13,3 @@ sed -i "s/#UsePrivilegeSeparation.*/UsePrivilegeSeparation no/g"
 sed -i "s/UsePAM.*/UsePAM yes/g" /etc/ssh/sshd_config
 ssh-keygen -A
 echo "root:root" | chpasswd
-

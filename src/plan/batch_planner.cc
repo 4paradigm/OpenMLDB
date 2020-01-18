@@ -56,6 +56,7 @@ int32_t BatchPlanner::CreateTree(const node::NodePointVector& parse_trees,
     const node::NodePointVector& tables = stmt->GetTableRefList();
     const node::TableNode* tn = reinterpret_cast<const node::TableNode*>(tables.at(0));
     node::DatasetNode* db = mgr_->MakeDataset(tn->GetOrgTableName());
+    //TODO(wangtaize) make sure all projects come from the same dataset
     node::MapNode* mn = mgr_->MakeMapNode(stmt->GetSelectList());
     db->AddChild(mn);
     batch_plan_tree->SetRoot(db);
@@ -64,6 +65,3 @@ int32_t BatchPlanner::CreateTree(const node::NodePointVector& parse_trees,
 
 }  // namespace plan
 }  // namespace fesql
-
-
-

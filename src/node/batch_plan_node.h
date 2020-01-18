@@ -33,6 +33,12 @@ class BatchPlanNode {
     void AddChild(const BatchPlanNode* node) {
         children_.push_back(node);
     }
+    const std::vector<const BatchPlanNode*>& GetChildren() const {
+        return children_;
+    }
+    const std::vector<const BatchPlanNode*>& GetChildren() {
+        return children_;
+    }
  private:
     BatchPlanNodeType type_;
     std::vector<const BatchPlanNode*> children_;

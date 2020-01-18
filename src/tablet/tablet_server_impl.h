@@ -48,6 +48,7 @@ typedef std::map<
 typedef std::map<std::string, std::map<std::string, uint32_t>> TableNames;
 
 class TabletServerImpl : public TabletServer, public vm::TableMgr {
+
  public:
     TabletServerImpl();
     ~TabletServerImpl();
@@ -73,6 +74,7 @@ class TabletServerImpl : public TabletServer, public vm::TableMgr {
                                                  const uint32_t tid);
 
  private:
+
     inline std::shared_ptr<vm::TableStatus> GetTableLocked(
         const std::string& db, uint32_t tid, uint32_t pid);
 

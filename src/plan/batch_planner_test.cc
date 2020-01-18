@@ -40,6 +40,9 @@ TEST_F(BatchPlannerTest, SimplePlannerCreatePlanTest) {
 
     BatchPlanner *planner_ptr = new BatchPlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreateTree(list, &tree, status));
+    ASSERT_TRUE(NULL != tree.GetRoot());
+    ASSERT_EQ(node::kBatchDataset, tree.GetRoot()->GetType());
+    ASSERT_EQ(1, tree.GetRoot()->GetChildren().size());
 }
 
 }  // namespace plan
