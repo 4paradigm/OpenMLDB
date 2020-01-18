@@ -10,6 +10,7 @@ import libs.utils as utils
 
 
 @ddt.ddt
+@multi_dimension(True)
 class TestUpdateTableAlive(TestCaseBase):
 
     def test_update_table_alive_normal(self):

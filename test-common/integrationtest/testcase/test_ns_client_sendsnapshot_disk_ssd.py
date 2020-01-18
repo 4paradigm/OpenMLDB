@@ -10,6 +10,7 @@ import libs.ddt as ddt
 import threading
 
 @ddt.ddt
+@multi_dimension(False)
 class TestSendSnapshot(TestCaseBase):
 
     def put_data(self, endpoint, tid, pid, count):
