@@ -342,7 +342,191 @@ TEST_F(SkiplistTest, SplitByPos1) {
         ASSERT_EQ(2, sl.GetLast()->GetKey());
         ASSERT_EQ(2, sl.GetLast()->GetValue());
     }
-}    
+}
+
+// key before pos , key without pos
+TEST_F(SkiplistTest, SplitByKeyOrPos1) {
+    Comparator cmp;
+    for (auto height : vec) {
+        Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
+        uint32_t key1 = 1;
+        uint32_t value1= 1;
+        sl.Insert(key1, value1);
+        uint32_t key2 = 2;
+        uint32_t value2= 2;
+        sl.Insert(key2, value2);
+        uint32_t key3 = 3;
+        uint32_t value3= 3;
+        sl.Insert(key3, value3);
+        uint32_t key4 = 4;
+        uint32_t value4= 4;
+        sl.Insert(key4, value4);
+        uint32_t key5 = 5;
+        uint32_t value5= 5;
+        sl.Insert(key5, value5);
+        ASSERT_EQ(5, sl.GetLast()->GetKey());
+        Node<uint32_t, uint32_t>* node = sl.SplitByKeyOrPos(4, 5);
+        ASSERT_EQ(4, node->GetKey());
+        ASSERT_EQ(3, sl.GetLast()->GetKey());
+        ASSERT_EQ(3, sl.GetLast()->GetValue());
+        node = sl.SplitByKeyOrPos(2, 4);
+        ASSERT_EQ(2, node->GetKey());
+        ASSERT_EQ(1, sl.GetLast()->GetKey());
+        ASSERT_EQ(1, sl.GetLast()->GetValue());
+    }
+}
+
+// key after pos, pos with out key
+TEST_F(SkiplistTest, SplitByKeyOrPos2) {
+    Comparator cmp;
+    for (auto height : vec) {
+        Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
+        uint32_t key1 = 1;
+        uint32_t value1= 1;
+        sl.Insert(key1, value1);
+        uint32_t key2 = 2;
+        uint32_t value2= 2;
+        sl.Insert(key2, value2);
+        uint32_t key3 = 3;
+        uint32_t value3= 3;
+        sl.Insert(key3, value3);
+        uint32_t key4 = 4;
+        uint32_t value4= 4;
+        sl.Insert(key4, value4);
+        uint32_t key5 = 5;
+        uint32_t value5= 5;
+        sl.Insert(key5, value5);
+        ASSERT_EQ(5, sl.GetLast()->GetKey());
+        Node<uint32_t, uint32_t>* node = sl.SplitByKeyOrPos(5, 3);
+        ASSERT_EQ(4, node->GetKey());
+        ASSERT_EQ(3, sl.GetLast()->GetKey());
+        ASSERT_EQ(3, sl.GetLast()->GetValue());
+        node = sl.SplitByKeyOrPos(4, 2);
+        ASSERT_EQ(3, node->GetKey());
+        ASSERT_EQ(2, sl.GetLast()->GetKey());
+        ASSERT_EQ(2, sl.GetLast()->GetValue());
+    }
+}
+
+// key equal pos, without key without pos
+TEST_F(SkiplistTest, SplitByKeyOrPos3) {
+    Comparator cmp;
+    for (auto height : vec) {
+        Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
+        uint32_t key1 = 1;
+        uint32_t value1= 1;
+        sl.Insert(key1, value1);
+        uint32_t key2 = 2;
+        uint32_t value2= 2;
+        sl.Insert(key2, value2);
+        uint32_t key3 = 3;
+        uint32_t value3= 3;
+        sl.Insert(key3, value3);
+        uint32_t key4 = 4;
+        uint32_t value4= 4;
+        sl.Insert(key4, value4);
+        uint32_t key5 = 5;
+        uint32_t value5= 5;
+        sl.Insert(key5, value5);
+        ASSERT_EQ(5, sl.GetLast()->GetKey());
+        Node<uint32_t, uint32_t>* node = sl.SplitByKeyOrPos(3, 2);
+        ASSERT_EQ(3, node->GetKey());
+        ASSERT_EQ(2, sl.GetLast()->GetKey());
+        ASSERT_EQ(2, sl.GetLast()->GetValue());
+        node = sl.SplitByKeyOrPos(4, 3);
+        ASSERT_EQ(NULL, node);
+    }
+}
+
+// key before pos , key without pos
+TEST_F(SkiplistTest, SplitByKeyAndPos1) {
+    Comparator cmp;
+    for (auto height : vec) {
+        Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
+        uint32_t key1 = 1;
+        uint32_t value1= 1;
+        sl.Insert(key1, value1);
+        uint32_t key2 = 2;
+        uint32_t value2= 2;
+        sl.Insert(key2, value2);
+        uint32_t key3 = 3;
+        uint32_t value3= 3;
+        sl.Insert(key3, value3);
+        uint32_t key4 = 4;
+        uint32_t value4= 4;
+        sl.Insert(key4, value4);
+        uint32_t key5 = 5;
+        uint32_t value5= 5;
+        sl.Insert(key5, value5);
+        ASSERT_EQ(5, sl.GetLast()->GetKey());
+        Node<uint32_t, uint32_t>* node = sl.SplitByKeyAndPos(3, 4);
+        ASSERT_EQ(5, node->GetKey());
+        ASSERT_EQ(4, sl.GetLast()->GetKey());
+        ASSERT_EQ(4, sl.GetLast()->GetValue());
+        node = sl.SplitByKeyAndPos(2, 4);
+        ASSERT_EQ(NULL, node);
+    }
+}
+
+// key after pos, pos with out key
+TEST_F(SkiplistTest, SplitByKeyAndPos2) {
+    Comparator cmp;
+    for (auto height : vec) {
+        Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
+        uint32_t key1 = 1;
+        uint32_t value1= 1;
+        sl.Insert(key1, value1);
+        uint32_t key2 = 2;
+        uint32_t value2= 2;
+        sl.Insert(key2, value2);
+        uint32_t key3 = 3;
+        uint32_t value3= 3;
+        sl.Insert(key3, value3);
+        uint32_t key4 = 4;
+        uint32_t value4= 4;
+        sl.Insert(key4, value4);
+        uint32_t key5 = 5;
+        uint32_t value5= 5;
+        sl.Insert(key5, value5);
+        ASSERT_EQ(5, sl.GetLast()->GetKey());
+        Node<uint32_t, uint32_t>* node = sl.SplitByKeyAndPos(5, 3);
+        ASSERT_EQ(5, node->GetKey());
+        ASSERT_EQ(4, sl.GetLast()->GetKey());
+        ASSERT_EQ(4, sl.GetLast()->GetValue());
+        node = sl.SplitByKeyAndPos(5, 3);
+        ASSERT_EQ(NULL, node);
+    }
+}
+
+// key equal pos, without key without pos
+TEST_F(SkiplistTest, SplitByKeyAndPos3) {
+    Comparator cmp;
+    for (auto height : vec) {
+        Skiplist<uint32_t, uint32_t, Comparator> sl(height, 4, cmp);
+        uint32_t key1 = 1;
+        uint32_t value1= 1;
+        sl.Insert(key1, value1);
+        uint32_t key2 = 2;
+        uint32_t value2= 2;
+        sl.Insert(key2, value2);
+        uint32_t key3 = 3;
+        uint32_t value3= 3;
+        sl.Insert(key3, value3);
+        uint32_t key4 = 4;
+        uint32_t value4= 4;
+        sl.Insert(key4, value4);
+        uint32_t key5 = 5;
+        uint32_t value5= 5;
+        sl.Insert(key5, value5);
+        ASSERT_EQ(5, sl.GetLast()->GetKey());
+        Node<uint32_t, uint32_t>* node = sl.SplitByKeyAndPos(5, 4);
+        ASSERT_EQ(5, node->GetKey());
+        ASSERT_EQ(4, sl.GetLast()->GetKey());
+        ASSERT_EQ(4, sl.GetLast()->GetValue());
+        node = sl.SplitByKeyAndPos(5, 4);
+        ASSERT_EQ(NULL, node);
+    }
+}
 
 TEST_F(SkiplistTest, Iterator2) {
     StrComparator cmp;

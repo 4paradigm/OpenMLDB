@@ -40,7 +40,6 @@ java/target
 # ignore pb generate code
 src/proto/*.cc
 src/proto/*.h
-
 # ignore some build directory
 build
 thirdparty

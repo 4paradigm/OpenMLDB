@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.impl;
 
 import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.ScanOption;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
@@ -26,6 +27,55 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     public TableSyncClientImpl(RTIDBClient client) {
         this.client = client;
+    }
+
+    @Override
+    public KvIterator scan(String tname, Map<String, Object> keyMap, long st, long et, ScanOption option) throws TimeoutException, TabletException {
+        if (option.getIdxName() == null) throw new TabletException("idx name is required ");
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        List<String> list = th.getKeyMap().get(option.getIdxName());
+        if (list == null) {
+            throw new TabletException("no index name in table" + option.getIdxName());
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, option.getIdxName(), st,
+                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
+    }
+
+    @Override
+    public KvIterator scan(String tname, String key, long st, long et, ScanOption option) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        key = validateKey(key);
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        return scan(th.getTableInfo().getTid(), pid, key, option.getIdxName(), st,
+                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
+    }
+
+    @Override
+    public KvIterator scan(String tname, Object[] keyArr, long st, long et, ScanOption option) throws TimeoutException, TabletException {
+        if (option.getIdxName() == null) throw new TabletException("idx name is required ");
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        List<String> list = th.getKeyMap().get(option.getIdxName());
+        if (list == null) {
+            throw new TabletException("no index name in table" + option.getIdxName());
+        }
+        if (keyArr.length != list.size()) {
+            throw new TabletException("check key number failed");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, option.getIdxName(), st,
+                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
     }
 
     @Override
@@ -561,7 +611,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with tid" + tid);
         }
-        return scan(tid, pid, key, idxName, st, et, null, limit, th);
+        return scan(tid, pid, key, idxName, st, et, null, limit, 0,th);
     }
 
     @Override
@@ -599,7 +649,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, null, limit, th);
+        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, null, limit, 0, th);
     }
 
     @Override
@@ -616,7 +666,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, tsName, limit, th);
+        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, tsName, limit, 0, th);
     }
 
     @Override
@@ -635,11 +685,12 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, th);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, 0, th);
     }
 
     @Override
-    public KvIterator scan(String tname, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit)
+    public KvIterator scan(String tname, Map<String, Object> keyMap,
+                           String idxName, long st, long et, String tsName, int limit)
             throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
@@ -651,7 +702,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, th);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit,0, th);
     }
 
     @Override
@@ -690,12 +741,18 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("check key number failed");
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
-        return scan(tid, pid, combinedKey, idxName, st, et, tsName, 0, th);
+        return scan(tid, pid, combinedKey, idxName, st, et, tsName, 0,0, th);
     }
 
     @Override
     public KvIterator scan(int tid, int pid, Map<String, Object> keyMap, String idxName,
                            long st, long et, String tsName, int limit) throws TimeoutException, TabletException {
+        return scan(tid, pid, keyMap, idxName, st, et, tsName, limit, 0);
+    }
+
+    @Override
+    public KvIterator scan(int tid, int pid, Map<String, Object> keyMap, String idxName,
+                           long st, long et, String tsName, int limit, int atLeast) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tid);
         if (th == null) {
             throw new TabletException("no table with tid" + tid);
@@ -705,11 +762,12 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no index name in table" + idxName);
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
-        return scan(tid, pid, combinedKey, idxName, st, et, tsName, limit, th);
+        return scan(tid, pid, combinedKey, idxName, st, et, tsName, limit, atLeast, th);
     }
 
+
     private KvIterator scan(int tid, int pid, String key, String idxName,
-                            long st, long et, String tsName, int limit, TableHandler th) throws TimeoutException, TabletException {
+                            long st, long et, String tsName, int limit, int atLeast, TableHandler th) throws TimeoutException, TabletException {
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -725,6 +783,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setSt(st);
         builder.setPid(pid);
         builder.setLimit(limit);
+        builder.setAtleast(atLeast);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }
@@ -1004,4 +1063,6 @@ public class TableSyncClientImpl implements TableSyncClient {
             return th.getSchemaMap().get(th.getSchema().size() + th.getSchemaMap().size());
         }
     }
+
+
 }

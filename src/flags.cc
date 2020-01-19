@@ -16,7 +16,8 @@ DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,i
 DEFINE_string(zk_root_path, "/rtidb", "config the root path of zookeeper");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check");
 DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status");
-DEFINE_uint32(get_table_status_interval, 2000, "config the interval of get task status");
+DEFINE_uint32(get_table_status_interval, 2000, "config the interval of get table status");
+DEFINE_uint32(get_table_diskused_interval, 600000, "config the interval of get table diskused");
 DEFINE_int32(name_server_task_pool_size, 8, "config the size of name server task pool");
 DEFINE_uint32(name_server_task_concurrency, 2, "config the concurrency of name_server_task");
 DEFINE_uint32(name_server_task_concurrency_for_replica_cluster, 2, "config the concurrency of name_server_task for replica cluster");
@@ -59,8 +60,8 @@ DEFINE_uint32(go_back_max_try_cnt, 10, "config max try time of go back");
 
 // local db config
 DEFINE_string(db_root_path, "/tmp/", "the root path of db");
-DEFINE_string(ssd_root_path, "/tmp/ssd/", "the root ssd path of db");
-DEFINE_string(hdd_root_path, "/tmp/hdd/", "the root hdd path of db");
+DEFINE_string(ssd_root_path, "", "the root ssd path of db");
+DEFINE_string(hdd_root_path, "", "the root hdd path of db");
 
 // thread pool config
 DEFINE_int32(scan_concurrency_limit, 8, "the limit of scan concurrency");
@@ -81,6 +82,7 @@ DEFINE_int32(stream_bandwidth_limit, 10 * 1204 * 1024, "the limit bandwidth. Byt
 
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
+DEFINE_int32(make_disktable_snapshot_interval, 360, "config the interval in minute to make disktable snapshot");
 DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");
 DEFINE_int32(make_snapshot_threshold_offset, 100000, "config the offset to reach the threshold");
 DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000, "config the max deleted keys store when make snapshot");

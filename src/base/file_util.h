@@ -221,6 +221,30 @@ inline static std::string ParseFileNameFromPath(const std::string& path) {
     return path.substr(index, path.length() - index);
 }
 
+static bool GetDirSizeRecur(const std::string& path, uint64_t& size) {
+    std::vector<std::string> file_vec;
+    if (GetChildFileName(path, file_vec) < 0) {
+        return false;
+    }
+    for (const auto &file : file_vec) {
+        struct stat stat_buf;
+        if (lstat(file.c_str(), &stat_buf) < 0) {
+            PDLOG(WARNING, "stat path %s failed err[%d: %s]",
+                        path.c_str(), errno, strerror(errno));
+            return false;
+        }
+        if(IsFolder(file)) {
+            size += stat_buf.st_size;
+            if (!GetDirSizeRecur(file, size)) {
+                return false;
+            }
+        } else {
+            size += stat_buf.st_size;
+        }
+    }
+    return true;
+}
+
 }
 }
 
