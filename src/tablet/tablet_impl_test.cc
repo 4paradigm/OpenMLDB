@@ -335,7 +335,6 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.count());
     }
-
 }
 
 TEST_F(TabletImplTest, Count_Time_Table) {
@@ -764,7 +763,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         table_meta->set_pid(0);
         table_meta->set_wal(true);
         table_meta->set_ttl(100);
-        table_meta->set_ttl_type(::rtidb::api::kAbsoluteTime);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
@@ -777,7 +776,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(0);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_type(::rtidb::api::TTLType::kAbsoluteTime);
         request.set_value(0);
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -789,7 +788,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_type(::rtidb::api::TTLType::kAbsoluteTime);
         request.set_value(60*24*365*30*2);
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -834,7 +833,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     ::rtidb::api::UpdateTTLRequest request;
     request.set_tid(id);
     request.set_pid(0);
-    request.set_type(::rtidb::api::kAbsoluteTime);
+    request.set_type(::rtidb::api::TTLType::kAbsoluteTime);
     ::rtidb::api::UpdateTTLResponse response;
     //ExecuteGcRequest 
     ::rtidb::api::ExecuteGcRequest request_execute;
@@ -1032,7 +1031,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
-        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_type(::rtidb::api::TTLType::kAbsoluteTime);
         request.set_value(0);
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
@@ -2806,7 +2805,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         table_meta->set_pid(1);
         // 3 minutes
         table_meta->set_ttl(3);
-        table_meta->set_ttl_type(::rtidb::api::kAbsoluteTime);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
@@ -2885,7 +2884,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(1);
-        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_type(::rtidb::api::TTLType::kAbsoluteTime);
         request.set_value(1);
         ::rtidb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
@@ -3291,6 +3290,177 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify){
     }
 }
 
+TEST_F(TabletImplTest, CreateTableAbsoluteTest_TTlDesc){
+    uint32_t id = counter++;
+    MockClosure closure;
+    TabletImpl tablet;
+    tablet.Init();
+    {
+       ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_wal(true);
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        ttl_desc->set_abs_ttl(10);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get table status
+    {
+        ::rtidb::api::GetTableStatusRequest request;
+        ::rtidb::api::GetTableStatusResponse response;
+        tablet.GetTableStatus(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        const TableStatus& ts = response.all_table_status(0);
+        ASSERT_EQ(10, ts.ttl_desc().abs_ttl());
+        ASSERT_EQ(0, ts.ttl_desc().lat_ttl());
+        ASSERT_EQ(::rtidb::api::TTLType::kAbsoluteTime, ts.ttl_desc().ttl_type());
+    }
+}
+
+TEST_F(TabletImplTest, CreateTableLatestTest_TTlDesc){
+    uint32_t id = counter++;
+    MockClosure closure;
+    TabletImpl tablet;
+    tablet.Init();
+    {
+       ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_wal(true);
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        ttl_desc->set_lat_ttl(10);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get table status
+    {
+        ::rtidb::api::GetTableStatusRequest request;
+        ::rtidb::api::GetTableStatusResponse response;
+        tablet.GetTableStatus(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        const TableStatus& ts = response.all_table_status(0);
+        ASSERT_EQ(0, ts.ttl_desc().abs_ttl());
+        ASSERT_EQ(10, ts.ttl_desc().lat_ttl());
+        ASSERT_EQ(::rtidb::api::TTLType::kLatestTime, ts.ttl_desc().ttl_type());
+    }
+}
+
+TEST_F(TabletImplTest, CreateTableAbsAndLatTest){
+    uint32_t id = counter++;
+    MockClosure closure;
+    TabletImpl tablet;
+    tablet.Init();
+    {
+       ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_wal(true);
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_abs_ttl(10);
+        ttl_desc->set_lat_ttl(20);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get table status
+    {
+        ::rtidb::api::GetTableStatusRequest request;
+        ::rtidb::api::GetTableStatusResponse response;
+        tablet.GetTableStatus(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        const TableStatus& ts = response.all_table_status(0);
+        ASSERT_EQ(10, ts.ttl_desc().abs_ttl());
+        ASSERT_EQ(20, ts.ttl_desc().lat_ttl());
+        ASSERT_EQ(::rtidb::api::TTLType::kAbsAndLat, ts.ttl_desc().ttl_type());
+    }
+}
+
+TEST_F(TabletImplTest, CreateTableAbsAndOrTest){
+    uint32_t id = counter++;
+    MockClosure closure;
+    TabletImpl tablet;
+    tablet.Init();
+    {
+       ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_wal(true);
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_abs_ttl(10);
+        ttl_desc->set_lat_ttl(20);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get table status
+    {
+        ::rtidb::api::GetTableStatusRequest request;
+        ::rtidb::api::GetTableStatusResponse response;
+        tablet.GetTableStatus(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        const TableStatus& ts = response.all_table_status(0);
+        ASSERT_EQ(10, ts.ttl_desc().abs_ttl());
+        ASSERT_EQ(20, ts.ttl_desc().lat_ttl());
+        ASSERT_EQ(::rtidb::api::TTLType::kAbsOrLat, ts.ttl_desc().ttl_type());
+    }
+}
+
+TEST_F(TabletImplTest, CreateTableAbsAndLatTest_Specify){
+    uint32_t id = counter++;
+    MockClosure closure;
+    TabletImpl tablet;
+    tablet.Init();
+    {
+       ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_wal(true);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        table_meta->set_key_entry_max_height(8);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get table status
+    {
+        ::rtidb::api::GetTableStatusRequest request;
+        ::rtidb::api::GetTableStatusResponse response;
+        tablet.GetTableStatus(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        const TableStatus& ts = response.all_table_status(0);
+        ASSERT_EQ(8, ts.skiplist_height());
+    }
+}
+
+
 TEST_F(TabletImplTest, GetTermPair) {
     uint32_t id = counter++;
     FLAGS_zk_cluster = "127.0.0.1:6181";
@@ -3466,6 +3636,1328 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
         unlink(snapshot_file.c_str());
         FLAGS_make_snapshot_threshold_offset = offset;
+    }
+}
+
+TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
+    int32_t old_gc_interval = FLAGS_gc_interval;
+    // 1 minute
+    FLAGS_gc_interval = 1;
+    TabletImpl tablet;
+    tablet.Init();
+    // create table
+    uint32_t id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_wal(true);
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_abs_ttl(100);
+        ttl_desc->set_lat_ttl(50);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // table not exist
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(0);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_abs_ttl(10);
+        ttl_desc->set_lat_ttl(5);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(100, response.code());
+    }
+    // bigger than max ttl
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_abs_ttl(60*24*365*30*2);
+        ttl_desc->set_lat_ttl(5);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(132, response.code());
+    }
+    // bigger than max ttl
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_abs_ttl(30);
+        ttl_desc->set_lat_ttl(20000);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(132, response.code());
+    }
+    // ttl type mismatch
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        ttl_desc->set_abs_ttl(10);
+        ttl_desc->set_lat_ttl(5);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(112, response.code());
+    }
+    // normal case
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    ::rtidb::api::PutResponse presponse;
+    ::rtidb::api::PutRequest prequest;
+    {
+        prequest.set_pk("test");
+        prequest.set_time(now - 60*60*1000);
+        prequest.set_value("test9");
+        prequest.set_tid(id);
+        prequest.set_pid(0);
+        MockClosure closure;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+
+    {
+        prequest.set_pk("test");
+        prequest.set_time(now - 70*60*1000);
+        prequest.set_value("test8");
+        prequest.set_tid(id);
+        prequest.set_pid(0);
+        MockClosure closure;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    MockClosure closure;
+    ::rtidb::api::GetRequest grequest;
+    grequest.set_tid(id);
+    grequest.set_pid(0);
+    grequest.set_key("test");
+    grequest.set_ts(0);
+    ::rtidb::api::GetResponse gresponse;
+    tablet.Get(NULL, &grequest, &gresponse, &closure);
+    ASSERT_EQ(0, gresponse.code());
+    ASSERT_EQ("test9", gresponse.value());
+    //UpdateTTLRequest
+
+
+    //ExecuteGcRequest 
+    ::rtidb::api::ExecuteGcRequest request_execute;
+    ::rtidb::api::GeneralResponse response_execute;
+    request_execute.set_tid(id);
+    request_execute.set_pid(0);
+    //etTableStatusRequest
+    ::rtidb::api::GetTableStatusRequest gr;
+    ::rtidb::api::GetTableStatusResponse gres;
+    // ttl update to zero
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_abs_ttl(0);
+        ttl_desc->set_lat_ttl(0);
+        ::rtidb::api::UpdateTTLResponse response;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", gresponse.value());
+
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        bool checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(100, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(50, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure); 
+        sleep(3);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+
+        gres.Clear();
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(0, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(0, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+    }
+    // ttl update from zero to no zero
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_abs_ttl(50);
+        ttl_desc->set_lat_ttl(1);
+        ::rtidb::api::UpdateTTLResponse response;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", gresponse.value());
+
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        bool checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(0, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(0, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure); 
+        sleep(3);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", gresponse.value());
+
+        gres.Clear();
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(50, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(1, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+    }
+    // update from 50 to 100 
+    {
+                ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_abs_ttl(100);
+        ttl_desc->set_lat_ttl(2);
+        ::rtidb::api::UpdateTTLResponse response;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", gresponse.value());
+
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        bool checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(50, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(1, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+        prequest.set_time(now - 10*60*1000);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+
+        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure); 
+        sleep(3);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+
+        gres.Clear();
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(100, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(2, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+    }
+    FLAGS_gc_interval = old_gc_interval;
+}
+
+TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
+    int32_t old_gc_interval = FLAGS_gc_interval;
+    // 1 minute
+    FLAGS_gc_interval = 1;
+    TabletImpl tablet;
+    tablet.Init();
+    // create table
+    uint32_t id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_wal(true);
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_abs_ttl(100);
+        ttl_desc->set_lat_ttl(50);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // table not exist
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(0);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_abs_ttl(10);
+        ttl_desc->set_lat_ttl(5);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(100, response.code());
+    }
+    // bigger than max ttl
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_abs_ttl(60*24*365*30*2);
+        ttl_desc->set_lat_ttl(5);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(132, response.code());
+    }
+    // bigger than max ttl
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_abs_ttl(30);
+        ttl_desc->set_lat_ttl(20000);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(132, response.code());
+    }
+    // ttl type mismatch
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        ttl_desc->set_abs_ttl(10);
+        ttl_desc->set_lat_ttl(5);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(112, response.code());
+    }
+    // normal case
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    ::rtidb::api::PutRequest prequest;
+    ::rtidb::api::PutResponse presponse;
+    {
+        prequest.set_pk("test");
+        prequest.set_time(now - 60*60*1000);
+        prequest.set_value("test9");
+        prequest.set_tid(id);
+        prequest.set_pid(0);
+        MockClosure closure;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    {
+        prequest.set_pk("test");
+        prequest.set_time(now - 70*60*1000);
+        prequest.set_value("test8");
+        prequest.set_tid(id);
+        prequest.set_pid(0);
+        MockClosure closure;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+
+    ::rtidb::api::GetRequest grequest;
+    grequest.set_tid(id);
+    grequest.set_pid(0);
+    grequest.set_key("test");
+    grequest.set_ts(0);
+    ::rtidb::api::GetResponse gresponse;
+    MockClosure closure;
+    tablet.Get(NULL, &grequest, &gresponse, &closure);
+    ASSERT_EQ(0, gresponse.code());
+    ASSERT_EQ("test9", gresponse.value());
+
+    //ExecuteGcRequest 
+    ::rtidb::api::ExecuteGcRequest request_execute;
+    ::rtidb::api::GeneralResponse response_execute;
+    request_execute.set_tid(id);
+    request_execute.set_pid(0);
+    //etTableStatusRequest
+    ::rtidb::api::GetTableStatusRequest gr;
+    ::rtidb::api::GetTableStatusResponse gres;
+    // ttl update to zero
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_abs_ttl(0);
+        ttl_desc->set_lat_ttl(0);
+        ::rtidb::api::UpdateTTLResponse response;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", gresponse.value());
+
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        bool checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(100, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(50, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure); 
+        sleep(3);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+
+        gres.Clear();
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(0, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(0, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+    }
+    // ttl update from zero to no zero
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_abs_ttl(10);
+        ttl_desc->set_lat_ttl(1);
+        ::rtidb::api::UpdateTTLResponse response;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", gresponse.value());
+
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        bool checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(0, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(0, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure); 
+        sleep(3);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(109, gresponse.code());
+
+        gres.Clear();
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(10, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(1, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+    }
+    // update from 10 to 100 
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_abs_ttl(100);
+        ttl_desc->set_lat_ttl(2);
+        ::rtidb::api::UpdateTTLResponse response;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(109, gresponse.code());
+
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        bool checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(10, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(1, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+        prequest.set_time(now - 10*60*1000);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+
+        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure); 
+        sleep(3);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+
+        gres.Clear();
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(100, ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(2, ts.ttl_desc().lat_ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+    }
+    FLAGS_gc_interval = old_gc_interval;
+}
+
+
+TEST_F(TabletImplTest, ScanAtLeast) {
+    TabletImpl tablet;
+    tablet.Init();
+    MockClosure closure;
+    uint32_t id = 100;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_wal(true);
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_abs_ttl(0);
+        ttl_desc->set_lat_ttl(0);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    ::rtidb::api::PutResponse presponse;
+    ::rtidb::api::PutRequest prequest;
+    for (int i=0;i<1000;++i) {
+        prequest.set_pk("test"+std::to_string(i%10));
+        prequest.set_time(now - i*60*1000);
+        prequest.set_value("test"+std::to_string(i%10));
+        prequest.set_tid(id);
+        prequest.set_pid(0);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    ::rtidb::api::ScanRequest sr;
+    ::rtidb::api::ScanResponse srp;
+    // test atleast more than et
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-500*60*1000);
+        sr.set_atleast(80);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(80, srp.count());
+    }
+    // test atleast less than et
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-700*60*1000+1000);
+        sr.set_atleast(50);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(70, srp.count());
+    }
+    // test atleast and limit
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-700*60*1000+1000);
+        sr.set_atleast(50);
+        sr.set_limit(60);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(60, srp.count());
+    }
+    // test atleast more than limit
+    sr.set_tid(id);
+    sr.set_pid(0);
+    sr.set_pk("test"+std::to_string(0));
+    sr.set_st(now);
+    sr.set_et(now-700*60*1000+1000);
+    sr.set_atleast(70);
+    sr.set_limit(60);
+    sr.set_et_type(::rtidb::api::kSubKeyGe);
+    tablet.Scan(NULL, &sr, &srp, &closure);
+    ASSERT_EQ(307, srp.code());
+    // test atleast more than count
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-1100*60*1000);
+        sr.set_atleast(120);
+        sr.set_limit(0);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(100, srp.count());
+    }
+}
+
+TEST_F(TabletImplTest, ScanAtLeastWithAbsAndLat) {
+    TabletImpl tablet;
+    tablet.Init();
+    MockClosure closure;
+    uint32_t id = 101;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
+        ttl_desc->set_abs_ttl(100);
+        ttl_desc->set_lat_ttl(10);
+        ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+        desc->set_name("test");
+        desc->set_type("string");
+        desc->set_add_ts_idx(true);
+        desc->set_is_ts_col(false);
+        desc = table_meta->add_column_desc();
+        desc->set_name("ts1");
+        desc->set_type("int64");
+        desc->set_add_ts_idx(false);
+        desc->set_is_ts_col(true);
+        desc = table_meta->add_column_desc();
+        desc->set_name("ts2");
+        desc->set_type("int64");
+        desc->set_add_ts_idx(false);
+        desc->set_is_ts_col(true);
+        desc->set_abs_ttl(50);
+        desc->set_lat_ttl(8);
+        desc = table_meta->add_column_desc();
+        desc->set_name("ts3");
+        desc->set_type("int64");
+        desc->set_add_ts_idx(false);
+        desc->set_is_ts_col(true);
+        desc->set_abs_ttl(70);
+        desc->set_lat_ttl(5);
+            
+        ::rtidb::common::ColumnKey* column_key = table_meta->add_column_key();
+        column_key->set_index_name("test");
+        column_key->add_ts_name("ts1");
+        column_key->add_ts_name("ts2");
+        column_key->add_ts_name("ts3");
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    for (int i=0;i<100;++i) {
+        ::rtidb::api::PutResponse presponse;
+        ::rtidb::api::PutRequest prequest;
+        ::rtidb::api::Dimension* dim = prequest.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("test" + std::to_string(i % 10));
+        ::rtidb::api::TSDimension* ts = prequest.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(now-(99-i)*60*1000);
+        ts = prequest.add_ts_dimensions();
+        ts->set_idx(1);
+        ts->set_ts(now-(99-i)*60*1000);
+        ts = prequest.add_ts_dimensions();
+        ts->set_idx(2);
+        ts->set_ts(now-(99-i)*60*1000);
+        prequest.set_tid(id);
+        prequest.set_pid(0);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts1");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(100, srp->count());
+    }
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts2");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(80, srp->count());
+    }
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts3");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(70, srp->count());
+    }
+    ::rtidb::api::ScanRequest sr;
+    ::rtidb::api::ScanResponse srp;
+    // test atleast more than et and no ttl
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-50*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_atleast(10);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(10, srp.count());
+    }
+    // test atleast more than et and expire and with ttl
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-50*60*1000);
+        sr.set_ts_name("ts2");
+        sr.set_atleast(10);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(8, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-50*60*1000);
+        sr.set_ts_name("ts3");
+        sr.set_atleast(10);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(7, srp.count());
+    }
+    // test et less than expire
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_atleast(5);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(10, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts2");
+        sr.set_atleast(10);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(8, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts3");
+        sr.set_atleast(10);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(7, srp.count());
+    }
+    // test atleast less than expire
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_atleast(5);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(10, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts2");
+        sr.set_atleast(5);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(8, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts3");
+        sr.set_atleast(5);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(7, srp.count());
+    }
+    // test atleast and limit ls than valid
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_atleast(5);
+        sr.set_limit(6);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(6, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts2");
+        sr.set_atleast(5);
+        sr.set_limit(6);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(6, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts3");
+        sr.set_atleast(5);
+        sr.set_limit(6);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(6, srp.count());
+    }
+    // test atleast and limit more than valid
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_atleast(9);
+        sr.set_limit(9);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(9, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts2");
+        sr.set_atleast(9);
+        sr.set_limit(9);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(8, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts3");
+        sr.set_atleast(9);
+        sr.set_limit(9);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(7, srp.count());
+    }
+}
+
+TEST_F(TabletImplTest, ScanAtLeastWithAbsOrLat) {
+    TabletImpl tablet;
+    tablet.Init();
+    MockClosure closure;
+    uint32_t id = 102;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+        ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+        ttl_desc->set_abs_ttl(100);
+        ttl_desc->set_lat_ttl(10);
+        ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+        desc->set_name("test");
+        desc->set_type("string");
+        desc->set_add_ts_idx(true);
+        desc->set_is_ts_col(false);
+        desc = table_meta->add_column_desc();
+        desc->set_name("ts1");
+        desc->set_type("int64");
+        desc->set_add_ts_idx(false);
+        desc->set_is_ts_col(true);
+        desc = table_meta->add_column_desc();
+        desc->set_name("ts2");
+        desc->set_type("int64");
+        desc->set_add_ts_idx(false);
+        desc->set_is_ts_col(true);
+        desc->set_abs_ttl(50);
+        desc->set_lat_ttl(8);
+        desc = table_meta->add_column_desc();
+        desc->set_name("ts3");
+        desc->set_type("int64");
+        desc->set_add_ts_idx(false);
+        desc->set_is_ts_col(true);
+        desc->set_abs_ttl(70);
+        desc->set_lat_ttl(6);
+            
+        ::rtidb::common::ColumnKey* column_key = table_meta->add_column_key();
+        column_key->set_index_name("test");
+        column_key->add_ts_name("ts1");
+        column_key->add_ts_name("ts2");
+        column_key->add_ts_name("ts3");
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    for (int i=0;i<100;++i) {
+        ::rtidb::api::PutResponse presponse;
+        ::rtidb::api::PutRequest prequest;
+        ::rtidb::api::Dimension* dim = prequest.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key("test" + std::to_string(i % 10));
+        ::rtidb::api::TSDimension* ts = prequest.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(now-(99-i)*60*1000);
+        ts = prequest.add_ts_dimensions();
+        ts->set_idx(1);
+        ts->set_ts(now-(99-i)*60*1000);
+        ts = prequest.add_ts_dimensions();
+        ts->set_idx(2);
+        ts->set_ts(now-(99-i)*60*1000);
+        prequest.set_tid(id);
+        prequest.set_pid(0);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+
+    
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts1");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(100, srp->count());
+    }
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts2");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(50, srp->count());
+    }
+    {    
+        ::rtidb::api::TraverseRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_limit(100);
+        sr.set_ts_name("ts3");
+        ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+        tablet.Traverse(NULL, &sr, srp, &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(60, srp->count());
+    }
+    ::rtidb::api::ScanRequest sr;
+    ::rtidb::api::ScanResponse srp;
+    // test atleast more than et and no ttl
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-40*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_atleast(10);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(10, srp.count());
+    }
+    // test atleast more than et and expire and with ttl
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-40*60*1000);
+        sr.set_ts_name("ts2");
+        sr.set_atleast(10);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(5, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-40*60*1000);
+        sr.set_ts_name("ts3");
+        sr.set_atleast(10);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(6, srp.count());
+    }
+    // test et less than expire
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_atleast(5);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(10, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts2");
+        sr.set_atleast(10);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(5, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts3");
+        sr.set_atleast(10);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(6, srp.count());
+    }
+    // test atleast less than expire
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_atleast(5);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(10, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts2");
+        sr.set_atleast(5);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(5, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts3");
+        sr.set_atleast(5);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(6, srp.count());
+    }
+    // test atleast and limit ls than valid
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_atleast(3);
+        sr.set_limit(4);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(4, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts2");
+        sr.set_atleast(3);
+        sr.set_limit(4);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(4, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts3");
+        sr.set_atleast(3);
+        sr.set_limit(4);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(4, srp.count());
+    }
+    // test atleast and limit more than valid
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_atleast(9);
+        sr.set_limit(9);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(9, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts2");
+        sr.set_atleast(9);
+        sr.set_limit(9);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(5, srp.count());
+    }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now-100*60*1000);
+        sr.set_ts_name("ts3");
+        sr.set_atleast(9);
+        sr.set_limit(9);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(6, srp.count());
     }
 }
 

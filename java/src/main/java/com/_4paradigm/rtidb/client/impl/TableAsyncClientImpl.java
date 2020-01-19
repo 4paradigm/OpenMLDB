@@ -231,7 +231,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with id " + tid);
         }
-        return scan(tid, pid, key, idxName, st, et, null, limit, th);
+        return scan(tid, pid, key, idxName, st, et, null, limit,0, th);
     }
 
 
@@ -266,6 +266,55 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
+    public ScanFuture scan(String tname, Map<String, Object> keyMap, long st, long et, ScanOption option) throws TabletException {
+        if (option.getIdxName() == null) throw new TabletException("idx name is required ");
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        List<String> list = th.getKeyMap().get(option.getIdxName());
+        if (list == null) {
+            throw new TabletException("no index name in table" + option.getIdxName());
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, option.getIdxName(), st,
+                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
+    }
+
+    @Override
+    public ScanFuture scan(String tname, String key, long st, long et, ScanOption option) throws TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        key = validateKey(key);
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        return scan(th.getTableInfo().getTid(), pid, key, option.getIdxName(), st,
+                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
+    }
+
+    @Override
+    public ScanFuture scan(String tname, Object[] keyArr, long st, long et, ScanOption option) throws TabletException {
+        if (option.getIdxName() == null) throw new TabletException("idx name is required ");
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        List<String> list = th.getKeyMap().get(option.getIdxName());
+        if (list == null) {
+            throw new TabletException("no index name in table" + option.getIdxName());
+        }
+        if (keyArr.length != list.size()) {
+            throw new TabletException("check key number failed");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, option.getIdxName(), st,
+                et, option.getTsName(), option.getLimit(), option.getAtLeast(), th);
+    }
+
+    @Override
     public ScanFuture scan(String name, String key, String idxName, long st, long et, String tsName, int limit) throws TabletException {
         TableHandler th = client.getHandler(name);
         if (th == null) {
@@ -273,7 +322,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, tsName, limit, th);
+        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, tsName, limit, 0,th);
     }
 
     @Override
@@ -291,7 +340,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, th);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, 0, th);
     }
 
     @Override
@@ -307,7 +356,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, th);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit,0, th);
     }
 
     @Override
@@ -450,10 +499,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
 
-    private ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, String tsName, int limit,
+    private ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, String tsName, int limit, int atLeast,
                             TableHandler th) throws TabletException {
         key = validateKey(key);
-
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
         builder.setTid(tid);
@@ -461,6 +509,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         builder.setSt(st);
         builder.setPid(pid);
         builder.setLimit(limit);
+        builder.setAtleast(atLeast);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }

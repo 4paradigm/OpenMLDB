@@ -1,4 +1,5 @@
 import "common.proto";
+import "tablet.proto";
 package rtidb.client;
 
 message TablePartition {
@@ -9,7 +10,7 @@ message TablePartition {
 
 message TableInfo {
     required string name = 1;
-    required uint64 ttl = 2;
+    optional uint64 ttl = 2 [default = 0];
     optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
     repeated rtidb.common.ColumnDesc column_desc = 5;
@@ -20,4 +21,5 @@ message TableInfo {
     optional uint32 key_entry_max_height = 10;
     repeated rtidb.common.ColumnKey column_key = 11;
     optional string storage_mode = 12 [default = "kMemory"];
+    optional rtidb.api.TTLDesc ttl_desc = 13;
 }

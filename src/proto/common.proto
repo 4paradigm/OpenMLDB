@@ -18,7 +18,9 @@ message ColumnDesc {
     optional string type = 2;
     optional bool add_ts_idx = 3 [default=false]; 
     optional bool is_ts_col = 4 [default=false];
-    optional uint64 ttl = 5;
+    optional uint64 ttl = 5 [default = 0, deprecated = true];
+    optional uint64 abs_ttl = 6 [default = 0];
+    optional uint64 lat_ttl = 7 [default = 0];
 }
 
 message ColumnKey {
