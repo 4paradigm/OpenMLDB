@@ -130,7 +130,7 @@ TEST_F(LogReplicatorTest,  Init) {
     std::map<std::string, uint32_t> mapping;
     std::atomic<bool> follower(false);
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
     bool ok = replicator.Init();
@@ -143,7 +143,7 @@ TEST_F(LogReplicatorTest,  BenchMark) {
     std::map<std::string, uint32_t> mapping;
     std::atomic<bool> follower(false);
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
     bool ok = replicator.Init();
@@ -163,7 +163,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:17527";
@@ -233,7 +233,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     leader.AddReplicateNode(vec);
     sleep(2);
 
-    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:17528";
@@ -306,7 +306,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     brpc::Server server2;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
@@ -355,7 +355,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     leader.AddReplicateNode(vec, 2);
     sleep(2);
 
-    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
@@ -372,7 +372,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     	}
         PDLOG(INFO, "start follower");
     }
-    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>("test", 2, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>("test", 2, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t9->Init();
     {
         std::string follower_addr = "127.0.0.1:18529";
@@ -480,7 +480,7 @@ TEST_F(LogReplicatorTest,  Leader_Remove_local_follower) {
     brpc::Server server2;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
@@ -529,7 +529,7 @@ TEST_F(LogReplicatorTest,  Leader_Remove_local_follower) {
     leader.AddReplicateNode(vec, 2);
     sleep(2);
 
-    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
@@ -545,7 +545,7 @@ TEST_F(LogReplicatorTest,  Leader_Remove_local_follower) {
         }
         PDLOG(INFO, "start follower");
     }
-    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>("test", 2, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t9 = std::make_shared<MemTable>("test", 2, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     t9->Init();
     {
         std::string follower_addr = "127.0.0.1:18529";

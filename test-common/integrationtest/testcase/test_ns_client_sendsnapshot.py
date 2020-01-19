@@ -362,7 +362,7 @@ class TestSendSnapshot(TestCaseBase):
         self.assertIn("MakeSnapshot ok", self.makesnapshot(self.leader, tid, pid))
         self.assertIn("PauseSnapshot ok", self.pausesnapshot(self.leader, tid, pid))
         self.assertIn("SendSnapshot ok", self.sendsnapshot(self.leader, tid, pid, self.slave1))
-        time.sleep(1)
+        time.sleep(2)
         mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, pid)
         mf1 = self.get_manifest_by_realpath(self.slave1path + "/" + db_path, tid, pid)
         self.assertEqual(mf, mf1)

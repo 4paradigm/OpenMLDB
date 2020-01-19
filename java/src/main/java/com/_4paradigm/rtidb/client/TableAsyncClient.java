@@ -2,6 +2,7 @@ package com._4paradigm.rtidb.client;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.tablet.Tablet;
@@ -101,6 +102,13 @@ public interface TableAsyncClient {
     ScanFuture scan(String name, String key, int limit) throws TabletException;
 
     ScanFuture scan(String name, String key, long st, long et, int limit) throws TabletException;
+
+    ScanFuture scan(String tname, Map<String, Object> keyMap,long st, long et,
+                    ScanOption option) throws TabletException;
+    ScanFuture scan(String tname, String key, long st, long et,
+                    ScanOption option) throws TabletException;
+    ScanFuture scan(String tname, Object[] keyArr, long st, long et, ScanOption option)
+            throws TabletException;
 
     ScanFuture scan(String name, String key, String idxName, long st, long et, String tsName, int limit) throws TabletException;
     ScanFuture scan(String name, Object[] keyArr, String idxName, long st, long et, String tsName, int limit) throws TabletException;

@@ -39,15 +39,17 @@
 #--task_pool_size=8
 
 --db_root_path=./db
---ssd_root_path=./db
---hdd_root_path=./db
+#--ssd_root_path=./db
+#--hdd_root_path=./db
 --recycle_bin_root_path=./recycle
---recycle_ssd_bin_root_path=./recycle
---recycle_hdd_bin_root_path=./recycle
+#--recycle_ssd_bin_root_path=./recycle
+#--recycle_hdd_bin_root_path=./recycle
 
 # snapshot conf
 # 每天23点做snapshot
 --make_snapshot_time=23
+# ssd/hdd做snapshot的时间间隔 单位为分钟
+--make_disktable_snapshot_interval=360
 #--make_snapshot_check_interval=600000
 #--make_snapshot_threshold_offset=100000
 

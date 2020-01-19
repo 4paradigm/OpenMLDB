@@ -37,7 +37,6 @@ target_link_libraries(file_util_test gtest pthread common)
 add_executable(slice_test base/slice_test.cc)
 target_link_libraries(slice_test gtest pthread)
 
-
 add_executable(zk_test zk/zk_client_test.cc)
 target_link_libraries(zk_test gtest zk_client zookeeper_mt pthread common)
 
@@ -53,7 +52,7 @@ target_link_libraries(skiplist_test gtest pthread)
 add_executable(flat_array_test base/flat_array_test.cc)
 target_link_libraries(flat_array_test gtest pthread)
 
-add_executable(schema_codec_test base/schema_codec_test.cc proto/name_server.pb.cc proto/common.pb.cc proto/tablet.pb.cc)
+add_executable(schema_codec_test base/schema_codec_test.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/common.pb.cc)
 target_link_libraries(schema_codec_test gtest pthread protobuf)
 
 add_executable(count_down_latch_test base/count_down_latch_test.cc)

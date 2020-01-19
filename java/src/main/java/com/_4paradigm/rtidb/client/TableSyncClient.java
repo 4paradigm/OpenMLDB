@@ -49,6 +49,11 @@ public interface TableSyncClient {
     KvIterator scan(int tid, int pid, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit)
             throws TimeoutException, TabletException;
 
+
+    KvIterator scan(int tid, int pid, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit,
+                    int atLeast)
+            throws TimeoutException, TabletException;
+
     // for cluster
     boolean put(String tname, String key, long time, byte[] bytes) throws TimeoutException, TabletException;
 
@@ -104,6 +109,15 @@ public interface TableSyncClient {
             throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, Map<String, Object> keyMap,long st, long et,
+                    ScanOption option) throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, String key, long st, long et,
+                    ScanOption option) throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, Object[] keyArr, long st, long et, ScanOption option)
             throws TimeoutException, TabletException;
 
     KvIterator traverse(String tname, String idxName) throws TimeoutException, TabletException;
