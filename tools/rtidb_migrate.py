@@ -330,13 +330,18 @@ def RecoverData():
         print "table leader: {}".format(table)
         cmd_info = list(common_cmd)
         cmd_info.append("--cmd=info " + table[0])
-        code, stdout,stderr = RunWithRetuncode(cmd_info)
-        if code != 0:
-            print "fail to get table info"
-            return
-        lines = stdout.split('\n')
-        storage_mode = lines[11].split()[1]
-
+        while True:
+            code, stdout,stderr = RunWithRetuncode(cmd_info)
+            if code != 0:
+                print "fail to get table info"
+                return
+            lines = stdout.split('\n')
+            if len(lines) >= 12:
+                print lines[11]
+                storage_mode = lines[11].split()[1]
+                break
+            else:
+                time.sleep(1)
         # print key
         cmd_loadtable = "--cmd=loadtable " + table[0] + " " + table[1] + " " + table[2] + " " + table[5].split("min")[0] + " 8" + " true " + storage_mode
         # print cmd_loadtable
@@ -353,6 +358,8 @@ def RecoverData():
 
     # check table status
     count = 0
+    print str(leader_table)
+    time.sleep(10)
     while True:
         flag = True
         if count % 12 == 0:
@@ -364,8 +371,9 @@ def RecoverData():
             gettablestatus.append("--endpoint=" + table[3])
             gettablestatus.append(cmd_gettablestatus)
             code, stdout,stderr = RunWithRetuncode(gettablestatus)
-
+            print stdout
             table_status = GetTablesStatus(stdout)
+            print str(table_status)
             status = table_status[key]
             if status[3] == "kTableLeader":
                 if count % 12 == 0:
