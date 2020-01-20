@@ -54,8 +54,8 @@ class FeSQLJIT : public ::llvm::orc::LLJIT {
                    const std::string& name, void* fn_ptr);
 
     static bool AddSymbol(::llvm::orc::JITDylib& jd,           // NOLINT
-                                 ::llvm::orc::MangleAndInterner& mi,  // NOLINT
-                                 const std::string& fn_name, void* fn_ptr);
+                          ::llvm::orc::MangleAndInterner& mi,  // NOLINT
+                          const std::string& fn_name, void* fn_ptr);
     ~FeSQLJIT();
 
  protected:
@@ -68,9 +68,7 @@ class FeSQLJITBuilder
                                               ::llvm::orc::LLJITBuilderState> {
 };
 
-
-
-bool InitBasicSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
+bool InitBasicSymbol(::llvm::orc::JITDylib& jd,  // NOLINT
                      ::llvm::orc::MangleAndInterner& mi);
 }  // namespace vm
 }  // namespace fesql

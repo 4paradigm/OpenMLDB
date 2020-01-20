@@ -84,10 +84,10 @@ bool ArithmeticIRBuilder::inferBaseTypes(::llvm::Value* left,
 }
 
 bool ArithmeticIRBuilder::inferBaseDoubleTypes(::llvm::Value* left,
-                                              ::llvm::Value* right,
-                                              ::llvm::Value** casted_left,
-                                              ::llvm::Value** casted_right,
-                                              ::fesql::base::Status& status) {
+                                               ::llvm::Value* right,
+                                               ::llvm::Value** casted_left,
+                                               ::llvm::Value** casted_right,
+                                               ::fesql::base::Status& status) {
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
@@ -117,8 +117,8 @@ bool ArithmeticIRBuilder::inferBaseDoubleTypes(::llvm::Value* left,
 
     if (!right_type->isDoubleTy()) {
         if (!_cast_expr_ir_builder.UnSafeCast(
-            right, ::llvm::Type::getDoubleTy(this->block_->getContext()),
-            casted_right, status)) {
+                right, ::llvm::Type::getDoubleTy(this->block_->getContext()),
+                casted_right, status)) {
             status.msg = "fail to codegen add expr: " + status.msg;
             LOG(WARNING) << status.msg;
             return false;
@@ -211,7 +211,8 @@ bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::Value* left,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == inferBaseDoubleTypes(left, right, &casted_left, &casted_right, status)) {
+    if (false == inferBaseDoubleTypes(left, right, &casted_left, &casted_right,
+                                      status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
@@ -225,8 +226,7 @@ bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::Value* left,
     }
     return true;
 }
-bool ArithmeticIRBuilder::BuildModExpr(llvm::Value* left,
-                                       llvm::Value* right,
+bool ArithmeticIRBuilder::BuildModExpr(llvm::Value* left, llvm::Value* right,
                                        llvm::Value** output,
                                        base::Status status) {
     ::llvm::Value* casted_left = NULL;

@@ -31,6 +31,8 @@ class PredicateIRBuilder {
 
     bool BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
                      ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool BuildNeqExpr(::llvm::Value* left, ::llvm::Value* right,
+                     ::llvm::Value** output, base::Status& status);  // NOLINT
     bool BuildGtExpr(::llvm::Value* left, ::llvm::Value* right,
                      ::llvm::Value** output, base::Status& status);  // NOLINT
     bool BuildGeExpr(::llvm::Value* left, ::llvm::Value* right,
