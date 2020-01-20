@@ -368,6 +368,10 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
                     *output = ::fesql::type::kInt64;
                     return true;
                 }
+                case 1: {
+                    *output = ::fesql::type::kBool;
+                    return true;
+                }
                 default: {
                     LOG(WARNING) << "no mapping type for llvm type";
                     return false;

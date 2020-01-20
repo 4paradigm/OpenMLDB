@@ -8,8 +8,8 @@
  **/
 #include "codegen/cast_expr_ir_builder.h"
 #include <memory>
-#include "gtest/gtest.h"
 #include "codegen/ir_base_builder.h"
+#include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
@@ -144,6 +144,46 @@ void SafeCastErrorCheck(::fesql::type::Type src_type,
     CastErrorCheck(src_type, dist_type, true, msg);
 }
 
+template <class V>
+void BoolCastCheck(::fesql::type::Type type, V value, bool result) {
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("bool_cast_func", *ctx);
+
+    llvm::Type *left_llvm_type = NULL;
+    llvm::Type *dist_llvm_type = NULL;
+    ASSERT_TRUE(::fesql::codegen::GetLLVMType(m.get(), type, &left_llvm_type));
+    ASSERT_TRUE(GetLLVMType(m.get(), ::fesql::type::kBool, &dist_llvm_type));
+
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "D" and take an argument of "S".
+    Function *load_fn = Function::Create(
+        FunctionType::get(dist_llvm_type, {left_llvm_type}, false),
+        Function::ExternalLinkage, "load_fn", m.get());
+    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    IRBuilder<> builder(entry_block);
+    auto iter = load_fn->arg_begin();
+    Argument *arg0 = &(*iter);
+    ScopeVar scope_var;
+    scope_var.Enter("fn_base");
+    scope_var.AddVar("a", arg0);
+    CastExprIRBuilder ir_builder(entry_block, &scope_var);
+    llvm::Value *output;
+    base::Status status;
+
+    bool ok;
+
+    ok = ir_builder.BoolCast(arg0, &output, status);
+    builder.CreateRet(output);
+    m->print(::llvm::errs(), NULL);
+    ASSERT_TRUE(ok);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
+    bool (*decode)(V) = (bool (*)(V))load_fn_jit.getAddress();
+    bool ret = decode(value);
+    ASSERT_EQ(ret, result);
+}
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test) {
     UnSafeCastCheck<int16_t, int16_t>(::fesql::type::kInt16,
                                       ::fesql::type::kInt16, 1u, 4u);
@@ -210,39 +250,19 @@ TEST_F(CastExprIrBuilderTest, safe_cast_error_test) {
                        "unsafe cast");
 }
 
-TEST_F(CastExprIrBuilderTest, safe_cast_test) {
-    SafeCastCheck<int16_t, int16_t>(::fesql::type::kInt16,
-                                    ::fesql::type::kInt16, 1u, 4u);
-    SafeCastCheck<int16_t, int32_t>(::fesql::type::kInt16,
-                                    ::fesql::type::kInt32, 10000u, 40000);
-    SafeCastCheck<int16_t, int64_t>(::fesql::type::kInt16,
-                                    ::fesql::type::kInt64, 10000u, 40000L);
-    SafeCastCheck<int16_t, float>(::fesql::type::kInt16, ::fesql::type::kFloat,
-                                  10000u, 40000.0f);
-    SafeCastCheck<int16_t, double>(::fesql::type::kInt16,
-                                   ::fesql::type::kDouble, 10000u, 40000.0);
+TEST_F(CastExprIrBuilderTest, bool_cast_test) {
+    BoolCastCheck<int16_t>(::fesql::type::kInt16, 1u, true);
+    BoolCastCheck<int32_t>(::fesql::type::kInt32, 1, true);
+    BoolCastCheck<int64_t>(::fesql::type::kInt64, 1, true);
+    BoolCastCheck<float>(::fesql::type::kFloat, 1.0f, true);
+    BoolCastCheck<double>(::fesql::type::kDouble, 1.0, true);
 
-    SafeCastCheck<int32_t, int32_t>(::fesql::type::kInt32,
-                                    ::fesql::type::kInt32, 1, 4);
-    SafeCastCheck<int32_t, int64_t>(
-        ::fesql::type::kInt32, ::fesql::type::kInt64, 2000000000, 8000000000L);
-    SafeCastCheck<int32_t, float>(::fesql::type::kInt32, ::fesql::type::kFloat,
-                                  1, 4.0f);
-    SafeCastCheck<int32_t, double>(::fesql::type::kInt32,
-                                   ::fesql::type::kDouble, 2000000000,
-                                   8000000000.0);
+    BoolCastCheck<int16_t>(::fesql::type::kInt16, 0, false);
+    BoolCastCheck<int32_t>(::fesql::type::kInt32, 0, false);
+    BoolCastCheck<int64_t>(::fesql::type::kInt64, 0, false);
+    BoolCastCheck<float>(::fesql::type::kFloat, 0.0f, false);
+    BoolCastCheck<double>(::fesql::type::kDouble, 0.0, false);
 
-    SafeCastCheck<int64_t, int64_t>(
-        ::fesql::type::kInt64, ::fesql::type::kInt64, 2000000000L, 8000000000L);
-
-    SafeCastCheck<float, float>(::fesql::type::kFloat, ::fesql::type::kFloat,1.0f, 4.0f);
-    SafeCastCheck<float, double>(::fesql::type::kFloat, ::fesql::type::kDouble,
-                                 2000000000.5f,
-                                 static_cast<double>(2000000000.5f) * 4.0);
-
-    SafeCastCheck<double, double>(::fesql::type::kDouble, ::fesql::type::kDouble,
-                                 2000000000.5,
-                                 (2000000000.5) * 4.0);
 }
 
 }  // namespace codegen

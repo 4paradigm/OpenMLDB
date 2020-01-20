@@ -28,6 +28,57 @@ class PredicateIRBuilderTest : public ::testing::Test {
     node::NodeManager *manager_;
 };
 
+template <class V1, class R>
+void UnaryPredicateExprCheck(::fesql::type::Type left_type,
+                              ::fesql::type::Type dist_type, V1 value1,
+                              R result, fesql::node::FnOperator op) {
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("predicate_func", *ctx);
+
+    llvm::Type *left_llvm_type = NULL;
+    llvm::Type *dist_llvm_type = NULL;
+    ASSERT_TRUE(
+        ::fesql::codegen::GetLLVMType(m.get(), left_type, &left_llvm_type));
+    ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
+
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "D" and take an argument of "S".
+    Function *load_fn = Function::Create(
+        FunctionType::get(dist_llvm_type, {left_llvm_type},
+                          false),
+        Function::ExternalLinkage, "load_fn", m.get());
+    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    IRBuilder<> builder(entry_block);
+    auto iter = load_fn->arg_begin();
+    Argument *arg0 = &(*iter);
+    ScopeVar scope_var;
+    scope_var.Enter("fn_base");
+    scope_var.AddVar("a", arg0);
+    PredicateIRBuilder ir_builder(entry_block, &scope_var);
+    llvm::Value *output;
+    base::Status status;
+
+    bool ok;
+    switch (op) {
+        case fesql::node::kFnOpNot:
+            ok = ir_builder.BuildNotExpr(arg0, &output, status);
+            break;
+        default: {
+            FAIL();
+        }
+    }
+    builder.CreateRet(output);
+    m->print(::llvm::errs(), NULL);
+    ASSERT_TRUE(ok);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
+    R (*decode)(V1) = (R(*)(V1))load_fn_jit.getAddress();
+    R ret = decode(value1);
+    ASSERT_EQ(ret, result);
+}
+
 template <class V1, class V2, class R>
 void BinaryPredicateExprCheck(::fesql::type::Type left_type,
                               ::fesql::type::Type right_type,
@@ -394,6 +445,7 @@ TEST_F(PredicateIRBuilderTest, test_lt_expr_true) {
         2.1f, true, ::fesql::node::kFnOpLt);
 
 }
+
 TEST_F(PredicateIRBuilderTest, test_lt_expr_false) {
     BinaryPredicateExprCheck<int16_t, int16_t, bool>(
         ::fesql::type::kInt16, ::fesql::type::kInt16, ::fesql::type::kBool, 2,1,
@@ -444,6 +496,55 @@ TEST_F(PredicateIRBuilderTest, test_lt_expr_false) {
         ::fesql::type::kInt32, ::fesql::type::kDouble, ::fesql::type::kBool, 2,
         2.0, false, ::fesql::node::kFnOpLt);
 }
+
+TEST_F(PredicateIRBuilderTest, test_and_expr_true) {
+
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::type::kBool, ::fesql::type::kBool, ::fesql::type::kBool, true,true,
+        true, ::fesql::node::kFnOpAnd);
+}
+
+TEST_F(PredicateIRBuilderTest, test_and_expr_false) {
+
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::type::kBool, ::fesql::type::kBool, ::fesql::type::kBool, false,true,
+        false, ::fesql::node::kFnOpAnd);
+
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::type::kBool, ::fesql::type::kBool, ::fesql::type::kBool, false,false,
+        false, ::fesql::node::kFnOpAnd);
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::type::kBool, ::fesql::type::kBool, ::fesql::type::kBool, true,false,
+        false, ::fesql::node::kFnOpAnd);
+}
+
+TEST_F(PredicateIRBuilderTest, test_or_expr_true) {
+
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::type::kBool, ::fesql::type::kBool, ::fesql::type::kBool, true,true,
+        true, ::fesql::node::kFnOpOr);
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::type::kBool, ::fesql::type::kBool, ::fesql::type::kBool, true,false,
+        true, ::fesql::node::kFnOpOr);
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::type::kBool, ::fesql::type::kBool, ::fesql::type::kBool, false,true,
+        true, ::fesql::node::kFnOpOr);
+}
+
+TEST_F(PredicateIRBuilderTest, test_or_expr_false) {
+
+    BinaryPredicateExprCheck<bool, bool, bool>(
+        ::fesql::type::kBool, ::fesql::type::kBool, ::fesql::type::kBool, false,false,
+        false, ::fesql::node::kFnOpOr);
+}
+
+TEST_F(PredicateIRBuilderTest, test_not_expr_false) {
+
+    UnaryPredicateExprCheck<bool, bool>(
+        ::fesql::type::kBool, ::fesql::type::kBool, true,
+        false, ::fesql::node::kFnOpNot);
+}
+
 
 }  // namespace codegen
 }  // namespace fesql

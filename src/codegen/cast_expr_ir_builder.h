@@ -37,6 +37,8 @@ class CastExprIRBuilder {
     bool isStringCast(llvm::Type* type);
 
 
+    bool BoolCast(llvm::Value* pValue, llvm::Value** pValue1,
+                  base::Status& status);
 
  private:
     ::llvm::BasicBlock* block_;

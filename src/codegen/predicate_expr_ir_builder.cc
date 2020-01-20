@@ -19,16 +19,87 @@ PredicateIRBuilder::~PredicateIRBuilder() {}
 bool PredicateIRBuilder::BuildAndExpr(::llvm::Value* left, ::llvm::Value* right,
                                       ::llvm::Value** output,
                                       base::Status& status) {
-    return false;
+    ::llvm::Value* casted_left = NULL;
+    ::llvm::Value* casted_right = NULL;
+
+    if (false == InferBoolTypes(left, &casted_left, status)) {
+        return false;
+    }
+    if (false == InferBoolTypes(right, &casted_right, status)) {
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    if (casted_left->getType()->isIntegerTy(1)) {
+        *output = builder.CreateAnd(casted_left, casted_right);
+    } else {
+        status.msg = "fail to codegen &&(and) expr: value types are invalid";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (nullptr == *output) {
+        status.msg = "fail to codegen &&(and) expr";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    return true;
 }
 bool PredicateIRBuilder::BuildOrExpr(::llvm::Value* left, ::llvm::Value* right,
                                      ::llvm::Value** output,
                                      base::Status& status) {
-    return false;
+    ::llvm::Value* casted_left = NULL;
+    ::llvm::Value* casted_right = NULL;
+
+    if (false == InferBoolTypes(left, &casted_left, status)) {
+        return false;
+    }
+    if (false == InferBoolTypes(right, &casted_right, status)) {
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    if (casted_left->getType()->isIntegerTy(1)) {
+        *output = builder.CreateOr(casted_left, casted_right);
+    } else {
+        status.msg = "fail to codegen ||(or) expr: value types are invalid";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (nullptr == *output) {
+        status.msg = "fail to codegen ||(or) expr";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    return true;
 }
 bool PredicateIRBuilder::BuildNotExpr(::llvm::Value* left,
                                       ::llvm::Value** output,
                                       base::Status& status) {
+    ::llvm::Value* casted_left = NULL;
+
+    if (false == InferBoolTypes(left, &casted_left, status)) {
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    if (casted_left->getType()->isIntegerTy(1)) {
+        *output = builder.CreateNot(casted_left);
+    } else {
+        status.msg = "fail to codegen !(not) expr: value types are invalid";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (nullptr == *output) {
+        status.msg = "fail to codegen !(not) expr";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
     return true;
 }
 bool PredicateIRBuilder::BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
@@ -38,7 +109,7 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value* casted_right = NULL;
 
     if (false ==
-        inferBaseTypes(left, right, &casted_left, &casted_right, status)) {
+        InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
@@ -48,7 +119,7 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOEQ(casted_left, casted_right);
     } else {
-        status.msg = "fail to codegen add expr: value types are invalid";
+        status.msg = "fail to codegen == expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -63,23 +134,23 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
     return true;
 }
 bool PredicateIRBuilder::BuildNeqExpr(::llvm::Value* left, ::llvm::Value* right,
-                                     ::llvm::Value** output,
-                                     base::Status& status) {
+                                      ::llvm::Value** output,
+                                      base::Status& status) {
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
     if (false ==
-        inferBaseTypes(left, right, &casted_left, &casted_right, status)) {
+        InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
     if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateICmpNE(casted_left, casted_right);
     } else if (casted_left->getType()->isFloatTy() ||
-        casted_left->getType()->isDoubleTy()) {
+               casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpUNE(casted_left, casted_right);
     } else {
-        status.msg = "fail to codegen add expr: value types are invalid";
+        status.msg = "fail to codegen neq expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -100,17 +171,17 @@ bool PredicateIRBuilder::BuildGtExpr(::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value* casted_right = NULL;
 
     if (false ==
-        inferBaseTypes(left, right, &casted_left, &casted_right, status)) {
+        InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
     if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateICmpSGT(casted_left, casted_right);
     } else if (casted_left->getType()->isFloatTy() ||
-        casted_left->getType()->isDoubleTy()) {
+               casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOGT(casted_left, casted_right);
     } else {
-        status.msg = "fail to codegen add expr: value types are invalid";
+        status.msg = "fail to codegen > expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -131,17 +202,17 @@ bool PredicateIRBuilder::BuildGeExpr(::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value* casted_right = NULL;
 
     if (false ==
-        inferBaseTypes(left, right, &casted_left, &casted_right, status)) {
+        InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
     if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateICmpSGE(casted_left, casted_right);
     } else if (casted_left->getType()->isFloatTy() ||
-        casted_left->getType()->isDoubleTy()) {
+               casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOGE(casted_left, casted_right);
     } else {
-        status.msg = "fail to codegen add expr: value types are invalid";
+        status.msg = "fail to codegen >= expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -162,17 +233,17 @@ bool PredicateIRBuilder::BuildLtExpr(::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value* casted_right = NULL;
 
     if (false ==
-        inferBaseTypes(left, right, &casted_left, &casted_right, status)) {
+        InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
     if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateICmpSLT(casted_left, casted_right);
     } else if (casted_left->getType()->isFloatTy() ||
-        casted_left->getType()->isDoubleTy()) {
+               casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOLT(casted_left, casted_right);
     } else {
-        status.msg = "fail to codegen add expr: value types are invalid";
+        status.msg = "fail to codegen < expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -193,17 +264,17 @@ bool PredicateIRBuilder::BuildLeExpr(::llvm::Value* left, ::llvm::Value* right,
     ::llvm::Value* casted_right = NULL;
 
     if (false ==
-        inferBaseTypes(left, right, &casted_left, &casted_right, status)) {
+        InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
     if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateICmpSLE(casted_left, casted_right);
     } else if (casted_left->getType()->isFloatTy() ||
-        casted_left->getType()->isDoubleTy()) {
+               casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOLE(casted_left, casted_right);
     } else {
-        status.msg = "fail to codegen add expr: value types are invalid";
+        status.msg = "fail to codegen <= expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -238,7 +309,35 @@ bool PredicateIRBuilder::IsAcceptType(::llvm::Type* type) {
         }
     }
 }
-bool PredicateIRBuilder::inferBaseTypes(::llvm::Value* left,
+
+bool PredicateIRBuilder::InferBoolTypes(::llvm::Value* value,
+                                        ::llvm::Value** casted_value,
+                                        ::fesql::base::Status& status) {
+    if (NULL == value) {
+        status.msg = "value is null";
+        status.code = common::kCodegenError;
+        return false;
+    }
+
+    ::llvm::Type* type = value->getType();
+    if (!IsAcceptType(type)) {
+        status.msg = "invalid type for bool expression";
+        status.code = common::kCodegenError;
+        return false;
+    }
+    *casted_value = value;
+
+    ::llvm::Type* bool_ty = ::llvm::Type::getInt1Ty(block_->getContext());
+    if (type != bool_ty) {
+        if (!_cast_expr_ir_builder.BoolCast(value, casted_value, status)) {
+            status.msg = "fail to codegen add expr: " + status.msg;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+    }
+    return true;
+}
+bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
                                         ::llvm::Value* right,
                                         ::llvm::Value** casted_left,
                                         ::llvm::Value** casted_right,
@@ -260,7 +359,7 @@ bool PredicateIRBuilder::inferBaseTypes(::llvm::Value* left,
     *casted_left = left;
     *casted_right = right;
 
-    if (casted_left != casted_right) {
+    if (left_type != right_type) {
         if (_cast_expr_ir_builder.isSafeCast(left_type, right_type)) {
             if (!_cast_expr_ir_builder.SafeCast(left, right_type, casted_left,
                                                 status)) {

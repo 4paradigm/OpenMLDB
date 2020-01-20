@@ -44,7 +44,8 @@ class PredicateIRBuilder {
 
  private:
     bool IsAcceptType(::llvm::Type* type);
-    bool inferBaseTypes(::llvm::Value* left, ::llvm::Value* right,
+    bool InferBoolTypes(::llvm::Value *value, ::llvm::Value **casted_value, ::fesql::base::Status& status);
+    bool InferBaseTypes(::llvm::Value* left, ::llvm::Value* right,
                         ::llvm::Value** casted_left,
                         ::llvm::Value** casted_right,
                         ::fesql::base::Status& status);

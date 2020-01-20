@@ -35,6 +35,9 @@ bool CastExprIRBuilder::isSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
     ::fesql::codegen::GetTableType(dist, &dist_type);
 
     switch (src_type) {
+        case ::fesql::type::kBool: {
+            return true;
+        }
         case ::fesql::type::kInt16: {
             return true;
         }
@@ -134,6 +137,8 @@ bool CastExprIRBuilder::isStringCast(llvm::Type* type) {
 
     return ::fesql::type::kVarchar == fesql_type;
 }
+
+
 /**
  * TODO(chenjing): string cast implement
  * cast fesql type to string
@@ -145,6 +150,31 @@ bool CastExprIRBuilder::isStringCast(llvm::Type* type) {
 bool CastExprIRBuilder::StringCast(llvm::Value* value,
                                    llvm::Value** casted_value,
                                    base::Status& status) {
+}
+/**
+ * bool cast implement
+ * cast fesql type to bool: compare value with 0
+ * @param value
+ * @param casted_value
+ * @param status
+ * @return
+ */
+bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
+                                 base::Status& status) {
+    ::llvm::IRBuilder<> builder(block_);
+    llvm::Type* type = value->getType();
+    if (type->isIntegerTy()) {
+        *casted_value = builder.CreateICmpNE(value, ::llvm::ConstantInt::get(type, 0));
+    } else if (type->isFloatingPointTy()) {
+        *casted_value = builder.CreateICmpNE(value, ::llvm::ConstantFP::get(type, ::llvm::APFloat(0.0)));
+    } else {
+        status.msg =
+            "fail to codegen cast bool expr: value type isn't compatible";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    return true;
 }
 
 }  // namespace codegen
