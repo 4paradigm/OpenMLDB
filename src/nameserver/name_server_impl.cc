@@ -5237,7 +5237,6 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     bool is_leader = false;
     uint64_t term = 0;
     uint64_t offset = 0;
-<<<<<<< HEAD
     if (!tablet_ptr->client_->GetTermPair(tid, pid, storage_mode, term, offset, has_table, is_leader, false)) {
         PDLOG(WARNING, "GetTermPair failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
                         name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
