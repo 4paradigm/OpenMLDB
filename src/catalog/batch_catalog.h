@@ -19,42 +19,33 @@
 #define SRC_CATALOG_BATCH_CATALOG_H_
 
 #include <memory>
-#include "catalog/catalog.h"
 #include "arrow/filesystem/filesystem.h"
+#include "catalog/catalog.h"
+#include "parquet/schema.h"
 
 namespace fesql {
 namespace catalog {
 
 struct Partition {
     std::string path;
-}
+};
 
 class BatchTableHandler : public TableHandler {
  public:
-
-    BatchTableHandler(const Schema& schema, 
-            const std::string& name,
-            const std::string& db,
-            const std::vector<Partition>& partitons):schema_(schema), name_(name),
-    db_(db), partitions_(partitons){}
+    BatchTableHandler(const Schema& schema, const std::string& name,
+                      const std::string& db,
+                      const std::vector<Partition>& partitons)
+        : schema_(schema), name_(name), db_(db), partitions_(partitons) {}
 
     ~BatchTableHandler() {}
 
-    inline Schema& GetSchema() {
-        return schema_;
-    }
+    inline Schema& GetSchema() { return schema_; }
 
-    inline const std::string& GetName() {
-        return name_;
-    }
+    inline const std::string& GetName() { return name_; }
 
-    inline const std::string& GetDatabase() {
-        return db_;
-    }
+    inline const std::string& GetDatabase() { return db_; }
 
-    inline const std::vector<Partition>& GetPartitions() {
-        return partitions_;
-    }
+    inline const std::vector<Partition>& GetPartitions() { return partitions_; }
 
  private:
     Schema schema_;
@@ -64,11 +55,15 @@ class BatchTableHandler : public TableHandler {
 };
 
 // the table and file path pairs
-typedef std::vector<std::pair<std::string, std::string> > InputTables;
-class BatchCatalog : public BatchCatalog {
+typedef std::vector<std::pair<std::string, std::string>> InputTables;
+typedef std::map<std::string, std::map<std::string, std::shared_ptr<BatchTableHandler> > > BatchDB;
+
+
+// NOTE not thread safe
+class BatchCatalog : public Catalog {
  public:
 
-    BatchCatalog(std::unique_ptr<::arrow::io::FileSystem> fs,
+    BatchCatalog(std::shared_ptr<::arrow::fs::FileSystem> fs,
                  const InputTables& tables);
 
     ~BatchCatalog();
@@ -76,13 +71,25 @@ class BatchCatalog : public BatchCatalog {
     // init catalog from filesystem
     bool Init();
 
-    std::share_ptr<type::Database> GetDatabase(const std::string& db);
+    std::shared_ptr<type::Database> GetDatabase(const std::string& db);
 
-    std::share_ptr<TableHandler> GetTable(const std::string& db, 
+    std::shared_ptr<TableHandler> GetTable(const std::string& db,
                                           const std::string& table_name);
- public:
-    std::unique_ptr<::arrow::io::FileSystem> fs_;
+
+ private:
+
+    // get parquet schema and map it to fesql schema
+    bool GetSchemaFromParquet(const std::string& path, 
+            Schema& schema);
+
+    // map parquet schema to fesql schema
+    bool MapParquetSchema(const parquet::SchemaDescriptor* input_schema,
+            Schema& output_schema);
+
+ private:
+    std::shared_ptr<::arrow::fs::FileSystem> fs_;
     InputTables input_tables_;
+    BatchDB db_;
 };
 
 }  // namespace catalog
