@@ -71,6 +71,40 @@ TEST_F(FileUtilTest, ParseFileNameFromPath) {
     ASSERT_EQ("", ParseFileNameFromPath("/"));
 }
 
+TEST_F(FileUtilTest, GetDirSizeRecur) {
+    ASSERT_TRUE(MkdirRecur("/tmp/gtest/testsize/test/"));
+    FILE * f = fopen("/tmp/gtest/testsize/test0.txt", "w");
+    for (int i=0;i<1000;++i) {
+        fputc('6', f);
+    }
+    if(f!=nullptr)
+        fclose(f);
+    f = fopen("/tmp/gtest/testsize/test/test1.txt", "w");
+    for (int i=0;i<2000;++i) {
+        fputc('6', f);
+    }
+    if(f!=nullptr)
+        fclose(f);
+    f = fopen("/tmp/gtest/testsize/test/test2.txt", "w");
+    for (int i=0;i<5000;++i) {
+        fputc('6', f);
+    }
+    if(f!=nullptr)
+        fclose(f);
+    f = fopen("/tmp/gtest/testsize/test3.txt", "w");
+    for (int i=0;i<100;++i) {
+        fputc('6', f);
+    }
+    if(f!=nullptr)
+        fclose(f);
+
+    struct stat stat_buf;
+    lstat("/tmp/gtest/testsize/test/", &stat_buf);
+    uint64_t size = 0;
+    GetDirSizeRecur(std::string("/tmp/gtest/testsize"), size);
+    ASSERT_EQ(size, 2000+1000+5000+100+stat_buf.st_size);
+}
+
 } // namespace base
 } // namespace rtidb
 

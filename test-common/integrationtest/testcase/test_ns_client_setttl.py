@@ -17,6 +17,9 @@ class TestSetTTL(TestCaseBase):
         测试setttl函数，正常修改ttl值，查看返回值
         :return:
         """
+        self.ns_drop(self.ns_leader, "t1")
+        self.ns_drop(self.ns_leader, "latest1")
+        time.sleep(2)
         rs_absolute1 = self.ns_create_cmd(self.ns_leader, 't1', '10', str(8), str(3), '')
         rs_latest1 = self.ns_create_cmd(self.ns_leader, 'latest1', 'latest:10', str(8), str(3), '')
         self.assertIn('Create table ok', rs_absolute1)
@@ -33,6 +36,9 @@ class TestSetTTL(TestCaseBase):
         rs_latest3 = self.ns_setttl(self.ns_leader, 'setttl', 'latest1', 'latest', -1)
         self.assertIn('Set ttl failed! fail to update ttl from tablet', rs_absolute3)
         self.assertIn('Set ttl failed! fail to update ttl from tablet', rs_latest3)
+        self.ns_drop(self.ns_leader, "t1")
+        self.ns_drop(self.ns_leader, "latest1")
+
 
 
     def test_set_ttl_expired(self):
@@ -40,6 +46,9 @@ class TestSetTTL(TestCaseBase):
         测试修改后的ttl值，scan后的数据被删除。两种类型latest和absolute都要测试
         :return:
         """
+        self.ns_drop(self.ns_leader, "t1")
+        self.ns_drop(self.ns_leader, "latest1")
+        time.sleep(2)
         rs_absolute1 = self.ns_create_cmd(self.ns_leader, 't1', '10', str(8), str(3), '')
         rs_latest1 = self.ns_create_cmd(self.ns_leader, 'latest1', 'latest:10', str(8), str(3), '')
         self.assertIn('Create table ok', rs_absolute1)
@@ -72,6 +81,9 @@ class TestSetTTL(TestCaseBase):
 
         rs_absolute5 = self.ns_scan_kv(self.ns_leader, 't1', 'testkey0', str(rs_time), '0', ' ')
         self.assertEqual(0, len(rs_absolute5))
+        self.ns_drop(self.ns_leader, "t1")
+        self.ns_drop(self.ns_leader, "latest1")
+
 
     def test_set_ttl_ts_name(self):
         name = 'tname{}'.format(time.time())
@@ -86,7 +98,7 @@ class TestSetTTL(TestCaseBase):
                     {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 1000},
                     {"name": "ts2", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 100},
                     ],
-		"column_key":[
+        "column_key":[
                     {"index_name":"card", "ts_name":["ts1", "ts2"]},
                     {"index_name":"mcc", "ts_name":["ts2"]},
                     ]

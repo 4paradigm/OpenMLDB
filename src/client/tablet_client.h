@@ -35,8 +35,8 @@ public:
     std::string GetEndpoint();
 
     bool CreateTable(const std::string& name,
-                     uint32_t tid, uint32_t pid, uint64_t ttl,
-                     bool leader, 
+                     uint32_t tid, uint32_t pid, uint64_t abs_ttl,
+                     uint64_t lat_ttl, bool leader, 
                      const std::vector<std::string>& endpoints,
                      const ::rtidb::api::TTLType& type,
                      uint32_t seg_cnt, uint64_t term, 
@@ -44,8 +44,8 @@ public:
 
 
     bool CreateTable(const std::string& name, 
-                     uint32_t tid, uint32_t pid,
-                     uint64_t ttl, uint32_t seg_cnt,
+                     uint32_t tid, uint32_t pid, uint64_t abs_ttl,
+                     uint64_t lat_ttl, uint32_t seg_cnt,
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
                      bool leader, const std::vector<std::string>& endpoints,
@@ -125,6 +125,7 @@ public:
              uint64_t stime,
              uint64_t etime,
              uint32_t limit,
+             uint32_t atleast,
              std::string& msg);
    
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
@@ -135,6 +136,7 @@ public:
                                  const std::string& idx_name,
                                  const std::string& ts_name,
                                  uint32_t limit,
+                                 uint32_t atleast,
                                  std::string& msg);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
@@ -144,6 +146,7 @@ public:
                                  uint64_t etime,
                                  const std::string& idx_name,
                                  uint32_t limit,
+                                 uint32_t atleast,
                                  std::string& msg);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
@@ -196,7 +199,7 @@ public:
 
     bool UpdateTTL(uint32_t tid, uint32_t pid, 
                    const ::rtidb::api::TTLType& type,
-                   uint64_t ttl, const std::string& ts_name);
+                   uint64_t abs_ttl, uint64_t lat_ttl, const std::string& ts_name);
     bool SetMaxConcurrency(const std::string& key, int32_t max_concurrency);
     bool DeleteBinlog(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode);
 
