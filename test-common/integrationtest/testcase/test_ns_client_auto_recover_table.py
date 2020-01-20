@@ -46,7 +46,7 @@ class TestAutoRecoverTable(TestCaseBase):
                 }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok', rs)
+        self.assertIn('Create table ok', rs)
 
         on = {'k1': ('string:index', 'testvalue0'),
                                   'k2': ('string', 'testvalue1'),

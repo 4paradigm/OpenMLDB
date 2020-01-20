@@ -814,6 +814,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(400, count);
 
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.assertTrue(false);
         }
         nsc.dropTable(name);
@@ -878,6 +879,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(400, count);
 
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.assertTrue(false);
         }
         nsc.dropTable(name);
@@ -944,6 +946,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(400, count);
 
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.assertTrue(false);
         }
         nsc.dropTable(name);

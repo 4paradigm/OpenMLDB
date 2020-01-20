@@ -73,7 +73,7 @@ public:
 
     // add replication
     int AddReplicateNode(const std::vector<std::string>& endpoint_vec);
-
+    // add replication with tid
     int AddReplicateNode(const std::vector<std::string>& endpoint_vec, uint32_t tid);
 
     int DelReplicateNode(const std::string& endpoint);
@@ -117,12 +117,14 @@ private:
     std::string log_path_;
     // the term for leader judgement
     std::atomic<uint64_t> log_offset_;
+    std::atomic<uint64_t> follower_offset_;
     std::atomic<uint32_t> binlog_index_;
     LogParts* logs_;
     WriteHandle* wh_;
     ReplicatorRole role_;
     std::vector<std::string> endpoints_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
+    std::vector<std::string> local_endpoints_;
 
     std::atomic<uint64_t> term_;
     // sync mutex

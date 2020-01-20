@@ -40,7 +40,7 @@ std::string TabletClient::GetEndpoint() {
 
 bool TabletClient::CreateTable(const std::string& name, 
                      uint32_t tid, uint32_t pid,
-                     uint64_t ttl, uint32_t seg_cnt,
+                     uint64_t abs_ttl, uint64_t lat_ttl, uint32_t seg_cnt,
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
                      bool leader, const std::vector<std::string>& endpoints,
@@ -62,19 +62,31 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
     if (type == ::rtidb::api::kLatestTime) {
-        if (ttl > FLAGS_latest_ttl_max) {
+        if (lat_ttl > FLAGS_latest_ttl_max) {
             return false;
         }    
-    } else {
-        if (ttl > FLAGS_absolute_ttl_max) {
+    } else if(type == ::rtidb::api::TTLType::kAbsoluteTime) {
+        if (abs_ttl > FLAGS_absolute_ttl_max) {
             return false;
         }
+    } else {
+        if (lat_ttl > FLAGS_latest_ttl_max || abs_ttl > FLAGS_absolute_ttl_max) {
+            return false;
+        }    
     }
-    table_meta->set_ttl(ttl);
     table_meta->set_seg_cnt(seg_cnt);
     table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     table_meta->set_schema(schema);
     table_meta->set_ttl_type(type);
+    ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+    ttl_desc->set_ttl_type(type);
+    ttl_desc->set_abs_ttl(abs_ttl);
+    ttl_desc->set_lat_ttl(lat_ttl);
+    if (type == ::rtidb::api::TTLType::kAbsoluteTime) {
+        table_meta->set_ttl(abs_ttl);
+    } else {
+        table_meta->set_ttl(lat_ttl);
+    }
     table_meta->set_compress_type(compress_type);
     if (leader) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
@@ -95,18 +107,22 @@ bool TabletClient::CreateTable(const std::string& name,
 }
 
 bool TabletClient::CreateTable(const std::string& name,
-                     uint32_t tid, uint32_t pid, uint64_t ttl,
-                     bool leader, 
+                     uint32_t tid, uint32_t pid, uint64_t abs_ttl,
+                     uint64_t lat_ttl, bool leader,
                      const std::vector<std::string>& endpoints,
                      const ::rtidb::api::TTLType& type,
                      uint32_t seg_cnt, uint64_t term, const ::rtidb::api::CompressType compress_type) {
     ::rtidb::api::CreateTableRequest request;
     if (type == ::rtidb::api::kLatestTime) {
-        if (ttl > FLAGS_latest_ttl_max) {
+        if (lat_ttl > FLAGS_latest_ttl_max) {
             return false;
-        }    
+        }
+    } else if (type == ::rtidb::api::TTLType::kAbsoluteTime) {
+        if (abs_ttl > FLAGS_absolute_ttl_max) {
+            return false;
+        }
     } else {
-        if (ttl > FLAGS_absolute_ttl_max) {
+        if (abs_ttl > FLAGS_absolute_ttl_max || lat_ttl > FLAGS_latest_ttl_max) {
             return false;
         }
     }
@@ -114,7 +130,10 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    table_meta->set_ttl(ttl);
+    ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+    ttl_desc->set_ttl_type(type);
+    ttl_desc->set_abs_ttl(abs_ttl);
+    ttl_desc->set_lat_ttl(lat_ttl);
     table_meta->set_compress_type(compress_type);
     table_meta->set_seg_cnt(seg_cnt);
     if (leader) {
@@ -126,7 +145,7 @@ bool TabletClient::CreateTable(const std::string& name,
     for (size_t i = 0; i < endpoints.size(); i++) {
         table_meta->add_replicas(endpoints[i]);
     }
-    table_meta->set_ttl_type(type);
+    // table_meta->set_ttl_type(type);
     ::rtidb::api::CreateTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
             &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
@@ -452,12 +471,21 @@ bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
 
 bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
                              const ::rtidb::api::TTLType& type,
-                             uint64_t ttl, const std::string& ts_name) {
+                             uint64_t abs_ttl, uint64_t lat_ttl,
+                             const std::string& ts_name) {
     ::rtidb::api::UpdateTTLRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_type(type);
-    request.set_value(ttl);
+    if (type == ::rtidb::api::TTLType::kLatestTime) {
+        request.set_value(lat_ttl);
+    } else {
+        request.set_value(abs_ttl);
+    }
+    ::rtidb::api::TTLDesc* ttl_desc = request.mutable_ttl_desc();
+    ttl_desc->set_ttl_type(type);
+    ttl_desc->set_abs_ttl(abs_ttl);
+    ttl_desc->set_lat_ttl(lat_ttl);
     if (!ts_name.empty()) {
         request.set_ts_name(ts_name);
     }
@@ -563,13 +591,19 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
                                  const std::string& idx_name,
                                  const std::string& ts_name,
                                  uint32_t limit,
+                                 uint32_t atleast,
                                  std::string& msg) {
+    if (limit!=0 && atleast > limit) {
+        msg = "atleast should be no greater than limit";
+        return NULL;
+    }
     ::rtidb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
     request.set_et(etime);
     request.set_tid(tid);
     request.set_pid(pid);
+    request.set_atleast(atleast);
     if (!idx_name.empty()) {
         request.set_idx_name(idx_name);
     }
@@ -598,8 +632,9 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
                                  uint64_t etime,
                                  const std::string& idx_name,
                                  uint32_t limit,
+                                 uint32_t atleast,
                                  std::string& msg) {
-    return Scan(tid, pid, pk, stime, etime, idx_name, "", limit, msg);
+    return Scan(tid, pid, pk, stime, etime, idx_name, "", limit, atleast, msg);
 }
 
 
@@ -609,7 +644,12 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
              uint64_t stime,
              uint64_t etime,
              uint32_t limit,
+             uint32_t atleast,
              std::string& msg) {
+    if (limit!=0 && atleast > limit) {
+        msg = "atleast should be no greater than limit";
+        return NULL;
+    }
     ::rtidb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
@@ -617,6 +657,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_limit(limit);
+    request.set_atleast(atleast);
     request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();

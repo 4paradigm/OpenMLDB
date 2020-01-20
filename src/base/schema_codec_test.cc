@@ -7,8 +7,9 @@
 #include "base/schema_codec.h"
 #include "gtest/gtest.h"
 #include "base/strings.h"
-#include "proto/name_server.pb.h"
 #include "proto/common.pb.h"
+#include "proto/tablet.pb.h"
+#include "proto/name_server.pb.h"
 
 namespace rtidb {
 namespace base {

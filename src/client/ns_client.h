@@ -118,8 +118,9 @@ public:
                             uint32_t pid, bool is_alive, std::string& msg);
 
     bool UpdateTTL(const std::string& name, 
-                   const std::string& ttl_type, 
-                   uint64_t ttl, const std::string& ts_name,
+                   const ::rtidb::api::TTLType& type,
+                   uint64_t abs_ttl, uint64_t lat_ttl,
+                   const std::string& ts_name,
                    std::string& msg);
 
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& name, const uint64_t term, std::string& msg);
@@ -134,6 +135,7 @@ public:
     bool RemoveReplicaCluster(const std::string& alias, std::string& msg);
 
     bool SwitchMode(const ::rtidb::nameserver::ServerMode mode, std::string& msg);
+
 private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;

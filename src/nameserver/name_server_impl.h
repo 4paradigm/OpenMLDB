@@ -73,7 +73,7 @@ public:
     std::map<std::string, std::vector<TablePartition>> last_status;
     ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t ctime_;
-    ClusterStatus state_;
+    std::atomic<ClusterStatus> state_;
 private:
     std::shared_ptr<ZkClient> zk_client_;
     std::mutex mu_;
@@ -617,9 +617,9 @@ private:
 
     // update ttl for partition
     bool UpdateTTLOnTablet(const std::string& endpoint,
-                           int32_t tid, int32_t pid,
-                           const ::rtidb::api::TTLType& type,
-                           uint64_t ttl, const std::string& ts_name);
+                           int32_t tid, int32_t pid, 
+                           const ::rtidb::api::TTLType& type, 
+                           uint64_t abs_ttl, uint64_t lat_ttl, const std::string& ts_name);
 
     void CheckSyncTable(const std::string& alias, const std::vector<::rtidb::nameserver::TableInfo> tables, const std::shared_ptr<::rtidb::client::NsClient> ns_client);
 
