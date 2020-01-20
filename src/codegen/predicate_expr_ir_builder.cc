@@ -405,4 +405,4 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
     return true;
 }
 }  // namespace codegen
-}
+}  // namespace fesql

@@ -33,7 +33,7 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
     return GetLLVMType(block->getModule(), type, output);
 }
 bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
-                          ::llvm::Type** output) {
+                 ::llvm::Type** output) {
     if (output == NULL || m == NULL) {
         LOG(WARNING) << "the output ptr or module  is NULL ";
         return false;
@@ -73,7 +73,8 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
             }
             stype = ::llvm::StructType::create(m->getContext(), name);
             ::llvm::Type* size_ty = ::llvm::Type::getInt32Ty(m->getContext());
-            ::llvm::Type* data_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
+            ::llvm::Type* data_ptr_ty =
+                ::llvm::Type::getInt8PtrTy(m->getContext());
             std::vector<::llvm::Type*> elements;
             elements.push_back(size_ty);
             elements.push_back(data_ptr_ty);
@@ -90,7 +91,8 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
                 return true;
             }
             stype = ::llvm::StructType::create(m->getContext(), name);
-            ::llvm::Type* data_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
+            ::llvm::Type* data_ptr_ty =
+                ::llvm::Type::getInt8PtrTy(m->getContext());
             std::vector<::llvm::Type*> elements;
             elements.push_back(data_ptr_ty);
             stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
@@ -451,7 +453,6 @@ bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
     builder.CreateStore(value, ptr_with_offset, false);
     return true;
 }
-
 
 }  // namespace codegen
 }  // namespace fesql

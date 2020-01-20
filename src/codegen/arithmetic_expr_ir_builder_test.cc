@@ -8,6 +8,7 @@
  **/
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include <memory>
+#include <utility>
 #include "codegen/ir_base_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"

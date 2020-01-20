@@ -9,10 +9,10 @@
 
 #ifndef SRC_CODEGEN_CAST_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_CAST_EXPR_IR_BUILDER_H_
-#include "proto/type.pb.h"
 #include "base/status.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
+#include "proto/type.pb.h"
 namespace fesql {
 namespace codegen {
 class CastExprIRBuilder {
@@ -20,25 +20,24 @@ class CastExprIRBuilder {
     CastExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~CastExprIRBuilder();
 
-
     bool SafeCast(::llvm::Value* value, ::llvm::Type* type,
-                      ::llvm::Value** output, base::Status& status);  // NOLINT
+                  ::llvm::Value** output, base::Status& status);  // NOLINT
 
     bool UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
-                  ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool UnSafeCastDouble(::llvm::Value* value, ::llvm::Type* type,
                     ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool UnSafeCastDouble(::llvm::Value* value, ::llvm::Type* type,
+                          ::llvm::Value** output,
+                          base::Status& status);  // NOLINT
 
     bool StringCast(llvm::Value* value, llvm::Value** casted_value,
-                    base::Status& status);
+                    base::Status& status);  // NOLINT
 
     bool isSafeCast(::llvm::Type* src, ::llvm::Type* dist);
     bool isIFCast(::llvm::Type* src, ::llvm::Type* dist);
     bool isStringCast(llvm::Type* type);
 
-
     bool BoolCast(llvm::Value* pValue, llvm::Value** pValue1,
-                  base::Status& status);
+                  base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;

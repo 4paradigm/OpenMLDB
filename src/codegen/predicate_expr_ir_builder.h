@@ -32,7 +32,7 @@ class PredicateIRBuilder {
     bool BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
                      ::llvm::Value** output, base::Status& status);  // NOLINT
     bool BuildNeqExpr(::llvm::Value* left, ::llvm::Value* right,
-                     ::llvm::Value** output, base::Status& status);  // NOLINT
+                      ::llvm::Value** output, base::Status& status);  // NOLINT
     bool BuildGtExpr(::llvm::Value* left, ::llvm::Value* right,
                      ::llvm::Value** output, base::Status& status);  // NOLINT
     bool BuildGeExpr(::llvm::Value* left, ::llvm::Value* right,
@@ -44,11 +44,12 @@ class PredicateIRBuilder {
 
  private:
     bool IsAcceptType(::llvm::Type* type);
-    bool InferBoolTypes(::llvm::Value *value, ::llvm::Value **casted_value, ::fesql::base::Status& status);
+    bool InferBoolTypes(::llvm::Value* value, ::llvm::Value** casted_value,
+                        ::fesql::base::Status& status);  // NOLINT
     bool InferBaseTypes(::llvm::Value* left, ::llvm::Value* right,
                         ::llvm::Value** casted_left,
                         ::llvm::Value** casted_right,
-                        ::fesql::base::Status& status);
+                        ::fesql::base::Status& status);  // NOLINT
     CastExprIRBuilder _cast_expr_ir_builder;
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;

@@ -8,6 +8,8 @@
  **/
 #include "codegen/cast_expr_ir_builder.h"
 #include <memory>
+#include <string>
+#include <utility>
 #include "codegen/ir_base_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -30,7 +32,7 @@ class CastExprIrBuilderTest : public ::testing::Test {
 };
 
 void CastErrorCheck(::fesql::type::Type src_type, ::fesql::type::Type dist_type,
-                    bool safe, std::string &msg) {
+                    bool safe, const std::string &msg) {
     // Create an LLJIT instance.
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -262,7 +264,6 @@ TEST_F(CastExprIrBuilderTest, bool_cast_test) {
     BoolCastCheck<int64_t>(::fesql::type::kInt64, 0, false);
     BoolCastCheck<float>(::fesql::type::kFloat, 0.0f, false);
     BoolCastCheck<double>(::fesql::type::kDouble, 0.0, false);
-
 }
 
 }  // namespace codegen
