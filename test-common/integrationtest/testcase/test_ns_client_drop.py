@@ -22,9 +22,9 @@ class TestNsDropTable(TestCaseBase):
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-30"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"10-20"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"20-30"', 'false'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-7"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-7"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"0-7"', 'false'),
             ('column_desc', '"k1"', '"string"', 'true'),
             ('column_desc', '"k2"', '"string"', 'false'),
             ('column_desc', '"k3"', '"string"', 'true'),
@@ -34,13 +34,18 @@ class TestNsDropTable(TestCaseBase):
         self.assertIn('Create table ok', rs0)
 
         rs1 = self.showtable(self.ns_leader, name)
+        tid = rs1.keys()[0][1]
+        rs3 = self.get_table_status(self.leader, tid, 0)
+        infoLogger.info(rs3)
+        self.assertNotEqual(rs3, None)
         self.ns_drop(self.ns_leader, name)
+        time.sleep(2)
         rs2 = self.showtable(self.ns_leader, name)
-        rs3 = self.get_table_status(self.leader)
+        rs3 = self.get_table_status(self.leader, tid, 0)
 
-        self.assertEqual(len(rs1), 53)
+        self.assertEqual(len(rs1), 24)
         self.assertEqual(rs2, {})
-        self.assertEqual(rs3, {})
+        self.assertEqual(rs3, None)
         
 
 
