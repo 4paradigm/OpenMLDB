@@ -208,7 +208,7 @@ public:
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
     bool GetTermPair(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode, 
-                    uint64_t& term, uint64_t& offset, bool& has_table, bool& is_leader, bool multi_dc);
+                    uint64_t& term, uint64_t& offset, bool& has_table, bool& is_leader);
 
     bool GetManifest(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode,
                     ::rtidb::api::Manifest& manifest);
