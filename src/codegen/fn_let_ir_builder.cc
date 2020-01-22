@@ -25,16 +25,15 @@
 namespace fesql {
 namespace codegen {
 
-RowFnLetIRBuilder::RowFnLetIRBuilder(::fesql::type::TableDef* table,
+RowFnLetIRBuilder::RowFnLetIRBuilder(const catalog::Schema& schema,
                                      ::llvm::Module* module, bool is_window_agg)
-    : table_(table), module_(module), is_window_agg_(is_window_agg) {}
+    : schema_(schema), module_(module), is_window_agg_(is_window_agg) {}
 
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 bool RowFnLetIRBuilder::Build(const std::string& name,
                               const ::fesql::node::ProjectListPlanNode* node,
-                              std::vector<::fesql::type::ColumnDef>&
-                                  schema) {  // NOLINT (runtime/references)
+                              catalog::Schema& output_schema) {  // NOLINT (runtime/references)
     if (node == NULL) {
         LOG(WARNING) << "node is null";
         return false;
@@ -69,10 +68,11 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
 
-    BufNativeIRBuilder buf_ir_builder(table_, block, &sv);
-    ExprIRBuilder expr_ir_builder(block, &sv, &buf_ir_builder,
-                                  !node->IsWindowAgg(), row_ptr_name,
+    ExprIRBuilder expr_ir_builder(block, &sv, schema_,
+                                  !node->IsWindowAgg(),
+                                  row_ptr_name,
                                   row_size_name, module_);
+
     const ::fesql::node::PlanNodeList& children = node->GetProjects();
     ::fesql::node::PlanNodeList::const_iterator it = children.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
@@ -106,13 +106,12 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
 
         outputs.insert(std::make_pair(index, expr_out_val));
         index++;
-        ::fesql::type::ColumnDef cdef;
-        cdef.set_name(col_name);
-        cdef.set_type(ctype);
-        schema.push_back(cdef);
+        ::fesql::type::ColumnDef* cdef = output_schema.Add();
+        cdef->set_name(col_name);
+        cdef->set_type(ctype);
     }
 
-    ok = EncodeBuf(&outputs, &schema, sv, block, output_ptr_name);
+    ok = EncodeBuf(&outputs, output_schema, sv, block, output_ptr_name);
     if (!ok) {
         return false;
     }
@@ -125,9 +124,10 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
 
 bool RowFnLetIRBuilder::EncodeBuf(
     const std::map<uint32_t, ::llvm::Value*>* values,
-    const std::vector<::fesql::type::ColumnDef>* schema,
+    const catalog::Schema& schema,
     ScopeVar& sv,  // NOLINT (runtime/references)
-    ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
+    ::llvm::BasicBlock* block, 
+    const std::string& output_ptr_name) {
     BufNativeEncoderIRBuilder encoder(values, schema, block);
     ::llvm::Value* row_ptr = NULL;
     bool ok = sv.FindVar(output_ptr_name, &row_ptr);

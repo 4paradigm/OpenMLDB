@@ -26,27 +26,33 @@
 
 namespace fesql {
 namespace codegen {
+
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
       row_mode_(true),
       row_ptr_name_(""),
-      buf_ir_builder_(nullptr),
-      module_(nullptr) {}
+      module_(nullptr),
+      row_ir_builder_(),
+      window_ir_builder_(){}
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                             BufNativeIRBuilder* buf_ir_builder,
+                             const catalog::Schema& schema,
                              const bool row_mode,
                              const std::string& row_ptr_name,
                              const std::string& row_size_name,
                              ::llvm::Module* module)
     : block_(block),
       sv_(scope_var),
+      schema_(schema),
       row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
       row_size_name_(row_size_name),
-      buf_ir_builder_(buf_ir_builder),
-      module_(module) {}
+      module_(module)
+      //row_ir_builder_(new BufNativeIRBuilder(schema, block, scope_var)),
+      //window_ir_builder_(new MemoryWindowDecodeIRBuilder(schema, block))
+      {
+}
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
@@ -290,16 +296,16 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
     // not found
     if (!ok) {
         // TODO(wangtaize) buf ir builder add build get field ptr
-        ok = buf_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
+        ok = row_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
         if (!ok || value == NULL) {
             LOG(WARNING) << "fail to find column " << col;
             return false;
         }
-
         ok = sv_->AddVar(col, value);
         if (ok) {
             *output = value;
         }
+
         return ok;
     } else {
         *output = value;
@@ -335,7 +341,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
     ::llvm::Value* value = NULL;
     DLOG(INFO) << "get table column " << col;
     // NOT reuse for iterator
-    ok = buf_ir_builder_->BuildGetCol(col, row_ptr, &value);
+    ok = window_ir_builder_->BuildGetCol(col, row_ptr, &value);
     if (!ok || value == NULL) {
         LOG(WARNING) << "fail to find column " << col;
         return false;

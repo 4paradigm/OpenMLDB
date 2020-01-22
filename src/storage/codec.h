@@ -20,16 +20,48 @@
 
 #include <map>
 #include <vector>
+#include <unordered_map>
 #include "proto/type.pb.h"
+#include "catalog/catalog.h"
+
 
 namespace fesql {
 namespace storage {
 
-using Schema = ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef>;
+#define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
+
+using Schema = catalog::Schema;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
+
+
+static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
+    {::fesql::type::kBool, sizeof(bool)},
+    {::fesql::type::kInt16, sizeof(int16_t)},
+    {::fesql::type::kInt32, sizeof(int32_t)},
+    {::fesql::type::kFloat, sizeof(float)},
+    {::fesql::type::kInt64, sizeof(int64_t)},
+    {::fesql::type::kTimestamp, sizeof(int64_t)},
+    {::fesql::type::kDouble, sizeof(double)}};
+
+static inline uint8_t GetAddrLength(uint32_t size) {
+    if (size <= UINT8_MAX) {
+        return 1;
+    } else if (size <= UINT16_MAX) {
+        return 2;
+    } else if (size <= UINT24_MAX) {
+        return 3;
+    } else {
+        return 4;
+    }
+}
+
+inline uint32_t GetStartOffset(int32_t column_count) {
+
+    return HEADER_LENGTH + BitMapSize(column_count);
+}
 
 class RowBuilder {
  public:

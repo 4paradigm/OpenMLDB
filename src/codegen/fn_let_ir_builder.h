@@ -25,45 +25,45 @@
 #include "llvm/IR/IRBuilder.h"
 #include "node/plan_node.h"
 #include "proto/type.pb.h"
+#include "catalog/catalog.h"
 
 namespace fesql {
 namespace codegen {
 
-typedef std::map<std::string, std::pair<::fesql::type::ColumnDef, int32_t>>
-    Schema;
 
 class RowFnLetIRBuilder {
  public:
-    RowFnLetIRBuilder(::fesql::type::TableDef* table, ::llvm::Module* module,
+    RowFnLetIRBuilder(const catalog::Schema& schema , ::llvm::Module* module,
                       bool is_window_agg);
 
     ~RowFnLetIRBuilder();
 
     bool Build(const std::string& name,
                const ::fesql::node::ProjectListPlanNode* node,
-               std::vector<::fesql::type::ColumnDef>&
-                   schema);  // NOLINT (runtime/references)
+               catalog::Schema& schema);  // NOLINT (runtime/references)
 
  private:
+
     bool BuildFnHeader(const std::string& name, ::llvm::Function** fn);
 
     bool BuildFnHeader(const std::string& name,
                        const std::vector<::llvm::Type*>& args_type,
                        ::llvm::Type* ret_type, ::llvm::Function** fn);
+
     bool FillArgs(const std::string& row_ptr_name,
                   const std::string& row_size_name,
                   const std::string& output_ptr_name, ::llvm::Function* fn,
                   ScopeVar& sv);  // NOLINT
 
     bool EncodeBuf(const std::map<uint32_t, ::llvm::Value*>* values,
-                   const std::vector<::fesql::type::ColumnDef>* schema,
+                   const catalog::Schema& schema,
                    ScopeVar& sv,  // NOLINT (runtime/references)
                    ::llvm::BasicBlock* block,
                    const std::string& output_ptr_name);
 
  private:
     // input schema
-    ::fesql::type::TableDef* table_;
+    catalog::Schema schema_;
     ::llvm::Module* module_;
     bool is_window_agg_;
 };

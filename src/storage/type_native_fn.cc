@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "storage/type_ir_builder.h"
+#include "storage/type_native_fn.h"
 #include <string>
 #include <utility>
 #include "glog/logging.h"

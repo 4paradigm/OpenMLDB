@@ -24,6 +24,7 @@
 #include "llvm/IR/Module.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "catalog/catalog.h"
 #include "vm/op.h"
 #include "vm/table_mgr.h"
 
@@ -38,7 +39,7 @@ struct OpVector {
 
 class OpGenerator {
  public:
-    explicit OpGenerator(TableMgr* table_mgr);
+    explicit OpGenerator(const std::shared_ptr<catalog::Catalog>& catalog);
     ~OpGenerator();
 
     bool Gen(const ::fesql::node::PlanNodeList& trees, const std::string& db,
@@ -68,6 +69,7 @@ class OpGenerator {
                      const std::string& db, ::llvm::Module* module,
                      OpNode** op,
                      Status& status);  // NOLINT
+
     bool GenMerge(const ::fesql::node::MergePlanNode* node,
                     const std::vector<OpNode*> children,
                      ::llvm::Module* module,
@@ -82,7 +84,7 @@ class OpGenerator {
                         Status& status);  // NOLINT
 
  private:
-    TableMgr* table_mgr_;
+    const std::shared_ptr<catalog::Catalog> catalog_;
 };
 
 }  // namespace vm

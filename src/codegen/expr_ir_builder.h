@@ -19,28 +19,39 @@
 #define SRC_CODEGEN_EXPR_IR_BUILDER_H_
 
 #include <string>
-#include "codegen/buf_ir_builder.h"
+#include "codegen/row_ir_builder.h"
+#include "codegen/window_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
 namespace fesql {
 namespace codegen {
+
 class ExprIRBuilder {
  public:
-    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
-    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                  BufNativeIRBuilder* buf_ir_builder, const bool row_mode,
+
+    ExprIRBuilder(::llvm::BasicBlock* block, 
+                  ScopeVar* scope_var);
+
+    ExprIRBuilder(::llvm::BasicBlock* block, 
+                  ScopeVar* scope_var,
+                  const catalog::Schema& schema,
+                  const bool row_mode,
                   const std::string& row_ptr_name,
-                  const std::string& row_size_name, ::llvm::Module* module);
+                  const std::string& row_size_name, 
+                  ::llvm::Module* module);
 
     ~ExprIRBuilder();
 
     bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
 
  private:
+
     bool BuildColumnIterator(const std::string& col, ::llvm::Value** output);
+
     bool BuildColumnItem(const std::string& col, ::llvm::Value** output);
+
     bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
                         ::llvm::Value** output);
 
@@ -55,17 +66,21 @@ class ExprIRBuilder {
 
     bool BuildStructExpr(const ::fesql::node::StructExpr* node,
                          ::llvm::Value** output);
+
     ::llvm::Function* GetFuncion(const std::string& col,
-                                 const ::fesql::node::DataType& type, common::Status& status); // NOLINT
+                                 const ::fesql::node::DataType& type, 
+                                 common::Status& status); // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
+    catalog::Schema schema_;
     bool row_mode_;
     std::string row_ptr_name_;
     std::string row_size_name_;
-    BufNativeIRBuilder* buf_ir_builder_;
     ::llvm::Module* module_;
+    std::unique_ptr<RowDecodeIRBuilder> row_ir_builder_;
+    std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
 };
 }  // namespace codegen
 }  // namespace fesql

@@ -82,6 +82,7 @@ class Engine {
                                                 const std::string& sql);
 
  private:
+
     TableMgr* table_mgr_;
     base::SpinMutex mu_;
     EngineCache cache_;

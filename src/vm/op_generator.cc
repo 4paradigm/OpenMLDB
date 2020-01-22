@@ -27,7 +27,7 @@
 namespace fesql {
 namespace vm {
 
-OpGenerator::OpGenerator(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
+OpGenerator::OpGenerator(const std::shared_ptr<catalog::Catalog>& catalog) : catalog_(catalog) {}
 
 OpGenerator::~OpGenerator() {}
 
@@ -205,6 +205,7 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
                           const std::string& db, ::llvm::Module* module,
                           OpNode** op,
                           Status& status) {  // NOLINT
+
     if (node == NULL || module == NULL || nullptr == op) {
         status.code = common::kNullPointer;
         status.msg = "input args has null";
@@ -212,9 +213,8 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
         return false;
     }
 
-    std::shared_ptr<TableStatus> table_status =
-        table_mgr_->GetTableDef(db, node->GetTable());
-    if (!table_status) {
+    std::shared_ptr<catalog::TableHandler> table_handler = catalog_->GetTable(db, node->GetTable());
+    if (!table_handler) {
         status.code = common::kTableNotFound;
         status.msg = "fail to find table " + node->GetTable();
         LOG(WARNING) << status.msg;
@@ -224,13 +224,9 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
     ScanOp* sop = new ScanOp();
     sop->db = db;
     sop->type = kOpScan;
-    sop->tid = table_status->tid;
-    sop->pid = table_status->pid;
+    sop->table_handler = table_handler;
     sop->limit = node->GetLimit();
-    for (int32_t i = 0; i < table_status->table_def.columns_size(); i++) {
-        sop->input_schema.push_back(table_status->table_def.columns(i));
-        sop->output_schema.push_back(table_status->table_def.columns(i));
-    }
+    sop->output_schema = table_handler->GetSchema();
     *op = sop;
     return true;
 }
@@ -245,11 +241,8 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
         LOG(WARNING) << status.msg;
         return false;
     }
-
-    std::shared_ptr<TableStatus> table_status =
-        table_mgr_->GetTableDef(db, node->GetTable());
-
-    if (!table_status) {
+    std::shared_ptr<catalog::TableHandler> table_handler = catalog_->GetTable(db, node->GetTable());
+    if (!table_handler) {
         status.code = common::kTableNotFound;
         status.msg = "fail to find table " + node->GetTable();
         LOG(WARNING) << status.msg;
@@ -257,12 +250,12 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     }
 
     // TODO(wangtaize) use ops end op output schema
-    ::fesql::codegen::RowFnLetIRBuilder builder(&table_status->table_def,
+    ::fesql::codegen::RowFnLetIRBuilder builder(table_handler->GetSchema(),
                                                 module, node->IsWindowAgg());
     std::string fn_name = nullptr == node->GetW() ? "__internal_sql_codegen"
                                                   : "__internal_sql_codegen_" +
                                                         node->GetW()->GetName();
-    std::vector<::fesql::type::ColumnDef> output_schema;
+    catalog::Schema output_schema;
 
     bool ok = builder.Build(fn_name, node, output_schema);
 
@@ -274,8 +267,8 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     }
 
     uint32_t output_size = 0;
-    for (uint32_t i = 0; i < output_schema.size(); i++) {
-        ::fesql::type::ColumnDef& column = output_schema[i];
+    for (int32_t i = 0; i < output_schema.size(); i++) {
+        const ::fesql::type::ColumnDef& column = output_schema.Get(i);
 
         DLOG(INFO) << "output : " << column.name()
                    << " offset: " << output_size;
@@ -309,21 +302,17 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     pop->output_schema = output_schema;
     pop->fn_name = fn_name;
     pop->fn = NULL;
-    pop->tid = table_status->tid;
-    pop->db = table_status->db;
-    pop->pid = table_status->pid;
+    pop->table_handler = table_handler;
     pop->scan_limit = node->GetScanLimit();
     // handle window info
     if (nullptr != node->GetW()) {
         pop->window_agg = true;
-        table_status->InitColumnInfos();
-
         // validate and get col info of window keys
         for (auto key : node->GetW()->GetKeys()) {
-            auto it = table_status->col_infos.find(key);
-            if (it == table_status->col_infos.end()) {
+            auto it = table_handler->GetTypes().find(key);
+            if (it == table_handler->GetTypes().end()) {
                 status.msg = "key column " + key + " is not exist in table " +
-                             table_status->table_def.name();
+                             table_handler->GetName();
                 status.code = common::kColumnNotFound;
                 LOG(WARNING) << status.msg;
                 delete pop;
@@ -343,10 +332,10 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
                 return false;
             }
             auto order = node->GetW()->GetOrders()[0];
-            auto it = table_status->col_infos.find(order);
-            if (it == table_status->col_infos.end()) {
+            auto it = table_handler->GetTypes().find(order);
+            if (it == table_handler->GetTypes().end()) {
                 status.msg = "ts column " + order + " is not exist in table " +
-                             table_status->table_def.name();
+                             table_handler->GetName();
                 status.code = common::kColumnNotFound;
                 LOG(WARNING) << status.msg;
                 delete pop;
@@ -361,7 +350,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
         }
 
         // validate index
-        auto index_map = table_status->table->GetIndexMap();
+        /*auto index_map = table_status->table->GetIndexMap();
         bool index_check = false;
         for (auto iter = index_map.cbegin(); iter != index_map.cend(); iter++) {
             auto col_infos = iter->second.keys;
@@ -405,12 +394,10 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
             LOG(WARNING) << status.msg;
             delete pop;
             return false;
-        }
+        }*/
+
         pop->w.start_offset = node->GetW()->GetStartOffset();
         pop->w.end_offset = node->GetW()->GetEndOffset();
-
-        ::fesql::codegen::BufIRBuilder buf_if_builder(&table_status->table_def,
-                                                      nullptr, nullptr);
     } else {
         pop->window_agg = false;
     }
@@ -451,6 +438,7 @@ bool OpGenerator::GenFnDef(::llvm::Module* module,
     }
     return ok;
 }
+
 bool OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
                            const std::vector<OpNode*> children,
                            ::llvm::Module* module, OpNode** op,
@@ -471,11 +459,10 @@ bool OpGenerator::GenMerge(const ::fesql::node::MergePlanNode* node,
 
     MergeOp* merge_op = new MergeOp();
     merge_op->pos_mapping = node->GetPosMapping();
-    merge_op->output_schema.resize(merge_op->pos_mapping.size());
-    merge_op->output_schema.clear();
+    merge_op->output_schema.Clear();
     for (auto pair : merge_op->pos_mapping) {
-        merge_op->output_schema.push_back(
-            children[pair.first]->output_schema[pair.second]);
+        type::ColumnDef* cd = merge_op->output_schema.Add();
+        cd->CopyFrom(children[pair.first]->output_schema.Get(pair.second));
     }
     merge_op->type = kOpMerge;
     merge_op->fn = nullptr;

@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <string>
 #include "proto/type.pb.h"
-#include "storage/type_ir_builder.h"
+#include "storage/type_native_fn.h"
 namespace fesql {
 namespace udf {
 namespace v1 {

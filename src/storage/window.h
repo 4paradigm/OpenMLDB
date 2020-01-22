@@ -14,7 +14,7 @@
 #include <forward_list>
 #include <iostream>
 #include <vector>
-#include "storage/type_ir_builder.h"
+#include "storage/type_native_fn.h"
 namespace fesql {
 namespace storage {
 class WindowIteratorImpl;

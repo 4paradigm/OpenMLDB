@@ -18,12 +18,13 @@
 #ifndef SRC_VM_OP_H_
 #define SRC_VM_OP_H_
 
-#include <storage/window.h>
 #include <string>
 #include <utility>
 #include <vector>
 #include <set>
 #include "proto/type.pb.h"
+#include "storage/window.h"
+#include "catalog/catalog.h"
 
 namespace fesql {
 namespace vm {
@@ -39,17 +40,15 @@ struct OpNode {
     virtual ~OpNode() {}
     OpType type;
     uint32_t idx;
-    std::vector<::fesql::type::ColumnDef> output_schema;
+    catalog::Schema output_schema;
     std::vector<OpNode*> children;
 };
 
 struct ScanOp : public OpNode {
     ~ScanOp() {}
     std::string db;
-    uint32_t tid;
-    uint32_t pid;
+    std::shared_ptr<catalog::TableHandler> table_handler;
     uint32_t limit;
-    std::vector<::fesql::type::ColumnDef> input_schema;
 };
 
 // TODO(chenjing): WindowOp
@@ -67,8 +66,7 @@ struct ScanInfo {
 struct ProjectOp : public OpNode {
     ~ProjectOp() {}
     std::string db;
-    uint32_t tid;
-    uint32_t pid;
+    std::shared_ptr<catalog::TableHandler> table_handler;
     uint32_t scan_limit;
     int8_t* fn;
     std::string fn_name;

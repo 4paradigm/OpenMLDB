@@ -25,6 +25,8 @@ namespace fesql {
 namespace catalog {
 
 typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::ColumnDef> Schema;
+typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>> Types;
+
 class TableHandler {
  public:
     TableHandler() {}
@@ -39,6 +41,9 @@ class TableHandler {
 
     // get the db name
     virtual const std::string& GetDatabase() = 0;
+
+    // get the types
+    virtual const Types& GetTypes() = 0;
 };
 
 // database/table/schema/type management

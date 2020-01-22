@@ -1,10 +1,9 @@
 include_directories(${INCLUDE_DIRECTORIES} 
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_BINARY_DIR}/src)
-add_library(fesql_storage STATIC table.cc segment.cc codec.cc type_ir_builder.cc window.cc)
-add_dependencies(fesql_storage fesql_proto)
+add_library(fesql_storage STATIC table.cc segment.cc codec.cc type_native_fn.cc window.cc)
 
-add_executable(codec_test codec_test.cc codec.cc type_ir_builder.cc)
+add_executable(codec_test codec_test.cc)
 target_link_libraries(codec_test fesql_proto fesql_codegen fesql_vm
     fesql_storage glog gflags ${llvm_libs} gtest protobuf pthread
     unwind lzma)

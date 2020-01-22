@@ -24,7 +24,7 @@
 #include "glog/logging.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "storage/type_ir_builder.h"
+#include "storage/type_native_fn.h"
 #include "udf/udf.h"
 #include "vm/op_generator.h"
 
@@ -32,7 +32,7 @@ namespace fesql {
 namespace vm {
 using ::fesql::base::Status;
 
-SQLCompiler::SQLCompiler(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
+SQLCompiler::SQLCompiler(const std::shared_ptr<catalog::Catalog>& cl) : cl_(cl) {}
 
 SQLCompiler::~SQLCompiler() {}
 
@@ -44,7 +44,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (!ok) {
         return false;
     }
-    OpGenerator op_generator(table_mgr_);
+    OpGenerator op_generator(cl_);
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
