@@ -1112,5 +1112,28 @@ bool TabletClient::SetMode(bool mode) {
     return true;
 }
 
+bool TabletClient::GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>& tid_pid_offset) {
+    ::rtidb::api::GeneralRequest request;
+    ::rtidb::api::SnapOffsetResponse response;
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::GetAllSnapshotOffset,
+        &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok) {
+        return false;
+    }
+    if (response.table_size() < 1) {
+        return true;
+    }
+
+    for (auto t : response.table()) {
+        uint32_t tid = t.tid();
+        std::map<uint32_t, uint64_t> pid_offset;
+        for (auto p : t.parts()) {
+            pid_offset.insert(std::make_pair(p.pid(), p.offset()));
+        }
+        tid_pid_offset.insert(std::make_pair(tid, pid_offset));
+    }
+    return true;
+}
+
 }
 }

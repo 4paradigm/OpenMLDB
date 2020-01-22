@@ -171,23 +171,23 @@ void NameServerImpl::CheckSyncTable(const std::string& alias,
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : table_info_) {
             if (std::find(table_name_vec.begin(), table_name_vec.end(), kv.first) == table_name_vec.end()) {
-                bool has_no_alive_leader_partition = false;
+                bool no_alive_leader_partition = true;
                 for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
                     ::rtidb::nameserver::TablePartition table_partition_local = kv.second->table_partition(idx);
                     for (int midx = 0; midx < table_partition_local.partition_meta_size(); midx++) {
                         if (table_partition_local.partition_meta(midx).is_leader() &&
-                                (!table_partition_local.partition_meta(midx).is_alive())) {
-                            has_no_alive_leader_partition = true;
-                            PDLOG(WARNING, "table [%s] pid [%u] has a no alive leader partition", 
-                                    kv.second->name().c_str(), table_partition_local.pid());
+                                (table_partition_local.partition_meta(midx).is_alive())) {
+                            no_alive_leader_partition = false;
                             break;
                         }
                     }
-                    if (has_no_alive_leader_partition) {
+                    if (no_alive_leader_partition) {
+                        PDLOG(WARNING, "table [%s] pid [%u] leader partition is offline",
+                              kv.second->name().c_str(), table_partition_local.pid());
                         break;
                     }
                 }
-                if (!has_no_alive_leader_partition) {
+                if (!no_alive_leader_partition) {
                     local_table_info_vec.push_back(*(kv.second));
                 }
             }
@@ -240,21 +240,31 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
             PDLOG(WARNING, "talbe [%s] not found in table_info", table.name().c_str());
             continue;
         }
-        // cache offset
-        std::map<uint32_t, uint64_t> pid_offset_map;
-        for (auto& part : table_info_iter->second->table_partition()) {
-            for (auto& meta : part.partition_meta()) {
-                if (meta.is_alive() && meta.is_leader()) {
-                    pid_offset_map.insert(std::make_pair(part.pid(), meta.offset()));
-                    break;
-                }
-            }
-        }
-        int ready_num = -1;
+        int ready_num = -2; // default is not found
         for (auto& alias_pair : table_info_iter->second->alias_pair()) {
             if (alias_pair.alias() == ci->cluster_add_.alias()) {
                 ready_num = alias_pair.ready_num();
                 break;
+            }
+        }
+        if (ready_num != 0) {
+            PDLOG(WARNING, "table [%s] current is %d, not euqal 0", table.name().c_str(), ready_num);
+            continue;
+        }
+        // cache endpoint
+        std::map<uint32_t, std::string> pid_endpoint;
+        std::set<uint32_t> parts;
+        for (const auto& part : table_info_iter->second->table_partition()) {
+            for (auto& meta : part.partition_meta()) {
+                if (meta.is_leader() && meta.is_alive()) {
+                    parts.insert(part.pid());
+                }
+            }
+            for (auto& meta : part.remote_partition_meta()) {
+                if (meta.alias() == ci->cluster_add_.alias()) {
+                    pid_endpoint.insert(std::make_pair(part.pid(), meta.endpoint()));
+                    break;
+                }
             }
         }
         auto status_iter = ci->last_status.find(table.name());
@@ -267,67 +277,48 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                 tb.set_record_cnt(part.record_cnt());
                 PartitionMeta* m = tb.add_partition_meta();
                 m->set_endpoint("");
-                if (ready_num > 0) {
-                    for (auto& meta : part.partition_meta()) {
-                        if (meta.is_alive() && meta.is_leader()) {
-                            m->set_endpoint(meta.endpoint());
-                            break;
-                        }
+                for (auto& meta : part.partition_meta()) {
+                    if (meta.is_alive() && meta.is_leader()) {
+                        m->set_endpoint(meta.endpoint());
+                        break;
                     }
                 }
                 tbs.push_back(tb);
             }
             ci->last_status.insert(std::make_pair(table.name(), tbs));
         } else {
-            std::map<uint32_t, std::vector<TablePartition>::iterator> part_refer;
             // cache endpoint && part reference
+            std::map<uint32_t, std::vector<TablePartition>::iterator> part_refer;
             for (auto iter = status_iter->second.begin(); iter != status_iter->second.end(); iter++) {
                 part_refer.insert(std::make_pair(iter->pid(), iter));
             }
-            for (auto& part : table.table_partition()) {
+            for (const auto& part : table.table_partition()) {
+                if (parts.find(part.pid()) == parts.end()) {
+                    continue; // leader partition is offline, can't add talbe replica
+                }
                 for (auto& meta : part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
-                        std::string temp_key = table.name() + std::to_string(part.pid());
-                        auto offset_iter = pid_offset_map.find(part.pid());
-                        if (offset_iter == pid_offset_map.end()) {
-                            // table partition leader is offline
-                            PDLOG(WARNING, "table [%s] pid [%u] leader is offline in leader cluster , do nothing", table.name().c_str(), part.pid());
-                            break;
-                        }
                         auto iter = part_refer.find(part.pid());
                         if (iter == part_refer.end()) {
                             PDLOG(WARNING, "table [%s] pid [%u] not found", table.name().c_str(), part.pid());
                             break;
                         }
-                        std::string origin_endpoint = iter->second->partition_meta(0).endpoint();
-                        if (meta.endpoint() == origin_endpoint) {
+                        bool need_add = false;
+                        auto endpoint_it = pid_endpoint.find(part.pid());
+                        if (endpoint_it != pid_endpoint.end()) {
+                            if (meta.endpoint() == endpoint_it->second) {
+                                break;
+                            } else {
+                                PDLOG(INFO, "table [%s] pid[%u] will remove endpoint %s", table.name().c_str(), part.pid(), endpoint_it->second.c_str());
+                                DelReplicaRemoteOP(endpoint_it->second, table.name(), part.pid());
+                                need_add = true;
+                            }
+                        }
+                        if (!need_add) {
                             break;
                         }
-                        auto delete_offset_iter = ci->delete_offset_map_.find(temp_key);
-                        if (delete_offset_iter == ci->delete_offset_map_.end()) {
-                            if (meta.offset() > offset_iter->second) {
-                                // TODO: send delete offset request
-                                // DeleteOffset(offset_iter->second);
-                                ci->delete_offset_map_.insert(std::make_pair(temp_key, offset_iter->second));
-                                break;
-                            }
-                        } else {
-                            if (meta.offset() > delete_offset_iter->second) {
-                                PDLOG(INFO, "cluster [%s] table [%s] pid [%u] offset still lg local offset",
-                                    ci->cluster_add_.alias().c_str(), table.name().c_str(), part.pid());
-                                break;
-                            }
-                            PDLOG(INFO, "erase key [%s] in delete offset", temp_key.c_str());
-                            ci->delete_offset_map_.erase(delete_offset_iter);
-                        }
-                        // table partition leader if offline
-                        if (origin_endpoint.size() > 0) {
-                            PDLOG(INFO, "table [%s] pid[%u] will remove endpoint %s", table.name().c_str(), part.pid(), origin_endpoint.c_str());
-                            DelReplicaRemoteOP(origin_endpoint, table.name(), part.pid());
-                        }
+                        iter->second->CopyFrom(meta);
                         // update partition meta
-                        iter->second->clear_partition_meta();
-                        iter->second->add_partition_meta()->CopyFrom(meta);
                         PDLOG(INFO, "table [%s] pid[%u] will add remote endpoint %s", table.name().c_str(), part.pid(), meta.endpoint().c_str());
                         AddReplicaSimplyRemoteOP(table.name(), meta.endpoint(), table.tid(), part.pid());
                         break;
@@ -338,42 +329,41 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
     }
 }
 
-bool NameServerImpl::CompareSnapshotOffset(const std::vector<TableInfo>& tables, std::string& msg, int& code) {
+bool NameServerImpl::CompareSnapshotOffset(const std::vector<TableInfo>& tables, std::string& msg, int& code, std::map<std::string, std::map<uint32_t, std::map<uint32_t, uint64_t>>>& table_part_offset) {
     for (auto& table : tables) {
+        // iter == table_info_.end() is impossible, because CompareTableInfo has checked it
+        std::map<uint32_t, uint64_t> pid_offset;
         auto iter = table_info_.find(table.name());
-        if (iter == table_info_.end()) {
-            PDLOG(WARNING, "table [%s] not found in table_info_", table.name().c_str());
-            msg = "table not found";
-            code = 404;
-            return false;
-        }
-        ::rtidb::common::StorageMode sm = iter->second->storage_mode();
-        std::map<uint32_t, std::shared_ptr<TabletInfo>> pid_tablet;
+        int32_t tid = iter->second->tid();
         for (auto& part : iter->second->table_partition()) {
             for (auto& meta : part.partition_meta()) {
                 if (meta.is_alive() && meta.is_leader()) {
-                    auto tablet_iter = tablets_.find(meta.endpoint());
-                    if (tablet_iter == tablets_.end()) {
-                        PDLOG(WARNING, "can not found endpoint[%s]'s client.", meta.endpoint().c_str());
-                        msg = "tablet not found";
-                        code = 409;
+                    auto tablet_it = table_part_offset.find(meta.endpoint());
+                    if (tablet_it == table_part_offset.end()) {
+                        msg = "tablet info not found";
+                        code = 411;
                         return false;
                     }
-                    std::shared_ptr<TabletInfo> tablet_ptr = tablet_iter->second;
-                    if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                        PDLOG(WARNING, "endpoint [%s] is offline", meta.endpoint().c_str());
-                        msg = "tablet is not healthy";
-                        code = 410;
+                    auto tid_it = tablet_it->second.find(tid);
+                    if (tid_it == tablet_it->second.end()) {
+                        msg = "tid not found";
+                        code = 412;
                         return false;
                     }
-                    pid_tablet.insert(std::make_pair(part.pid(), tablet_ptr));
+                    auto pid_it = tid_it->second.find(part.pid());
+                    if (pid_it == tid_it->second.end()) {
+                        msg = "pid not found";
+                        code = 413;
+                        return false;
+                    }
+                    pid_offset.insert(std::make_pair(part.pid(), pid_it->second));
                 }
             }
         }
         // remote table
         for (auto& part : table.table_partition()) {
-            auto tablet_iter = pid_tablet.find(part.pid());
-            if (tablet_iter == pid_tablet.end()) {
+            auto offset_iter = pid_offset.find(part.pid());
+            if (offset_iter == pid_offset.end()) {
                 PDLOG(WARNING, "table [%s] pid [%d] is not found");
                 msg = "partition offline";
                 code = 407;
@@ -382,16 +372,7 @@ bool NameServerImpl::CompareSnapshotOffset(const std::vector<TableInfo>& tables,
 
             for (auto& meta : part.partition_meta()) {
                 if (meta.is_leader() && meta.is_alive()) {
-                    uint64_t term = 0, offset = 0;
-                    bool has_table = false, is_leader = false;
-                    bool ok = tablet_iter->second->client_->GetTermPair(iter->second->tid(), part.pid(), sm, term, offset, has_table, is_leader, true);
-                    // when multi_dc is true, if
-                    if (!ok) {
-                        PDLOG(WARNING, "table [%s] pid [%d] get snapshot offset failed on [%s]", table.name().c_str(), part.pid(), tablet_iter->second->client_->GetEndpoint().c_str());
-                        msg = "request snapshot offset failed";
-                        code = 411;
-                        return false;
-                    } else if (meta.offset() < offset) {
+                    if (meta.offset() < offset_iter->second) {
                         PDLOG(WARNING, "table [%s] pid [%d] offset less than local table snapshot", table.name().c_str(), part.pid());
                         msg = "rep cluster offset too small";
                         code = 406;
@@ -660,12 +641,12 @@ bool NameServerImpl::Recover() {
     UpdateTableStatus();
     {
         std::lock_guard<std::mutex> lock(mu_);
+        RecoverClusterInfo();
         if (!RecoverOPTask()) {
             PDLOG(WARNING, "recover task failed!");
             return false;
         }
         RecoverOfflineTablet();
-        RecoverClusterInfo();
     }
     UpdateTaskStatus(true);
     return true;
@@ -6458,20 +6439,18 @@ void NameServerImpl::AddTableInfo(const std::string& alias,
                     break;
                 }
             }
+            PartitionMeta* meta;
             if (is_exist) {
                 PDLOG(INFO, "remote follower already exists pid[%u] table[%s] endpoint[%s] op_id[%lu]", pid, name.c_str(), endpoint.c_str(), task_info->op_id());
-                ::rtidb::nameserver::PartitionMeta* partition_meta_ptr = table_partition_ptr->mutable_remote_partition_meta(meta_idx);
-                partition_meta_ptr->set_endpoint(endpoint);
-                partition_meta_ptr->set_remote_tid(remote_tid);
-                partition_meta_ptr->set_is_leader(false);
-                partition_meta_ptr->set_is_alive(true);
-                break;
+                meta = table_partition_ptr->mutable_remote_partition_meta(meta_idx);
+            } else {
+                meta = table_partition_ptr->add_remote_partition_meta();
             }
-            ::rtidb::nameserver::PartitionMeta* partition_meta_ptr = table_partition_ptr->add_remote_partition_meta();
-            partition_meta_ptr->set_endpoint(endpoint);
-            partition_meta_ptr->set_remote_tid(remote_tid);
-            partition_meta_ptr->set_is_leader(false);
-            partition_meta_ptr->set_is_alive(true);
+            meta->set_endpoint(endpoint);
+            meta->set_remote_tid(remote_tid);
+            meta->set_is_leader(false);
+            meta->set_is_alive(true);
+            meta->set_alias(alias);
             break;
         }
     }
@@ -7506,13 +7485,32 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         }
         {
             if (!tables.empty()) {
+                decltype(tablets_) tablets;
+                {
+                    std::lock_guard<std::mutex> lock(mu_);
+                    auto it = tablets_.begin();
+                    for (; it != tablets_.end(); it++) {
+                        if (it->second->state_ != api::kTabletHealthy) {
+                            continue;
+                        }
+                        tablets.insert(std::make_pair(it->first, it->second));
+                    }
+                }
+                std::map<std::string, std::map<uint32_t, std::map<uint32_t, uint64_t>>> tablet_part_offset;
+                for (auto it = tablets.begin(); it != tablets.end(); it++) {
+                    std::map<uint32_t, std::map<uint32_t, uint64_t>> value;
+                    bool ok = it->second->client_->GetAllSnapshotOffset(value);
+                    if (ok) {
+                        tablet_part_offset.insert(std::make_pair(it->second->client_->GetEndpoint(), value));
+                    }
+                }
                 std::lock_guard<std::mutex> lock(mu_);
                 if (!CompareTableInfo(tables)) {
                     rpc_msg = "compare table info error";
                     code = 567;
                     break;
                 }
-                if (!CompareSnapshotOffset(tables, rpc_msg, code)) {
+                if (!CompareSnapshotOffset(tables, rpc_msg, code, tablet_part_offset)) {
                     break;
                 }
 

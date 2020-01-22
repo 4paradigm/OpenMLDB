@@ -627,7 +627,7 @@ private:
 
     void CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std::vector<::rtidb::nameserver::TableInfo>& tables);
 
-    bool CompareSnapshotOffset(const std::vector<TableInfo>& tables, std::string& msg, int& code);
+    bool CompareSnapshotOffset(const std::vector<TableInfo>& tables, std::string& msg, int& code, std::map<std::string, std::map<uint32_t, std::map<uint32_t, uint64_t>>>& table_part_offset);
 
     void DistributeTabletMode();
 
