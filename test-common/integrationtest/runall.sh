@@ -19,11 +19,11 @@ else
     sed -i 's/multidimension\ =\ true/multidimension\ =\ false/g' ${testconfpath}
 fi
 
-if [ $2 = "ns_client" ]; then
+if [ $2 = "ns_client" -o $2 = "disk" ]; then
     sed -i 's/cluster_mode\ \=.*/cluster_mode\ \=\ cluster/g' ${testconfpath}
 else    
     sed -i 's/cluster_mode\ \=.*/cluster_mode\ \=\ single/g' ${testconfpath}
-fi  
+fi
 
 python ${testpath}/runall.py -R="${runlist}" -N="${norunlist}"
 code=$?

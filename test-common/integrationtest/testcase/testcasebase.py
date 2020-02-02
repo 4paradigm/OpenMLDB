@@ -92,9 +92,11 @@ class TestCaseBase(unittest.TestCase):
             self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
             self.tid = random.randint(1, 1000)
             self.pid = random.randint(1, 1000)
-            self.clear_ns_table(self.ns_leader)
-            for edp in conf.tb_endpoints:
-                self.clear_tb_table(edp)
+            if conf.cluster_mode == "cluster":
+                self.clear_ns_table(self.ns_leader)
+            else:
+                for edp in conf.tb_endpoints:
+                    self.clear_tb_table(edp)
             #remote env
             self.alias = 'rem'
             self.ns_leader_r = utils.exe_shell('head -n 1 {}/ns_leader_remote'.format(self.testpath))
