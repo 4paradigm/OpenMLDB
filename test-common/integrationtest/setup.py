@@ -40,13 +40,13 @@ if __name__ == '__main__':
 
     if not args.teardown or args.teardown.lower() == 'false':
         nsc.start_zk()
-        nsc.start(*nsc.endpoints)
+        nsc.start(False, *nsc.endpoints)
         time.sleep(2)
         nsc.get_ns_leader()
         tbc.start(tbc.endpoints)
         nsc_leader = nsc.leader
 
-        nsc_r.start_remote(*nsc_r.endpoints)
+        nsc_r.start(True,*nsc_r.endpoints)
         time.sleep(2)
         nsc_r.get_ns_leader(True)
         tbc_r.start(tbc_r.endpoints, True)

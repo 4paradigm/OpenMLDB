@@ -47,12 +47,15 @@ class NsCluster(object):
     def clear_zk(self):
         exe_shell('rm -rf {}/data'.format(os.getenv('zkpath')))
 
-    def start(self, *endpoints):
+    def start(self, is_remote, *endpoints):
         nsconfpath = os.getenv('nsconfpath')
         i = 0
         for ep in endpoints:
             i += 1
-            ns_path = self.ns_edp_path[ep]
+            if not is_remote:
+                ns_path = self.ns_edp_path[ep]
+            else:
+                ns_path = self.ns_edp_path[ep] + 'remote'
             nameserver_flags = '{}/conf/nameserver.flags'.format(ns_path)
             exe_shell('mkdir -p {}/conf'.format(ns_path))
             exe_shell('touch {}'.format(nameserver_flags))
@@ -60,7 +63,10 @@ class NsCluster(object):
             exe_shell("echo '--endpoint='{} >> {}".format(ep, nameserver_flags))
             exe_shell("echo '--role=nameserver' >> {}".format(nameserver_flags))
             exe_shell("echo '--zk_cluster='{} >> {}".format(self.zk_endpoint, nameserver_flags))
-            exe_shell("echo '--zk_root_path=/onebox' >> {}".format(nameserver_flags))
+            if not is_remote:
+                exe_shell("echo '--zk_root_path=/onebox' >> {}".format(nameserver_flags))
+            else:
+                exe_shell("echo '--zk_root_path=/remote' >> {}".format(nameserver_flags))
             exe_shell("echo '--auto_failover=false' >> {}".format(nameserver_flags))
             exe_shell("echo '--get_task_status_interval=100' >> {}".format(nameserver_flags))
             exe_shell("echo '--name_server_task_pool_size=10' >> {}".format(nameserver_flags))
@@ -86,44 +92,6 @@ class NsCluster(object):
                     break
         return started
 
-    def start_remote(self, *endpoints):
-        nsconfpath = os.getenv('nsconfpath')
-        i = 0
-        for ep in endpoints:
-            i += 1
-            ns_path = self.ns_edp_path[ep] + 'remote'
-            nameserver_flags = '{}/conf/nameserver.flags'.format(ns_path)
-            exe_shell('mkdir -p {}/conf'.format(ns_path))
-            exe_shell('touch {}'.format(nameserver_flags))
-            exe_shell("echo '--log_level={}' >> {}".format(conf.rtidb_log_info, nameserver_flags))
-            exe_shell("echo '--endpoint='{} >> {}".format(ep, nameserver_flags))
-            exe_shell("echo '--role=nameserver' >> {}".format(nameserver_flags))
-            exe_shell("echo '--zk_cluster='{} >> {}".format(self.zk_endpoint, nameserver_flags))
-            exe_shell("echo '--zk_root_path=/remote' >> {}".format(nameserver_flags))
-            exe_shell("echo '--auto_failover=false' >> {}".format(nameserver_flags))
-            exe_shell("echo '--get_task_status_interval=100' >> {}".format(nameserver_flags))
-            exe_shell("echo '--name_server_task_pool_size=10' >> {}".format(nameserver_flags))
-            exe_shell("echo '--zk_keep_alive_check_interval=500000' >> {}".format(nameserver_flags))
-            exe_shell("echo '--tablet_offline_check_interval=10' >> {}".format(nameserver_flags))
-            exe_shell("echo '--tablet_heartbeat_timeout=0' >> {}".format(nameserver_flags))
-            exe_shell("echo '--request_timeout_ms=100000' >> {}".format(nameserver_flags))
-            exe_shell("echo '--name_server_task_concurrency=8' >> {}".format(nameserver_flags))
-            exe_shell("echo '--zk_session_timeout=2000' >> {}".format(nameserver_flags))
-            exe_shell("ulimit -c unlimited")
-            cmd = '{}/rtidb --flagfile={}'.format(self.test_path, nameserver_flags)
-            infoLogger.info('start rtidb: {}'.format(cmd))
-            args = shlex.split(cmd)
-            started = []
-            for _ in range(5):
-                rs = exe_shell('lsof -i:{}|grep -v "PID"'.format(ep.split(':')[1]))
-                if 'rtidb' not in rs:
-                    time.sleep(2)
-                    subprocess.Popen(args,stdout=open('{}/info.log'.format(ns_path), 'a'),
-                                     stderr=open('{}/warning.log'.format(ns_path), 'a'))
-                else:
-                    started.append(True)
-                    break
-        return started
 
     def get_ns_leader(self, is_remote = False):
         cmd = '';
