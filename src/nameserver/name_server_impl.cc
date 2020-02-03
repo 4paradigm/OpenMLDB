@@ -3075,9 +3075,9 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
             return;
         }
     } else {
-        response->set_code(507);
-        response->set_msg("nameserver is not of replica cluster");
-        PDLOG(WARNING, "nameserver is not of replica cluster");
+        response->set_code(506);
+        response->set_msg("nameserver is not replica cluster");
+        PDLOG(WARNING, "nameserver is not replica cluster");
         return;
     }
 
@@ -3177,9 +3177,9 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
             return;
         }
     } else {
-        response->set_code(507);
-        response->set_msg("nameserver is not of replica cluster");
-        PDLOG(WARNING, "nameserver is not of replica cluster");
+        response->set_code(506);
+        response->set_msg("nameserver is not replica cluster");
+        PDLOG(WARNING, "nameserver is not  replica cluster");
         return;
     }
 
