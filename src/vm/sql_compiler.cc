@@ -16,6 +16,7 @@
  */
 
 #include "vm/sql_compiler.h"
+
 #include <memory>
 #include <utility>
 #include <vector>
@@ -32,7 +33,7 @@ namespace fesql {
 namespace vm {
 using ::fesql::base::Status;
 
-SQLCompiler::SQLCompiler(const std::shared_ptr<catalog::Catalog>& cl) : cl_(cl) {}
+SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl) : cl_(cl) {}
 
 SQLCompiler::~SQLCompiler() {}
 

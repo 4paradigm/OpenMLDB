@@ -62,6 +62,7 @@ class TableMgrImpl : public TableMgr {
  private:
     std::shared_ptr<TableStatus> status_;
 };
+
 enum EngineRunMode { RUN, RUNBATCH, RUNONE };
 class EngineTest : public ::testing::TestWithParam<EngineRunMode> {};
 

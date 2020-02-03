@@ -15,16 +15,16 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CATALOG_BATCH_CATALOG_H_
-#define SRC_CATALOG_BATCH_CATALOG_H_
+#ifndef SRC_VM_BATCH_CATALOG_H_
+#define SRC_VM_BATCH_CATALOG_H_
 
 #include <memory>
 #include "arrow/filesystem/filesystem.h"
-#include "catalog/catalog.h"
+#include "vm/catalog.h"
 #include "parquet/schema.h"
 
 namespace fesql {
-namespace catalog {
+namespace vm {
 
 struct Partition {
     std::string path;
@@ -55,6 +55,9 @@ class BatchTableHandler : public TableHandler {
         return index_list_;
     }
 
+    std::unique_ptr<Iterator> GetIterator();
+
+    std::unique_ptr<WindowIterator> GetWindowIterator();
  private:
     Schema schema_;
     std::string name_;
@@ -102,6 +105,6 @@ class BatchCatalog : public Catalog {
     BatchDB db_;
 };
 
-}  // namespace catalog
+}  // namespace vm
 }  // namespace fesql
-#endif  // SRC_CATALOG_BATCH_CATALOG_H_
+#endif  // SRC_vm_BATCH_CATALOG_H_

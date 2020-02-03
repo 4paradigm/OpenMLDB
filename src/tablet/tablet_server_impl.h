@@ -63,6 +63,7 @@ class TabletServerImpl : public TabletServer, public vm::TableMgr {
 
     void Insert(RpcController* ctrl, const InsertRequest* request,
                 InsertResponse* response, Closure* done);
+
     void GetTableSchema(RpcController* ctrl,
                         const GetTablesSchemaRequest* request,
                         GetTableSchemaReponse* response, Closure* done);

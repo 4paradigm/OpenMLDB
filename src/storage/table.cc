@@ -325,15 +325,15 @@ void TableIterator::Next() {
     }
 }
 
-Slice TableIterator::GetValue() const {
+const Slice TableIterator::GetValue() {
     return Slice(
         ts_it_->GetValue()->data,
         RowView::GetSize(reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
 }
 
-uint64_t TableIterator::GetKey() const { return ts_it_->GetKey(); }
+const uint64_t TableIterator::GetKey() { return ts_it_->GetKey(); }
 
-Slice TableIterator::GetPK() const {
+Slice TableIterator::GetPK()  {
     if (pk_it_ == NULL) {
         return Slice();
     }

@@ -26,7 +26,7 @@
 namespace fesql {
 namespace vm {
 
-Engine::Engine(TableMgr* table_mgr) : table_mgr_(table_mgr) {}
+Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog) {}
 
 Engine::~Engine() {}
 
@@ -37,7 +37,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         std::shared_ptr<CompileInfo> info = GetCacheLocked(db, sql);
         if (info) {
             session.SetCompileInfo(info);
-            session.SetTableMgr(table_mgr_);
+            session.SetCatalog(cl_);
             return true;
         }
     }
@@ -45,14 +45,14 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     std::shared_ptr<CompileInfo> info(new CompileInfo());
     info->sql_ctx.sql = sql;
     info->sql_ctx.db = db;
-    SQLCompiler compiler(table_mgr_);
+    SQLCompiler compiler(cl_);
     bool ok = compiler.Compile(info->sql_ctx, status);
     if (!ok || 0 != status.code) {
         // do clean
         return false;
     }
     {
-        session.SetTableMgr(table_mgr_);
+        session.SetCatalog(cl_);
         // check
         std::lock_guard<base::SpinMutex> lock(mu_);
         std::map<std::string, std::shared_ptr<CompileInfo>>& sql_in_db =
@@ -60,11 +60,11 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         std::map<std::string, std::shared_ptr<CompileInfo>>::iterator it =
             sql_in_db.find(sql);
         if (it == sql_in_db.end()) {
+            // TODO(wangtaize) clean
             sql_in_db.insert(std::make_pair(sql, info));
             session.SetCompileInfo(info);
         } else {
             session.SetCompileInfo(it->second);
-            // TODO(wangtaize) clean
         }
     }
     return true;
@@ -102,13 +102,6 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
             }
             case kOpProject: {
                 ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
-                std::shared_ptr<TableStatus> status =
-                    table_mgr_->GetTableDef(project_op->db, project_op->tid);
-                if (!status) {
-                    LOG(WARNING)
-                        << "fail to find table with tid " << project_op->tid;
-                    return 1;
-                }
                 std::vector<int8_t*> output_rows;
                 int32_t (*udf)(int8_t*, int32_t, int8_t**) =
                     (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
@@ -132,14 +125,14 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                         int8_t* output = NULL;
                         size_t output_size = 0;
                         // handle window
-                        std::string key_name;
+                        std::string key;
                         {
                             switch (key_type) {
                                 case fesql::type::kInt32: {
                                     int32_t value;
                                     if (0 ==
                                         row_view->GetInt32(key_idx, &value)) {
-                                        key_name = std::to_string(value);
+                                        key = std::to_string(value);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
                                                         "for current row";
@@ -151,7 +144,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                                     int64_t value;
                                     if (0 ==
                                         row_view->GetInt64(key_idx, &value)) {
-                                        key_name = std::to_string(value);
+                                        key = std::to_string(value);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
                                                         "for current row";
@@ -163,7 +156,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                                     int16_t value;
                                     if (0 ==
                                         row_view->GetInt16(key_idx, &value)) {
-                                        key_name = std::to_string(value);
+                                        key = std::to_string(value);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
                                                         "for current row";
@@ -175,7 +168,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                                     float value;
                                     if (0 ==
                                         row_view->GetFloat(key_idx, &value)) {
-                                        key_name = std::to_string(value);
+                                        key = std::to_string(value);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
                                                         "for current row";
@@ -187,7 +180,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                                     double value;
                                     if (0 ==
                                         row_view->GetDouble(key_idx, &value)) {
-                                        key_name = std::to_string(value);
+                                        key = std::to_string(value);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
                                                         "for current row";
@@ -200,7 +193,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                                     uint32_t str_size;
                                     if (0 == row_view->GetString(key_idx, &str,
                                                                  &str_size)) {
-                                        key_name = std::string(str, str_size);
+                                        key = std::string(str, str_size);
                                     } else {
                                         LOG(WARNING) << "fail to get partition "
                                                         "for current row";
@@ -264,35 +257,33 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                                 }
                             }
                         }
-                        // scan window with single key
-                        std::unique_ptr<::fesql::storage::TableIterator>
-                            window_it = status->table->NewIterator(
-                                key_name, project_op->w.index_name);
-
-                        if (!window_it) {
+                        std::unique_ptr<WindowIterator> window_it = project_op->table_handler->GetWindowIterator(project_op->w.index_name);
+                        window_it->Seek(key);
+                        if (!window_it->Valid()) {
                             LOG(WARNING)
                                 << "fail get table iterator when index_name: "
                                 << project_op->w.index_name
                                 << " key: " << key_name;
                             return 1;
                         }
+                        std::unique_ptr<Iterator> it = window_it->GetValue();
                         std::vector<::fesql::storage::Row> window;
                         if (project_op->w.has_order) {
-                            window_it->Seek(ts);
+                            it->Seek(ts);
                         } else {
-                            window_it->SeekToFirst();
+                            it->SeekToFirst();
                         }
-                        while (window_it->Valid()) {
-                            int64_t current_ts = window_it->GetKey();
+                        while (it->Valid()) {
+                            int64_t current_ts = it->GetKey();
                             if (current_ts > ts + project_op->w.end_offset) {
-                                window_it->Next();
+                                it->Next();
                                 continue;
                             }
                             if (current_ts <= ts + project_op->w.start_offset) {
                                 break;
                             }
-                            ::fesql::storage::Slice value =
-                                window_it->GetValue();
+                            base::Slice value =
+                                it->GetValue();
                             ::fesql::storage::Row w_row;
                             w_row.buf = reinterpret_cast<int8_t*>(
                                 const_cast<char*>(value.data()));
@@ -374,14 +365,6 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
             }
             case kOpProject: {
                 ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
-                // table
-                std::shared_ptr<TableStatus> status =
-                    table_mgr_->GetTableDef(project_op->db, project_op->tid);
-                if (!status) {
-                    LOG(WARNING)
-                        << "fail to find table with tid " << project_op->tid;
-                    return 1;
-                }
 
                 // op function
                 int32_t (*udf)(int8_t*, int32_t, int8_t**) =
@@ -389,7 +372,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
 
                 std::unique_ptr<storage::RowView> row_view =
                     std::move(std::unique_ptr<storage::RowView>(
-                        new storage::RowView(status->table_def.columns())));
+                        new storage::RowView(project_op->table_handler->GetSchema())));
 
                 // out buffers
                 std::vector<::fesql::storage::Row>& out_buffers =
@@ -405,9 +388,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
 
                 if (project_op->window_agg) {
                     // iterator whole table
-                    std::unique_ptr<::fesql::storage::TableIterator> it =
-                        status->table->NewTraverseIterator(
-                            project_op->w.index_name);
+                    auto it = project_op->table_handler->GetWindowIterator(project_op->w.index_name);
                     it->SeekToFirst();
                     uint64_t count = 0;
                     while (it->Valid() && count < min) {
@@ -415,17 +396,17 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                         // TODO(chenjing): resize or reserve with getCount()
                         // from storage api
                         buffer.reserve(10000);
-                        while (it->CurrentTsValid()) {
-                            ::fesql::storage::Slice value = it->GetValue();
+                        auto wit = it->GetValue();
+                        while (wit->Valid()) {
+                            ::fesql::storage::Slice value = wit->GetValue();
                             ::fesql::storage::Row row(
                                 {.buf = reinterpret_cast<int8_t*>(
                                      const_cast<char*>(value.data())),
                                  .size = value.size()});
                             buffer.push_back(std::make_pair(it->GetKey(), row));
-                            it->NextTs();
+                            wit->Next();
                         }
-                        it->NextTsInPks();
-
+                        it->Next();
                         DLOG(INFO) << "buffer size: " << buffer.size();
                         // TODO(chenjing): decide window type
                         ::fesql::storage::CurrentHistoryWindow window(
@@ -450,9 +431,8 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                         }
                     }
                 } else {
+                    auto it = project_op->table_handler->GetIterator();
                     // iterator whole table
-                    std::unique_ptr<::fesql::storage::TableIterator> it =
-                        status->table->NewTraverseIterator();
                     it->SeekToFirst();
 
                     uint64_t count = 0;

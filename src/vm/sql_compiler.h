@@ -28,7 +28,7 @@
 #include "vm/jit.h"
 #include "vm/op_generator.h"
 #include "vm/table_mgr.h"
-#include "catalog/catalog.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace vm {
@@ -45,13 +45,13 @@ struct SQLContext {
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
-    catalog::Schema schema;
+    Schema schema;
     uint32_t row_size;
 };
 
 class SQLCompiler {
  public:
-    explicit SQLCompiler(const std::shared_ptr<catalog::Catalog>& cl);
+    explicit SQLCompiler(const std::shared_ptr<Catalog>& cl);
 
     ~SQLCompiler();
 
@@ -63,7 +63,7 @@ class SQLCompiler {
                ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT
 
  private:
-    const std::shared_ptr<catalog::Catalog> cl_;
+    const std::shared_ptr<Catalog> cl_;
 };
 
 }  // namespace vm

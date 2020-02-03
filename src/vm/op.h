@@ -47,7 +47,7 @@ struct OpNode {
 struct ScanOp : public OpNode {
     ~ScanOp() {}
     std::string db;
-    std::shared_ptr<catalog::TableHandler> table_handler;
+    std::shared_ptr<TableHandler> table_handler;
     uint32_t limit;
 };
 
@@ -66,7 +66,7 @@ struct ScanInfo {
 struct ProjectOp : public OpNode {
     ~ProjectOp() {}
     std::string db;
-    std::shared_ptr<catalog::TableHandler> table_handler;
+    std::shared_ptr<TableHandler> table_handler;
     uint32_t scan_limit;
     int8_t* fn;
     std::string fn_name;

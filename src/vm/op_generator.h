@@ -31,6 +31,7 @@
 namespace fesql {
 namespace vm {
 using ::fesql::base::Status;  // NOLINT
+
 struct OpVector {
     std::string sql;
     // TOD(wangtaize) add free logic

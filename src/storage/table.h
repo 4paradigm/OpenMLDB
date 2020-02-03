@@ -16,6 +16,7 @@
 #include "base/iterator.h"
 #include "storage/codec.h"
 #include "storage/segment.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace storage {
@@ -26,7 +27,7 @@ using ::fesql::type::TableDef;
 
 static constexpr uint32_t SEG_CNT = 8;
 
-class TableIterator {
+class TableIterator : public vm::Iterator {
  public:
     TableIterator() = default;
     explicit TableIterator(Iterator<uint64_t, DataBlock*>* ts_it);
@@ -39,8 +40,8 @@ class TableIterator {
     void Next();
     void NextTs();
     void NextTsInPks();
-    Slice GetValue() const;
-    uint64_t GetKey() const;
+    const Slice GetValue();
+    const uint64_t GetKey();
     Slice GetPK() const;
     void SeekToFirst();
 
@@ -69,8 +70,10 @@ class Table {
 
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
                                                const uint64_t ts);
+
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
                                                const std::string& index_name);
+
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk);
 
     std::unique_ptr<TableIterator> NewTraverseIterator(

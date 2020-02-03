@@ -22,7 +22,7 @@
 #include <vector>
 #include <unordered_map>
 #include "proto/type.pb.h"
-#include "catalog/catalog.h"
+#include "vm/catalog.h"
 
 
 namespace fesql {
@@ -30,12 +30,11 @@ namespace storage {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
 
-using Schema = catalog::Schema;
+using Schema = vm::Schema;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
-
 
 static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
     {::fesql::type::kBool, sizeof(bool)},

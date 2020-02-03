@@ -15,19 +15,53 @@
  * limitations under the License.
  */
 
-#ifndef SRC_CATALOG_CATALOG_H_
-#define SRC_CATALOG_CATALOG_H_
+#ifndef SRC_VM_CATALOG_H_
+#define SRC_VM_CATALOG_H_
 
 #include <memory>
 #include "proto/type.pb.h"
 #include "base/iterator.h"
+#include "base/slice.h"
 
 namespace fesql {
-namespace catalog {
+namespace vm {
 
 typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::ColumnDef> Schema;
 typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>> Types;
+
+class Iterator {
+ public:
+
+    Iterator() {}
+
+    virtual ~Iterator(){}
+
+    void Seek(uint64_t ts) = 0;
+
+    void SeekToFirst() = 0;
+
+    bool Valid() = 0;
+
+    void Next() = 0;
+
+    const base::Slice GetValue() = 0;
+
+    const uint64_t GetKey() = 0;
+};
+
+class WindowIterator {
+
+ public:
+    WindowIterator() {}
+    virtual ~WindowIterator() {}
+    void Seek(const std::string& key) = 0;
+    void SeekToFirst() = 0;
+    void Next() = 0;
+    bool Valid() = 0;
+    std::unique_ptr<Iterator> GetValue() = 0;
+    const base::Slice GetKey() = 0;
+};
 
 class TableHandler {
  public:
@@ -36,7 +70,7 @@ class TableHandler {
     virtual ~TableHandler() {}
 
     // get the schema of table
-    virtual Schema& GetSchema() = 0;
+    virtual const Schema& GetSchema() = 0;
 
     // get the table name
     virtual const std::string& GetName() = 0;
@@ -50,6 +84,10 @@ class TableHandler {
     // get the index information
     virtual const IndexList& GetIndex() = 0;
 
+    // get the table iterator
+    virtual std::unique_ptr<Iterator> GetIterator() = 0;
+
+    virtual std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) = 0;
 };
 
 // database/table/schema/type management
@@ -68,7 +106,7 @@ class Catalog {
         const std::string& db, const std::string& table_name) = 0;
 };
 
-}  // namespace catalog
+}  // namespace vm
 }  // namespace fesql
 
-#endif  // SRC_CATALOG_CATALOG_H_
+#endif  // SRC_VM_CATALOG_H_
