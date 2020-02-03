@@ -92,7 +92,7 @@ void BinaryArithmeticExprCheck(::fesql::type::Type left_type,
             ok = arithmetic_ir_builder.BuildMultiExpr(arg0, arg1, &output,
                                                       status);
             break;
-        case fesql::node::kFnOpDiv:
+        case fesql::node::kFnOpFDiv:
             ok = arithmetic_ir_builder.BuildFDivExpr(arg0, arg1, &output,
                                                      status);
             break;
@@ -100,9 +100,6 @@ void BinaryArithmeticExprCheck(::fesql::type::Type left_type,
             ok =
                 arithmetic_ir_builder.BuildModExpr(arg0, arg1, &output, status);
             break;
-            break;
-        case fesql::node::kFnOpAnd:
-        case fesql::node::kFnOpOr:
         default: {
             FAIL();
         }
@@ -441,22 +438,22 @@ TEST_F(ArithmeticIRBuilderTest, test_multi_double_x_expr) {
 TEST_F(ArithmeticIRBuilderTest, test_fdiv_int32_x_expr) {
     BinaryArithmeticExprCheck<int32_t, int16_t, double>(
         ::fesql::type::kInt32, ::fesql::type::kInt16, ::fesql::type::kDouble, 2,
-        3, 2.0 / 3.0, ::fesql::node::kFnOpDiv);
+        3, 2.0 / 3.0, ::fesql::node::kFnOpFDiv);
 
     BinaryArithmeticExprCheck<int32_t, int32_t, double>(
         ::fesql::type::kInt32, ::fesql::type::kInt32, ::fesql::type::kDouble, 2,
-        3, 2.0 / 3.0, ::fesql::node::kFnOpDiv);
+        3, 2.0 / 3.0, ::fesql::node::kFnOpFDiv);
 
     BinaryArithmeticExprCheck<int32_t, int64_t, double>(
         ::fesql::type::kInt32, ::fesql::type::kInt64, ::fesql::type::kDouble, 2,
-        8000000000L, 2.0 / 8000000000.0, ::fesql::node::kFnOpDiv);
+        8000000000L, 2.0 / 8000000000.0, ::fesql::node::kFnOpFDiv);
     //
     BinaryArithmeticExprCheck<int32_t, float, double>(
         ::fesql::type::kInt32, ::fesql::type::kFloat, ::fesql::type::kDouble, 2,
-        3.0f, 2.0 / 3.0, ::fesql::node::kFnOpDiv);
+        3.0f, 2.0 / 3.0, ::fesql::node::kFnOpFDiv);
     BinaryArithmeticExprCheck<int32_t, double, double>(
         ::fesql::type::kInt32, ::fesql::type::kDouble, ::fesql::type::kDouble,
-        2, 12345678.5, 2.0 / 12345678.5, ::fesql::node::kFnOpDiv);
+        2, 12345678.5, 2.0 / 12345678.5, ::fesql::node::kFnOpFDiv);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_mod_int32_x_expr) {

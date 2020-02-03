@@ -61,15 +61,17 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
         case kFnOpMinus:
             return "Minus";
         case kFnOpMulti:
-            return "Multi";
+            return "MULTI";
         case kFnOpDiv:
             return "DIV";
         case kFnOpFDiv:
             return "FDIV";
+        case kFnOpMod:
+            return "MOD";
         case kFnOpAnd:
             return "AND";
         case kFnOpOr:
-            return "Or";
+            return "OR";
         case kFnOpNot:
             return "NOT";
         case kFnOpEq:

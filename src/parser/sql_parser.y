@@ -879,7 +879,7 @@ expr:	column_ref   { $$ = $1; }
      }
      | expr '/' expr
      {
-        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpDiv);
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpFDiv);
      }
      | '(' expr ')'
      {

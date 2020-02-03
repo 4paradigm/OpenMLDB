@@ -126,6 +126,7 @@ bool ArithmeticIRBuilder::inferBaseDoubleTypes(::llvm::Value* left,
     }
     return true;
 }
+
 bool ArithmeticIRBuilder::BuildAddExpr(
     ::llvm::Value* left, ::llvm::Value* right, ::llvm::Value** output,
     ::fesql::base::Status& status) {  // NOLINT
@@ -139,10 +140,10 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     }
     ::llvm::IRBuilder<> builder(block_);
     if (casted_left->getType()->isIntegerTy()) {
-        *output = builder.CreateAdd(casted_left, casted_right);
+        *output = builder.CreateAdd(casted_left, casted_right, "expr_add");
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
-        *output = builder.CreateFAdd(casted_left, casted_right);
+        *output = builder.CreateFAdd(casted_left, casted_right, "expr_add");
     } else {
         status.msg = "fail to codegen add expr: value types are invalid";
         status.code = common::kCodegenError;
