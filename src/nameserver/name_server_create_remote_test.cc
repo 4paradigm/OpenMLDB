@@ -66,7 +66,59 @@ public:
     ZoneInfo& GetZoneInfo(NameServerImpl* nameserver) {
         return nameserver->zone_info_;
     }
+
+    
 };
+
+void StartNameServer(brpc::Server& server, NameServerImpl* nameserver) {
+    bool ok = nameserver->Init();
+    ASSERT_TRUE(ok);
+    sleep(4);
+    brpc::ServerOptions options;
+    if (server.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+}
+
+void StartNameServer(brpc::Server& server) {
+    NameServerImpl* nameserver = new NameServerImpl();
+    bool ok = nameserver->Init();
+    ASSERT_TRUE(ok);
+    sleep(4);
+    brpc::ServerOptions options;
+    if (server.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+}
+
+void StartTablet(brpc::Server& server) {
+    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    bool ok = tablet->Init();
+    ASSERT_TRUE(ok);
+    sleep(2);
+    brpc::ServerOptions options1;
+    if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    ok = tablet->RegisterZK();
+    ASSERT_TRUE(ok);
+    sleep(2);
+}
 
 TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     // local ns and tablet
@@ -76,42 +128,15 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     FLAGS_endpoint = "127.0.0.1:9631";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
 
-    NameServerImpl* nameserver_1 = new NameServerImpl();
-    bool ok = nameserver_1->Init();
-    ASSERT_TRUE(ok);
-    sleep(4);
-    brpc::ServerOptions options;
     brpc::Server server;
-    if (server.AddService(nameserver_1, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
+    StartNameServer(server);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_1(FLAGS_endpoint);
     name_server_client_1.Init();
 
     //tablet
     FLAGS_endpoint="127.0.0.1:9931";
-    ::rtidb::tablet::TabletImpl* tablet_1 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_1->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options1;
     brpc::Server server1;
-    if (server1.AddService(tablet_1, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_1->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server1); 
 
     // remote ns and tablet
     //ns
@@ -120,42 +145,16 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     FLAGS_endpoint = "127.0.0.1:9632";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
 
-    NameServerImpl* nameserver_2 = new NameServerImpl();
-    ok = nameserver_2->Init();
-    ASSERT_TRUE(ok);
-    sleep(4);
-    brpc::ServerOptions options2;
     brpc::Server server2;
-    if (server2.AddService(nameserver_2, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server2.Start(FLAGS_endpoint.c_str(), &options2) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
+    StartNameServer(server2);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_2(FLAGS_endpoint);
     name_server_client_2.Init();
 
     // tablet
     FLAGS_endpoint="127.0.0.1:9932";
-    ::rtidb::tablet::TabletImpl* tablet_2 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_2->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options3;
     brpc::Server server3;
-    if (server3.AddService(tablet_2, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server3.Start(FLAGS_endpoint.c_str(), &options3) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_2->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server3);
+    bool ok = false;
     {
         ::rtidb::nameserver::SwitchModeRequest request;
         ::rtidb::nameserver::GeneralResponse response;
@@ -239,10 +238,6 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(0, response.table_info_size());
     }
-    delete nameserver_1;
-    delete tablet_1;
-    delete nameserver_2;
-    delete tablet_2;
 }
 
 TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
@@ -252,83 +247,27 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     FLAGS_zk_root_path="/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
 
-    NameServerImpl* nameserver_1 = new NameServerImpl();
-    bool ok = nameserver_1->Init();
-    ASSERT_TRUE(ok);
-    sleep(4);
-    brpc::ServerOptions options;
     brpc::Server server;
-    if (server.AddService(nameserver_1, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
+    NameServerImpl* nameserver_1 = new NameServerImpl();
+    StartNameServer(server);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_1(FLAGS_endpoint);
     name_server_client_1.Init();
 
     //tablet
     FLAGS_endpoint="127.0.0.1:9931";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_1 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_1->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options1;
     brpc::Server server1;
-    if (server1.AddService(tablet_1, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_1->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server1);
 
     FLAGS_endpoint="127.0.0.1:9941";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_2 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_2->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options2;
     brpc::Server server2;
-    if (server2.AddService(tablet_2, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server2.Start(FLAGS_endpoint.c_str(), &options2) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_2->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server2);
 
     FLAGS_endpoint="127.0.0.1:9951";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_3 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_3->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options3;
     brpc::Server server3;
-    if (server3.AddService(tablet_3, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server3.Start(FLAGS_endpoint.c_str(), &options3) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_3->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server3);
 
     // remote ns and tablet
     //ns
@@ -336,64 +275,23 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     FLAGS_zk_root_path="/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
 
-    NameServerImpl* nameserver_2 = new NameServerImpl();
-    ok = nameserver_2->Init();
-    ASSERT_TRUE(ok);
-    sleep(4);
-    brpc::ServerOptions options4;
     brpc::Server server4;
-    if (server4.AddService(nameserver_2, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server4.Start(FLAGS_endpoint.c_str(), &options4) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
+    StartNameServer(server4);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_2(FLAGS_endpoint);
     name_server_client_2.Init();
 
     // tablet
     FLAGS_endpoint="127.0.0.1:9932";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_4 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_4->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options5;
     brpc::Server server5;
-    if (server5.AddService(tablet_4, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server5.Start(FLAGS_endpoint.c_str(), &options5) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_4->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server5);
 
     FLAGS_endpoint="127.0.0.1:9942";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_5 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_5->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options6;
     brpc::Server server6;
-    if (server6.AddService(tablet_5, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server6.Start(FLAGS_endpoint.c_str(), &options6) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_5->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server6); 
 
+    bool ok = false;
     {
         ::rtidb::nameserver::SwitchModeRequest request;
         ::rtidb::nameserver::GeneralResponse response;
@@ -593,23 +491,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
 
     FLAGS_endpoint="127.0.0.1:9952";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_6 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_6->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options7;
     brpc::Server server7;
-    if (server7.AddService(tablet_6, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server7.Start(FLAGS_endpoint.c_str(), &options7) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_6->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server7);
 
     name = "test" + GenRand();
     {
@@ -779,13 +662,6 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(1, response.table_info(0).table_partition_size());
         ASSERT_EQ(1, response.table_info(0).table_partition(0).partition_meta_size());
     }
-    delete nameserver_1;
-    delete tablet_1;
-    delete tablet_2;
-    delete tablet_3;
-    delete nameserver_2;
-    delete tablet_4;
-    delete tablet_5;
 }
 
 TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
@@ -796,82 +672,26 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     FLAGS_endpoint = "127.0.0.1:9631";
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
-    bool ok = nameserver_1->Init();
-    ASSERT_TRUE(ok);
-    sleep(4);
-    brpc::ServerOptions options;
     brpc::Server server;
-    if (server.AddService(nameserver_1, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
+    StartNameServer(server, nameserver_1); 
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_1(FLAGS_endpoint);
     name_server_client_1.Init();
 
     //tablet
     FLAGS_endpoint="127.0.0.1:9931";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_1 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_1->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options1;
     brpc::Server server1;
-    if (server1.AddService(tablet_1, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_1->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server1); 
 
     FLAGS_endpoint="127.0.0.1:9941";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_2 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_2->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options2;
     brpc::Server server2;
-    if (server2.AddService(tablet_2, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server2.Start(FLAGS_endpoint.c_str(), &options2) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_2->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server2);
 
     FLAGS_endpoint="127.0.0.1:9951";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_3 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_3->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options3;
     brpc::Server server3;
-    if (server3.AddService(tablet_3, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server3.Start(FLAGS_endpoint.c_str(), &options3) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_3->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server3);
 
     // remote ns and tablet
     //ns
@@ -879,64 +699,23 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     FLAGS_zk_root_path="/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
 
-    NameServerImpl* nameserver_2 = new NameServerImpl();
-    ok = nameserver_2->Init();
-    ASSERT_TRUE(ok);
-    sleep(4);
-    brpc::ServerOptions options4;
     brpc::Server server4;
-    if (server4.AddService(nameserver_2, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server4.Start(FLAGS_endpoint.c_str(), &options4) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
+    StartNameServer(server4); 
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_2(FLAGS_endpoint);
     name_server_client_2.Init();
 
     // tablet
     FLAGS_endpoint="127.0.0.1:9932";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_4 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_4->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options5;
     brpc::Server server5;
-    if (server5.AddService(tablet_4, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server5.Start(FLAGS_endpoint.c_str(), &options5) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_4->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server5); 
 
     FLAGS_endpoint="127.0.0.1:9942";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_5 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_5->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options6;
     brpc::Server server6;
-    if (server6.AddService(tablet_5, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server6.Start(FLAGS_endpoint.c_str(), &options6) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_5->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server6); 
 
+    bool ok = false;
     {
         ::rtidb::nameserver::SwitchModeRequest request;
         ::rtidb::nameserver::GeneralResponse response;
@@ -1091,23 +870,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     
     FLAGS_endpoint="127.0.0.1:9952";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet_6 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet_6->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    brpc::ServerOptions options7;
     brpc::Server server7;
-    if (server7.AddService(tablet_6, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server7.Start(FLAGS_endpoint.c_str(), &options7) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet_6->RegisterZK();
-    ASSERT_TRUE(ok);
-    sleep(2);
+    StartTablet(server7);
 
     name = "test" + GenRand();
     {
@@ -1234,14 +998,6 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(1, response.table_info().table_partition_size());
         ASSERT_EQ(3, response.table_info().replica_num());
     }
-    
-    delete nameserver_1;
-    delete tablet_1;
-    delete tablet_2;
-    delete tablet_3;
-    delete nameserver_2;
-    delete tablet_4;
-    delete tablet_5;
 }
 
 }
