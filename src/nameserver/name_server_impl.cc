@@ -3494,10 +3494,13 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                         ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
             }
         }
-        if (mode_.load(std::memory_order_acquire) == kLEADER && nsc_.size() > 0) {
+        if (mode_.load(std::memory_order_acquire) == kLEADER) {
             decltype(nsc_) tmp_nsc;
             {
                 std::lock_guard<std::mutex> lock(mu_);
+                if (nsc_.size() == 0) {
+                    break;
+                }
                 tmp_nsc = nsc_;
             }
             for (const auto& kv : tmp_nsc) {
