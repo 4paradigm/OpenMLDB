@@ -1113,7 +1113,7 @@ bool TabletClient::SetMode(bool mode) {
 
 bool TabletClient::GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>& tid_pid_offset) {
     ::rtidb::api::GeneralRequest request;
-    ::rtidb::api::SnapOffsetResponse response;
+    ::rtidb::api::TableSnapshotOffsetResponse response;
     bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::GetAllSnapshotOffset,
         &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ok) {

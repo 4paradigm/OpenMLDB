@@ -615,7 +615,7 @@ TEST_F(NameServerImplTest, CancelOP) {
     delete nameserver;
 }
 
-bool init_rpc (Server* server, google::protobuf::Service* general_svr) {
+bool InitRpc (Server* server, google::protobuf::Service* general_svr) {
     brpc::ServerOptions options;
     if (server->AddService(general_svr, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Failed to add service");
@@ -628,7 +628,7 @@ bool init_rpc (Server* server, google::protobuf::Service* general_svr) {
     return true;
 }
 
-void init_tablet (int port, vector<Server*> services, vector<shared_ptr<TabletImpl>*> impls, vector<string*> eps) {
+void InitTablet (int port, vector<Server*> services, vector<shared_ptr<TabletImpl>*> impls, vector<string*> eps) {
     if (services.size() != impls.size()) {
         PDLOG(WARNING, "services and impls size not equal");
         exit(1);
@@ -648,7 +648,7 @@ void init_tablet (int port, vector<Server*> services, vector<shared_ptr<TabletIm
             exit(1);
         }
 
-        if (!init_rpc(services[i], tb.get())) {
+        if (!InitRpc(services[i], tb.get())) {
             exit(1);
         }
         if(!tb->RegisterZK()) {
@@ -661,7 +661,7 @@ void init_tablet (int port, vector<Server*> services, vector<shared_ptr<TabletIm
     return;
 }
 
-void init_ns (int port, vector<Server*> services, vector<shared_ptr<NameServerImpl>*> impls, vector<string*> eps) {
+void InitNs (int port, vector<Server*> services, vector<shared_ptr<NameServerImpl>*> impls, vector<string*> eps) {
     if (services.size() != impls.size()) {
         PDLOG(WARNING, "services and impls size not equal");
         exit(1);
@@ -680,7 +680,7 @@ void init_ns (int port, vector<Server*> services, vector<shared_ptr<NameServerIm
             exit(1);
         }
         sleep (4);
-        if (!init_rpc(services[i], ns.get())) {
+        if (!InitRpc(services[i], ns.get())) {
             PDLOG(WARNING, "init rpc failed");
             exit(1);
         }
@@ -710,13 +710,13 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
 
     FLAGS_zk_cluster="127.0.0.1:6181";
     int port = 9632;
-    init_ns(port, svrs, ns_vector, endpoints);
+    InitNs(port, svrs, ns_vector, endpoints);
     m1_zkpath = FLAGS_zk_root_path;
 
     svrs = {&m1_t1_svr, &m1_t2_svr};
     endpoints = {&m1_t1_ep, &m1_t2_ep};
 
-    init_tablet(port, svrs, tb_vector, endpoints);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     port++;
 
@@ -724,14 +724,14 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     ns_vector = {&f1_ns1, &f1_ns2};
     endpoints = {&f1_ns1_ep, &f1_ns2_ep};
 
-    init_ns(port, svrs, ns_vector, endpoints);
+    InitNs(port, svrs, ns_vector, endpoints);
     f1_zkpath = FLAGS_zk_root_path;
 
     svrs = {&f1_t1_svr, &f1_t2_svr};
     endpoints = {&f1_t1_ep, &f1_t2_ep};
     tb_vector = {&f1_t1, &f1_t2};
 
-    init_tablet(port, svrs, tb_vector, endpoints);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     port++;
 
@@ -739,14 +739,14 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     ns_vector = {&f2_ns1, &f2_ns2};
     endpoints = {&f2_ns1_ep, &f2_ns2_ep};
 
-    init_ns(port, svrs, ns_vector, endpoints);
+    InitNs(port, svrs, ns_vector, endpoints);
     f2_zkpath = FLAGS_zk_root_path;
 
     svrs = {&f2_t1_svr, &f2_t2_svr};
     endpoints = {&f2_t1_ep, &f2_t2_ep};
     tb_vector = {&f2_t1, &f2_t2};
 
-    init_tablet(port, svrs, tb_vector, endpoints);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     // disable autoconf
     ConfSetRequest conf_set_request;
@@ -877,13 +877,13 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
 
     FLAGS_zk_cluster="127.0.0.1:6181";
     int port = 9642;
-    init_ns(port, svrs, ns_vector, endpoints);
+    InitNs(port, svrs, ns_vector, endpoints);
     m1_zkpath = FLAGS_zk_root_path;
 
     svrs = {&m1_t1_svr, &m1_t2_svr};
     endpoints = {&m1_t1_ep, &m1_t2_ep};
 
-    init_tablet(port, svrs, tb_vector, endpoints);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     port++;
 
@@ -891,14 +891,14 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     ns_vector = {&f1_ns1, &f1_ns2};
     endpoints = {&f1_ns1_ep, &f1_ns2_ep};
 
-    init_ns(port, svrs, ns_vector, endpoints);
+    InitNs(port, svrs, ns_vector, endpoints);
     f1_zkpath = FLAGS_zk_root_path;
 
     svrs = {&f1_t1_svr, &f1_t2_svr};
     endpoints = {&f1_t1_ep, &f1_t2_ep};
     tb_vector = {&f1_t1, &f1_t2};
 
-    init_tablet(port, svrs, tb_vector, endpoints);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     port++;
 
@@ -906,14 +906,14 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     ns_vector = {&f2_ns1, &f2_ns2};
     endpoints = {&f2_ns1_ep, &f2_ns2_ep};
 
-    init_ns(port, svrs, ns_vector, endpoints);
+    InitNs(port, svrs, ns_vector, endpoints);
     f2_zkpath = FLAGS_zk_root_path;
 
     svrs = {&f2_t1_svr, &f2_t2_svr};
     endpoints = {&f2_t1_ep, &f2_t2_ep};
     tb_vector = {&f2_t1, &f2_t2};
 
-    init_tablet(port, svrs, tb_vector, endpoints);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     // disable autoconf
     ConfSetRequest conf_set_request;
@@ -1034,13 +1034,13 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
 
     FLAGS_zk_cluster="127.0.0.1:6181";
     int port = 9642;
-    init_ns(port, svrs, ns_vector, endpoints);
+    InitNs(port, svrs, ns_vector, endpoints);
     m1_zkpath = FLAGS_zk_root_path;
 
     svrs = {&m1_t1_svr, &m1_t2_svr};
     endpoints = {&m1_t1_ep, &m1_t2_ep};
 
-    init_tablet(port, svrs, tb_vector, endpoints);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     port++;
 
@@ -1048,14 +1048,14 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     ns_vector = {&f1_ns1, &f1_ns2};
     endpoints = {&f1_ns1_ep, &f1_ns2_ep};
 
-    init_ns(port, svrs, ns_vector, endpoints);
+    InitNs(port, svrs, ns_vector, endpoints);
     f1_zkpath = FLAGS_zk_root_path;
 
     svrs = {&f1_t1_svr, &f1_t2_svr};
     endpoints = {&f1_t1_ep, &f1_t2_ep};
     tb_vector = {&f1_t1, &f1_t2};
 
-    init_tablet(port, svrs, tb_vector, endpoints);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     port++;
 
@@ -1063,14 +1063,14 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     ns_vector = {&f2_ns1, &f2_ns2};
     endpoints = {&f2_ns1_ep, &f2_ns2_ep};
 
-    init_ns(port, svrs, ns_vector, endpoints);
+    InitNs(port, svrs, ns_vector, endpoints);
     f2_zkpath = FLAGS_zk_root_path;
 
     svrs = {&f2_t1_svr, &f2_t2_svr};
     endpoints = {&f2_t1_ep, &f2_t2_ep};
     tb_vector = {&f2_t1, &f2_t2};
 
-    init_tablet(port, svrs, tb_vector, endpoints);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     // disable autoconf
     ConfSetRequest conf_set_request;
@@ -1151,9 +1151,6 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         ns->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
         ASSERT_EQ(1, show_table_response.table_info_size());
         ASSERT_EQ(2, show_table_response.table_info(0).table_partition(0).partition_meta_size());
-        printf("######## %d\n", show_table_response.table_info(0).tid());
-        printf("%s\n", show_table_response.table_info(0).table_partition(0).partition_meta(0).endpoint().c_str());
-        printf("%s\n", show_table_response.table_info(0).table_partition(0).partition_meta(1).endpoint().c_str());
         ASSERT_EQ(name, show_table_response.table_info(0).name());
         show_table_response.Clear();
     }
@@ -1175,7 +1172,6 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         traverse_request.set_pid(0);
         traverse_request.set_tid(tid);
         for (auto& tablet : tablets) {
-            printf("*****************\n");
             tablet->Traverse(NULL, &traverse_request, &traverse_response, &closure);
             ASSERT_EQ(0, traverse_response.code());
             ASSERT_EQ(1, traverse_response.count());
@@ -1191,7 +1187,6 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     ::rtidb::api::ScanResponse* scan_response = new ::rtidb::api::ScanResponse();
     sleep(4);
     for (auto& tablet : tablets) {
-        printf("*****************\n");
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
         ASSERT_EQ(1, scan_response->count());
@@ -1242,7 +1237,6 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     ASSERT_EQ(0, put_response.code());
     sleep(8);
     for (auto& tablet : tablets) {
-        printf("*****************\n");
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
         ASSERT_EQ(2, scan_response->count());
@@ -1274,7 +1268,6 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     ASSERT_EQ(0, put_response.code());
     sleep(18);
     for (auto& tablet : tablets) {
-        printf("*****************\n");
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
         ASSERT_EQ(3, scan_response->count());

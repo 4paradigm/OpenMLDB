@@ -149,7 +149,7 @@ message PartSnapOffset {
     optional uint32 pid = 2;
     optional uint64 offset = 3;
 }
-message SnapOffsetResponse {
+message TableSnapshotOffsetResponse {
     message tid_pid {
         optional uint32 tid = 1;
         repeated PartSnapOffset parts = 2;
@@ -669,5 +669,5 @@ service TabletServer {
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
     rpc UpdateTableMetaForAddField (UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
-    rpc GetAllSnapshotOffset(GeneralRequest) returns(SnapOffsetResponse);
+    rpc GetAllSnapshotOffset(GeneralRequest) returns(TableSnapshotOffsetResponse);
 }

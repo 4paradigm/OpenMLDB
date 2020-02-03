@@ -69,7 +69,6 @@ public:
     bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, int& code, std::string& msg);
 
     std::shared_ptr<::rtidb::client::NsClient> client_;
-    std::map<std::string, uint64_t> delete_offset_map_;
     std::map<std::string, std::vector<TablePartition>> last_status;
     ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t ctime_;

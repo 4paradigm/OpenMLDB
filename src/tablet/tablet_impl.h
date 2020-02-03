@@ -204,7 +204,7 @@ public:
 
     void GetAllSnapshotOffset(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
-            ::rtidb::api::SnapOffsetResponse* response,
+            ::rtidb::api::TableSnapshotOffsetResponse* response,
             Closure* done);
 
     void GetTermPair(RpcController* controller,
@@ -362,7 +362,7 @@ private:
             ::rtidb::common::StorageMode& mode, uint64_t& size);
 
     int32_t GetSnapshotOffset(uint32_t tid, uint32_t pid,
-              common::StorageMode& sm, std::string& msg,
+              common::StorageMode sm, std::string& msg,
               uint64_t& term, uint64_t& offset);
 
     bool SeekWithCount(::rtidb::storage::TableIterator* it, const uint64_t time,

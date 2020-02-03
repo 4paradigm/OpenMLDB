@@ -2840,7 +2840,7 @@ void TabletImpl::GetTableFollower(RpcController* controller,
     response->set_code(0);
 }
 
-int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, rtidb::common::StorageMode& sm, std::string& msg, uint64_t& term, uint64_t& offset) {
+int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, rtidb::common::StorageMode sm, std::string& msg, uint64_t& term, uint64_t& offset) {
     std::string db_root_path;
     bool ok = ChooseDBRootPath(tid, pid, sm, db_root_path);
     if (!ok) {
@@ -2848,8 +2848,6 @@ int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, rtidb::common:
         PDLOG(WARNING, "fail to get table db root path");
         return 138;
     }
-    term = 0;
-    offset = 0;
     std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
     std::string manifest_file =  db_path + "/snapshot/MANIFEST";
     int fd = open(manifest_file.c_str(), O_RDONLY);
@@ -2876,40 +2874,40 @@ int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, rtidb::common:
 }
 void TabletImpl::GetAllSnapshotOffset(RpcController* controller,
            const ::rtidb::api::GeneralRequest* request,
-           ::rtidb::api::SnapOffsetResponse* response,
+           ::rtidb::api::TableSnapshotOffsetResponse* response,
            Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::map<uint32_t, rtidb::common::StorageMode>  t_sm;
+    std::map<uint32_t, rtidb::common::StorageMode>  table_sm;
     std::map<uint32_t, std::vector<uint32_t>> tid_pid;
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        for (auto it = tables_.begin(); it != tables_.end(); it++) {
-            uint32_t tid = it->first;
+        for (auto table_iter = tables_.begin(); table_iter != tables_.end(); table_iter++) {
+            uint32_t tid = table_iter->first;
             std::vector<uint32_t> pids;
-            auto tit = it->second.begin();
-            rtidb::common::StorageMode sm = tit->second->GetStorageMode();
-            for (;tit != it->second.end(); tit++) {
-                pids.push_back(tit->first);
+            auto part_iter = table_iter->second.begin();
+            rtidb::common::StorageMode sm = part_iter ->second->GetStorageMode();
+            for (;part_iter != table_iter->second.end(); part_iter++) {
+                pids.push_back(part_iter->first);
             }
-            t_sm.insert(std::make_pair(tid, sm));
+            table_sm.insert(std::make_pair(tid, sm));
             tid_pid.insert(std::make_pair(tid, pids));
         }
     }
     std::string msg;
-    for (auto it = tid_pid.begin(); it != tid_pid.end(); it++) {
-        uint32_t tid = it->first;
-        auto t = response->add_table();
-        t->set_tid(tid);
-        for (auto pid : it->second) {
-            uint64_t term, offset;
-            rtidb::common::StorageMode sm = t_sm.find(tid)->second;
-            auto code = GetSnapshotOffset(tid, pid, sm, msg, term, offset);
+    for (auto iter = tid_pid.begin(); iter != tid_pid.end(); iter++) {
+        uint32_t tid = iter->first;
+        auto table = response->add_table();
+        table->set_tid(tid);
+        for (auto pid : iter->second) {
+            uint64_t term = 0 , offset = 0;
+            rtidb::common::StorageMode sm = table_sm.find(tid)->second;
+            int32_t code = GetSnapshotOffset(tid, pid, sm, msg, term, offset);
             if (code != 0) {
                 continue;
             }
-            auto part = t->add_parts();
-            part->set_offset(offset);
-            part->set_pid(pid);
+            auto partition = table->add_parts();
+            partition->set_offset(offset);
+            partition->set_pid(pid);
         }
     }
     response->set_code(0);
@@ -2934,20 +2932,20 @@ void TabletImpl::GetTermPair(RpcController* controller,
         mode = request->storage_mode();
     }
 	if (!table) {
-		response->set_code(0);
-		response->set_has_table(false);
-		response->set_msg("table is not exist");
-		std::string msg;
-		uint64_t term, offset;
-		int32_t code = GetSnapshotOffset(tid, pid, mode, msg, term, offset);
-		response->set_code(code);
-		if (code == 0) {
+        response->set_code(0);
+        response->set_has_table(false);
+        response->set_msg("table is not exist");
+        std::string msg;
+        uint64_t term = 0, offset = 0;
+        int32_t code = GetSnapshotOffset(tid, pid, mode, msg, term, offset);
+        response->set_code(code);
+        if (code == 0) {
             response->set_term(term);
             response->set_offset(offset);
-		} else {
-		    response->set_msg(msg);
-		}
-		return;
+        } else {
+            response->set_msg(msg);
+	    }
+        return;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
