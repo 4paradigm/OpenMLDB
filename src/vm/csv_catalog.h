@@ -31,6 +31,9 @@ class SchemaParser {
 
     bool Parse(const std::string& path, 
             Schema* schema);
+
+    bool Convert(const std::string& type,
+            type::Type* db_type);
 };
 
 class CSVTableHandler : public TableHandler {
