@@ -171,23 +171,23 @@ void NameServerImpl::CheckSyncTable(const std::string& alias,
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : table_info_) {
             if (std::find(table_name_vec.begin(), table_name_vec.end(), kv.first) == table_name_vec.end()) {
-                bool no_alive_leader_partition = true;
+                bool has_no_alive_leader_partition = false;
                 for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
                     ::rtidb::nameserver::TablePartition table_partition_local = kv.second->table_partition(idx);
                     for (int midx = 0; midx < table_partition_local.partition_meta_size(); midx++) {
                         if (table_partition_local.partition_meta(midx).is_leader() &&
-                                (table_partition_local.partition_meta(midx).is_alive())) {
-                            no_alive_leader_partition = false;
+                                (!table_partition_local.partition_meta(midx).is_alive())) {
+                            has_no_alive_leader_partition = true;
+                            PDLOG(WARNING, "table [%s] pid [%u] has a no alive leader partition",
+                                    kv.second->name().c_str(), table_partition_local.pid());
                             break;
                         }
                     }
-                    if (no_alive_leader_partition) {
-                        PDLOG(WARNING, "table [%s] pid [%u] leader partition is offline",
-                              kv.second->name().c_str(), table_partition_local.pid());
+                    if (has_no_alive_leader_partition) {
                         break;
                     }
                 }
-                if (!no_alive_leader_partition) {
+                if (!has_no_alive_leader_partition) {
                     local_table_info_vec.push_back(*(kv.second));
                 }
             }
