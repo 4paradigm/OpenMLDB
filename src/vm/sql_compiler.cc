@@ -96,17 +96,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             }
             pop->fn = reinterpret_cast<int8_t*>(symbol->getAddress());
             ctx.schema = pop->output_schema;
-        } else if (op_node->type == kOpConstProject) {
-            ConstProjectOp* pop = reinterpret_cast<ConstProjectOp*>(op_node);
-            ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
-                ctx.jit->lookup(pop->fn_name));
-            if (symbol.takeError()) {
-                LOG(WARNING) << "fail to find fn with name  " << pop->fn_name
-                             << " for sql:\n"
-                             << ctx.sql;
-            }
-            pop->fn = reinterpret_cast<int8_t*>(symbol->getAddress());
-            ctx.schema = pop->output_schema;
         }
     }
     return true;

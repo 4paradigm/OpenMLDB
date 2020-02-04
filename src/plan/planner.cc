@@ -43,7 +43,10 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
     node::SelectPlanNode *select_plan = (node::SelectPlanNode *)plan_tree;
     const node::NodePointVector &table_ref_list = root->GetTableRefList();
     if (table_ref_list.empty()) {
-        return CreateConstExprSelectPlan(root, plan_tree, status);
+        status.msg =
+            "can not create select plan node with empty table references";
+        status.code = common::kSQLError;
+        return status.code;
     }
     if (table_ref_list.size() > 1) {
         status.msg =
@@ -161,46 +164,6 @@ int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
 
     return 0;
 }
-
-int Planner::CreateConstExprSelectPlan(const node::SQLNode *select_tree,
-                              PlanNode *plan_tree,
-                              Status &status) {  // NOLINT (runtime/references)
-    const node::SelectStmt *root = (const node::SelectStmt *)select_tree;
-    node::SelectPlanNode *select_plan = (node::SelectPlanNode *)plan_tree;
-    const node::NodePointVector &table_ref_list = root->GetTableRefList();
-
-    node::PlanNode *current_node = select_plan;
-
-    if (!root->GetWindowList().empty()) {
-        status.msg =
-            "can not create const expr select plan node based on windows";
-        status.code = common::kUnSupport;
-        return status.code;
-    }
-
-    // prepare project list plan node
-    const node::NodePointVector &select_expr_list = root->GetSelectList();
-    if (false == select_expr_list.empty()) {
-        ::fesql::node::ProjectListPlanNode* const_project_list = node_manager_->MakeConstProjectListPlanNode();
-        for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
-            auto expr = select_expr_list[pos];
-            node::ProjectPlanNode *project_node_ptr =
-                (node::ProjectPlanNode *)(node_manager_->MakePlanNode(
-                    node::kProject));
-
-            CreateProjectPlanNode(expr, pos, "",
-                                  project_node_ptr, status);
-            if (0 != status.code) {
-                return status.code;
-            }
-            const_project_list->AddProject(project_node_ptr);
-        }
-        current_node->AddChild(const_project_list);
-    }
-
-    return 0;
-}
-
 int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
                                    Status &status) {
     bool negtive = false;

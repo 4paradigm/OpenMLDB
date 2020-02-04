@@ -91,28 +91,6 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COUNT(*) FROM t1;"));
 
 INSTANTIATE_TEST_CASE_P(
-    ConstExprParse, SqlParserTest,
-    testing::Values(
-        "SELECT 1 + 2 as col12 ;",
-        "SELECT 1 - 2 as col12 ;",
-        "SELECT 1 * 2 as col12 ;",
-        "SELECT 1 / 2 as col12 ;",
-        "SELECT 4 % 3 as col12 ;",
-        "SELECT 1 = 1 as col12 ;",
-        "SELECT 1 == 1 as col12 ;",
-        "SELECT 1 < 2 as col12 ;",
-        "SELECT 1 > 2 as col12 ;",
-        "SELECT 1 <= 2 as col12 ;",
-        "SELECT 1 != 2 as col12 ;",
-        "SELECT 1 >= 2 as col12 ;",
-        "SELECT 1 >= 2 && 1 != 2 as col12;",
-        "SELECT 1 >= 2 and 1 != 2 as col12 ;",
-        "SELECT 1 >= 2 || 1 != 2 as col12 ;",
-        "SELECT 1 >= 2 or 1 != 2 as col12 ;",
-        "SELECT !(1>= 2) as col12;",
-        "SELECT 1;"));
-
-INSTANTIATE_TEST_CASE_P(
     UDFParse, SqlParserTest,
     testing::Values(
         // simple udf

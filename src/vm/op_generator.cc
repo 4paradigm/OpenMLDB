@@ -157,11 +157,7 @@ bool OpGenerator::RoutingNode(
         case ::fesql::node::kProjectList: {
             const ::fesql::node::ProjectListPlanNode* ppn =
                 (const ::fesql::node::ProjectListPlanNode*)node;
-            if (ppn->IsConstExpr()) {
-                GenConstProject(ppn, module, &cur_op, status);
-            } else {
-                GenProject(ppn, db, module, &cur_op, status);
-            }
+            GenProject(ppn, db, module, &cur_op, status);
             break;
         }
         case ::fesql::node::kPlanTypeMerge: {
@@ -236,74 +232,6 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
         sop->output_schema.push_back(table_status->table_def.columns(i));
     }
     *op = sop;
-    return true;
-}
-
-bool OpGenerator::GenConstProject(
-    const ::fesql::node::ProjectListPlanNode* node,
-    ::llvm::Module* module, OpNode** op,
-    Status& status) {  // NOLINT
-    if (node == NULL || module == NULL || nullptr == op) {
-        status.code = common::kNullPointer;
-        status.msg = "input args has null";
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-
-    // TODO(wangtaize) use ops end op output schema
-    ::fesql::codegen::RowFnLetIRBuilder builder(nullptr, module, false);
-    std::string fn_name = nullptr == node->GetW() ? "__internal_sql_codegen"
-                                                  : "__internal_sql_codegen_" +
-                                                        node->GetW()->GetName();
-    std::vector<::fesql::type::ColumnDef> output_schema;
-
-    bool ok = builder.Build(fn_name, node, output_schema);
-
-    if (!ok) {
-        status.code = common::kCodegenError;
-        status.msg = "fail to run row fn builder";
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-
-    uint32_t output_size = 0;
-    for (uint32_t i = 0; i < output_schema.size(); i++) {
-        ::fesql::type::ColumnDef& column = output_schema[i];
-
-        DLOG(INFO) << "output : " << column.name()
-                   << " offset: " << output_size;
-        switch (column.type()) {
-            case ::fesql::type::kInt16: {
-                output_size += 2;
-                break;
-            }
-            case ::fesql::type::kInt32:
-            case ::fesql::type::kFloat: {
-                output_size += 4;
-                break;
-            }
-            case ::fesql::type::kInt64:
-            case ::fesql::type::kDouble:
-            case ::fesql::type::kVarchar: {
-                output_size += 8;
-                break;
-            }
-            default: {
-                status.code = common::kNullPointer;
-                status.msg =
-                    "not supported column type" + Type_Name(column.type());
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-        }
-    }
-    ConstProjectOp* pop = new ConstProjectOp();
-    pop->type = kOpProject;
-    pop->output_schema = output_schema;
-    pop->fn_name = fn_name;
-    pop->fn = NULL;
-    *op = pop;
-    DLOG(INFO) << "project output size " << output_size;
     return true;
 }
 

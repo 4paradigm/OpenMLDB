@@ -576,11 +576,6 @@ stmt:   select_stmt
 
 
 select_stmt:
-	SELECT opt_target_list
-		{
-			$$ = node_manager->MakeSelectStmtNode($2);
-		}
-	|
     SELECT opt_all_clause opt_target_list FROM table_references window_clause limit_clause
             {
                 $$ = node_manager->MakeSelectStmtNode($3, $5, $6, $7);
