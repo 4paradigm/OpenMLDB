@@ -231,5 +231,47 @@ FROM t2 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS BETWEEN 3000 PR
 ```
 
 
+## UDF
+### 算术表达式
+```python
+def test(int:a):int
+    return a+1
+end
+```
+### 逻辑和关系表达式
+```python
+def test(int:a):int
+    return a>1
+end
+```
+### 条件表达式
+```python
+def test(int:a):int
+    if a > 1 
+        return 1
+    else
+        return 0
+end
+```
+
+### 循环表达式
+```python
+def test(int:a):int
+    i = 0
+    result = 0
+    while(i < 100)
+        result += i
+        i += 1
+end
+
+def test(list<int>:elements):int
+    result = 0
+    for x in elements
+        result += x
+end
+```
+
+
+
 
 
