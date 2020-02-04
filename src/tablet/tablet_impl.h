@@ -203,7 +203,7 @@ public:
             Closure* done);
 
     void GetAllSnapshotOffset(RpcController* controller,
-            const ::rtidb::api::GeneralRequest* request,
+            const ::rtidb::api::EmptyRequest* request,
             ::rtidb::api::TableSnapshotOffsetResponse* response,
             Closure* done);
 

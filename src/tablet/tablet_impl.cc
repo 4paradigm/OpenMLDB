@@ -2873,7 +2873,7 @@ int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, rtidb::common:
 
 }
 void TabletImpl::GetAllSnapshotOffset(RpcController* controller,
-           const ::rtidb::api::GeneralRequest* request,
+           const ::rtidb::api::EmptyRequest* request,
            ::rtidb::api::TableSnapshotOffsetResponse* response,
            Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -2896,7 +2896,7 @@ void TabletImpl::GetAllSnapshotOffset(RpcController* controller,
     std::string msg;
     for (auto iter = tid_pid.begin(); iter != tid_pid.end(); iter++) {
         uint32_t tid = iter->first;
-        auto table = response->add_table();
+        auto table = response->add_tables();
         table->set_tid(tid);
         for (auto pid : iter->second) {
             uint64_t term = 0 , offset = 0;

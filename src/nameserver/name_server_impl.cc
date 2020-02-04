@@ -294,7 +294,7 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
             }
             for (const auto& part : table.table_partition()) {
                 if (parts.find(part.pid()) == parts.end()) {
-                    PDLOG(WARNING, "table [%s] pid [%u] partition lerader is offline", table.name().c_str(), part.pid());
+                    PDLOG(WARNING, "table [%s] pid [%u] partition leader is offline", table.name().c_str(), part.pid());
                     continue; // leader partition is offline, can't add talbe replica
                 }
                 for (auto& meta : part.partition_meta()) {
@@ -305,15 +305,14 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                             break;
                         }
                         auto endpoint_iter = pid_endpoint.find(part.pid());
-                        if (endpoint_iter != pid_endpoint.end()) {
-                            if (meta.endpoint() == endpoint_iter->second) {
-                                break;
-                            } else {
-                                PDLOG(INFO, "table [%s] pid[%u] will remove endpoint %s", table.name().c_str(), part.pid(), endpoint_iter->second.c_str());
-                                DelReplicaRemoteOP(endpoint_iter->second, table.name(), part.pid());
-                            }
-                        } else {
+                        if (endpoint_iter == pid_endpoint.end()) {
                             break;
+                        }
+                        if (meta.endpoint() == endpoint_iter->second) {
+                            break;
+                        } else {
+                            PDLOG(INFO, "table [%s] pid[%u] will remove endpoint %s", table.name().c_str(), part.pid(), endpoint_iter->second.c_str());
+                            DelReplicaRemoteOP(endpoint_iter->second, table.name(), part.pid());
                         }
                         iter->second->CopyFrom(meta);
 
