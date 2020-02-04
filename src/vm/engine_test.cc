@@ -440,6 +440,7 @@ TEST_P(EngineTest, test_normal) {
     free(output[1]);
 }
 
+
 TEST_F(EngineTest, test_window_agg) {
     std::shared_ptr<TableStatus> status(new TableStatus());
     BuildTableDef(status->table_def);

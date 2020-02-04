@@ -43,7 +43,7 @@ class SqlParserTest : public ::testing::TestWithParam<std::string> {
 };
 
 INSTANTIATE_TEST_CASE_P(
-    StringReturn, SqlParserTest,
+    SqlParse, SqlParserTest,
     testing::Values(
         "SELECT COL1 FROM t1;", "SELECT COL1 as c1 FROM t1;",
         "SELECT COL1 c1 FROM t1;", "SELECT t1.COL1 FROM t1;",
@@ -71,6 +71,20 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 - COL2 as col12 FROM t1;",
         "SELECT COL1 * COL2 as col12 FROM t1;",
         "SELECT COL1 / COL2 as col12 FROM t1;",
+        "SELECT COL1 % COL2 as col12 FROM t1;",
+        "SELECT COL1 = COL2 as col12 FROM t1;",
+        "SELECT COL1 == COL2 as col12 FROM t1;",
+        "SELECT COL1 < COL2 as col12 FROM t1;",
+        "SELECT COL1 > COL2 as col12 FROM t1;",
+        "SELECT COL1 <= COL2 as col12 FROM t1;",
+        "SELECT COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 && COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 and COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 || COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 or COL1 != COL2 as col12 FROM t1;",
+        "SELECT !(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;",
+
         "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
         "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
