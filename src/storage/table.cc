@@ -208,7 +208,7 @@ std::unique_ptr<TableIterator> Table::NewTraverseIterator() {
 
 // Iterator
 
-TableIterator::TableIterator(Iterator<uint64_t, DataBlock*>* ts_it)
+TableIterator::TableIterator(base::Iterator<uint64_t, DataBlock*>* ts_it)
     : ts_it_(ts_it) {}
 
 TableIterator::TableIterator(Segment** segments, uint32_t seg_cnt)
@@ -333,7 +333,7 @@ const Slice TableIterator::GetValue() {
 
 const uint64_t TableIterator::GetKey() { return ts_it_->GetKey(); }
 
-Slice TableIterator::GetPK()  {
+const Slice TableIterator::GetPK()  {
     if (pk_it_ == NULL) {
         return Slice();
     }

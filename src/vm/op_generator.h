@@ -26,7 +26,6 @@
 #include "node/sql_node.h"
 #include "catalog/catalog.h"
 #include "vm/op.h"
-#include "vm/table_mgr.h"
 
 namespace fesql {
 namespace vm {
@@ -40,7 +39,7 @@ struct OpVector {
 
 class OpGenerator {
  public:
-    explicit OpGenerator(const std::shared_ptr<catalog::Catalog>& catalog);
+    explicit OpGenerator(const std::shared_ptr<Catalog>& catalog);
     ~OpGenerator();
 
     bool Gen(const ::fesql::node::PlanNodeList& trees, const std::string& db,
@@ -85,7 +84,7 @@ class OpGenerator {
                         Status& status);  // NOLINT
 
  private:
-    const std::shared_ptr<catalog::Catalog> catalog_;
+    const std::shared_ptr<Catalog> catalog_;
 };
 
 }  // namespace vm

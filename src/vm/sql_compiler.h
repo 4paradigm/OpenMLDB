@@ -27,7 +27,6 @@
 #include "proto/common.pb.h"
 #include "vm/jit.h"
 #include "vm/op_generator.h"
-#include "vm/table_mgr.h"
 #include "vm/catalog.h"
 
 namespace fesql {

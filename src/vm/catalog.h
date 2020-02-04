@@ -37,17 +37,17 @@ class Iterator {
 
     virtual ~Iterator(){}
 
-    void Seek(uint64_t ts) = 0;
+    virtual void Seek(uint64_t ts) = 0;
 
-    void SeekToFirst() = 0;
+    virtual void SeekToFirst() = 0;
 
-    bool Valid() = 0;
+    virtual bool Valid() = 0;
 
-    void Next() = 0;
+    virtual void Next() = 0;
 
-    const base::Slice GetValue() = 0;
+    virtual const base::Slice GetValue() = 0;
 
-    const uint64_t GetKey() = 0;
+    virtual const uint64_t GetKey() = 0;
 };
 
 class WindowIterator {
@@ -55,12 +55,12 @@ class WindowIterator {
  public:
     WindowIterator() {}
     virtual ~WindowIterator() {}
-    void Seek(const std::string& key) = 0;
-    void SeekToFirst() = 0;
-    void Next() = 0;
-    bool Valid() = 0;
-    std::unique_ptr<Iterator> GetValue() = 0;
-    const base::Slice GetKey() = 0;
+    virtual void Seek(const std::string& key) = 0;
+    virtual void SeekToFirst() = 0;
+    virtual void Next() = 0;
+    virtual bool Valid() = 0;
+    virtual std::unique_ptr<Iterator> GetValue() = 0;
+    virtual const base::Slice GetKey() = 0;
 };
 
 class TableHandler {

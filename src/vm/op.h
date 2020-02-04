@@ -24,7 +24,7 @@
 #include <set>
 #include "proto/type.pb.h"
 #include "storage/window.h"
-#include "catalog/catalog.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace vm {

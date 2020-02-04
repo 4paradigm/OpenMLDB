@@ -27,7 +27,7 @@
 namespace fesql {
 namespace vm {
 
-OpGenerator::OpGenerator(const std::shared_ptr<catalog::Catalog>& catalog) : catalog_(catalog) {}
+OpGenerator::OpGenerator(const std::shared_ptr<Catalog>& catalog) : catalog_(catalog) {}
 
 OpGenerator::~OpGenerator() {}
 
@@ -213,7 +213,7 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
         return false;
     }
 
-    std::shared_ptr<catalog::TableHandler> table_handler = catalog_->GetTable(db, node->GetTable());
+    std::shared_ptr<TableHandler> table_handler = catalog_->GetTable(db, node->GetTable());
     if (!table_handler) {
         status.code = common::kTableNotFound;
         status.msg = "fail to find table " + node->GetTable();
@@ -241,7 +241,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
         LOG(WARNING) << status.msg;
         return false;
     }
-    std::shared_ptr<catalog::TableHandler> table_handler = catalog_->GetTable(db, node->GetTable());
+    std::shared_ptr<TableHandler> table_handler = catalog_->GetTable(db, node->GetTable());
     if (!table_handler) {
         status.code = common::kTableNotFound;
         status.msg = "fail to find table " + node->GetTable();
@@ -255,7 +255,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
     std::string fn_name = nullptr == node->GetW() ? "__internal_sql_codegen"
                                                   : "__internal_sql_codegen_" +
                                                         node->GetW()->GetName();
-    catalog::Schema output_schema;
+    Schema output_schema;
 
     bool ok = builder.Build(fn_name, node, output_schema);
 

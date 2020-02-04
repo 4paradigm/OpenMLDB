@@ -26,7 +26,7 @@
 #include "base/spin_lock.h"
 #include "proto/common.pb.h"
 #include "vm/sql_compiler.h"
-#include "catalog/catalog.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace vm {
