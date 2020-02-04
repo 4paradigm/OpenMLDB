@@ -56,6 +56,7 @@ class NodeManager {
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
+    ProjectListPlanNode *MakeConstProjectListPlanNode();
     ProjectListPlanNode *MakeProjectListPlanNode(const std::string &table,
                                                  WindowPlanNode *w);
     WindowPlanNode *MakeWindowPlanNode(int64_t start, int64_t end,
@@ -68,6 +69,7 @@ class NodeManager {
                                          const std::string &w);
     // Make SQLxxx Node
     SQLNode *MakeSQLNode(const SQLNodeType &type);
+    SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_);
     SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
                                 SQLNodeList *tableref_list_ptr,
                                 SQLNodeList *window_clause_ptr,

@@ -440,6 +440,90 @@ TEST_P(EngineTest, test_normal) {
     free(output[1]);
 }
 
+TEST_P(EngineTest, test_const_expr_normal) {
+    ParamType mode = GetParam();
+    int8_t* row1 = NULL;
+    uint32_t size1 = 0;
+    BuildBuf(&row1, &size1);
+    std::shared_ptr<TableStatus> status(new TableStatus());
+    BuildTableDef(status->table_def);
+    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col0");
+    index->set_second_key("col5");
+    std::unique_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, status->table_def));
+    ASSERT_TRUE(table->Init());
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
+    ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
+    status->table = std::move(table);
+
+    TableMgrImpl table_mgr(status);
+    const std::string sql =
+        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
+        "d\nend\n%%sql\nSELECT '0', test(32,32), 16, '1';";
+    Engine engine(&table_mgr);
+    RunSession session;
+    base::Status get_status;
+    bool ok = engine.Get(sql, "db", session, get_status);
+    ASSERT_TRUE(ok);
+
+    DLOG(INFO) << "RUN IN MODE" << mode;
+    std::vector<int8_t*> output;
+    int32_t ret = -1;
+    switch (mode) {
+        case RUN:
+            ret = session.Run(output, 10);
+            break;
+        case RUNBATCH:
+            ret = session.RunBatch(output, 10);
+            break;
+        default: {
+            ASSERT_TRUE(false);
+        }
+    }
+
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1, output.size());
+
+    ::fesql::type::TableDef output_schema;
+    for (auto column : session.GetSchema()) {
+        ::fesql::type::ColumnDef* column_def = output_schema.add_columns();
+        *column_def = column;
+    }
+    std::unique_ptr<storage::RowView> row_view =
+        std::move(std::unique_ptr<storage::RowView>(
+            new storage::RowView(output_schema.columns())));
+
+    row_view->Reset(output[0]);
+    {
+        char* v;
+        uint32_t size;
+        row_view->GetString(0, &v, &size);
+        ASSERT_EQ("0", std::string(v, size));
+    }
+    {
+        int32_t v;
+        row_view->GetInt32(1, &v);
+        ASSERT_EQ(32 + 32 + 1, v);
+    }
+    {
+        int16_t v;
+        row_view->GetInt16(2, &v);
+        ASSERT_EQ(16, v);
+    }
+    {
+        char* v;
+        uint32_t size;
+        row_view->GetString(3, &v, &size);
+        ASSERT_EQ("1", std::string(v, size));
+    }
+
+    free(output[0]);
+    free(output[1]);
+}
+
 TEST_F(EngineTest, test_window_agg) {
     std::shared_ptr<TableStatus> status(new TableStatus());
     BuildTableDef(status->table_def);

@@ -69,8 +69,14 @@ newline [\n\r]
 non_newline [^\n\r]
 comment ("#"{non_newline}*)
 indent {space}*
-self [,()\[\].\:\+\-\*\/\%\^\<\>\=]
-
+less_equals		"<="
+greater_equals	">="
+not_equals		"!="
+equals  "=="
+assign  "="
+and "&&"
+or  "||"
+self [,()\[\].\:\+\-\*\/\%\^\<\>]
 
 %x COMMENT
 %s FUN
@@ -97,7 +103,7 @@ ANALYZE	{ return ANALYZE; }
      * return special AND token if BETWEEN seen
      */
 <BTWMODE>AND	{ BEGIN INITIAL; return AND; }
-AND	{ return ANDOP; }
+AND { return ANDOP; }
 ANY     { return ANY; }
 AS	{ return AS; }
 ASC	{ return ASC; }
@@ -229,7 +235,7 @@ ON[ \t\n]+DUPLICATE { return ONDUPLICATE; } /* hack due to limited lookahead */
 OPTIMIZE	{ return OPTIMIZE; }
 OPTION	{ return OPTION; }
 OPTIONALLY	{ return OPTIONALLY; }
-OR	{ return OR; }
+OR { return OR; }
 ORDER	{ return ORDER; }
 OUT	{ return OUT; }
 OUTER	{ return OUTER; }
@@ -397,9 +403,27 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 
  /* operators */
+
+{and}	{ return ANDOP; }
+{or}	{ return OR; }
+{less_equals}	{
+					return LESS_EQUALS;
+				}
+
+{greater_equals} {
+					return GREATER_EQUALS;
+				}
+
+{not_equals}	{
+					/* We accept both "<>" and "!=" as meaning NOT_EQUALS */
+					return NOT_EQUALS;
+				}
 [-+&~|^/%*(),.;!]   { return yytext[0]; }
 
-
+<INITIAL>":="     { return ASSIGN; }
+<FUN>{assign} { return ASSIGN; }
+<INITIAL>{assign} { return EQUALS; }
+{equals} { return EQUALS; }
 <FUN>[A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
                           return VARNAME; }
 
@@ -424,7 +448,7 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 @`[^`\n]*$ { yyerror("unterminated quoted user variable %s", yytext); }
 @'[^'\n]*$ { yyerror("unterminated quoted user variable %s", yytext); }
 
-":="     { return ASSIGN; }
+
 
 <FUN>{identifier} {
             yylval->strval = strdup(yytext);

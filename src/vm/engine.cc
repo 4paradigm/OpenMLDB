@@ -100,6 +100,29 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                 out_buffers.push_back(in_row);
                 break;
             }
+            case kOpConstProject: {
+                ConstProjectOp* project_op = reinterpret_cast<ConstProjectOp*>(op);
+
+                // op function
+                int32_t (*udf)(int8_t*, int32_t, int8_t**) =
+                (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
+
+                // out buffers
+                std::vector<::fesql::storage::Row>& out_buffers =
+                    temp_buffers[project_op->idx];
+                int8_t* output = NULL;
+                size_t output_size = 0;
+                // handle window
+                uint32_t ret = udf(nullptr, 0, &output);
+                if (ret != 0) {
+                    LOG(WARNING) << "fail to run udf " << ret;
+                    return 1;
+                }
+                out_buffers.push_back(
+                    ::fesql::storage::Row{.buf = output, .size = output_size});
+                // TODO(chenjing): handle multi keys
+                break;
+            }
             case kOpProject: {
                 ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
                 std::shared_ptr<TableStatus> status =
@@ -372,6 +395,29 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
             case kOpScan: {
                 break;
             }
+            case kOpConstProject: {
+                ConstProjectOp* project_op = reinterpret_cast<ConstProjectOp*>(op);
+
+                // op function
+                int32_t (*udf)(int8_t*, int32_t, int8_t**) =
+                (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
+
+                // out buffers
+                std::vector<::fesql::storage::Row>& out_buffers =
+                    temp_buffers[project_op->idx];
+                int8_t* output = NULL;
+                size_t output_size = 0;
+                // handle window
+                uint32_t ret = udf(nullptr, 0, &output);
+                if (ret != 0) {
+                    LOG(WARNING) << "fail to run udf " << ret;
+                    return 1;
+                }
+                out_buffers.push_back(
+                    ::fesql::storage::Row{.buf = output, .size = output_size});
+                // TODO(chenjing): handle multi keys
+                break;
+            }
             case kOpProject: {
                 ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
                 // table
@@ -548,6 +594,29 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                         .size = value.size()});
                     it->Next();
                 }
+                break;
+            }
+            case kOpConstProject: {
+                ConstProjectOp* project_op = reinterpret_cast<ConstProjectOp*>(op);
+
+                // op function
+                int32_t (*udf)(int8_t*, int32_t, int8_t**) =
+                (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
+
+                // out buffers
+                std::vector<::fesql::storage::Row>& out_buffers =
+                    temp_buffers[project_op->idx];
+                int8_t* output = NULL;
+                size_t output_size = 0;
+                // handle window
+                uint32_t ret = udf(nullptr, 0, &output);
+                if (ret != 0) {
+                    LOG(WARNING) << "fail to run udf " << ret;
+                    return 1;
+                }
+                out_buffers.push_back(
+                    ::fesql::storage::Row{.buf = output, .size = output_size});
+                // TODO(chenjing): handle multi keys
                 break;
             }
             case kOpProject: {
@@ -817,6 +886,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     }
     return 0;
 }
+
 
 }  // namespace vm
 }  // namespace fesql

@@ -45,6 +45,11 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
     }
 }
 
+SQLNode *NodeManager::MakeSelectStmtNode(SQLNodeList *select_list_ptr) {
+    SelectStmt *node_ptr = new SelectStmt();
+    FillSQLNodeList2NodeVector(select_list_ptr, node_ptr->GetSelectList());
+    return RegisterNode(node_ptr);
+}
 SQLNode *NodeManager::MakeSelectStmtNode(SQLNodeList *select_list_ptr,
                                          SQLNodeList *tableref_list_ptr,
                                          SQLNodeList *window_clause_ptr,
@@ -52,13 +57,10 @@ SQLNode *NodeManager::MakeSelectStmtNode(SQLNodeList *select_list_ptr,
     SelectStmt *node_ptr = new SelectStmt();
 
     FillSQLNodeList2NodeVector(select_list_ptr, node_ptr->GetSelectList());
-    // 释放SQLNodeList
 
     FillSQLNodeList2NodeVector(tableref_list_ptr, node_ptr->GetTableRefList());
-    // 释放SQLNodeList
 
     FillSQLNodeList2NodeVector(window_clause_ptr, node_ptr->GetWindowList());
-    // 释放SQLNodeList
     node_ptr->SetLimit(limit_ptr);
 
     return RegisterNode(node_ptr);
@@ -352,19 +354,23 @@ ScanPlanNode *NodeManager::MakeIndexScanPlanNode(const std::string &table) {
 }
 
 WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
-    WindowPlanNode * node_ptr = new WindowPlanNode(w_id);
+    WindowPlanNode *node_ptr = new WindowPlanNode(w_id);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(
     const std::string &table, WindowPlanNode *w_ptr) {
-
     ProjectListPlanNode *node_ptr =
         new ProjectListPlanNode(table, w_ptr, w_ptr != nullptr);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
+ProjectListPlanNode *NodeManager::MakeConstProjectListPlanNode() {
+    ProjectListPlanNode *node_ptr = new ProjectListPlanNode();
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
 PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
     PlanNode *node_ptr;
     switch (type) {
@@ -513,7 +519,6 @@ SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
         return RegisterNode(node_ptr);
     }
 }
-
 
 }  // namespace node
 }  // namespace fesql

@@ -84,7 +84,7 @@ typedef void* yyscan_t;
 %nonassoc IN IS LIKE REGEXP
 %left NOT '!'
 %left BETWEEN
-%left <subtok> COMPARISON /* = <> < > <= >= <=> */
+%left '<' '>' EQUALS LESS_EQUALS GREATER_EQUALS NOT_EQUALS
 %left '|'
 %left '&'
 %left <subtok> SHIFT /* << >> */
@@ -477,7 +477,7 @@ fn_def :
             $$ = node_manager->MakeFnDefNode($2, $4, $7);
        };
 
-assign_stmt: VARNAME '=' expr {
+assign_stmt: VARNAME ASSIGN expr {
             $$ = node_manager->MakeAssignNode($1, $3);
            };
 
@@ -576,6 +576,11 @@ stmt:   select_stmt
 
 
 select_stmt:
+	SELECT opt_target_list
+		{
+			$$ = node_manager->MakeSelectStmtNode($2);
+		}
+	|
     SELECT opt_all_clause opt_target_list FROM table_references window_clause limit_clause
             {
                 $$ = node_manager->MakeSelectStmtNode($3, $5, $6, $7);
@@ -701,27 +706,27 @@ column_index_item_list:    column_index_item
                     }
                     ;
 
-column_index_item:  KEY '=' column_name
+column_index_item:  KEY EQUALS column_name
                     {
                         $$ = node_manager->MakeIndexKeyNode($3);
                     }
-                    | KEY '=' '(' column_index_key ')'
+                    | KEY EQUALS '(' column_index_key ')'
                     {
                         $$ = $4;
                     }
-                    | TS '=' column_name
+                    | TS EQUALS column_name
                     {
                         $$ = node_manager->MakeIndexTsNode($3);
                     }
-                    | TTL '=' primary_time
+                    | TTL EQUALS primary_time
                     {
                         $$ = node_manager->MakeIndexTTLNode($3);
                     }
-                    | VERSION '=' column_name
+                    | VERSION EQUALS column_name
                     {
                         $$ = node_manager->MakeIndexVersionNode($3);
                     }
-                    | VERSION '=' '(' column_name ',' INTNUM ')'
+                    | VERSION EQUALS '(' column_name ',' INTNUM ')'
                     {
                         $$ = node_manager->MakeIndexVersionNode($4, $6);
                     }
@@ -880,6 +885,50 @@ expr:	column_ref   { $$ = $1; }
      | expr '/' expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpFDiv);
+     }
+     | expr '%' expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
+     }
+     | expr '>' expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpGt);
+     }
+     | expr '<' expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLt);
+     }
+     | expr LESS_EQUALS expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLe);
+     }
+     | expr EQUALS expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpEq);
+     }
+     | expr NOT_EQUALS expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpNeq);
+     }
+     | expr GREATER_EQUALS expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpGe);
+     }
+     | expr ANDOP expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAnd);
+     }
+     | expr OR expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpOr);
+     }
+     | '!' expr
+     {
+        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
+     }
+     | NOT expr
+     {
+        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
      }
      | '(' expr ')'
      {

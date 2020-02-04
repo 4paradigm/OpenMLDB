@@ -33,6 +33,7 @@ enum OpType {
     kOpScan,
     kOpLimit,
     kOpMerge,
+    kOpConstProject,
 };
 
 struct OpNode {
@@ -74,6 +75,11 @@ struct ProjectOp : public OpNode {
     std::string fn_name;
     bool window_agg;
     ScanInfo w;
+};
+struct ConstProjectOp: public OpNode {
+    ~ConstProjectOp() {}
+    int8_t* fn;
+    std::string fn_name;
 };
 
 struct LimitOp : public OpNode {
