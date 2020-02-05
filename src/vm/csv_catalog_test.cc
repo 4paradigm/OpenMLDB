@@ -18,6 +18,7 @@
 #include "vm/csv_catalog.h"
 #include "gtest/gtest.h"
 #include "arrow/filesystem/localfs.h"
+#include "vm/engine.h"
 
 namespace fesql {
 namespace vm {
@@ -28,6 +29,26 @@ class CSVCatalogTest : public ::testing::Test {
     ~CSVCatalogTest() {}
 };
 
+TEST_F(CSVCatalogTest, test_engine) {
+    std::string db_dir = "./db_dir";
+    std::shared_ptr<CSVCatalog> catalog(new CSVCatalog(db_dir));
+    ASSERT_TRUE(catalog->Init());
+    Engine engine(catalog);
+    std::string sql = "select col1 from table1 limit 1;";
+    std::string db = "db1";
+    RunSession session;
+    base::Status status;
+    bool ok = engine.Get(sql, db, session, status);
+    ASSERT_TRUE(ok);
+    std::vector<int8_t*> buf;
+    session.Run(buf, 1);
+}
+
+TEST_F(CSVCatalogTest, test_catalog_init) {
+    std::string db_dir = "./db_dir";
+    CSVCatalog catalog(db_dir);
+    ASSERT_TRUE(catalog.Init());
+}
 
 TEST_F(CSVCatalogTest, test_handler_init) { 
     std::string table_dir = "./table1";

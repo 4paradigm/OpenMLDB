@@ -27,7 +27,7 @@
 namespace fesql {
 namespace codegen {
 
-BufIRBuilder::BufIRBuilder(const catalog::Schema& schema,
+BufIRBuilder::BufIRBuilder(const vm::Schema& schema,
                            ::llvm::BasicBlock* block, 
                            ScopeVar* scope_var)
     : schema_(schema), block_(block), sv_(scope_var), types_() {
@@ -214,7 +214,7 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
     return BuildLoadOffset(builder, row_ptr, llvm_offse, llvm_type, output);
 }
 
-BufNativeIRBuilder::BufNativeIRBuilder(const catalog::Schema& schema,
+BufNativeIRBuilder::BufNativeIRBuilder(const vm::Schema& schema,
                                        ::llvm::BasicBlock* block,
                                        ScopeVar* scope_var)
     : schema_(schema), block_(block), sv_(scope_var), types_() {
@@ -561,7 +561,7 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
 
 BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
     const std::map<uint32_t, ::llvm::Value*>* outputs,
-    const catalog::Schema& schema,
+    const vm::Schema& schema,
     ::llvm::BasicBlock* block)
     : outputs_(outputs),
       schema_(schema),

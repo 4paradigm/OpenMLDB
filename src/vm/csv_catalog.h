@@ -231,15 +231,29 @@ class CSVTableHandler : public TableHandler {
 //       -data.csv
 //       -index
 //     t2
+
+typedef std::map<std::string, std::map<std::string, std::shared_ptr<CSVTableHandler> > > CSVTables;
+typedef std::map<std::string, std::shared_ptr<type::Database>> Databases;
+
 class CSVCatalog : public Catalog {
 
  public:
-    CSVCatalog(const std::string& root_dir) {}
-    ~CSVCatalog() {}
+    CSVCatalog(const std::string& root_dir);
+
+    ~CSVCatalog();
+
     bool Init();
-    std::shared_ptr<type::Database> GetDatabase(const std::string& db) {
-    }
-    std::shared_ptr<TableHandler> GetTable(const std::string& db, const std::string& table_name) {}
+
+    std::shared_ptr<type::Database> GetDatabase(const std::string& db);
+    std::shared_ptr<TableHandler> GetTable(const std::string& db, 
+            const std::string& table_name);
+ private:
+    bool InitDatabase(const std::string& db);
+ private:
+    std::string root_dir_;
+    CSVTables tables_;
+    Databases dbs_;
+    std::shared_ptr<::arrow::fs::FileSystem> fs_;
 };
 
 }  // namespace vm

@@ -25,6 +25,7 @@
 #include "arrow/csv/api.h"
 #include "arrow/status.h"
 #include "arrow/type.h"
+#include "base/fs_util.h"
 
 namespace fesql {
 namespace vm {
@@ -221,6 +222,61 @@ bool CSVTableHandler::InitSchema() {
     bool ok = parser.Parse(schema_path, &schema_);
     return ok;
 }
+
+
+CSVCatalog::CSVCatalog(const std::string& root_dir): root_dir_(root_dir),
+tables_(), dbs_(), fs_(new arrow::fs::LocalFileSystem()){}
+
+CSVCatalog::~CSVCatalog() {}
+
+bool CSVCatalog::Init() {
+    std::vector<std::string> db_names;
+    bool ok = base::ListDir(root_dir_, db_names);
+    if (!ok) {
+        LOG(WARNING) << "fail to read root dir " << root_dir_;
+        return false;
+    }
+    auto it = db_names.begin();
+    for (; it != db_names.end(); ++it) {
+        ok = InitDatabase(*it);
+        if (!ok) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool CSVCatalog::InitDatabase(const std::string& db) {
+    std::string db_path = root_dir_ + "/" + db;
+    std::vector<std::string> table_names;
+    bool ok = base::ListDir(db_path, table_names);
+    if (!ok) {
+        LOG(WARNING) << "fail to read db dir " << db_path;
+        return false;
+    }
+    auto it = table_names.begin();
+    for(; it != table_names.end(); ++it) {
+        std::string table_name = *it;
+        std::string table_dir = db_path + "/" + table_name;
+        std::shared_ptr<CSVTableHandler> table_handler(new CSVTableHandler(
+                    table_dir, table_name, db, fs_));
+        ok = table_handler->Init();
+        if (!ok) {
+            LOG(WARNING) << "load table " << table_name << " failed";
+            return false;
+        }
+        LOG(INFO) << "load table " << table_name << " for db "<< db << " done";
+        tables_[db].insert(std::make_pair(table_name, table_handler));
+    }
+    return true;
+}
+
+std::shared_ptr<TableHandler> CSVCatalog::GetTable(const std::string& db,
+        const std::string& table) {
+    return tables_[db][table];
+}
+
+std::shared_ptr<type::Database> CSVCatalog::GetDatabase(const std::string& db) {}
 
 }  // namespace vm
 }  // namespace fesql

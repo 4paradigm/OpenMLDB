@@ -6,10 +6,10 @@ add_library(fesql_vm STATIC jit.cc op_generator.cc sql_compiler.cc engine.cc)
 add_library(fesql_csv_catalog STATIC csv_catalog.cc)
 
 set(vm_deps_libs fesql_storage fesql_vm fesql_parser fesql_planner fesql_codegen fesql_proto
-    fesql_node fesql_udf)
+    fesql_node fesql_udf fesql_base)
 
 add_executable(csv_catalog_test csv_catalog_test.cc)
-target_link_libraries(csv_catalog_test  fesql_csv_catalog fesql_storage fesql_vm fesql_proto ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
+target_link_libraries(csv_catalog_test  fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
 add_test(csv_catalog_test csv_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/csv_catalog_test.xml)
 list(APPEND test_list csv_catalog_test)
 

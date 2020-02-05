@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <vector>
 #include "proto/type.pb.h"
-#include "storage/type_ir_builder.h"
 #include "storage/window.h"
 namespace fesql {
 namespace udf {

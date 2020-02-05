@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 #include "codegen/scope_var.h"
-#include "catalog/catalog.h"
+#include "vm/catalog.h"
 #include "codegen/row_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
@@ -35,7 +35,7 @@ namespace codegen {
 class BufIRBuilder : public RowDecodeIRBuilder {
  public:
 
-    BufIRBuilder(const catalog::Schema& schema, 
+    BufIRBuilder(const vm::Schema& schema, 
                  ::llvm::BasicBlock* block,
                  ScopeVar* scope_var);
 
@@ -61,7 +61,7 @@ class BufIRBuilder : public RowDecodeIRBuilder {
 
  private:
 
-    catalog::Schema schema_;
+    vm::Schema schema_;
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
     typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
@@ -73,7 +73,7 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
  public:
     BufNativeEncoderIRBuilder(
         const std::map<uint32_t, ::llvm::Value*>* outputs,
-        const catalog::Schema& schema,
+        const vm::Schema& schema,
         ::llvm::BasicBlock* block);
 
     ~BufNativeEncoderIRBuilder();
@@ -97,7 +97,7 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
 
  private:
     const std::map<uint32_t, ::llvm::Value*>* outputs_;
-    catalog::Schema schema_;
+    vm::Schema schema_;
     uint32_t str_field_start_offset_;
     std::vector<uint32_t> offset_vec_;
     uint32_t str_field_cnt_;
@@ -107,7 +107,7 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
 
 class BufNativeIRBuilder : public RowDecodeIRBuilder {
  public:
-    BufNativeIRBuilder(const catalog::Schema& schema,
+    BufNativeIRBuilder(const vm::Schema& schema,
                        ::llvm::BasicBlock* block, 
                        ScopeVar* scope_var);
     ~BufNativeIRBuilder();
@@ -140,7 +140,7 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
                            ::llvm::Value** output);
 
  private:
-    catalog::Schema schema_;
+    vm::Schema schema_;
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
     typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>

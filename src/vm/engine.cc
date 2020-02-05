@@ -435,7 +435,6 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                     auto it = project_op->table_handler->GetIterator();
                     // iterator whole table
                     it->SeekToFirst();
-
                     uint64_t count = 0;
                     while (it->Valid() && count++ < min) {
                         base::Slice value = it->GetValue();

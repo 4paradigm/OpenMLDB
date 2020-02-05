@@ -19,8 +19,6 @@ export CXXFLAGS="-O3 -fPIC"
 export CFLAGS="-O3 -fPIC"
 export PATH=${DEPS_PREFIX}/bin:$PATH
 mkdir -p ${DEPS_SOURCE} ${DEPS_PREFIX}
-yum install -y autoconf
-yum install -y bc
 cd ${DEPS_SOURCE}
 
 
@@ -398,11 +396,10 @@ else
         wget --no-check-certificate -O thrift-0.12.0.tar.gz  http://pkg.4paradigm.com/fesql/thrift-0.12.0.tar.gz
     fi
     tar -zxf thrift-0.12.0.tar.gz
-    cd thrift-0.12.0 && ./configure --enable-shared=no --enable-tests=no --with-python=no --with-nodejs=no --prefix=${DEPS_PREFIX} && make -j4 && make install
+    cd thrift-0.12.0 && ./configure --with-openssl=${DEPS_PREFIX}  --enable-shared=no --enable-tests=no --with-python=no --with-nodejs=no --prefix=${DEPS_PREFIX} && make -j4 && make install
     cd ${DEPS_SOURCE}
     touch thrift_succ
 fi
-
 
 if [ -f "glog_succ" ]
 then 
@@ -440,4 +437,4 @@ else
     echo "brpc done"
 fi
 
-cd ${WORK_DIR} && rm -rf ${DEPS_SOURCE}
+#cd ${WORK_DIR} && rm -rf ${DEPS_SOURCE}

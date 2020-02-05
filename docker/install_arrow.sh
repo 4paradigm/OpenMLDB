@@ -19,7 +19,6 @@ export CXXFLAGS="-O3 -fPIC"
 export CFLAGS="-O3 -fPIC"
 export PATH=${DEPS_PREFIX}/bin:$PATH
 mkdir -p ${DEPS_SOURCE} ${DEPS_PREFIX}
-yum install -y bc
 cd ${DEPS_SOURCE}
 
 if [ -f "arrow_succ" ]
@@ -46,4 +45,4 @@ else
     touch arrow_succ
 fi
 
-cd ${WORK_DIR} && rm -rf ${DEPS_SOURCE}
+#cd ${WORK_DIR} && rm -rf ${DEPS_SOURCE}
