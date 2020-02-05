@@ -3464,8 +3464,11 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
             break;
         }
         ::rtidb::nameserver::TableInfo table_info_no_alias_pair(*table_info);
-        if (mode_.load(std::memory_order_acquire) == kLEADER && nsc_.size() > 0) {
+        if (mode_.load(std::memory_order_acquire) == kLEADER) {
             std::lock_guard<std::mutex> lock(mu_);
+            if (nsc_.size() == 0) {
+                break;
+            }
             for (auto& kv : nsc_) {
                 AliasPair* alias_pair = table_info->add_alias_pair();
                 alias_pair->set_alias(kv.first);
