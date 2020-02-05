@@ -150,13 +150,13 @@ message PartSnapshotOffset {
     optional uint64 offset = 3;
 }
 message TableSnapshotOffsetResponse {
-    message table {
+    message Table {
         optional uint32 tid = 1;
         repeated PartSnapshotOffset parts = 2;
     }
     optional int32 code = 1;
     optional string msg = 2;
-    repeated table tables = 3;
+    repeated Table tables = 3;
 }
 
 message Manifest {
