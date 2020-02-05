@@ -57,7 +57,7 @@ private:
                                std::atomic<uint64_t>* g_succ_cnt,
                                std::atomic<uint64_t>* g_failed_cnt);
 
-   uint64_t CollectDeletedKey();                           
+   uint64_t CollectDeletedKey(uint64_t end_offset);
 
 private:
     LogParts* log_part_;

@@ -266,7 +266,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::a
     return 0;
 }
 
-uint64_t MemTableSnapshot::CollectDeletedKey() {
+uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
     deleted_keys_.clear();
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset_);
@@ -327,6 +327,185 @@ uint64_t MemTableSnapshot::CollectDeletedKey() {
     return cur_offset;
 }
 
+int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset, uint64_t end_offset) {
+    if (making_snapshot_.load(std::memory_order_acquire)) {
+        PDLOG(INFO, "snapshot is doing now!");
+        return 0;
+    }
+    making_snapshot_.store(true, std::memory_order_release);
+    std::string now_time = ::rtidb::base::GetNowTime();
+    std::string snapshot_name = now_time.substr(0, now_time.length() - 2) + ".sdb";
+    std::string snapshot_name_tmp = snapshot_name + ".tmp";
+    std::string full_path = snapshot_path_ + snapshot_name;
+    std::string tmp_file_path = snapshot_path_ + snapshot_name_tmp;
+    FILE* fd = fopen(tmp_file_path.c_str(), "ab+");
+    if (fd == NULL) {
+        PDLOG(WARNING, "fail to create file %s", tmp_file_path.c_str());
+        making_snapshot_.store(false, std::memory_order_release);
+        return -1;
+    }
+    uint64_t collected_offset = CollectDeletedKey();
+    uint64_t start_time = ::baidu::common::timer::now_time();
+    WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd);
+    ::rtidb::api::Manifest manifest;
+    bool has_error = false;
+    uint64_t write_count = 0;
+    uint64_t expired_key_num = 0;
+    uint64_t deleted_key_num = 0;
+    uint64_t last_term = 0;
+    int result = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
+    if (result == 0) {
+        // filter old snapshot
+        if (TTLSnapshot(table, manifest, wh, write_count, expired_key_num, deleted_key_num) < 0) {
+            has_error = true;
+        }
+        last_term = manifest.term();
+        PDLOG(DEBUG, "old manifest term is %lu", last_term);
+    } else if (result < 0) {
+        // parse manifest error
+        has_error = true;
+    }
+
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    log_reader.SetOffset(offset_);
+    uint64_t cur_offset = offset_;
+    std::string buffer;
+    while (!has_error && cur_offset < collected_offset) {
+        buffer.clear();
+        ::rtidb::base::Slice record;
+        ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        if (status.ok()) {
+            ::rtidb::api::LogEntry entry;
+            if (!entry.ParseFromString(record.ToString())) {
+                PDLOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]",
+                      ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+                has_error = true;
+                break;
+            }
+            if (entry.log_index() <= cur_offset) {
+                continue;
+            }
+            if (cur_offset + 1 != entry.log_index()) {
+                PDLOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
+                continue;
+            }
+            cur_offset = entry.log_index();
+            if (entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete) {
+                continue;
+            }
+            if (entry.has_term()) {
+                last_term = entry.term();
+            }
+            if (entry.dimensions_size() == 0) {
+                std::string combined_key = entry.pk() + "|0";
+                auto iter = deleted_keys_.find(combined_key);
+                if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
+                    PDLOG(DEBUG, "delete key %s  offset %lu", entry.pk().c_str(), entry.log_index());
+                    deleted_key_num++;
+                    continue;
+                }
+            } else {
+                std::set<int> deleted_pos_set;
+                for (int pos = 0; pos < entry.dimensions_size(); pos++) {
+                    std::string combined_key = entry.dimensions(pos).key() + "|" +
+                                               std::to_string(entry.dimensions(pos).idx());
+                    auto iter = deleted_keys_.find(combined_key);
+                    if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
+                        deleted_pos_set.insert(pos);
+                    }
+                }
+                if (!deleted_pos_set.empty()) {
+                    if ((int)deleted_pos_set.size() == entry.dimensions_size()) {
+                        deleted_key_num++;
+                        continue;
+                    } else {
+                        ::rtidb::api::LogEntry tmp_entry(entry);
+                        entry.clear_dimensions();
+                        for (int pos = 0; pos < tmp_entry.dimensions_size(); pos++) {
+                            if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
+                                ::rtidb::api::Dimension* dimension = entry.add_dimensions();
+                                dimension->CopyFrom(tmp_entry.dimensions(pos));
+                            }
+                        }
+                        std::string tmp_buf;
+                        entry.SerializeToString(&tmp_buf);
+                        record.reset(tmp_buf.data(), tmp_buf.size());
+                    }
+                }
+            }
+            if (table->IsExpire(entry)) {
+                expired_key_num++;
+                continue;
+            }
+            ::rtidb::base::Status status = wh->Write(record);
+            if (!status.ok()) {
+                PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]",
+                      tmp_file_path.c_str(), status.ToString().c_str());
+                has_error = true;
+                break;
+            }
+            write_count++;
+            if ((write_count + expired_key_num + deleted_key_num) % KEY_NUM_DISPLAY == 0) {
+                PDLOG(INFO, "has write key num[%lu] expired key num[%lu]", write_count, expired_key_num);
+            }
+        } else if (status.IsEof()) {
+            continue;
+        } else if (status.IsWaitRecord()) {
+            int end_log_index = log_reader.GetEndLogIndex();
+            int cur_log_index = log_reader.GetLogIndex();
+            // judge end_log_index greater than cur_log_index
+            if (end_log_index >= 0 && end_log_index > cur_log_index) {
+                log_reader.RollRLogFile();
+                PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] end_log_index[%d] cur_offset[%lu]",
+                      tid_, pid_, cur_log_index, end_log_index, cur_offset);
+                continue;
+            }
+            PDLOG(DEBUG, "has read all record!");
+            break;
+        } else {
+            PDLOG(WARNING, "fail to get record. status is %s", status.ToString().c_str());
+            has_error = true;
+            break;
+        }
+    }
+    if (wh != NULL) {
+        wh->EndLog();
+        delete wh;
+        wh = NULL;
+    }
+    int ret = 0;
+    if (has_error) {
+        unlink(tmp_file_path.c_str());
+        ret = -1;
+    } else {
+        if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
+            if (GenManifest(snapshot_name, write_count, cur_offset, last_term) == 0) {
+                // delete old snapshot
+                if (manifest.has_name() && manifest.name() != snapshot_name) {
+                    PDLOG(DEBUG, "old snapshot[%s] has deleted", manifest.name().c_str());
+                    unlink((snapshot_path_ + manifest.name()).c_str());
+                }
+                uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
+                PDLOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu."
+                            "use %lu second. write key %lu expired key %lu deleted key %lu",
+                      snapshot_name.c_str(), offset_, cur_offset, consumed, write_count, expired_key_num, deleted_key_num);
+                offset_ = cur_offset;
+                out_offset = cur_offset;
+            } else {
+                PDLOG(WARNING, "GenManifest failed. delete snapshot file[%s]", full_path.c_str());
+                unlink(full_path.c_str());
+                ret = -1;
+            }
+        } else {
+            PDLOG(WARNING, "rename[%s] failed", snapshot_name.c_str());
+            unlink(tmp_file_path.c_str());
+            ret = -1;
+        }
+    }
+    deleted_keys_.clear();
+    making_snapshot_.store(false, std::memory_order_release);
+    return ret;
+}
 int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     if (making_snapshot_.load(std::memory_order_acquire)) {
         PDLOG(INFO, "snapshot is doing now!");
