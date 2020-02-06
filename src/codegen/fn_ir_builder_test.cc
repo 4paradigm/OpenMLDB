@@ -72,7 +72,8 @@ TEST_F(FnIRBuilderTest, test_add_int32) {
     auto m = make_unique<Module>("custom_fn", *ctx);
     FnIRBuilder fn_ir_builder(m.get());
     std::cout << *trees[0] << std::endl;
-    bool ok = fn_ir_builder.Build((node::FnNodeList *)trees[0]);
+    bool ok =
+        fn_ir_builder.Build((node::FnNodeFnDef *)trees[0], status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
@@ -89,15 +90,16 @@ TEST_F(FnIRBuilderTest, test_bracket_int32) {
     const std::string test =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a*(b+1)\n    return c\nend";
     node::NodePointVector trees;
+    node::PlanNodeList plan_trees;
     base::Status status;
     int ret = parser_->parse(test, trees, manager_, status);
     ASSERT_EQ(0, ret);
-
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("custom_fn", *ctx);
     FnIRBuilder fn_ir_builder(m.get());
-    bool ok = fn_ir_builder.Build((node::FnNodeList *)trees[0]);
+    bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef *>(trees[0]),
+                                  status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());

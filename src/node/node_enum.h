@@ -57,6 +57,7 @@ enum SQLNodeType {
 
     kFn,
     kFnDef,
+    kFnHeader,
     kFnValue,
     kFnIfElseBlock,
     kFnIfBlock,

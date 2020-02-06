@@ -128,7 +128,8 @@ class NodeManager {
 
     FnNode *MakeFnNode(const SQLNodeType &type);
     FnNodeList *MakeFnListNode();
-    FnNode *MakeFnDefNode(const std::string &name, FnNodeList *plist,
+    FnNode *MakeFnDefNode(const FnNode* header, const FnNodeList* block);
+    FnNode *MakeFnHeaderNode(const std::string &name, FnNodeList *plist,
                           const DataType return_type);
 
     FnNode *MakeFnParaNode(const std::string &name, const DataType &para_type);

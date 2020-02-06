@@ -171,10 +171,7 @@ void FuncDefPlanNode::Print(std::ostream &output,
                             const std::string &orgTab) const {
     PlanNode::Print(output, orgTab);
     output << "\n";
-    PrintSQLNode(output, orgTab, fn_def_, "fun_def", false);
-    output << "\n";
-    PrintSQLNode(output, orgTab, block_, "block", true);
-    output << "\n";
+    PrintSQLNode(output, orgTab, fn_def_, "fun_def", true);
 }
 }  // namespace node
 }  // namespace fesql

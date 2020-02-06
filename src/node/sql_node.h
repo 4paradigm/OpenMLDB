@@ -924,11 +924,11 @@ class FnParaNode : public FnNode {
     std::string name_;
     DataType para_type_;
 };
-class FnNodeFnDef : public FnNode {
+class FnNodeFnHeander : public FnNode {
  public:
-    FnNodeFnDef(const std::string &name, FnNodeList *parameters,
-                const DataType ret_type)
-        : FnNode(kFnDef),
+    FnNodeFnHeander(const std::string &name, FnNodeList *parameters,
+                    const DataType ret_type)
+        : FnNode(kFnHeader),
           name_(name),
           parameters_(parameters),
           ret_type_(ret_type) {}
@@ -938,6 +938,15 @@ class FnNodeFnDef : public FnNode {
     const FnNodeList *parameters_;
     const DataType ret_type_;
 };
+class FnNodeFnDef : public FnNode {
+ public:
+    FnNodeFnDef(const FnNodeFnHeander *header, const FnNodeList *block)
+        : FnNode(kFnDef), header_(header), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnNodeFnHeander *header_;
+    const FnNodeList *block_;
+};
+
 class FnAssignNode : public FnNode {
  public:
     explicit FnAssignNode(const std::string &name, ExprNode *expression)
@@ -1000,7 +1009,7 @@ class FnIfElseBlock : public FnNode {
           else_block_(else_block) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     const FnIfBlock *if_block_;
-    std::vector<FnNode*> elif_blocks_;
+    std::vector<FnNode *> elif_blocks_;
     const FnElseBlock *else_block_;
 };
 class FnReturnStmt : public FnNode {

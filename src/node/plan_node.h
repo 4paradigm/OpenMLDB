@@ -354,22 +354,11 @@ class FuncDefPlanNode : public LeafPlanNode {
     FuncDefPlanNode() : LeafPlanNode(kPlanTypeFuncDef) {}
     ~FuncDefPlanNode() {}
 
-    void SetDef(const FnNodeFnDef* fn_def) {
+    void SetDef(const FnNodeFnDef * fn_def) {
         fn_def_ = fn_def;
     }
-    void SetBlock(const FnNodeList *fn_node_list) {
-        block_ = fn_node_list;
-    }
-
-    const FnNodeFnDef *GetFnDef() const {
-        return fn_def_;
-    }
-    const FnNodeList *GetBlock() const { return block_; }
-    const FnNodeList *GetFnNodeList() const { return block_; }
     void Print(std::ostream &output, const std::string &orgTab) const;
- private:
-    const FnNodeFnDef * fn_def_;
-    const FnNodeList *block_;
+    const FnNodeFnDef* fn_def_;
 };
 
 void PrintPlanVector(std::ostream &output, const std::string &tab,

@@ -46,6 +46,15 @@ class FeSQLParser {
               node::NodePointVector &trees,  // NOLINT (runtime/references)
               node::NodeManager *manager,
               base::Status &status);  // NOLINT (runtime/references)
+ private:
+    int CreateFnBlock(std::vector<node::FnNode *> vector, int start, int end,
+                      int32_t indent, node::FnNodeList *block,
+                      node::NodeManager *node_manager,
+                      base::Status &status);  // NOLINT (runtime/references)
+    int ReflectFnDefNode(node::FnNodeFnDef *fn_def,
+                         node::NodeManager *node_manager,
+                         base::Status &status);  // NOLINT (runtime/references)
+    // NOLINT
 };
 }  // namespace parser
 }  // namespace fesql

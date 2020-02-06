@@ -19,10 +19,10 @@
 #define SRC_CODEGEN_FN_IR_BUILDER_H_
 
 #include <vector>
+#include "base/status.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/Module.h"
 #include "node/sql_node.h"
-#include "node/plan_node.h"
 
 namespace fesql {
 namespace codegen {
@@ -33,29 +33,35 @@ class FnIRBuilder {
     // TODO(wangtaize) provide a module manager
     explicit FnIRBuilder(::llvm::Module* module);
     ~FnIRBuilder();
-    bool Build(const ::fesql::node::FnNodeList *root);
-    bool Build(const ::fesql::node::FuncDefPlanNode* node);
+    bool Build(const ::fesql::node::FnNodeFnDef* node,
+               base::Status& status);  // NOLINT
 
-    bool BuildFnHead(const ::fesql::node::FnNodeFnDef* fn_def,
-                     ::llvm::Function** fn);
+    bool BuildFnHead(const ::fesql::node::FnNodeFnHeander* fn_def,
+                     ::llvm::Function** fn, base::Status& status);  // NOLINE
 
     bool BuildStmt(int32_t pindent, const ::fesql::node::FnNode* node,
-                   ::llvm::BasicBlock* block);
+                   ::llvm::BasicBlock* block, base::Status& status);  // NOLINE
 
     bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node,
-                         ::llvm::BasicBlock* block);
+                         ::llvm::BasicBlock* block,
+                         base::Status& status);  // NOLINE
 
     bool BuildReturnStmt(const ::fesql::node::FnReturnStmt* node,
-                         ::llvm::BasicBlock* block);
+                         ::llvm::BasicBlock* block,
+                         base::Status& status);  // NOLINE
 
  private:
     bool MapLLVMType(const ::fesql::node::DataType& fn_type,
                      ::llvm::Type** type);
 
     bool BuildParas(const ::fesql::node::FnNodeList* node,
-                    std::vector<::llvm::Type*>& paras);  // NOLINT
+                    std::vector<::llvm::Type*>& paras,
+                    base::Status& status);  // NOLINE
 
-    bool FillArgs(const ::fesql::node::FnNodeList* node, ::llvm::Function* fn);
+    bool FillArgs(const ::fesql::node::FnNodeList* node, ::llvm::Function* fn,
+                  base::Status& status);  // NOLINE
+    bool BuildBlock(node::FnNode* node, llvm::BasicBlock* block,
+                    base::Status& status);  // NOLINE
 
  private:
     ::llvm::Module* module_;

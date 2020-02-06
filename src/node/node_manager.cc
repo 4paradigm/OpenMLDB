@@ -404,13 +404,19 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
     return node_ptr;
 }
 
-FnNode *NodeManager::MakeFnDefNode(const std::string &name, FnNodeList *plist,
-                                   DataType return_type) {
-    ::fesql::node::FnNodeFnDef *fn_def =
-        new FnNodeFnDef(name, plist, return_type);
-    return RegisterNode(fn_def);
+FnNode *NodeManager::MakeFnHeaderNode(const std::string &name,
+                                      FnNodeList *plist, DataType return_type) {
+    ::fesql::node::FnNodeFnHeander *fn_header =
+        new FnNodeFnHeander(name, plist, return_type);
+    return RegisterNode(fn_header);
 }
 
+FnNode *NodeManager::MakeFnDefNode(const FnNode *header,
+                                   const FnNodeList *block) {
+    ::fesql::node::FnNodeFnDef *fn_def =
+        new FnNodeFnDef(dynamic_cast<const FnNodeFnHeander*>(header), block);
+    return RegisterNode(fn_def);
+}
 FnNode *NodeManager::MakeAssignNode(const std::string &name,
                                     ExprNode *expression) {
     ::fesql::node::FnAssignNode *fn_assign =

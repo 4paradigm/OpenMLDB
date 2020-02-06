@@ -361,6 +361,9 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kFnDef:
             output = "kFnDef";
             break;
+        case kFnHeader:
+            output = "kFnHeader";
+            break;
         case kFnPara:
             output = "kFnPara";
             break;
@@ -554,7 +557,7 @@ void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, DataTypeName(para_type_), name_, true);
 }
-void FnNodeFnDef::Print(std::ostream &output,
+void FnNodeFnHeander::Print(std::ostream &output,
                         const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -565,6 +568,15 @@ void FnNodeFnDef::Print(std::ostream &output,
     output << "\n";
     PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(parameters_),
                  "parameters", true);
+}
+void FnNodeFnDef::Print(std::ostream &output,
+                        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, header_, "header", false);
+    output << "\n";
+    PrintSQLNode(output, tab, block_, "block", true);
 }
 void FnNodeList::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);

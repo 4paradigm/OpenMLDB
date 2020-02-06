@@ -46,9 +46,183 @@ int FeSQLParser::parse(
 
     if (0 != status.code) {
         LOG(WARNING) << status.msg;
+        return ret;
+    }
+
+    for (node::SQLNode *tree : trees) {
+        if (nullptr == tree) {
+            status.code = common::kSQLError;
+            status.msg = "fail to parse: parsed tree is null";
+            return -1;
+        }
+        switch (tree->GetType()) {
+            case node::kFnDef: {
+                ReflectFnDefNode(dynamic_cast<node::FnNodeFnDef *>(tree),
+                                 manager, status);
+                if (status.code != common::kOk) {
+                    return -1;
+                }
+            }
+            default: {
+                // do nothing
+            }
+        }
     }
     return ret;
 }
 
+int FeSQLParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
+                                  node::NodeManager *node_manager,
+                                  base::Status &status) {  // NOLINT
+    if (nullptr == fn_def->header_) {
+        status.code = common::kFunError;
+        status.msg = "fail to create function def plan, first fn node is null";
+        return -1;
+    }
+    if (nullptr == fn_def->block_ || 0 == fn_def->block_->children.size()) {
+        status.code = common::kFunError;
+        status.msg =
+            "fail to create function def plan, function block is null or empty";
+        return -1;
+    }
+
+    node::FnNodeList *fn_block = node_manager->MakeFnListNode();
+    int pos = CreateFnBlock(fn_def->block_->children, 0,
+                            fn_def->block_->children.size(), 4, fn_block,
+                            node_manager, status);
+
+    if (pos < fn_def->block_->children.size()) {
+        status.code = common::kFunError;
+        status.msg =
+            "fail to create function def plan, statement intend not match";
+        LOG(WARNING) << status.msg;
+        return -1;
+    }
+    if (status.code != common::kOk) {
+        return -1;
+    }
+    fn_def->block_ = fn_block;
+    return 0;
+}
+
+int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
+                               int start, int end, int32_t indent,
+                               node::FnNodeList *block,
+                               node::NodeManager *node_manager,
+                               base::Status &status) {
+    if (nullptr == block) {
+        status.msg = "fail to create fn block node: block null";
+        status.code = common::kSQLError;
+        LOG(WARNING) << status.msg;
+        return -1;
+    }
+
+    int pos = start;
+    node::FnIfElseBlock *if_else_block = nullptr;
+    while (pos < end) {
+        node::FnNode *node = statements[pos];
+        if (indent < node->indent) {
+            status.code = common::kFunError;
+            status.msg = "fail to create block: fn node indent " +
+                         std::to_string(node->indent) + " not match " +
+                         std::to_string(indent);
+            LOG(WARNING) << status.msg << "\n" << *node;
+            return -1;
+        }
+
+        if (indent > node->indent) {
+            break;
+        }
+
+        pos++;
+        switch (node->GetType()) {
+            case node::kFnReturnStmt:
+            case node::kFnAssignStmt:
+                if (nullptr != if_else_block) {
+                    block->AddChild(if_else_block);
+                    if_else_block = nullptr;
+                }
+                block->AddChild(node);
+                break;
+
+            case node::kFnIfStmt: {
+                if (nullptr != if_else_block) {
+                    block->AddChild(if_else_block);
+                    if_else_block = nullptr;
+                }
+                node::FnNodeList *inner_block = node_manager->MakeFnListNode();
+                pos = CreateFnBlock(statements, pos, end, node->indent + 4,
+                                    inner_block, node_manager, status);
+                if (status.code != common::kOk) {
+                    return -1;
+                }
+
+                node::FnIfNode *if_node = dynamic_cast<node::FnIfNode *>(node);
+                node::FnIfBlock *if_block =
+                    node_manager->MakeFnIfBlock(if_node, inner_block);
+                // start if_elif_else block
+                if_else_block =
+                    node_manager->MakeFnIfElseBlock(if_block, nullptr);
+                break;
+            }
+            case node::kFnElifStmt: {
+                if (nullptr == if_else_block) {
+                    status.code = common::kFunError;
+                    status.msg =
+                        "fail to create block: elif block not match if "
+                        "block";
+                    LOG(WARNING) << status.msg;
+                    return -1;
+                }
+                node::FnNodeList *inner_block = node_manager->MakeFnListNode();
+                pos = CreateFnBlock(statements, pos, end, node->indent + 4,
+                                    inner_block, node_manager, status);
+                if (status.code != common::kOk) {
+                    return -1;
+                }
+
+                node::FnElifNode *elif_node =
+                    dynamic_cast<node::FnElifNode *>(node);
+
+                node::FnElifBlock *elif_block =
+                    node_manager->MakeFnElifBlock(elif_node, inner_block);
+                if_else_block->elif_blocks_.push_back(elif_block);
+                break;
+            }
+            case node::kFnElseStmt: {
+                if (nullptr == if_else_block) {
+                    status.code = common::kFunError;
+                    status.msg =
+                        "fail to create block: else block not match if "
+                        "block";
+                    LOG(WARNING) << status.msg;
+                    return -1;
+                }
+                node::FnNodeList *inner_block = node_manager->MakeFnListNode();
+                pos = CreateFnBlock(statements, pos, end, node->indent + 4,
+                                    inner_block, node_manager, status);
+                if (status.code != common::kOk) {
+                    return -1;
+                }
+                node::FnElseBlock *else_block =
+                    node_manager->MakeFnElseBlock(inner_block);
+                if_else_block->else_block_ = else_block;
+                // end if_elif_else block
+                block->AddChild(if_else_block);
+                if_else_block = nullptr;
+                break;
+            }
+            default: {
+                status.code = common::kFunError;
+                status.msg =
+                    "fail to create block, unrecognized statement type " +
+                    node::NameOfSQLNodeType(node->GetType());
+                LOG(WARNING) << status.msg;
+                return -1;
+            }
+        }
+    }
+    return pos;
+}
 }  // namespace parser
 }  // namespace fesql

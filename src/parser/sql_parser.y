@@ -345,8 +345,8 @@ typedef void* yyscan_t;
  /* udf */
 %type <type> types
 %type <fnnode> grammar line_list
-			   fun_def_block fn_def_indent_op  func_stmt
-               fn_def return_stmt assign_stmt para
+			   fun_def_block fn_header_indent_op  func_stmt
+               fn_header return_stmt assign_stmt para
                if_stmt elif_stmt else_stmt
 %type<fnlist> plist stmt_block func_stmts
 
@@ -418,21 +418,17 @@ line_list:
         ;
 NEWLINES: NEWLINE {}
 	| NEWLINES NEWLINE {}
-fun_def_block : fn_def_indent_op NEWLINES stmt_block {
-            $$ = node_manager->MakeFnListNode();
-            ((::fesql::node::FnNodeList*)$$)->AddChild($1);
-            for (auto item: ((::fesql::node::FnNodeList*)$3)->GetChildren()) {
-                ((::fesql::node::FnNodeList*)$$)->AddChild(item);
-            }
+fun_def_block : fn_header_indent_op NEWLINES stmt_block {
+            $$ = node_manager->MakeFnDefNode($1, $3);
         }
         ;
 
 
-fn_def_indent_op:
-        fn_def {
+fn_header_indent_op:
+        fn_header {
             $$ = $1;
         }
-        |INDENT fn_def {$$=$2; $$->indent=$1;}
+        |INDENT fn_header {$$=$2; $$->indent=$1;}
         ;
 
 
@@ -490,9 +486,9 @@ func_stmt:
             $$ = $2;
          };
 
-fn_def :
+fn_header :
        DEF VARNAME'(' plist ')' ':' types {
-            $$ = node_manager->MakeFnDefNode($2, $4, $7);
+            $$ = node_manager->MakeFnHeaderNode($2, $4, $7);
        };
 
 assign_stmt: VARNAME ASSIGN expr {

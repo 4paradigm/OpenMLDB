@@ -44,9 +44,9 @@ class ArithmeticIRBuilder {
                               ::llvm::Value** casted_left,
                               ::llvm::Value** casted_right,
                               ::fesql::base::Status& status);  // NOLINT
-    CastExprIRBuilder _cast_expr_ir_builder;
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
+    CastExprIRBuilder _cast_expr_ir_builder;
 };
 }  // namespace codegen
 }  // namespace fesql

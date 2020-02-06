@@ -505,8 +505,9 @@ TEST_F(PlannerTest, FunDefPlanTest) {
     ASSERT_EQ(node::kPlanTypeFuncDef, plan_ptr->GetType());
     node::FuncDefPlanNode *plan =
         dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
-    ASSERT_TRUE(nullptr != plan->GetFnDef());
-    ASSERT_TRUE(nullptr != plan->GetBlock());
+    ASSERT_TRUE(nullptr != plan->fn_def_);
+    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
+    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
 }
 
 TEST_F(PlannerTest, FunDefAndSelectPlanTest) {
@@ -536,8 +537,9 @@ TEST_F(PlannerTest, FunDefAndSelectPlanTest) {
     node::FuncDefPlanNode *plan =
         dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
 
-    ASSERT_TRUE(nullptr != plan->GetFnDef());
-    ASSERT_TRUE(nullptr != plan->GetBlock());
+    ASSERT_TRUE(nullptr != plan->fn_def_);
+    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
+    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
 
     // validate select plan
     plan_ptr = trees[1];
@@ -591,12 +593,13 @@ TEST_F(PlannerTest, FunDefIfElsePlanTest) {
     node::FuncDefPlanNode *plan =
         dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
 
-    ASSERT_TRUE(nullptr != plan->GetFnDef());
-    ASSERT_TRUE(nullptr != plan->GetBlock());
-    ASSERT_EQ(3, plan->GetBlock()->children.size());
-    ASSERT_EQ(node::kFnAssignStmt, plan->GetBlock()->children[0]->GetType());
-    ASSERT_EQ(node::kFnAssignStmt, plan->GetBlock()->children[1]->GetType());
-    ASSERT_EQ(node::kFnIfElseBlock, plan->GetBlock()->children[2]->GetType());
+    ASSERT_TRUE(nullptr != plan->fn_def_);
+    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
+    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
+    ASSERT_EQ(3, plan->fn_def_->block_->children.size());
+    ASSERT_EQ(node::kFnAssignStmt, plan->fn_def_->block_->children[0]->GetType());
+    ASSERT_EQ(node::kFnAssignStmt, plan->fn_def_->block_->children[1]->GetType());
+    ASSERT_EQ(node::kFnIfElseBlock, plan->fn_def_->block_->children[2]->GetType());
 
 
     // validate select plan
