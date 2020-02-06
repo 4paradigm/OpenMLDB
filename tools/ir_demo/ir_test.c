@@ -11,5 +11,11 @@
 
 
 float add(float a, float b) {
-    return (a==b) + 1.0;
+    if (a>0) {
+        return a;
+    } else if (a > b) {
+        return b;
+    } else {
+        return 0.0;
+    }
 }

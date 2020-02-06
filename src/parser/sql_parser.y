@@ -347,6 +347,7 @@ typedef void* yyscan_t;
 %type <fnnode> grammar line_list
 			   fun_def_block fn_def_indent_op  func_stmt
                fn_def return_stmt assign_stmt para
+               if_stmt elif_stmt else_stmt
 %type<fnlist> plist stmt_block func_stmts
 
 %type <expr> var expr primary_time column_ref call_expr expr_const frame_expr
@@ -470,7 +471,24 @@ func_stmt:
             $2->indent = $1;
             $$ = $2;
          }
-         ;
+         |INDENT if_stmt
+         {
+         	emit("INDENT enter if stmt");
+            $2->indent = $1;
+            $$ = $2;
+         }
+         |INDENT elif_stmt
+         {
+         	emit("INDENT enter if stmt");
+            $2->indent = $1;
+            $$ = $2;
+         }
+         |INDENT else_stmt
+         {
+         	emit("INDENT enter else stmt");
+            $2->indent = $1;
+            $$ = $2;
+         };
 
 fn_def :
        DEF VARNAME'(' plist ')' ':' types {
@@ -485,6 +503,19 @@ return_stmt:
            RETURN expr {
             $$ = node_manager->MakeReturnStmtNode($2);
            };
+
+if_stmt:
+		IF expr {
+			$$ = node_manager->MakeIfStmtNode($2);
+		};
+elif_stmt:
+		ELSEIF expr {
+			$$ = node_manager->MakeElifStmtNode($2);
+		};
+else_stmt:
+		ELSE {
+			$$ = node_manager->MakeElseStmtNode();
+		}
 
 types:  I32
         {

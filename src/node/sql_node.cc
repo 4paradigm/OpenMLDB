@@ -370,6 +370,27 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kFnAssignStmt:
             output = "kFnAssignStmt";
             break;
+        case kFnIfStmt:
+            output = "kFnIfStmt";
+            break;
+        case kFnElifStmt:
+            output = "kFnElseifStmt";
+            break;
+        case kFnElseStmt:
+            output = "kFnElseStmt";
+            break;
+        case kFnIfBlock:
+            output = "kFnIfBlock";
+            break;
+        case kFnElseBlock:
+            output = "kFnElseBlock";
+            break;
+        case kFnIfElseBlock:
+            output = "kFnIfElseBlock";
+            break;
+        case kFnElifBlock:
+            output = "kFnElIfBlock";
+            break;
         case kFnValue:
             output = "kFnValue";
             break;
@@ -566,6 +587,59 @@ void FnReturnStmt::Print(std::ostream &output,
     output << "\n";
     PrintSQLNode(output, tab, return_expr_, "return", true);
 }
+
+void FnIfNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, expression_, "if", true);
+}
+void FnElifNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, expression_, "elif", true);
+}
+void FnElseNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    output << "\n";
+}
+
+void FnIfBlock::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, if_node, "if", false);
+    output << "\n";
+    PrintSQLNode(output, tab, block_, "block", true);
+}
+void FnElifBlock::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, elif_node_, "elif", false);
+    output << "\n";
+    PrintSQLNode(output, tab, block_, "block", true);
+}
+void FnElseBlock::Print(std::ostream &output,
+                        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, block_, "block", true);
+}
+void FnIfElseBlock::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, if_block_, "if", false);
+    output << "\n";
+    PrintSQLVector(output, tab, elif_blocks_, "elif_list", false);
+    output << "\n";
+    PrintSQLNode(output, tab, else_block_, "else", true);
+}
 void StructExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -575,5 +649,7 @@ void StructExpr::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNode(output, tab, methods_, "methods", true);
 }
+
+
 }  // namespace node
 }  // namespace fesql

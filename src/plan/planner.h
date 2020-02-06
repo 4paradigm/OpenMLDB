@@ -70,6 +70,11 @@ class Planner {
         const node::SQLNode *root, PlanNode *plan_tree,
         Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
+    void ReflectFunctionNode(const node::FnNodeList *src,
+                             node::FnNodeList *dist, Status &status); // NOLINT (runtime/references))
+    int CreateFnBlock(std::vector<node::FnNode *> vector, int start, int end,
+                       int32_t  indent,
+                       node::FnNodeList *block, Status &status);
 };
 
 class SimplePlanner : public Planner {

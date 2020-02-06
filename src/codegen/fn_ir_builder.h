@@ -22,6 +22,7 @@
 #include "codegen/scope_var.h"
 #include "llvm/IR/Module.h"
 #include "node/sql_node.h"
+#include "node/plan_node.h"
 
 namespace fesql {
 namespace codegen {
@@ -32,7 +33,8 @@ class FnIRBuilder {
     // TODO(wangtaize) provide a module manager
     explicit FnIRBuilder(::llvm::Module* module);
     ~FnIRBuilder();
-    bool Build(const ::fesql::node::FnNodeList* node);
+    bool Build(const ::fesql::node::FnNodeList *root);
+    bool Build(const ::fesql::node::FuncDefPlanNode* node);
 
     bool BuildFnHead(const ::fesql::node::FnNodeFnDef* fn_def,
                      ::llvm::Function** fn);

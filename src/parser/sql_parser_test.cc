@@ -117,7 +117,17 @@ INSTANTIATE_TEST_CASE_P(
         "%%fun\ndef test(x:i32,y:i32):i32\n    result = 1\n\tc = x + y\n"
         "\tresult=c\n\treturn result\nend",
         "%%fun\ndef test(x:i32,y:i32):i32\n\tresult=1\n\tc = x+y\n"
-        "\tresult=c\n\treturn result\nend"));
+        "\tresult=c\n\treturn result\nend",
+        "%%fun\n"
+        "def test(x:i32,y:i32):i32\n"
+        "    if x > 1\n"
+        "    \tc=x+y\n"
+        "    elif y >1\n"
+        "    \tc=x-y\n"
+        "    else\n"
+        "    \tc=x*y\n"
+        "    return c\n"
+        "end"));
 
 INSTANTIATE_TEST_CASE_P(
     SQLCreate, SqlParserTest,

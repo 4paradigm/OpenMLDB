@@ -161,6 +161,7 @@ DROP	{ return DROP; }
 DUAL	{ return DUAL; }
 EACH	{ return EACH; }
 ELSE	{ return ELSE; }
+ELIF	{ return ELSEIF; }
 ELSEIF	{ return ELSEIF; }
 <FUN_INDENT>END {return FUNDEFEND;}
 END	{return END; }
@@ -353,7 +354,15 @@ ZEROFILL	{ return ZEROFILL; }
 <FUN_INDENT>{newline} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINE;}
 
 <FUN_INDENT>{indent} {
-        yylval->intval = strlen(yytext);
+        int space_cnt = 0;
+        for(int i=0; i < strlen(yytext); i++) {
+            if (yytext[i] == '\t') {
+                space_cnt += 4;
+            } else {
+                space_cnt += 1;
+            }
+        }
+        yylval->intval = space_cnt;
         BEGIN FUN;
         return INDENT;
 }

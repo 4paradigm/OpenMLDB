@@ -947,6 +947,62 @@ class FnAssignNode : public FnNode {
     const std::string name_;
     const ExprNode *expression_;
 };
+
+class FnIfNode : public FnNode {
+ public:
+    explicit FnIfNode(const ExprNode *expression)
+        : FnNode(kFnIfStmt), expression_(expression) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const ExprNode *expression_;
+};
+class FnElifNode : public FnNode {
+ public:
+    explicit FnElifNode(ExprNode *expression)
+        : FnNode(kFnElifStmt), expression_(expression) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const ExprNode *expression_;
+};
+class FnElseNode : public FnNode {
+ public:
+    explicit FnElseNode() : FnNode(kFnElseStmt) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+};
+
+class FnIfBlock : public FnNode {
+ public:
+    FnIfBlock(const FnIfNode *node, const FnNodeList *block)
+        : FnNode(kFnIfBlock), if_node(node), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnIfNode *if_node;
+    const FnNodeList *block_;
+};
+
+class FnElifBlock : public FnNode {
+ public:
+    FnElifBlock(const FnElifNode *node, const FnNodeList *block)
+        : FnNode(kFnElifBlock), elif_node_(node), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnElifNode *elif_node_;
+    const FnNodeList *block_;
+};
+class FnElseBlock : public FnNode {
+ public:
+    FnElseBlock(const FnNodeList *block)
+        : FnNode(kFnElseBlock), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnNodeList *block_;
+};
+class FnIfElseBlock : public FnNode {
+ public:
+    FnIfElseBlock(const FnIfBlock *if_block, const FnElseBlock *else_block)
+        : FnNode(kFnIfElseBlock),
+          if_block_(if_block),
+          else_block_(else_block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnIfBlock *if_block_;
+    std::vector<FnNode*> elif_blocks_;
+    const FnElseBlock *else_block_;
+};
 class FnReturnStmt : public FnNode {
  public:
     explicit FnReturnStmt(ExprNode *return_expr)

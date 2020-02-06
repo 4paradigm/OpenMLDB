@@ -439,13 +439,13 @@ bool OpGenerator::GenLimit(const ::fesql::node::LimitPlanNode* node,
 
 bool OpGenerator::GenFnDef(::llvm::Module* module,
                            const ::fesql::node::FuncDefPlanNode* plan) {
-    if (module == NULL || plan == NULL || plan->GetFnNodeList() == NULL) {
+    if (module == NULL || plan == NULL || plan->GetFnDef() == NULL || plan->GetBlock() == NULL) {
         LOG(WARNING) << "module or node is null";
         return false;
     }
 
     ::fesql::codegen::FnIRBuilder builder(module);
-    bool ok = builder.Build(plan->GetFnNodeList());
+    bool ok = builder.Build(plan);
     if (!ok) {
         LOG(WARNING) << "fail to build fn node with line ";
     }

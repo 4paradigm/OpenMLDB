@@ -72,6 +72,48 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeList *root) {
     return true;
 }
 
+bool FnIRBuilder::Build(const ::fesql::node::FuncDefPlanNode *root) {
+    if (root == NULL || root->GetType() != ::fesql::node::kPlanTypeFuncDef) {
+        LOG(WARNING) << "node is null";
+        return false;
+    }
+    ::llvm::Function *fn = NULL;
+    ::llvm::BasicBlock *block = NULL;
+    std::stack<int32_t> indent_stack;
+    sv_.Enter("module");
+
+    const ::fesql::node::FnNodeFnDef *fn_def = root->GetFnDef();
+    sv_.Enter(fn_def->name_);
+    bool ok = BuildFnHead(fn_def, &fn);
+    if (!ok) {
+        return false;
+    }
+    block = ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
+
+    ::std::vector<::fesql::node::FnNode *>::const_iterator it =
+        root->GetBlock()->children.begin();
+    for (; it != root->GetBlock()->children.end(); ++it) {
+        ::fesql::node::FnNode *node = *it;
+        // TODO(wangtaize) use switch
+        switch (node->GetType()) {
+            case node::kFnAssignStmt:
+            case node::kFnReturnStmt: {
+                bool ok = BuildStmt(0, node, block);
+                if (!ok) {
+                    return false;
+                }
+                break;
+            }
+            default: {
+                LOG(WARNING) << "fail to codegen for unrecognized fn type " + node::NameOfSQLNodeType(node->GetType());
+                return false;
+            }
+        }
+
+    }
+    return true;
+}
+
 bool FnIRBuilder::BuildStmt(int32_t pindent, const ::fesql::node::FnNode *node,
                             ::llvm::BasicBlock *block) {
     if (node == NULL || block == NULL) {
