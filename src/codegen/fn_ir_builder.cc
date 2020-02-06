@@ -30,49 +30,6 @@ namespace codegen {
 FnIRBuilder::FnIRBuilder(::llvm::Module *module) : module_(module) {}
 
 FnIRBuilder::~FnIRBuilder() {}
-
-//bool FnIRBuilder::Build(const ::fesql::node::FnNodeList *root, base::Status &status) {
-//    if (root == NULL || root->GetType() != ::fesql::node::kFnList) {
-//        LOG(WARNING) << "node is null";
-//        return false;
-//    }
-//    ::llvm::Function *fn = NULL;
-//    ::llvm::BasicBlock *block = NULL;
-//    std::stack<int32_t> indent_stack;
-//    sv_.Enter("module");
-//    ::std::vector<::fesql::node::FnNode *>::const_iterator it =
-//        root->children.begin();
-//    for (; it != root->children.end(); ++it) {
-//        ::fesql::node::FnNode *node = *it;
-//        // TODO(wangtaize) use switch
-//        if (node->GetType() == ::fesql::node::kFnDef) {
-//            const ::fesql::node::FnNodeFnHeander *fn_def =
-//                (const ::fesql::node::FnNodeFnHeander *)node;
-//            while (indent_stack.size() > 0 &&
-//                   indent_stack.top() > fn_def->indent) {
-//                indent_stack.pop();
-//                sv_.Exit();
-//            }
-//            sv_.Enter(fn_def->name_);
-//            indent_stack.push(fn_def->indent);
-//            fn = NULL;
-//            block = NULL;
-//            bool ok = BuildFnHead(fn_def, &fn, status);
-//            if (!ok) {
-//                return false;
-//            }
-//            block =
-//                ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
-//        } else {
-//            bool ok = BuildStmt(indent_stack.top(), node, block, status);
-//            if (!ok) {
-//                return false;
-//            }
-//        }
-//    }
-//    return true;
-//}
-
 bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
                         base::Status &status) {  // NOLINT
     if (root == NULL || root->GetType() != ::fesql::node::kFnDef) {
@@ -310,31 +267,6 @@ bool FnIRBuilder::BuildParas(const ::fesql::node::FnNodeList *node,
         paras.push_back(type);
     }
     return true;
-}
-
-bool FnIRBuilder::MapLLVMType(const ::fesql::node::DataType &data_type,
-                              ::llvm::Type **type) {
-    if (type == NULL) {
-        LOG(WARNING) << "input type is null";
-        return false;
-    }
-
-    switch (data_type) {
-        case ::fesql::node::kTypeInt16: {
-            *type = ::llvm::Type::getInt16Ty(module_->getContext());
-            return true;
-        }
-        case ::fesql::node::kTypeInt32: {
-            *type = ::llvm::Type::getInt32Ty(module_->getContext());
-            return true;
-        }
-        case ::fesql::node::kTypeInt64: {
-            *type = ::llvm::Type::getInt64Ty(module_->getContext());
-        }
-        default:
-            LOG(WARNING) << "not support";
-            return false;
-    }
 }
 
 }  // namespace codegen

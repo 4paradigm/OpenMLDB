@@ -51,9 +51,6 @@ class FnIRBuilder {
                          base::Status& status);  // NOLINE
 
  private:
-    bool MapLLVMType(const ::fesql::node::DataType& fn_type,
-                     ::llvm::Type** type);
-
     bool BuildParas(const ::fesql::node::FnNodeList* node,
                     std::vector<::llvm::Type*>& paras,
                     base::Status& status);  // NOLINE
