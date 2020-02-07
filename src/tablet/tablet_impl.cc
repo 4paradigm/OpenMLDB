@@ -1917,8 +1917,9 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_o
             if (ret == 0) {
                 task->set_status(::rtidb::api::kDone);
                 if (table->GetStorageMode() == common::StorageMode::kMemory) {
-                    int now_hour = ::rtidb::base::GetNowHour();
-                    table->Set_make_time(now_hour);
+                    auto right_now = std::chrono::system_clock::now().time_since_epoch();
+                    int64_t ts = std::chrono::duration_cast<std::chrono::seconds>(right_now).count();
+                    table->Set_make_time(ts);
                 }
             } else {
                 task->set_status(::rtidb::api::kFailed);
@@ -1995,13 +1996,15 @@ void TabletImpl::SchedMakeSnapshot() {
     std::vector<std::pair<uint32_t, uint32_t> > table_set;
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        auto right_now = std::chrono::system_clock::now().time_since_epoch();
+        int64_t ts = std::chrono::duration_cast<std::chrono::seconds>(right_now).count();
         for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
             for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
                 if (iter->first == 0 && inner->first == 0) {
                     continue;
                 }
                 if (inner->second->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
-                    if (now_hour - inner->second->Get_make_time() <= 24 && !FLAGS_zk_cluster.empty()) {
+                    if (ts - inner->second->Get_make_time() <= 60*60*24 && !FLAGS_zk_cluster.empty()) {
                         continue;
                     }
                     table_set.push_back(std::make_pair(iter->first, inner->first));
