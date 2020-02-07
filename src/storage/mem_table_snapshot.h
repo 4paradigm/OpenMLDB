@@ -43,7 +43,7 @@ public:
 
     void RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, std::shared_ptr<Table> table);
 
-    virtual int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) override;
+    virtual int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset, uint64_t end_offset) override;
 
     int TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
                 uint64_t& count, uint64_t& expired_key_num, uint64_t& deleted_key_num);

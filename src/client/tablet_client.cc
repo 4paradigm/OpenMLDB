@@ -283,13 +283,16 @@ bool TabletClient::Put(uint32_t tid,
     return Put(tid, pid, pk.c_str(), time, value.c_str(), value.size());
 }
 
-bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid,
+bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid, uint64_t offset,
         std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    if (offset > 0) {
+        request.set_offset(offset);
     }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::MakeSnapshot,

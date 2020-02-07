@@ -197,6 +197,7 @@ message GeneralRequest {
     required int32 pid = 2;
     optional TaskInfo task_info = 3;
     optional rtidb.common.StorageMode storage_mode = 4 [default = kMemory];
+    optional uint64 offset = 5;
 }
 
 message TaskStatusRequest {

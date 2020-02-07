@@ -1844,7 +1844,7 @@ void TabletImpl::SetTTLClock(RpcController* controller,
     response->set_msg("ok");
 }
 
-void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task) {
+void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::api::TaskInfo> task) {
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
     std::shared_ptr<LogReplicator> replicator;
@@ -1887,7 +1887,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
     uint64_t cur_offset = replicator->GetOffset();
     uint64_t snapshot_offset = snapshot->GetOffset();
     int ret = 0;
-    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset) {
+    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset || end_offset <= 0) {
         PDLOG(INFO, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%lu], snapshot_offset[%lu]", 
                 tid, pid, cur_offset, snapshot_offset);
     } else {
@@ -1899,7 +1899,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
             }    
         }
         uint64_t offset = 0;
-        ret = snapshot->MakeSnapshot(table, offset);
+        ret = snapshot->MakeSnapshot(table, offset, end_offset);
         if (ret == 0) {
             std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
             if (replicator) {
@@ -1916,6 +1916,10 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
         if (task) {
             if (ret == 0) {
                 task->set_status(::rtidb::api::kDone);
+                if (table->GetStorageMode() == common::StorageMode::kMemory) {
+                    int now_hour = ::rtidb::base::GetNowHour();
+                    table->Set_make_time(now_hour);
+                }
             } else {
                 task->set_status(::rtidb::api::kFailed);
             }    
@@ -1938,6 +1942,10 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
     }    
     uint32_t tid = request->tid();        
     uint32_t pid = request->pid();
+    uint64_t offset = 0;
+    if (request->has_offset() && request->offset() > 0) {
+        offset = request->offset();
+    }
     do {
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -1967,7 +1975,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         if (task_ptr) {
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }    
-        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, task_ptr));
+        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, offset, task_ptr));
         response->set_code(0);
         response->set_msg("ok");
         return;
@@ -1993,6 +2001,9 @@ void TabletImpl::SchedMakeSnapshot() {
                     continue;
                 }
                 if (inner->second->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
+                    if (now_hour - inner->second->Get_make_time() <= 24 && !FLAGS_zk_cluster.empty()) {
+                        continue;
+                    }
                     table_set.push_back(std::make_pair(iter->first, inner->first));
                 }
             }
@@ -2000,7 +2011,7 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
         PDLOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
-        MakeSnapshotInternal(iter->first, iter->second, std::shared_ptr<::rtidb::api::TaskInfo>());
+        MakeSnapshotInternal(iter->first, iter->second, 0, std::shared_ptr<::rtidb::api::TaskInfo>());
     }
     // delay task one hour later avoid execute  more than one time
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
@@ -2023,7 +2034,7 @@ void TabletImpl::SchedMakeDiskTableSnapshot() {
     }
     for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
         PDLOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
-        MakeSnapshotInternal(iter->first, iter->second, std::shared_ptr<::rtidb::api::TaskInfo>());
+        MakeSnapshotInternal(iter->first, iter->second, 0, std::shared_ptr<::rtidb::api::TaskInfo>());
     }
     // delay task one hour later avoid execute  more than one time
     snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
@@ -2556,7 +2567,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
             io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
             task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
-            MakeSnapshotInternal(tid, pid, std::shared_ptr<::rtidb::api::TaskInfo>());
+            MakeSnapshotInternal(tid, pid, 0, std::shared_ptr<::rtidb::api::TaskInfo>());
             if (task_ptr) {
                 std::lock_guard<std::mutex> lock(mu_);
                 task_ptr->set_status(::rtidb::api::TaskStatus::kDone);

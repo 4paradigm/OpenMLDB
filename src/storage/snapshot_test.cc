@@ -122,7 +122,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 3, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;;
-    int ret = snapshot.MakeSnapshot(table, offset_value);
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret); 
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
     for (; count < 20; count++) {
@@ -637,7 +637,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         offset++;
     }
     uint64_t offset_value;
-    int ret = snapshot.MakeSnapshot(table, offset_value);
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -689,7 +689,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         offset++;
     }
 
-    ret = snapshot.MakeSnapshot(table, offset_value);
+    ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     vec.clear();
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -758,7 +758,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     }
     table->SchedGc();
     uint64_t offset_value;
-    int ret = snapshot.MakeSnapshot(table, offset_value);
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -799,7 +799,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
         offset++;
     }
     table->SchedGc();
-    ret = snapshot.MakeSnapshot(table, offset_value);
+    ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     vec.clear();
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -952,7 +952,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
 
     // check snapshot
     uint64_t offset_value;
-    int ret = snapshot.MakeSnapshot(table, offset_value);
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_dir, vec);
@@ -1104,7 +1104,7 @@ TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
     
     snapshot.SetTerm(9);
     uint64_t offset = 0;
-    int ret = snapshot.MakeSnapshot(table, offset);
+    int ret = snapshot.MakeSnapshot(table, offset, 0);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(10000, offset);
 
