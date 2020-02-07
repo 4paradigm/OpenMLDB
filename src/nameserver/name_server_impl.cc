@@ -313,7 +313,8 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                                 DelReplicaRemoteOP(endpoint_iter->second, table.name(), part.pid());
                             }
                         }
-                        iter->second->CopyFrom(meta);
+                        iter->second->clear_partition_meta();
+                        iter->second->add_partition_meta()->CopyFrom(meta);
 
                         PDLOG(INFO, "table [%s] pid[%u] will add remote endpoint %s", table.name().c_str(), part.pid(), meta.endpoint().c_str());
                         AddReplicaSimplyRemoteOP(table.name(), meta.endpoint(), table.tid(), part.pid());
