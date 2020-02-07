@@ -7637,6 +7637,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             }
             PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
                     zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+            tit->second->CopyFrom(table_info);
         }
         if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
             code = 452;
