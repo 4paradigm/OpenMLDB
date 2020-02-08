@@ -1429,21 +1429,20 @@ void NameServerImpl::UpdateTaskMapStatus(uint64_t remote_op_id,
         for (int idx = 0; idx < task_info->rep_cluster_op_id_size(); idx++) {
             uint64_t rep_cluster_op_id = task_info->rep_cluster_op_id(idx);
             if (rep_cluster_op_id == op_id) {
-                if (idx < task_info->rep_cluster_op_id_size() - 1) {
-                    if (status == ::rtidb::api::kFailed ||
-                             status == ::rtidb::api::kCanceled) {
-                        task_info->set_status(status);
-                        if (status == ::rtidb::api::kFailed) {
-                            PDLOG(DEBUG, "update task status from[kDoing] to[kFailed]. op_id[%lu], task_type[%s]", 
-                                    task_info->op_id(), 
-                                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
-                        } else {
-                            PDLOG(DEBUG, "update task status from[kDoing] to[kCanceled]. op_id[%lu], task_type[%s]", 
-                                    task_info->op_id(), 
-                                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
-                        }
+                if (status == ::rtidb::api::kFailed ||
+                        status == ::rtidb::api::kCanceled) {
+                    task_info->set_status(status);
+                    if (status == ::rtidb::api::kFailed) {
+                        PDLOG(DEBUG, "update task status from[kDoing] to[kFailed]. op_id[%lu], task_type[%s]", 
+                                task_info->op_id(), 
+                                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+                    } else {
+                        PDLOG(DEBUG, "update task status from[kDoing] to[kCanceled]. op_id[%lu], task_type[%s]", 
+                                task_info->op_id(), 
+                                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
                     }
-                } else {
+                }
+                if (idx == task_info->rep_cluster_op_id_size() - 1){
                     if (status == ::rtidb::api::kDone &&
                             task_info->status() != ::rtidb::api::kFailed &&
                             task_info->status() != ::rtidb::api::kCanceled) {
