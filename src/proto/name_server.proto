@@ -371,6 +371,12 @@ message SwitchModeRequest {
     optional ServerMode sm = 1;
 }
 
+message SyncTableRequest {
+    optional string name = 1;
+    optional string cluster_alias = 2;
+    optional uint32 pid = 3;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -407,4 +413,5 @@ service NameServer {
     rpc CreateTableInfoSimply(CreateTableInfoRequest) returns (CreateTableInfoResponse);
     rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
     rpc AddReplicaNSFromRemote(AddReplicaNSRequest) returns (GeneralResponse);
+    rpc SyncTable(SyncTableRequest) returns (GeneralResponse);
 }

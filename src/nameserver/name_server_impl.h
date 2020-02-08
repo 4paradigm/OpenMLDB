@@ -186,11 +186,11 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    void AddReplicaSimplyRemoteOP(const std::string& name, 
+    int AddReplicaSimplyRemoteOP(const std::string& name, 
             const std::string& endpoint, 
             uint32_t tid, uint32_t pid); 
 
-    void AddReplicaRemoteOP(const std::string& alias,
+    int AddReplicaRemoteOP(const std::string& alias,
             const std::string& name,
             const ::rtidb::nameserver::TablePartition& table_partition,
             uint32_t remote_tid,
@@ -320,6 +320,18 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void SyncTable(RpcController* controller,
+        const SyncTableRequest* request,
+        GeneralResponse* response,
+        Closure* done);
+
+    int SyncExistTable(const std::string& name,
+        const std::vector<::rtidb::nameserver::TableInfo> tables_remote, 
+        const ::rtidb::nameserver::TableInfo& table_info_local, 
+        uint32_t pid, 
+        int& code,
+        std::string& msg); 
+    
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);

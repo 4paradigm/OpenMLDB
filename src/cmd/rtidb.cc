@@ -802,6 +802,24 @@ void HandleNSClientDropTable(const std::vector<std::string>& parts, ::rtidb::cli
     std::cout << "drop ok" << std::endl;
 }
 
+void HandleNSClientSyncTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() != 3 && parts.size() != 4) {
+        std::cout << "Bad format for synctable! eg. syctable table_name cluster_alias [pid]" << std::endl;
+        return;
+    }
+    uint32_t pid = UINT32_MAX;
+    if (parts.size() == 4) {
+        pid = boost::lexical_cast<uint32_t>(parts[3]);
+    }
+    std::string msg;
+    bool ret = client->SyncTable(parts[1], parts[2], pid, msg);
+    if (!ret) {
+        std::cout << "failed to synctable. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "synctable ok" << std::endl;
+}
+
 void HandleNSClientConfSet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
@@ -2499,6 +2517,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("showrepcluster - show remote replica cluster\n");
         printf("removerepcluster - remove remote replica cluste \n");
         printf("switchmode - switch cluster mode\n");
+        printf("synctable - synctable from leader cluster to replica cluster\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -2691,6 +2710,11 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: switchmode normal|leader\n");
             printf("ex: switchmode normal\n");
             printf("ex: switchmode leader\n");
+        } else if (parts[1] == "synctable") {
+            printf("desc: synctable from leader cluster to replica cluster\n");
+            printf("usage: synctable table_name cluster_alias [pid]\n");
+            printf("ex: synctable test bj\n");
+            printf("ex: synctable test bj 0\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -4875,7 +4899,10 @@ void StartNsClient() {
             HandleNSRemoveReplicaCluster(parts, &client);
         } else if (parts[0] == "switchmode") {
             HandleNSSwitchMode(parts, &client);
-        } else if (parts[0] == "exit" || parts[0] == "quit") {
+        } else if (parts[0] == "synctable") {
+           HandleNSClientSyncTable(parts, &client); 
+        }
+        else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
         } else if (parts[0] == "help" || parts[0] == "man") {

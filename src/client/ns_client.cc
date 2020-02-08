@@ -152,6 +152,24 @@ bool NsClient::DropTable(const std::string& name, std::string& msg) {
     return false;
 }
 
+bool NsClient::SyncTable(const std::string& name, const std::string& cluster_alias, 
+        uint32_t pid, std::string& msg) {
+    ::rtidb::nameserver::SyncTableRequest request;
+    request.set_name(name);
+    request.set_cluster_alias(cluster_alias);
+    if (pid != INVALID_PID) {
+        request.set_pid(pid);
+    }
+    ::rtidb::nameserver::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::SyncTable,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool NsClient::AddReplica(const std::string& name, const std::set<uint32_t>& pid_set, 
             const std::string& endpoint, std::string& msg) {
     if (pid_set.empty()) {
