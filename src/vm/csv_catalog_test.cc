@@ -19,9 +19,23 @@
 #include "gtest/gtest.h"
 #include "arrow/filesystem/localfs.h"
 #include "vm/engine.h"
+#include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
+
+using namespace llvm;       // NOLINT (build/namespaces)
+using namespace llvm::orc;  // NOLINT (build/namespaces)
+
 
 namespace fesql {
 namespace vm {
+
 class CSVCatalogTest : public ::testing::Test {
 
  public:
@@ -41,7 +55,8 @@ TEST_F(CSVCatalogTest, test_engine) {
     bool ok = engine.Get(sql, db, session, status);
     ASSERT_TRUE(ok);
     std::vector<int8_t*> buf;
-    session.Run(buf, 1);
+    int32_t code = session.Run(buf, 1);
+    ASSERT_EQ(0, code);
 }
 
 TEST_F(CSVCatalogTest, test_catalog_init) {
@@ -80,5 +95,7 @@ TEST_F(CSVCatalogTest, test_handler_init) {
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
     return RUN_ALL_TESTS();
 }

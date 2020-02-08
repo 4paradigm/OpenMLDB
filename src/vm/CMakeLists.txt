@@ -3,10 +3,14 @@ include_directories(${INCLUDE_DIRECTORIES}
     ${PROJECT_BINARY_DIR}/src)
 
 add_library(fesql_vm STATIC jit.cc op_generator.cc sql_compiler.cc engine.cc)
-add_library(fesql_csv_catalog STATIC csv_catalog.cc)
+add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
+    csv_window_iterator.cc)
 
 set(vm_deps_libs fesql_storage fesql_vm fesql_parser fesql_planner fesql_codegen fesql_proto
     fesql_node fesql_udf fesql_base)
+
+add_executable(csv_db csv_db.cc)
+target_link_libraries(csv_db  fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
 
 add_executable(csv_catalog_test csv_catalog_test.cc)
 target_link_libraries(csv_catalog_test  fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)

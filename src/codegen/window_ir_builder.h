@@ -20,7 +20,7 @@
 
 #include <map>
 #include "proto/type.pb.h"
-#include "catalog/catalog.h"
+#include "vm/catalog.h"
 #include "llvm/IR/IRBuilder.h"
 
 namespace fesql {
@@ -42,7 +42,7 @@ class WindowDecodeIRBuilder {
 class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
 
  public:
-    MemoryWindowDecodeIRBuilder(const catalog::Schema& schema,
+    MemoryWindowDecodeIRBuilder(const vm::Schema& schema,
             ::llvm::BasicBlock* block);
 
     ~MemoryWindowDecodeIRBuilder();
@@ -67,11 +67,13 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
                            ::llvm::Value** output);
 
  private:
-    catalog::Schema schema_;
+    vm::Schema schema_;
     ::llvm::BasicBlock* block_;
     typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
         Types;
     Types types_;
+    std::map<uint32_t, uint32_t> next_str_pos_;
+    uint32_t str_field_start_offset_;
 };
 
 }  // namespace codegen

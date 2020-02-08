@@ -21,6 +21,8 @@
 #include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/type_ir_builder.h"
+#include "codegen/buf_ir_builder.h"
+#include "codegen/window_ir_builder.h"
 #include "glog/logging.h"
 #include "proto/common.pb.h"
 
@@ -37,7 +39,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       window_ir_builder_(){}
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                             const catalog::Schema& schema,
+                             const vm::Schema& schema,
                              const bool row_mode,
                              const std::string& row_ptr_name,
                              const std::string& row_size_name,
@@ -48,9 +50,9 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
       row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
       row_size_name_(row_size_name),
-      module_(module)
-      //row_ir_builder_(new BufNativeIRBuilder(schema, block, scope_var)),
-      //window_ir_builder_(new MemoryWindowDecodeIRBuilder(schema, block))
+      module_(module),
+      row_ir_builder_(new BufNativeIRBuilder(schema, block, scope_var)),
+      window_ir_builder_(new MemoryWindowDecodeIRBuilder(schema, block))
       {
 }
 

@@ -26,6 +26,8 @@
 #include "arrow/status.h"
 #include "arrow/type.h"
 #include "base/fs_util.h"
+#include "vm/csv_table_iterator.h"
+#include "vm/csv_window_iterator.h"
 
 namespace fesql {
 namespace vm {
@@ -93,6 +95,34 @@ bool SchemaParser::Parse(const std::string& path, Schema* schema) {
     return true;
 }
 
+bool IndexParser::Parse(const std::string& path, 
+        IndexList* index_list) {
+
+    if (index_list == nullptr) {
+        LOG(WARNING) << "index_list is nullptr";
+        return false;
+    }
+    std::ifstream ifs;
+    ifs.open(path.c_str(), std::ifstream::binary);
+    while (ifs.good() && !ifs.eof()) {
+        std::string line;
+        std::getline(ifs, line);
+        if (line.empty()) continue;
+        std::vector<std::string> parts;
+        boost::split(parts, line, boost::is_any_of(" "));
+        if (parts.size() == 3) {
+            type::IndexDef* index_def = index_list->Add();
+            index_def->set_name(parts[0]);
+            index_def->add_first_keys(parts[1]);
+            index_def->set_second_key(parts[2]);
+            LOG(INFO) << "add index with fk" << parts[0] << " with sk " << parts[1];
+        }else {
+            LOG(WARNING) << "invalid line " << line;
+        }
+    }
+    return true;
+}
+
 CSVTableHandler::CSVTableHandler(const std::string& table_dir,
         const std::string& table_name,
         const std::string& db,
@@ -103,14 +133,21 @@ table_(), fs_(fs){}
 CSVTableHandler::~CSVTableHandler() {}
 
 bool CSVTableHandler::Init() {
-    bool ok = InitSchema();
+    bool ok = InitConfig();
     if (!ok) {
         LOG(WARNING) << "fail to parse schema for table " << table_dir_;
         return false;
     }
     ok = InitTable();
+    if (!ok) {
+        LOG(WARNING) << "fail to load csv for table " << table_dir_;
+        return false;
+    }
+    ok = InitIndex();
     return ok;
 }
+
+
 
 bool CSVTableHandler::InitTable() {
     std::string path = table_dir_ + "/data.csv";
@@ -216,14 +253,87 @@ bool CSVTableHandler::InitOptions(arrow::csv::ConvertOptions* options) {
     return true;
 }
 
-bool CSVTableHandler::InitSchema() {
+bool CSVTableHandler::InitConfig() {
     SchemaParser parser;
     std::string schema_path = table_dir_ + "/schema";
     bool ok = parser.Parse(schema_path, &schema_);
+    if (!ok) {
+        return false;
+    }
+    IndexParser idx_parser;
+    ok = idx_parser.Parse(table_dir_ + "/index", &index_list_);
     return ok;
 }
 
+bool CSVTableHandler::InitIndex() {
+    for (int32_t i = 0; i < index_list_.size(); i++) {
+        const type::IndexDef& index_def = index_list_.Get(i);
+        uint64_t chunk_offset = 0;
+        uint64_t array_offset = 0;
+        while (true) {
+            if (table_->num_rows() <= 0
+                    || table_->num_columns() <= 0) break;
+            if (table_->column(0)->num_chunks() <= chunk_offset) break;
+            if (table_->column(0)->chunk(chunk_offset)->length() <= array_offset) break;
+            int32_t first_key_column_index = GetColumnIndex(index_def.first_keys(0));
+            if (first_key_column_index < 0) {
+                LOG(WARNING) << "fail to find column " << index_def.first_keys(0);
+                continue;
+            }
+            const type::ColumnDef& first_key_column = schema_.Get(first_key_column_index);
+            if (first_key_column.type() != type::kVarchar) {
+                LOG(WARNING) << "varchar type is required";
+                continue;
+            }
 
+            int32_t second_key_column_index = GetColumnIndex(index_def.second_key());
+            if (second_key_column_index < 0) {
+                LOG(WARNING) << "fail to find second key column " << index_def.second_key();
+                continue;
+            }
+
+            const type::ColumnDef& second_key_column = schema_.Get(second_key_column_index);
+            if (second_key_column.type() != type::kInt64) {
+                LOG(WARNING) << "kint64 type is required";
+                continue;
+            }
+            auto first_key_column_array = std::static_pointer_cast<arrow::StringArray>(table_->column(first_key_column_index)->chunk(chunk_offset));
+            auto string_view = first_key_column_array->GetView(array_offset);
+            std::string first_key(string_view.data(), string_view.size());
+            auto second_key_column_array = std::static_pointer_cast<arrow::Int64Array>(table_->column(second_key_column_index)->chunk(chunk_offset));
+            auto second_key_value = second_key_column_array->Value(array_offset);
+            RowLocation location;
+            location.chunk_offset = chunk_offset;
+            location.array_offset = array_offset;
+            index_datas_[index_def.name()][first_key].insert(std::make_pair(second_key_value, location));
+            if (table_->column(0)->chunk(chunk_offset)->length() <= array_offset + 1) {
+                chunk_offset += 1;
+                array_offset = 0;
+            }else {
+                array_offset += 1;
+            }
+        }
+    }
+    return true;
+}
+
+int32_t CSVTableHandler::GetColumnIndex(const std::string& name) {
+    for (int32_t i = 0; i < schema_.size(); i++) {
+        if (schema_.Get(i).name() == name) return i;
+    }
+    return -1;
+}
+std::unique_ptr<Iterator> CSVTableHandler::GetIterator() {
+        std::unique_ptr<CSVTableIterator> it(new CSVTableIterator(table_, schema_));
+        return std::move(it);
+}
+
+
+std::unique_ptr<WindowIterator> CSVTableHandler::GetWindowIterator(const std::string& idx_name) {
+    std::unique_ptr<CSVWindowIterator> csv_window_iterator(new CSVWindowIterator(table_,
+                &index_datas_, idx_name, schema_));
+    return std::move(csv_window_iterator);
+}
 CSVCatalog::CSVCatalog(const std::string& root_dir): root_dir_(root_dir),
 tables_(), dbs_(), fs_(new arrow::fs::LocalFileSystem()){}
 

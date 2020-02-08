@@ -23,7 +23,5 @@ DEFINE_int32(thread_pool_size, 8, "config the thread pool for dbms and tablet");
 DEFINE_string(tablet_endpoint, "",
               "config the ip and port that fesql tablet for");
 
-
 // batch config
-
 DEFINE_string(default_db_name, "_fesql", "config the default batch catalog db name");

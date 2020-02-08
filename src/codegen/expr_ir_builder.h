@@ -36,7 +36,7 @@ class ExprIRBuilder {
 
     ExprIRBuilder(::llvm::BasicBlock* block, 
                   ScopeVar* scope_var,
-                  const catalog::Schema& schema,
+                  const vm::Schema& schema,
                   const bool row_mode,
                   const std::string& row_ptr_name,
                   const std::string& row_size_name, 
@@ -74,7 +74,7 @@ class ExprIRBuilder {
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
-    catalog::Schema schema_;
+    vm::Schema schema_;
     bool row_mode_;
     std::string row_ptr_name_;
     std::string row_size_name_;

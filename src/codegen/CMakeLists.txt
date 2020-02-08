@@ -3,7 +3,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 add_library(fesql_codegen STATIC scope_var.cc expr_ir_builder.cc
-    fn_ir_builder.cc buf_ir_builder.cc ir_base_builder.cc
+    fn_ir_builder.cc buf_ir_builder.cc ir_base_builder.cc window_ir_builder.cc
     fn_let_ir_builder.cc)
 
 set(vm_deps_libs fesql_storage fesql_vm fesql_parser fesql_planner fesql_codegen fesql_proto

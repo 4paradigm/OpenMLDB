@@ -24,7 +24,6 @@
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
 
-
 namespace fesql {
 namespace storage {
 

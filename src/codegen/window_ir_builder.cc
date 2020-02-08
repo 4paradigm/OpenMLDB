@@ -18,17 +18,20 @@
 #include "codegen/window_ir_builder.h"
 
 #include "storage/codec.h"
+#include "glog/logging.h"
+#include "codegen/ir_base_builder.h"
 
 namespace fesql {
 namespace codegen {
 
 
-MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(const catalog::Schema& schema,
-        ::llvm::BasicBlock* block):schema_(schema), block_(block), types_() {
+MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(const vm::Schema& schema,
+        ::llvm::BasicBlock* block):schema_(schema), block_(block), types_(),
+    next_str_pos_(), str_field_start_offset_(0){
     uint32_t offset = storage::GetStartOffset(schema_.size());
     uint32_t string_field_cnt = 0;
     for (int32_t i = 0; i < schema_.size(); i++) {
-        const ::fesql::type::ColumnDef& column = schema_.get(i);
+        const ::fesql::type::ColumnDef& column = schema_.Get(i);
         if (column.type() == ::fesql::type::kVarchar) {
             types_.insert(std::make_pair(
                 column.name(),
@@ -38,7 +41,7 @@ MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(const catalog::Schema& 
             string_field_cnt += 1;
         } else {
             auto it = storage::TYPE_SIZE_MAP.find(column.type());
-            if (it == stroage::TYPE_SIZE_MAP.end()) {
+            if (it == storage::TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << "fail to find column type "
                              << ::fesql::type::Type_Name(column.type());
             } else {
@@ -48,6 +51,7 @@ MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(const catalog::Schema& 
             }
         }
     }
+    str_field_start_offset_ = offset;
 }
 
 MemoryWindowDecodeIRBuilder::~MemoryWindowDecodeIRBuilder() {}
