@@ -4613,7 +4613,7 @@ void NameServerImpl::SchedMakeSnapshot() {
         std::vector<std::string> delete_map;
         std::string msg;
         for (const auto& ns : ns_client) {
-            if(ns.second->ShowTable("", tables, msg)) {
+            if(!ns.second->ShowTable("", tables, msg)) {
                 delete_map.push_back(ns.first);
                 continue;
             }
@@ -4624,8 +4624,8 @@ void NameServerImpl::SchedMakeSnapshot() {
                 auto table_iter = table_part_offset.find(table.name());
                 if (table_iter == table_part_offset.end()) {
                     std::map<uint32_t, uint64_t> part_offset;
-                    table_part_offset.insert(std::make_pair(table.name(), part_offset));
-                    table_iter = table_part_offset.find(table.name());
+                    auto result = table_part_offset.insert(std::make_pair(table.name(), part_offset));
+                    table_iter = result.first;
                 }
                 for (const auto& part : table.table_partition()) {
                     for (const auto& part_meta : part.partition_meta()) {
