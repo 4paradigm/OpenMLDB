@@ -52,7 +52,6 @@ class PredicateIRBuilder {
                         ::fesql::base::Status& status);  // NOLINT
     CastExprIRBuilder cast_expr_ir_builder_;
     ::llvm::BasicBlock* block_;
-    ScopeVar* sv_;
 };
 }  // namespace codegen
 }  // namespace fesql
