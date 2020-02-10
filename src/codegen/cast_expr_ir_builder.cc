@@ -11,16 +11,16 @@
 #include "glog/logging.h"
 namespace fesql {
 namespace codegen {
-CastExprIRBuilder::CastExprIRBuilder(::llvm::BasicBlock* block,
-                                     ScopeVar* scope_var)
-    : block_(block), sv_(scope_var) {}
+CastExprIRBuilder::CastExprIRBuilder(::llvm::BasicBlock* block)
+    : block_(block) {}
 CastExprIRBuilder::~CastExprIRBuilder() {}
 
-bool CastExprIRBuilder::isIFCast(::llvm::Type* src, ::llvm::Type* dist) {
+bool CastExprIRBuilder::IsIntFloat2PointerCast(::llvm::Type* src,
+                                               ::llvm::Type* dist) {
     return src->isIntegerTy() && (dist->isFloatTy() || dist->isDoubleTy());
 }
 
-bool CastExprIRBuilder::isSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
+bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
     if (NULL == src || NULL == dist) {
         LOG(WARNING) << "cast type is null";
         return false;
@@ -82,7 +82,7 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
         LOG(WARNING) << status.msg;
         return false;
     }
-    if (false == isSafeCast(value->getType(), type)) {
+    if (false == IsSafeCast(value->getType(), type)) {
         status.msg = "unsafe cast";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
@@ -125,7 +125,7 @@ bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
     return true;
 }
 
-bool CastExprIRBuilder::isStringCast(llvm::Type* type) {
+bool CastExprIRBuilder::IsStringCast(llvm::Type* type) {
     if (nullptr == type) {
         return false;
     }

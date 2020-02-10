@@ -32,8 +32,8 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       row_mode_(true),
       row_ptr_name_(""),
       buf_ir_builder_(nullptr),
-      arithmetic_ir_builder_(block, scope_var),
-      predicate_ir_builder_(block, scope_var),
+      arithmetic_ir_builder_(block),
+      predicate_ir_builder_(block),
       module_(nullptr) {}
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
@@ -48,8 +48,8 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
       row_ptr_name_(row_ptr_name),
       row_size_name_(row_size_name),
       buf_ir_builder_(buf_ir_builder),
-      arithmetic_ir_builder_(block, scope_var),
-      predicate_ir_builder_(block, scope_var),
+      arithmetic_ir_builder_(block),
+      predicate_ir_builder_(block),
       module_(module) {}
 
 ExprIRBuilder::~ExprIRBuilder() {}

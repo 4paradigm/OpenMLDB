@@ -125,7 +125,6 @@ void BinaryExprCheck(::fesql::type::Type left_type,
         Function::ExternalLinkage, "load_fn", m.get());
     BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
     IRBuilder<> builder(entry_block);
-    Argument *arg0 = &*load_fn->arg_begin();
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
     ExprIRBuilder expr_builder(entry_block, &scope_var);

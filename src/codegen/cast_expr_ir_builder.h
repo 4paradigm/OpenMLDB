@@ -17,7 +17,7 @@ namespace fesql {
 namespace codegen {
 class CastExprIRBuilder {
  public:
-    CastExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
+    explicit CastExprIRBuilder(::llvm::BasicBlock* block);
     ~CastExprIRBuilder();
 
     bool SafeCast(::llvm::Value* value, ::llvm::Type* type,
@@ -32,16 +32,15 @@ class CastExprIRBuilder {
     bool StringCast(llvm::Value* value, llvm::Value** casted_value,
                     base::Status& status);  // NOLINT
 
-    bool isSafeCast(::llvm::Type* src, ::llvm::Type* dist);
-    bool isIFCast(::llvm::Type* src, ::llvm::Type* dist);
-    bool isStringCast(llvm::Type* type);
+    bool IsSafeCast(::llvm::Type* src, ::llvm::Type* dist);
+    bool IsIntFloat2PointerCast(::llvm::Type* src, ::llvm::Type* dist);
+    bool IsStringCast(llvm::Type* type);
 
     bool BoolCast(llvm::Value* pValue, llvm::Value** pValue1,
                   base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;
-    ScopeVar* sv_;
 };
 }  // namespace codegen
 }  // namespace fesql

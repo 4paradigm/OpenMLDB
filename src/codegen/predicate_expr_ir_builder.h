@@ -19,7 +19,7 @@ namespace fesql {
 namespace codegen {
 class PredicateIRBuilder {
  public:
-    PredicateIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
+    explicit PredicateIRBuilder(::llvm::BasicBlock* block);
     ~PredicateIRBuilder();
 
     bool BuildAndExpr(::llvm::Value* left, ::llvm::Value* right,
@@ -50,7 +50,7 @@ class PredicateIRBuilder {
                         ::llvm::Value** casted_left,
                         ::llvm::Value** casted_right,
                         ::fesql::base::Status& status);  // NOLINT
-    CastExprIRBuilder _cast_expr_ir_builder;
+    CastExprIRBuilder cast_expr_ir_builder_;
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
 };

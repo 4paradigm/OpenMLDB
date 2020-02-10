@@ -18,7 +18,7 @@ namespace fesql {
 namespace codegen {
 class ArithmeticIRBuilder {
  public:
-    ArithmeticIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
+    explicit ArithmeticIRBuilder(::llvm::BasicBlock* block);
     ~ArithmeticIRBuilder();
 
     bool BuildAddExpr(::llvm::Value* left, ::llvm::Value* right,
@@ -36,17 +36,16 @@ class ArithmeticIRBuilder {
 
  private:
     bool IsAcceptType(::llvm::Type* type);
-    bool inferBaseTypes(::llvm::Value* left, ::llvm::Value* right,
+    bool InferBaseTypes(::llvm::Value* left, ::llvm::Value* right,
                         ::llvm::Value** casted_left,
                         ::llvm::Value** casted_right,
                         ::fesql::base::Status& status);  // NOLINT
-    bool inferBaseDoubleTypes(::llvm::Value* left, ::llvm::Value* right,
+    bool InferBaseDoubleTypes(::llvm::Value* left, ::llvm::Value* right,
                               ::llvm::Value** casted_left,
                               ::llvm::Value** casted_right,
                               ::fesql::base::Status& status);  // NOLINT
-    CastExprIRBuilder _cast_expr_ir_builder;
     ::llvm::BasicBlock* block_;
-    ScopeVar* sv_;
+    CastExprIRBuilder cast_expr_ir_builder_;
 };
 }  // namespace codegen
 }  // namespace fesql
