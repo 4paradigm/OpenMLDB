@@ -60,17 +60,20 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
         switch (node->GetType()) {
             case node::kFnAssignStmt:
             case node::kFnReturnStmt: {
-                bool ok = BuildStmt(0, node, block, status);
+                bool ok = BuildStmt(node, block, status);
                 if (!ok) {
                     return false;
                 }
                 break;
             }
             case node::kFnIfElseBlock: {
-                bool ok = BuildBlock(node, block, status);
+                bool ok = BuildIfElseBlock(
+                    dynamic_cast<const ::fesql::node::FnIfElseBlock *>(node),
+                    block, status);
                 if (!ok) {
                     return false;
                 }
+                break;
             }
             default: {
                 status.code = common::kCodegenError;
@@ -84,17 +87,11 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
     return true;
 }
 
-bool FnIRBuilder::BuildStmt(int32_t pindent, const ::fesql::node::FnNode *node,
+bool FnIRBuilder::BuildStmt(const ::fesql::node::FnNode *node,
                             ::llvm::BasicBlock *block,
                             base::Status &status) {  // NOLINE
     if (node == NULL || block == NULL) {
         LOG(WARNING) << "node or block is null ";
-        return false;
-    }
-
-    // TODO(wangtaize) check it before codegen
-    if (node->indent - pindent != 4) {
-        LOG(WARNING) << "syntax error indent mismatch";
         return false;
     }
 
@@ -116,16 +113,72 @@ bool FnIRBuilder::BuildStmt(int32_t pindent, const ::fesql::node::FnNode *node,
         }
     }
 }
-bool FnIRBuilder::BuildBlock(node::FnNode *node, llvm::BasicBlock *block,
-                             base::Status &status) {  // NOLINE
-    switch (node->GetType()) {
-        case node::kFnIfElseBlock: {
-            break;
-        }
-        default: {
+
+bool FnIRBuilder::BuildIfElseBlock(
+    const ::fesql::node::FnIfElseBlock *if_else_block, llvm::BasicBlock *block,
+    base::Status &status) {  // NOLINE
+    ::llvm::IRBuilder<> builder(block);
+
+    ExprIRBuilder expr_builder(block, &sv_);
+    llvm::Function *fn = block->getParent();
+    llvm::BasicBlock *cond_true =
+        llvm::BasicBlock::Create(module_->getContext(), "cond_true", fn);
+    llvm::BasicBlock *cond_false = llvm::BasicBlock::Create(
+        module_->getContext(), "cond_false", fn);
+    llvm::BasicBlock *ifcont = llvm::BasicBlock::Create(module_->getContext(), "ifcont");
+    //进行条件的代码
+    llvm::Value *cond = nullptr;
+    if (false == expr_builder.Build(
+                     if_else_block->if_block_->if_node->expression_, &cond)) {
+        status.code = common::kCodegenError;
+        status.msg = "fail to codegen condition expression";
+        return false;
+    }
+
+    builder.CreateCondBr(cond, cond_true, cond_false);
+    builder.SetInsertPoint(cond_true);
+    if (false ==
+        BuildBlock(if_else_block->if_block_->block_, cond_true, status)) {
+        return false;
+    }
+    builder.CreateBr(ifcont);
+    cond_true = builder.GetInsertBlock();
+
+    builder.SetInsertPoint(cond_false);
+    if (!if_else_block->elif_blocks_.empty()) {
+        for (fesql::node::FnNode *node : if_else_block->elif_blocks_) {
+            llvm::BasicBlock *cond_true =
+                llvm::BasicBlock::Create(module_->getContext(), "cond_true", fn);
+            llvm::BasicBlock *cond_false = llvm::BasicBlock::Create(
+                module_->getContext(), "cond_false", fn);
+
+            fesql::node::FnElifBlock *elif_block =
+                dynamic_cast<fesql::node::FnElifBlock *>(node);
+            llvm::Value *cond = nullptr;
+
+            ExprIRBuilder expr_builder(builder.GetInsertBlock(), &sv_);
+            if (false == expr_builder.Build(elif_block->elif_node_->expression_,
+                                            &cond)) {
+                status.code = common::kCodegenError;
+                status.msg = "fail to codegen condition expression";
+                return false;
+            }
+            builder.CreateCondBr(cond, cond_true, cond_false);
+            builder.SetInsertPoint(cond_true);
+            if (false ==
+                BuildBlock(elif_block->block_, cond_true, status)) {
+                return false;
+            }
+            builder.CreateBr(ifcont);
+            cond_true = builder.GetInsertBlock();
+            builder.SetInsertPoint(cond_false);
         }
     }
-    return false;
+    if (false == BuildBlock(if_else_block->else_block_->block_, builder.GetInsertBlock(), status)) {
+        return false;
+    }
+
+    return true;
 }
 bool FnIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
                                   ::llvm::BasicBlock *block,
@@ -172,6 +225,29 @@ bool FnIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
     return sv_.AddVar(node->name_, value);
 }
 
+bool FnIRBuilder::BuildBlock(const node::FnNodeList *statements,
+                             llvm::BasicBlock *block,
+                             base::Status &status) {  // NOLINT
+    if (statements == NULL || block == NULL) {
+        status.code = common::kCodegenError;
+        status.msg = "node or block is null";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    if (statements->children.empty()) {
+        status.code = common::kCodegenError;
+        status.msg = "fail to codegen block: statements is empty";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    for (const node::FnNode *node : statements->children) {
+        if (false == BuildStmt(node, block, status)) {
+            return false;
+        }
+    }
+    return true;
+}
 bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *fn_def,
                               ::llvm::Function **fn,
                               base::Status &status) {  // NOLINE
@@ -232,7 +308,7 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node,
         bool ok = sv_.AddVar(pnode->GetName(), argu);
         if (!ok) {
             status.code = common::kCodegenError;
-            status.msg =  "fail to define var " + pnode->GetName();
+            status.msg = "fail to define var " + pnode->GetName();
             LOG(WARNING) << status.msg;
             return false;
         }

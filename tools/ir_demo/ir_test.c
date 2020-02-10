@@ -10,12 +10,12 @@
 #include <stdio.h>
 
 
-float add(float a, float b) {
-    if (a>0) {
-        return a;
-    } else if (a > b) {
-        return b;
+int add(int x, int y) {
+    if (x > 1) {
+        return x+y;
+    } else if (y > 1) {
+        return x-y;
     } else {
-        return 0.0;
+        return x*y;
     }
 }

@@ -39,7 +39,7 @@ class FnIRBuilder {
     bool BuildFnHead(const ::fesql::node::FnNodeFnHeander* fn_def,
                      ::llvm::Function** fn, base::Status& status);  // NOLINE
 
-    bool BuildStmt(int32_t pindent, const ::fesql::node::FnNode* node,
+    bool BuildStmt(const ::fesql::node::FnNode* node,
                    ::llvm::BasicBlock* block, base::Status& status);  // NOLINE
 
     bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node,
@@ -57,12 +57,14 @@ class FnIRBuilder {
 
     bool FillArgs(const ::fesql::node::FnNodeList* node, ::llvm::Function* fn,
                   base::Status& status);  // NOLINE
-    bool BuildBlock(node::FnNode* node, llvm::BasicBlock* block,
+    bool BuildIfElseBlock(const ::fesql::node::FnIfElseBlock* node, llvm::BasicBlock* block,
                     base::Status& status);  // NOLINE
 
  private:
     ::llvm::Module* module_;
     ScopeVar sv_;
+    bool BuildBlock(const node::FnNodeList* statements, llvm::BasicBlock* block,
+                    base::Status& status);
 };
 
 }  // namespace codegen

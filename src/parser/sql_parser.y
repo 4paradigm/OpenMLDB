@@ -547,9 +547,9 @@ plist:
      para {
         $$ = node_manager->MakeFnListNode();
         $$->AddChild($1);
-     } | para ',' plist  {
-        $3->AddChild($1);
-        $$ = $3;
+     } | plist ',' para  {
+        $$ = $1;
+        $$->AddChild($3);
      };
 
 para: VARNAME ':' types {
