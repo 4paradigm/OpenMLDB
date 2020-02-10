@@ -4584,9 +4584,7 @@ void NameServerImpl::SchedMakeSnapshot() {
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info_.size() < 1) {
-            if (running_.load(std::memory_order_acquire)) {
-                task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
-            }
+            task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
             return;
         }
         for (const auto& kv : tablets_) {
