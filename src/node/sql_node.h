@@ -75,17 +75,17 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
         case kFnOpNot:
             return "NOT";
         case kFnOpEq:
-            return "==";
+            return "EQ";
         case kFnOpNeq:
-            return "!=";
+            return "NEQ";
         case kFnOpGt:
-            return ">";
+            return "GT";
         case kFnOpGe:
-            return ">=";
+            return "GE";
         case kFnOpLt:
-            return "<";
+            return "LT";
         case kFnOpLe:
-            return "<=";
+            return "LE";
         case kFnOpBracket:
             return "()";
         case kFnOpNone:

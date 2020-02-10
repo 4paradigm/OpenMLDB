@@ -125,7 +125,6 @@ bool FnIRBuilder::BuildIfElseBlock(
         llvm::BasicBlock::Create(module_->getContext(), "cond_true", fn);
     llvm::BasicBlock *cond_false = llvm::BasicBlock::Create(
         module_->getContext(), "cond_false", fn);
-    llvm::BasicBlock *ifcont = llvm::BasicBlock::Create(module_->getContext(), "ifcont");
     //进行条件的代码
     llvm::Value *cond = nullptr;
     if (false == expr_builder.Build(
@@ -141,7 +140,6 @@ bool FnIRBuilder::BuildIfElseBlock(
         BuildBlock(if_else_block->if_block_->block_, cond_true, status)) {
         return false;
     }
-    builder.CreateBr(ifcont);
     cond_true = builder.GetInsertBlock();
 
     builder.SetInsertPoint(cond_false);
@@ -169,7 +167,6 @@ bool FnIRBuilder::BuildIfElseBlock(
                 BuildBlock(elif_block->block_, cond_true, status)) {
                 return false;
             }
-            builder.CreateBr(ifcont);
             cond_true = builder.GetInsertBlock();
             builder.SetInsertPoint(cond_false);
         }

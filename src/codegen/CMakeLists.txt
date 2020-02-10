@@ -25,7 +25,7 @@ list(APPEND test_list arithmetic_expr_ir_builder_test)
 
 add_executable(predicate_expr_ir_builder_test predicate_expr_ir_builder_test.cc)
 target_link_libraries(predicate_expr_ir_builder_test gflags fesql_codegen fesql_parser
-        fesql_node fesql_proto  protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+        fesql_node fesql_proto protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(predicate_expr_ir_builder_test predicate_expr_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/predicate_expr_ir_builder_test.xml)
 list(APPEND test_list predicate_expr_ir_builder_test)
 

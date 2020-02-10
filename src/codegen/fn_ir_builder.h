@@ -50,6 +50,8 @@ class FnIRBuilder {
                          ::llvm::BasicBlock* block,
                          base::Status& status);  // NOLINE
 
+    bool BuildIfElseBlock(const ::fesql::node::FnIfElseBlock* node, llvm::BasicBlock* block,
+                          base::Status& status);  // NOLINE
  private:
     bool BuildParas(const ::fesql::node::FnNodeList* node,
                     std::vector<::llvm::Type*>& paras,
@@ -57,8 +59,7 @@ class FnIRBuilder {
 
     bool FillArgs(const ::fesql::node::FnNodeList* node, ::llvm::Function* fn,
                   base::Status& status);  // NOLINE
-    bool BuildIfElseBlock(const ::fesql::node::FnIfElseBlock* node, llvm::BasicBlock* block,
-                    base::Status& status);  // NOLINE
+
 
  private:
     ::llvm::Module* module_;

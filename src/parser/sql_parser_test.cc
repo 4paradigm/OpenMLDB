@@ -127,7 +127,28 @@ INSTANTIATE_TEST_CASE_P(
         "    else\n"
         "    \tc=x*y\n"
         "    return c\n"
-        "end"));
+        "end",
+        "%%fun\n"
+        "def test(x:i32,y:i32):i32\n"
+        "    if x > 1\n"
+        "    \tc=x+y\n"
+        "    elif y >1\n"
+        "    \tif x-y >0\n"
+        "    \t\tc=x-y\n"
+        "    \telif x-y <0\n"
+        "    \t\tc = y-x\n"
+        "    \telse\n"
+        "    \t\tc = 9999\n"
+        "    else\n"
+        "    \tif x < -100\n"
+        "    \t\tc = x+100\n"
+        "    \telif y < -100\n"
+        "    \t\tc = y+100\n"
+        "    \telse\n"
+        "    \t\tc=x*y\n"
+        "    return c\n"
+        "end"
+        ));
 
 INSTANTIATE_TEST_CASE_P(
     SQLCreate, SqlParserTest,

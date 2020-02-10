@@ -137,10 +137,9 @@ TEST_F(FnIRBuilderTest, test_bracket_int32) {
     int32_t (*test_fn)(int32_t, int32_t) =
         (int32_t(*)(int32_t, int32_t))test_jit.getAddress();
     int32_t test_ret = test_fn(1, 2);
-    ASSERT_EQ(test_ret, 4);
+    ASSERT_EQ(test_ret, 3);
 }
 
-//TODO(QA): 更细致的IF ELIF ELSE 测试
 TEST_F(FnIRBuilderTest, test_if_else_block) {
     const std::string test =
         "%%fun\n"
@@ -176,6 +175,45 @@ TEST_F(FnIRBuilderTest, test_if_else_block) {
     ASSERT_EQ(-2, test_fn(1, 3));
     ASSERT_EQ(2, test_fn(1, 2));
 }
+
+
+//TEST_F(FnIRBuilderTest, test_if_else_mutable_var_block) {
+//    const std::string test =
+//        "%%fun\n"
+//        "def test(x:i32,y:i32):i32\n"
+//        "    ret = 0\n"
+//        "    if x > 1\n"
+//        "    \tret = x+y\n"
+//        "    elif y >2\n"
+//        "    \tret = x-y\n"
+//        "    else\n"
+//        "    \tret = x*y\n"
+//        "    return ret\n"
+//        "end";
+//
+//    node::NodePointVector trees;
+//    node::PlanNodeList plan_trees;
+//    base::Status status;
+//    int ret = parser_->parse(test, trees, manager_, status);
+//    ASSERT_EQ(0, ret);
+//    // Create an LLJIT instance.
+//    auto ctx = llvm::make_unique<LLVMContext>();
+//    auto m = make_unique<Module>("custom_fn", *ctx);
+//    FnIRBuilder fn_ir_builder(m.get());
+//    bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef *>(trees[0]),
+//                                  status);
+//    ASSERT_TRUE(ok);
+//    m->print(::llvm::errs(), NULL);
+//    auto J = ExitOnErr(LLJITBuilder().create());
+//    ExitOnErr(J->addIRModule(
+//        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+//    auto test_jit = ExitOnErr(J->lookup("test"));
+//    int32_t (*test_fn)(int32_t, int32_t) =
+//    (int32_t(*)(int32_t, int32_t))test_jit.getAddress();
+//    ASSERT_EQ(5, test_fn(2, 3));
+//    ASSERT_EQ(-2, test_fn(1, 3));
+//    ASSERT_EQ(2, test_fn(1, 2));
+//}
 }  // namespace codegen
 }  // namespace fesql
 
