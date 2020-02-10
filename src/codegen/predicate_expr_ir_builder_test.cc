@@ -55,7 +55,7 @@ void UnaryPredicateExprCheck(::fesql::type::Type left_type,
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
     scope_var.AddVar("a", arg0);
-    PredicateIRBuilder ir_builder(entry_block, &scope_var);
+    PredicateIRBuilder ir_builder(entry_block);
     llvm::Value *output;
     base::Status status;
 
@@ -114,7 +114,7 @@ void BinaryPredicateExprCheck(::fesql::type::Type left_type,
     scope_var.Enter("fn_base");
     scope_var.AddVar("a", arg0);
     scope_var.AddVar("b", arg1);
-    PredicateIRBuilder ir_builder(entry_block, &scope_var);
+    PredicateIRBuilder ir_builder(entry_block);
     llvm::Value *output;
     base::Status status;
 

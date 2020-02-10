@@ -11,9 +11,8 @@
 namespace fesql {
 namespace codegen {
 
-ArithmeticIRBuilder::ArithmeticIRBuilder(::llvm::BasicBlock* block,
-                                         ScopeVar* scope_var)
-    : block_(block), sv_(scope_var), _cast_expr_ir_builder(block, scope_var) {}
+ArithmeticIRBuilder::ArithmeticIRBuilder(::llvm::BasicBlock* block)
+    : block_(block), cast_expr_ir_builder_(block) {}
 ArithmeticIRBuilder::~ArithmeticIRBuilder() {}
 
 bool ArithmeticIRBuilder::IsAcceptType(::llvm::Type* type) {
@@ -21,7 +20,7 @@ bool ArithmeticIRBuilder::IsAcceptType(::llvm::Type* type) {
            (type->isIntegerTy() || type->isFloatTy() || type->isDoubleTy());
 }
 
-bool ArithmeticIRBuilder::inferBaseTypes(::llvm::Value* left,
+bool ArithmeticIRBuilder::InferBaseTypes(::llvm::Value* left,
                                          ::llvm::Value* right,
                                          ::llvm::Value** casted_left,
                                          ::llvm::Value** casted_right,
@@ -44,29 +43,31 @@ bool ArithmeticIRBuilder::inferBaseTypes(::llvm::Value* left,
     *casted_right = right;
 
     if (casted_left != casted_right) {
-        if (_cast_expr_ir_builder.isSafeCast(left_type, right_type)) {
-            if (!_cast_expr_ir_builder.SafeCast(left, right_type, casted_left,
+        if (cast_expr_ir_builder_.IsSafeCast(left_type, right_type)) {
+            if (!cast_expr_ir_builder_.SafeCast(left, right_type, casted_left,
                                                 status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
-        } else if (_cast_expr_ir_builder.isSafeCast(right_type, left_type)) {
-            if (!_cast_expr_ir_builder.SafeCast(right, left_type, casted_right,
+        } else if (cast_expr_ir_builder_.IsSafeCast(right_type, left_type)) {
+            if (!cast_expr_ir_builder_.SafeCast(right, left_type, casted_right,
                                                 status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
-        } else if (_cast_expr_ir_builder.isIFCast(left_type, right_type)) {
-            if (!_cast_expr_ir_builder.UnSafeCast(left, right_type, casted_left,
+        } else if (cast_expr_ir_builder_.IsIntFloat2PointerCast(left_type,
+                                                                right_type)) {
+            if (!cast_expr_ir_builder_.UnSafeCast(left, right_type, casted_left,
                                                   status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
-        } else if (_cast_expr_ir_builder.isIFCast(right_type, left_type)) {
-            if (!_cast_expr_ir_builder.UnSafeCast(right, left_type,
+        } else if (cast_expr_ir_builder_.IsIntFloat2PointerCast(right_type,
+                                                                left_type)) {
+            if (!cast_expr_ir_builder_.UnSafeCast(right, left_type,
                                                   casted_right, status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
@@ -83,7 +84,7 @@ bool ArithmeticIRBuilder::inferBaseTypes(::llvm::Value* left,
     return true;
 }
 
-bool ArithmeticIRBuilder::inferBaseDoubleTypes(::llvm::Value* left,
+bool ArithmeticIRBuilder::InferBaseDoubleTypes(::llvm::Value* left,
                                                ::llvm::Value* right,
                                                ::llvm::Value** casted_left,
                                                ::llvm::Value** casted_right,
@@ -106,7 +107,7 @@ bool ArithmeticIRBuilder::inferBaseDoubleTypes(::llvm::Value* left,
     *casted_right = right;
 
     if (!left_type->isDoubleTy()) {
-        if (!_cast_expr_ir_builder.UnSafeCast(
+        if (!cast_expr_ir_builder_.UnSafeCast(
                 left, ::llvm::Type::getDoubleTy(this->block_->getContext()),
                 casted_left, status)) {
             status.msg = "fail to codegen add expr: " + status.msg;
@@ -116,7 +117,7 @@ bool ArithmeticIRBuilder::inferBaseDoubleTypes(::llvm::Value* left,
     }
 
     if (!right_type->isDoubleTy()) {
-        if (!_cast_expr_ir_builder.UnSafeCast(
+        if (!cast_expr_ir_builder_.UnSafeCast(
                 right, ::llvm::Type::getDoubleTy(this->block_->getContext()),
                 casted_right, status)) {
             status.msg = "fail to codegen add expr: " + status.msg;
@@ -135,7 +136,7 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     ::llvm::Value* casted_right = NULL;
 
     if (false ==
-        inferBaseTypes(left, right, &casted_left, &casted_right, status)) {
+        InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
@@ -161,7 +162,7 @@ bool ArithmeticIRBuilder::BuildSubExpr(
     ::llvm::Value* casted_right = NULL;
 
     if (false ==
-        inferBaseTypes(left, right, &casted_left, &casted_right, status)) {
+        InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
@@ -187,7 +188,7 @@ bool ArithmeticIRBuilder::BuildMultiExpr(
     ::llvm::Value* casted_right = NULL;
 
     if (false ==
-        inferBaseTypes(left, right, &casted_left, &casted_right, status)) {
+        InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
@@ -212,7 +213,7 @@ bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::Value* left,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == inferBaseDoubleTypes(left, right, &casted_left, &casted_right,
+    if (false == InferBaseDoubleTypes(left, right, &casted_left, &casted_right,
                                       status)) {
         return false;
     }
@@ -234,7 +235,7 @@ bool ArithmeticIRBuilder::BuildModExpr(llvm::Value* left, llvm::Value* right,
     ::llvm::Value* casted_right = NULL;
 
     if (false ==
-        inferBaseTypes(left, right, &casted_left, &casted_right, status)) {
+        InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);

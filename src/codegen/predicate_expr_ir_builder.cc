@@ -12,9 +12,8 @@
 namespace fesql {
 namespace codegen {
 
-PredicateIRBuilder::PredicateIRBuilder(::llvm::BasicBlock* block,
-                                       ScopeVar* scope_var)
-    : block_(block), sv_(scope_var), _cast_expr_ir_builder(block, scope_var) {}
+PredicateIRBuilder::PredicateIRBuilder(::llvm::BasicBlock* block)
+    : block_(block), cast_expr_ir_builder_(block) {}
 PredicateIRBuilder::~PredicateIRBuilder() {}
 bool PredicateIRBuilder::BuildAndExpr(::llvm::Value* left, ::llvm::Value* right,
                                       ::llvm::Value** output,
@@ -329,7 +328,7 @@ bool PredicateIRBuilder::InferBoolTypes(::llvm::Value* value,
 
     ::llvm::Type* bool_ty = ::llvm::Type::getInt1Ty(block_->getContext());
     if (type != bool_ty) {
-        if (!_cast_expr_ir_builder.BoolCast(value, casted_value, status)) {
+        if (!cast_expr_ir_builder_.BoolCast(value, casted_value, status)) {
             status.msg = "fail to codegen add expr: " + status.msg;
             LOG(WARNING) << status.msg;
             return false;
@@ -360,36 +359,38 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
     *casted_right = right;
 
     if (left_type != right_type) {
-        if (_cast_expr_ir_builder.isSafeCast(left_type, right_type)) {
-            if (!_cast_expr_ir_builder.SafeCast(left, right_type, casted_left,
+        if (cast_expr_ir_builder_.IsSafeCast(left_type, right_type)) {
+            if (!cast_expr_ir_builder_.SafeCast(left, right_type, casted_left,
                                                 status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
-        } else if (_cast_expr_ir_builder.isSafeCast(right_type, left_type)) {
-            if (!_cast_expr_ir_builder.SafeCast(right, left_type, casted_right,
+        } else if (cast_expr_ir_builder_.IsSafeCast(right_type, left_type)) {
+            if (!cast_expr_ir_builder_.SafeCast(right, left_type, casted_right,
                                                 status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
-        } else if (_cast_expr_ir_builder.isIFCast(left_type, right_type)) {
-            if (!_cast_expr_ir_builder.UnSafeCast(left, right_type, casted_left,
+        } else if (cast_expr_ir_builder_.IsIntFloat2PointerCast(left_type,
+                                                                right_type)) {
+            if (!cast_expr_ir_builder_.UnSafeCast(left, right_type, casted_left,
                                                   status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
-        } else if (_cast_expr_ir_builder.isIFCast(right_type, left_type)) {
-            if (!_cast_expr_ir_builder.UnSafeCast(right, left_type,
+        } else if (cast_expr_ir_builder_.IsIntFloat2PointerCast(right_type,
+                                                                left_type)) {
+            if (!cast_expr_ir_builder_.UnSafeCast(right, left_type,
                                                   casted_right, status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
-        } else if (_cast_expr_ir_builder.isStringCast(right_type)) {
-            if (!_cast_expr_ir_builder.StringCast(left, casted_left, status)) {
+        } else if (cast_expr_ir_builder_.IsStringCast(right_type)) {
+            if (!cast_expr_ir_builder_.StringCast(left, casted_left, status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;

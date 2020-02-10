@@ -54,7 +54,7 @@ void CastErrorCheck(::fesql::type::Type src_type, ::fesql::type::Type dist_type,
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
     scope_var.AddVar("a", arg0);
-    CastExprIRBuilder cast_expr_ir_builder(entry_block, &scope_var);
+    CastExprIRBuilder cast_expr_ir_builder(entry_block);
     llvm::Value *output;
     base::Status status;
     bool ok = safe ? cast_expr_ir_builder.SafeCast(arg0, dist_llvm_type,
@@ -89,7 +89,7 @@ void CastCheck(::fesql::type::Type src_type, ::fesql::type::Type dist_type,
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
     scope_var.AddVar("a", arg0);
-    CastExprIRBuilder cast_expr_ir_builder(entry_block, &scope_var);
+    CastExprIRBuilder cast_expr_ir_builder(entry_block);
     llvm::Value *output;
     base::Status status;
     bool ok = safe ? cast_expr_ir_builder.SafeCast(arg0, dist_llvm_type,
@@ -168,7 +168,7 @@ void BoolCastCheck(::fesql::type::Type type, V value, bool result) {
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
     scope_var.AddVar("a", arg0);
-    CastExprIRBuilder ir_builder(entry_block, &scope_var);
+    CastExprIRBuilder ir_builder(entry_block);
     llvm::Value *output;
     base::Status status;
 
