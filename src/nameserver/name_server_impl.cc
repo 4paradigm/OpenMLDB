@@ -4675,6 +4675,7 @@ void NameServerImpl::SchedMakeSnapshot() {
             }
         }
     }
+    PDLOG(INFO, "start make snapshot");
     for (const auto& table : table_infos) {
         if (table.second->storage_mode() != common::kMemory) {
             continue;
@@ -4703,6 +4704,7 @@ void NameServerImpl::SchedMakeSnapshot() {
             }
         }
     }
+    PDLOG(INFO, "make snapshot finished");
     if (running_.load(std::memory_order_acquire)) {
         task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
     }

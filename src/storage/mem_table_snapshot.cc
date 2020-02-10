@@ -335,8 +335,8 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
         PDLOG(INFO, "snapshot is doing now!");
         return 0;
     }
-    if (end_offset > 0 && end_offset < offset_) {
-        PDLOG(WARNING, "end_offset %lu less than offset_ %lu, do nothing", end_offset, offset_);
+    if (end_offset > 0 && end_offset <= offset_) {
+        PDLOG(WARNING, "end_offset %lu less than or equal offset_ %lu, do nothing", end_offset, offset_);
         return -1;
     }
     making_snapshot_.store(true, std::memory_order_release);

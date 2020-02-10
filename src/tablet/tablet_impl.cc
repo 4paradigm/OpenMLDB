@@ -1887,9 +1887,9 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_o
     uint64_t cur_offset = replicator->GetOffset();
     uint64_t snapshot_offset = snapshot->GetOffset();
     int ret = 0;
-    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset || end_offset <= 0) {
-        PDLOG(INFO, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%lu], snapshot_offset[%lu]", 
-                tid, pid, cur_offset, snapshot_offset);
+    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset && end_offset == 0) {
+        PDLOG(INFO, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%lu], snapshot_offset[%lu] end_offset[%lu]",
+                tid, pid, cur_offset, snapshot_offset, end_offset);
     } else {
         if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
             ::rtidb::storage::DiskTableSnapshot* disk_snapshot = 
