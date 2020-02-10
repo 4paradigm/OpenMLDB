@@ -1831,6 +1831,15 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
+    if (request->schedu_by_ns() && request->offset() > 0) {
+        if (iter->second->storage_mode() != common::kMemory) {
+            PDLOG(WARNING, "table[%s] is not memory table, can't do snapshot with end offset", request->name().c_str());
+        } else {
+            thread_pool_.AddTask(boost::bind(&NameServerImpl::MakeTablePartitionSnapshot, this, request->pid(), request->offset(), iter->second));
+        }
+        response->set_code(0);
+        return;
+    }
     std::shared_ptr<OPData> op_data;
     std::string value;
     request->SerializeToString(&value);
@@ -4691,14 +4700,13 @@ void NameServerImpl::SchedMakeSnapshot() {
                 if (part_meta.is_alive()) {
                     auto client_iter = tablet_ptr_map.find(part_meta.endpoint());
                     if (client_iter != tablet_ptr_map.end()) {
-                        client_iter->second->client_->MakeSnapshot(table.second->tid(), part.pid(), part_iter->second, std::shared_ptr<rtidb::api::TaskInfo>());
                         thread_pool_.AddTask(boost::bind(&TabletClient::MakeSnapshot, client_iter->second->client_, table.second->tid(), part.pid(), part_iter->second, std::shared_ptr<rtidb::api::TaskInfo>()));
                     }
                 }
             }
             for (const auto& ns : ns_client) {
                 std::string msg;
-                thread_pool_.AddTask(boost::bind(&NsClient::MakeSnapshot, ns.second, table.second->name(), part.pid(), part_iter->second, msg));
+                thread_pool_.AddTask(boost::bind(&NsClient::MakeSnapshot, ns.second, table.second->name(), part.pid(), part_iter->second, msg, true));
             }
         }
     }
@@ -7967,6 +7975,22 @@ bool NameServerImpl::DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
         cluster_info->last_status.erase(iter);
     }
     return cluster_info->DropTableRemote(task_info, name, zone_info_);
+}
+
+void NameServerImpl::MakeTablePartitionSnapshot(uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
+    for(const auto& part : table_info->table_partition()) {
+        for(const auto& meta : part.partition_meta()) {
+            if (!meta.is_alive()) {
+                continue;
+            }
+            auto tablet_iter = tablets_.find(meta.endpoint());
+            if (tablet_iter == tablets_.end()) {
+                PDLOG(WARNING, "tablet[%s] not found in tablets", meta.endpoint().c_str());
+                continue;
+            }
+            thread_pool_.AddTask(boost::bind(&TabletClient::MakeSnapshot, tablet_iter->second->client_, table_info->tid(), pid, end_offset, std::shared_ptr<rtidb::api::TaskInfo>()));
+        }
+    }
 }
 
 }

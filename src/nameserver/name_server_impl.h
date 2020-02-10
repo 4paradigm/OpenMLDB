@@ -631,6 +631,8 @@ private:
 
     void SchedMakeSnapshot();
 
+    void MakeTablePartitionSnapshot(uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+
 private:
     std::mutex mu_;
     Tablets tablets_;
