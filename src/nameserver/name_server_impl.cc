@@ -7986,8 +7986,8 @@ int NameServerImpl::SyncExistTable(const std::string& name,
                         return -1;
                     }
                 }
+                break;
             }
-            break;
         }
         if (!has_pid) {
             code = 512;
@@ -8011,9 +8011,11 @@ int NameServerImpl::SyncExistTable(const std::string& name,
                         }
                     }
                 }
+                break;
             }
-            break;
         }
+    }
+    for (const auto& cur_pid : pid_vec) {
         for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
             ::rtidb::nameserver::TablePartition table_partition = table_info_remote.table_partition(idx);
             if (table_partition.pid() == cur_pid) {
@@ -8030,8 +8032,8 @@ int NameServerImpl::SyncExistTable(const std::string& name,
                         }
                     }
                 }
+                break;
             }
-            break;
         }
     }
     return 0;
