@@ -4602,7 +4602,7 @@ void NameServerImpl::SchedMakeSnapshot() {
             }
             ns_client.insert(std::make_pair(iter->first, std::atomic_load_explicit(&iter->second->client_, std::memory_order_relaxed)));
         }
-        for (auto iter = table_infos.begin(); iter != table_infos.end(); ++iter) {
+        for (auto iter = table_info_.begin(); iter != table_info_.end(); ++iter) {
             if (iter->second->storage_mode() != common::kMemory) {
                 continue;
             }
@@ -4651,9 +4651,6 @@ void NameServerImpl::SchedMakeSnapshot() {
             ns_client.erase(alias);
         }
         for (const auto& table : table_infos) {
-            if (table.second->storage_mode() != common::kMemory) {
-                continue;
-            }
             auto table_iter = table_part_offset.find(table.second->name());
             if (table_iter == table_part_offset.end()) {
                 std::map<uint32_t, uint64_t> part_offset;
