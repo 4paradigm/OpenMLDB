@@ -1919,7 +1919,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_o
                 if (table->GetStorageMode() == common::StorageMode::kMemory) {
                     auto right_now = std::chrono::system_clock::now().time_since_epoch();
                     int64_t ts = std::chrono::duration_cast<std::chrono::seconds>(right_now).count();
-                    table->Set_make_time(ts);
+                    table->SetMakeSnapshotTime(ts);
                 }
             } else {
                 task->set_status(::rtidb::api::kFailed);
@@ -2004,7 +2004,7 @@ void TabletImpl::SchedMakeSnapshot() {
                     continue;
                 }
                 if (inner->second->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
-                    if (ts - inner->second->Get_make_time() <= 60*60*24 && !FLAGS_zk_cluster.empty()) {
+                    if (ts - inner->second->GetMakeSnapshotTime() <= 60*60*24 && !FLAGS_zk_cluster.empty()) {
                         continue;
                     }
                     table_set.push_back(std::make_pair(iter->first, inner->first));

@@ -4570,6 +4570,9 @@ void NameServerImpl::DeleteDoneOP() {
 }
 
 void NameServerImpl::SchedMakeSnapshot() {
+    if (!running_.load(std::memory_order_acquire)) {
+        return;
+    }
     int now_hour = ::rtidb::base::GetNowHour();
     if (now_hour != FLAGS_make_snapshot_time) {
         task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
@@ -5122,6 +5125,7 @@ void NameServerImpl::OnLocked() {
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateTableStatus, this));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::ProcessTask, this));
     task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
+    task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
 }
 
 void NameServerImpl::OnLostLock() {
