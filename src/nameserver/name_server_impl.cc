@@ -1429,21 +1429,20 @@ void NameServerImpl::UpdateTaskMapStatus(uint64_t remote_op_id,
         for (int idx = 0; idx < task_info->rep_cluster_op_id_size(); idx++) {
             uint64_t rep_cluster_op_id = task_info->rep_cluster_op_id(idx);
             if (rep_cluster_op_id == op_id) {
-                if (idx < task_info->rep_cluster_op_id_size() - 1) {
-                    if (status == ::rtidb::api::kFailed ||
-                             status == ::rtidb::api::kCanceled) {
-                        task_info->set_status(status);
-                        if (status == ::rtidb::api::kFailed) {
-                            PDLOG(DEBUG, "update task status from[kDoing] to[kFailed]. op_id[%lu], task_type[%s]", 
-                                    task_info->op_id(), 
-                                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
-                        } else {
-                            PDLOG(DEBUG, "update task status from[kDoing] to[kCanceled]. op_id[%lu], task_type[%s]", 
-                                    task_info->op_id(), 
-                                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
-                        }
+                if (status == ::rtidb::api::kFailed ||
+                        status == ::rtidb::api::kCanceled) {
+                    task_info->set_status(status);
+                    if (status == ::rtidb::api::kFailed) {
+                        PDLOG(DEBUG, "update task status from[kDoing] to[kFailed]. op_id[%lu], task_type[%s]", 
+                                task_info->op_id(), 
+                                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+                    } else {
+                        PDLOG(DEBUG, "update task status from[kDoing] to[kCanceled]. op_id[%lu], task_type[%s]", 
+                                task_info->op_id(), 
+                                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
                     }
-                } else {
+                }
+                if (idx == task_info->rep_cluster_op_id_size() - 1){
                     if (status == ::rtidb::api::kDone &&
                             task_info->status() != ::rtidb::api::kFailed &&
                             task_info->status() != ::rtidb::api::kCanceled) {
@@ -7607,6 +7606,40 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
                     DelReplicaRemoteOP(meta.endpoint(), iter->first, part_iter->pid());
                 }
             }
+            std::string name = iter->first;
+            std::string alias = request->alias();
+            auto tit = table_info_.find(name);
+            if (tit == table_info_.end()) {
+                PDLOG(WARNING, "not found table[%s] in table_info map.", name.c_str());
+                break;
+            }
+            ::rtidb::nameserver::TableInfo table_info(*(tit->second));
+            bool has_alias_pair = false;
+            for (int pair_idx = 0; pair_idx < table_info.alias_pair_size(); pair_idx++) {
+                AliasPair* alias_pair = table_info.mutable_alias_pair(pair_idx);
+                if (alias_pair->alias() == alias) {
+                    ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::AliasPair>* alias_pair_list = 
+                        table_info.mutable_alias_pair();
+                    has_alias_pair = true;
+                    alias_pair_list->DeleteSubrange(pair_idx, 1);
+                    break;
+                }
+            }
+            if (!has_alias_pair) {
+                PDLOG(WARNING, "alias [%s] not exist in alias_pair in table [%s]", 
+                        alias.c_str(), table_info.name().c_str()); 
+                break;
+            }
+            std::string table_value;
+            table_info.SerializeToString(&table_value);
+            if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
+                PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
+                        zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+                break;
+            }
+            PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
+                    zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+            tit->second->CopyFrom(table_info);
         }
         if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
             code = 452;
