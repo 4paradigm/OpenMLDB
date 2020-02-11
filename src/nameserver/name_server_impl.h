@@ -633,6 +633,10 @@ private:
                            const ::rtidb::api::TTLType& type, 
                            uint64_t abs_ttl, uint64_t lat_ttl, const std::string& ts_name);
 
+    void CheckSyncExistTable(const std::string& alias, 
+            const std::vector<::rtidb::nameserver::TableInfo>& tables_remote, 
+            const std::shared_ptr<::rtidb::client::NsClient> ns_client);
+
     void CheckSyncTable(const std::string& alias, const std::vector<::rtidb::nameserver::TableInfo> tables, const std::shared_ptr<::rtidb::client::NsClient> ns_client);
 
     bool CompareTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables);

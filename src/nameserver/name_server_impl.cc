@@ -152,6 +152,71 @@ bool ClusterInfo::CreateTableRemote(const ::rtidb::api::TaskInfo& task_info,
     return true;
 }
 
+void NameServerImpl::CheckSyncExistTable(const std::string& alias, 
+        const std::vector<::rtidb::nameserver::TableInfo>& tables_remote, 
+        const std::shared_ptr<::rtidb::client::NsClient> ns_client) {
+    for (const TableInfo& table_info_remote : tables_remote) {
+        std::string name = table_info_remote.name();
+        ::rtidb::nameserver::TableInfo table_info_local;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto iter = table_info_.find(name);
+            if (iter == table_info_.end()) {
+                PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+                return;
+            }
+            table_info_local = *(iter->second);
+        }
+        bool is_continue = false;
+        for (int idx = 0; idx < table_info_local.table_partition_size(); idx++) {
+            ::rtidb::nameserver::TablePartition table_partition_local = table_info_local.table_partition(idx);
+            for (int midx = 0; midx < table_partition_local.partition_meta_size(); midx++) {
+                if (table_partition_local.partition_meta(midx).is_leader() &&
+                        (!table_partition_local.partition_meta(midx).is_alive())) {
+                    PDLOG(WARNING, "table [%s] pid [%u] has a no alive leader partition", 
+                            name.c_str(), table_partition_local.pid());
+                    is_continue = true;
+                }
+            }
+        }
+        //remote table
+        for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
+            ::rtidb::nameserver::TablePartition table_partition = table_info_remote.table_partition(idx);
+            for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
+                if (table_partition.partition_meta(midx).is_leader()) { 
+                    if (!table_partition.partition_meta(midx).is_alive()) {
+                        PDLOG(WARNING, "remote table [%s] has a no alive leader partition pid[%u]", 
+                                name.c_str(), table_partition.pid());
+                        is_continue = true;
+                    }
+                }
+            }
+        }
+        if (is_continue) {
+            PDLOG(WARNING, "table [%s] does not sync to replica cluster [%s]", 
+                    name.c_str(), alias.c_str());
+            continue;
+        }
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
+                ::rtidb::nameserver::TablePartition table_partition = table_info_remote.table_partition(idx);
+                uint32_t cur_pid = table_partition.pid();
+                for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
+                    if (table_partition.partition_meta(midx).is_leader() && 
+                            table_partition.partition_meta(midx).is_alive()) {
+                        if (AddReplicaSimplyRemoteOP(name, table_partition.partition_meta(midx).endpoint(), 
+                                    table_info_remote.tid(), cur_pid) < 0) {
+                            PDLOG(WARNING, "create AddReplicasSimplyRemoteOP failed. table[%s] pid[%u] alias[%s]", 
+                                    name.c_str(), cur_pid, alias.c_str());
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void NameServerImpl::CheckSyncTable(const std::string& alias, 
         const std::vector<::rtidb::nameserver::TableInfo> tables, 
         const std::shared_ptr<::rtidb::client::NsClient> ns_client) {
@@ -7412,6 +7477,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
             std::lock_guard<std::mutex> lock(mu_);
             nsc_.insert(std::make_pair(request->alias(), cluster_info));
         }
+        thread_pool_.AddTask(boost::bind(&NameServerImpl::CheckSyncExistTable, this, request->alias(), tables, std::atomic_load_explicit(&cluster_info->client_, std::memory_order_relaxed)));
         thread_pool_.AddTask(boost::bind(&NameServerImpl::CheckSyncTable, this, request->alias(), tables, std::atomic_load_explicit(&cluster_info->client_, std::memory_order_relaxed)));
     } while (0);
 
