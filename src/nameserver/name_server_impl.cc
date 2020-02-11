@@ -4583,6 +4583,7 @@ void NameServerImpl::SchedMakeSnapshot() {
         return;
     }
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
+        task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
         return;
     }
     int now_hour = ::rtidb::base::GetNowHour();
