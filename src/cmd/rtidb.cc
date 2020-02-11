@@ -2052,6 +2052,8 @@ int SetTablePartition(const ::rtidb::client::TableInfo& table_info,
                 partition_meta->set_is_leader(false);
             }
         }
+        ns_table_info.set_partition_num(ns_table_info.table_partition_size());
+        ns_table_info.set_replica_num(ns_table_info.table_partition().Get(0).partition_meta_size());
     } else {
         if (table_info.has_partition_num()) {
             ns_table_info.set_partition_num(table_info.partition_num());
