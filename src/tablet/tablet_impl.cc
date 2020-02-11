@@ -52,6 +52,7 @@ DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_disktable_snapshot_interval);
 DECLARE_int32(make_snapshot_check_interval);
+DECLARE_int32(make_snapshot_offline_interval);
 DECLARE_bool(recycle_bin_enabled);
 DECLARE_uint32(recycle_ttl);
 DECLARE_string(recycle_bin_root_path);
@@ -2004,7 +2005,7 @@ void TabletImpl::SchedMakeSnapshot() {
                     continue;
                 }
                 if (inner->second->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
-                    if (ts - inner->second->GetMakeSnapshotTime() <= 60*60*24 && !FLAGS_zk_cluster.empty()) {
+                    if (ts - inner->second->GetMakeSnapshotTime() <= FLAGS_make_snapshot_offline_interval && !FLAGS_zk_cluster.empty()) {
                         continue;
                     }
                     table_set.push_back(std::make_pair(iter->first, inner->first));
