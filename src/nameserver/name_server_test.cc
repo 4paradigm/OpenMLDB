@@ -29,6 +29,7 @@ DECLARE_int32(request_timeout_ms);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
+DECLARE_int32(make_snapshot_offline_interval);
 DECLARE_bool(auto_failover);
 
 using ::rtidb::zk::ZkClient;
