@@ -16,10 +16,8 @@
 
 //
 // FeSQL Parser
-//
-// Desc: Parse FeSQL Command
-//
 #include "parser/parser.h"
+#include <utility>
 #include "node/sql_node.h"
 #include "proto/common.pb.h"
 
@@ -57,10 +55,10 @@ int FeSQLParser::parse(
         }
         switch (tree->GetType()) {
             case node::kFnDef: {
-                ReflectFnDefNode(dynamic_cast<node::FnNodeFnDef *>(tree),
-                                 manager, status);
+                int ret = ReflectFnDefNode(
+                    dynamic_cast<node::FnNodeFnDef *>(tree), manager, status);
                 if (status.code != common::kOk) {
-                    return -1;
+                    return ret;
                 }
             }
             default: {
@@ -98,7 +96,13 @@ int FeSQLParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
         LOG(WARNING) << status.msg;
         return -1;
     }
+
     if (status.code != common::kOk) {
+        return -1;
+    }
+
+    std::map<std::string, node::FnNode *> assign_var_map;
+    if (false == SSAOptimized(fn_block, assign_var_map, status)) {
         return -1;
     }
     fn_def->block_ = fn_block;
@@ -121,6 +125,11 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
     node::FnIfElseBlock *if_else_block = nullptr;
     while (pos < end) {
         node::FnNode *node = statements[pos];
+        if (nullptr == node) {
+            status.msg = "fail to create fn block node: node is null";
+            status.code = common::kSQLError;
+            return -1;
+        }
         if (indent < node->indent) {
             status.code = common::kFunError;
             status.msg = "fail to create block: fn node indent " +
@@ -136,8 +145,8 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
 
         pos++;
         switch (node->GetType()) {
-            case node::kFnReturnStmt:
             case node::kFnAssignStmt:
+            case node::kFnReturnStmt:
                 if (nullptr != if_else_block) {
                     block->AddChild(if_else_block);
                     if_else_block = nullptr;
@@ -223,6 +232,71 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
         }
     }
     return pos;
+}
+bool FeSQLParser::SSAOptimized(
+    const node::FnNodeList *block,
+    std::map<std::string, node::FnNode *> &assign_var_map,
+    base::Status &status) {
+    if (nullptr == block || block->children.empty()) {
+        return true;
+    }
+
+    for (node::FnNode *node : block->children) {
+        if (nullptr == node) {
+            // skip handle null node
+            continue;
+        }
+        switch (node->GetType()) {
+            case node::kFnAssignStmt: {
+                node::FnAssignNode *assgin_node =
+                    dynamic_cast<node::FnAssignNode *>(node);
+                std::map<std::string, node::FnNode *>::iterator it =
+                    assign_var_map.find(assgin_node->name_);
+                if (it == assign_var_map.end()) {
+                    assgin_node->EnableSSA();
+                    assign_var_map.insert(
+                        std::pair<std::string, node::FnNode *>(
+                            assgin_node->name_, assgin_node));
+                } else {
+                    dynamic_cast<node::FnAssignNode *>(it->second)
+                        ->DisableSSA();
+                }
+                break;
+            }
+            case node::kFnIfElseBlock: {
+                node::FnIfElseBlock *block =
+                    dynamic_cast<node::FnIfElseBlock *>(node);
+                if (false == SSAOptimized(block->if_block_->block_,
+                                          assign_var_map, status)) {
+                    return false;
+                }
+                if (!block->elif_blocks_.empty()) {
+                    for (node::FnNode *elif_block : block->elif_blocks_) {
+                        if (false ==
+                            SSAOptimized(
+                                dynamic_cast<node::FnElifBlock *>(elif_block)
+                                    ->block_,
+                                assign_var_map, status)) {
+                            return false;
+                        }
+                    }
+                }
+
+                if (nullptr != block->else_block_) {
+                    if (false == SSAOptimized(block->else_block_->block_,
+                                              assign_var_map, status)) {
+                        return false;
+                    }
+                }
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
+
+    return true;
 }
 }  // namespace parser
 }  // namespace fesql

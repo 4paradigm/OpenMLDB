@@ -57,9 +57,9 @@ class Planner {
     void CreateFuncDefPlan(const SQLNode *root,
                            node::FuncDefPlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
-    void CreateWindowPlanNode(
-        node::WindowDefNode *w_ptr, node::WindowPlanNode * plan_node,
-        Status &status);  // NOLINT (runtime/references)
+    void CreateWindowPlanNode(node::WindowDefNode *w_ptr,
+                              node::WindowPlanNode *plan_node,
+                              Status &status);  // NOLINT (runtime/references)
     int64_t CreateFrameOffset(const node::FrameBound *bound,
                               Status &status);  // NOLINT (runtime/references)
     void CreateDataProviderPlanNode(const node::SQLNode *root,
@@ -70,7 +70,6 @@ class Planner {
         const node::SQLNode *root, PlanNode *plan_tree,
         Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
-
 };
 
 class SimplePlanner : public Planner {

@@ -16,18 +16,19 @@
  */
 
 #include "codegen/fn_ir_builder.h"
-
 #include <stack>
 #include "codegen/expr_ir_builder.h"
+#include "codegen/type_ir_builder.h"
+#include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/IRBuilder.h"
-#include "type_ir_builder.h"
 
 namespace fesql {
 namespace codegen {
 
-FnIRBuilder::FnIRBuilder(::llvm::Module *module) : module_(module) {}
+FnIRBuilder::FnIRBuilder(::llvm::Module *module)
+    : module_(module), variable_ir_builder_(nullptr, nullptr) {}
 
 FnIRBuilder::~FnIRBuilder() {}
 bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
@@ -123,8 +124,8 @@ bool FnIRBuilder::BuildIfElseBlock(
     llvm::Function *fn = block->getParent();
     llvm::BasicBlock *cond_true =
         llvm::BasicBlock::Create(module_->getContext(), "cond_true", fn);
-    llvm::BasicBlock *cond_false = llvm::BasicBlock::Create(
-        module_->getContext(), "cond_false", fn);
+    llvm::BasicBlock *cond_false =
+        llvm::BasicBlock::Create(module_->getContext(), "cond_false", fn);
     //进行条件的代码
     llvm::Value *cond = nullptr;
     if (false == expr_builder.Build(
@@ -140,13 +141,12 @@ bool FnIRBuilder::BuildIfElseBlock(
         BuildBlock(if_else_block->if_block_->block_, cond_true, status)) {
         return false;
     }
-    cond_true = builder.GetInsertBlock();
 
     builder.SetInsertPoint(cond_false);
     if (!if_else_block->elif_blocks_.empty()) {
         for (fesql::node::FnNode *node : if_else_block->elif_blocks_) {
-            llvm::BasicBlock *cond_true =
-                llvm::BasicBlock::Create(module_->getContext(), "cond_true", fn);
+            llvm::BasicBlock *cond_true = llvm::BasicBlock::Create(
+                module_->getContext(), "cond_true", fn);
             llvm::BasicBlock *cond_false = llvm::BasicBlock::Create(
                 module_->getContext(), "cond_false", fn);
 
@@ -163,15 +163,14 @@ bool FnIRBuilder::BuildIfElseBlock(
             }
             builder.CreateCondBr(cond, cond_true, cond_false);
             builder.SetInsertPoint(cond_true);
-            if (false ==
-                BuildBlock(elif_block->block_, cond_true, status)) {
+            if (false == BuildBlock(elif_block->block_, cond_true, status)) {
                 return false;
             }
-            cond_true = builder.GetInsertBlock();
             builder.SetInsertPoint(cond_false);
         }
     }
-    if (false == BuildBlock(if_else_block->else_block_->block_, builder.GetInsertBlock(), status)) {
+    if (false == BuildBlock(if_else_block->else_block_->block_,
+                            builder.GetInsertBlock(), status)) {
         return false;
     }
 
@@ -211,6 +210,7 @@ bool FnIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
         return false;
     }
     ExprIRBuilder builder(block, &sv_);
+    VariableIRBuilder variable_ir_builder(block, &sv_);
     ::llvm::Value *value = NULL;
     bool ok = builder.Build(node->expression_, &value);
     if (!ok) {
@@ -219,7 +219,13 @@ bool FnIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
         LOG(WARNING) << status.msg;
         return false;
     }
-    return sv_.AddVar(node->name_, value);
+
+    if (node->IsSSA()) {
+        return variable_ir_builder.StoreValue(node->name_, value, true, status);
+    } else {
+        return variable_ir_builder.StoreValue(node->name_, value, false,
+                                              status);
+    }
 }
 
 bool FnIRBuilder::BuildBlock(const node::FnNodeList *statements,

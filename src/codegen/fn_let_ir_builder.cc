@@ -16,10 +16,10 @@
  */
 
 #include "codegen/fn_let_ir_builder.h"
-
 #include "codegen/buf_ir_builder.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
 
 namespace fesql {
@@ -69,6 +69,7 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
 
+    VariableIRBuilder variable_ir_builder(block, &sv);
     BufNativeIRBuilder buf_ir_builder(table_, block, &sv);
     ExprIRBuilder expr_ir_builder(block, &sv, &buf_ir_builder,
                                   !node->IsWindowAgg(), row_ptr_name,
@@ -112,7 +113,8 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
         schema.push_back(cdef);
     }
 
-    ok = EncodeBuf(&outputs, &schema, sv, block, output_ptr_name);
+    ok = EncodeBuf(&outputs, &schema, variable_ir_builder, block,
+                   output_ptr_name);
     if (!ok) {
         return false;
     }
@@ -126,11 +128,13 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
 bool RowFnLetIRBuilder::EncodeBuf(
     const std::map<uint32_t, ::llvm::Value*>* values,
     const std::vector<::fesql::type::ColumnDef>* schema,
-    ScopeVar& sv,  // NOLINT (runtime/references)
+    VariableIRBuilder&
+        variable_ir_builder,  // NOLINT (runtime/references)
     ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
+    base::Status status;
     BufNativeEncoderIRBuilder encoder(values, schema, block);
     ::llvm::Value* row_ptr = NULL;
-    bool ok = sv.FindVar(output_ptr_name, &row_ptr);
+    bool ok = variable_ir_builder.LoadValue(output_ptr_name, &row_ptr, status);
     if (!ok) {
         LOG(WARNING) << "fail to get row ptr";
         return false;

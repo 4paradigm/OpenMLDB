@@ -19,6 +19,8 @@
 #define SRC_PARSER_PARSER_H_
 
 #include <iostream>
+#include <vector>
+#include <map>
 #include <list>
 #include <string>
 #include "base/status.h"
@@ -55,6 +57,9 @@ class FeSQLParser {
                          node::NodeManager *node_manager,
                          base::Status &status);  // NOLINT (runtime/references)
     // NOLINT
+    bool SSAOptimized(const node::FnNodeList *block,
+                      std::map<std::string, node::FnNode *> &assign_var_map, // NOLINT (runtime/references)
+                      base::Status &status); // NOLINT (runtime/references)
 };
 }  // namespace parser
 }  // namespace fesql

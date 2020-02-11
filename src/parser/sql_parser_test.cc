@@ -147,8 +147,7 @@ INSTANTIATE_TEST_CASE_P(
         "    \telse\n"
         "    \t\tc=x*y\n"
         "    return c\n"
-        "end"
-        ));
+        "end"));
 
 INSTANTIATE_TEST_CASE_P(
     SQLCreate, SqlParserTest,

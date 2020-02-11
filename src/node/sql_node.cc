@@ -589,6 +589,8 @@ void FnAssignNode::Print(std::ostream &output,
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
+    PrintValue(output, tab, is_ssa_? "true" : "false", "ssa", false);
+    output << "\n";
     PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(expression_),
                  name_, true);
 }

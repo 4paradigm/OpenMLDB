@@ -950,11 +950,20 @@ class FnNodeFnDef : public FnNode {
 class FnAssignNode : public FnNode {
  public:
     explicit FnAssignNode(const std::string &name, ExprNode *expression)
-        : FnNode(kFnAssignStmt), name_(name), expression_(expression) {}
+        : FnNode(kFnAssignStmt),
+          name_(name),
+          expression_(expression),
+          is_ssa_(false) {}
     std::string GetName() const { return name_; }
+    const bool IsSSA() const { return is_ssa_; }
+    void EnableSSA() { is_ssa_ = true; }
+    void DisableSSA() { is_ssa_ = false; }
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string name_;
     const ExprNode *expression_;
+
+ private:
+    bool is_ssa_;
 };
 
 class FnIfNode : public FnNode {
@@ -973,7 +982,7 @@ class FnElifNode : public FnNode {
 };
 class FnElseNode : public FnNode {
  public:
-    explicit FnElseNode() : FnNode(kFnElseStmt) {}
+    FnElseNode() : FnNode(kFnElseStmt) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
 };
 
@@ -996,7 +1005,7 @@ class FnElifBlock : public FnNode {
 };
 class FnElseBlock : public FnNode {
  public:
-    FnElseBlock(const FnNodeList *block)
+    explicit FnElseBlock(const FnNodeList *block)
         : FnNode(kFnElseBlock), block_(block) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     const FnNodeList *block_;

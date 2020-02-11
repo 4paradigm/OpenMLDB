@@ -623,7 +623,8 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
         "    \tc=x+y\n"
         "    elif y >1\n"
         "    \tif x-y >0\n"
-        "    \t\tc=x-y\n"
+        "    \t\td=x-y\n"
+        "    \t\tc=d+1\n"
         "    \telif x-y <0\n"
         "    \t\tc = y-x\n"
         "    \telse\n"
@@ -706,9 +707,17 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
                         node::kExprBinary,
                         block->if_block_->if_node->expression_->GetExprType());
                     // c = x-y
-                    ASSERT_EQ(1, block->if_block_->block_->children.size());
+                    ASSERT_EQ(2, block->if_block_->block_->children.size());
                     ASSERT_EQ(node::kFnAssignStmt,
                               block->if_block_->block_->children[0]->GetType());
+                    ASSERT_TRUE(dynamic_cast<node::FnAssignNode *>(
+                                    block->if_block_->block_->children[0])
+                                    ->IsSSA());
+                    ASSERT_EQ(node::kFnAssignStmt,
+                              block->if_block_->block_->children[1]->GetType());
+                    ASSERT_FALSE(dynamic_cast<node::FnAssignNode *>(
+                                     block->if_block_->block_->children[1])
+                                     ->IsSSA());
                 }
                 ASSERT_EQ(1, block->elif_blocks_.size());
                 // check elif x-y<0
@@ -723,18 +732,20 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
                         node::kExprBinary,
                         elif_block->elif_node_->expression_->GetExprType());
                     ASSERT_EQ(1, elif_block->block_->children.size());
-                    ASSERT_EQ(node::kFnAssignStmt, elif_block->block_->children[0]->GetType());
-
+                    ASSERT_EQ(node::kFnAssignStmt,
+                              elif_block->block_->children[0]->GetType());
                 }
                 // check c = 9999
                 ASSERT_EQ(1, block->else_block_->block_->children.size());
-                ASSERT_EQ(node::kFnAssignStmt, block->else_block_->block_->children[0]->GetType());
+                ASSERT_EQ(node::kFnAssignStmt,
+                          block->else_block_->block_->children[0]->GetType());
             }
         }
         // else block check
         {
             ASSERT_EQ(1, block->else_block_->block_->children.size());
-            ASSERT_EQ(node::kFnIfElseBlock, block->else_block_->block_->children[0]->GetType());
+            ASSERT_EQ(node::kFnIfElseBlock,
+                      block->else_block_->block_->children[0]->GetType());
         }
     }
     // validate select plan
