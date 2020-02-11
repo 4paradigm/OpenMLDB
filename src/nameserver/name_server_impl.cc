@@ -2755,7 +2755,11 @@ void NameServerImpl::DropTableInternel(const std::string name,
     }
     if (!nsc_.empty()) {
         for (auto kv : nsc_) {
-            if(DropTableRemoteOP(name, kv.first, INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster)) {
+            if (kv.second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+                PDLOG(INFO, "cluster[%s] is not Healthy", kv.first.c_str()); 
+                continue;
+            }
+            if(DropTableRemoteOP(name, kv.first, INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
                 PDLOG(WARNING, "drop table for replica cluster failed, table_name: %s, alias: %s", name.c_str(), kv.first.c_str());
                 code = 505;
                 break;
@@ -3481,7 +3485,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                 }
                 std::lock_guard<std::mutex> lock(mu_);
                 if(CreateTableRemoteOP(*table_info, remote_table_info, kv.first, 
-                            INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster)) {
+                            INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
                     PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
                     response.set_code(503);
                     response.set_msg( "create table for replica cluster failed");
