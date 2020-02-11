@@ -509,9 +509,15 @@ bool NameServerImpl::Recover() {
     }
     {
         std::lock_guard<std::mutex> lock(mu_);
-        UpdateTablets(endpoints);
 
         std::string value;
+        if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/follower", value)) {
+            zone_info_.ParseFromString(value);
+            mode_.store(zone_info_.mode(), std::memory_order_release);
+            PDLOG(WARNING, "recover zone info : %s", value.c_str());
+        }
+        UpdateTablets(endpoints);
+        value.clear();
         if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
             if (!zk_client_->CreateNode(zk_table_index_node_, "1")) {
                 PDLOG(WARNING, "create table index node failed!");
@@ -566,12 +572,6 @@ bool NameServerImpl::Recover() {
             value == "true" ? auto_failover_.store(true, std::memory_order_release) :
                 auto_failover_.store(false, std::memory_order_release);
             PDLOG(INFO, "get zk_auto_failover_node[%s]", value.c_str());
-        }
-        value.clear();
-        if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/follower", value)) {
-            zone_info_.ParseFromString(value);
-            mode_.store(zone_info_.mode(), std::memory_order_release);
-            PDLOG(WARNING, "recover zone info : %s", value.c_str());
         }
         if (!RecoverTableInfo()) {
             PDLOG(WARNING, "recover table info failed!");
