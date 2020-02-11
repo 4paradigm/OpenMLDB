@@ -7812,21 +7812,18 @@ void NameServerImpl::SyncTable(RpcController* controller,
     std::string name = request->name();
     std::string cluster_alias = request->cluster_alias();
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto iter = table_info_.find(name);
-        if (iter == table_info_.end()) {
-            response->set_code(100);
-            response->set_msg("table is not exist!");
-            PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
-            return;
-        }
-        table_info = iter->second;
-    }
     do {
         std::shared_ptr<::rtidb::client::NsClient> client;
         {
             std::lock_guard<std::mutex> lock(mu_);
+            auto iter = table_info_.find(name);
+            if (iter == table_info_.end()) {
+                response->set_code(100);
+                response->set_msg("table is not exist!");
+                PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+                return;
+            }
+            table_info = iter->second;
             auto it = nsc_.find(cluster_alias);
             if(it == nsc_.end()) {
                 code = 404;
@@ -7940,7 +7937,6 @@ int NameServerImpl::SyncExistTable(const std::string& name,
         uint32_t pid, 
         int& code,
         std::string& msg) {
-    std::lock_guard<std::mutex> lock(mu_);
     std::vector<::rtidb::nameserver::TableInfo> table_vec;
     ::rtidb::nameserver::TableInfo table_info_remote;
     for (const auto& table : tables_remote) {
@@ -7950,18 +7946,21 @@ int NameServerImpl::SyncExistTable(const std::string& name,
             break;
         }
     }
-    if (!CompareTableInfo(table_vec)) {
-        PDLOG(WARNING, "compare table info error");
-        msg = "compare table info error";
-        code = 567;
-        return -1;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!CompareTableInfo(table_vec)) {
+            PDLOG(WARNING, "compare table info error");
+            msg = "compare table info error";
+            code = 567;
+            return -1;
+        }
+        //TODO: after merge feat/110-binlog-vs-snapshot-offset into develop
+        /**
+          if (!CompareSnapshotOffset(table_vec, msg, code, tablet_part_offset)) {
+          return -1;
+          }
+          */
     }
-    //TODO: after merge feat/110-binlog-vs-snapshot-offset into develop
-    /**
-      if (!CompareSnapshotOffset(table_vec, msg, code, tablet_part_offset)) {
-      return -1;
-      }
-      */
     std::vector<uint32_t> pid_vec;
     if (pid == UINT32_MAX) {
         for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
@@ -8015,24 +8014,27 @@ int NameServerImpl::SyncExistTable(const std::string& name,
             }
         }
     }
-    for (const auto& cur_pid : pid_vec) {
-        for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
-            ::rtidb::nameserver::TablePartition table_partition = table_info_remote.table_partition(idx);
-            if (table_partition.pid() == cur_pid) {
-                for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
-                    if (table_partition.partition_meta(midx).is_leader() && 
-                            table_partition.partition_meta(midx).is_alive()) {
-                        if (AddReplicaSimplyRemoteOP(name, table_partition.partition_meta(midx).endpoint(), 
-                                    table_info_remote.tid(), cur_pid) < 0) {
-                            PDLOG(WARNING, "create AddReplicasSimplyRemoteOP failed. table[%s] pid[%u]", 
-                                    name.c_str(), cur_pid);
-                            code = 513;
-                            msg = "create AddReplicasSimplyRemoteOP failed";
-                            return -1;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& cur_pid : pid_vec) {
+            for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
+                ::rtidb::nameserver::TablePartition table_partition = table_info_remote.table_partition(idx);
+                if (table_partition.pid() == cur_pid) {
+                    for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
+                        if (table_partition.partition_meta(midx).is_leader() && 
+                                table_partition.partition_meta(midx).is_alive()) {
+                            if (AddReplicaSimplyRemoteOP(name, table_partition.partition_meta(midx).endpoint(), 
+                                        table_info_remote.tid(), cur_pid) < 0) {
+                                PDLOG(WARNING, "create AddReplicasSimplyRemoteOP failed. table[%s] pid[%u]", 
+                                        name.c_str(), cur_pid);
+                                code = 513;
+                                msg = "create AddReplicasSimplyRemoteOP failed";
+                                return -1;
+                            }
                         }
                     }
+                    break;
                 }
-                break;
             }
         }
     }

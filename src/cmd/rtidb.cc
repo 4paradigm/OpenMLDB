@@ -804,20 +804,24 @@ void HandleNSClientDropTable(const std::vector<std::string>& parts, ::rtidb::cli
 
 void HandleNSClientSyncTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() != 3 && parts.size() != 4) {
-        std::cout << "Bad format for synctable! eg. syctable table_name cluster_alias [pid]" << std::endl;
+        std::cout << "Bad format for synctable! eg. synctable table_name cluster_alias [pid]" << std::endl;
         return;
     }
     uint32_t pid = UINT32_MAX;
-    if (parts.size() == 4) {
-        pid = boost::lexical_cast<uint32_t>(parts[3]);
+    try {
+        if (parts.size() == 4) {
+            pid = boost::lexical_cast<uint32_t>(parts[3]);
+        }
+        std::string msg;
+        bool ret = client->SyncTable(parts[1], parts[2], pid, msg);
+        if (!ret) {
+            std::cout << "failed to synctable. error msg: " << msg << std::endl;
+            return;
+        }
+        std::cout << "synctable ok" << std::endl;
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
     }
-    std::string msg;
-    bool ret = client->SyncTable(parts[1], parts[2], pid, msg);
-    if (!ret) {
-        std::cout << "failed to synctable. error msg: " << msg << std::endl;
-        return;
-    }
-    std::cout << "synctable ok" << std::endl;
 }
 
 void HandleNSClientConfSet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
