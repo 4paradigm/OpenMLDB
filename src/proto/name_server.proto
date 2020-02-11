@@ -133,7 +133,6 @@ message MakeSnapshotNSRequest {
     required string name = 1;
     required uint32 pid = 2;
     optional uint64 offset = 3;
-    optional bool schedu_by_ns = 4 [default = false];
 }
 
 message AddReplicaData {

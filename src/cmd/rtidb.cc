@@ -721,7 +721,7 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client
     try {
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
         std::string msg;
-        bool ok = client->MakeSnapshot(parts[1], pid, 0, msg, false);
+        bool ok = client->MakeSnapshot(parts[1], pid, 0, msg);
         if (!ok) {
             std::cout << "Fail to makesnapshot. error msg:" << msg << std::endl;
             return;
