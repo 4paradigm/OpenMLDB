@@ -86,7 +86,7 @@ DEFINE_int32(make_disktable_snapshot_interval, 360, "config the interval in minu
 DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");
 DEFINE_int32(make_snapshot_threshold_offset, 100000, "config the offset to reach the threshold");
 DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000, "config the max deleted keys store when make snapshot");
-DEFINE_uint32(make_snapshot_offline_interval, 60*60*24, "config tablet self makesnapshot when how long time makesnapshot from ns");
+DEFINE_uint32(make_snapshot_offline_interval, 60*60*24, "config tablet self makesnapshot when how long time do not makesnapshot from ns");
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 DEFINE_string(recycle_ssd_bin_root_path, "/tmp/ssd_recycle", "specify the ssd root path of recycle bin");
