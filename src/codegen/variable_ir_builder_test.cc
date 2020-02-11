@@ -21,10 +21,10 @@ using namespace llvm::orc;  // NOLINT
 ExitOnError ExitOnErr;
 namespace fesql {
 namespace codegen {
-class MutableVariableIRBuilderTest : public ::testing::Test {
+class VariableIRBuilderTest : public ::testing::Test {
  public:
-    MutableVariableIRBuilderTest() { manager_ = new node::NodeManager(); }
-    ~MutableVariableIRBuilderTest() { delete manager_; }
+    VariableIRBuilderTest() { manager_ = new node::NodeManager(); }
+    ~VariableIRBuilderTest() { delete manager_; }
 
  protected:
     node::NodeManager *manager_;
@@ -57,7 +57,7 @@ void MutableVariableCheck(::fesql::type::Type type, V1 value1, V1 result) {
     ASSERT_TRUE(ir_builder.StoreValue("x", arg0, false, status));
     ASSERT_TRUE(ir_builder.LoadValue("x", &output, status));
     builder.CreateRet(output);
-    m->print(::llvm::errs(), NULL);
+    m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
@@ -67,7 +67,7 @@ void MutableVariableCheck(::fesql::type::Type type, V1 value1, V1 result) {
     ASSERT_EQ(ret, result);
 }
 
-TEST_F(MutableVariableIRBuilderTest, test_not_expr_false) {
+TEST_F(VariableIRBuilderTest, test_mutable_variable_assign) {
     MutableVariableCheck<int32_t>(::fesql::type::Type::kInt32, 999, 999);
     MutableVariableCheck<int64_t>(::fesql::type::Type::kInt64, 99999999L,
                                   99999999L);

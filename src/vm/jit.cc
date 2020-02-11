@@ -83,6 +83,7 @@ bool FeSQLJIT::OptModule(::llvm::Module* m) {
     fpm.add(::llvm::createReassociatePass());
     fpm.add(::llvm::createGVNPass());
     fpm.add(::llvm::createCFGSimplificationPass());
+    fpm.add(::llvm::createPromoteMemoryToRegisterPass());
     fpm.doInitialization();
     ::llvm::Module::iterator it;
     ::llvm::Module::iterator end = m->end();

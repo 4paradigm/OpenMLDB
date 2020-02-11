@@ -16,6 +16,7 @@
  */
 
 #include "codegen/fn_ir_builder.h"
+#include <llvm/Transforms/Utils.h>
 #include <memory>
 #include <string>
 #include <utility>
@@ -163,7 +164,7 @@ TEST_F(FnIRBuilderTest, test_mutable_variable_test) {
     bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef *>(trees[0]),
                                   status);
     ASSERT_TRUE(ok);
-    m->print(::llvm::errs(), NULL);
+    m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
@@ -209,43 +210,55 @@ TEST_F(FnIRBuilderTest, test_if_else_block) {
 }
 
 
-// TEST_F(FnIRBuilderTest, test_if_else_mutable_var_block) {
-//    const std::string test =
-//        "%%fun\n"
-//        "def test(x:i32,y:i32):i32\n"
-//        "    ret = 0\n"
-//        "    if x > 1\n"
-//        "    \tret = x+y\n"
-//        "    elif y >2\n"
-//        "    \tret = x-y\n"
-//        "    else\n"
-//        "    \tret = x*y\n"
-//        "    return ret\n"
-//        "end";
-//
-//    node::NodePointVector trees;
-//    node::PlanNodeList plan_trees;
-//    base::Status status;
-//    int ret = parser_->parse(test, trees, manager_, status);
-//    ASSERT_EQ(0, ret);
-//    // Create an LLJIT instance.
-//    auto ctx = llvm::make_unique<LLVMContext>();
-//    auto m = make_unique<Module>("custom_fn", *ctx);
-//    FnIRBuilder fn_ir_builder(m.get());
-//    bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef *>(trees[0]),
-//                                  status);
-//    ASSERT_TRUE(ok);
-//    m->print(::llvm::errs(), NULL);
-//    auto J = ExitOnErr(LLJITBuilder().create());
-//    ExitOnErr(J->addIRModule(
-//        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
-//    auto test_jit = ExitOnErr(J->lookup("test"));
-//    int32_t (*test_fn)(int32_t, int32_t) =
-//    (int32_t(*)(int32_t, int32_t))test_jit.getAddress();
-//    ASSERT_EQ(5, test_fn(2, 3));
-//    ASSERT_EQ(-2, test_fn(1, 3));
-//    ASSERT_EQ(2, test_fn(1, 2));
-//}
+ TEST_F(FnIRBuilderTest, test_if_else_mutable_var_block) {
+    const std::string test =
+        "%%fun\n"
+        "def test(x:i32,y:i32):i32\n"
+        "    ret = 0\n"
+        "    if x > 1\n"
+        "    \tret = x+y\n"
+        "    elif y >2\n"
+        "    \tret = x-y\n"
+        "    else\n"
+        "    \tret = x*y\n"
+        "    return ret\n"
+        "end";
+
+    node::NodePointVector trees;
+    node::PlanNodeList plan_trees;
+    base::Status status;
+    int ret = parser_->parse(test, trees, manager_, status);
+    ASSERT_EQ(0, ret);
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("custom_fn", *ctx);
+    FnIRBuilder fn_ir_builder(m.get());
+    bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef *>(trees[0]),
+                                  status);
+    ASSERT_TRUE(ok);
+    m->print(::llvm::errs(), NULL, true, true);
+    LOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
+    ::llvm::legacy::FunctionPassManager fpm(m.get());
+    fpm.add(::llvm::createPromoteMemoryToRegisterPass());
+    fpm.doInitialization();
+    ::llvm::Module::iterator it;
+    ::llvm::Module::iterator end = m->end();
+    for (it = m->begin(); it != end; ++it) {
+        fpm.run(*it);
+    }
+    LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
+    m->print(::llvm::errs(), NULL, true, true);
+
+    auto J = ExitOnErr(LLJITBuilder().create());
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto test_jit = ExitOnErr(J->lookup("test"));
+    int32_t (*test_fn)(int32_t, int32_t) =
+    (int32_t(*)(int32_t, int32_t))test_jit.getAddress();
+    ASSERT_EQ(5, test_fn(2, 3));
+    ASSERT_EQ(-2, test_fn(1, 3));
+    ASSERT_EQ(2, test_fn(1, 2));
+}
 }  // namespace codegen
 }  // namespace fesql
 

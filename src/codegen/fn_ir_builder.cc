@@ -52,6 +52,7 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
         return false;
     }
     block = ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
+    ::llvm::IRBuilder<> builder(block);
 
     ::std::vector<::fesql::node::FnNode *>::const_iterator it =
         root->block_->children.begin();
@@ -61,19 +62,26 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
         switch (node->GetType()) {
             case node::kFnAssignStmt:
             case node::kFnReturnStmt: {
-                bool ok = BuildStmt(node, block, status);
+                bool ok = BuildStmt(node, builder.GetInsertBlock(), status);
                 if (!ok) {
                     return false;
                 }
                 break;
             }
             case node::kFnIfElseBlock: {
+                llvm::BasicBlock *block_start =
+                    llvm::BasicBlock::Create(module_->getContext(), "if_else_start", fn);
+                llvm::BasicBlock *block_end =
+                    llvm::BasicBlock::Create(module_->getContext(), "if_else_end", fn);
+                builder.CreateBr(block_start);
+                builder.SetInsertPoint(block_start);
                 bool ok = BuildIfElseBlock(
                     dynamic_cast<const ::fesql::node::FnIfElseBlock *>(node),
-                    block, status);
+                    block_start, block_end, status);
                 if (!ok) {
                     return false;
                 }
+                builder.SetInsertPoint(block_end);
                 break;
             }
             default: {
@@ -116,16 +124,22 @@ bool FnIRBuilder::BuildStmt(const ::fesql::node::FnNode *node,
 }
 
 bool FnIRBuilder::BuildIfElseBlock(
-    const ::fesql::node::FnIfElseBlock *if_else_block, llvm::BasicBlock *block,
+    const ::fesql::node::FnIfElseBlock *if_else_block, llvm::BasicBlock *if_else_start,
+    llvm::BasicBlock *if_else_end,
     base::Status &status) {  // NOLINE
-    ::llvm::IRBuilder<> builder(block);
+    llvm::Function *fn = if_else_start->getParent();
 
-    ExprIRBuilder expr_builder(block, &sv_);
-    llvm::Function *fn = block->getParent();
+    ::llvm::IRBuilder<> builder(if_else_start);
+
+
     llvm::BasicBlock *cond_true =
         llvm::BasicBlock::Create(module_->getContext(), "cond_true", fn);
     llvm::BasicBlock *cond_false =
         llvm::BasicBlock::Create(module_->getContext(), "cond_false", fn);
+
+    builder.CreateBr(if_else_start);
+    builder.SetInsertPoint(if_else_start);
+    ExprIRBuilder expr_builder(builder.GetInsertBlock(), &sv_);
     //进行条件的代码
     llvm::Value *cond = nullptr;
     if (false == expr_builder.Build(
@@ -141,7 +155,7 @@ bool FnIRBuilder::BuildIfElseBlock(
         BuildBlock(if_else_block->if_block_->block_, cond_true, status)) {
         return false;
     }
-
+    builder.CreateBr(if_else_end);
     builder.SetInsertPoint(cond_false);
     if (!if_else_block->elif_blocks_.empty()) {
         for (fesql::node::FnNode *node : if_else_block->elif_blocks_) {
@@ -163,9 +177,10 @@ bool FnIRBuilder::BuildIfElseBlock(
             }
             builder.CreateCondBr(cond, cond_true, cond_false);
             builder.SetInsertPoint(cond_true);
-            if (false == BuildBlock(elif_block->block_, cond_true, status)) {
+            if (false == BuildBlock(elif_block->block_, builder.GetInsertBlock(), status)) {
                 return false;
             }
+            builder.CreateBr(if_else_end);
             builder.SetInsertPoint(cond_false);
         }
     }
@@ -173,7 +188,7 @@ bool FnIRBuilder::BuildIfElseBlock(
                             builder.GetInsertBlock(), status)) {
         return false;
     }
-
+    builder.CreateBr(if_else_end);
     return true;
 }
 bool FnIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,

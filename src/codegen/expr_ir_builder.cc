@@ -31,8 +31,8 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       sv_(scope_var),
       row_mode_(true),
       row_ptr_name_(""),
+      variable_ir_builder_(block, scope_var),
       buf_ir_builder_(nullptr),
-      mutable_variable_ir_builder_(block, scope_var),
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
       module_(nullptr) {}
@@ -48,8 +48,8 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
       row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
       row_size_name_(row_size_name),
+      variable_ir_builder_(block, scope_var),
       buf_ir_builder_(buf_ir_builder),
-      mutable_variable_ir_builder_(block, scope_var),
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
       module_(module) {}
@@ -132,7 +132,7 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             ::fesql::node::ExprIdNode* id_node =
                 (::fesql::node::ExprIdNode*)node;
             ::llvm::Value* ptr = NULL;
-            if (!mutable_variable_ir_builder_.LoadValue(id_node->GetName(),
+            if (!variable_ir_builder_.LoadValue(id_node->GetName(),
                                                         &ptr, status) ||
                 ptr == NULL) {
                 LOG(WARNING) << "fail to find var " << id_node->GetName();
@@ -279,7 +279,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
                                     ::llvm::Value** output) {
     base::Status status;
     ::llvm::Value* row_ptr = NULL;
-    if (!mutable_variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr,
+    if (!variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr,
                                                 status) ||
         row_ptr == NULL) {
         LOG(WARNING) << "fail to find row ptr with name " << row_ptr_name_;
@@ -287,7 +287,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
     }
 
     ::llvm::Value* row_size = NULL;
-    if (!mutable_variable_ir_builder_.LoadValue(row_size_name_, &row_size,
+    if (!variable_ir_builder_.LoadValue(row_size_name_, &row_size,
                                                 status) ||
         row_size == NULL) {
         LOG(WARNING) << "fail to find row size with name " << row_size_name_;
@@ -298,7 +298,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
 
     DLOG(INFO) << "get table column " << col;
     // not found
-    bool ok = mutable_variable_ir_builder_.LoadValue(col, &value, status);
+    bool ok = variable_ir_builder_.LoadValue(col, &value, status);
     if (!ok) {
         // TODO(wangtaize) buf ir builder add build get field ptr
         ok = buf_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
@@ -306,7 +306,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
             LOG(WARNING) << "fail to find column " << col;
             return false;
         }
-        ok = mutable_variable_ir_builder_.StoreValue(col, value, status);
+        ok = variable_ir_builder_.StoreValue(col, value, status);
         if (ok) {
             *output = value;
             return true;
@@ -331,8 +331,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
                                         ::llvm::Value** output) {
     base::Status status;
     ::llvm::Value* row_ptr = NULL;
-    bool ok =
-        mutable_variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr, status);
+    bool ok = variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr, status);
 
     if (!ok || row_ptr == NULL) {
         LOG(WARNING) << "fail to find row ptr with name " << row_ptr_name_;
@@ -340,7 +339,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
     }
 
     ::llvm::Value* row_size = NULL;
-    ok = mutable_variable_ir_builder_.LoadValue(row_size_name_, &row_size,
+    ok = variable_ir_builder_.LoadValue(row_size_name_, &row_size,
                                                 status);
     if (!ok || row_size == NULL) {
         LOG(WARNING) << "fail to find row size with name " << row_size_name_;

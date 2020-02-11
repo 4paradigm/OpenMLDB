@@ -53,6 +53,7 @@ class FnIRBuilder {
 
     bool BuildIfElseBlock(const ::fesql::node::FnIfElseBlock* node,
                           llvm::BasicBlock* block,
+                          llvm::BasicBlock* end_block,
                           base::Status& status);  // NOLINT
 
  private:
