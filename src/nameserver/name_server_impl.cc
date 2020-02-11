@@ -4582,6 +4582,9 @@ void NameServerImpl::SchedMakeSnapshot() {
     if (!running_.load(std::memory_order_acquire)) {
         return;
     }
+    if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
+        return;
+    }
     int now_hour = ::rtidb::base::GetNowHour();
     if (now_hour != FLAGS_make_snapshot_time) {
         task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
@@ -4704,9 +4707,9 @@ void NameServerImpl::SchedMakeSnapshot() {
                     }
                 }
             }
+            std::string msg;
             for (const auto& ns : ns_client) {
-                std::string msg;
-                thread_pool_.AddTask(boost::bind(&NsClient::MakeSnapshot, ns.second, table.second->name(), part.pid(), part_iter->second, msg, true));
+                ns.second->MakeSnapshot(table.second->name(), part.pid(), part_iter->second, msg, true);
             }
         }
     }
