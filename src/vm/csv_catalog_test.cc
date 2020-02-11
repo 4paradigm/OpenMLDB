@@ -48,14 +48,14 @@ TEST_F(CSVCatalogTest, test_engine) {
     std::shared_ptr<CSVCatalog> catalog(new CSVCatalog(db_dir));
     ASSERT_TRUE(catalog->Init());
     Engine engine(catalog);
-    std::string sql = "select col1 from table1 limit 1;";
+    std::string sql = "select col1,col2 from table1 limit 1;";
     std::string db = "db1";
     RunSession session;
     base::Status status;
     bool ok = engine.Get(sql, db, session, status);
     ASSERT_TRUE(ok);
     std::vector<int8_t*> buf;
-    int32_t code = session.Run(buf, 1);
+    int32_t code = session.Run(buf, 10);
     ASSERT_EQ(0, code);
 }
 

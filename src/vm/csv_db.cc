@@ -113,6 +113,7 @@ void PrintRows(const Schema& schema, const std::vector<int8_t*>& rows) {
 }
 
 void Run() {
+    std::cout << "run " << FLAGS_query << std::endl;
     std::shared_ptr<CSVCatalog> catalog(new CSVCatalog(FLAGS_db_dir));
     bool ok = catalog->Init();
     if (!ok) {

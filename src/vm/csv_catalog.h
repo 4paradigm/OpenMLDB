@@ -84,8 +84,9 @@ class CSVTableHandler : public TableHandler {
     inline const Types& GetTypes() {
         return types_;
     }
-    inline const IndexList& GetIndex() {
-        return index_list_;
+
+    inline const IndexHint& GetIndex() {
+        return index_hint_;
     }
 
     std::unique_ptr<Iterator> GetIterator();
@@ -115,7 +116,8 @@ class CSVTableHandler : public TableHandler {
     std::shared_ptr<arrow::fs::FileSystem> fs_;
     Types types_;
     IndexList index_list_;
-    IndexDatas index_datas_;
+    IndexDatas* index_datas_;
+    IndexHint index_hint_;
 };
 
 // csv catalog is local dbms

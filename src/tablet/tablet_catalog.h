@@ -49,8 +49,8 @@ class TabletTableHandler : public vm::TableHandler {
         return types_;
     }
 
-    inline const vm::IndexList& GetIndex() {
-        return index_list_;
+    inline const vm::IndexHint& GetIndex() {
+        return index_hint_;
     }
 
     inline std::shared_ptr<storage::Table> GetTable() {
@@ -67,7 +67,7 @@ class TabletTableHandler : public vm::TableHandler {
     std::string db_;
     std::shared_ptr<storage::Table> table_;
     vm::Types types_;
-    vm::IndexList index_list_;
+    vm::IndexHint index_hint_;
 };
 
 typedef std::map<std::string, std::map<std::string, std::shared_ptr<TabletTableHandler> > > TabletTables;

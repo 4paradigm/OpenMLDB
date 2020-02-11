@@ -16,9 +16,10 @@
  */
 
 #include "vm/op_generator.h"
+
+#include <memory>
 #include <codegen/buf_ir_builder.h>
 #include <proto/common.pb.h>
-#include <memory>
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "node/node_manager.h"
@@ -314,11 +315,10 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
                 status.msg = "key column " + key + " is not exist in table " +
                              table_handler->GetName();
                 status.code = common::kColumnNotFound;
-                LOG(WARNING) << status.msg;
                 delete pop;
                 return false;
             }
-            pop->w.keys.insert(it->second);
+            pop->w.keys.push_back(it->second);
         }
 
         // validate and get col info of window order
@@ -341,16 +341,16 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
                 delete pop;
                 return false;
             }
-            pop->w.order.first = it->second.first;
-            pop->w.order.second = it->second.second;
+            pop->w.order = it->second;
             pop->w.has_order = true;
             pop->w.is_range_between = node->GetW()->IsRangeBetween();
+
         } else {
             pop->w.has_order = false;
         }
 
         // validate index
-        /*auto index_map = table_status->table->GetIndexMap();
+        auto index_map = table_handler->GetIndex();
         bool index_check = false;
         for (auto iter = index_map.cbegin(); iter != index_map.cend(); iter++) {
             auto col_infos = iter->second.keys;
@@ -361,8 +361,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
             // keys match
             bool match_keys = true;
             for (auto col_info : col_infos) {
-                if (pop->w.keys.find(std::make_pair(
-                        col_info.type, col_info.pos)) == pop->w.keys.end()) {
+                if (!pop->w.FindKey(col_info.type, col_info.pos)) {
                     match_keys = false;
                     break;
                 }
@@ -379,7 +378,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
             // ts col match
             auto ts_iter = pop->w.order;
             // ts col match
-            if (ts_iter.second == iter->second.ts_pos) {
+            if (ts_iter.pos == iter->second.ts_pos) {
                 index_check = true;
                 pop->w.index_name = iter->second.name;
                 break;
@@ -394,8 +393,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
             LOG(WARNING) << status.msg;
             delete pop;
             return false;
-        }*/
-
+        }
         pop->w.start_offset = node->GetW()->GetStartOffset();
         pop->w.end_offset = node->GetW()->GetEndOffset();
     } else {

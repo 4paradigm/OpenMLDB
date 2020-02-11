@@ -53,14 +53,24 @@ struct ScanOp : public OpNode {
 
 // TODO(chenjing): WindowOp
 struct ScanInfo {
-    std::set<std::pair<fesql::type::Type, uint32_t >> keys;
-    std::pair<fesql::type::Type, uint32_t > order;
+    std::vector<ColInfo> keys;
+    ColInfo order;
     std::string index_name;
     // todo(chenjing): start and end parse
     int64_t start_offset;
     int64_t end_offset;
     bool has_order;
     bool is_range_between;
+
+    bool FindKey(const type::Type& type, uint32_t pos) {
+        for (uint32_t i = 0; i < keys.size(); i++) {
+            const ColInfo& col = keys.at(i);
+            if (col.pos == pos && type == col.type) {
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 struct ProjectOp : public OpNode {

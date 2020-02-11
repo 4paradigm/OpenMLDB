@@ -115,7 +115,7 @@ bool IndexParser::Parse(const std::string& path,
             index_def->set_name(parts[0]);
             index_def->add_first_keys(parts[1]);
             index_def->set_second_key(parts[2]);
-            LOG(INFO) << "add index with fk" << parts[0] << " with sk " << parts[1];
+            LOG(INFO) << "add index with name " << parts[0] <<  " fk " << parts[1] << " with sk " << parts[2];
         }else {
             LOG(WARNING) << "invalid line " << line;
         }
@@ -128,15 +128,27 @@ CSVTableHandler::CSVTableHandler(const std::string& table_dir,
         const std::string& db,
         std::shared_ptr<arrow::fs::FileSystem> fs):table_dir_(table_dir), table_name_(table_name),
     db_(db), schema_(),
-table_(), fs_(fs){}
+table_(), fs_(fs), types_(), index_list_(), index_datas_(new IndexDatas()), index_hint_(){
+    
+}
 
-CSVTableHandler::~CSVTableHandler() {}
+CSVTableHandler::~CSVTableHandler() {
+    delete index_datas_;
+}
 
 bool CSVTableHandler::Init() {
     bool ok = InitConfig();
     if (!ok) {
         LOG(WARNING) << "fail to parse schema for table " << table_dir_;
         return false;
+    }
+    for (int32_t i = 0; i < schema_.size(); i++) {
+        const type::ColumnDef& column = schema_.Get(i);
+        ColInfo col_info;
+        col_info.type = column.type();
+        col_info.pos = i;
+        col_info.name = column.name();
+        types_.insert(std::make_pair(column.name(), col_info));
     }
     ok = InitTable();
     if (!ok) {
@@ -268,6 +280,12 @@ bool CSVTableHandler::InitConfig() {
 bool CSVTableHandler::InitIndex() {
     for (int32_t i = 0; i < index_list_.size(); i++) {
         const type::IndexDef& index_def = index_list_.Get(i);
+        IndexSt index_st;
+        index_st.index = i;
+        index_st.ts_pos = GetColumnIndex(index_def.second_key());
+        index_st.name = index_def.name();
+        index_st.keys.push_back(types_[index_def.first_keys(0)]);
+        index_hint_.insert(std::make_pair(index_st.name, index_st));
         uint64_t chunk_offset = 0;
         uint64_t array_offset = 0;
         while (true) {
@@ -305,33 +323,39 @@ bool CSVTableHandler::InitIndex() {
             RowLocation location;
             location.chunk_offset = chunk_offset;
             location.array_offset = array_offset;
-            index_datas_[index_def.name()][first_key].insert(std::make_pair(second_key_value, location));
+            if (index_datas_->find(index_def.name()) == index_datas_->end()) {
+                index_datas_->insert(std::make_pair(index_def.name(), std::map<std::string, std::map<uint64_t, RowLocation>>()));
+            }
+            index_datas_->at(index_def.name())[first_key].insert(std::make_pair(second_key_value, location));
             if (table_->column(0)->chunk(chunk_offset)->length() <= array_offset + 1) {
                 chunk_offset += 1;
                 array_offset = 0;
             }else {
                 array_offset += 1;
             }
+            LOG(INFO) << "first key " << first_key <<" with size " << index_datas_->at(index_def.name())[first_key].size();
         }
     }
     return true;
 }
 
 int32_t CSVTableHandler::GetColumnIndex(const std::string& name) {
-    for (int32_t i = 0; i < schema_.size(); i++) {
-        if (schema_.Get(i).name() == name) return i;
+    auto it = types_.find(name);
+    if (it != types_.end()) {
+        return it->second.pos;
     }
     return -1;
 }
 std::unique_ptr<Iterator> CSVTableHandler::GetIterator() {
-        std::unique_ptr<CSVTableIterator> it(new CSVTableIterator(table_, schema_));
-        return std::move(it);
+    std::unique_ptr<CSVTableIterator> it(new CSVTableIterator(table_, schema_));
+    return std::move(it);
 }
 
 
 std::unique_ptr<WindowIterator> CSVTableHandler::GetWindowIterator(const std::string& idx_name) {
-    std::unique_ptr<CSVWindowIterator> csv_window_iterator(new CSVWindowIterator(table_,
-                &index_datas_, idx_name, schema_));
+    LOG(INFO) << "new window iterator with index name " << idx_name;
+    std::unique_ptr<CSVWindowIterator> csv_window_iterator(new CSVWindowIterator(table_, idx_name,
+                index_datas_, schema_));
     return std::move(csv_window_iterator);
 }
 CSVCatalog::CSVCatalog(const std::string& root_dir): root_dir_(root_dir),

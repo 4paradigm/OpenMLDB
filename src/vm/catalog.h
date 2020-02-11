@@ -26,9 +26,23 @@
 namespace fesql {
 namespace vm {
 
+struct ColInfo {
+   ::fesql::type::Type type;
+   uint32_t pos;
+   std::string name;
+};
+
+struct IndexSt {
+    std::string name;
+    uint32_t index;
+    uint32_t ts_pos;
+    std::vector<ColInfo> keys;
+};
+
 typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::ColumnDef> Schema;
 typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::IndexDef> IndexList;
-typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>> Types;
+typedef std::map<std::string, ColInfo> Types;
+typedef std::map<std::string, IndexSt> IndexHint;
 
 class Iterator {
  public:
@@ -82,7 +96,7 @@ class TableHandler {
     virtual const Types& GetTypes() = 0;
 
     // get the index information
-    virtual const IndexList& GetIndex() = 0;
+    virtual const IndexHint& GetIndex() = 0;
 
     // get the table iterator
     virtual std::unique_ptr<Iterator> GetIterator() = 0;

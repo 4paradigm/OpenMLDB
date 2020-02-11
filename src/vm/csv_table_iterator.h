@@ -39,7 +39,9 @@ class CSVSegmentIterator : public Iterator {
 
  public:
     CSVSegmentIterator(const std::shared_ptr<arrow::Table>& table,
-            const std::map<uint64_t, RowLocation>* locations,
+            const IndexDatas* index_datas,
+            const std::string& index_name,
+            const std::string& pk,
             const Schema& schema);
     ~CSVSegmentIterator();
 
@@ -57,12 +59,16 @@ class CSVSegmentIterator : public Iterator {
 
  private:
     const std::shared_ptr<arrow::Table> table_;
-    const std::map<uint64_t, RowLocation>* locations_;
+    const IndexDatas* index_datas_;
+    const std::string index_name_;
+    const std::string pk_;
     const Schema& schema_;
     int8_t* buf_;
     storage::RowBuilder rb_;
     uint32_t buf_size_;
     std::map<uint64_t, RowLocation>::const_reverse_iterator it_;
+    std::map<uint64_t, RowLocation>::const_reverse_iterator rend_;
+
 };
 
 class CSVTableIterator : public Iterator {

@@ -17,6 +17,7 @@
 
 #include "vm/csv_table_iterator.h"
 
+#include <sstream>      // std::stringstream
 #include "arrow/filesystem/api.h"
 #include "arrow/io/api.h"
 #include "arrow/csv/api.h"
@@ -41,6 +42,7 @@ uint32_t GetRowSize(const Schema& schema, uint64_t chunk_offset,
         }
     }
     uint32_t row_size = rb->CalTotalLength(str_size);
+    DLOG(INFO) << "str size " << str_size << " row size "<< row_size;
     return row_size;
 }
 
@@ -48,6 +50,7 @@ bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
         uint64_t chunk_offset, uint64_t array_offset,
         storage::RowBuilder* rb) {
 
+    std::stringstream ss;
     for (int32_t i = 0; i < schema.size(); i++) {
         const type::ColumnDef& column = schema.Get(i);
         auto chunked_array = table->column(i);
@@ -56,6 +59,7 @@ bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
                 {
                     auto array = std::static_pointer_cast<arrow::Int16Array>(chunked_array->chunk(chunk_offset));
                     int16_t value = array->Value(array_offset);
+                    ss << value << "\t";
                     rb->AppendInt16(value);
                     break;
                 }
@@ -64,6 +68,7 @@ bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
                     auto array = std::static_pointer_cast<arrow::Int32Array>(chunked_array->chunk(chunk_offset));
                     int32_t value = array->Value(array_offset);
                     rb->AppendInt32(value);
+                    ss << value << "\t";
                     break;
                 }
             case type::kInt64:
@@ -71,6 +76,7 @@ bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
                     auto array = std::static_pointer_cast<arrow::Int64Array>(chunked_array->chunk(chunk_offset));
                     int64_t value = array->Value(array_offset);
                     rb->AppendInt64(value);
+                    ss << value << "\t";
                     break;
                 }
             case type::kFloat:
@@ -78,6 +84,7 @@ bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
                     auto array = std::static_pointer_cast<arrow::FloatArray>(chunked_array->chunk(chunk_offset));
                     float value = array->Value(array_offset);
                     rb->AppendFloat(value);
+                    ss << value << "\t";
                     break;
                 }
             case type::kDouble:
@@ -85,6 +92,7 @@ bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
                     auto array = std::static_pointer_cast<arrow::DoubleArray>(chunked_array->chunk(chunk_offset));
                     double value = array->Value(array_offset);
                     rb->AppendDouble(value);
+                    ss << value << "\t";
                     break;
                 }
 
@@ -93,6 +101,8 @@ bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
                     auto array = std::static_pointer_cast<arrow::StringArray>(chunked_array->chunk(chunk_offset));
                     auto string_view = array->GetView(array_offset);
                     rb->AppendString(string_view.data(), string_view.size());
+                    std::string value(string_view.data(), string_view.size());
+                    ss << value << "\t";
                     break;
                 }
             default :{
@@ -100,36 +110,42 @@ bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
             }
         }
     }
+    DLOG(INFO) << ss.str();
     return true;
 }
 
 CSVSegmentIterator::CSVSegmentIterator(const std::shared_ptr<arrow::Table>& table,
-        const std::map<uint64_t, RowLocation>* locations,
-        const Schema& schema):table_(table), locations_(locations), schema_(schema),
-    buf_(NULL), rb_(schema), buf_size_(0), it_(locations->rbegin()) {}
+        const IndexDatas* index_datas, const std::string& index_name, const std::string& pk,
+        const Schema& schema):table_(table), index_datas_(index_datas), index_name_(index_name),
+    pk_(pk),schema_(schema),
+    buf_(NULL), rb_(schema), buf_size_(0), it_() {
+    it_ = index_datas_->at(index_name_).at(pk).rbegin();
+    rend_ = index_datas_->at(index_name_).at(pk).rend();
+
+}
 
 CSVSegmentIterator::~CSVSegmentIterator() {
-    delete buf_;
+   // delete buf_;
 }
 
 void CSVSegmentIterator::Seek(uint64_t ts) {
-    auto lit = locations_->rbegin();
-    for (; lit != locations_->rend(); ++lit) {
-        if (lit->first <= ts) {
-            it_ = lit;
+    for (; it_ != rend_; ++it_) {
+        if (it_->first <= ts) {
             return;
         }
     }
-    it_ = locations_->rend();
+    it_ = rend_;
 }
 
 void CSVSegmentIterator::SeekToFirst() {
 }
 
 bool CSVSegmentIterator::Valid() {
-    bool valid = it_ != locations_->rend();
+    bool valid = it_ != rend_;
     if (valid) {
-        if (buf_ != NULL) delete buf_;
+        DLOG(INFO) << "key " << it_->first;
+        //TODO memory leak
+    //    if (buf_ != NULL) delete buf_;
         buf_size_ = GetRowSize(schema_, it_->second.chunk_offset,
                 it_->second.array_offset, table_, &rb_);
         buf_ = reinterpret_cast<int8_t*>(malloc(buf_size_));
@@ -158,7 +174,7 @@ CSVTableIterator::CSVTableIterator(const std::shared_ptr<arrow::Table>& table,
     array_offset_(0), buf_(NULL), rb_(schema), buf_size_(0) {}
 
 CSVTableIterator::~CSVTableIterator() {
-    delete buf_;
+    //delete buf_;
 }
 
 void CSVTableIterator::Seek(uint64_t ts) {}
@@ -192,7 +208,7 @@ bool CSVTableIterator:: Valid() {
 
 void CSVTableIterator::BuildRow() {
     uint32_t row_size = GetRowSize(schema_, chunk_offset_, array_offset_, table_, &rb_);
-    if (buf_ != NULL) delete buf_;
+    //if (buf_ != NULL) delete buf_;
     buf_ = reinterpret_cast<int8_t*>(malloc(row_size));
     rb_.SetBuffer(buf_, row_size);
     buf_size_ = row_size;

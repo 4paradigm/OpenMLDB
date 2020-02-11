@@ -29,8 +29,8 @@ class CSVWindowIterator : public WindowIterator {
 
  public:
     CSVWindowIterator(const std::shared_ptr<arrow::Table>& table,
+                      const std::string& index_name,
                       const IndexDatas* index_datas, 
-                      const std::string& key,
                       const Schema& schema);
 
     ~CSVWindowIterator();
@@ -44,9 +44,8 @@ class CSVWindowIterator : public WindowIterator {
 
  private:
     const std::shared_ptr<arrow::Table> table_;
-    const IndexDatas* index_datas_;
     const std::string index_name_;
-    const std::map<std::string, std::map<uint64_t, RowLocation>>& index_data_;
+    const IndexDatas* index_datas_;
     FirstKeyIterator first_it_;
     const Schema schema_;
 };
