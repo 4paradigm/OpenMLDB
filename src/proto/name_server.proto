@@ -86,12 +86,6 @@ message TableInfo {
     optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 15;
     optional rtidb.api.TTLDesc ttl_desc = 16;
-    repeated AliasPair alias_pair = 17; //for replica cluster
-}
-
-message AliasPair {
-    optional string alias = 1; 
-    optional int32 ready_num = 2 [default = 0]; //0 ok, -1 failed
 }
 
 message CreateTableRequest {

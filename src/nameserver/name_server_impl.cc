@@ -195,28 +195,6 @@ void NameServerImpl::CheckSyncTable(const std::string& alias,
     }
     for (const auto& table_tmp : local_table_info_vec) { 
         ::rtidb::nameserver::TableInfo table_info(table_tmp);
-
-        ::rtidb::nameserver::TableInfo table_info_zk(table_tmp);
-        AliasPair* alias_pair = table_info_zk.add_alias_pair();
-        alias_pair->set_alias(alias);
-        alias_pair->set_ready_num(table_info_zk.table_partition_size());
-        std::string table_value;
-        table_info_zk.SerializeToString(&table_value);
-        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info_zk.name(), table_value)) {
-            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
-                    zk_table_data_path_.c_str(), table_info_zk.name().c_str(), table_value.c_str());
-            return;
-        }
-        PDLOG(INFO, "update table [%s] ready_num [%u] success", table_info_zk.name().c_str(), alias_pair->ready_num());
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto tit = table_info_.find(table_info_zk.name());
-            if (tit == table_info_.end()) {
-                PDLOG(WARNING, "table [%s] not exist", table_info_zk.name().c_str());
-                return;
-            }
-            tit->second->CopyFrom(table_info_zk);
-        }
         //get remote table_info: tid and leader partition info
         std::string msg;
         if (!ns_client->CreateRemoteTableInfo(zone_info_, table_info, msg)) {
@@ -3462,15 +3440,6 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                             table_info->name().c_str(), tid);
             break;
         }
-        ::rtidb::nameserver::TableInfo table_info_no_alias_pair(*table_info);
-        if (mode_.load(std::memory_order_acquire) == kLEADER && nsc_.size() > 0) {
-            std::lock_guard<std::mutex> lock(mu_);
-            for (auto& kv : nsc_) {
-                AliasPair* alias_pair = table_info->add_alias_pair();
-                alias_pair->set_alias(kv.first);
-                alias_pair->set_ready_num(table_info->table_partition_size());
-            }
-        }
         std::string table_value;
         table_info->SerializeToString(&table_value);
         if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
@@ -3504,14 +3473,14 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                     PDLOG(INFO, "cluster[%s] is not Healthy", kv.first.c_str()); 
                     continue;
                 }
-                ::rtidb::nameserver::TableInfo remote_table_info(table_info_no_alias_pair);
+                ::rtidb::nameserver::TableInfo remote_table_info(*table_info);
                 std::string msg;
                 if (!kv.second->client_->CreateRemoteTableInfoSimply(zone_info_, remote_table_info, msg)) {
                     PDLOG(WARNING, "create remote table_info erro, wrong msg is [%s]", msg.c_str()); 
                     return;
                 }
                 std::lock_guard<std::mutex> lock(mu_);
-                if(CreateTableRemoteOP(table_info_no_alias_pair, remote_table_info, kv.first, 
+                if(CreateTableRemoteOP(*table_info, remote_table_info, kv.first, 
                             INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster)) {
                     PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
                     response.set_code(503);
@@ -6400,30 +6369,6 @@ void NameServerImpl::AddTableInfo(const std::string& alias,
             break;
         }
     }
-    if (alias != "") {
-        //TODO when task failed, set ready_num = -1
-        /**
-        if (alias_pair->ready_num() == -1) {
-        } 
-        */
-        bool has_alias_pair = false;
-        for (int pair_idx = 0; pair_idx < table_info.alias_pair_size(); pair_idx++) {
-            AliasPair* alias_pair = table_info.mutable_alias_pair(pair_idx);
-            if (alias_pair->alias() == alias) {
-                has_alias_pair = true;
-                if (alias_pair->ready_num() != -1) {
-                    alias_pair->set_ready_num(alias_pair->ready_num() - 1);
-                }
-                break;
-            }
-        }
-        if (!has_alias_pair) {
-            PDLOG(WARNING, "alias [%s] not exist in alias_pair in table [%s]", 
-                    alias.c_str(), table_info.name().c_str()); 
-            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-            return;
-        }
-    }
     std::string table_value;
     table_info.SerializeToString(&table_value);
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
@@ -7606,40 +7551,6 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
                     DelReplicaRemoteOP(meta.endpoint(), iter->first, part_iter->pid());
                 }
             }
-            std::string name = iter->first;
-            std::string alias = request->alias();
-            auto tit = table_info_.find(name);
-            if (tit == table_info_.end()) {
-                PDLOG(WARNING, "not found table[%s] in table_info map.", name.c_str());
-                break;
-            }
-            ::rtidb::nameserver::TableInfo table_info(*(tit->second));
-            bool has_alias_pair = false;
-            for (int pair_idx = 0; pair_idx < table_info.alias_pair_size(); pair_idx++) {
-                AliasPair* alias_pair = table_info.mutable_alias_pair(pair_idx);
-                if (alias_pair->alias() == alias) {
-                    ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::AliasPair>* alias_pair_list = 
-                        table_info.mutable_alias_pair();
-                    has_alias_pair = true;
-                    alias_pair_list->DeleteSubrange(pair_idx, 1);
-                    break;
-                }
-            }
-            if (!has_alias_pair) {
-                PDLOG(WARNING, "alias [%s] not exist in alias_pair in table [%s]", 
-                        alias.c_str(), table_info.name().c_str()); 
-                break;
-            }
-            std::string table_value;
-            table_info.SerializeToString(&table_value);
-            if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
-                PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
-                        zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-                break;
-            }
-            PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
-                    zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-            tit->second->CopyFrom(table_info);
         }
         if (!zk_client_->DeleteNode(zk_zone_data_path_ + "/replica/" + request->alias())) {
             code = 452;
