@@ -3469,13 +3469,13 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                 tmp_nsc = nsc_;
             }
             for (const auto& kv : tmp_nsc) {
-                if (kv.second->state_ != kClusterHealthy) {
+                if (kv.second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
                     PDLOG(INFO, "cluster[%s] is not Healthy", kv.first.c_str()); 
                     continue;
                 }
                 ::rtidb::nameserver::TableInfo remote_table_info(*table_info);
                 std::string msg;
-                if (!kv.second->client_->CreateRemoteTableInfoSimply(zone_info_, remote_table_info, msg)) {
+                if (!std::atomic_load_explicit(&kv.second->client_, std::memory_order_relaxed)->CreateRemoteTableInfoSimply(zone_info_, remote_table_info, msg)) {
                     PDLOG(WARNING, "create remote table_info erro, wrong msg is [%s]", msg.c_str()); 
                     return;
                 }
@@ -6184,7 +6184,7 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableRemoteTask(const std::strin
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(it->second->client_->GetEndpoint());
     
-    boost::function<bool ()> fun = boost::bind(&NsClient::LoadTable, it->second->client_, 
+    boost::function<bool ()> fun = boost::bind(&NsClient::LoadTable, std::atomic_load_explicit(&it->second->client_, std::memory_order_relaxed), 
                 name, endpoint, pid, zone_info_, *(task->task_info_));
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
@@ -6233,7 +6233,7 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaNSRemoteTask(const std::st
     task->task_info_->set_task_type(::rtidb::api::TaskType::kAddReplicaNSRemote);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(it->second->client_->GetEndpoint());
-    boost::function<bool ()> fun = boost::bind(&NsClient::AddReplicaNS, it->second->client_, name, endpoint_vec, pid,  
+    boost::function<bool ()> fun = boost::bind(&NsClient::AddReplicaNS, std::atomic_load_explicit(&it->second->client_, std::memory_order_relaxed), name, endpoint_vec, pid,  
              zone_info_, *(task->task_info_));
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
