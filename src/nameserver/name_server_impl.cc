@@ -7887,22 +7887,7 @@ void NameServerImpl::SyncTable(RpcController* controller,
                 }
             } else {
                 PDLOG(INFO, "table [%s] does not exist in replica cluster [%s]", name.c_str(), cluster_alias.c_str());
-                ::rtidb::nameserver::TableInfo table_info_r(*table_info);
-                ::rtidb::nameserver::TableInfo table_info_zk(*table_info);
-                AliasPair* alias_pair = table_info_zk.add_alias_pair();
-                alias_pair->set_alias(cluster_alias);
-                alias_pair->set_ready_num(table_info_zk.table_partition_size());
-                std::string table_value;
-                table_info_zk.SerializeToString(&table_value);
-                if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info_zk.name(), table_value)) {
-                    code = 304;
-                    msg = "set zk failed"; 
-                    PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
-                            zk_table_data_path_.c_str(), table_info_zk.name().c_str(), table_value.c_str());
-                    break; 
-                }
-                PDLOG(INFO, "update table [%s] ready_num [%u] success", table_info_zk.name().c_str(), alias_pair->ready_num());
-                table_info->CopyFrom(table_info_zk);
+                ::rtidb::nameserver::TableInfo table_info_r(*table_info); 
                 //get remote table_info: tid and leader partition info
                 std::string msg;
                 if (!client->CreateRemoteTableInfo(zone_info_, table_info_r, msg)) {
