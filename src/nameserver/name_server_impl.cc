@@ -4664,8 +4664,8 @@ void NameServerImpl::SchedMakeSnapshot() {
             auto table_iter = table_part_offset.find(table.second->name());
             if (table_iter == table_part_offset.end()) {
                 std::map<uint32_t, uint64_t> part_offset;
-                table_part_offset.insert(std::make_pair(table.second->name(), part_offset));
-                table_iter = table_part_offset.find(table.second->name());
+                auto result = table_part_offset.insert(std::make_pair(table.second->name(), part_offset));
+                table_iter = result.first;
             }
             for (const auto& part : table.second->table_partition()) {
                 for (const auto& part_meta : part.partition_meta()) {
@@ -4680,7 +4680,6 @@ void NameServerImpl::SchedMakeSnapshot() {
                     } else {
                         table_iter->second.insert(std::make_pair(part.pid(), part_meta.offset()));
                     }
-
                 }
             }
         }
