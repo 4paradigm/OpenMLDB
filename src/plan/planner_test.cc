@@ -8,8 +8,8 @@
  **/
 
 #include "plan/planner.h"
-#include <vector>
 #include <utility>
+#include <vector>
 #include "analyser/analyser.h"
 #include "gtest/gtest.h"
 #include "parser/parser.h"

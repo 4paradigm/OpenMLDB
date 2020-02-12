@@ -164,18 +164,6 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
                                       J->getDataLayout());
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
-    ::llvm::StringRef symbol("malloc");
-    ::llvm::orc::SymbolMap symbol_map;
-    ::llvm::JITEvaluatedSymbol jit_symbol(
-        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
-        ::llvm::JITSymbolFlags());
-
-    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-    // add codec
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        ASSERT_TRUE(false);
-    }
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
@@ -236,18 +224,6 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
                                       J->getDataLayout());
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
-    ::llvm::StringRef symbol("malloc");
-    ::llvm::orc::SymbolMap symbol_map;
-    ::llvm::JITEvaluatedSymbol jit_symbol(
-        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
-        ::llvm::JITSymbolFlags());
-
-    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-    // add codec
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        ASSERT_TRUE(false);
-    }
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
@@ -302,18 +278,6 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
                                       J->getDataLayout());
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
-    ::llvm::StringRef symbol("malloc");
-    ::llvm::orc::SymbolMap symbol_map;
-    ::llvm::JITEvaluatedSymbol jit_symbol(
-        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
-        ::llvm::JITSymbolFlags());
-
-    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-    // add codec
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        ASSERT_TRUE(false);
-    }
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
@@ -368,19 +332,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
-    {
-        ::llvm::StringRef symbol("malloc");
-        ::llvm::orc::SymbolMap symbol_map;
-        ::llvm::JITEvaluatedSymbol jit_symbol(
-            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
-            ::llvm::JITSymbolFlags());
-        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-        // add malloc
-        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-        if (err) {
-            ASSERT_TRUE(false);
-        }
-    }
 
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
@@ -562,19 +513,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
-    {
-        ::llvm::StringRef symbol("malloc");
-        ::llvm::orc::SymbolMap symbol_map;
-        ::llvm::JITEvaluatedSymbol jit_symbol(
-            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
-            ::llvm::JITSymbolFlags());
-        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-        // add malloc
-        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-        if (err) {
-            ASSERT_TRUE(false);
-        }
-    }
+
 
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
@@ -645,19 +584,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
-    {
-        ::llvm::StringRef symbol("malloc");
-        ::llvm::orc::SymbolMap symbol_map;
-        ::llvm::JITEvaluatedSymbol jit_symbol(
-            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
-            ::llvm::JITSymbolFlags());
-        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-        // add malloc
-        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-        if (err) {
-            ASSERT_TRUE(false);
-        }
-    }
+
 
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
@@ -726,19 +653,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
-    {
-        ::llvm::StringRef symbol("malloc");
-        ::llvm::orc::SymbolMap symbol_map;
-        ::llvm::JITEvaluatedSymbol jit_symbol(
-            ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
-            ::llvm::JITSymbolFlags());
-        symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-        // add malloc
-        auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-        if (err) {
-            ASSERT_TRUE(false);
-        }
-    }
 
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));

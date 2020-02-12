@@ -276,17 +276,6 @@ TEST_F(OpGeneratorTest, test_multi_windowp_project) {
         }
 
         {
-            /**
-             *
-             *    "sum(col1) OVER w1 as w1_col1_sum, "
-            "sum(col2) OVER w2 as w2_col2_sum, "
-            "sum(col3) OVER w1 as w1_col3_sum, "
-            "sum(col4) OVER w2 as w2_col4_sum, "
-            "sum(col1) OVER w2 as w2_col1_sum, "
-            "sum(col2) OVER w1 as w1_col2_sum, "
-            "sum(col3) OVER w2 as w2_col3_sum, "
-            "sum(col4) OVER w2 as w2_col4_sum "
-             */
             MergeOp* merge_op = reinterpret_cast<MergeOp*>(op.ops[3]);
             ASSERT_EQ(nullptr, merge_op->fn);
             ASSERT_EQ(2u, merge_op->children.size());

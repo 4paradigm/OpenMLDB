@@ -16,10 +16,10 @@
  */
 
 #include "vm/jit.h"
-
 #include <string>
 #include <utility>
 extern "C" {
+#include <cmath>
 #include <cstdlib>
 }
 #include "glog/logging.h"
@@ -53,7 +53,7 @@ FeSQLJIT::~FeSQLJIT() {}
                                     ::llvm::orc::VModuleKey key) {
     if (auto err = applyDataLayout(*tsm.getModule())) return err;
     DLOG(INFO) << "add a module with key " << key << " with ins cnt "
-              << tsm.getModule()->getInstructionCount();
+               << tsm.getModule()->getInstructionCount();
     ::llvm::legacy::FunctionPassManager fpm(tsm.getModule());
     // Add some optimizations.
     fpm.add(::llvm::createInstructionCombiningPass());
@@ -67,7 +67,7 @@ FeSQLJIT::~FeSQLJIT() {}
         fpm.run(*it);
     }
     DLOG(INFO) << "after opt with ins cnt "
-              << tsm.getModule()->getInstructionCount();
+               << tsm.getModule()->getInstructionCount();
     return CompileLayer->add(jd, std::move(tsm), key);
 }
 
@@ -140,6 +140,10 @@ bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
         DLOG(INFO) << "add fn symbol " << fn_name << " done";
         return true;
     }
+}
+
+bool InitBasicSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
+                     ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
 }
 
 }  // namespace vm

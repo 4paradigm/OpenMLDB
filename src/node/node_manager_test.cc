@@ -13,10 +13,6 @@
 namespace fesql {
 namespace node {
 
-/**
- * TODO: add unit test for MakeXXXXXNode
- * add unit test and check attributions
- */
 class NodeManagerTest : public ::testing::Test {
  public:
     NodeManagerTest() {}

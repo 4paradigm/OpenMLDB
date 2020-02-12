@@ -242,7 +242,6 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         ASSERT_EQ(0, response.items_size());
     }
 }
-
 TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
     ::fesql::dbms::DBMSServerImpl dbms_server;
     tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
@@ -561,7 +560,6 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
         ASSERT_EQ(table.DebugString(), response.table().DebugString());
     }
 }
-
 TEST_F(DBMSServerImplTest, DataBaseTest) {
     ::fesql::dbms::DBMSServerImpl dbms_server;
     tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();

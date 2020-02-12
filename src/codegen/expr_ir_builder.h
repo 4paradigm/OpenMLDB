@@ -21,6 +21,8 @@
 #include <string>
 #include "codegen/buf_ir_builder.h"
 #include "codegen/scope_var.h"
+#include "codegen/arithmetic_expr_ir_builder.h"
+#include "codegen/predicate_expr_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
@@ -65,6 +67,8 @@ class ExprIRBuilder {
     std::string row_ptr_name_;
     std::string row_size_name_;
     BufNativeIRBuilder* buf_ir_builder_;
+    ArithmeticIRBuilder arithmetic_ir_builder_;
+    PredicateIRBuilder predicate_ir_builder_;
     ::llvm::Module* module_;
 };
 }  // namespace codegen

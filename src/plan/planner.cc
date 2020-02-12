@@ -15,27 +15,27 @@
 namespace fesql {
 namespace plan {
 
-/**
- * create simple select plan node:
- *  simple select:
- *      + from_list
- *          + from_node
- *              + table_ref_node
- *      + project_list
- *          + project_node
- *              + expression
- *                  +   op_expr
- *                      | function
- *                      | const
- *                      | column ref node
- *              + name
- *          + project_node
- *          + project_node
- *          + ..
- *      + limit_count
- * @param root
- * @return select plan node
- */
+// create simple select plan node:
+//  simple select:
+//       + from_list
+//          + from_node
+//              + table_ref_node
+//      + project_list
+//          + project_node
+//              + expression
+//                  +   op_expr
+//                      | function
+//                      | const
+//                      | column ref node
+//              + name
+//          + project_node
+//          + project_node
+//          + ..
+//      + limit_count
+// param select_tree
+// param plan_tree
+// param status
+// return
 int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
                               PlanNode *plan_tree,
                               Status &status) {  // NOLINT (runtime/references)
