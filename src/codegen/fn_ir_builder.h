@@ -40,9 +40,6 @@ class FnIRBuilder {
     bool BuildFnHead(const ::fesql::node::FnNodeFnHeander* fn_def,
                      ::llvm::Function** fn, base::Status& status);  // NOLINT
 
-    bool BuildStmt(const ::fesql::node::FnNode* node, ::llvm::BasicBlock* block,
-                   base::Status& status);  // NOLINT
-
     bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node,
                          ::llvm::BasicBlock* block,
                          base::Status& status);  // NOLINT

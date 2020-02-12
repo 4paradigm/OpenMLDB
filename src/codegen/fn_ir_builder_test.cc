@@ -165,6 +165,18 @@ TEST_F(FnIRBuilderTest, test_mutable_variable_test) {
                                   status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL, true, true);
+    LOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
+    ::llvm::legacy::FunctionPassManager fpm(m.get());
+    fpm.add(::llvm::createPromoteMemoryToRegisterPass());
+    fpm.doInitialization();
+    ::llvm::Module::iterator it;
+    ::llvm::Module::iterator end = m->end();
+    for (it = m->begin(); it != end; ++it) {
+        fpm.run(*it);
+    }
+    LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
+    m->print(::llvm::errs(), NULL, true, true);
+
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
@@ -183,6 +195,7 @@ TEST_F(FnIRBuilderTest, test_if_else_block) {
         "    \treturn x-y\n"
         "    else\n"
         "    \treturn x*y\n"
+        "    return 0\n"
         "end";
 
     node::NodePointVector trees;
@@ -198,6 +211,17 @@ TEST_F(FnIRBuilderTest, test_if_else_block) {
                                   status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL);
+    LOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
+    ::llvm::legacy::FunctionPassManager fpm(m.get());
+    fpm.add(::llvm::createPromoteMemoryToRegisterPass());
+    fpm.doInitialization();
+    ::llvm::Module::iterator it;
+    ::llvm::Module::iterator end = m->end();
+    for (it = m->begin(); it != end; ++it) {
+        fpm.run(*it);
+    }
+    LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
+    m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));

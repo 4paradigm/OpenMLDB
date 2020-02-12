@@ -52,75 +52,10 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
         return false;
     }
     block = ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
-    ::llvm::IRBuilder<> builder(block);
-
-    ::std::vector<::fesql::node::FnNode *>::const_iterator it =
-        root->block_->children.begin();
-    for (; it != root->block_->children.end(); ++it) {
-        ::fesql::node::FnNode *node = *it;
-        // TODO(wangtaize) use switch
-        switch (node->GetType()) {
-            case node::kFnAssignStmt:
-            case node::kFnReturnStmt: {
-                bool ok = BuildStmt(node, builder.GetInsertBlock(), status);
-                if (!ok) {
-                    return false;
-                }
-                break;
-            }
-            case node::kFnIfElseBlock: {
-                llvm::BasicBlock *block_start =
-                    llvm::BasicBlock::Create(module_->getContext(), "if_else_start", fn);
-                llvm::BasicBlock *block_end =
-                    llvm::BasicBlock::Create(module_->getContext(), "if_else_end", fn);
-                builder.CreateBr(block_start);
-                builder.SetInsertPoint(block_start);
-                bool ok = BuildIfElseBlock(
-                    dynamic_cast<const ::fesql::node::FnIfElseBlock *>(node),
-                    block_start, block_end, status);
-                if (!ok) {
-                    return false;
-                }
-                builder.SetInsertPoint(block_end);
-                break;
-            }
-            default: {
-                status.code = common::kCodegenError;
-                status.msg = "fail to codegen for unrecognized fn type " +
-                             node::NameOfSQLNodeType(node->GetType());
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-bool FnIRBuilder::BuildStmt(const ::fesql::node::FnNode *node,
-                            ::llvm::BasicBlock *block,
-                            base::Status &status) {  // NOLINE
-    if (node == NULL || block == NULL) {
-        LOG(WARNING) << "node or block is null ";
+    if (!BuildBlock(root->block_, block, status)) {
         return false;
     }
-
-    switch (node->GetType()) {
-        case ::fesql::node::kFnAssignStmt: {
-            return BuildAssignStmt((::fesql::node::FnAssignNode *)node, block,
-                                   status);
-        }
-        case ::fesql::node::kFnReturnStmt: {
-            return BuildReturnStmt((::fesql::node::FnReturnStmt *)node, block,
-                                   status);
-        }
-        default: {
-            status.code = common::kCodegenError;
-            status.msg = "fail to codegen for unrecognized fn type " +
-                         node::NameOfSQLNodeType(node->GetType());
-            LOG(WARNING) << status.msg;
-            return false;
-        }
-    }
+    return true;
 }
 
 bool FnIRBuilder::BuildIfElseBlock(
@@ -259,9 +194,51 @@ bool FnIRBuilder::BuildBlock(const node::FnNodeList *statements,
         LOG(WARNING) << status.msg;
         return false;
     }
-    for (const node::FnNode *node : statements->children) {
-        if (false == BuildStmt(node, block, status)) {
-            return false;
+    ::llvm::IRBuilder<> builder(block);
+    ::llvm::Function* fn = block->getParent();
+    ::std::vector<::fesql::node::FnNode *>::const_iterator it =
+        statements->children.cbegin();
+    for (; it != statements->children.cend(); ++it) {
+        ::fesql::node::FnNode *node = *it;
+        // TODO(wangtaize) use switch
+        switch (node->GetType()) {
+            case ::fesql::node::kFnAssignStmt: {
+                if (!BuildAssignStmt((::fesql::node::FnAssignNode *)node, builder.GetInsertBlock(),
+                                       status)) {
+                    return false;
+                }
+                break;
+            }
+            case ::fesql::node::kFnReturnStmt: {
+                if(!BuildReturnStmt((::fesql::node::FnReturnStmt *)node, builder.GetInsertBlock(),
+                                       status)) {
+                    return false;
+                }
+                break;
+            }
+            case node::kFnIfElseBlock: {
+                llvm::BasicBlock *block_start =
+                    llvm::BasicBlock::Create(module_->getContext(), "if_else_start", fn);
+                llvm::BasicBlock *block_end =
+                    llvm::BasicBlock::Create(module_->getContext(), "if_else_end", fn);
+                builder.CreateBr(block_start);
+                builder.SetInsertPoint(block_start);
+                bool ok = BuildIfElseBlock(
+                    dynamic_cast<const ::fesql::node::FnIfElseBlock *>(node),
+                    block_start, block_end, status);
+                if (!ok) {
+                    return false;
+                }
+                builder.SetInsertPoint(block_end);
+                break;
+            }
+            default: {
+                status.code = common::kCodegenError;
+                status.msg = "fail to codegen for unrecognized fn type " +
+                    node::NameOfSQLNodeType(node->GetType());
+                LOG(WARNING) << status.msg;
+                return false;
+            }
         }
     }
     return true;
