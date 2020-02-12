@@ -395,7 +395,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         return false;
     }
 
-    DLOG(INFO) << "build binary " << ::fesql::node::FnNodeName(node->GetType());
+    DLOG(INFO) << "build binary " << ::fesql::node::ExprOpTypeName(node->GetOp());
     ::llvm::Value* left = NULL;
     bool ok = Build(node->children[0], &left);
     if (!ok) {

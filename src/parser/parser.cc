@@ -85,17 +85,9 @@ int FeSQLParser::ReflectFnDefNode(node::FnNodeFnDef *fn_def,
     }
 
     node::FnNodeList *fn_block = node_manager->MakeFnListNode();
-    int pos = CreateFnBlock(fn_def->block_->children, 0,
+    CreateFnBlock(fn_def->block_->children, 0,
                             fn_def->block_->children.size(), 4, fn_block,
                             node_manager, status);
-
-    if (pos < fn_def->block_->children.size()) {
-        status.code = common::kFunError;
-        status.msg =
-            "fail to create function def plan, statement intend not match";
-        LOG(WARNING) << status.msg;
-        return -1;
-    }
 
     if (status.code != common::kOk) {
         return -1;
@@ -145,14 +137,22 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
 
         pos++;
         switch (node->GetType()) {
-            case node::kFnAssignStmt:
-            case node::kFnReturnStmt:
+            case node::kFnAssignStmt: {
                 if (nullptr != if_else_block) {
                     block->AddChild(if_else_block);
                     if_else_block = nullptr;
                 }
                 block->AddChild(node);
                 break;
+            }
+            case node::kFnReturnStmt: {
+                if (nullptr != if_else_block) {
+                    block->AddChild(if_else_block);
+                    if_else_block = nullptr;
+                }
+                block->AddChild(node);
+                return pos;
+            }
 
             case node::kFnIfStmt: {
                 if (nullptr != if_else_block) {
@@ -298,5 +298,6 @@ bool FeSQLParser::SSAOptimized(
 
     return true;
 }
+
 }  // namespace parser
 }  // namespace fesql
