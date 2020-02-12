@@ -1126,16 +1126,16 @@ TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
 
 TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     LogParts* log_part = new LogParts(12, 4, scmp);
-    MemTableSnapshot snapshot(1, 2, log_part, FLAGS_db_root_path);
+    MemTableSnapshot snapshot(10, 2, log_part, FLAGS_db_root_path);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 1, 1, 8, mapping, 2, ::rtidb::api::TTLType::kAbsoluteTime);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 1, 10, 8, mapping, 2, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
-    std::string log_path = FLAGS_db_root_path + "/1_2/binlog/";
-    std::string snapshot_path = FLAGS_db_root_path + "/1_2/snapshot/";
+    std::string log_path = FLAGS_db_root_path + "/10_2/binlog/";
+    std::string snapshot_path = FLAGS_db_root_path + "/10_2/snapshot/";
     WriteHandle* wh = NULL;
     RollWLogFile(&wh, log_part, log_path, binlog_index, offset++);
     int count = 0;
