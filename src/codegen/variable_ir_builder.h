@@ -31,6 +31,8 @@ class VariableIRBuilder {
                     bool is_register,
                     base::Status& status);  // NOLINT (runtime/references)
 
+
+
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;

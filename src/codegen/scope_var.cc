@@ -94,5 +94,6 @@ bool ScopeVar::FindVar(const std::string& name, ::llvm::Value** value,
     return true;
 }
 
+
 }  // namespace codegen
 }  // namespace fesql

@@ -29,6 +29,7 @@ namespace codegen {
 
 struct Scope {
     std::string name;
+    ::llvm::Value* ret_addr = nullptr;
     // the value is the pointer or  value
     std::map<std::string, std::pair<::llvm::Value*, bool>> scope_map;
 };

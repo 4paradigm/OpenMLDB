@@ -22,6 +22,7 @@
 #include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/IR/CFG.h"
 #include "llvm/IR/IRBuilder.h"
 
 namespace fesql {
@@ -52,27 +53,29 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
         return false;
     }
     block = ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
-    if (!BuildBlock(root->block_, block, status)) {
+    llvm::BasicBlock *end_block =
+        llvm::BasicBlock::Create(module_->getContext(), "end_block");
+
+    ::llvm::IRBuilder<> builder(block);
+    if (false == BuildBlock(root->block_, block, end_block, status)) {
         return false;
     }
     return true;
 }
 
 bool FnIRBuilder::BuildIfElseBlock(
-    const ::fesql::node::FnIfElseBlock *if_else_block, llvm::BasicBlock *if_else_start,
-    llvm::BasicBlock *if_else_end,
+    const ::fesql::node::FnIfElseBlock *if_else_block,
+    llvm::BasicBlock *if_else_start, llvm::BasicBlock *if_else_end,
     base::Status &status) {  // NOLINE
     llvm::Function *fn = if_else_start->getParent();
 
     ::llvm::IRBuilder<> builder(if_else_start);
-
 
     llvm::BasicBlock *cond_true =
         llvm::BasicBlock::Create(module_->getContext(), "cond_true", fn);
     llvm::BasicBlock *cond_false =
         llvm::BasicBlock::Create(module_->getContext(), "cond_false", fn);
 
-    builder.CreateBr(if_else_start);
     builder.SetInsertPoint(if_else_start);
     ExprIRBuilder expr_builder(builder.GetInsertBlock(), &sv_);
     //进行条件的代码
@@ -86,11 +89,10 @@ bool FnIRBuilder::BuildIfElseBlock(
 
     builder.CreateCondBr(cond, cond_true, cond_false);
     builder.SetInsertPoint(cond_true);
-    if (false ==
-        BuildBlock(if_else_block->if_block_->block_, cond_true, status)) {
+    if (false == BuildBlock(if_else_block->if_block_->block_, cond_true,
+                            if_else_end, status)) {
         return false;
     }
-    builder.CreateBr(if_else_end);
     builder.SetInsertPoint(cond_false);
     if (!if_else_block->elif_blocks_.empty()) {
         for (fesql::node::FnNode *node : if_else_block->elif_blocks_) {
@@ -112,18 +114,24 @@ bool FnIRBuilder::BuildIfElseBlock(
             }
             builder.CreateCondBr(cond, cond_true, cond_false);
             builder.SetInsertPoint(cond_true);
-            if (false == BuildBlock(elif_block->block_, builder.GetInsertBlock(), status)) {
+            if (false == BuildBlock(elif_block->block_,
+                                    builder.GetInsertBlock(), if_else_end,
+                                    status)) {
                 return false;
             }
-            builder.CreateBr(if_else_end);
             builder.SetInsertPoint(cond_false);
         }
     }
-    if (false == BuildBlock(if_else_block->else_block_->block_,
-                            builder.GetInsertBlock(), status)) {
-        return false;
+
+    if (nullptr == if_else_block->else_block_) {
+        builder.CreateBr(if_else_end);
+    } else {
+        if (false == BuildBlock(if_else_block->else_block_->block_,
+                                builder.GetInsertBlock(), if_else_end,
+                                status)) {
+            return false;
+        }
     }
-    builder.CreateBr(if_else_end);
     return true;
 }
 bool FnIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
@@ -136,17 +144,18 @@ bool FnIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
         return true;
     }
 
-    ExprIRBuilder builder(block, &sv_);
+    ::llvm::IRBuilder<> builder(block);
+    ExprIRBuilder expr_builder(block, &sv_);
+    VariableIRBuilder var_ir_builder(block, &sv_);
     ::llvm::Value *value = NULL;
-    bool ok = builder.Build(node->return_expr_, &value);
+    bool ok = expr_builder.Build(node->return_expr_, &value);
     if (!ok) {
         status.code = common::kCodegenError;
         status.msg = "fail to codegen expr";
         LOG(WARNING) << status.msg;
         return false;
     }
-    ::llvm::IRBuilder<> ir_builder(block);
-    ir_builder.CreateRet(value);
+    builder.CreateRet(value);
     return true;
 }
 
@@ -180,6 +189,7 @@ bool FnIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
 
 bool FnIRBuilder::BuildBlock(const node::FnNodeList *statements,
                              llvm::BasicBlock *block,
+                             llvm::BasicBlock *end_block,
                              base::Status &status) {  // NOLINT
     if (statements == NULL || block == NULL) {
         status.code = common::kCodegenError;
@@ -194,53 +204,58 @@ bool FnIRBuilder::BuildBlock(const node::FnNodeList *statements,
         LOG(WARNING) << status.msg;
         return false;
     }
+    ::llvm::Function *fn = block->getParent();
     ::llvm::IRBuilder<> builder(block);
-    ::llvm::Function* fn = block->getParent();
-    ::std::vector<::fesql::node::FnNode *>::const_iterator it =
-        statements->children.cbegin();
-    for (; it != statements->children.cend(); ++it) {
-        ::fesql::node::FnNode *node = *it;
-        // TODO(wangtaize) use switch
+    for (const node::FnNode *node : statements->children) {
         switch (node->GetType()) {
-            case ::fesql::node::kFnAssignStmt: {
-                if (!BuildAssignStmt((::fesql::node::FnAssignNode *)node, builder.GetInsertBlock(),
-                                       status)) {
+            case node::kFnAssignStmt: {
+                bool ok = BuildAssignStmt(
+                    dynamic_cast<const ::fesql::node::FnAssignNode *>(node),
+                    builder.GetInsertBlock(), status);
+                if (!ok) {
                     return false;
                 }
                 break;
             }
-            case ::fesql::node::kFnReturnStmt: {
-                if(!BuildReturnStmt((::fesql::node::FnReturnStmt *)node, builder.GetInsertBlock(),
-                                       status)) {
-                    return false;
-                }
-                break;
+            case node::kFnReturnStmt: {
+                bool ok = BuildReturnStmt(
+                    dynamic_cast<const node::FnReturnStmt *>(node),
+                    builder.GetInsertBlock(), status);
+
+                return ok;
             }
             case node::kFnIfElseBlock: {
-                llvm::BasicBlock *block_start =
-                    llvm::BasicBlock::Create(module_->getContext(), "if_else_start", fn);
-                llvm::BasicBlock *block_end =
-                    llvm::BasicBlock::Create(module_->getContext(), "if_else_end", fn);
+                llvm::BasicBlock *block_start = llvm::BasicBlock::Create(
+                    module_->getContext(), "if_else_start", fn);
+                llvm::BasicBlock *if_else_end = llvm::BasicBlock::Create(
+                    module_->getContext(), "if_else_end");
                 builder.CreateBr(block_start);
                 builder.SetInsertPoint(block_start);
                 bool ok = BuildIfElseBlock(
                     dynamic_cast<const ::fesql::node::FnIfElseBlock *>(node),
-                    block_start, block_end, status);
+                    block_start, if_else_end, status);
                 if (!ok) {
                     return false;
                 }
-                builder.SetInsertPoint(block_end);
+
+                // stop block codegen when current block is returned
+                if (::llvm::pred_empty(if_else_end)) {
+                    return true;
+                }
+                fn->getBasicBlockList().push_back(if_else_end);
+                builder.SetInsertPoint(if_else_end);
                 break;
             }
             default: {
                 status.code = common::kCodegenError;
                 status.msg = "fail to codegen for unrecognized fn type " +
-                    node::NameOfSQLNodeType(node->GetType());
+                             node::NameOfSQLNodeType(node->GetType());
                 LOG(WARNING) << status.msg;
                 return false;
             }
         }
     }
+    builder.CreateBr(end_block);
     return true;
 }
 bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *fn_def,

@@ -8,8 +8,8 @@
  **/
 #include "codegen/variable_ir_builder.h"
 
-fesql::codegen::VariableIRBuilder::VariableIRBuilder(
-    ::llvm::BasicBlock* block, ScopeVar* scope_var)
+fesql::codegen::VariableIRBuilder::VariableIRBuilder(::llvm::BasicBlock* block,
+                                                     ScopeVar* scope_var)
     : block_(block), sv_(scope_var) {}
 fesql::codegen::VariableIRBuilder::~VariableIRBuilder() {}
 
@@ -66,8 +66,9 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
     }
 }
 
-bool fesql::codegen::VariableIRBuilder::LoadValue(
-    std::string name, ::llvm::Value** output, fesql::base::Status& status) {
+bool fesql::codegen::VariableIRBuilder::LoadValue(std::string name,
+                                                  ::llvm::Value** output,
+                                                  fesql::base::Status& status) {
     ::llvm::Value* value;
     bool is_register;
     if (!sv_->FindVar(name, &value, &is_register)) {

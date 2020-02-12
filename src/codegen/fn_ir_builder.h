@@ -62,6 +62,7 @@ class FnIRBuilder {
                   base::Status& status);  // NOLINT
 
     bool BuildBlock(const node::FnNodeList* statements, llvm::BasicBlock* block,
+                    llvm::BasicBlock* end_block,
                     base::Status& status);  // NOLINT
 
     ::llvm::Module* module_;

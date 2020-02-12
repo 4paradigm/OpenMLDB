@@ -165,7 +165,7 @@ bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
         *casted_value =
             builder.CreateICmpNE(value, ::llvm::ConstantInt::get(type, 0));
     } else if (type->isFloatingPointTy()) {
-        *casted_value = builder.CreateICmpNE(
+        *casted_value = builder.CreateFCmpOEQ(
             value, ::llvm::ConstantFP::get(type, ::llvm::APFloat(0.0)));
     } else {
         status.msg =
