@@ -20,10 +20,7 @@
 namespace fesql {
 namespace node {
 
-/**
- * TODO: add unit test for MakeXXXXXNode
- * add unit test and check attributions
- */
+
 class SqlNodeTest : public ::testing::Test {
  public:
     SqlNodeTest() { node_manager_ = new NodeManager(); }

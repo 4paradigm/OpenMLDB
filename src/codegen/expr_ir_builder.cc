@@ -224,13 +224,11 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     return true;
 }
 
-/**
- * Build Struct Expr IR:
- * TODO(chenjing): support method memeber
- * @param node
- * @param output
- * @return
- */
+// Build Struct Expr IR:
+// TODO(chenjing): support method memeber
+// @param node
+// @param output
+// @return
 bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
                                     ::llvm::Value** output) {
     std::vector<::llvm::Type*> members;
@@ -311,14 +309,11 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
     return true;
 }
 
-/**
- * Get col with given col name
- * set iterator struct pointer into output
- * TODO(chenjing): list ref manage
- * @param col
- * @param output
- * @return
- */
+
+// Get col with given col name, set iterator struct pointer into output
+// param col
+// param output
+// return
 bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
                                         ::llvm::Value** output) {
     ::llvm::Value* row_ptr = NULL;

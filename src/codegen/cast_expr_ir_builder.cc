@@ -64,14 +64,7 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
         }
     }
 }
-/**
- *
- * @param value
- * @param type
- * @param output
- * @param status
- * @return
- */
+
 bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
                                  ::llvm::Value** output, base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);
@@ -138,25 +131,13 @@ bool CastExprIRBuilder::IsStringCast(llvm::Type* type) {
     return ::fesql::type::kVarchar == fesql_type;
 }
 
-/**
- * TODO(chenjing): string cast implement
- * cast fesql type to string
- * @param value
- * @param casted_value
- * @param status
- * @return
- */
+// TODO(chenjing): string cast implement
+// try to cast other type of value to string type
 bool CastExprIRBuilder::StringCast(llvm::Value* value,
                                    llvm::Value** casted_value,
                                    base::Status& status) {}
-/**
- * bool cast implement
- * cast fesql type to bool: compare value with 0
- * @param value
- * @param casted_value
- * @param status
- * @return
- */
+
+// cast fesql type to bool: compare value with 0
 bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
                                  base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);
