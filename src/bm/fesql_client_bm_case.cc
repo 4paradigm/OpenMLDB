@@ -445,13 +445,7 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
                       window_max_size);
 }
 
-/**
- * sum 5 col
- * @param state_ptr
- * @param mode
- * @param is_batch_mode
- * @param record_size
- */
+
 void WINDOW_CASE2_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode, int64_t group_size,
                         int64_t window_max_size) {
@@ -480,13 +474,6 @@ void WINDOW_CASE2_QUERY(benchmark::State *state_ptr, MODE mode,
                       window_max_size);
 }
 
-/**
- * max i32
- * @param state_ptr
- * @param mode
- * @param is_batch_mode
- * @param record_size
- */
 void WINDOW_CASE3_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode, int64_t group_size,
                         int64_t window_max_size) {

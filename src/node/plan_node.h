@@ -130,12 +130,9 @@ class LimitPlanNode : public MultiChildPlanNode {
     int limit_cnt_;
 };
 
-/**
- * TODO:
- * where 过滤: 暂时不用考虑
- * having: 对结果过滤
- *
- */
+// TODO(chenjing):
+// where 过滤: 暂时不用考虑
+// having: 对结果过滤
 class FilterPlanNode : public UnaryPlanNode {
  public:
     FilterPlanNode() : UnaryPlanNode(kPlanTypeFilter), condition_(nullptr) {}

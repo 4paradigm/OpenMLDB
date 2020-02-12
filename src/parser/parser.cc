@@ -20,15 +20,9 @@
 #include <utility>
 #include "node/sql_node.h"
 #include "proto/common.pb.h"
-
-/**
- * FeSQL command parser
- * @param sqlstr
- * @param list
- * @return 1 if success
- */
 namespace fesql {
 namespace parser {
+
 int FeSQLParser::parse(
     const std::string &sqlstr,
     node::NodePointVector &trees,  // NOLINT (runtime/references)

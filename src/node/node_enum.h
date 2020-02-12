@@ -145,11 +145,7 @@ enum CmdType {
     kCmdDropTable,
     kCmdExit
 };
-/**
- * Planner:
- *  basic class for plan
- *
- */
+
 enum PlanType {
     kPlanTypeCmd,
     kPlanTypeFuncDef,

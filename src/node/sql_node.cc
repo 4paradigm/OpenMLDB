@@ -287,11 +287,9 @@ void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSQLVector(output, tab, window_list_ptr_, "window_list", last_child);
 }
 
-/**
- * get the node type name
- * @param type
- * @param output
- */
+// Return the node type name
+// param type
+// return
 std::string NameOfSQLNodeType(const SQLNodeType &type) {
     std::string output;
     switch (type) {

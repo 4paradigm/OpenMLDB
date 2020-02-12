@@ -118,6 +118,7 @@ void BinaryArithmeticExprCheck(::fesql::type::Type left_type,
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     R (*decode)(V1, V2) = (R(*)(V1, V2))load_fn_jit.getAddress();
     R ret = decode(value1, value2);
+    std::cout << std::to_string(ret) << std::endl;
     ASSERT_EQ(ret, result);
 }
 TEST_F(ArithmeticIRBuilderTest, test_add_int16_x_expr) {
@@ -433,6 +434,26 @@ TEST_F(ArithmeticIRBuilderTest, test_multi_double_x_expr) {
     BinaryArithmeticExprCheck<double, double, double>(
         ::fesql::type::kDouble, ::fesql::type::kDouble, ::fesql::type::kDouble,
         2.0, 12345678.5, 2.0 * 12345678.5, ::fesql::node::kFnOpMulti);
+}
+
+TEST_F(ArithmeticIRBuilderTest, test_fdiv_zero) {
+    BinaryArithmeticExprCheck<int32_t, int16_t, double>(
+        ::fesql::type::kInt32, ::fesql::type::kInt16, ::fesql::type::kDouble, 2,
+        0, 2.0 / 0.0, ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<int32_t, int16_t, double>(
+        ::fesql::type::kInt32, ::fesql::type::kInt32, ::fesql::type::kDouble, 2,
+        0, 2.0 / 0.0, ::fesql::node::kFnOpFDiv);
+
+    BinaryArithmeticExprCheck<int64_t, int16_t, double>(
+        ::fesql::type::kInt64, ::fesql::type::kInt32, ::fesql::type::kDouble,
+        99999999L, 0, 99999999.0 / 0.0, ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<int32_t, float, double>(
+        ::fesql::type::kInt32, ::fesql::type::kFloat, ::fesql::type::kDouble, 2,
+        0.0f, 2.0 / 0.0, ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<int32_t, double, double>(
+        ::fesql::type::kInt32, ::fesql::type::kDouble, ::fesql::type::kDouble,
+        2, 0.0, 2.0 / 0.0, ::fesql::node::kFnOpFDiv);
+    std::cout << std::to_string(1 / 0.0) << std::endl;
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_fdiv_int32_x_expr) {
