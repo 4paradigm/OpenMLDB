@@ -66,7 +66,6 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
     if (false == BuildBlock(root->block_, block, ret_block, status)) {
         return false;
     }
-    builder.CreateBr(ret_block);
     builder.SetInsertPoint(ret_block);
     ::llvm::Value *ret;
     VariableIRBuilder var_ir_builder(builder.GetInsertBlock(), &sv_);
@@ -84,51 +83,7 @@ bool FnIRBuilder::BuildStmt(const ::fesql::node::FnNode *node,
         LOG(WARNING) << "node or block is null ";
         return false;
     }
-    ::llvm::Function *fn = block->getParent();
-    ::llvm::IRBuilder<> builder(block);
-    switch (node->GetType()) {
-        case node::kFnAssignStmt: {
-            bool ok = BuildAssignStmt(
-                dynamic_cast<const ::fesql::node::FnAssignNode *>(node),
-                builder.GetInsertBlock(), status);
-            if (!ok) {
-                return false;
-            }
-            break;
-        }
-        case node::kFnReturnStmt: {
-            bool ok =
-                BuildReturnStmt(dynamic_cast<const node::FnReturnStmt *>(node),
-                                builder.GetInsertBlock(), ret_block, status);
-            if (!ok) {
-                return false;
-            }
-            break;
-        }
-        case node::kFnIfElseBlock: {
-            llvm::BasicBlock *block_start = llvm::BasicBlock::Create(
-                module_->getContext(), "if_else_start", fn);
-            llvm::BasicBlock *block_end = llvm::BasicBlock::Create(
-                module_->getContext(), "if_else_end", fn);
-            builder.CreateBr(block_start);
-            builder.SetInsertPoint(block_start);
-            bool ok = BuildIfElseBlock(
-                dynamic_cast<const ::fesql::node::FnIfElseBlock *>(node),
-                block_start, block_end, ret_block, status);
-            if (!ok) {
-                return false;
-            }
-            builder.SetInsertPoint(block_end);
-            break;
-        }
-        default: {
-            status.code = common::kCodegenError;
-            status.msg = "fail to codegen for unrecognized fn type " +
-                         node::NameOfSQLNodeType(node->GetType());
-            LOG(WARNING) << status.msg;
-            return false;
-        }
-    }
+
 
     return true;
 }
@@ -278,9 +233,51 @@ bool FnIRBuilder::BuildBlock(const node::FnNodeList *statements,
         LOG(WARNING) << status.msg;
         return false;
     }
+    ::llvm::Function *fn = block->getParent();
+    ::llvm::IRBuilder<> builder(block);
     for (const node::FnNode *node : statements->children) {
-        if (false == BuildStmt(node, block, ret_block, status)) {
-            return false;
+        switch (node->GetType()) {
+            case node::kFnAssignStmt: {
+                bool ok = BuildAssignStmt(
+                    dynamic_cast<const ::fesql::node::FnAssignNode *>(node),
+                    builder.GetInsertBlock(), status);
+                if (!ok) {
+                    return false;
+                }
+                break;
+            }
+            case node::kFnReturnStmt: {
+                bool ok =
+                    BuildReturnStmt(dynamic_cast<const node::FnReturnStmt *>(node),
+                                    builder.GetInsertBlock(), ret_block, status);
+                if (!ok) {
+                    return false;
+                }
+                break;
+            }
+            case node::kFnIfElseBlock: {
+                llvm::BasicBlock *block_start = llvm::BasicBlock::Create(
+                    module_->getContext(), "if_else_start", fn);
+                llvm::BasicBlock *block_end = llvm::BasicBlock::Create(
+                    module_->getContext(), "if_else_end", fn);
+                builder.CreateBr(block_start);
+                builder.SetInsertPoint(block_start);
+                bool ok = BuildIfElseBlock(
+                    dynamic_cast<const ::fesql::node::FnIfElseBlock *>(node),
+                    block_start, block_end, ret_block, status);
+                if (!ok) {
+                    return false;
+                }
+                builder.SetInsertPoint(block_end);
+                break;
+            }
+            default: {
+                status.code = common::kCodegenError;
+                status.msg = "fail to codegen for unrecognized fn type " +
+                    node::NameOfSQLNodeType(node->GetType());
+                LOG(WARNING) << status.msg;
+                return false;
+            }
         }
     }
     return true;

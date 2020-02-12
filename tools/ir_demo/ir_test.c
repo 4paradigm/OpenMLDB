@@ -18,4 +18,5 @@ int add(int x, int y) {
     } else {
         return x*y;
     }
+    return 0;
 }
