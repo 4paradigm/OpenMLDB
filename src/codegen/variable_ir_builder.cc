@@ -8,8 +8,8 @@
  **/
 #include "codegen/variable_ir_builder.h"
 
-fesql::codegen::VariableIRBuilder::VariableIRBuilder(
-    ::llvm::BasicBlock* block, ScopeVar* scope_var)
+fesql::codegen::VariableIRBuilder::VariableIRBuilder(::llvm::BasicBlock* block,
+                                                     ScopeVar* scope_var)
     : block_(block), sv_(scope_var) {}
 fesql::codegen::VariableIRBuilder::~VariableIRBuilder() {}
 
@@ -66,8 +66,9 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
     }
 }
 
-bool fesql::codegen::VariableIRBuilder::LoadValue(
-    std::string name, ::llvm::Value** output, fesql::base::Status& status) {
+bool fesql::codegen::VariableIRBuilder::LoadValue(std::string name,
+                                                  ::llvm::Value** output,
+                                                  fesql::base::Status& status) {
     ::llvm::Value* value;
     bool is_register;
     if (!sv_->FindVar(name, &value, &is_register)) {
@@ -99,4 +100,85 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
     const std::string& name, ::llvm::Value* value,
     fesql::base::Status& status) {
     return StoreValue(name, value, true, status);
+}
+bool fesql::codegen::VariableIRBuilder::StoreReturnValue(
+    llvm::Value* value, fesql::base::Status& status) {
+    if (nullptr == value) {
+        status.msg = "value is null";
+        status.code = common::kCodegenError;
+        return false;
+    }
+    // store value into memory address
+
+    // get value addr
+    ::llvm::Value* addr;
+    if (!sv_->FindReturnVar(&addr)) {
+        ::llvm::IRBuilder<> builder(&block_->getParent()->getEntryBlock());
+        addr = builder.CreateAlloca(value->getType());
+        if (false == sv_->AddReturnVar(addr)) {
+            status.code = common::kCodegenError;
+            status.msg = "fail to set return addr";
+            return false;
+        }
+    }
+
+    if (nullptr == addr) {
+        status.msg = "fail to store return value: addr is null";
+        status.code = common::kCodegenError;
+        return false;
+    }
+
+    // store value on address
+    ::llvm::IRBuilder<> builder(block_);
+    if (nullptr == builder.CreateStore(value, addr)) {
+        status.msg = "fail to store return value";
+        status.code = common::kCodegenError;
+        return false;
+    }
+    return true;
+}
+bool fesql::codegen::VariableIRBuilder::LoadReturnValue(
+    llvm::Value** output, fesql::base::Status& status) {
+    ::llvm::Value* value;
+    if (!sv_->FindReturnVar(&value)) {
+        return false;
+    }
+    if (nullptr == value) {
+        status.msg = "fail to get value: value is null";
+        status.code = common::kCodegenError;
+        return false;
+    }
+
+
+    {
+        ::llvm::IRBuilder<> builder(block_);
+        // load value from address
+        *output = builder.CreateLoad(value);
+        if (nullptr == *output) {
+            status.msg = "fail to load mutable value";
+            status.code = common::kCodegenError;
+            return false;
+        }
+        return true;
+    }
+}
+bool fesql::codegen::VariableIRBuilder::AllocaReturnValue(
+    llvm::Type* type, fesql::base::Status& status) {
+    // get value addr
+    ::llvm::Value* addr;
+    if (!sv_->FindReturnVar(&addr)) {
+        ::llvm::IRBuilder<> builder(&block_->getParent()->getEntryBlock());
+        addr = builder.CreateAlloca(type);
+        if (false == sv_->AddReturnVar(addr)) {
+            status.code = common::kCodegenError;
+            status.msg = "fail to set return addr";
+            return false;
+        }
+        return true;
+    } else {
+        status.code = common::kCodegenError;
+        status.msg = "fail to alloca return value: return value already exist";
+        return false;
+    }
+
 }

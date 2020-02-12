@@ -52,66 +52,74 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
         return false;
     }
     block = ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
+    llvm::BasicBlock *ret_block =
+        ::llvm::BasicBlock::Create(module_->getContext(), "ret_block", fn);
     ::llvm::IRBuilder<> builder(block);
 
-    ::std::vector<::fesql::node::FnNode *>::const_iterator it =
-        root->block_->children.begin();
-    for (; it != root->block_->children.end(); ++it) {
-        ::fesql::node::FnNode *node = *it;
-        // TODO(wangtaize) use switch
-        switch (node->GetType()) {
-            case node::kFnAssignStmt:
-            case node::kFnReturnStmt: {
-                bool ok = BuildStmt(node, builder.GetInsertBlock(), status);
-                if (!ok) {
-                    return false;
-                }
-                break;
-            }
-            case node::kFnIfElseBlock: {
-                llvm::BasicBlock *block_start =
-                    llvm::BasicBlock::Create(module_->getContext(), "if_else_start", fn);
-                llvm::BasicBlock *block_end =
-                    llvm::BasicBlock::Create(module_->getContext(), "if_else_end", fn);
-                builder.CreateBr(block_start);
-                builder.SetInsertPoint(block_start);
-                bool ok = BuildIfElseBlock(
-                    dynamic_cast<const ::fesql::node::FnIfElseBlock *>(node),
-                    block_start, block_end, status);
-                if (!ok) {
-                    return false;
-                }
-                builder.SetInsertPoint(block_end);
-                break;
-            }
-            default: {
-                status.code = common::kCodegenError;
-                status.msg = "fail to codegen for unrecognized fn type " +
-                             node::NameOfSQLNodeType(node->GetType());
-                LOG(WARNING) << status.msg;
-                return false;
-            }
+    {
+        VariableIRBuilder var_ir_builder(block, &sv_);
+        if (false ==
+            var_ir_builder.AllocaReturnValue(fn->getReturnType(), status)) {
+            return false;
         }
+    }
+    if (false == BuildBlock(root->block_, block, ret_block, status)) {
+        return false;
+    }
+    builder.CreateBr(ret_block);
+    builder.SetInsertPoint(ret_block);
+    ::llvm::Value *ret;
+    VariableIRBuilder var_ir_builder(builder.GetInsertBlock(), &sv_);
+    if (var_ir_builder.LoadReturnValue(&ret, status)) {
+        builder.CreateRet(ret);
     }
     return true;
 }
 
 bool FnIRBuilder::BuildStmt(const ::fesql::node::FnNode *node,
                             ::llvm::BasicBlock *block,
+                            ::llvm::BasicBlock *ret_block,
                             base::Status &status) {  // NOLINE
     if (node == NULL || block == NULL) {
         LOG(WARNING) << "node or block is null ";
         return false;
     }
-
+    ::llvm::Function *fn = block->getParent();
+    ::llvm::IRBuilder<> builder(block);
     switch (node->GetType()) {
-        case ::fesql::node::kFnAssignStmt: {
-            return BuildAssignStmt((::fesql::node::FnAssignNode *)node, block,
-                                   status);
+        case node::kFnAssignStmt: {
+            bool ok = BuildAssignStmt(
+                dynamic_cast<const ::fesql::node::FnAssignNode *>(node),
+                builder.GetInsertBlock(), status);
+            if (!ok) {
+                return false;
+            }
+            break;
         }
-        case ::fesql::node::kFnReturnStmt: {
-            return BuildReturnStmt((::fesql::node::FnReturnStmt *)node, block,
-                                   status);
+        case node::kFnReturnStmt: {
+            bool ok =
+                BuildReturnStmt(dynamic_cast<const node::FnReturnStmt *>(node),
+                                builder.GetInsertBlock(), ret_block, status);
+            if (!ok) {
+                return false;
+            }
+            break;
+        }
+        case node::kFnIfElseBlock: {
+            llvm::BasicBlock *block_start = llvm::BasicBlock::Create(
+                module_->getContext(), "if_else_start", fn);
+            llvm::BasicBlock *block_end = llvm::BasicBlock::Create(
+                module_->getContext(), "if_else_end", fn);
+            builder.CreateBr(block_start);
+            builder.SetInsertPoint(block_start);
+            bool ok = BuildIfElseBlock(
+                dynamic_cast<const ::fesql::node::FnIfElseBlock *>(node),
+                block_start, block_end, ret_block, status);
+            if (!ok) {
+                return false;
+            }
+            builder.SetInsertPoint(block_end);
+            break;
         }
         default: {
             status.code = common::kCodegenError;
@@ -121,16 +129,18 @@ bool FnIRBuilder::BuildStmt(const ::fesql::node::FnNode *node,
             return false;
         }
     }
+
+    return true;
 }
 
 bool FnIRBuilder::BuildIfElseBlock(
-    const ::fesql::node::FnIfElseBlock *if_else_block, llvm::BasicBlock *if_else_start,
-    llvm::BasicBlock *if_else_end,
+    const ::fesql::node::FnIfElseBlock *if_else_block,
+    llvm::BasicBlock *if_else_start, llvm::BasicBlock *if_else_end,
+    llvm::BasicBlock *ret_block,
     base::Status &status) {  // NOLINE
     llvm::Function *fn = if_else_start->getParent();
 
     ::llvm::IRBuilder<> builder(if_else_start);
-
 
     llvm::BasicBlock *cond_true =
         llvm::BasicBlock::Create(module_->getContext(), "cond_true", fn);
@@ -151,8 +161,8 @@ bool FnIRBuilder::BuildIfElseBlock(
 
     builder.CreateCondBr(cond, cond_true, cond_false);
     builder.SetInsertPoint(cond_true);
-    if (false ==
-        BuildBlock(if_else_block->if_block_->block_, cond_true, status)) {
+    if (false == BuildBlock(if_else_block->if_block_->block_, cond_true,
+                            ret_block, status)) {
         return false;
     }
     builder.CreateBr(if_else_end);
@@ -177,7 +187,9 @@ bool FnIRBuilder::BuildIfElseBlock(
             }
             builder.CreateCondBr(cond, cond_true, cond_false);
             builder.SetInsertPoint(cond_true);
-            if (false == BuildBlock(elif_block->block_, builder.GetInsertBlock(), status)) {
+            if (false == BuildBlock(elif_block->block_,
+                                    builder.GetInsertBlock(), ret_block,
+                                    status)) {
                 return false;
             }
             builder.CreateBr(if_else_end);
@@ -185,7 +197,7 @@ bool FnIRBuilder::BuildIfElseBlock(
         }
     }
     if (false == BuildBlock(if_else_block->else_block_->block_,
-                            builder.GetInsertBlock(), status)) {
+                            builder.GetInsertBlock(), ret_block, status)) {
         return false;
     }
     builder.CreateBr(if_else_end);
@@ -193,6 +205,7 @@ bool FnIRBuilder::BuildIfElseBlock(
 }
 bool FnIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
                                   ::llvm::BasicBlock *block,
+                                  ::llvm::BasicBlock *ret_block,
                                   base::Status &status) {  // NOLINE
     if (node == nullptr || block == nullptr || node->return_expr_ == nullptr) {
         status.code = common::kCodegenError;
@@ -201,17 +214,22 @@ bool FnIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
         return true;
     }
 
-    ExprIRBuilder builder(block, &sv_);
+    ::llvm::IRBuilder<> builder(block);
+    ExprIRBuilder expr_builder(block, &sv_);
+    VariableIRBuilder var_ir_builder(block, &sv_);
     ::llvm::Value *value = NULL;
-    bool ok = builder.Build(node->return_expr_, &value);
+    bool ok = expr_builder.Build(node->return_expr_, &value);
     if (!ok) {
         status.code = common::kCodegenError;
         status.msg = "fail to codegen expr";
         LOG(WARNING) << status.msg;
         return false;
     }
-    ::llvm::IRBuilder<> ir_builder(block);
-    ir_builder.CreateRet(value);
+
+    if (false == var_ir_builder.StoreReturnValue(value, status)) {
+        return false;
+    }
+    builder.CreateBr(ret_block);
     return true;
 }
 
@@ -245,6 +263,7 @@ bool FnIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
 
 bool FnIRBuilder::BuildBlock(const node::FnNodeList *statements,
                              llvm::BasicBlock *block,
+                             llvm::BasicBlock *ret_block,
                              base::Status &status) {  // NOLINT
     if (statements == NULL || block == NULL) {
         status.code = common::kCodegenError;
@@ -260,7 +279,7 @@ bool FnIRBuilder::BuildBlock(const node::FnNodeList *statements,
         return false;
     }
     for (const node::FnNode *node : statements->children) {
-        if (false == BuildStmt(node, block, status)) {
+        if (false == BuildStmt(node, block, ret_block, status)) {
             return false;
         }
     }

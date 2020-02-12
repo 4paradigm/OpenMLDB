@@ -41,6 +41,7 @@ class FnIRBuilder {
                      ::llvm::Function** fn, base::Status& status);  // NOLINT
 
     bool BuildStmt(const ::fesql::node::FnNode* node, ::llvm::BasicBlock* block,
+                   ::llvm::BasicBlock* ret_block,
                    base::Status& status);  // NOLINT
 
     bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node,
@@ -49,11 +50,13 @@ class FnIRBuilder {
 
     bool BuildReturnStmt(const ::fesql::node::FnReturnStmt* node,
                          ::llvm::BasicBlock* block,
+                         ::llvm::BasicBlock* ret_block,
                          base::Status& status);  // NOLINT
 
     bool BuildIfElseBlock(const ::fesql::node::FnIfElseBlock* node,
                           llvm::BasicBlock* block,
                           llvm::BasicBlock* end_block,
+                          ::llvm::BasicBlock* ret_block,
                           base::Status& status);  // NOLINT
 
  private:
@@ -65,6 +68,7 @@ class FnIRBuilder {
                   base::Status& status);  // NOLINT
 
     bool BuildBlock(const node::FnNodeList* statements, llvm::BasicBlock* block,
+                    llvm::BasicBlock* ret_block,
                     base::Status& status);  // NOLINT
 
     ::llvm::Module* module_;

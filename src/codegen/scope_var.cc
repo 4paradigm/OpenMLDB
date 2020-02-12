@@ -93,6 +93,33 @@ bool ScopeVar::FindVar(const std::string& name, ::llvm::Value** value,
     *is_register = it->second.second;
     return true;
 }
+bool ScopeVar::FindReturnVar(llvm::Value** value) {
+    if (scopes_.size() <= 0) {
+        LOG(WARNING) << "no scope exists ";
+        return false;
+    }
+
+    Scope& exist_scope = scopes_.back();
+    if (nullptr == exist_scope.ret_addr) {
+        return false;
+    } else {
+        *value = exist_scope.ret_addr;
+        return true;
+    }
+}
+bool ScopeVar::AddReturnVar(llvm::Value* addr) {
+    if (scopes_.size() <= 0) {
+        LOG(WARNING) << "no scope exists ";
+        return false;
+    }
+    Scope& exist_scope = scopes_.back();
+    if (nullptr != exist_scope.ret_addr) {
+        LOG(WARNING) << "can not add return address: already exists";
+        return false;
+    }
+    exist_scope.ret_addr = addr;
+    return true;
+}
 
 }  // namespace codegen
 }  // namespace fesql

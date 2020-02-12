@@ -197,7 +197,7 @@ TEST_F(FnIRBuilderTest, test_if_else_block) {
     bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef *>(trees[0]),
                                   status);
     ASSERT_TRUE(ok);
-    m->print(::llvm::errs(), NULL);
+    m->print(::llvm::errs(), NULL, false, true);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));

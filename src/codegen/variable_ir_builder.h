@@ -31,6 +31,13 @@ class VariableIRBuilder {
                     bool is_register,
                     base::Status& status);  // NOLINT (runtime/references)
 
+    bool StoreReturnValue(llvm::Value* value, base::Status& status);
+
+    bool LoadReturnValue(llvm::Value** output, base::Status& status);
+
+    bool AllocaReturnValue(llvm::Type* type,
+                           base::Status& status);
+
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
