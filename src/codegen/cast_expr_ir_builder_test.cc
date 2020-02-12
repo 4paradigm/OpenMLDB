@@ -253,17 +253,17 @@ TEST_F(CastExprIrBuilderTest, safe_cast_error_test) {
 }
 
 TEST_F(CastExprIrBuilderTest, bool_cast_test) {
-//    BoolCastCheck<int16_t>(::fesql::type::kInt16, 1u, true);
-//    BoolCastCheck<int32_t>(::fesql::type::kInt32, 1, true);
-//    BoolCastCheck<int64_t>(::fesql::type::kInt64, 1, true);
+    BoolCastCheck<int16_t>(::fesql::type::kInt16, 1u, true);
+    BoolCastCheck<int32_t>(::fesql::type::kInt32, 1, true);
+    BoolCastCheck<int64_t>(::fesql::type::kInt64, 1, true);
     BoolCastCheck<float>(::fesql::type::kFloat, 1.0f, true);
-//    BoolCastCheck<double>(::fesql::type::kDouble, 1.0, true);
+    BoolCastCheck<double>(::fesql::type::kDouble, 1.0, true);
 
-//    BoolCastCheck<int16_t>(::fesql::type::kInt16, 0, false);
-//    BoolCastCheck<int32_t>(::fesql::type::kInt32, 0, false);
-//    BoolCastCheck<int64_t>(::fesql::type::kInt64, 0, false);
-//    BoolCastCheck<float>(::fesql::type::kFloat, 0.0f, false);
-//    BoolCastCheck<double>(::fesql::type::kDouble, 0.0, false);
+    BoolCastCheck<int16_t>(::fesql::type::kInt16, 0, false);
+    BoolCastCheck<int32_t>(::fesql::type::kInt32, 0, false);
+    BoolCastCheck<int64_t>(::fesql::type::kInt64, 0, false);
+    BoolCastCheck<float>(::fesql::type::kFloat, 0.0f, false);
+    BoolCastCheck<double>(::fesql::type::kDouble, 0.0, false);
 }
 
 }  // namespace codegen
