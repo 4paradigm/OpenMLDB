@@ -12,6 +12,7 @@ import libs.conf as conf
 
 
 @ddt.ddt
+@multi_dimension(True)
 class TestSchema(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)

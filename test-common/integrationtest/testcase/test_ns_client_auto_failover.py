@@ -10,6 +10,7 @@ import libs.ddt as ddt
 import collections
 
 @ddt.ddt
+@multi_dimension(True)
 class TestAutoFailover(TestCaseBase):
 
     @ddt.data(

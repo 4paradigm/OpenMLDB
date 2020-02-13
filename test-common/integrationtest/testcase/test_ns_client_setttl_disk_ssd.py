@@ -10,6 +10,7 @@ import libs.utils as utils
 
 
 @ddt.ddt
+@multi_dimension(True)
 class TestSetTTL(TestCaseBase):
     @ddt.data(
         ['kSSD'],

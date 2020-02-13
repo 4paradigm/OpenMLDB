@@ -17,13 +17,16 @@ class TbCluster(object):
         self.leader = ''
 
 
-    def start(self, endpoints):
+    def start(self, endpoints, is_remote = False):
         tbconfpath = os.getenv('tbconfpath')
         i = 0
         test_path = os.getenv('testpath')
         for ep in endpoints:
             i += 1
-            tb_path = test_path + '/tablet{}'.format(i)
+            if not is_remote:
+                tb_path = test_path + '/tablet{}'.format(i)
+            else:
+                tb_path = test_path + '/tablet{}'.format(i) + 'remote'
             esc_tb_path = tb_path.replace("/", "\/")
             exe_shell('export ')
             exe_shell('rm -rf {}/*'.format(tb_path))
@@ -39,7 +42,10 @@ class TbCluster(object):
             exe_shell("echo '--log_level={}' >> {}".format(conf.rtidb_log_info, rtidb_flags))
             exe_shell("echo '--stream_close_wait_time_ms=10' >> {}".format(rtidb_flags))
             exe_shell("echo '--stream_bandwidth_limit=0' >> {}".format(rtidb_flags))
-            exe_shell("echo '--zk_root_path=/onebox' >> {}".format(rtidb_flags))
+            if not is_remote:
+                exe_shell("echo '--zk_root_path=/onebox' >> {}".format(rtidb_flags))
+            else:
+                exe_shell("echo '--zk_root_path=/remote' >> {}".format(rtidb_flags))
             exe_shell("echo '--zk_keep_alive_check_interval=500000' >> {}".format(rtidb_flags))
             exe_shell("echo '--gc_safe_offset=0' >> {}".format(rtidb_flags))
             exe_shell("echo '--binlog_sync_to_disk_interval=10' >> {}".format(rtidb_flags))

@@ -102,11 +102,12 @@ struct OPData {
 };
 
 class NameServerImplTest;
+class NameServerImplRemoteTest;
 
 class NameServerImpl : public NameServer {
     // used for ut
     friend class NameServerImplTest;
-
+    friend class NameServerImplRemoteTest;
 public:
 
     NameServerImpl();
