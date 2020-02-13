@@ -299,7 +299,7 @@ static void FillTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
             fit.GetUInt64(&uint64_col);
             col = boost::lexical_cast<std::string>(uint64_col);
         } else if (fit.GetType() == ::rtidb::base::ColType::kDouble) {
-            double double_col = 0.0d;
+            double double_col = 0.0;
             fit.GetDouble(&double_col);
             col = boost::lexical_cast<std::string>(double_col);
         } else if (fit.GetType() == ::rtidb::base::ColType::kFloat) {
@@ -371,7 +371,7 @@ static void FillTableRow(uint32_t full_schema_size,
             fit.GetUInt64(&uint64_col);
             col = boost::lexical_cast<std::string>(uint64_col);
         } else if (fit.GetType() == ::rtidb::base::ColType::kDouble) {
-            double double_col = 0.0d;
+            double double_col = 0.0;
             fit.GetDouble(&double_col);
             col = boost::lexical_cast<std::string>(double_col);
         } else if (fit.GetType() == ::rtidb::base::ColType::kFloat) {

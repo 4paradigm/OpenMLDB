@@ -47,6 +47,7 @@ public:
             ttl_desc->set_abs_ttl(0);
             ttl_desc->set_lat_ttl(ttl/(60*1000));
         }
+        last_make_snapshot_time_ = 0;
     }
     virtual ~Table() {}
     virtual bool Init() = 0;
@@ -212,6 +213,14 @@ public:
         }
     }
 
+    inline void SetMakeSnapshotTime(int64_t time) {
+        last_make_snapshot_time_ = time;
+    }
+
+    inline int64_t GetMakeSnapshotTime() {
+        return last_make_snapshot_time_;
+    }
+
 protected:
     void UpdateTTL();
     bool InitFromMeta();
@@ -240,6 +249,7 @@ protected:
     ::rtidb::api::TTLType ttl_type_;
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;
+    int64_t last_make_snapshot_time_;
 };
 
 }

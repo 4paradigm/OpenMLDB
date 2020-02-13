@@ -266,7 +266,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::a
     return 0;
 }
 
-uint64_t MemTableSnapshot::CollectDeletedKey() {
+uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
     deleted_keys_.clear();
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset_);
@@ -277,6 +277,9 @@ uint64_t MemTableSnapshot::CollectDeletedKey() {
             PDLOG(WARNING, "deleted_keys map size reach the make_snapshot_max_deleted_keys %u, tid %u pid %u",
                             FLAGS_make_snapshot_max_deleted_keys, tid_, pid_);
             break;
+        }
+        if (end_offset > 0 && cur_offset >= end_offset) {
+            return cur_offset;
         }
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -313,7 +316,7 @@ uint64_t MemTableSnapshot::CollectDeletedKey() {
             // judge end_log_index greater than cur_log_index
             if (end_log_index >= 0 && end_log_index > cur_log_index) {
                 log_reader.RollRLogFile();
-                PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] end_log_index[%d] cur_offset[%lu]", 
+                PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] end_log_index[%d] cur_offset[%lu]",
                                 tid_, pid_, cur_log_index, end_log_index, cur_offset);
                 continue;
             }
@@ -327,10 +330,14 @@ uint64_t MemTableSnapshot::CollectDeletedKey() {
     return cur_offset;
 }
 
-int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
+int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset, uint64_t end_offset) {
     if (making_snapshot_.load(std::memory_order_acquire)) {
         PDLOG(INFO, "snapshot is doing now!");
         return 0;
+    }
+    if (end_offset > 0 && end_offset <= offset_) {
+        PDLOG(WARNING, "end_offset %lu less than or equal offset_ %lu, do nothing", end_offset, offset_);
+        return -1;
     }
     making_snapshot_.store(true, std::memory_order_release);
     std::string now_time = ::rtidb::base::GetNowTime();
@@ -344,7 +351,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
         making_snapshot_.store(false, std::memory_order_release);
         return -1;
     }
-    uint64_t collected_offset = CollectDeletedKey();
+    uint64_t collected_offset = CollectDeletedKey(end_offset);
     uint64_t start_time = ::baidu::common::timer::now_time();
     WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd);
     ::rtidb::api::Manifest manifest;

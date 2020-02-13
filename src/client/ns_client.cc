@@ -63,10 +63,11 @@ bool NsClient::ShowTable(const std::string& name,
     return false;
 }
 
-bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid, std::string& msg) {
+bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid, uint64_t end_offset, std::string& msg) {
     ::rtidb::nameserver::MakeSnapshotNSRequest request;
     request.set_name(name);
     request.set_pid(pid);
+    request.set_offset(end_offset);
     ::rtidb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS,
             &request, &response, FLAGS_request_timeout_ms, 1);

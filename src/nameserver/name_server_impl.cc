@@ -13,6 +13,7 @@
 #include <chrono>
 #include <boost/algorithm/string.hpp>
 #include <algorithm>
+#include <base/strings.h>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -35,6 +36,8 @@ DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_uint32(check_binlog_sync_progress_delta);
 DECLARE_uint32(name_server_op_execute_timeout);
 DECLARE_uint32(get_replica_status_interval);
+DECLARE_int32(make_snapshot_time);
+DECLARE_int32(make_snapshot_check_interval);
 
 namespace rtidb {
 namespace nameserver {
@@ -569,9 +572,15 @@ bool NameServerImpl::Recover() {
     }
     {
         std::lock_guard<std::mutex> lock(mu_);
-        UpdateTablets(endpoints);
 
         std::string value;
+        if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/follower", value)) {
+            zone_info_.ParseFromString(value);
+            mode_.store(zone_info_.mode(), std::memory_order_release);
+            PDLOG(WARNING, "recover zone info : %s", value.c_str());
+        }
+        UpdateTablets(endpoints);
+        value.clear();
         if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
             if (!zk_client_->CreateNode(zk_table_index_node_, "1")) {
                 PDLOG(WARNING, "create table index node failed!");
@@ -626,12 +635,6 @@ bool NameServerImpl::Recover() {
             value == "true" ? auto_failover_.store(true, std::memory_order_release) :
                 auto_failover_.store(false, std::memory_order_release);
             PDLOG(INFO, "get zk_auto_failover_node[%s]", value.c_str());
-        }
-        value.clear();
-        if (zk_client_->GetNodeValue(zk_zone_data_path_ + "/follower", value)) {
-            zone_info_.ParseFromString(value);
-            mode_.store(zone_info_.mode(), std::memory_order_release);
-            PDLOG(WARNING, "recover zone info : %s", value.c_str());
         }
         if (!RecoverTableInfo()) {
             PDLOG(WARNING, "recover table info failed!");
@@ -973,8 +976,12 @@ int NameServerImpl::CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request.name().c_str(), pid);
         return -1;
     }
+    uint64_t end_offset = 0;
+    if (request.has_offset() && request.offset() > 0) {
+        end_offset = request.offset();
+    }
     std::shared_ptr<Task> task = CreateMakeSnapshotTask(endpoint, op_data->op_info_.op_id(),
-                ::rtidb::api::OPType::kMakeSnapshotOP, tid, pid);
+                ::rtidb::api::OPType::kMakeSnapshotOP, tid, pid, end_offset);
     if (!task) {
         PDLOG(WARNING, "create makesnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -1884,6 +1891,15 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
         response->set_code(100);
         response->set_msg("table is not exist");
+        return;
+    }
+    if (request->offset() > 0) {
+        if (iter->second->storage_mode() != common::kMemory) {
+            PDLOG(WARNING, "table[%s] is not memory table, can't do snapshot with end offset", request->name().c_str());
+        } else {
+            thread_pool_.AddTask(boost::bind(&NameServerImpl::MakeTablePartitionSnapshot, this, request->pid(), request->offset(), iter->second));
+        }
+        response->set_code(0);
         return;
     }
     std::shared_ptr<OPData> op_data;
@@ -4624,6 +4640,148 @@ void NameServerImpl::DeleteDoneOP() {
     }
 }
 
+void NameServerImpl::SchedMakeSnapshot() {
+    if (!running_.load(std::memory_order_acquire)) {
+        return;
+    }
+    if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
+        task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
+        return;
+    }
+    int now_hour = ::rtidb::base::GetNowHour();
+    if (now_hour != FLAGS_make_snapshot_time) {
+        task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
+        return;
+    }
+    std::map<std::string, std::shared_ptr<TabletInfo>> tablet_ptr_map;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_infos;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::NsClient>> ns_client;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (table_info_.size() < 1) {
+            task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
+            return;
+        }
+        for (const auto& kv : tablets_) {
+            if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                continue;
+            }
+            tablet_ptr_map.insert(std::make_pair(kv.first, kv.second));
+        }
+        for (auto iter = nsc_.begin(); iter != nsc_.end(); ++iter) {
+            if (iter->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+                PDLOG(INFO, "cluster[%s] is not Healthy", iter->first.c_str());
+                continue;
+            }
+            ns_client.insert(std::make_pair(iter->first, std::atomic_load_explicit(&iter->second->client_, std::memory_order_relaxed)));
+        }
+        for (auto iter = table_info_.begin(); iter != table_info_.end(); ++iter) {
+            if (iter->second->storage_mode() != common::kMemory) {
+                continue;
+            }
+            table_infos.insert(std::make_pair(iter->first, iter->second));
+        }
+    }
+    std::map<std::string, std::map<uint32_t, uint64_t>> table_part_offset;
+    {
+        std::vector<TableInfo> tables;
+        std::vector<std::string> delete_map;
+        std::string msg;
+        for (const auto& ns : ns_client) {
+            if(!ns.second->ShowTable("", tables, msg)) {
+                delete_map.push_back(ns.first);
+                continue;
+            }
+            for (const auto& table : tables) {
+                if (table.storage_mode() != common::kMemory) {
+                    continue;
+                }
+                auto table_iter = table_part_offset.find(table.name());
+                if (table_iter == table_part_offset.end()) {
+                    std::map<uint32_t, uint64_t> part_offset;
+                    auto result = table_part_offset.insert(std::make_pair(table.name(), part_offset));
+                    table_iter = result.first;
+                }
+                for (const auto& part : table.table_partition()) {
+                    for (const auto& part_meta : part.partition_meta()) {
+                        if (!part_meta.is_alive()) {
+                            continue;
+                        }
+                        auto part_iter = table_iter->second.find(part.pid());
+                        if (part_iter != table_iter->second.end()) {
+                            if (part_meta.offset() < part_iter->second) {
+                                part_iter->second = part_meta.offset();
+                            }
+                        } else {
+                            table_iter->second.insert(std::make_pair(part.pid(), part_meta.offset()));
+                        }
+                    }
+                }
+            }
+            tables.clear();
+        }
+        for (const auto& alias : delete_map) {
+            ns_client.erase(alias);
+        }
+        for (const auto& table : table_infos) {
+            auto table_iter = table_part_offset.find(table.second->name());
+            if (table_iter == table_part_offset.end()) {
+                std::map<uint32_t, uint64_t> part_offset;
+                auto result = table_part_offset.insert(std::make_pair(table.second->name(), part_offset));
+                table_iter = result.first;
+            }
+            for (const auto& part : table.second->table_partition()) {
+                for (const auto& part_meta : part.partition_meta()) {
+                    if (!part_meta.is_alive()) {
+                        continue;
+                    }
+                    auto part_iter = table_iter->second.find(part.pid());
+                    if (part_iter != table_iter->second.end()) {
+                        if (part_meta.offset() < part_iter->second) {
+                            part_iter->second = part_meta.offset();
+                        }
+                    } else {
+                        table_iter->second.insert(std::make_pair(part.pid(), part_meta.offset()));
+                    }
+                }
+            }
+        }
+    }
+    PDLOG(INFO, "start make snapshot");
+    for (const auto& table : table_infos) {
+        if (table.second->storage_mode() != common::kMemory) {
+            continue;
+        }
+        auto table_iter = table_part_offset.find(table.second->name());
+        if (table_iter == table_part_offset.end()) {
+            continue;
+        }
+        for (const auto& part : table.second->table_partition()) {
+            auto part_iter = table_iter->second.find(part.pid());
+            if (part_iter == table_iter->second.end()) {
+                continue;
+            }
+            for (const auto& part_meta : part.partition_meta()) {
+                if (part_meta.is_alive()) {
+                    auto client_iter = tablet_ptr_map.find(part_meta.endpoint());
+                    if (client_iter != tablet_ptr_map.end()) {
+                        thread_pool_.AddTask(boost::bind(&TabletClient::MakeSnapshot, client_iter->second->client_, table.second->tid(), part.pid(), part_iter->second, std::shared_ptr<rtidb::api::TaskInfo>()));
+                    }
+                }
+            }
+            std::string msg;
+            for (const auto& ns : ns_client) {
+                ns.second->MakeSnapshot(table.second->name(), part.pid(), part_iter->second, msg);
+            }
+        }
+    }
+    PDLOG(INFO, "make snapshot finished");
+    if (running_.load(std::memory_order_acquire)) {
+        task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
+    }
+
+}
+
 void NameServerImpl::UpdateTableStatus() {
     std::map<std::string, std::shared_ptr<TabletInfo>> tablet_ptr_map;
     {
@@ -5038,6 +5196,7 @@ void NameServerImpl::OnLocked() {
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::ProcessTask, this));
     thread_pool_.AddTask(boost::bind(&NameServerImpl::DistributeTabletMode, this));
     task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
+    task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
 }
 
 void NameServerImpl::OnLostLock() {
@@ -6112,7 +6271,7 @@ void NameServerImpl::WrapTaskFun(const boost::function<bool ()>& fun, std::share
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateMakeSnapshotTask(const std::string& endpoint,
-                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid) {
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid, uint64_t end_offset) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
@@ -6123,7 +6282,7 @@ std::shared_ptr<Task> NameServerImpl::CreateMakeSnapshotTask(const std::string& 
     task->task_info_->set_task_type(::rtidb::api::TaskType::kMakeSnapshot);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
-    boost::function<bool ()> fun = boost::bind(&TabletClient::MakeSnapshot, it->second->client_, tid, pid, task->task_info_);
+    boost::function<bool ()> fun = boost::bind(&TabletClient::MakeSnapshot, it->second->client_, tid, pid, end_offset, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
@@ -7844,7 +8003,7 @@ void NameServerImpl::CheckClusterInfo() {
     } while(0);
 
     if (running_.load(std::memory_order_acquire)) {
-        thread_pool_.DelayTask(FLAGS_get_replica_status_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
+        task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval, boost::bind(&NameServerImpl::CheckClusterInfo, this));
     }
 }
 
@@ -7946,6 +8105,30 @@ bool NameServerImpl::DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
         cluster_info->last_status.erase(iter);
     }
     return cluster_info->DropTableRemote(task_info, name, zone_info_);
+}
+
+void NameServerImpl::MakeTablePartitionSnapshot(uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
+    for(const auto& part : table_info->table_partition()) {
+        if (part.pid() != pid) {
+            continue;
+        }
+        for(const auto& meta : part.partition_meta()) {
+            if (!meta.is_alive()) {
+                continue;
+            }
+            std::shared_ptr<TabletClient> client;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                auto tablet_iter = tablets_.find(meta.endpoint());
+                if (tablet_iter == tablets_.end()) {
+                    PDLOG(WARNING, "tablet[%s] not found in tablets", meta.endpoint().c_str());
+                    continue;
+                }
+                client = tablet_iter->second->client_;
+            }
+            client->MakeSnapshot(table_info->tid(), pid, end_offset,std::shared_ptr<rtidb::api::TaskInfo>());
+        }
+    }
 }
 
 }

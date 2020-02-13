@@ -171,7 +171,7 @@ public:
     bool DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
-    bool MakeSnapshot(uint32_t tid, uint32_t pid, 
+    bool MakeSnapshot(uint32_t tid, uint32_t pid, uint64_t offset,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid, const std::string& endpoint, 

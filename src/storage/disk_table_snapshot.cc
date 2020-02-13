@@ -48,7 +48,7 @@ bool DiskTableSnapshot::Init() {
     return true;
 }
 
-int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
+int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset, uint64_t end_offset) {
     if (making_snapshot_.load(std::memory_order_acquire)) {
         PDLOG(INFO, "snapshot is doing now! tid %u pid %u", tid_, pid_);
         return 0;
