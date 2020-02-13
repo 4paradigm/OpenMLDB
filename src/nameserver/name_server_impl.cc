@@ -2019,6 +2019,8 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     uint32_t partition_num = FLAGS_partition_num;
     if (table_info.has_partition_num() && table_info.partition_num() > 0) {
         partition_num = table_info.partition_num();
+    } else {
+        table_info.set_partition_num(partition_num);
     }
     std::vector<std::string> endpoint_vec;
     std::map<std::string, uint64_t> endpoint_pid_bucked;
@@ -2034,6 +2036,8 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     uint32_t replica_num = std::min(FLAGS_replica_num, (uint32_t)endpoint_pid_bucked.size());
     if (table_info.has_replica_num() && table_info.replica_num() > 0) {
         replica_num = table_info.replica_num();
+    } else {
+        table_info.set_replica_num(replica_num);
     }
     if (endpoint_pid_bucked.size() < replica_num) {
         PDLOG(WARNING, "healthy endpoint num[%u] is less than replica_num[%u]",
