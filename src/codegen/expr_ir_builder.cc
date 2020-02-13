@@ -132,8 +132,8 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             ::fesql::node::ExprIdNode* id_node =
                 (::fesql::node::ExprIdNode*)node;
             ::llvm::Value* ptr = NULL;
-            if (!variable_ir_builder_.LoadValue(id_node->GetName(),
-                                                        &ptr, status) ||
+            if (!variable_ir_builder_.LoadValue(id_node->GetName(), &ptr,
+                                                status) ||
                 ptr == NULL) {
                 LOG(WARNING) << "fail to find var " << id_node->GetName();
                 return false;
@@ -277,16 +277,14 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
                                     ::llvm::Value** output) {
     base::Status status;
     ::llvm::Value* row_ptr = NULL;
-    if (!variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr,
-                                                status) ||
+    if (!variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr, status) ||
         row_ptr == NULL) {
         LOG(WARNING) << "fail to find row ptr with name " << row_ptr_name_;
         return false;
     }
 
     ::llvm::Value* row_size = NULL;
-    if (!variable_ir_builder_.LoadValue(row_size_name_, &row_size,
-                                                status) ||
+    if (!variable_ir_builder_.LoadValue(row_size_name_, &row_size, status) ||
         row_size == NULL) {
         LOG(WARNING) << "fail to find row size with name " << row_size_name_;
         return false;
@@ -317,7 +315,6 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
     return true;
 }
 
-
 // Get col with given col name, set iterator struct pointer into output
 // param col
 // param output
@@ -334,8 +331,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
     }
 
     ::llvm::Value* row_size = NULL;
-    ok = variable_ir_builder_.LoadValue(row_size_name_, &row_size,
-                                                status);
+    ok = variable_ir_builder_.LoadValue(row_size_name_, &row_size, status);
     if (!ok || row_size == NULL) {
         LOG(WARNING) << "fail to find row size with name " << row_size_name_;
         return false;
@@ -390,7 +386,8 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         return false;
     }
 
-    DLOG(INFO) << "build binary " << ::fesql::node::ExprOpTypeName(node->GetOp());
+    DLOG(INFO) << "build binary "
+               << ::fesql::node::ExprOpTypeName(node->GetOp());
     ::llvm::Value* left = NULL;
     bool ok = Build(node->children[0], &left);
     if (!ok) {

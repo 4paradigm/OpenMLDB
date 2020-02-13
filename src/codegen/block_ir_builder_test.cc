@@ -7,9 +7,9 @@
  *--------------------------------------------------------------------------
  **/
 
-#include "codegen/fn_ir_builder.h"
 #include <llvm/Transforms/Utils.h>
 #include <string>
+#include "codegen/fn_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -28,7 +28,7 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace codegen {
 
-class BlockIRBuilderTest: public ::testing::Test {
+class BlockIRBuilderTest : public ::testing::Test {
  public:
     BlockIRBuilderTest() {
         manager_ = new node::NodeManager();
@@ -73,7 +73,7 @@ void CheckResult(std::string test, int32_t res, int32_t a, int32_t b) {
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto test_jit = ExitOnErr(J->lookup("test"));
     int32_t (*test_fn)(int32_t, int32_t) =
-    (int32_t(*)(int32_t, int32_t))test_jit.getAddress();
+        (int32_t(*)(int32_t, int32_t))test_jit.getAddress();
     ASSERT_EQ(res, test_fn(a, b));
 }
 

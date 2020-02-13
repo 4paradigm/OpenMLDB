@@ -48,7 +48,7 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
     const ::fesql::node::FnNodeFnHeander *fn_def = root->header_;
     sv.Enter(fn_def->name_);
 
-    bool ok = BuildFnHead(fn_def,  &sv, &fn,status);
+    bool ok = BuildFnHead(fn_def, &sv, &fn, status);
     if (!ok) {
         return false;
     }
@@ -65,8 +65,7 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
 }
 
 bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *fn_def,
-                              ScopeVar *sv,
-                              ::llvm::Function **fn,
+                              ScopeVar *sv, ::llvm::Function **fn,
                               base::Status &status) {  // NOLINE
     if (fn_def == NULL || fn == NULL) {
         status.code = common::kCodegenError;
@@ -106,8 +105,7 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *fn_def,
     return true;
 }
 
-bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node,
-                           ScopeVar *sv,
+bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
                            ::llvm::Function *fn,
                            base::Status &status) {  // NOLINE
     if (node == NULL) {

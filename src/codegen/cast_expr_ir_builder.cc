@@ -146,12 +146,14 @@ bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
         *casted_value =
             builder.CreateICmpNE(value, ::llvm::ConstantInt::get(type, 0));
     } else if (type->isFloatTy()) {
-        ::llvm::Value *float0 = ::llvm::ConstantFP::get(type, ::llvm::APFloat(0.0f));
+        ::llvm::Value* float0 =
+            ::llvm::ConstantFP::get(type, ::llvm::APFloat(0.0f));
         *casted_value = builder.CreateFCmpUNE(value, float0);
     } else if (type->isDoubleTy()) {
-        ::llvm::Value *double0 = ::llvm::ConstantFP::get(type, ::llvm::APFloat(0.0));
+        ::llvm::Value* double0 =
+            ::llvm::ConstantFP::get(type, ::llvm::APFloat(0.0));
         *casted_value = builder.CreateFCmpUNE(value, double0);
-    }else {
+    } else {
         status.msg =
             "fail to codegen cast bool expr: value type isn't compatible";
         status.code = common::kCodegenError;

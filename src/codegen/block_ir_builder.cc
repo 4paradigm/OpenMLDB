@@ -6,7 +6,7 @@
  * Date: 2020/2/12
  *--------------------------------------------------------------------------
  **/
-#include "block_ir_builder.h"
+#include "codegen/block_ir_builder.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/variable_ir_builder.h"

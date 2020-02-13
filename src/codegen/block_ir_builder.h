@@ -7,8 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 
-#ifndef SRC_CODEGEN_CONTROL_FLOW_IR_BUILDER_H_
-#define SRC_CODEGEN_CONTROL_FLOW_IR_BUILDER_H_
+#ifndef SRC_CODEGEN_BLOCK_IR_BUILDER_H_
+#define SRC_CODEGEN_BLOCK_IR_BUILDER_H_
 
 #include <vector>
 #include "base/status.h"
@@ -21,6 +21,7 @@ namespace fesql {
 namespace codegen {
 
 // FnIRBuilder
+//
 class BlockIRBuilder {
  public:
     // TODO(wangtaize) provide a module manager
@@ -41,12 +42,11 @@ class BlockIRBuilder {
                          base::Status& status);  // NOLINT
 
     bool BuildIfElseBlock(const ::fesql::node::FnIfElseBlock* node,
-                          llvm::BasicBlock* block,
-                          llvm::BasicBlock* end_block,
+                          llvm::BasicBlock* block, llvm::BasicBlock* end_block,
                           base::Status& status);  // NOLINT
     ScopeVar* sv_;
 };
 
 }  // namespace codegen
 }  // namespace fesql
-#endif  // SRC_CODEGEN_CONTROL_FLOW_IR_BUILDER_H_
+#endif  // SRC_CODEGEN_BLOCK_IR_BUILDER_H_

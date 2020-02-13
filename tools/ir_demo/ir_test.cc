@@ -7,16 +7,14 @@
  *--------------------------------------------------------------------------
  **/
 #include <stdbool.h>
+#include <vector>
 #include <stdio.h>
 
 
-int add(int x, int y) {
-    if (x > 1) {
-        return x+y;
-    } else if (y > 1) {
-        return x-y;
-    } else {
-        return x*y;
+int first(std::vector<int> list) {
+    int res = 0;
+    for(int x: list) {
+        res += x;
     }
-    return 0;
+    return res;
 }
