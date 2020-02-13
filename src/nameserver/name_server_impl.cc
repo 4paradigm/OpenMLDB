@@ -3597,7 +3597,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                 if(CreateTableRemoteOP(table_info_no_alias_pair, remote_table_info, kv.first, 
                             INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster)) {
                     PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
-                    response.set_code(503);
+                    response.set_code(507);
                     response.set_msg( "create table for replica cluster failed");
                     break;
                 } 
@@ -3951,13 +3951,13 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         if (!request->has_zone_info()) {
-            response->set_code(501);
+            response->set_code(502);
             response->set_msg("request has no zono info");
             PDLOG(WARNING, "request has no zono info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(502);
+            response->set_code(503);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -8023,7 +8023,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         return;
     }
     if (request->sm() >= kFOLLOWER) {
-        response->set_code(505);
+        response->set_code(409);
         response->set_msg("unkown server status");
         return;
     }
@@ -8034,7 +8034,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
     if (mode_.load(std::memory_order_acquire) == kLEADER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (nsc_.size() > 0) {
-            response->set_code(555);
+            response->set_code(410);
             response->set_msg("zone not empty");
             return;
         }
