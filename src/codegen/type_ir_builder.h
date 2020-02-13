@@ -110,6 +110,8 @@ inline const bool ConvertFeSQLType2LLVMType(const node::DataType& data_type,
             return true;
         }
         default: {
+            LOG(WARNING) << "fail to convert fesql datatype to llvm type: "
+                         << node::DataTypeName(data_type);
             return false;
         }
     }

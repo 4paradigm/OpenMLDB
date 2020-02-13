@@ -75,17 +75,17 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
         case kFnOpNot:
             return "NOT";
         case kFnOpEq:
-            return "==";
+            return "EQ";
         case kFnOpNeq:
-            return "!=";
+            return "NEQ";
         case kFnOpGt:
-            return ">";
+            return "GT";
         case kFnOpGe:
-            return ">=";
+            return "GE";
         case kFnOpLt:
-            return "<";
+            return "LT";
         case kFnOpLe:
-            return "<=";
+            return "LE";
         case kFnOpBracket:
             return "()";
         case kFnOpNone:
@@ -924,11 +924,11 @@ class FnParaNode : public FnNode {
     std::string name_;
     DataType para_type_;
 };
-class FnNodeFnDef : public FnNode {
+class FnNodeFnHeander : public FnNode {
  public:
-    FnNodeFnDef(const std::string &name, FnNodeList *parameters,
-                const DataType ret_type)
-        : FnNode(kFnDef),
+    FnNodeFnHeander(const std::string &name, FnNodeList *parameters,
+                    const DataType ret_type)
+        : FnNode(kFnHeader),
           name_(name),
           parameters_(parameters),
           ret_type_(ret_type) {}
@@ -938,14 +938,88 @@ class FnNodeFnDef : public FnNode {
     const FnNodeList *parameters_;
     const DataType ret_type_;
 };
+class FnNodeFnDef : public FnNode {
+ public:
+    FnNodeFnDef(const FnNodeFnHeander *header, const FnNodeList *block)
+        : FnNode(kFnDef), header_(header), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnNodeFnHeander *header_;
+    const FnNodeList *block_;
+};
+
 class FnAssignNode : public FnNode {
  public:
     explicit FnAssignNode(const std::string &name, ExprNode *expression)
-        : FnNode(kFnAssignStmt), name_(name), expression_(expression) {}
+        : FnNode(kFnAssignStmt),
+          name_(name),
+          expression_(expression),
+          is_ssa_(false) {}
     std::string GetName() const { return name_; }
+    const bool IsSSA() const { return is_ssa_; }
+    void EnableSSA() { is_ssa_ = true; }
+    void DisableSSA() { is_ssa_ = false; }
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string name_;
     const ExprNode *expression_;
+
+ private:
+    bool is_ssa_;
+};
+
+class FnIfNode : public FnNode {
+ public:
+    explicit FnIfNode(const ExprNode *expression)
+        : FnNode(kFnIfStmt), expression_(expression) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const ExprNode *expression_;
+};
+class FnElifNode : public FnNode {
+ public:
+    explicit FnElifNode(ExprNode *expression)
+        : FnNode(kFnElifStmt), expression_(expression) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const ExprNode *expression_;
+};
+class FnElseNode : public FnNode {
+ public:
+    FnElseNode() : FnNode(kFnElseStmt) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+};
+
+class FnIfBlock : public FnNode {
+ public:
+    FnIfBlock(const FnIfNode *node, const FnNodeList *block)
+        : FnNode(kFnIfBlock), if_node(node), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnIfNode *if_node;
+    const FnNodeList *block_;
+};
+
+class FnElifBlock : public FnNode {
+ public:
+    FnElifBlock(const FnElifNode *node, const FnNodeList *block)
+        : FnNode(kFnElifBlock), elif_node_(node), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnElifNode *elif_node_;
+    const FnNodeList *block_;
+};
+class FnElseBlock : public FnNode {
+ public:
+    explicit FnElseBlock(const FnNodeList *block)
+        : FnNode(kFnElseBlock), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnNodeList *block_;
+};
+class FnIfElseBlock : public FnNode {
+ public:
+    FnIfElseBlock(const FnIfBlock *if_block, const FnElseBlock *else_block)
+        : FnNode(kFnIfElseBlock),
+          if_block_(if_block),
+          else_block_(else_block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnIfBlock *if_block_;
+    std::vector<FnNode *> elif_blocks_;
+    const FnElseBlock *else_block_;
 };
 class FnReturnStmt : public FnNode {
  public:

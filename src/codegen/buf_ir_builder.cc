@@ -41,7 +41,11 @@ static const std::map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
 
 BufIRBuilder::BufIRBuilder(::fesql::type::TableDef* table,
                            ::llvm::BasicBlock* block, ScopeVar* scope_var)
-    : table_(table), block_(block), sv_(scope_var), types_() {
+    : table_(table),
+      block_(block),
+      sv_(scope_var),
+      variable_ir_builder_(block, scope_var),
+      types_() {
     // two byte header
     int32_t offset = 2;
     for (int32_t i = 0; i < table_->columns_size(); i++) {
@@ -229,7 +233,11 @@ bool BufIRBuilder::BuildGetField(const std::string& name,
 BufNativeIRBuilder::BufNativeIRBuilder(::fesql::type::TableDef* table,
                                        ::llvm::BasicBlock* block,
                                        ScopeVar* scope_var)
-    : table_(table), block_(block), sv_(scope_var), types_() {
+    : table_(table),
+      block_(block),
+      sv_(scope_var),
+      variable_ir_builder_(block, scope_var),
+      types_() {
     uint32_t offset = HEADER_LENGTH + BitMapSize(table_->columns_size());
     uint32_t string_field_cnt = 0;
     for (int32_t i = 0; i < table_->columns_size(); i++) {
@@ -364,17 +372,19 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
                                              ::llvm::Value* row_ptr,
                                              ::llvm::Value* size,
                                              ::llvm::Value** output) {
+    base::Status status;
     if (row_ptr == NULL || size == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
         return false;
     }
 
     ::llvm::Value* str_addr_space = NULL;
-    bool ok = sv_->FindVar("str_addr_space", &str_addr_space);
+    bool ok = variable_ir_builder_.LoadValue("str_addr_space", &str_addr_space,
+                                             status);
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* i32_ty = builder.getInt32Ty();
     ::llvm::Type* i8_ty = builder.getInt8Ty();
-    if (str_addr_space == NULL) {
+    if (!ok || str_addr_space == NULL) {
         ::llvm::FunctionCallee callee =
             block_->getModule()->getOrInsertFunction(
                 "fesql_storage_get_str_addr_space", i8_ty, i32_ty);
@@ -382,7 +392,8 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
             builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{size});
         str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true,
                                                "cast_i8_to_i32");
-        ok = sv_->AddVar("str_addr_space", str_addr_space);
+        ok = variable_ir_builder_.StoreValue("str_addr_space", str_addr_space,
+                                             status);
         if (!ok) {
             LOG(WARNING) << "fail to add str add space var";
             return false;

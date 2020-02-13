@@ -345,8 +345,9 @@ typedef void* yyscan_t;
  /* udf */
 %type <type> types
 %type <fnnode> grammar line_list
-			   fun_def_block fn_def_indent_op  func_stmt
-               fn_def return_stmt assign_stmt para
+			   fun_def_block fn_header_indent_op  func_stmt
+               fn_header return_stmt assign_stmt para
+               if_stmt elif_stmt else_stmt
 %type<fnlist> plist stmt_block func_stmts
 
 %type <expr> var expr primary_time column_ref call_expr expr_const frame_expr
@@ -417,21 +418,17 @@ line_list:
         ;
 NEWLINES: NEWLINE {}
 	| NEWLINES NEWLINE {}
-fun_def_block : fn_def_indent_op NEWLINES stmt_block {
-            $$ = node_manager->MakeFnListNode();
-            ((::fesql::node::FnNodeList*)$$)->AddChild($1);
-            for (auto item: ((::fesql::node::FnNodeList*)$3)->GetChildren()) {
-                ((::fesql::node::FnNodeList*)$$)->AddChild(item);
-            }
+fun_def_block : fn_header_indent_op NEWLINES stmt_block {
+            $$ = node_manager->MakeFnDefNode($1, $3);
         }
         ;
 
 
-fn_def_indent_op:
-        fn_def {
+fn_header_indent_op:
+        fn_header {
             $$ = $1;
         }
-        |INDENT fn_def {$$=$2; $$->indent=$1;}
+        |INDENT fn_header {$$=$2; $$->indent=$1;}
         ;
 
 
@@ -470,11 +467,28 @@ func_stmt:
             $2->indent = $1;
             $$ = $2;
          }
-         ;
+         |INDENT if_stmt
+         {
+         	emit("INDENT enter if stmt");
+            $2->indent = $1;
+            $$ = $2;
+         }
+         |INDENT elif_stmt
+         {
+         	emit("INDENT enter if stmt");
+            $2->indent = $1;
+            $$ = $2;
+         }
+         |INDENT else_stmt
+         {
+         	emit("INDENT enter else stmt");
+            $2->indent = $1;
+            $$ = $2;
+         };
 
-fn_def :
+fn_header :
        DEF VARNAME'(' plist ')' ':' types {
-            $$ = node_manager->MakeFnDefNode($2, $4, $7);
+            $$ = node_manager->MakeFnHeaderNode($2, $4, $7);
        };
 
 assign_stmt: VARNAME ASSIGN expr {
@@ -485,6 +499,19 @@ return_stmt:
            RETURN expr {
             $$ = node_manager->MakeReturnStmtNode($2);
            };
+
+if_stmt:
+		IF expr {
+			$$ = node_manager->MakeIfStmtNode($2);
+		};
+elif_stmt:
+		ELSEIF expr {
+			$$ = node_manager->MakeElifStmtNode($2);
+		};
+else_stmt:
+		ELSE {
+			$$ = node_manager->MakeElseStmtNode();
+		}
 
 types:  I32
         {
@@ -520,9 +547,9 @@ plist:
      para {
         $$ = node_manager->MakeFnListNode();
         $$->AddChild($1);
-     } | para ',' plist  {
-        $3->AddChild($1);
-        $$ = $3;
+     } | plist ',' para  {
+        $$ = $1;
+        $$->AddChild($3);
      };
 
 para: VARNAME ':' types {

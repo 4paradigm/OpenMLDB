@@ -1,39 +1,22 @@
-/*
- * fn_ir_builder_test.cc
- * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
+/*-------------------------------------------------------------------------
+ * Copyright (C) 2020, 4paradigm
+ * control_flow_ir_builder_test.cc
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+ * Author: chenjing
+ * Date: 2020/2/12
+ *--------------------------------------------------------------------------
+ **/
 
-#include "codegen/fn_ir_builder.h"
 #include <llvm/Transforms/Utils.h>
-#include <memory>
 #include <string>
-#include <utility>
+#include "codegen/fn_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
-#include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Scalar/GVN.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
 
@@ -45,13 +28,13 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace codegen {
 
-class FnIRBuilderTest : public ::testing::Test {
+class BlockIRBuilderTest : public ::testing::Test {
  public:
-    FnIRBuilderTest() {
+    BlockIRBuilderTest() {
         manager_ = new node::NodeManager();
         parser_ = new parser::FeSQLParser();
     }
-    ~FnIRBuilderTest() { delete manager_; }
+    ~BlockIRBuilderTest() { delete manager_; }
 
  protected:
     node::NodeManager *manager_;
@@ -93,27 +76,8 @@ void CheckResult(std::string test, int32_t res, int32_t a, int32_t b) {
         (int32_t(*)(int32_t, int32_t))test_jit.getAddress();
     ASSERT_EQ(res, test_fn(a, b));
 }
-TEST_F(FnIRBuilderTest, test_add_int32) {
-    const std::string test =
-        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
-        "d\nend";
-    CheckResult(test, 4, 1, 2);
-}
 
-TEST_F(FnIRBuilderTest, test_sub_int32) {
-    const std::string test =
-        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a-b\n    d=c+1\n    return "
-        "d\nend";
-    CheckResult(test, 0, 1, 2);
-}
-
-TEST_F(FnIRBuilderTest, test_bracket_int32) {
-    const std::string test =
-        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a*(b+1)\n    return c\nend";
-    CheckResult(test, 3, 1, 2);
-}
-
-TEST_F(FnIRBuilderTest, test_mutable_variable_test) {
+TEST_F(BlockIRBuilderTest, test_mutable_variable_test) {
     const std::string test =
         "%%fun\n"
         "def test(x:i32,y:i32):i32\n"
@@ -126,7 +90,8 @@ TEST_F(FnIRBuilderTest, test_mutable_variable_test) {
 
     CheckResult(test, 6, 2, 3);
 }
-TEST_F(FnIRBuilderTest, test_if_block) {
+
+TEST_F(BlockIRBuilderTest, test_if_block) {
     const std::string test =
         "%%fun\n"
         "def test(x:i32,y:i32):i32\n"
@@ -140,7 +105,7 @@ TEST_F(FnIRBuilderTest, test_if_block) {
     CheckResult(test, 2, 1, 2);
 }
 
-TEST_F(FnIRBuilderTest, test_if_else_block) {
+TEST_F(BlockIRBuilderTest, test_if_else_block) {
     const std::string test =
         "%%fun\n"
         "def test(x:i32,y:i32):i32\n"
@@ -155,7 +120,7 @@ TEST_F(FnIRBuilderTest, test_if_else_block) {
     CheckResult(test, 2, 1, 2);
 }
 
-TEST_F(FnIRBuilderTest, test_if_elif_else_block) {
+TEST_F(BlockIRBuilderTest, test_if_elif_else_block) {
     const std::string test =
         "%%fun\n"
         "def test(x:i32,y:i32):i32\n"
@@ -172,7 +137,7 @@ TEST_F(FnIRBuilderTest, test_if_elif_else_block) {
     CheckResult(test, 2, 1, 2);
 }
 
-TEST_F(FnIRBuilderTest, test_if_else_block_redundant_ret) {
+TEST_F(BlockIRBuilderTest, test_if_else_block_redundant_ret) {
     const std::string test =
         "%%fun\n"
         "def test(x:i32,y:i32):i32\n"
@@ -190,7 +155,7 @@ TEST_F(FnIRBuilderTest, test_if_else_block_redundant_ret) {
     CheckResult(test, 2, 1, 2);
 }
 
-TEST_F(FnIRBuilderTest, test_if_else_mutable_var_block) {
+TEST_F(BlockIRBuilderTest, test_if_else_mutable_var_block) {
     const std::string test =
         "%%fun\n"
         "def test(x:i32,y:i32):i32\n"
@@ -203,11 +168,11 @@ TEST_F(FnIRBuilderTest, test_if_else_mutable_var_block) {
         "    \tret = x*y\n"
         "    return ret\n"
         "end";
-
     CheckResult(test, 5, 2, 3);
     CheckResult(test, -2, 1, 3);
     CheckResult(test, 2, 1, 2);
 }
+
 }  // namespace codegen
 }  // namespace fesql
 

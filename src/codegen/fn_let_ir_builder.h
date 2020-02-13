@@ -21,7 +21,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "codegen/scope_var.h"
+#include "codegen/variable_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/plan_node.h"
 #include "proto/type.pb.h"
@@ -57,7 +57,7 @@ class RowFnLetIRBuilder {
 
     bool EncodeBuf(const std::map<uint32_t, ::llvm::Value*>* values,
                    const std::vector<::fesql::type::ColumnDef>* schema,
-                   ScopeVar& sv,  // NOLINT (runtime/references)
+        VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
                    ::llvm::BasicBlock* block,
                    const std::string& output_ptr_name);
 

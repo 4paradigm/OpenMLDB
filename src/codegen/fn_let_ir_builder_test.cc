@@ -127,7 +127,7 @@ void AddFunc(const std::string& fn, ::llvm::Module* m) {
     int ret = parser.parse(fn, trees, &manager, status);
     ASSERT_EQ(0, ret);
     FnIRBuilder fn_ir_builder(m);
-    bool ok = fn_ir_builder.Build((node::FnNodeList*)trees[0]);
+    bool ok = fn_ir_builder.Build((node::FnNodeFnDef*)trees[0], status);
     ASSERT_TRUE(ok);
 }
 

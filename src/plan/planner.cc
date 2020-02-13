@@ -391,7 +391,7 @@ int SimplePlanner::CreatePlanTree(
                 plan_trees.push_back(insert_plan);
                 break;
             }
-            case ::fesql::node::kFnList: {
+            case ::fesql::node::kFnDef: {
                 node::PlanNode *fn_plan =
                     node_manager_->MakePlanNode(node::kPlanTypeFuncDef);
                 CreateFuncDefPlan(
@@ -409,10 +409,22 @@ int SimplePlanner::CreatePlanTree(
             }
         }
     }
+
     return status.code;
 }
-void Planner::CreateFuncDefPlan(const SQLNode *root,
-                                node::FuncDefPlanNode *plan, Status &status) {
+/***
+ * Create function def plan node
+ * 1. check indent
+ * 2. construct sub blocks
+ *      if_then_else block
+ *
+ * @param root
+ * @param plan
+ * @param status
+ */
+void Planner::CreateFuncDefPlan(
+    const SQLNode *root, node::FuncDefPlanNode *plan,
+    Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg =
             "fail to create func def plan node: query tree node it null";
@@ -421,7 +433,7 @@ void Planner::CreateFuncDefPlan(const SQLNode *root,
         return;
     }
 
-    if (root->GetType() != node::kFnList) {
+    if (root->GetType() != node::kFnDef) {
         status.code = common::kSQLError;
         status.msg =
             "fail to create cmd plan node: query tree node it not function def "
@@ -429,11 +441,12 @@ void Planner::CreateFuncDefPlan(const SQLNode *root,
         LOG(WARNING) << status.msg;
         return;
     }
-    plan->SetFuNodeList(dynamic_cast<const node::FnNodeList *>(root));
+    plan->fn_def_ = dynamic_cast<const node::FnNodeFnDef *>(root);
 }
 
 void Planner::CreateInsertPlan(const node::SQLNode *root,
-                               node::InsertPlanNode *plan, Status &status) {
+                               node::InsertPlanNode *plan,
+                               Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kSQLError;
@@ -452,7 +465,7 @@ void Planner::CreateInsertPlan(const node::SQLNode *root,
 }
 
 void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
-                            Status &status) {
+                            Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kPlanError;

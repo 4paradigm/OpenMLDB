@@ -47,7 +47,8 @@ class OpGenerator {
 
  private:
     bool GenFnDef(::llvm::Module* module,
-                  const ::fesql::node::FuncDefPlanNode* plan);
+                  const ::fesql::node::FuncDefPlanNode* plan,
+                  base::Status& status);  // NOLINT
 
     bool GenSQL(const ::fesql::node::SelectPlanNode* node,
                 const std::string& db, ::llvm::Module* module,
@@ -58,7 +59,8 @@ class OpGenerator {
                     const std::string& db, ::llvm::Module* module, OpNode** op,
                     Status& status);  // NOLINT
     bool GenConstProject(const ::fesql::node::ProjectListPlanNode* node,
-                         ::llvm::Module* module, OpNode** op, Status& status); // NOLINT
+                         ::llvm::Module* module, OpNode** op,
+                         Status& status);  // NOLINT
     bool GenScan(const ::fesql::node::ScanPlanNode* node, const std::string& db,
                  ::llvm::Module* module, OpNode** op,
                  Status& status);  // NOLINT

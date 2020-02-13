@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 #include "codegen/scope_var.h"
+#include "codegen/variable_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
 
@@ -58,6 +59,7 @@ class BufIRBuilder {
     ::fesql::type::TableDef* const table_;
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
+    VariableIRBuilder variable_ir_builder_;
     typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
         Types;
     Types types_;
@@ -132,7 +134,9 @@ class BufNativeIRBuilder {
  private:
     ::fesql::type::TableDef* const table_;
     ::llvm::BasicBlock* block_;
+
     ScopeVar* sv_;
+    VariableIRBuilder variable_ir_builder_;
     typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
         Types;
     Types types_;

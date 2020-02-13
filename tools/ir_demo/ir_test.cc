@@ -7,9 +7,14 @@
  *--------------------------------------------------------------------------
  **/
 #include <stdbool.h>
+#include <vector>
 #include <stdio.h>
 
 
-float add(float a, float b) {
-    return (a==b) + 1.0;
+int first(std::vector<int> list) {
+    int res = 0;
+    for(int x: list) {
+        res += x;
+    }
+    return res;
 }

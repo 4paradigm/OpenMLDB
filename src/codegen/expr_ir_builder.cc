@@ -31,6 +31,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       sv_(scope_var),
       row_mode_(true),
       row_ptr_name_(""),
+      variable_ir_builder_(block, scope_var),
       buf_ir_builder_(nullptr),
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
@@ -47,6 +48,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
       row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
       row_size_name_(row_size_name),
+      variable_ir_builder_(block, scope_var),
       buf_ir_builder_(buf_ir_builder),
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
@@ -80,6 +82,7 @@ ExprIRBuilder::~ExprIRBuilder() {}
 
 bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                           ::llvm::Value** output) {
+    base::Status status;
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "node or output is null";
         return false;
@@ -129,8 +132,9 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             ::fesql::node::ExprIdNode* id_node =
                 (::fesql::node::ExprIdNode*)node;
             ::llvm::Value* ptr = NULL;
-            bool ok = sv_->FindVar(id_node->GetName(), &ptr);
-            if (!ok || ptr == NULL) {
+            if (!variable_ir_builder_.LoadValue(id_node->GetName(), &ptr,
+                                                status) ||
+                ptr == NULL) {
                 LOG(WARNING) << "fail to find var " << id_node->GetName();
                 return false;
             }
@@ -271,25 +275,26 @@ bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
 
 bool ExprIRBuilder::BuildColumnItem(const std::string& col,
                                     ::llvm::Value** output) {
+    base::Status status;
     ::llvm::Value* row_ptr = NULL;
-    bool ok = sv_->FindVar(row_ptr_name_, &row_ptr);
-
-    if (!ok || row_ptr == NULL) {
+    if (!variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr, status) ||
+        row_ptr == NULL) {
         LOG(WARNING) << "fail to find row ptr with name " << row_ptr_name_;
         return false;
     }
 
     ::llvm::Value* row_size = NULL;
-    ok = sv_->FindVar(row_size_name_, &row_size);
-    if (!ok || row_size == NULL) {
+    if (!variable_ir_builder_.LoadValue(row_size_name_, &row_size, status) ||
+        row_size == NULL) {
         LOG(WARNING) << "fail to find row size with name " << row_size_name_;
         return false;
     }
 
     ::llvm::Value* value = NULL;
-    ok = sv_->FindVar(col, &value);
+
     DLOG(INFO) << "get table column " << col;
     // not found
+    bool ok = variable_ir_builder_.LoadValue(col, &value, status);
     if (!ok) {
         // TODO(wangtaize) buf ir builder add build get field ptr
         ok = buf_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
@@ -297,18 +302,18 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
             LOG(WARNING) << "fail to find column " << col;
             return false;
         }
-
-        ok = sv_->AddVar(col, value);
+        ok = variable_ir_builder_.StoreValue(col, value, status);
         if (ok) {
             *output = value;
+            return true;
+        } else {
+            return false;
         }
-        return ok;
     } else {
         *output = value;
     }
     return true;
 }
-
 
 // Get col with given col name, set iterator struct pointer into output
 // param col
@@ -316,8 +321,9 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
 // return
 bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
                                         ::llvm::Value** output) {
+    base::Status status;
     ::llvm::Value* row_ptr = NULL;
-    bool ok = sv_->FindVar(row_ptr_name_, &row_ptr);
+    bool ok = variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr, status);
 
     if (!ok || row_ptr == NULL) {
         LOG(WARNING) << "fail to find row ptr with name " << row_ptr_name_;
@@ -325,7 +331,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
     }
 
     ::llvm::Value* row_size = NULL;
-    ok = sv_->FindVar(row_size_name_, &row_size);
+    ok = variable_ir_builder_.LoadValue(row_size_name_, &row_size, status);
     if (!ok || row_size == NULL) {
         LOG(WARNING) << "fail to find row size with name " << row_size_name_;
         return false;
@@ -380,7 +386,8 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         return false;
     }
 
-    DLOG(INFO) << "build binary " << ::fesql::node::FnNodeName(node->GetType());
+    DLOG(INFO) << "build binary "
+               << ::fesql::node::ExprOpTypeName(node->GetOp());
     ::llvm::Value* left = NULL;
     bool ok = Build(node->children[0], &left);
     if (!ok) {

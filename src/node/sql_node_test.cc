@@ -42,7 +42,7 @@ TEST_F(SqlNodeTest, StructExprNodeTest) {
 
     FnNodeList parameters;
     FnNodeList methods;
-    FnNodeFnDef iterator("iterator", &parameters, DataType::kTypeRow);
+    FnNodeFnHeander iterator("iterator", &parameters, DataType::kTypeRow);
     methods.AddChild(&iterator);
     struct_expr.SetMethod(&methods);
 
