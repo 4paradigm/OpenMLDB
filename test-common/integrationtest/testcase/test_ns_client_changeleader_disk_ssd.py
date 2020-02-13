@@ -9,6 +9,7 @@ from libs.deco import multi_dimension
 import libs.ddt as ddt
 import libs.conf as conf
 @ddt.ddt
+@multi_dimension(False)
 class TestChangeLeader(TestCaseBase):
     @ddt.data(
         ['kSSD'],

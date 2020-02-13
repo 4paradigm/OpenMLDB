@@ -16,6 +16,7 @@ multidimension_scan_vk = eval(cf.get("dimension", "multidimension_scan_vk"))
 
 log_level = cf.get("log", "log_level")
 
+#local env
 if cf.has_option("tb_endpoints", cur_user):
     tb_endpoints = cf.get("tb_endpoints", cur_user).split(',')
 else:
@@ -30,6 +31,17 @@ if cf.has_option("zookeeper", cur_user):
     zk_endpoint = cf.get("zookeeper", cur_user)
 else:
     zk_endpoint = cf.get("zookeeper", "others")
+
+# remote env
+if cf.has_option("tb_endpoints_r", cur_user):
+    tb_endpoints_r = cf.get("tb_endpoints_r", cur_user).split(',')
+else:
+    tb_endpoints_r = cf.get("tb_endpoints_r", "others").split(',')
+
+if cf.has_option("ns_endpoints_r", cur_user):
+    ns_endpoints_r = cf.get("ns_endpoints_r", cur_user).split(',')
+else:
+    ns_endpoints_r = cf.get("ns_endpoints_r", "others").split(',')
 
 table_meta_ele = {
     'table_partition': ['endpoint', 'pid_group', 'is_leader'],

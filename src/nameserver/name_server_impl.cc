@@ -163,7 +163,7 @@ void NameServerImpl::CheckSyncExistTable(const std::string& alias,
             auto iter = table_info_.find(name);
             if (iter == table_info_.end()) {
                 PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
-                return;
+                continue;
             }
             table_info_local = *(iter->second);
         }
@@ -3121,9 +3121,9 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
             return;
         }
     } else {
-        response->set_code(507);
-        response->set_msg("nameserver is not of replica cluster");
-        PDLOG(WARNING, "nameserver is not of replica cluster");
+        response->set_code(506);
+        response->set_msg("nameserver is not replica cluster");
+        PDLOG(WARNING, "nameserver is not replica cluster");
         return;
     }
 
@@ -3223,9 +3223,9 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
             return;
         }
     } else {
-        response->set_code(507);
-        response->set_msg("nameserver is not of replica cluster");
-        PDLOG(WARNING, "nameserver is not of replica cluster");
+        response->set_code(506);
+        response->set_msg("nameserver is not replica cluster");
+        PDLOG(WARNING, "nameserver is not  replica cluster");
         return;
     }
 
@@ -3531,7 +3531,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                         ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
             }
         }
-        if (mode_.load(std::memory_order_acquire) == kLEADER && nsc_.size() > 0) {
+        if (mode_.load(std::memory_order_acquire) == kLEADER) {
             decltype(nsc_) tmp_nsc;
             {
                 std::lock_guard<std::mutex> lock(mu_);

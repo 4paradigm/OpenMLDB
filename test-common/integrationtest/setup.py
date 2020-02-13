@@ -14,6 +14,7 @@ if __name__ == '__main__':
     ap.add_argument('-C', '--clear', default=False, help='clear all logs and db')
     args = ap.parse_args()
 
+    #local environment
     nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
     tbc = TbCluster(conf.zk_endpoint, [i for i in conf.tb_endpoints])
 
@@ -22,16 +23,31 @@ if __name__ == '__main__':
     nsc.kill(*nsc.endpoints)
     tbc.kill(*tbc.endpoints)
 
+    #remote environment
+    nsc_r = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints_r))
+    tbc_r = TbCluster(conf.zk_endpoint, [i for i in conf.tb_endpoints_r])
+
+    nsc_r.kill(*nsc_r.endpoints)
+    tbc_r.kill(*tbc_r.endpoints)
+
     if not args.clear or args.clear.lower() == 'false':
         pass
     else:
         tbc.clear_db()
         nsc.clear_ns()
+        tbc_r.clear_db()
+        nsc_r.clear_ns()
 
     if not args.teardown or args.teardown.lower() == 'false':
         nsc.start_zk()
-        nsc.start(*nsc.endpoints)
+        nsc.start(False, *nsc.endpoints)
         time.sleep(2)
         nsc.get_ns_leader()
         tbc.start(tbc.endpoints)
         nsc_leader = nsc.leader
+
+        nsc_r.start(True,*nsc_r.endpoints)
+        time.sleep(2)
+        nsc_r.get_ns_leader(True)
+        tbc_r.start(tbc_r.endpoints, True)
+        nsc_leader_r = nsc_r.leader

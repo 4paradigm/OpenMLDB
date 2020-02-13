@@ -9,13 +9,10 @@ from libs.test_loader import load
 import libs.utils as utils
 
 @ddt.ddt
+@multi_dimension(False)
 class TestHasTsCol(TestCaseBase):
-    @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
-    )
-    @ddt.unpack
-    def test_count_schema_has_ts_col(self,storage_mode):
+
+    def test_count_schema_has_ts_col(self):
         """
         指定时间列的schema表统计pk下的条数
         :return:
@@ -25,7 +22,6 @@ class TestHasTsCol(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 0,
-            "storage_mode": storage_mode,
                "column_desc":[
                    {"name": "card", "type": "string", "add_ts_idx": "true"},
                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -65,14 +61,8 @@ class TestHasTsCol(TestCaseBase):
         self.assertIn('idx name not found', rs10)
         rs11 = self.ns_count_with_pair(self.ns_leader, name, 'mcc1', 'mcc', 'ts3')
         self.assertIn('ts name not found', rs11)
-        self.ns_drop(self.ns_leader,name)
 
-    @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
-    )
-    @ddt.unpack
-    def test_scan_schema_has_ts_col(self,storage_mode):
+    def test_scan_schema_has_ts_col(self):
         """
         指定时间列的schema表查询pk下的多条数据
         :return:
@@ -82,8 +72,6 @@ class TestHasTsCol(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 0,
-            "storage_mode": storage_mode,
-            "partition_num" : 1,
                "column_desc":[
                    {"name": "card", "type": "string", "add_ts_idx": "true"},
                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -130,14 +118,8 @@ class TestHasTsCol(TestCaseBase):
         self.assertEqual(len(rs6), 0)
         rs7 = self.ns_scan_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '25', '0', 'ts2', '1')
         self.assertEqual(len(rs7), 1)
-        self.ns_drop(self.ns_leader,name)
 
-    @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
-    )
-    @ddt.unpack
-    def test_get_schema_has_ts_col(self,storage_mode):
+    def test_get_schema_has_ts_col(self):
         """
         指定时间列的schema表查询一条数据·
         :return:
@@ -147,8 +129,6 @@ class TestHasTsCol(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 0,
-            "storage_mode": storage_mode,
-            "partition_num" : 1,
                "column_desc":[
                    {"name": "card", "type": "string", "add_ts_idx": "true"},
                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -191,7 +171,52 @@ class TestHasTsCol(TestCaseBase):
         self.assertEqual(len(rs6), 0)
         rs7 = self.ns_get_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '0', 'ts2')
         self.assertEqual(len(rs7), 5)
-        self.ns_drop(self.ns_leader,name)
+
+    def test_scan_atleast(self):
+        """
+        指定时间列的schema表查询pk下的多条数据
+        :return:
+        """
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 0,
+               "column_desc":[
+                   {"name": "card", "type": "string", "add_ts_idx": "true"},
+                   {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                   {"name": "ts2", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                   {"name": "ts3", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                   ],
+                "column_key":[
+                   {"index_name":"card", "ts_name":["ts1", "ts2", "ts3"]},
+                   ]
+               }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        
+        for i in range(100):
+            rs = self.ns_put_multi_with_pair(self.ns_leader,name, ['card' + str(i%10), str(i+1), str(i+1), str(i+1)])
+
+            self.assertIn('Put ok', rs)
+        for i in range(10):
+            prs = self.ns_scan_multi_with_pair(self.ns_leader, name, 'card'+str(i), 'card', '100', '0', 'ts1', '0', '8')
+            self.assertEqual(len(prs), 10)
+        for i in range(10):
+            prs = self.ns_scan_multi_with_pair(self.ns_leader, name, 'card'+str(i), 'card', '100', '50', 'ts1', '0', '0')
+            self.assertEqual(len(prs), 5)
+        for i in range(10):
+            prs = self.ns_scan_multi_with_pair(self.ns_leader, name, 'card'+str(i), 'card', '100', '50', 'ts1', '0', '8')
+            self.assertEqual(len(prs), 8)
+        for i in range(10):
+            prs = self.ns_scan_multi_with_pair(self.ns_leader, name, 'card'+str(i), 'card', '50', '0', 'ts1', '0', '8')
+            self.assertEqual(len(prs), 5)
+        for i in range(10):
+            prs = self.ns_scan_multi_with_pair(self.ns_leader, name, 'card'+str(i), 'card', '100', '10', 'ts1', '8', '3')
+            self.assertEqual(len(prs), 8)
+        prs = self.ns_scan_multi_with_pair(self.ns_leader, name, 'card'+str(i), 'card', '90', '0', 'ts1', '4', '5')
+        self.assertEqual(len(prs), 0)
 
 if __name__ == "__main__":
     load(TestHasTsCol)

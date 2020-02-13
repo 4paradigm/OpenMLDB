@@ -47,12 +47,15 @@ class NsCluster(object):
     def clear_zk(self):
         exe_shell('rm -rf {}/data'.format(os.getenv('zkpath')))
 
-    def start(self, *endpoints):
+    def start(self, is_remote, *endpoints):
         nsconfpath = os.getenv('nsconfpath')
         i = 0
         for ep in endpoints:
             i += 1
-            ns_path = self.ns_edp_path[ep]
+            if not is_remote:
+                ns_path = self.ns_edp_path[ep]
+            else:
+                ns_path = self.ns_edp_path[ep] + 'remote'
             nameserver_flags = '{}/conf/nameserver.flags'.format(ns_path)
             exe_shell('mkdir -p {}/conf'.format(ns_path))
             exe_shell('touch {}'.format(nameserver_flags))
@@ -60,7 +63,10 @@ class NsCluster(object):
             exe_shell("echo '--endpoint='{} >> {}".format(ep, nameserver_flags))
             exe_shell("echo '--role=nameserver' >> {}".format(nameserver_flags))
             exe_shell("echo '--zk_cluster='{} >> {}".format(self.zk_endpoint, nameserver_flags))
-            exe_shell("echo '--zk_root_path=/onebox' >> {}".format(nameserver_flags))
+            if not is_remote:
+                exe_shell("echo '--zk_root_path=/onebox' >> {}".format(nameserver_flags))
+            else:
+                exe_shell("echo '--zk_root_path=/remote' >> {}".format(nameserver_flags))
             exe_shell("echo '--auto_failover=false' >> {}".format(nameserver_flags))
             exe_shell("echo '--get_task_status_interval=100' >> {}".format(nameserver_flags))
             exe_shell("echo '--name_server_task_pool_size=10' >> {}".format(nameserver_flags))
@@ -69,6 +75,8 @@ class NsCluster(object):
             exe_shell("echo '--tablet_heartbeat_timeout=0' >> {}".format(nameserver_flags))
             exe_shell("echo '--request_timeout_ms=100000' >> {}".format(nameserver_flags))
             exe_shell("echo '--name_server_task_concurrency=8' >> {}".format(nameserver_flags))
+            if is_remote:
+                exe_shell("echo '--get_replica_status_interval=600000' >> {}".format(nameserver_flags))
             exe_shell("echo '--zk_session_timeout=2000' >> {}".format(nameserver_flags))
             exe_shell("ulimit -c unlimited")
             cmd = '{}/rtidb --flagfile={}'.format(self.test_path, nameserver_flags)
@@ -86,9 +94,15 @@ class NsCluster(object):
                     break
         return started
 
-    def get_ns_leader(self):
-        cmd = "{}/rtidb --zk_cluster={} --zk_root_path={} --role={} --interactive=false --cmd={}".format(self.test_path, 
+
+    def get_ns_leader(self, is_remote = False):
+        cmd = '';
+        if not is_remote:
+            cmd = "{}/rtidb --zk_cluster={} --zk_root_path={} --role={} --interactive=false --cmd={}".format(self.test_path, 
                         self.zk_endpoint, "/onebox", "ns_client", "'showns'")
+        else:
+            cmd = "{}/rtidb --zk_cluster={} --zk_root_path={} --role={} --interactive=false --cmd={}".format(self.test_path, 
+                        self.zk_endpoint, "/remote", "ns_client", "'showns'")
         for i in xrange(5):
             result = exe_shell(cmd)
             rs_tb = result.split('\n')
@@ -98,8 +112,12 @@ class NsCluster(object):
                 if 'leader' in line:
                     ns_leader = line.strip().split(" ")[0].strip()
                     self.ns_leader = ns_leader
-                    exe_shell('echo "{}" > {}/ns_leader'.format(ns_leader, self.test_path))
-                    exe_shell('echo "{}" >> {}/ns_leader'.format(self.ns_edp_path[ns_leader], self.test_path))
+                    if not is_remote:
+                        exe_shell('echo "{}" > {}/ns_leader'.format(ns_leader, self.test_path))
+                        exe_shell('echo "{}" >> {}/ns_leader'.format(self.ns_edp_path[ns_leader], self.test_path))
+                    else:
+                        exe_shell('echo "{}" > {}/ns_leader_remote'.format(ns_leader, self.test_path))
+                        exe_shell('echo "{}" >> {}/ns_leader_remote'.format(self.ns_edp_path[ns_leader] + 'remote', self.test_path))
                     return ns_leader
             time.sleep(2)
 
@@ -120,8 +138,7 @@ class NsCluster(object):
         exe_shell('echo "{}" > {}/ns_leader'.format(ns_leader, self.test_path))
         exe_shell('echo "{}" >> {}/ns_leader'.format(self.ns_edp_path[ns_leader], self.test_path))
         return ns_leader"""
-
-
+    
     def kill(self, *endpoints):
         infoLogger.info(endpoints)
         port = ''

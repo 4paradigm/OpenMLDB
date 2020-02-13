@@ -10,6 +10,7 @@ import libs.utils as utils
 
 
 @ddt.ddt
+@multi_dimension(True)
 class TestSetTTL(TestCaseBase):
 
     def test_set_ttl_normal(self):
