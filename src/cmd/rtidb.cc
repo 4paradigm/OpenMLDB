@@ -624,7 +624,7 @@ void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::
 
 void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
-        std::cout << "Bad format" << std::endl;
+        std::cout << "Bad format. eg removerepcluster dc2" << std::endl;
         return;
     }
 
@@ -1750,7 +1750,7 @@ void HandleNSInfo(const std::vector<std::string>& parts, ::rtidb::client::NsClie
 
 void HandleNSAddReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
-        std::cout << "addrepcluster format error. eg: addrepcluster zk_endpoints zk_path alias_name";
+        std::cout << "addrepcluster format error. eg: addrepcluster zk_endpoints zk_path alias_name" << std::endl;
         return;
     }
     std::string zk_endpoints, zk_path, alias, msg;
@@ -2681,7 +2681,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         } else if (parts[1] == "showrepcluster") {
             printf("desc: show remote replica cluster\n");
             printf("usage: showrepcluster\n");
-            printf("ex: showrepcluster");
+            printf("ex: showrepcluster\n");
         } else if (parts[1] == "removerepcluster") {
             printf("desc: remove remote replica cluster\n");
             printf("usage: removerepcluster cluster_alias\n");

@@ -2853,6 +2853,79 @@ void TabletImpl::GetTableFollower(RpcController* controller,
     response->set_code(0);
 }
 
+int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, rtidb::common::StorageMode sm, std::string& msg, uint64_t& term, uint64_t& offset) {
+    std::string db_root_path;
+    bool ok = ChooseDBRootPath(tid, pid, sm, db_root_path);
+    if (!ok) {
+        msg = "fail to get db root path";
+        PDLOG(WARNING, "fail to get table db root path");
+        return 138;
+    }
+    std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string manifest_file =  db_path + "/snapshot/MANIFEST";
+    int fd = open(manifest_file.c_str(), O_RDONLY);
+    if (fd < 0) {
+        PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
+        return 0;
+    }
+    google::protobuf::io::FileInputStream fileInput(fd);
+    fileInput.SetCloseOnDelete(true);
+    ::rtidb::api::Manifest manifest;
+    if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
+        PDLOG(WARNING, "parse manifest failed");
+        return 0;
+    }
+    std::string snapshot_file = db_path + "/snapshot/" + manifest.name();
+    if (!::rtidb::base::IsExists(snapshot_file)) {
+        PDLOG(WARNING, "snapshot file[%s] is not exist", snapshot_file.c_str());
+        return 0;
+    }
+    offset = manifest.offset();
+    term = manifest.term();
+    return 0;
+
+}
+void TabletImpl::GetAllSnapshotOffset(RpcController* controller,
+           const ::rtidb::api::EmptyRequest* request,
+           ::rtidb::api::TableSnapshotOffsetResponse* response,
+           Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::map<uint32_t, rtidb::common::StorageMode>  table_sm;
+    std::map<uint32_t, std::vector<uint32_t>> tid_pid;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        for (auto table_iter = tables_.begin(); table_iter != tables_.end(); table_iter++) {
+            uint32_t tid = table_iter->first;
+            std::vector<uint32_t> pids;
+            auto part_iter = table_iter->second.begin();
+            rtidb::common::StorageMode sm = part_iter ->second->GetStorageMode();
+            for (;part_iter != table_iter->second.end(); part_iter++) {
+                pids.push_back(part_iter->first);
+            }
+            table_sm.insert(std::make_pair(tid, sm));
+            tid_pid.insert(std::make_pair(tid, pids));
+        }
+    }
+    std::string msg;
+    for (auto iter = tid_pid.begin(); iter != tid_pid.end(); iter++) {
+        uint32_t tid = iter->first;
+        auto table = response->add_tables();
+        table->set_tid(tid);
+        for (auto pid : iter->second) {
+            uint64_t term = 0 , offset = 0;
+            rtidb::common::StorageMode sm = table_sm.find(tid)->second;
+            int32_t code = GetSnapshotOffset(tid, pid, sm, msg, term, offset);
+            if (code != 0) {
+                continue;
+            }
+            auto partition = table->add_parts();
+            partition->set_offset(offset);
+            partition->set_pid(pid);
+        }
+    }
+    response->set_code(0);
+}
+
 void TabletImpl::GetTermPair(RpcController* controller,
             const ::rtidb::api::GetTermPairRequest* request,
             ::rtidb::api::GetTermPairResponse* response,
@@ -2872,45 +2945,19 @@ void TabletImpl::GetTermPair(RpcController* controller,
         mode = request->storage_mode();
     }
 	if (!table) {
-		response->set_code(0);
-		response->set_has_table(false);
-		response->set_msg("table is not exist");
-        std::string db_root_path;
-        bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
-        if (!ok) {
-            response->set_code(138);
-            response->set_msg("fail to get db root path");
-            PDLOG(WARNING, "fail to get table db root path");
-            return;
-        }
-        std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
-    	std::string manifest_file =  db_path + "/snapshot/MANIFEST";
-		int fd = open(manifest_file.c_str(), O_RDONLY);
-	    response->set_msg("ok");
-		if (fd < 0) {
-			PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
-            response->set_term(0);
-            response->set_offset(0);
-            return;
-        }
-        google::protobuf::io::FileInputStream fileInput(fd);
-        fileInput.SetCloseOnDelete(true);
-        ::rtidb::api::Manifest manifest;
-        if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
-            PDLOG(WARNING, "parse manifest failed");
-            response->set_term(0);
-            response->set_offset(0);
-            return;
-        }
-        std::string snapshot_file = db_path + "/snapshot/" + manifest.name();
-        if (!::rtidb::base::IsExists(snapshot_file)) {
-            PDLOG(WARNING, "snapshot file[%s] is not exist", snapshot_file.c_str());
-            response->set_term(0);
-            response->set_offset(0);
-            return;
-        }
-        response->set_term(manifest.term());
-        response->set_offset(manifest.offset());
+        response->set_code(0);
+        response->set_has_table(false);
+        response->set_msg("table is not exist");
+        std::string msg;
+        uint64_t term = 0, offset = 0;
+        int32_t code = GetSnapshotOffset(tid, pid, mode, msg, term, offset);
+        response->set_code(code);
+        if (code == 0) {
+            response->set_term(term);
+            response->set_offset(offset);
+        } else {
+            response->set_msg(msg);
+	    }
         return;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);

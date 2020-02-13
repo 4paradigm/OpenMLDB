@@ -145,6 +145,20 @@ message OPInfo {
     optional int32 for_replica_cluster = 13 [default = 0];//for multi cluster, default 0. if 1, for multi cluster
 }
 
+message PartSnapshotOffset {
+    optional uint32 pid = 2;
+    optional uint64 offset = 3;
+}
+message TableSnapshotOffsetResponse {
+    message Table {
+        optional uint32 tid = 1;
+        repeated PartSnapshotOffset parts = 2;
+    }
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated Table tables = 3;
+}
+
 message Manifest {
     optional uint64 offset = 1;
     optional string name = 2;
@@ -601,6 +615,8 @@ message SetModeRequest {
     optional bool follower = 1;
 }
 
+message EmptyRequest {}
+
 message ConnectZKRequest {}
 message DisConnectZKRequest {}
 
@@ -655,4 +671,5 @@ service TabletServer {
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
     rpc UpdateTableMetaForAddField (UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
+    rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
 }

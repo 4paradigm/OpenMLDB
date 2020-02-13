@@ -69,7 +69,6 @@ public:
     bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, int& code, std::string& msg);
 
     std::shared_ptr<::rtidb::client::NsClient> client_;
-    std::map<std::string, uint64_t> delete_offset_map_;
     std::map<std::string, std::vector<TablePartition>> last_status;
     ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t ctime_;
@@ -627,6 +626,8 @@ private:
     bool CompareTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables);
 
     void CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std::vector<::rtidb::nameserver::TableInfo>& tables);
+
+    bool CompareSnapshotOffset(const std::vector<TableInfo>& tables, std::string& msg, int& code, std::map<std::string, std::map<uint32_t, std::map<uint32_t, uint64_t>>>& table_part_offset);
 
     void DistributeTabletMode();
 
