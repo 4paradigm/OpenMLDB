@@ -286,17 +286,6 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
             PDLOG(WARNING, "talbe [%s] not found in table_info", table.name().c_str());
             continue;
         }
-        int ready_num = -2; // default is not found
-        for (auto& alias_pair : table_info_iter->second->alias_pair()) {
-            if (alias_pair.alias() == ci->cluster_add_.alias()) {
-                ready_num = alias_pair.ready_num();
-                break;
-            }
-        }
-        if (ready_num != 0) {
-            PDLOG(WARNING, "table [%s] current ready_num is %d, not equal 0", table.name().c_str(), ready_num);
-            continue;
-        }
         auto status_iter = ci->last_status.find(table.name());
         if (status_iter == ci->last_status.end()) {
             std::vector<TablePartition> tbs;

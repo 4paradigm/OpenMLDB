@@ -4,8 +4,8 @@ project(rtidb)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(RTIDB_VERSION_MAJOR 1)
-set(RTIDB_VERSION_MEDIUM 4)
-set(RTIDB_VERSION_MINOR 3)
+set(RTIDB_VERSION_MEDIUM 5)
+set(RTIDB_VERSION_MINOR 0)
 set(RTIDB_VERSION_BUG 0)
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
