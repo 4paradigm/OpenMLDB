@@ -171,7 +171,7 @@ public:
     bool DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
-    bool MakeSnapshot(uint32_t tid, uint32_t pid, 
+    bool MakeSnapshot(uint32_t tid, uint32_t pid, uint64_t offset,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid, const std::string& endpoint, 
@@ -223,7 +223,9 @@ public:
 
     bool GetTableFollower(uint32_t tid, uint32_t pid, uint64_t& offset, 
                     std::map<std::string, uint64_t>& info_map, std::string& msg);
-    
+
+    bool GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>& tid_pid_offset);
+
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
     bool ConnectZK();

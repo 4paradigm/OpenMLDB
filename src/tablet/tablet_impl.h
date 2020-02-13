@@ -202,6 +202,11 @@ public:
             ::rtidb::api::HttpResponse* response,
             Closure* done);
 
+    void GetAllSnapshotOffset(RpcController* controller,
+            const ::rtidb::api::EmptyRequest* request,
+            ::rtidb::api::TableSnapshotOffsetResponse* response,
+            Closure* done);
+
     void GetTermPair(RpcController* controller,
             const ::rtidb::api::GetTermPairRequest* request,
             ::rtidb::api::GetTermPairResponse* response,
@@ -294,7 +299,7 @@ private:
 
     int CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta, bool is_load, std::string& msg);
 
-    void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
+    void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
                         uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task);
@@ -355,6 +360,10 @@ private:
 
     bool GetTableRootSize(uint32_t tid, uint32_t pid, const
             ::rtidb::common::StorageMode& mode, uint64_t& size);
+
+    int32_t GetSnapshotOffset(uint32_t tid, uint32_t pid,
+              common::StorageMode sm, std::string& msg,
+              uint64_t& term, uint64_t& offset);
 
     bool SeekWithCount(::rtidb::storage::TableIterator* it, const uint64_t time,
             const ::rtidb::api::GetType& type, uint32_t max_cnt, uint32_t& cnt);

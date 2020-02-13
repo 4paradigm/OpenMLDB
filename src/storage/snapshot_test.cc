@@ -122,7 +122,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 3, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     uint64_t offset_value = 0;;
-    int ret = snapshot.MakeSnapshot(table, offset_value);
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret); 
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
     for (; count < 20; count++) {
@@ -637,7 +637,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         offset++;
     }
     uint64_t offset_value;
-    int ret = snapshot.MakeSnapshot(table, offset_value);
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -689,7 +689,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         offset++;
     }
 
-    ret = snapshot.MakeSnapshot(table, offset_value);
+    ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     vec.clear();
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -758,7 +758,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     }
     table->SchedGc();
     uint64_t offset_value;
-    int ret = snapshot.MakeSnapshot(table, offset_value);
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -799,7 +799,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
         offset++;
     }
     table->SchedGc();
-    ret = snapshot.MakeSnapshot(table, offset_value);
+    ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     vec.clear();
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -952,7 +952,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
 
     // check snapshot
     uint64_t offset_value;
-    int ret = snapshot.MakeSnapshot(table, offset_value);
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_dir, vec);
@@ -1104,7 +1104,7 @@ TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
     
     snapshot.SetTerm(9);
     uint64_t offset = 0;
-    int ret = snapshot.MakeSnapshot(table, offset);
+    int ret = snapshot.MakeSnapshot(table, offset, 0);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(10000, offset);
 
@@ -1122,6 +1122,174 @@ TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
     
     std::string path = FLAGS_hdd_root_path + "/1_1";
     RemoveData(path);
+}
+
+TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    MemTableSnapshot snapshot(10, 2, log_part, FLAGS_db_root_path);
+    snapshot.Init();
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 1, 10, 8, mapping, 2, ::rtidb::api::TTLType::kAbsoluteTime);
+    table->Init();
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+    std::string log_path = FLAGS_db_root_path + "/10_2/binlog/";
+    std::string snapshot_path = FLAGS_db_root_path + "/10_2/snapshot/";
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset++);
+    int count = 0;
+    for (; count < 10; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key" + std::to_string(count);
+        entry.set_pk(key);
+        entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        entry.set_value("value");
+        entry.set_term(5);
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+        if (count % 2 == 0) {
+            ::rtidb::api::LogEntry entry1;
+            entry1.set_log_index(offset);
+            entry1.set_method_type(::rtidb::api::MethodType::kDelete);
+            ::rtidb::api::Dimension* dimension = entry1.add_dimensions();
+            dimension->set_key(key);
+            dimension->set_idx(0);
+            entry1.set_term(5);
+            std::string buffer1;
+            entry1.SerializeToString(&buffer1);
+            ::rtidb::base::Slice slice1(buffer1);
+            ::rtidb::base::Status status = wh->Write(slice1);
+            offset++;
+        }
+        if (count % 4 == 0) {
+            entry.set_log_index(offset);
+            std::string buffer2;
+            entry.SerializeToString(&buffer2);
+            ::rtidb::base::Slice slice2(buffer2);
+            ::rtidb::base::Status status = wh->Write(slice2);
+            offset++;
+        }
+    }
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
+    for (; count < 30; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key" + std::to_string(count);
+        entry.set_pk(key);
+        entry.set_term(6);
+        if (count == 20) {
+            // set one timeout key
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
+        } else {
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        }
+        entry.set_value("value");
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+    uint64_t offset_value;
+    int ret = snapshot.MakeSnapshot(table, offset_value, 18);
+    ASSERT_EQ(0, ret);
+    std::vector<std::string> vec;
+    ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2, vec.size());
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(log_path, vec);
+    ASSERT_EQ(2, vec.size());
+
+    std::string full_path = snapshot_path + "MANIFEST";
+    ::rtidb::api::Manifest manifest;
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+    ASSERT_EQ(18, manifest.offset());
+    ASSERT_EQ(8, manifest.count());
+    ASSERT_EQ(5, manifest.term());
+
+     ret = snapshot.MakeSnapshot(table, offset_value, 0);
+     ASSERT_EQ(0, ret);
+     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+     ASSERT_EQ(0, ret);
+     ASSERT_EQ(4, vec.size());
+     vec.clear();
+     ret = ::rtidb::base::GetFileName(log_path, vec);
+     ASSERT_EQ(2, vec.size());
+
+     full_path = snapshot_path + "MANIFEST";
+     manifest.Clear();
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+    ASSERT_EQ(38, manifest.offset());
+    ASSERT_EQ(27, manifest.count());
+    ASSERT_EQ(6, manifest.term());
+
+    for (; count < 50; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key" + std::to_string(count);
+        entry.set_pk(key);
+        entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        entry.set_value("value");
+        entry.set_term(7);
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        entry.set_method_type(::rtidb::api::MethodType::kDelete);
+        ::rtidb::api::Dimension* dimension = entry.add_dimensions();
+        std::string key = "key9";
+        dimension->set_key(key);
+        dimension->set_idx(0);
+        entry.set_term(5);
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+    // end_offset less than last make snapshot offset, MakeSnapshot will fail.
+    ret = snapshot.MakeSnapshot(table, offset_value, 5);
+    ASSERT_EQ(-1, ret);
+    ret = snapshot.MakeSnapshot(table, offset_value, 0);
+    ASSERT_EQ(0, ret);
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2, vec.size());
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(log_path, vec);
+    ASSERT_EQ(2, vec.size());
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+
+    ASSERT_EQ(59, manifest.offset());
+    ASSERT_EQ(46, manifest.count());
+    ASSERT_EQ(7, manifest.term());
 }
 
 }

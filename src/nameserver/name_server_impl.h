@@ -69,7 +69,6 @@ public:
     bool RemoveReplicaClusterByNs(const std::string& alias, const std::string& zone_name, const uint64_t term, int& code, std::string& msg);
 
     std::shared_ptr<::rtidb::client::NsClient> client_;
-    std::map<std::string, uint64_t> delete_offset_map_;
     std::map<std::string, std::vector<TablePartition>> last_status;
     ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t ctime_;
@@ -458,7 +457,7 @@ private:
     int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
 
     std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint,
-                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid, uint64_t end_offset);
 
     std::shared_ptr<Task> CreatePauseSnapshotTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
@@ -644,7 +643,13 @@ private:
 
     void CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std::vector<::rtidb::nameserver::TableInfo>& tables);
 
+    bool CompareSnapshotOffset(const std::vector<TableInfo>& tables, std::string& msg, int& code, std::map<std::string, std::map<uint32_t, std::map<uint32_t, uint64_t>>>& table_part_offset);
+
     void DistributeTabletMode();
+
+    void SchedMakeSnapshot();
+
+    void MakeTablePartitionSnapshot(uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
 
 private:
     std::mutex mu_;

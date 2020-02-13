@@ -624,7 +624,7 @@ void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::
 
 void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
-        std::cout << "Bad format" << std::endl;
+        std::cout << "Bad format. eg removerepcluster dc2" << std::endl;
         return;
     }
 
@@ -721,7 +721,7 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client
     try {
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
         std::string msg;
-        bool ok = client->MakeSnapshot(parts[1], pid, msg);
+        bool ok = client->MakeSnapshot(parts[1], pid, 0, msg);
         if (!ok) {
             std::cout << "Fail to makesnapshot. error msg:" << msg << std::endl;
             return;
@@ -1772,7 +1772,7 @@ void HandleNSInfo(const std::vector<std::string>& parts, ::rtidb::client::NsClie
 
 void HandleNSAddReplicaCluster(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
-        std::cout << "addrepcluster format error. eg: addrepcluster zk_endpoints zk_path alias_name";
+        std::cout << "addrepcluster format error. eg: addrepcluster zk_endpoints zk_path alias_name" << std::endl;
         return;
     }
     std::string zk_endpoints, zk_path, alias, msg;
@@ -2074,6 +2074,8 @@ int SetTablePartition(const ::rtidb::client::TableInfo& table_info,
                 partition_meta->set_is_leader(false);
             }
         }
+        ns_table_info.set_partition_num(ns_table_info.table_partition_size());
+        ns_table_info.set_replica_num(ns_table_info.table_partition().Get(0).partition_meta_size());
     } else {
         if (table_info.has_partition_num()) {
             ns_table_info.set_partition_num(table_info.partition_num());
@@ -2704,7 +2706,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         } else if (parts[1] == "showrepcluster") {
             printf("desc: show remote replica cluster\n");
             printf("usage: showrepcluster\n");
-            printf("ex: showrepcluster");
+            printf("ex: showrepcluster\n");
         } else if (parts[1] == "removerepcluster") {
             printf("desc: remove remote replica cluster\n");
             printf("usage: removerepcluster cluster_alias\n");
@@ -3548,7 +3550,7 @@ void HandleClientMakeSnapshot(const std::vector<std::string> parts, ::rtidb::cli
         std::cout << "Bad MakeSnapshot format" << std::endl;
         return;
     }
-    bool ok = client->MakeSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+    bool ok = client->MakeSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), 0);
     if (ok) {
         std::cout << "MakeSnapshot ok" << std::endl;
     } else {

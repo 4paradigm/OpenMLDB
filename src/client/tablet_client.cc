@@ -283,13 +283,16 @@ bool TabletClient::Put(uint32_t tid,
     return Put(tid, pid, pk.c_str(), time, value.c_str(), value.size());
 }
 
-bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid,
+bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid, uint64_t offset,
         std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    if (offset > 0) {
+        request.set_offset(offset);
     }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::MakeSnapshot,
@@ -1104,6 +1107,29 @@ bool TabletClient::SetMode(bool mode) {
         &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ok || response.code() != 0) {
         return false;
+    }
+    return true;
+}
+
+bool TabletClient::GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>& tid_pid_offset) {
+    ::rtidb::api::EmptyRequest request;
+    ::rtidb::api::TableSnapshotOffsetResponse response;
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::GetAllSnapshotOffset,
+        &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok) {
+        return false;
+    }
+    if (response.tables_size() < 1) {
+        return true;
+    }
+
+    for (auto table : response.tables()) {
+        uint32_t tid = table.tid();
+        std::map<uint32_t, uint64_t> pid_offset;
+        for (auto part : table.parts()) {
+            pid_offset.insert(std::make_pair(part.pid(), part.offset()));
+        }
+        tid_pid_offset.insert(std::make_pair(tid, pid_offset));
     }
     return true;
 }

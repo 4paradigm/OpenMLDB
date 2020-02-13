@@ -88,7 +88,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
         ret = client.Put(tid, pid, key, cur_time, std::string(10 * 1024, 'a'));
         count--;
     }
-    ret = client.MakeSnapshot(tid, pid);
+    ret = client.MakeSnapshot(tid, pid, 0);
     ASSERT_TRUE(ret);
     sleep(2);
     std::vector<std::string> vec;

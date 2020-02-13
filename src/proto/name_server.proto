@@ -39,6 +39,7 @@ message PartitionMeta {
     optional bool tablet_has_partition = 7 [default = true];
     optional uint64 diskused = 8 [default = 0];
     optional uint32 remote_tid = 9 [default = 4294967295]; // 4294967295 is UINT32 max value
+    optional string alias = 10;
 }
 
 message TermPair {
@@ -126,6 +127,7 @@ message ShowTableResponse {
 message MakeSnapshotNSRequest {
     required string name = 1;
     required uint32 pid = 2;
+    optional uint64 offset = 3;
 }
 
 message AddReplicaData {

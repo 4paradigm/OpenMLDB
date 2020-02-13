@@ -52,6 +52,7 @@ DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_disktable_snapshot_interval);
 DECLARE_int32(make_snapshot_check_interval);
+DECLARE_uint32(make_snapshot_offline_interval);
 DECLARE_bool(recycle_bin_enabled);
 DECLARE_uint32(recycle_ttl);
 DECLARE_string(recycle_bin_root_path);
@@ -1844,7 +1845,7 @@ void TabletImpl::SetTTLClock(RpcController* controller,
     response->set_msg("ok");
 }
 
-void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task) {
+void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::api::TaskInfo> task) {
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
     std::shared_ptr<LogReplicator> replicator;
@@ -1887,9 +1888,9 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
     uint64_t cur_offset = replicator->GetOffset();
     uint64_t snapshot_offset = snapshot->GetOffset();
     int ret = 0;
-    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset) {
-        PDLOG(INFO, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%lu], snapshot_offset[%lu]", 
-                tid, pid, cur_offset, snapshot_offset);
+    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset && end_offset == 0) {
+        PDLOG(INFO, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%lu], snapshot_offset[%lu] end_offset[%lu]",
+                tid, pid, cur_offset, snapshot_offset, end_offset);
     } else {
         if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
             ::rtidb::storage::DiskTableSnapshot* disk_snapshot = 
@@ -1899,7 +1900,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
             }    
         }
         uint64_t offset = 0;
-        ret = snapshot->MakeSnapshot(table, offset);
+        ret = snapshot->MakeSnapshot(table, offset, end_offset);
         if (ret == 0) {
             std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
             if (replicator) {
@@ -1916,6 +1917,11 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
         if (task) {
             if (ret == 0) {
                 task->set_status(::rtidb::api::kDone);
+                if (table->GetStorageMode() == common::StorageMode::kMemory) {
+                    auto right_now = std::chrono::system_clock::now().time_since_epoch();
+                    int64_t ts = std::chrono::duration_cast<std::chrono::seconds>(right_now).count();
+                    table->SetMakeSnapshotTime(ts);
+                }
             } else {
                 task->set_status(::rtidb::api::kFailed);
             }    
@@ -1938,6 +1944,10 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
     }    
     uint32_t tid = request->tid();        
     uint32_t pid = request->pid();
+    uint64_t offset = 0;
+    if (request->has_offset() && request->offset() > 0) {
+        offset = request->offset();
+    }
     do {
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -1967,7 +1977,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         if (task_ptr) {
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }    
-        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, task_ptr));
+        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, offset, task_ptr));
         response->set_code(0);
         response->set_msg("ok");
         return;
@@ -1987,12 +1997,17 @@ void TabletImpl::SchedMakeSnapshot() {
     std::vector<std::pair<uint32_t, uint32_t> > table_set;
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        auto right_now = std::chrono::system_clock::now().time_since_epoch();
+        int64_t ts = std::chrono::duration_cast<std::chrono::seconds>(right_now).count();
         for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
             for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
                 if (iter->first == 0 && inner->first == 0) {
                     continue;
                 }
                 if (inner->second->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
+                    if (ts - inner->second->GetMakeSnapshotTime() <= FLAGS_make_snapshot_offline_interval && !FLAGS_zk_cluster.empty()) {
+                        continue;
+                    }
                     table_set.push_back(std::make_pair(iter->first, inner->first));
                 }
             }
@@ -2000,7 +2015,7 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
         PDLOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
-        MakeSnapshotInternal(iter->first, iter->second, std::shared_ptr<::rtidb::api::TaskInfo>());
+        MakeSnapshotInternal(iter->first, iter->second, 0, std::shared_ptr<::rtidb::api::TaskInfo>());
     }
     // delay task one hour later avoid execute  more than one time
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
@@ -2023,7 +2038,7 @@ void TabletImpl::SchedMakeDiskTableSnapshot() {
     }
     for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
         PDLOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
-        MakeSnapshotInternal(iter->first, iter->second, std::shared_ptr<::rtidb::api::TaskInfo>());
+        MakeSnapshotInternal(iter->first, iter->second, 0, std::shared_ptr<::rtidb::api::TaskInfo>());
     }
     // delay task one hour later avoid execute  more than one time
     snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
@@ -2556,7 +2571,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
             io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
             task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
-            MakeSnapshotInternal(tid, pid, std::shared_ptr<::rtidb::api::TaskInfo>());
+            MakeSnapshotInternal(tid, pid, 0, std::shared_ptr<::rtidb::api::TaskInfo>());
             if (task_ptr) {
                 std::lock_guard<std::mutex> lock(mu_);
                 task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
@@ -2853,6 +2868,79 @@ void TabletImpl::GetTableFollower(RpcController* controller,
     response->set_code(0);
 }
 
+int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, rtidb::common::StorageMode sm, std::string& msg, uint64_t& term, uint64_t& offset) {
+    std::string db_root_path;
+    bool ok = ChooseDBRootPath(tid, pid, sm, db_root_path);
+    if (!ok) {
+        msg = "fail to get db root path";
+        PDLOG(WARNING, "fail to get table db root path");
+        return 138;
+    }
+    std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string manifest_file =  db_path + "/snapshot/MANIFEST";
+    int fd = open(manifest_file.c_str(), O_RDONLY);
+    if (fd < 0) {
+        PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
+        return 0;
+    }
+    google::protobuf::io::FileInputStream fileInput(fd);
+    fileInput.SetCloseOnDelete(true);
+    ::rtidb::api::Manifest manifest;
+    if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
+        PDLOG(WARNING, "parse manifest failed");
+        return 0;
+    }
+    std::string snapshot_file = db_path + "/snapshot/" + manifest.name();
+    if (!::rtidb::base::IsExists(snapshot_file)) {
+        PDLOG(WARNING, "snapshot file[%s] is not exist", snapshot_file.c_str());
+        return 0;
+    }
+    offset = manifest.offset();
+    term = manifest.term();
+    return 0;
+
+}
+void TabletImpl::GetAllSnapshotOffset(RpcController* controller,
+           const ::rtidb::api::EmptyRequest* request,
+           ::rtidb::api::TableSnapshotOffsetResponse* response,
+           Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::map<uint32_t, rtidb::common::StorageMode>  table_sm;
+    std::map<uint32_t, std::vector<uint32_t>> tid_pid;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        for (auto table_iter = tables_.begin(); table_iter != tables_.end(); table_iter++) {
+            uint32_t tid = table_iter->first;
+            std::vector<uint32_t> pids;
+            auto part_iter = table_iter->second.begin();
+            rtidb::common::StorageMode sm = part_iter ->second->GetStorageMode();
+            for (;part_iter != table_iter->second.end(); part_iter++) {
+                pids.push_back(part_iter->first);
+            }
+            table_sm.insert(std::make_pair(tid, sm));
+            tid_pid.insert(std::make_pair(tid, pids));
+        }
+    }
+    std::string msg;
+    for (auto iter = tid_pid.begin(); iter != tid_pid.end(); iter++) {
+        uint32_t tid = iter->first;
+        auto table = response->add_tables();
+        table->set_tid(tid);
+        for (auto pid : iter->second) {
+            uint64_t term = 0 , offset = 0;
+            rtidb::common::StorageMode sm = table_sm.find(tid)->second;
+            int32_t code = GetSnapshotOffset(tid, pid, sm, msg, term, offset);
+            if (code != 0) {
+                continue;
+            }
+            auto partition = table->add_parts();
+            partition->set_offset(offset);
+            partition->set_pid(pid);
+        }
+    }
+    response->set_code(0);
+}
+
 void TabletImpl::GetTermPair(RpcController* controller,
             const ::rtidb::api::GetTermPairRequest* request,
             ::rtidb::api::GetTermPairResponse* response,
@@ -2872,45 +2960,19 @@ void TabletImpl::GetTermPair(RpcController* controller,
         mode = request->storage_mode();
     }
 	if (!table) {
-		response->set_code(0);
-		response->set_has_table(false);
-		response->set_msg("table is not exist");
-        std::string db_root_path;
-        bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
-        if (!ok) {
-            response->set_code(138);
-            response->set_msg("fail to get db root path");
-            PDLOG(WARNING, "fail to get table db root path");
-            return;
-        }
-        std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
-    	std::string manifest_file =  db_path + "/snapshot/MANIFEST";
-		int fd = open(manifest_file.c_str(), O_RDONLY);
-	    response->set_msg("ok");
-		if (fd < 0) {
-			PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
-            response->set_term(0);
-            response->set_offset(0);
-            return;
-        }
-        google::protobuf::io::FileInputStream fileInput(fd);
-        fileInput.SetCloseOnDelete(true);
-        ::rtidb::api::Manifest manifest;
-        if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
-            PDLOG(WARNING, "parse manifest failed");
-            response->set_term(0);
-            response->set_offset(0);
-            return;
-        }
-        std::string snapshot_file = db_path + "/snapshot/" + manifest.name();
-        if (!::rtidb::base::IsExists(snapshot_file)) {
-            PDLOG(WARNING, "snapshot file[%s] is not exist", snapshot_file.c_str());
-            response->set_term(0);
-            response->set_offset(0);
-            return;
-        }
-        response->set_term(manifest.term());
-        response->set_offset(manifest.offset());
+        response->set_code(0);
+        response->set_has_table(false);
+        response->set_msg("table is not exist");
+        std::string msg;
+        uint64_t term = 0, offset = 0;
+        int32_t code = GetSnapshotOffset(tid, pid, mode, msg, term, offset);
+        response->set_code(code);
+        if (code == 0) {
+            response->set_term(term);
+            response->set_offset(offset);
+        } else {
+            response->set_msg(msg);
+	    }
         return;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
