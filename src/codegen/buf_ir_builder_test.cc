@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include "codegen/codegen_base_test.h"
 #include "codegen/buf_ir_builder.h"
 #include <stdio.h>
 #include <cstdlib>
@@ -72,7 +73,7 @@ T PrintList(int8_t* input) {
     ::fesql::storage::ListRef* list_ref =
         reinterpret_cast<::fesql::storage::ListRef*>(input);
     ::fesql::storage::ColumnImpl<T>* column =
-        reinterpret_cast<::fesql::storage::ColumnImpl<T>*>(list_ref->iterator);
+        reinterpret_cast<::fesql::storage::ColumnImpl<T>*>(list_ref->list);
     fesql::storage::IteratorImpl<T> iter(*column);
     ::fesql::storage::IteratorImpl<T>* col = &iter;
     std::cout << "[";
@@ -102,7 +103,7 @@ int32_t PrintListString(int8_t* input) {
         reinterpret_cast<::fesql::storage::ListRef*>(input);
     ::fesql::storage::StringColumnImpl* column =
         reinterpret_cast<::fesql::storage::StringColumnImpl*>(
-            list_ref->iterator);
+            list_ref->list);
     fesql::storage::IteratorImpl<::fesql::storage::StringRef> iter(*column);
     ::fesql::storage::IteratorImpl<::fesql::storage::StringRef>* col = &iter;
     std::cout << "[";
@@ -556,171 +557,6 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
     }
 }
 
-void BuildBuf(int8_t** buf, uint32_t* size) {
-    ::fesql::type::TableDef table;
-    table.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
-    }
-
-    storage::RowBuilder builder(table.columns());
-    uint32_t total_size = builder.CalTotalLength(1);
-    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-    builder.SetBuffer(ptr, total_size);
-    builder.AppendInt32(32);
-    builder.AppendInt16(16);
-    builder.AppendFloat(2.1f);
-    builder.AppendDouble(3.1);
-    builder.AppendInt64(64);
-    builder.AppendString("1", 1);
-    *buf = ptr;
-    *size = total_size;
-}
-
-void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
-                 int8_t** buf) {
-    ::fesql::type::TableDef table;
-    table.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
-    }
-
-    {
-        storage::RowBuilder builder(table.columns());
-        std::string str = "1";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
-    }
-    {
-        storage::RowBuilder builder(table.columns());
-        std::string str = "22";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
-    }
-    {
-        storage::RowBuilder builder(table.columns());
-        std::string str = "333";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
-    }
-    {
-        storage::RowBuilder builder(table.columns());
-        std::string str = "4444";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
-    }
-    {
-        storage::RowBuilder builder(table.columns());
-        std::string str =
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            "a";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
-    }
-
-    ::fesql::storage::ListV<fesql::storage::Row>* w =
-        new storage::ListV<storage::Row>(rows);
-    *buf = reinterpret_cast<int8_t*>(w);
-}
 
 TEST_F(BufIRBuilderTest, native_test_load_int16) {
     int8_t* ptr = NULL;

@@ -10,11 +10,11 @@
 #include <vector>
 #include <stdio.h>
 
+template <class T>
+T add(T a, T b) {
+    return a+b+1;
+}
 
-int first(std::vector<int> list) {
-    int res = 0;
-    for(int x: list) {
-        res += x;
-    }
-    return res;
+int int_add(int a, int b) {
+    return add(a,b)+1;
 }

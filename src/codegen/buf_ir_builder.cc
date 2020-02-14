@@ -307,9 +307,9 @@ bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
     uint32_t col_iterator_size;
     ok = GetLLVMColumnSize(type, &col_iterator_size);
     if (!ok) {
-        LOG(WARNING) << "fail to get col iterator size";
+        LOG(WARNING) << "fail to get col list size";
     }
-    // alloca memory on stack for col iterator
+    // alloca memory on stack for col list
     ::llvm::ArrayType* array_type =
         ::llvm::ArrayType::get(i8_ty, col_iterator_size);
     ::llvm::Value* col_iter = builder.CreateAlloca(array_type);
@@ -356,9 +356,9 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
     uint32_t col_iterator_size;
     ok = GetLLVMColumnSize(type, &col_iterator_size);
     if (!ok) {
-        LOG(WARNING) << "fail to get col iterator size";
+        LOG(WARNING) << "fail to get col list size";
     }
-    // alloca memory on stack for col iterator
+    // alloca memory on stack for col list
     ::llvm::ArrayType* array_type =
         ::llvm::ArrayType::get(i8_ty, col_iterator_size);
     ::llvm::Value* col_iter = builder.CreateAlloca(array_type);

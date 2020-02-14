@@ -42,7 +42,7 @@ struct Timestamp {
 };
 
 struct ListRef {
-    int8_t* iterator;
+    int8_t* list;
 };
 
 namespace v1 {

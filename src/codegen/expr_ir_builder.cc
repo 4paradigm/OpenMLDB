@@ -315,7 +315,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
     return true;
 }
 
-// Get col with given col name, set iterator struct pointer into output
+// Get col with given col name, set list struct pointer into output
 // param col
 // param output
 // return
@@ -339,7 +339,7 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
 
     ::llvm::Value* value = NULL;
     DLOG(INFO) << "get table column " << col;
-    // NOT reuse for iterator
+    // NOT reuse for list
     ok = buf_ir_builder_->BuildGetCol(col, row_ptr, &value);
     if (!ok || value == NULL) {
         LOG(WARNING) << "fail to find column " << col;

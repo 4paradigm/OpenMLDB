@@ -87,8 +87,7 @@ class StringColumnImpl : public ColumnImpl<fesql::storage::StringRef> {
           str_field_offset_(str_field_offset),
           next_str_field_offset_(next_str_field_offset),
           str_start_offset_(str_start_offset) {}
-
-    const fesql::storage::StringRef GetField(Row row) const {
+    const StringRef GetField(Row row) const override {
         int32_t addr_space = fesql::storage::v1::GetAddrSpace(row.size);
         fesql::storage::StringRef value;
         fesql::storage::v1::GetStrField(

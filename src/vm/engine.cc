@@ -406,7 +406,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                 }
 
                 if (project_op->window_agg) {
-                    // iterator whole table
+                    // list whole table
                     std::unique_ptr<::fesql::storage::TableIterator> it =
                         status->table->NewTraverseIterator(
                             project_op->w.index_name);
@@ -452,7 +452,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                         }
                     }
                 } else {
-                    // iterator whole table
+                    // list whole table
                     std::unique_ptr<::fesql::storage::TableIterator> it =
                         status->table->NewTraverseIterator();
                     it->SeekToFirst();

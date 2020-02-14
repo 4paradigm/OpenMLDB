@@ -16,10 +16,10 @@
 namespace fesql {
 namespace udf {
 namespace v1 {
-using fesql::storage::IteratorImpl;
 using fesql::storage::ColumnImpl;
-using fesql::storage::StringColumnImpl;
+using fesql::storage::IteratorImpl;
 using fesql::storage::Row;
+using fesql::storage::StringColumnImpl;
 using fesql::storage::WindowIteratorImpl;
 template <class V>
 int32_t current_time() {
@@ -39,7 +39,8 @@ V sum(int8_t *input) {
         return result;
     }
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ColumnImpl<V> *col = (ColumnImpl<V> *)(list_ref->iterator);
+    ::fesql::storage::ListV<V> *col =
+        (::fesql::storage::ListV<V> *)(list_ref->list);
     IteratorImpl<V> iter(*col);
     while (iter.Valid()) {
         result += iter.Next();
@@ -54,7 +55,8 @@ V max(int8_t *input) {
         return result;
     }
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ColumnImpl<V> *col = (ColumnImpl<V> *)(list_ref->iterator);
+    ::fesql::storage::ListV<V> *col =
+        (::fesql::storage::ListV<V> *)(list_ref->list);
     IteratorImpl<V> iter(*col);
 
     if (iter.Valid()) {
@@ -76,7 +78,8 @@ V min(int8_t *input) {
         return result;
     }
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ColumnImpl<V> *col = (ColumnImpl<V> *)(list_ref->iterator);
+    ::fesql::storage::ListV<V> *col =
+        (::fesql::storage::ListV<V> *)(list_ref->list);
     IteratorImpl<V> iter(*col);
 
     if (iter.Valid()) {
@@ -90,6 +93,31 @@ V min(int8_t *input) {
     }
     return result;
 }
+
+template <class V>
+V list_at(int8_t *input, int32_t pos) {
+    ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
+    ::fesql::storage::ListV<V> *list =
+        (::fesql::storage::ListV<V> *)(list_ref->list);
+    return list->At(pos);
+}
+
+int16_t list_at_int16(int8_t *input, int32_t pos) {
+    return list_at<int16_t>(input, pos);
+}
+int16_t list_at_int32(int8_t *input, int32_t pos) {
+    return list_at<int32_t>(input, pos);
+}
+int16_t list_at_int64(int8_t *input, int32_t pos) {
+    return list_at<int64_t>(input, pos);
+}
+int16_t list_at_float(int8_t *input, int32_t pos) {
+    return list_at<float>(input, pos);
+}
+int16_t list_at_double(int8_t *input, int32_t pos) {
+    return list_at<double>(input, pos);
+}
+
 
 int16_t sum_int16(int8_t *input) { return sum<int16_t>(input); }
 int32_t sum_int32(int8_t *input) { return sum<int32_t>(input); }
@@ -135,6 +163,17 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "min_int64", reinterpret_cast<void *>(&v1::min_int64));
     AddSymbol(jd, mi, "min_double", reinterpret_cast<void *>(&v1::min_double));
     AddSymbol(jd, mi, "min_float", reinterpret_cast<void *>(&v1::min_float));
+
+    AddSymbol(jd, mi, "list_at_int16",
+              reinterpret_cast<void *>(&v1::list_at_int16));
+    AddSymbol(jd, mi, "list_at_int32",
+              reinterpret_cast<void *>(&v1::list_at_int32));
+    AddSymbol(jd, mi, "list_at_int64",
+              reinterpret_cast<void *>(&v1::list_at_int64));
+    AddSymbol(jd, mi, "list_at_float",
+              reinterpret_cast<void *>(&v1::list_at_float));
+    AddSymbol(jd, mi, "list_at_double",
+              reinterpret_cast<void *>(&v1::list_at_double));
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT
@@ -169,6 +208,12 @@ void RegisterUDFToModule(::llvm::Module *m) {
     m->getOrInsertFunction("min_int64", i64_ty, i8_ptr_ty);
     m->getOrInsertFunction("min_float", float_ty, i8_ptr_ty);
     m->getOrInsertFunction("min_double", double_ty, i8_ptr_ty);
+
+    m->getOrInsertFunction("list_at_int16", i16_ty, i8_ptr_ty, i32_ty);
+    m->getOrInsertFunction("list_at_int32", i32_ty, i8_ptr_ty, i32_ty);
+    m->getOrInsertFunction("list_at_int64", i64_ty, i8_ptr_ty, i32_ty);
+    m->getOrInsertFunction("list_at_float", float_ty, i8_ptr_ty, i32_ty);
+    m->getOrInsertFunction("list_at_double", double_ty, i8_ptr_ty, i32_ty);
 }
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                     ::llvm::orc::MangleAndInterner &mi) {  // NOLINT

@@ -113,6 +113,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
                      if_else_block->if_block_->if_node->expression_, &cond)) {
         status.code = common::kCodegenError;
         status.msg = "fail to codegen condition expression";
+        LOG(WARNING) << status.msg;
         return false;
     }
 
@@ -139,6 +140,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
                                             &cond)) {
                 status.code = common::kCodegenError;
                 status.msg = "fail to codegen condition expression";
+                LOG(WARNING) << status.msg;
                 return false;
             }
             builder.CreateCondBr(cond, cond_true, cond_false);

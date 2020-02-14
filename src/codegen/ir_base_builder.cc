@@ -146,47 +146,7 @@ bool GetLLVMColumnSize(const ::fesql::type::Type& v_type, uint32_t* size) {
     }
     return true;
 }
-bool GetLLVMColumnIteratorSize(const ::fesql::type::Type& v_type,
-                               uint32_t* size) {
-    if (nullptr == size) {
-        LOG(WARNING) << "the size ptr is NULL ";
-        return false;
-    }
 
-    switch (v_type) {
-        case ::fesql::type::kInt16: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int16_t>);
-            break;
-        }
-        case ::fesql::type::kInt32: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int32_t>);
-            break;
-        }
-        case ::fesql::type::kInt64: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int64_t>);
-            break;
-        }
-        case ::fesql::type::kDouble: {
-            *size = sizeof(::fesql::storage::IteratorImpl<double>);
-            break;
-        }
-        case ::fesql::type::kFloat: {
-            *size = sizeof(::fesql::storage::IteratorImpl<float>);
-            break;
-        }
-        case ::fesql::type::kVarchar: {
-            *size = sizeof(
-                ::fesql::storage::IteratorImpl<fesql::storage::StringRef>);
-            break;
-        }
-        default: {
-            LOG(WARNING) << "not supported type "
-                         << ::fesql::type::Type_Name(v_type);
-            return false;
-        }
-    }
-    return true;
-}
 bool GetLLVMListType(::llvm::Module* m,  // NOLINT
                      const ::fesql::type::Type& v_type, ::llvm::Type** output) {
     if (output == NULL) {
@@ -445,6 +405,105 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
     }
 }
 
+bool GetFesqlTypeName(::fesql::type::Type type, ::std::string& name) {
+    if (type == NULL) {
+        LOG(WARNING) << "type or output is null";
+        return false;
+    }
+
+    switch (type) {
+        case ::fesql::type::kFloat: {
+            name = "float";
+            return true;
+        }
+        case ::fesql::type::kDouble: {
+            name = "double";
+            return true;
+        }
+        case ::fesql::type::kInt16: {
+            name = "int16";
+            return true;
+        }
+        case ::fesql::type::kInt32: {
+            name = "int32";
+            return true;
+        }
+        case ::fesql::type::kInt64: {
+            name = "int64";
+            return true;
+        }
+        case ::fesql::type::kList: {
+            name = "list";
+            return true;
+        }
+        case ::fesql::type::kVarchar: {
+            name = "string";
+            return true;
+        }
+        case ::fesql::type::kTimestamp: {
+            name = "timestamp";
+            return true;
+        }
+        default: {
+            LOG(WARNING) << "no mapping type for llvm type";
+            return false;
+        }
+    }  // namespace codegen
+}  // namespace codegen
+bool GetLLVMTypeName(::llvm::Type* type, ::std::string& name) {
+    if (type == NULL) {
+        LOG(WARNING) << "type or output is null";
+        return false;
+    }
+
+    switch (type->getTypeID()) {
+        case ::llvm::Type::FloatTyID: {
+            name = "float";
+            return true;
+        }
+        case ::llvm::Type::DoubleTyID: {
+            name = "double";
+            return true;
+        }
+        case ::llvm::Type::IntegerTyID: {
+            switch (type->getIntegerBitWidth()) {
+                case 16: {
+                    name = "int16";
+                    return true;
+                }
+                case 32: {
+                    name = "int32";
+                    return true;
+                }
+                case 64: {
+                    name = "int64";
+                    return true;
+                }
+                case 1: {
+                    name = "bool";
+                    return true;
+                }
+                default: {
+                    LOG(WARNING) << "no mapping type for llvm type";
+                    return false;
+                }
+            }
+        }
+        case ::llvm::Type::StructTyID:
+        case ::llvm::Type::PointerTyID: {
+            if (type->getTypeID() == ::llvm::Type::PointerTyID) {
+                type = reinterpret_cast<::llvm::PointerType*>(type)
+                           ->getElementType();
+            }
+            name = type->getStructName();
+            return true;
+        }
+        default: {
+            LOG(WARNING) << "no mapping type for llvm type";
+            return false;
+        }
+    }
+}
 bool BuildLoadOffset(::llvm::IRBuilder<>& builder,  // NOLINT
                      ::llvm::Value* ptr, ::llvm::Value* offset,
                      ::llvm::Type* type, ::llvm::Value** output) {
