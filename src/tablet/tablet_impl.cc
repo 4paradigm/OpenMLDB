@@ -2673,6 +2673,15 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
+            if (tables_[tid].empty()) {
+                tables_.erase(tid);
+            }
+            if (replicators_[tid].empty()) {
+                replicators_.erase(tid);
+            }
+            if (snapshots_[tid].empty()) {
+                snapshots_.erase(tid);
+            }
         }
 
         if (replicator) {
