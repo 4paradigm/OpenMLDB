@@ -32,8 +32,9 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
                  ::llvm::Type** output);
 bool GetLLVMListType(::llvm::Module* m, const ::fesql::type::Type& type,
                      ::llvm::Type** output);
-bool GetLLVMColumnIteratorSize(const ::fesql::type::Type& v_type,
-                               uint32_t* size);
+bool GetLLVMIteratorType(::llvm::Module* m, const ::fesql::type::Type& type,
+                         ::llvm::Type** output);
+bool GetLLVMIteratorSize(const ::fesql::type::Type& v_type, uint32_t* size);
 bool GetLLVMColumnSize(const ::fesql::type::Type& v_type, uint32_t* size);
 
 bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output);

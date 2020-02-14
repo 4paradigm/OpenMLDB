@@ -452,6 +452,7 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
     ::llvm::Value* val = NULL;
     bool ok = buf_builder.BuildGetCol(col, arg0, &val);
     ASSERT_TRUE(ok);
+
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Value* i8_ptr = builder.CreatePointerCast(val, i8_ptr_ty);
     llvm::FunctionCallee callee;

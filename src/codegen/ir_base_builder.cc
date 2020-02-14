@@ -107,6 +107,45 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
     }
 }
 
+bool GetLLVMIteratorSize(const ::fesql::type::Type& v_type, uint32_t* size) {
+    if (nullptr == size) {
+        LOG(WARNING) << "the size ptr is NULL ";
+        return false;
+    }
+
+    switch (v_type) {
+        case ::fesql::type::kInt16: {
+            *size = sizeof(::fesql::storage::IteratorImpl<int16_t>);
+            break;
+        }
+        case ::fesql::type::kInt32: {
+            *size = sizeof(::fesql::storage::IteratorImpl<int32_t>);
+            break;
+        }
+        case ::fesql::type::kInt64: {
+            *size = sizeof(::fesql::storage::IteratorImpl<int64_t>);
+            break;
+        }
+        case ::fesql::type::kDouble: {
+            *size = sizeof(::fesql::storage::IteratorImpl<double>);
+            break;
+        }
+        case ::fesql::type::kFloat: {
+            *size = sizeof(::fesql::storage::IteratorImpl<float>);
+            break;
+        }
+        case ::fesql::type::kVarchar: {
+            *size = sizeof(::fesql::storage::IteratorImpl<fesql::storage::StringRef>);
+            break;
+        }
+        default: {
+            LOG(WARNING) << "not supported type "
+                         << ::fesql::type::Type_Name(v_type);
+            return false;
+        }
+    }
+    return true;
+}
 bool GetLLVMColumnSize(const ::fesql::type::Type& v_type, uint32_t* size) {
     if (nullptr == size) {
         LOG(WARNING) << "the size ptr is NULL ";
@@ -177,6 +216,60 @@ bool GetLLVMListType(::llvm::Module* m,  // NOLINT
         }
         case ::fesql::type::kVarchar: {
             name = "fe.list_string_ref";
+            break;
+        }
+        default: {
+            LOG(WARNING) << "not supported list<type> when type is  "
+                         << ::fesql::type::Type_Name(v_type);
+            return false;
+        }
+    }
+    ::llvm::StringRef sr(name);
+    ::llvm::StructType* stype = m->getTypeByName(sr);
+    if (stype != NULL) {
+        *output = stype;
+        return true;
+    }
+    stype = ::llvm::StructType::create(m->getContext(), name);
+    ::llvm::Type* data_ptr_ty =
+        ::llvm::IntegerType::getInt8PtrTy(m->getContext());
+    std::vector<::llvm::Type*> elements;
+    elements.push_back(data_ptr_ty);
+    stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
+    *output = stype;
+    return true;
+}
+
+bool GetLLVMIteratorType(::llvm::Module* m,  // NOLINT
+                     const ::fesql::type::Type& v_type, ::llvm::Type** output) {
+    if (output == NULL) {
+        LOG(WARNING) << "the output ptr is NULL ";
+        return false;
+    }
+    std::string name;
+    switch (v_type) {
+        case ::fesql::type::kInt16: {
+            name = "fe.iterator_ref_int16";
+            break;
+        }
+        case ::fesql::type::kInt32: {
+            name = "fe.iterator_ref_int32";
+            break;
+        }
+        case ::fesql::type::kInt64: {
+            name = "fe.iterator_ref_int64";
+            break;
+        }
+        case ::fesql::type::kFloat: {
+            name = "fe.iterator_ref_float";
+            break;
+        }
+        case ::fesql::type::kDouble: {
+            name = "fe.iterator_ref_double";
+            break;
+        }
+        case ::fesql::type::kVarchar: {
+            name = "fe.iterator_ref_string";
             break;
         }
         default: {

@@ -26,6 +26,7 @@ class ListIRBuilder {
 
 
     bool BuildAt(::llvm::Value* list, ::llvm::Value* pos, ::llvm::Value **output, base::Status &status);
+    bool BuildIterator(::llvm::Value* list, ::llvm::Value **output, base::Status &status);
 
  private:
     ::llvm::BasicBlock* block_;
