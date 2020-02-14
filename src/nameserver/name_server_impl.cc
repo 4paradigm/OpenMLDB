@@ -209,7 +209,7 @@ void NameServerImpl::CheckSyncExistTable(const std::string& alias,
         {
             std::lock_guard<std::mutex> lock(mu_);
             for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
-                ::rtidb::nameserver::TablePartition table_partition = table_info_remote.table_partition(idx);
+                const ::rtidb::nameserver::TablePartition& table_partition = table_info_remote.table_partition(idx);
                 uint32_t cur_pid = table_partition.pid();
                 for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
                     if (table_partition.partition_meta(midx).is_leader() && 
@@ -248,7 +248,7 @@ void NameServerImpl::CheckSyncTable(const std::string& alias,
             if (std::find(table_name_vec.begin(), table_name_vec.end(), kv.first) == table_name_vec.end()) {
                 bool has_no_alive_leader_partition = false;
                 for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
-                    ::rtidb::nameserver::TablePartition table_partition_local = kv.second->table_partition(idx);
+                    const ::rtidb::nameserver::TablePartition& table_partition_local = kv.second->table_partition(idx);
                     for (int midx = 0; midx < table_partition_local.partition_meta_size(); midx++) {
                         if (table_partition_local.partition_meta(midx).is_leader() &&
                                 (!table_partition_local.partition_meta(midx).is_alive())) {
@@ -278,7 +278,7 @@ void NameServerImpl::CheckSyncTable(const std::string& alias,
         }
         std::lock_guard<std::mutex> lock(mu_);
         for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
-            ::rtidb::nameserver::TablePartition table_partition = table_info.table_partition(idx);
+            const ::rtidb::nameserver::TablePartition& table_partition = table_info.table_partition(idx);
             AddReplicaRemoteOP(alias, table_info.name(), table_partition,
                     table_info.tid(), table_partition.pid());
         }
@@ -8128,7 +8128,7 @@ void NameServerImpl::SyncTable(RpcController* controller,
             }
         } else {
             for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-                ::rtidb::nameserver::TablePartition table_partition_local = table_info->table_partition(idx);
+                const ::rtidb::nameserver::TablePartition& table_partition_local = table_info->table_partition(idx);
                 for (int midx = 0; midx < table_partition_local.partition_meta_size(); midx++) {
                     if (table_partition_local.partition_meta(midx).is_leader() &&
                             (!table_partition_local.partition_meta(midx).is_alive())) {
@@ -8160,7 +8160,7 @@ void NameServerImpl::SyncTable(RpcController* controller,
                 }
                 std::lock_guard<std::mutex> lock(mu_);
                 for (int idx = 0; idx < table_info_r.table_partition_size(); idx++) {
-                    ::rtidb::nameserver::TablePartition table_partition = table_info_r.table_partition(idx);
+                    const ::rtidb::nameserver::TablePartition& table_partition = table_info_r.table_partition(idx);
                     if (AddReplicaRemoteOP(cluster_alias, table_info_r.name(), table_partition,
                                 table_info_r.tid(), table_partition.pid()) < 0) {
                         code = 511;
@@ -8235,7 +8235,7 @@ int NameServerImpl::SyncExistTable(const std::string& name,
     for (const auto& cur_pid : pid_vec) {
         bool has_pid = false;
         for (int idx = 0; idx < table_info_local.table_partition_size(); idx++) {
-            ::rtidb::nameserver::TablePartition table_partition_local = table_info_local.table_partition(idx);
+            const ::rtidb::nameserver::TablePartition& table_partition_local = table_info_local.table_partition(idx);
             if (table_partition_local.pid() == cur_pid) {
                 has_pid = true;
                 for (int midx = 0; midx < table_partition_local.partition_meta_size(); midx++) {
@@ -8260,7 +8260,7 @@ int NameServerImpl::SyncExistTable(const std::string& name,
         }
         //remote table
         for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
-            ::rtidb::nameserver::TablePartition table_partition = table_info_remote.table_partition(idx);
+            const ::rtidb::nameserver::TablePartition& table_partition = table_info_remote.table_partition(idx);
             if (table_partition.pid() == cur_pid) {
                 for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
                     if (table_partition.partition_meta(midx).is_leader()) { 
@@ -8281,7 +8281,7 @@ int NameServerImpl::SyncExistTable(const std::string& name,
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& cur_pid : pid_vec) {
             for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
-                ::rtidb::nameserver::TablePartition table_partition = table_info_remote.table_partition(idx);
+                const ::rtidb::nameserver::TablePartition& table_partition = table_info_remote.table_partition(idx);
                 if (table_partition.pid() == cur_pid) {
                     for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
                         if (table_partition.partition_meta(midx).is_leader() && 
