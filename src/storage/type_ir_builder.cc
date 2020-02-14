@@ -26,8 +26,8 @@ namespace fesql {
 namespace storage {
 namespace v1 {
 
-using fesql::storage::ColumnIteratorImpl;
-using fesql::storage::ColumnStringIteratorImpl;
+using fesql::storage::ColumnImpl;
+using fesql::storage::StringColumnImpl;
 using fesql::storage::WindowIteratorImpl;
 
 int32_t GetStrField(const int8_t* row, uint32_t field_offset,
@@ -151,11 +151,12 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
     if (nullptr == input || nullptr == data) {
         return -2;
     }
-    WindowIteratorImpl* w = reinterpret_cast<WindowIteratorImpl*>(input);
+
+    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     switch (type) {
         case fesql::type::kVarchar: {
-            new (data) ColumnStringIteratorImpl(
+            new (data) StringColumnImpl(
                 *w, str_field_offset, next_str_field_offset, str_start_offset);
             break;
         }
@@ -171,27 +172,27 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
     if (nullptr == input || nullptr == data) {
         return -2;
     }
-    WindowIteratorImpl* w = reinterpret_cast<WindowIteratorImpl*>(input);
+    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
     switch (type) {
         case fesql::type::kInt32: {
-            new (data) ColumnIteratorImpl<int>(*w, offset);
+            new (data) ColumnImpl<int>(*w, offset);
             break;
         }
         case fesql::type::kInt16: {
-            new (data) ColumnIteratorImpl<int16_t>(*w, offset);
+            new (data) ColumnImpl<int16_t>(*w, offset);
             break;
         }
         case fesql::type::kInt64: {
-            new (data) ColumnIteratorImpl<int64_t>(*w, offset);
+            new (data) ColumnImpl<int64_t>(*w, offset);
             break;
         }
         case fesql::type::kFloat: {
-            new (data) ColumnIteratorImpl<float>(*w, offset);
+            new (data) ColumnImpl<float>(*w, offset);
             break;
         }
         case fesql::type::kDouble: {
             DLOG(INFO) << "new double iterator";
-            new (data) ColumnIteratorImpl<double>(*w, offset);
+            new (data) ColumnImpl<double>(*w, offset);
             break;
         }
         default: {

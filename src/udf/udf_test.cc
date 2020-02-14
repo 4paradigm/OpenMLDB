@@ -16,7 +16,7 @@
 #include "storage/window.h"
 namespace fesql {
 namespace udf {
-using storage::ColumnIteratorImpl;
+using storage::ListV;
 using storage::WindowIteratorImpl;
 
 class UDFTest : public ::testing::Test {
@@ -63,8 +63,8 @@ class UDFTest : public ::testing::Test {
 };
 
 TEST_F(UDFTest, UDF_sum_test) {
-    WindowIteratorImpl impl(rows);
-    const uint32_t size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
+    ListV<storage::Row> window(rows);
+    const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
         ::fesql::storage::ListRef list_ref;
@@ -72,8 +72,8 @@ TEST_F(UDFTest, UDF_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2,
-                                            fesql::type::kInt32, buf));
+            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&window),
+                                            2, fesql::type::kInt32, buf));
         ASSERT_EQ(1 + 11 + 111, fesql::udf::v1::sum_int32(col));
     }
 
@@ -84,7 +84,7 @@ TEST_F(UDFTest, UDF_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(
-            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl),
+            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&window),
                                             2 + 4, fesql::type::kInt16, buf));
         ASSERT_EQ(2 + 22 + 222, fesql::udf::v1::sum_int32(col));
     }
@@ -96,7 +96,7 @@ TEST_F(UDFTest, UDF_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2,
+                         reinterpret_cast<int8_t*>(&window), 2 + 4 + 2,
                          fesql::type::kFloat, buf));
         ASSERT_EQ(3.1f + 33.1f + 333.1f, fesql::udf::v1::sum_float(col));
     }
@@ -108,7 +108,7 @@ TEST_F(UDFTest, UDF_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4,
+                         reinterpret_cast<int8_t*>(&window), 2 + 4 + 2 + 4,
                          fesql::type::kDouble, buf));
         ASSERT_EQ(4.1 + 44.1 + 444.1, fesql::udf::v1::sum_double(col));
     }
@@ -120,15 +120,15 @@ TEST_F(UDFTest, UDF_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
-                         reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4 + 8,
+                         reinterpret_cast<int8_t*>(&window), 2 + 4 + 2 + 4 + 8,
                          fesql::type::kInt64, buf));
         ASSERT_EQ(5L + 55L + 555L, fesql::udf::v1::sum_int64(col));
     }
 }
 
 TEST_F(UDFTest, UDF_max_test) {
-    WindowIteratorImpl impl(rows);
-    const uint32_t size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
+    ListV<storage::Row> impl(rows);
+    const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
         ::fesql::storage::ListRef list_ref;
@@ -191,8 +191,8 @@ TEST_F(UDFTest, UDF_max_test) {
 }
 
 TEST_F(UDFTest, UDF_min_test) {
-    WindowIteratorImpl impl(rows);
-    const uint32_t size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
+    ListV<fesql::storage::Row> impl(rows);
+    const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
         ::fesql::storage::ListRef list_ref;
@@ -254,8 +254,8 @@ TEST_F(UDFTest, UDF_min_test) {
     }
 }
 TEST_F(UDFTest, GetColTest) {
-    WindowIteratorImpl impl(rows);
-    const uint32_t size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
+    ListV<fesql::storage::Row> impl(rows);
+    const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     for (int i = 0; i < 10; ++i) {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
         ::fesql::storage::ListRef list_ref;
@@ -263,22 +263,23 @@ TEST_F(UDFTest, GetColTest) {
         ASSERT_EQ(
             0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2,
                                             fesql::type::kInt32, buf));
-        ::fesql::storage::ColumnIteratorImpl<int16_t>* col_iterator =
-            reinterpret_cast< ::fesql::storage::ColumnIteratorImpl<int16_t>*>(
+        ::fesql::storage::ColumnImpl<int16_t>* col =
+            reinterpret_cast< ::fesql::storage::ColumnImpl<int16_t>*>(
                 list_ref.iterator);
-        ASSERT_TRUE(col_iterator->Valid());
-        ASSERT_EQ(1u, col_iterator->Next());
-        ASSERT_TRUE(col_iterator->Valid());
-        ASSERT_EQ(11u, col_iterator->Next());
-        ASSERT_TRUE(col_iterator->Valid());
-        ASSERT_EQ(111u, col_iterator->Next());
-        ASSERT_FALSE(col_iterator->Valid());
+        ::fesql::storage::IteratorImpl<int16_t> col_iterator(*col);
+        ASSERT_TRUE(col_iterator.Valid());
+        ASSERT_EQ(1u, col_iterator.Next());
+        ASSERT_TRUE(col_iterator.Valid());
+        ASSERT_EQ(11u, col_iterator.Next());
+        ASSERT_TRUE(col_iterator.Valid());
+        ASSERT_EQ(111u, col_iterator.Next());
+        ASSERT_FALSE(col_iterator.Valid());
     }
 }
 
 TEST_F(UDFTest, GetColHeapTest) {
-    WindowIteratorImpl impl(rows);
-    const uint32_t size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
+    ListV<fesql::storage::Row> impl(rows);
+    const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     for (int i = 0; i < 10000; ++i) {
         int8_t buf[size];  // NOLINT
         ::fesql::storage::ListRef list_ref;

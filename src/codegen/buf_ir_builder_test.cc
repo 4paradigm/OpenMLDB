@@ -22,10 +22,6 @@
 #include <vector>
 #include "codegen/ir_base_builder.h"
 #include "gtest/gtest.h"
-#include "storage/codec.h"
-#include "storage/type_ir_builder.h"
-#include "storage/window.h"
-
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -39,6 +35,9 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "storage/codec.h"
+#include "storage/type_ir_builder.h"
+#include "storage/window.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -72,9 +71,10 @@ T PrintList(int8_t* input) {
     }
     ::fesql::storage::ListRef* list_ref =
         reinterpret_cast<::fesql::storage::ListRef*>(input);
-    ::fesql::storage::ColumnIteratorImpl<T>* col =
-        reinterpret_cast<::fesql::storage::ColumnIteratorImpl<T>*>(
-            list_ref->iterator);
+    ::fesql::storage::ColumnImpl<T>* column =
+        reinterpret_cast<::fesql::storage::ColumnImpl<T>*>(list_ref->iterator);
+    fesql::storage::IteratorImpl<T> iter(*column);
+    ::fesql::storage::IteratorImpl<T>* col = &iter;
     std::cout << "[";
     while (col->Valid()) {
         T v = col->Next();
@@ -98,9 +98,13 @@ int32_t PrintListString(int8_t* input) {
     }
     ::fesql::storage::ListRef* col_string =
         reinterpret_cast<::fesql::storage::ListRef*>(input);
-    ::fesql::storage::ColumnStringIteratorImpl* col =
-        reinterpret_cast<::fesql::storage::ColumnStringIteratorImpl*>(
-            col_string->iterator);
+    ::fesql::storage::ListRef* list_ref =
+        reinterpret_cast<::fesql::storage::ListRef*>(input);
+    ::fesql::storage::StringColumnImpl* column =
+        reinterpret_cast<::fesql::storage::StringColumnImpl*>(
+            list_ref->iterator);
+    fesql::storage::IteratorImpl<::fesql::storage::StringRef> iter(*column);
+    ::fesql::storage::IteratorImpl<::fesql::storage::StringRef>* col = &iter;
     std::cout << "[";
     while (col->Valid()) {
         ::fesql::storage::StringRef v = col->Next();
@@ -927,8 +931,8 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowIteratorImpl* w =
-        new ::fesql::storage::WindowIteratorImpl(rows);
+    ::fesql::storage::ListV<fesql::storage::Row>* w =
+        new storage::ListV<storage::Row>(rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 

@@ -408,9 +408,6 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
         }
         pop->w.start_offset = node->GetW()->GetStartOffset();
         pop->w.end_offset = node->GetW()->GetEndOffset();
-
-        ::fesql::codegen::BufIRBuilder buf_if_builder(&table_status->table_def,
-                                                      nullptr, nullptr);
     } else {
         pop->window_agg = false;
     }

@@ -497,7 +497,7 @@ bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
         return false;
     }
     uint32_t col_iterator_size;
-    ok = GetLLVMColumnIteratorSize(type, &col_iterator_size);
+    ok = GetLLVMColumnSize(type, &col_iterator_size);
     if (!ok) {
         LOG(WARNING) << "fail to get col iterator size";
     }
@@ -546,7 +546,7 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
         return false;
     }
     uint32_t col_iterator_size;
-    ok = GetLLVMColumnIteratorSize(type, &col_iterator_size);
+    ok = GetLLVMColumnSize(type, &col_iterator_size);
     if (!ok) {
         LOG(WARNING) << "fail to get col iterator size";
     }

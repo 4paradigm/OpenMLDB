@@ -17,8 +17,8 @@ namespace fesql {
 namespace udf {
 namespace v1 {
 using fesql::storage::IteratorImpl;
-using fesql::storage::ColumnIteratorImpl;
-using fesql::storage::ColumnStringIteratorImpl;
+using fesql::storage::ColumnImpl;
+using fesql::storage::StringColumnImpl;
 using fesql::storage::Row;
 using fesql::storage::WindowIteratorImpl;
 template <class V>
@@ -39,9 +39,10 @@ V sum(int8_t *input) {
         return result;
     }
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    IteratorImpl<V> *col = (IteratorImpl<V> *)(list_ref->iterator);
-    while (col->Valid()) {
-        result += col->Next();
+    ColumnImpl<V> *col = (ColumnImpl<V> *)(list_ref->iterator);
+    IteratorImpl<V> iter(*col);
+    while (iter.Valid()) {
+        result += iter.Next();
     }
     return result;
 }
@@ -53,13 +54,14 @@ V max(int8_t *input) {
         return result;
     }
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    IteratorImpl<V> *col = (IteratorImpl<V> *)(list_ref->iterator);
+    ColumnImpl<V> *col = (ColumnImpl<V> *)(list_ref->iterator);
+    IteratorImpl<V> iter(*col);
 
-    if (col->Valid()) {
-        result = col->Next();
+    if (iter.Valid()) {
+        result = iter.Next();
     }
-    while (col->Valid()) {
-        V v = col->Next();
+    while (iter.Valid()) {
+        V v = iter.Next();
         if (v > result) {
             result = v;
         }
@@ -74,13 +76,14 @@ V min(int8_t *input) {
         return result;
     }
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    IteratorImpl<V> *col = (IteratorImpl<V> *)(list_ref->iterator);
+    ColumnImpl<V> *col = (ColumnImpl<V> *)(list_ref->iterator);
+    IteratorImpl<V> iter(*col);
 
-    if (col->Valid()) {
-        result = col->Next();
+    if (iter.Valid()) {
+        result = iter.Next();
     }
-    while (col->Valid()) {
-        V v = col->Next();
+    while (iter.Valid()) {
+        V v = iter.Next();
         if (v < result) {
             result = v;
         }

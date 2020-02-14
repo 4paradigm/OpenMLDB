@@ -106,6 +106,46 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
         }
     }
 }
+
+bool GetLLVMColumnSize(const ::fesql::type::Type& v_type, uint32_t* size) {
+    if (nullptr == size) {
+        LOG(WARNING) << "the size ptr is NULL ";
+        return false;
+    }
+
+    switch (v_type) {
+        case ::fesql::type::kInt16: {
+            *size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
+            break;
+        }
+        case ::fesql::type::kInt32: {
+            *size = sizeof(::fesql::storage::ColumnImpl<int32_t>);
+            break;
+        }
+        case ::fesql::type::kInt64: {
+            *size = sizeof(::fesql::storage::ColumnImpl<int64_t>);
+            break;
+        }
+        case ::fesql::type::kDouble: {
+            *size = sizeof(::fesql::storage::ColumnImpl<double>);
+            break;
+        }
+        case ::fesql::type::kFloat: {
+            *size = sizeof(::fesql::storage::ColumnImpl<float>);
+            break;
+        }
+        case ::fesql::type::kVarchar: {
+            *size = sizeof(::fesql::storage::StringColumnImpl);
+            break;
+        }
+        default: {
+            LOG(WARNING) << "not supported type "
+                         << ::fesql::type::Type_Name(v_type);
+            return false;
+        }
+    }
+    return true;
+}
 bool GetLLVMColumnIteratorSize(const ::fesql::type::Type& v_type,
                                uint32_t* size) {
     if (nullptr == size) {
@@ -115,27 +155,28 @@ bool GetLLVMColumnIteratorSize(const ::fesql::type::Type& v_type,
 
     switch (v_type) {
         case ::fesql::type::kInt16: {
-            *size = sizeof(::fesql::storage::ColumnIteratorImpl<int16_t>);
+            *size = sizeof(::fesql::storage::IteratorImpl<int16_t>);
             break;
         }
         case ::fesql::type::kInt32: {
-            *size = sizeof(::fesql::storage::ColumnIteratorImpl<int32_t>);
+            *size = sizeof(::fesql::storage::IteratorImpl<int32_t>);
             break;
         }
         case ::fesql::type::kInt64: {
-            *size = sizeof(::fesql::storage::ColumnIteratorImpl<int64_t>);
+            *size = sizeof(::fesql::storage::IteratorImpl<int64_t>);
             break;
         }
         case ::fesql::type::kDouble: {
-            *size = sizeof(::fesql::storage::ColumnIteratorImpl<double>);
+            *size = sizeof(::fesql::storage::IteratorImpl<double>);
             break;
         }
         case ::fesql::type::kFloat: {
-            *size = sizeof(::fesql::storage::ColumnIteratorImpl<float>);
+            *size = sizeof(::fesql::storage::IteratorImpl<float>);
             break;
         }
         case ::fesql::type::kVarchar: {
-            *size = sizeof(::fesql::storage::ColumnStringIteratorImpl);
+            *size = sizeof(
+                ::fesql::storage::IteratorImpl<fesql::storage::StringRef>);
             break;
         }
         default: {
