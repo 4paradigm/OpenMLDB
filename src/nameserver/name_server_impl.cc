@@ -296,36 +296,29 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
         auto status_iter = ci->last_status.find(table.name());
         if (status_iter == ci->last_status.end()) {
             std::vector<TablePartition> tbs;
-            for (auto& part : table.table_partition()) {
-                ::rtidb::nameserver::TablePartition tb;
-                tb.set_pid(part.pid());
-                tb.set_record_byte_size(part.record_byte_size());
-                tb.set_record_cnt(part.record_cnt());
-                PartitionMeta* m = tb.add_partition_meta();
-                m->set_endpoint("");
-                for (auto& meta : part.partition_meta()) {
-                    if (meta.is_alive() && meta.is_leader()) {
-                        m->set_endpoint(meta.endpoint());
+            for (const auto& part : table_info_iter->second->table_partition()) {
+                for (const auto& meta : part.remote_partition_meta()) {
+                    if (meta.alias() == ci->cluster_add_.alias()) {
+                        TablePartition tb;
+                        tb.set_pid(part.pid());
+                        PartitionMeta* m = tb.add_partition_meta();
+                        m->CopyFrom(meta);
+                        tbs.push_back(tb);
                         break;
                     }
                 }
-                tbs.push_back(tb);
+            }
+            if (tbs.size() != table.partition_num()) {
+                continue;
             }
             ci->last_status.insert(std::make_pair(table.name(), tbs));
         } else {
             // cache endpoint
-            std::map<uint32_t, std::string> pid_endpoint;
             std::set<uint32_t> parts;
             for (const auto& part : table_info_iter->second->table_partition()) {
                 for (auto& meta : part.partition_meta()) {
                     if (meta.is_leader() && meta.is_alive()) {
                         parts.insert(part.pid());
-                    }
-                }
-                for (auto& meta : part.remote_partition_meta()) {
-                    if (meta.alias() == ci->cluster_add_.alias()) {
-                        pid_endpoint.insert(std::make_pair(part.pid(), meta.endpoint()));
-                        break;
                     }
                 }
             }
@@ -346,15 +339,16 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                             PDLOG(WARNING, "table [%s] pid [%u] not found", table.name().c_str(), part.pid());
                             break;
                         }
-                        auto endpoint_iter = pid_endpoint.find(part.pid());
-                        if (endpoint_iter != pid_endpoint.end()) {
-                            if (meta.endpoint() == endpoint_iter->second) {
-                                break;
-                            } else {
-                                PDLOG(INFO, "table [%s] pid[%u] will remove endpoint %s", table.name().c_str(), part.pid(), endpoint_iter->second.c_str());
-                                DelReplicaRemoteOP(endpoint_iter->second, table.name(), part.pid());
-                            }
+                        if (iter->second->partition_meta_size() < 1) {
+                            PDLOG(WARNING, "table [%s] pid [$u] meta size is %d", table.name().c_str(), part.pid(), iter->second->partition_meta_size());
+                            break;
                         }
+                        std::string endpoint = iter->second->partition_meta(0).endpoint();
+                        if (meta.endpoint() ==  endpoint) {
+                            break;
+                        }
+                        PDLOG(INFO, "table [%s] pid[%u] will remove endpoint %s", table.name().c_str(), part.pid(), endpoint.c_str());
+                        DelReplicaRemoteOP(endpoint, table.name(), part.pid());
                         iter->second->clear_partition_meta();
                         iter->second->add_partition_meta()->CopyFrom(meta);
 
@@ -8335,9 +8329,12 @@ bool NameServerImpl::CreateTableRemote(const ::rtidb::api::TaskInfo& task_info,
 bool NameServerImpl::DropTableRemote(const ::rtidb::api::TaskInfo& task_info, 
         const std::string& name, 
         const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info) {
-    auto iter = cluster_info->last_status.find(name);
-    if (iter != cluster_info->last_status.end()) {
-        cluster_info->last_status.erase(iter);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = cluster_info->last_status.find(name);
+        if (iter != cluster_info->last_status.end()) {
+            cluster_info->last_status.erase(iter);
+        }
     }
     return cluster_info->DropTableRemote(task_info, name, zone_info_);
 }
