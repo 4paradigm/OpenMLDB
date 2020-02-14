@@ -2919,12 +2919,12 @@ void TabletImpl::GetAllSnapshotOffset(RpcController* controller,
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         for (auto table_iter = tables_.begin(); table_iter != tables_.end(); table_iter++) {
+            if (table_iter->second.empty()) {
+                continue;
+            }
             uint32_t tid = table_iter->first;
             std::vector<uint32_t> pids;
             auto part_iter = table_iter->second.begin();
-            if (part_iter == table_iter->second.end()) {
-                continue;
-            }
             rtidb::common::StorageMode sm = part_iter ->second->GetStorageMode();
             for (;part_iter != table_iter->second.end(); part_iter++) {
                 pids.push_back(part_iter->first);

@@ -175,13 +175,12 @@ void NameServerImpl::CheckSyncExistTable(const std::string& alias,
         for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
             const ::rtidb::nameserver::TablePartition& table_partition = table_info_remote.table_partition(idx);
             for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
-                if (table_partition.partition_meta(midx).is_leader()) { 
-                    if (!table_partition.partition_meta(midx).is_alive()) {
-                        PDLOG(WARNING, "remote table [%s] has a no alive leader partition pid[%u]", 
-                                name.c_str(), table_partition.pid());
-                        is_continue = true;
-                        break;
-                    }
+                if (table_partition.partition_meta(midx).is_leader() && 
+                        (!table_partition.partition_meta(midx).is_alive())) {
+                    PDLOG(WARNING, "remote table [%s] has a no alive leader partition pid[%u]", 
+                            name.c_str(), table_partition.pid());
+                    is_continue = true;
+                    break;
                 }
             }
         }
