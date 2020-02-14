@@ -136,7 +136,8 @@ bool list_iterator(int8_t *input, int8_t *output) {
         (::fesql::storage::IteratorRef *)(output);
     ::fesql::storage::ListV<V> *col =
         (::fesql::storage::ListV<V> *)(list_ref->list);
-    ::fesql::storage::IteratorImpl<V> *iter = (::fesql::storage::IteratorImpl<V>*)(iterator_ref->iterator);
+    ::fesql::storage::IteratorImpl<V> *iter =
+        (::fesql::storage::IteratorImpl<V> *)(iterator_ref->iterator);
     new (iter) IteratorImpl<V>(*col);
     return true;
 }
@@ -144,16 +145,16 @@ bool list_iterator_int16(int8_t *input, int8_t *output) {
     return list_iterator<int16_t>(input, output);
 }
 bool list_iterator_int32(int8_t *input, int8_t *output) {
-    return list_iterator<int32_t >(input, output);
+    return list_iterator<int32_t>(input, output);
 }
 bool list_iterator_int64(int8_t *input, int8_t *output) {
-    return list_iterator<int64_t >(input, output);
+    return list_iterator<int64_t>(input, output);
 }
 bool list_iterator_float(int8_t *input, int8_t *output) {
-    return list_iterator<float >(input, output);
+    return list_iterator<float>(input, output);
 }
 bool list_iterator_double(int8_t *input, int8_t *output) {
-    return list_iterator<double >(input, output);
+    return list_iterator<double>(input, output);
 }
 
 int16_t sum_int16(int8_t *input) { return sum<int16_t>(input); }

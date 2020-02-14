@@ -18,15 +18,15 @@
 namespace fesql {
 namespace codegen {
 
-
 class ListIRBuilder {
  public:
     ListIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~ListIRBuilder();
 
-
-    bool BuildAt(::llvm::Value* list, ::llvm::Value* pos, ::llvm::Value **output, base::Status &status);
-    bool BuildIterator(::llvm::Value* list, ::llvm::Value **output, base::Status &status);
+    bool BuildAt(::llvm::Value* list, ::llvm::Value* pos,
+                 ::llvm::Value** output, base::Status& status);  // NOLINT
+    bool BuildIterator(::llvm::Value* list, ::llvm::Value** output,
+                       base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;

@@ -135,7 +135,8 @@ bool GetLLVMIteratorSize(const ::fesql::type::Type& v_type, uint32_t* size) {
             break;
         }
         case ::fesql::type::kVarchar: {
-            *size = sizeof(::fesql::storage::IteratorImpl<fesql::storage::StringRef>);
+            *size = sizeof(
+                ::fesql::storage::IteratorImpl<fesql::storage::StringRef>);
             break;
         }
         default: {
@@ -241,7 +242,8 @@ bool GetLLVMListType(::llvm::Module* m,  // NOLINT
 }
 
 bool GetLLVMIteratorType(::llvm::Module* m,  // NOLINT
-                     const ::fesql::type::Type& v_type, ::llvm::Type** output) {
+                         const ::fesql::type::Type& v_type,
+                         ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
@@ -498,7 +500,8 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
     }
 }
 
-bool GetFesqlTypeName(::fesql::type::Type type, ::std::string& name) {
+bool GetFesqlTypeName(::fesql::type::Type type,
+                      ::std::string& name) {  // NOLINT
     if (type == NULL) {
         LOG(WARNING) << "type or output is null";
         return false;
@@ -543,7 +546,7 @@ bool GetFesqlTypeName(::fesql::type::Type type, ::std::string& name) {
         }
     }  // namespace codegen
 }  // namespace codegen
-bool GetLLVMTypeName(::llvm::Type* type, ::std::string& name) {
+bool GetLLVMTypeName(::llvm::Type* type, ::std::string& name) {  // NOLINT
     if (type == NULL) {
         LOG(WARNING) << "type or output is null";
         return false;

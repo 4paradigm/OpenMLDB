@@ -12,6 +12,7 @@
 #include <udf/udf.h>
 #include <cstdlib>
 #include <memory>
+#include <utility>
 #include <vector>
 #include "codegen/buf_ir_builder.h"
 #include "codegen/codegen_base_test.h"
@@ -330,7 +331,7 @@ void GetListIterator(T expected, const ::fesql::type::Type& type,
     ::llvm::StringRef symbol3("iterator_sum_i64");
     ::llvm::StringRef symbol4("iterator_sum_float");
     ::llvm::StringRef symbol5("iterator_sum_double");
-//    ::llvm::StringRef symbol6("iterator_sum_string");
+    //    ::llvm::StringRef symbol6("iterator_sum_string");
     ::llvm::orc::SymbolMap symbol_map;
 
     ::llvm::JITEvaluatedSymbol jit_symbol1(
@@ -365,7 +366,7 @@ void GetListIterator(T expected, const ::fesql::type::Type& type,
     symbol_map.insert(std::make_pair(mi(symbol3), jit_symbol3));
     symbol_map.insert(std::make_pair(mi(symbol4), jit_symbol4));
     symbol_map.insert(std::make_pair(mi(symbol5), jit_symbol5));
-//    symbol_map.insert(std::make_pair(mi(symbol6), jit_symbol6));
+    //    symbol_map.insert(std::make_pair(mi(symbol6), jit_symbol6));
 
     // add codec
     auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
@@ -474,8 +475,8 @@ TEST_F(ListIRBuilderTest, list_int16_iterator_sum_test) {
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> rows;
     BuildWindow2(rows, &ptr);
-    RunListIteratorCast<int16_t >(2 + 22 + 222 + 2222 + 22222,
-                                  ::fesql::type::kInt32, "col2", ptr);
+    RunListIteratorCast<int16_t>(2 + 22 + 222 + 2222 + 22222,
+                                 ::fesql::type::kInt32, "col2", ptr);
     free(ptr);
 }
 
@@ -483,8 +484,8 @@ TEST_F(ListIRBuilderTest, list_int64_iterator_sum_test) {
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> rows;
     BuildWindow2(rows, &ptr);
-    RunListIteratorCast<int64_t >(5L + 55L + 555L + 5555L + 55555L,
-                                  ::fesql::type::kInt64, "col5", ptr);
+    RunListIteratorCast<int64_t>(5L + 55L + 555L + 5555L + 55555L,
+                                 ::fesql::type::kInt64, "col5", ptr);
     free(ptr);
 }
 
@@ -492,8 +493,8 @@ TEST_F(ListIRBuilderTest, list_float_iterator_sum_test) {
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> rows;
     BuildWindow2(rows, &ptr);
-    RunListIteratorCast<float >(3.1f + 33.1f+ 333.1f+ 3333.1f+ 33333.1f,
-                                  ::fesql::type::kFloat, "col3", ptr);
+    RunListIteratorCast<float>(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
+                               ::fesql::type::kFloat, "col3", ptr);
     free(ptr);
 }
 
@@ -501,7 +502,7 @@ TEST_F(ListIRBuilderTest, list_double_iterator_sum_test) {
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> rows;
     BuildWindow2(rows, &ptr);
-    RunListIteratorCast<double >(4.1 + 44.1+ 444.1+ 4444.1+ 44444.1,
+    RunListIteratorCast<double>(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
                                 ::fesql::type::kDouble, "col4", ptr);
     free(ptr);
 }

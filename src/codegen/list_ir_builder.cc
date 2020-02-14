@@ -8,8 +8,8 @@
  **/
 #include "codegen/list_ir_builder.h"
 #include "codegen/cast_expr_ir_builder.h"
-#include "codegen/predicate_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/predicate_expr_ir_builder.h"
 #include "glog/logging.h"
 namespace fesql {
 namespace codegen {
@@ -152,9 +152,7 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
     builder.CreateStore(col_iter, data_ptr_ptr, false);
     ::llvm::Value* iter_i8_ptr = builder.CreatePointerCast(iter_ref, i8_ptr_ty);
 
-
-
-    ::llvm::Value *call_res = builder.CreateCall(
+    ::llvm::Value* call_res = builder.CreateCall(
         fn->getFunctionType(), fn,
         ::llvm::ArrayRef<::llvm::Value*>{list_i8_ptr, iter_i8_ptr});
     if (nullptr == call_res) {
@@ -164,7 +162,7 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
         return false;
     }
 
-    //TODO:(chenjing): check call res true
+    // TODO(chenjing): check call res true
     *output = iter_ref;
     return true;
 }

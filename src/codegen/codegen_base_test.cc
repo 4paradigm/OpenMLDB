@@ -180,7 +180,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
 }
 
 void BuildWindow2(std::vector<fesql::storage::Row>& rows,  // NOLINT
-                 int8_t** buf) {
+                  int8_t** buf) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
     {
@@ -290,9 +290,8 @@ void BuildWindow2(std::vector<fesql::storage::Row>& rows,  // NOLINT
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowImpl* w =
-        new ::fesql::storage::WindowImpl(rows);
+    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 }  // namespace codegen
-}
+}  // namespace fesql

@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
-#include "codegen/codegen_base_test.h"
 #include "codegen/buf_ir_builder.h"
 #include <stdio.h>
 #include <cstdlib>
 #include <memory>
 #include <vector>
+#include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -102,8 +102,7 @@ int32_t PrintListString(int8_t* input) {
     ::fesql::storage::ListRef* list_ref =
         reinterpret_cast<::fesql::storage::ListRef*>(input);
     ::fesql::storage::StringColumnImpl* column =
-        reinterpret_cast<::fesql::storage::StringColumnImpl*>(
-            list_ref->list);
+        reinterpret_cast<::fesql::storage::StringColumnImpl*>(list_ref->list);
     fesql::storage::IteratorImpl<::fesql::storage::StringRef> iter(*column);
     ::fesql::storage::IteratorImpl<::fesql::storage::StringRef>* col = &iter;
     std::cout << "[";
@@ -557,7 +556,6 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
         decode(window);
     }
 }
-
 
 TEST_F(BufIRBuilderTest, native_test_load_int16) {
     int8_t* ptr = NULL;
