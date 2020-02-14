@@ -2673,6 +2673,15 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
+            if (tables_[tid].empty()) {
+                tables_.erase(tid);
+            }
+            if (replicators_[tid].empty()) {
+                replicators_.erase(tid);
+            }
+            if (snapshots_[tid].empty()) {
+                snapshots_.erase(tid);
+            }
         }
 
         if (replicator) {
@@ -2910,6 +2919,9 @@ void TabletImpl::GetAllSnapshotOffset(RpcController* controller,
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         for (auto table_iter = tables_.begin(); table_iter != tables_.end(); table_iter++) {
+            if (table_iter->second.empty()) {
+                continue;
+            }
             uint32_t tid = table_iter->first;
             std::vector<uint32_t> pids;
             auto part_iter = table_iter->second.begin();

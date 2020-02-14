@@ -75,6 +75,8 @@ class NsCluster(object):
             exe_shell("echo '--tablet_heartbeat_timeout=0' >> {}".format(nameserver_flags))
             exe_shell("echo '--request_timeout_ms=100000' >> {}".format(nameserver_flags))
             exe_shell("echo '--name_server_task_concurrency=8' >> {}".format(nameserver_flags))
+            if is_remote:
+                exe_shell("echo '--get_replica_status_interval=600000' >> {}".format(nameserver_flags))
             exe_shell("echo '--zk_session_timeout=2000' >> {}".format(nameserver_flags))
             exe_shell("ulimit -c unlimited")
             cmd = '{}/rtidb --flagfile={}'.format(self.test_path, nameserver_flags)

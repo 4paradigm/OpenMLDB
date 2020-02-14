@@ -389,6 +389,10 @@ class TestCaseBase(unittest.TestCase):
         cmd = '{} {} {} {} {}'.format(updatetablealive, table_name, pid, endpoint, is_alive)
         return self.run_client(ns_endpoint, cmd, 'ns_client')
 
+    def ns_synctable(self, ns_endpoint, table_name, alias, pid = ''):
+        cmd = '{} {} {} {} '.format('synctable', table_name, alias, pid)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
     def ns_recover_table_cmd(self, ns_endpoint, recovertable, table_name, pid, endpoint):
         cmd = '{} {} {} {}'.format(recovertable, table_name, pid, endpoint)
         return self.run_client(ns_endpoint, cmd, 'ns_client')

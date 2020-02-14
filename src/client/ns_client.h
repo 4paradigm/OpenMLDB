@@ -55,6 +55,8 @@ public:
 
     bool DropTable(const std::string& name, std::string& msg);
 
+    bool SyncTable(const std::string& name, const std::string& cluster_alias, uint32_t pid, std::string& msg);
+
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
     bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);
