@@ -537,7 +537,7 @@ class TestMultiCluster(TestCaseBase):
         rs7 = self.ns_scan_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '25', '0', 'ts2', '1')
         self.assertEqual(len(rs7), 1)
 
-        msg = self.ns_update_table_alive_cmd(self.ns_leader, 'updatetablealive', name, '*', self.leader, 'no')
+        msg = self.ns_update_table_alive_cmd(self.ns_leader_r, 'updatetablealive', name, '*', self.leader_r, 'no')
         self.assertIn('update ok', msg)
 
         zk_root_path = '/remote'
@@ -554,12 +554,6 @@ class TestMultiCluster(TestCaseBase):
         rs7 = self.ns_scan_multi_with_pair(self.ns_leader_r, name, 'mcc1', 'mcc',  '25', '0', 'ts2', '1')
         self.assertEqual(len(rs7), 0)
 
-        msg = self.ns_synctable(self.ns_leader, name, self.alias);
-        self.assertIn('local table has a no alive leader partition', msg)
-        msg = self.ns_update_table_alive_cmd(self.ns_leader, 'updatetablealive', name, '*', self.leader, 'yes')
-        self.assertIn('update ok', msg)
-        msg = self.ns_update_table_alive_cmd(self.ns_leader_r, 'updatetablealive', name, '*', self.leader_r, 'no')
-        self.assertIn('update ok', msg)
         msg = self.ns_synctable(self.ns_leader, name, self.alias);
         self.assertIn('remote table has a no alive leader partition', msg)
         msg = self.ns_update_table_alive_cmd(self.ns_leader_r, 'updatetablealive', name, '*', self.leader_r, 'yes')
@@ -714,7 +708,7 @@ class TestMultiCluster(TestCaseBase):
         rs7 = self.ns_scan_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '25', '0', 'ts2', '1')
         self.assertEqual(len(rs7), 1)
 
-        msg = self.ns_update_table_alive_cmd(self.ns_leader, 'updatetablealive', name, '*', self.leader, 'no')
+        msg = self.ns_update_table_alive_cmd(self.ns_leader_r, 'updatetablealive', name, '*', self.leader_r, 'no')
         self.assertIn('update ok', msg)
 
         zk_root_path = '/remote'
@@ -731,14 +725,8 @@ class TestMultiCluster(TestCaseBase):
         rs7 = self.ns_scan_multi_with_pair(self.ns_leader_r, name, 'mcc1', 'mcc',  '25', '0', 'ts2', '1')
         self.assertEqual(len(rs7), 0)
 
-        msg = self.ns_synctable(self.ns_leader, name, self.alias, '0');
-        self.assertIn('local table has a no alive leader partition', msg)
-        msg = self.ns_update_table_alive_cmd(self.ns_leader, 'updatetablealive', name, '*', self.leader, 'yes')
-        self.assertIn('update ok', msg)
         msg = self.ns_synctable(self.ns_leader, name, self.alias, '1');
         self.assertIn('table has no current pid', msg)
-        msg = self.ns_update_table_alive_cmd(self.ns_leader_r, 'updatetablealive', name, '*', self.leader_r, 'no')
-        self.assertIn('update ok', msg)
         msg = self.ns_synctable(self.ns_leader, name, self.alias, '0');
         self.assertIn('remote table has a no alive leader partition', msg)
         msg = self.ns_update_table_alive_cmd(self.ns_leader_r, 'updatetablealive', name, '*', self.leader_r, 'yes')

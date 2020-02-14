@@ -171,27 +171,34 @@ void NameServerImpl::CheckSyncExistTable(const std::string& alias,
             table_info_local = *(iter->second);
         }
         bool is_continue = false;
-        for (int idx = 0; idx < table_info_local.table_partition_size(); idx++) {
-            ::rtidb::nameserver::TablePartition table_partition_local = table_info_local.table_partition(idx);
-            for (int midx = 0; midx < table_partition_local.partition_meta_size(); midx++) {
-                if (table_partition_local.partition_meta(midx).is_leader() &&
-                        (!table_partition_local.partition_meta(midx).is_alive())) {
-                    PDLOG(WARNING, "table [%s] pid [%u] has a no alive leader partition", 
-                            name.c_str(), table_partition_local.pid());
-                    is_continue = true;
-                }
-            }
-        }
         //remote table
         for (int idx = 0; idx < table_info_remote.table_partition_size(); idx++) {
-            ::rtidb::nameserver::TablePartition table_partition = table_info_remote.table_partition(idx);
+            const ::rtidb::nameserver::TablePartition& table_partition = table_info_remote.table_partition(idx);
             for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
                 if (table_partition.partition_meta(midx).is_leader()) { 
                     if (!table_partition.partition_meta(midx).is_alive()) {
                         PDLOG(WARNING, "remote table [%s] has a no alive leader partition pid[%u]", 
                                 name.c_str(), table_partition.pid());
                         is_continue = true;
+                        break;
                     }
+                }
+            }
+        }
+        if (is_continue) {
+            PDLOG(WARNING, "table [%s] does not sync to replica cluster [%s]", 
+                    name.c_str(), alias.c_str());
+            continue;
+        }
+        for (int idx = 0; idx < table_info_local.table_partition_size(); idx++) {
+            const ::rtidb::nameserver::TablePartition& table_partition_local = table_info_local.table_partition(idx);
+            for (int midx = 0; midx < table_partition_local.partition_meta_size(); midx++) {
+                if (table_partition_local.partition_meta(midx).is_leader() &&
+                        (!table_partition_local.partition_meta(midx).is_alive())) {
+                    PDLOG(WARNING, "table [%s] pid [%u] has a no alive leader partition", 
+                            name.c_str(), table_partition_local.pid());
+                    is_continue = true;
+                    break;
                 }
             }
         }
@@ -212,6 +219,7 @@ void NameServerImpl::CheckSyncExistTable(const std::string& alias,
                                     table_info_remote.tid(), cur_pid) < 0) {
                             PDLOG(WARNING, "create AddReplicasSimplyRemoteOP failed. table[%s] pid[%u] alias[%s]", 
                                     name.c_str(), cur_pid, alias.c_str());
+                            break;
                         }
                     }
                 }
@@ -8187,6 +8195,25 @@ int NameServerImpl::SyncExistTable(const std::string& name,
         }
     }
     {
+        decltype(tablets_) tablets;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto it = tablets_.begin();
+            for (; it != tablets_.end(); it++) {
+                if (it->second->state_ != api::kTabletHealthy) {
+                    continue;
+                }
+                tablets.insert(std::make_pair(it->first, it->second));
+            }
+        }
+        std::map<std::string, std::map<uint32_t, std::map<uint32_t, uint64_t>>> tablet_part_offset;
+        for (auto it = tablets.begin(); it != tablets.end(); it++) {
+            std::map<uint32_t, std::map<uint32_t, uint64_t>> value;
+            bool ok = it->second->client_->GetAllSnapshotOffset(value);
+            if (ok) {
+                tablet_part_offset.insert(std::make_pair(it->second->client_->GetEndpoint(), value));
+            }
+        }
         std::lock_guard<std::mutex> lock(mu_);
         if (!CompareTableInfo(table_vec)) {
             PDLOG(WARNING, "compare table info error");
@@ -8194,12 +8221,9 @@ int NameServerImpl::SyncExistTable(const std::string& name,
             code = 567;
             return -1;
         }
-        //TODO: after merge feat/110-binlog-vs-snapshot-offset into develop
-        /**
-          if (!CompareSnapshotOffset(table_vec, msg, code, tablet_part_offset)) {
-          return -1;
-          }
-          */
+        if (!CompareSnapshotOffset(table_vec, msg, code, tablet_part_offset)) {
+            return -1;
+        }
     }
     std::vector<uint32_t> pid_vec;
     if (pid == UINT32_MAX) {
