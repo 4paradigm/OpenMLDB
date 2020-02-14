@@ -30,41 +30,6 @@
 namespace fesql {
 namespace codegen {
 
-// the table row access builder refer to fesql-docs/schema.md
-class BufIRBuilder {
- public:
-    BufIRBuilder(::fesql::type::TableDef* table, ::llvm::BasicBlock* block,
-                 ScopeVar* scope_var);
-
-    ~BufIRBuilder();
-
-
-    // get reference from row
-    bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
-                       ::llvm::Value* row_size, ::llvm::Value** output);
-
- private:
-    bool BuildGetString(const std::string& name, ::llvm::Value* row_ptr,
-                        ::llvm::Value* row_size, ::llvm::Value** output);
-
-    // get field offset
-    bool GetFieldOffset(const std::string& name, ::llvm::Value* row_ptr,
-                        ::llvm::Value* row_size, ::llvm::Value** output);
-
-    // get the next field offset from some field
-    bool GetNextOffset(const std::string& name, ::llvm::Value* row_ptr,
-                       ::llvm::Value* row_size, ::llvm::Value** output);
-
- private:
-    ::fesql::type::TableDef* const table_;
-    ::llvm::BasicBlock* block_;
-    ScopeVar* sv_;
-    VariableIRBuilder variable_ir_builder_;
-    typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
-        Types;
-    Types types_;
-};
-
 class BufNativeEncoderIRBuilder {
  public:
     BufNativeEncoderIRBuilder(
