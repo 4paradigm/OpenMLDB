@@ -30,6 +30,7 @@ void RemoveData(const std::string& path) {
     ::rtidb::base::RemoveDir(path+"/data");
     ::rtidb::base::RemoveDir(path);
     ::rtidb::base::RemoveDir(FLAGS_hdd_root_path);
+    ::rtidb::base::RemoveDir(FLAGS_ssd_root_path);
 }
 
 class DiskTableTest : public ::testing::Test {
@@ -224,8 +225,8 @@ TEST_F(DiskTableTest, LongPut) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     DiskTable* table = new DiskTable("yjtable3", 1, 3, mapping, 10, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
-            FLAGS_hdd_root_path);
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kSSD,
+            FLAGS_ssd_root_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
         Dimensions  dimensions;
@@ -272,7 +273,7 @@ TEST_F(DiskTableTest, LongPut) {
         delete it1;
     }
     delete table;
-    std::string path = FLAGS_hdd_root_path + "/1_3";
+    std::string path = FLAGS_ssd_root_path + "/1_3";
     RemoveData(path);
 }
 
@@ -1224,5 +1225,6 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
+    FLAGS_ssd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
     return RUN_ALL_TESTS();
 }
