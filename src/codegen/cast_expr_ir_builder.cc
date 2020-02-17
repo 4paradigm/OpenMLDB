@@ -135,7 +135,9 @@ bool CastExprIRBuilder::IsStringCast(llvm::Type* type) {
 // try to cast other type of value to string type
 bool CastExprIRBuilder::StringCast(llvm::Value* value,
                                    llvm::Value** casted_value,
-                                   base::Status& status) {}
+                                   base::Status& status) {
+    return false;
+}
 
 // cast fesql type to bool: compare value with 0
 bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,

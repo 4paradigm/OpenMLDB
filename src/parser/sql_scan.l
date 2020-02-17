@@ -207,6 +207,8 @@ LEADING	{ return LEADING; }
 LEAVE	{ return LEAVE; }
 LEFT	{ return LEFT; }
 LIKE	{ return LIKE; }
+LIST    { return LIST; }
+LOAD	{ return LOAD; }
 LIMIT	{ return LIMIT; }
 LINES	{ return LINES; }
 LOAD	{ return LOAD; }
@@ -219,6 +221,7 @@ LONGTEXT	{ return LONGTEXT; }
 LOOP	{ return LOOP; }
 LOW_PRIORITY	{ return LOW_PRIORITY; }
 MATCH	{ return MATCH; }
+MAP     { return MAP; }
 MEDIUMBLOB	{ return MEDIUMBLOB; }
 MIDDLEINT|MEDIUMINT	{ return MEDIUMINT; }
 MEDIUMTEXT	{ return MEDIUMTEXT; }

@@ -202,19 +202,19 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
     node::ConstNode *primary =
         dynamic_cast<node::ConstNode *>(bound->GetOffset());
     switch (primary->GetDataType()) {
-        case node::DataType::kTypeInt16:
+        case node::DataType::kInt16:
             offset = static_cast<int64_t>(primary->GetSmallInt());
             break;
-        case node::DataType::kTypeInt32:
+        case node::DataType::kInt32:
             offset = static_cast<int64_t>(primary->GetInt());
             break;
-        case node::DataType::kTypeInt64:
+        case node::DataType::kInt64:
             offset = (primary->GetLong());
             break;
-        case node::DataType::kTypeDay:
-        case node::DataType::kTypeHour:
-        case node::DataType::kTypeMinute:
-        case node::DataType::kTypeSecond:
+        case node::DataType::kDay:
+        case node::DataType::kHour:
+        case node::DataType::kMinute:
+        case node::DataType::kSecond:
             offset = (primary->GetMillis());
             break;
         default: {
@@ -509,26 +509,26 @@ void TransformTableDef(const std::string &table_name,
                 column->set_is_not_null(column_def->GetIsNotNull());
                 column_names.insert(column_def->GetColumnName());
                 switch (column_def->GetColumnType()) {
-                    case node::kTypeBool:
+                    case type::kBool:
                         column->set_type(type::Type::kBool);
                         break;
-                    case node::kTypeInt32:
+                    case type::kInt32:
                         column->set_type(type::Type::kInt32);
                         break;
-                    case node::kTypeInt64:
+                    case type::kInt64:
                         column->set_type(type::Type::kInt64);
                         break;
-                    case node::kTypeFloat:
+                    case type::kFloat:
                         column->set_type(type::Type::kFloat);
                         break;
-                    case node::kTypeDouble:
+                    case type::kDouble:
                         column->set_type(type::Type::kDouble);
                         break;
-                    case node::kTypeTimestamp: {
+                    case type::kTimestamp: {
                         column->set_type(type::Type::kTimestamp);
                         break;
                     }
-                    case node::kTypeString:
+                    case type::kVarchar:
                         column->set_type(type::Type::kVarchar);
                         break;
                     default: {

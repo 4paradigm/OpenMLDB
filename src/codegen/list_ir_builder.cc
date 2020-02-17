@@ -180,7 +180,7 @@ bool ListIRBuilder::BuildIteratorHasNext(::llvm::Value* iterator,
     fesql::type::Type v1;
     fesql::type::Type v2;
     if (false == GetFullType(iterator->getType(), &base, &v1, &v2) ||
-        fesql::type::kListIterator != base) {
+        fesql::type::kIterator != base) {
         status.msg =
             "fail to codegen iterator.has_next(): invalid iterator type";
         status.code = common::kCodegenError;
@@ -235,7 +235,7 @@ bool ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
     fesql::type::Type v1;
     fesql::type::Type v2;
     if (false == GetFullType(iterator->getType(), &base, &v1, &v2) ||
-        fesql::type::kListIterator != base) {
+        fesql::type::kIterator != base) {
         status.msg = "fail to codegen iterator.next(): invalid iterator type";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;

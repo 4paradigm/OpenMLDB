@@ -108,6 +108,10 @@ class NodeManager {
 
     SQLNode *MakeResTargetNode(ExprNode *node_ptr, const std::string &name);
 
+    TypeNode *MakeTypeNode(fesql::type::Type base);
+    TypeNode *MakeTypeNode(fesql::type::Type base, fesql::type::Type v1);
+    TypeNode *MakeTypeNode(fesql::type::Type base, fesql::type::Type v1,
+                           fesql::type::Type v2);
     ExprNode *MakeColumnRefNode(const std::string &column_name,
                                 const std::string &relation_name);
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
@@ -128,16 +132,16 @@ class NodeManager {
 
     FnNode *MakeFnNode(const SQLNodeType &type);
     FnNodeList *MakeFnListNode();
-    FnNode *MakeFnDefNode(const FnNode* header, const FnNodeList* block);
+    FnNode *MakeFnDefNode(const FnNode *header, const FnNodeList *block);
     FnNode *MakeFnHeaderNode(const std::string &name, FnNodeList *plist,
-                          const DataType return_type);
+                             const TypeNode *return_type);
 
-    FnNode *MakeFnParaNode(const std::string &name, const DataType &para_type);
+    FnNode *MakeFnParaNode(const std::string &name, const TypeNode *para_type);
     FnNode *MakeAssignNode(const std::string &name, ExprNode *expression);
     FnNode *MakeReturnStmtNode(ExprNode *value);
     FnIfBlock *MakeFnIfBlock(const FnIfNode *if_node, const FnNodeList *block);
     FnElifBlock *MakeFnElifBlock(const FnElifNode *elif_node,
-                                const FnNodeList *block);
+                                 const FnNodeList *block);
     FnIfElseBlock *MakeFnIfElseBlock(const FnIfBlock *if_block,
                                      const FnElseBlock *else_block);
     FnElseBlock *MakeFnElseBlock(const FnNodeList *block);

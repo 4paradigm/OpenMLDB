@@ -10,6 +10,7 @@
 #ifndef SRC_NODE_NODE_ENUM_H_
 #define SRC_NODE_NODE_ENUM_H_
 
+#include <proto/type.pb.h>
 #include <string>
 #include "proto/common.pb.h"
 namespace fesql {
@@ -27,6 +28,7 @@ enum SQLNodeType {
     kInsertStmt,
     kCmdStmt,
     kExpr,
+    kType,
     kResTarget,
     kTable,
     kWindowFunc,
@@ -42,7 +44,6 @@ enum SQLNodeType {
     kName,
     kConst,
     kLimit,
-    kList,
     kOrderBy,
 
     kDesc,
@@ -89,24 +90,8 @@ enum ExprType {
     kExprStruct,
     kExprUnknow = 9999
 };
-enum DataType {
-    kTypeBool,
-    kTypeInt16,
-    kTypeInt32,
-    kTypeInt64,
-    kTypeFloat,
-    kTypeDouble,
-    kTypeString,
-    kTypeTimestamp,
-    kTypeHour,
-    kTypeDay,
-    kTypeMinute,
-    kTypeSecond,
-    kTypeRow,
-    kTypeNull,
-    kTypeVoid,
-    kTypeInt8Ptr,
-};
+typedef fesql::type::Type DataType;
+
 
 enum TimeUnit {
     kTimeUnitHour,

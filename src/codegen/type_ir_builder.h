@@ -21,6 +21,7 @@
 #include <node/node_enum.h>
 #include <string>
 #include <vector>
+#include "codegen/ir_base_builder.h"
 namespace fesql {
 namespace codegen {
 
@@ -34,63 +35,36 @@ struct String {
     char* data;
 };
 
-inline const bool ConvertFeSQLType2DataType(
-    const fesql::type::Type proto_type,
-    node::DataType& data_type) {  // NOLINT
-    switch (proto_type) {
-        case fesql::type::kInt16:
-            data_type = node::kTypeInt16;
-            break;
-        case fesql::type::kInt32:
-            data_type = node::kTypeInt32;
-            break;
-        case fesql::type::kInt64:
-            data_type = node::kTypeInt64;
-            break;
-        case fesql::type::kFloat:
-            data_type = node::kTypeFloat;
-            break;
-        case fesql::type::kDouble:
-            data_type = node::kTypeDouble;
-            break;
-        case fesql::type::kBool:
-            data_type = node::kTypeBool;
-            break;
-        case fesql::type::kVarchar:
-            data_type = node::kTypeString;
-            break;
-        default: {
-            return false;
-        }
-    }
-    return true;
-}
-inline const bool ConvertFeSQLType2LLVMType(const node::DataType& data_type,
+inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
                                             ::llvm::Module* m,  // NOLINT
                                             ::llvm::Type** llvm_type) {
-    switch (data_type) {
-        case node::kTypeVoid:
+    if (nullptr == data_type) {
+        LOG(WARNING) << "fail to convert data type to llvm type";
+        return false;
+    }
+    switch (data_type->base_) {
+        case type::kVoid:
             *llvm_type = (::llvm::Type::getVoidTy(m->getContext()));
             break;
-        case node::kTypeInt16:
+        case type::kInt16:
             *llvm_type = (::llvm::Type::getInt16Ty(m->getContext()));
             break;
-        case node::kTypeInt32:
+        case type::kInt32:
             *llvm_type = (::llvm::Type::getInt32Ty(m->getContext()));
             break;
-        case node::kTypeInt64:
+        case type::kInt64:
             *llvm_type = (::llvm::Type::getInt64Ty(m->getContext()));
             break;
-        case node::kTypeFloat:
+        case type::kFloat:
             *llvm_type = (::llvm::Type::getFloatTy(m->getContext()));
             break;
-        case node::kTypeDouble:
+        case type::kDouble:
             *llvm_type = (::llvm::Type::getDoubleTy(m->getContext()));
             break;
-        case node::kTypeInt8Ptr:
+        case type::kInt8Ptr:
             *llvm_type = (::llvm::Type::getInt8PtrTy(m->getContext()));
             break;
-        case node::kTypeString: {
+        case type::kVarchar: {
             std::string name = "fe.string_ref";
             ::llvm::StringRef sr(name);
             ::llvm::StructType* stype = m->getTypeByName(sr);
@@ -109,9 +83,18 @@ inline const bool ConvertFeSQLType2LLVMType(const node::DataType& data_type,
             *llvm_type = stype;
             return true;
         }
+        case type::kList: {
+            if (data_type->generics_.size() != 1) {
+                LOG(WARNING) << "fail to convert data type: list generic types "
+                                "number is " +
+                                    data_type->generics_.size();
+                return false;
+            }
+            std::string name;
+        }
         default: {
             LOG(WARNING) << "fail to convert fesql datatype to llvm type: "
-                         << node::DataTypeName(data_type);
+                         << data_type;
             return false;
         }
     }

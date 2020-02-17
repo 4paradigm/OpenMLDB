@@ -62,7 +62,7 @@ ExprIRBuilder::~ExprIRBuilder() {}
     ::llvm::Function* fn = module_->getFunction(fn_name);
 
     if (nullptr == fn) {
-        if (::fesql::node::kTypeVoid != type) {
+        if (::fesql::type::kVoid != type) {
             const std::string suffix = fesql::node::DataTypeName(type);
             fn = module_->getFunction(fn_name + "_" + suffix);
             if (nullptr == fn) {
@@ -104,22 +104,22 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                 (::fesql::node::ConstNode*)node;
 
             switch (const_node->GetDataType()) {
-                case ::fesql::node::kTypeInt16:
+                case ::fesql::type::kInt16:
                     *output = builder.getInt16(const_node->GetSmallInt());
                     return true;
-                case ::fesql::node::kTypeInt32:
+                case ::fesql::type::kInt32:
                     *output = builder.getInt32(const_node->GetInt());
                     return true;
-                case ::fesql::node::kTypeInt64:
+                case ::fesql::type::kInt64:
                     *output = builder.getInt64(const_node->GetLong());
                     return true;
-                case ::fesql::node::kTypeFloat:
+                case ::fesql::type::kFloat:
                     return GetConstFloat(block_->getContext(),
                                          const_node->GetFloat(), output);
-                case ::fesql::node::kTypeDouble:
+                case ::fesql::type::kDouble:
                     return GetConstDouble(block_->getContext(),
                                           const_node->GetDouble(), output);
-                case ::fesql::node::kTypeString: {
+                case ::fesql::type::kVarchar: {
                     std::string val(const_node->GetStr(),
                                     strlen(const_node->GetStr()));
                     return GetConstFeString(val, block_, output);
@@ -178,7 +178,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     std::vector<::llvm::Value*> llvm_args;
     const std::vector<::fesql::node::SQLNode*>& args = call_fn->GetArgs();
     std::vector<::fesql::node::SQLNode*>::const_iterator it = args.cbegin();
-    ::fesql::node::DataType list_value_type = ::fesql::node::kTypeVoid;
+    ::fesql::type::Type list_value_type = ::fesql::type::kVoid;
     for (; it != args.cend(); ++it) {
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
         ::llvm::Value* llvm_arg = NULL;
@@ -195,10 +195,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
                 }
                 // handle list type
                 if (fesql::type::kList == base) {
-                    if (false ==
-                        ConvertFeSQLType2DataType(v1_type, list_value_type)) {
-                        return false;
-                    }
+                    list_value_type = v1_type;
                     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
                     llvm_arg = builder.CreatePointerCast(llvm_arg, i8_ptr_ty);
                 }
@@ -244,9 +241,8 @@ bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
                                           &type)) {
                 members.push_back(type);
             } else {
-                LOG(WARNING)
-                    << "Invalid struct with unacceptable field type: " +
-                           ::fesql::node::DataTypeName(field->GetParaType());
+                LOG(WARNING) << "Invalid struct with unacceptable field type: "
+                             << (field->GetParaType());
                 return false;
             }
         }

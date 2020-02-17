@@ -53,7 +53,8 @@ typedef void* yyscan_t;
 	::fesql::node::SQLNode* node;
 	::fesql::node::FnNode* fnnode;
 	::fesql::node::ExprNode* expr;
-	::fesql::node::DataType type;
+	::fesql::type::Type type;
+	::fesql::node::TypeNode* typenode;
 	::fesql::node::FnNodeList* fnlist;
 	::fesql::node::ExprListNode* exprlist;
 	::fesql::node::SQLNodeList* list;
@@ -208,6 +209,7 @@ typedef void* yyscan_t;
 %token LIKE
 %token LIMIT
 %token LINES
+%token LIST
 %token LOAD
 %token LOCALTIME
 %token LOCALTIMESTAMP
@@ -218,6 +220,7 @@ typedef void* yyscan_t;
 %token LOOP
 %token LOW_PRIORITY
 %token MATCH
+%token MAP
 %token MEDIUMBLOB
 %token MEDIUMINT
 %token MEDIUMTEXT
@@ -344,6 +347,7 @@ typedef void* yyscan_t;
 
  /* udf */
 %type <type> types
+%type <typenode> complex_types
 %type <fnnode> grammar line_list
 			   fun_def_block fn_header_indent_op  func_stmt
                fn_header return_stmt assign_stmt para
@@ -487,18 +491,22 @@ func_stmt:
          };
 
 fn_header :
-       DEF VARNAME'(' plist ')' ':' types {
-            $$ = node_manager->MakeFnHeaderNode($2, $4, $7);
-       };
+   		DEF VARNAME'(' plist ')' ':' types {
+			$$ = node_manager->MakeFnHeaderNode($2, $4, node_manager->MakeTypeNode($7));
+   		};
+   		|DEF VARNAME'(' plist ')' ':' complex_types {
+			$$ = node_manager->MakeFnHeaderNode($2, $4, $7);
+   		};
 
-assign_stmt: VARNAME ASSIGN expr {
+assign_stmt:
+		VARNAME ASSIGN expr {
             $$ = node_manager->MakeAssignNode($1, $3);
-           };
+        };
 
 return_stmt:
-           RETURN expr {
+		RETURN expr {
             $$ = node_manager->MakeReturnStmtNode($2);
-           };
+        };
 
 if_stmt:
 		IF expr {
@@ -515,34 +523,40 @@ else_stmt:
 
 types:  I32
         {
-            $$ = ::fesql::node::kTypeInt32;
+            $$ = ::fesql::type::kInt32;
         }
         |INTEGER
         {
-            $$ = ::fesql::node::kTypeInt32;
+            $$ = ::fesql::type::kInt32;
         }
         |BIGINT
         {
-            $$ = ::fesql::node::kTypeInt64;
+            $$ = ::fesql::type::kInt64;
         }
         |STRINGTYPE
         {
-            $$ = ::fesql::node::kTypeString;
+            $$ = ::fesql::type::kVarchar;
         }
         |FLOAT
         {
-            $$ = ::fesql::node::kTypeFloat;
+            $$ = ::fesql::type::kFloat;
         }
         |DOUBLE
         {
-            $$ = ::fesql::node::kTypeDouble;
+            $$ = ::fesql::type::kDouble;
         }
         |TIMESTAMP
         {
-            $$ = ::fesql::node::kTypeTimestamp;
+            $$ = ::fesql::type::kTimestamp;
         }
         ;
 
+complex_types:
+		LIST '<' types '>'
+		{
+			$$ = node_manager->MakeTypeNode(::fesql::type::kList, $3);
+		}
+		;
 plist:
      para {
         $$ = node_manager->MakeFnListNode();
@@ -552,23 +566,28 @@ plist:
         $$->AddChild($3);
      };
 
-para: VARNAME ':' types {
-        $$ = node_manager->MakeFnParaNode($1, $3);
-    };
+para:
+	VARNAME ':' types {
+        $$ = node_manager->MakeFnParaNode($1, node_manager->MakeTypeNode($3));
+    }
+    |VARNAME ':' complex_types {
+    	$$ = node_manager->MakeFnParaNode($1, $3);
+    }
+    ;
 
 
 primary_time:
     DAYNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeDay);
+        $$ = node_manager->MakeConstNode($1, fesql::type::kDay);
     }
     |HOURNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeHour);
+        $$ = node_manager->MakeConstNode($1, fesql::type::kHour);
     }
     |MINUTENUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeMinute);
+        $$ = node_manager->MakeConstNode($1, fesql::type::kMinute);
     }
     |SECONDNUM{
-        $$ = node_manager->MakeConstNode($1, fesql::node::kTypeSecond);
+        $$ = node_manager->MakeConstNode($1, fesql::type::kSecond);
     }
 var: VARNAME {
         $$ = node_manager->MakeFnIdNode($1);

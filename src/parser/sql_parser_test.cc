@@ -353,7 +353,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column1",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
                   ->GetColumnName());
-    ASSERT_EQ(node::kTypeInt32,
+    ASSERT_EQ(type::kInt32,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
                   ->GetColumnType());
     ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
@@ -362,7 +362,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column2",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
                   ->GetColumnName());
-    ASSERT_EQ(node::kTypeTimestamp,
+    ASSERT_EQ(type::kTimestamp,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
                   ->GetColumnType());
     ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
@@ -371,7 +371,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column3",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
                   ->GetColumnName());
-    ASSERT_EQ(node::kTypeInt32,
+    ASSERT_EQ(type::kInt32,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
                   ->GetColumnType());
     ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
@@ -380,7 +380,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column4",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
                   ->GetColumnName());
-    ASSERT_EQ(node::kTypeString,
+    ASSERT_EQ(type::kVarchar,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
                   ->GetColumnType());
     ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
@@ -389,7 +389,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column5",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
                   ->GetColumnName());
-    ASSERT_EQ(node::kTypeInt32,
+    ASSERT_EQ(type::kInt32,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
                   ->GetColumnType());
     ASSERT_EQ(false,

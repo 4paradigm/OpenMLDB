@@ -141,23 +141,29 @@ void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
         const std::string tab = org_tab + INDENT + SPACE_ED;
         output << tab << SPACE_ST;
         switch (date_type_) {
-            case kTypeInt32:
+            case fesql::type::kInt16:
+                output << "value: " << val_.vsmallint;
+                break;
+            case fesql::type::kInt32:
                 output << "value: " << val_.vint;
                 break;
-            case kTypeInt64:
+            case fesql::type::kInt64:
                 output << "value: " << val_.vlong;
                 break;
-            case kTypeString:
+            case fesql::type::kVarchar:
                 output << "value: " << val_.vstr;
                 break;
-            case kTypeFloat:
+            case fesql::type::kFloat:
                 output << "value: " << val_.vfloat;
                 break;
-            case kTypeDouble:
+            case fesql::type::kDouble:
                 output << "value: " << val_.vdouble;
                 break;
-            case kTypeNull:
+            case fesql::type::kNull:
                 output << "value: null";
+                break;
+            case fesql::type::kVoid:
+                output << "value: void";
                 break;
             default:
                 output << "value: unknow";
@@ -553,16 +559,17 @@ void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, DataTypeName(para_type_), name_, true);
+
+    PrintSQLNode(output, tab, para_type_, name_, true);
 }
 void FnNodeFnHeander::Print(std::ostream &output,
-                        const std::string &org_tab) const {
+                            const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, this->name_, "func_name", true);
     output << "\n";
-    PrintValue(output, tab, DataTypeName(this->ret_type_), "return_type", true);
+    PrintSQLNode(output, tab, ret_type_, "return_type", true);
     output << "\n";
     PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(parameters_),
                  "parameters", true);
@@ -587,7 +594,7 @@ void FnAssignNode::Print(std::ostream &output,
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, is_ssa_? "true" : "false", "ssa", false);
+    PrintValue(output, tab, is_ssa_ ? "true" : "false", "ssa", false);
     output << "\n";
     PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(expression_),
                  name_, true);
@@ -626,7 +633,7 @@ void FnIfBlock::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSQLNode(output, tab, block_, "block", true);
 }
 void FnElifBlock::Print(std::ostream &output,
-                          const std::string &org_tab) const {
+                        const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -662,6 +669,20 @@ void StructExpr::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSQLNode(output, tab, methods_, "methods", true);
 }
 
-
+void TypeNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    std::string type_name = DataTypeName(base_);
+    if (!generics_.empty()) {
+        type_name.append("<");
+        for (DataType type : generics_) {
+            type_name.append(DataTypeName(type));
+            type_name.append(",");
+        }
+        type_name.pop_back();
+        type_name.append(">");
+    }
+    PrintValue(output, tab, type_name, "type", false);
+}
 }  // namespace node
 }  // namespace fesql

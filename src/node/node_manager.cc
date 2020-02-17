@@ -405,7 +405,8 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
 }
 
 FnNode *NodeManager::MakeFnHeaderNode(const std::string &name,
-                                      FnNodeList *plist, DataType return_type) {
+                                      FnNodeList *plist,
+                                      const TypeNode *return_type) {
     ::fesql::node::FnNodeFnHeander *fn_header =
         new FnNodeFnHeander(name, plist, return_type);
     return RegisterNode(fn_header);
@@ -414,7 +415,7 @@ FnNode *NodeManager::MakeFnHeaderNode(const std::string &name,
 FnNode *NodeManager::MakeFnDefNode(const FnNode *header,
                                    const FnNodeList *block) {
     ::fesql::node::FnNodeFnDef *fn_def =
-        new FnNodeFnDef(dynamic_cast<const FnNodeFnHeander*>(header), block);
+        new FnNodeFnDef(dynamic_cast<const FnNodeFnHeander *>(header), block);
     return RegisterNode(fn_def);
 }
 FnNode *NodeManager::MakeAssignNode(const std::string &name,
@@ -481,7 +482,7 @@ FnElseBlock *NodeManager::MakeFnElseBlock(const FnNodeList *block) {
 }
 
 FnNode *NodeManager::MakeFnParaNode(const std::string &name,
-                                    const DataType &para_type) {
+                                    const TypeNode *para_type) {
     ::fesql::node::FnParaNode *para_node =
         new ::fesql::node::FnParaNode(name, para_type);
     return RegisterNode(para_node);
@@ -559,6 +560,26 @@ SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
             new InsertStmt(table_name, column_names, values->children);
         return RegisterNode(node_ptr);
     }
+}
+
+TypeNode *NodeManager::MakeTypeNode(fesql::type::Type base) {
+    TypeNode *node_ptr = new TypeNode(base);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+
+TypeNode *NodeManager::MakeTypeNode(fesql::type::Type base,
+                                    fesql::type::Type v1) {
+    TypeNode *node_ptr = new TypeNode(base, v1);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+TypeNode *NodeManager::MakeTypeNode(fesql::type::Type base,
+                                    fesql::type::Type v1,
+                                    fesql::type::Type v2) {
+    TypeNode *node_ptr = new TypeNode(base, v1, v2);
+    RegisterNode(node_ptr);
+    return node_ptr;
 }
 
 }  // namespace node

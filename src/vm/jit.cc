@@ -145,6 +145,7 @@ bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
 
 bool InitBasicSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                      ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
+    return true;
 }
 
 }  // namespace vm

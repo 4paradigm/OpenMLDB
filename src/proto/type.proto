@@ -14,8 +14,16 @@ enum Type {
     kDate = 10;
     kTimestamp = 11;
     kList = 12;
-    kListIterator = 13;
+    kIterator = 13;
+    kMap = 14;
+    kHour = 15;
+    kMinute = 16;
+    kSecond = 17;
+    kDay = 18;
+    kRow = 19;
+    kInt8Ptr = 20;
     kVoid = 100;
+    kNull = 101;
 }
 
 enum TTLType {
