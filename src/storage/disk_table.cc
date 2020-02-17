@@ -165,7 +165,8 @@ bool DiskTable::Init() {
 
 bool DiskTable::Put(const std::string &pk, uint64_t time, const char *data, uint32_t size) {
     rocksdb::Status s;
-    rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(pk, time));
+    std::string combine_key = CombineKeyTs(pk, time);
+    rocksdb::Slice spk = rocksdb::Slice(combine_key);
     s = db_->Put(write_opts_, cf_hs_[1], spk, rocksdb::Slice(data, size));
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
@@ -186,7 +187,8 @@ bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &d
                             it->key().c_str(), it->idx(), id_, pid_);
             return false;
         }
-        rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(it->key(), time));
+        std::string combine_key = CombineKeyTs(it->key(), time);
+        rocksdb::Slice spk = rocksdb::Slice(combine_key);
         batch.Put(cf_hs_[it->idx() + 1], spk, value);
     }
     s = db_->Write(write_opts_, &batch);
@@ -218,9 +220,11 @@ bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsi
               }
               rocksdb::Slice spk;
               if (ts_vector.size() == 1) {
-                  spk = rocksdb::Slice(CombineKeyTs(it->key(), cur_ts.ts()));
+                  std::string combine_key = CombineKeyTs(it->key(), cur_ts.ts());
+                  spk = rocksdb::Slice(combine_key);
               } else {
-                  spk = rocksdb::Slice(CombineKeyTs(it->key(), cur_ts.ts(), (uint8_t)cur_ts.idx()));
+                  std::string combine_key = CombineKeyTs(it->key(), cur_ts.ts(), (uint8_t)cur_ts.idx());
+                  spk = rocksdb::Slice(combine_key);
               }
               batch.Put(cf_hs_[it->idx() + 1], spk, value);
           }
@@ -239,17 +243,23 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
     std::map<uint32_t, std::vector<uint32_t>>::iterator it = column_key_map_.find(idx);
     if (it != column_key_map_.end()) {
         if (it->second.size() == 1) {
+            std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX);
+            std::string combine_key2 = CombineKeyTs(pk, 0);
             batch.DeleteRange(cf_hs_[idx+1],
-                rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX)), rocksdb::Slice(CombineKeyTs(pk, 0)));
+                rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
         } else {
             for (auto ts : it->second) {
-                batch.DeleteRange(cf_hs_[idx+1], rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX, ts)),
-                    rocksdb::Slice(CombineKeyTs(pk, 0, ts)));
+                std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX, ts);
+                std::string combine_key2 = CombineKeyTs(pk, 0, ts);
+                batch.DeleteRange(cf_hs_[idx+1], rocksdb::Slice(combine_key1),
+                    rocksdb::Slice(combine_key2));
             }
         }
     } else {
+        std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX);
+        std::string combine_key2 = CombineKeyTs(pk, 0);
         batch.DeleteRange(cf_hs_[idx+1],
-            rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX)), rocksdb::Slice(CombineKeyTs(pk, 0)));
+            rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
@@ -280,9 +290,11 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk,
     }
     rocksdb::Slice spk ;
     if (column_map_iter->second.size() > 1) {
-        spk = rocksdb::Slice(CombineKeyTs(pk, ts, ts_idx));
+        std::string combine_key = CombineKeyTs(pk, ts, ts_idx);
+        spk = rocksdb::Slice(combine_key);
     } else {
-        spk = rocksdb::Slice(CombineKeyTs(pk, ts));
+        std::string combine_key = CombineKeyTs(pk, ts);
+        spk = rocksdb::Slice(combine_key);
     }
     rocksdb::Status s;
     s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
@@ -301,9 +313,11 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
     rocksdb::Slice spk ;
     auto pos = column_key_map_.find(idx);
     if ((pos != column_key_map_.end()) && (pos->second.size() > 1)) {
-        spk = rocksdb::Slice(CombineKeyTs(pk, ts, pos->second[0]));
+        std::string combine_key = CombineKeyTs(pk, ts, pos->second[0]);
+        spk = rocksdb::Slice(combine_key);
     } else {
-        spk = rocksdb::Slice(CombineKeyTs(pk, ts));
+        std::string combine_key = CombineKeyTs(pk, ts);
+        spk = rocksdb::Slice(combine_key);
     }
     rocksdb::Status s;
     s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
@@ -377,12 +391,14 @@ void DiskTable::GcTTL() {
                     it->Next();
                     continue;
                 } else {
+                    std::string combine_key1 = CombineKeyTs(cur_pk, ts);
+                    std::string combine_key2 = CombineKeyTs(cur_pk, 0);
                     rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs, 
-                            rocksdb::Slice(CombineKeyTs(cur_pk, ts)), rocksdb::Slice(CombineKeyTs(cur_pk, 0)));
+                            rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
                     if (!s.ok()) {
                         PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
                     }
-                    it->Seek(rocksdb::Slice(CombineKeyTs(cur_pk, 0)));
+                    it->Seek(rocksdb::Slice(combine_key2));
                 }
             } else {
                 last_pk = cur_pk;
@@ -444,8 +460,10 @@ void DiskTable::GcHead() {
                     }
                 } else {
                     for (const auto& kv : delete_key_map) {
+                        std::string combine_key1 = CombineKeyTs(last_pk, kv.second, kv.first);
+                        std::string combine_key2 = CombineKeyTs(last_pk, 0, kv.first);
                         rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], 
-                                rocksdb::Slice(CombineKeyTs(last_pk, kv.second, kv.first)), rocksdb::Slice(CombineKeyTs(last_pk, 0, kv.first)));
+                                rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
                         if (!s.ok()) {
                             PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
                         }    
@@ -458,8 +476,10 @@ void DiskTable::GcHead() {
                 it->Next();
             }
             for (const auto& kv : delete_key_map) {
+                std::string combine_key1 = CombineKeyTs(last_pk, kv.second, kv.first);
+                std::string combine_key2 = CombineKeyTs(last_pk, 0, kv.first);
                 rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], 
-                        rocksdb::Slice(CombineKeyTs(last_pk, kv.second, kv.first)), rocksdb::Slice(CombineKeyTs(last_pk, 0, kv.first)));
+                        rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
                 if (!s.ok()) {
                     PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
                 }
@@ -484,12 +504,14 @@ void DiskTable::GcHead() {
                         count++;
                         continue;
                     } else {
+                        std::string combine_key1 = CombineKeyTs(cur_pk, ts);
+                        std::string combine_key2 = CombineKeyTs(cur_pk, 0);
                         rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], 
-                                rocksdb::Slice(CombineKeyTs(cur_pk, ts)), rocksdb::Slice(CombineKeyTs(cur_pk, 0)));
+                                rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
                         if (!s.ok()) {
                             PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
                         }    
-                        it->Seek(rocksdb::Slice(CombineKeyTs(cur_pk, 0)));
+                        it->Seek(rocksdb::Slice(combine_key2));
                     }
                 } else {
                     count = 1;
@@ -681,16 +703,20 @@ uint64_t DiskTableIterator::GetKey() const {
 
 void DiskTableIterator::SeekToFirst() {
     if (has_ts_idx_) {
-        it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, UINT64_MAX, ts_idx_)));
+        std::string combine_key = CombineKeyTs(pk_, UINT64_MAX, ts_idx_);
+        it_->Seek(rocksdb::Slice(combine_key));
     } else {
-        it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, UINT64_MAX)));
+        std::string combine_key = CombineKeyTs(pk_, UINT64_MAX);
+        it_->Seek(rocksdb::Slice(combine_key));
     }
 }
 
 void DiskTableIterator::Seek(const uint64_t ts) {
     if (has_ts_idx_) {
+        std::string combine_key = CombineKeyTs(pk_, ts, ts_idx_);
         it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, ts, ts_idx_)));
     } else {
+        std::string combine_key = CombineKeyTs(pk_, ts);
         it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, ts)));
     }
 }
@@ -903,9 +929,11 @@ void DiskTableTraverseIterator::NextPK() {
     std::string last_pk = pk_;
     std::string combine;
     if (has_ts_idx_) {
-        it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0, ts_idx_)));
+        std::string combine_key = CombineKeyTs(last_pk, 0, ts_idx_);
+        it_->Seek(rocksdb::Slice(combine_key));
     } else {
-        it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0)));
+        std::string combine_key = CombineKeyTs(last_pk, 0);
+        it_->Seek(rocksdb::Slice(combine_key));
     }
     record_idx_ = 1;
     while (it_->Valid()) {
@@ -934,9 +962,11 @@ void DiskTableTraverseIterator::NextPK() {
                 last_pk = pk_;
                 std::string combine;
                 if (has_ts_idx_) {
-                    it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0, ts_idx_)));
+                    std::string combine_key = CombineKeyTs(last_pk, 0, ts_idx_);
+                    it_->Seek(rocksdb::Slice(combine_key));
                 } else {
-                    it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0)));
+                    std::string combine_key = CombineKeyTs(last_pk, 0);
+                    it_->Seek(rocksdb::Slice(combine_key));
                 }
                 record_idx_ = 1;
             }
