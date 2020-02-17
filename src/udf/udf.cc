@@ -157,6 +157,71 @@ bool list_iterator_double(int8_t *input, int8_t *output) {
     return list_iterator<double>(input, output);
 }
 
+template <class V>
+bool list_iterator_has_next(int8_t *input) {
+    if (nullptr == input) {
+        return false;
+    }
+    ::fesql::storage::IteratorRef *iter_ref =
+        (::fesql::storage::IteratorRef *)(input);
+    ::fesql::storage::IteratorImpl<V> *iter =
+        (::fesql::storage::IteratorImpl<V> *)(iter_ref->iterator);
+    return iter == nullptr ? false : iter->Valid();
+}
+
+bool list_iterator_has_next_int16(int8_t *input) {
+    return list_iterator_has_next<int16_t>(input);
+}
+
+bool list_iterator_has_next_float(int8_t *input) {
+    return list_iterator_has_next<float>(input);
+}
+bool list_iterator_has_next_double(int8_t *input) {
+    return list_iterator_has_next<double>(input);
+}
+bool list_iterator_has_next_int32(int8_t *input) {
+    return list_iterator_has_next<int32_t>(input);
+}
+bool list_iterator_has_next_int64(int8_t *input) {
+    return list_iterator_has_next<int64_t>(input);
+}
+
+template <class V>
+bool list_iterator_next(int8_t *input, V *output) {
+    if (nullptr == input) {
+        return false;
+    }
+    ::fesql::storage::IteratorRef *iter_ref =
+        (::fesql::storage::IteratorRef *)(input);
+    if (nullptr == iter_ref) {
+        return false;
+    }
+    ::fesql::storage::IteratorImpl<V> *iter =
+        (::fesql::storage::IteratorImpl<V> *)(iter_ref->iterator);
+    if (nullptr == iter) {
+        return false;
+    }
+    *output = iter->Next();
+    return true;
+}
+
+bool list_iterator_next_int16(int8_t *input, int16_t *output) {
+    return list_iterator_next<int16_t>(input, output);
+}
+
+bool list_iterator_next_float(int8_t *input, float *output) {
+    return list_iterator_next<float>(input, output);
+}
+bool list_iterator_next_double(int8_t *input, double *output) {
+    return list_iterator_next<double>(input, output);
+}
+bool list_iterator_next_int32(int8_t *input, int32_t *output) {
+    return list_iterator_next<int32_t>(input, output);
+}
+bool list_iterator_next_int64(int8_t *input, int64_t *output) {
+    return list_iterator_next<int64_t>(input, output);
+}
+
 int16_t sum_int16(int8_t *input) { return sum<int16_t>(input); }
 int32_t sum_int32(int8_t *input) { return sum<int32_t>(input); }
 int64_t sum_int64(int8_t *input) { return sum<int64_t>(input); }
@@ -223,6 +288,28 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::list_iterator_float));
     AddSymbol(jd, mi, "list_iterator_double",
               reinterpret_cast<void *>(&v1::list_iterator_double));
+
+    AddSymbol(jd, mi, "list_iterator_has_next_int16",
+              reinterpret_cast<void *>(&v1::list_iterator_has_next_int16));
+    AddSymbol(jd, mi, "list_iterator_has_next_int32",
+              reinterpret_cast<void *>(&v1::list_iterator_has_next_int32));
+    AddSymbol(jd, mi, "list_iterator_has_next_int64",
+              reinterpret_cast<void *>(&v1::list_iterator_has_next_int64));
+    AddSymbol(jd, mi, "list_iterator_has_next_float",
+              reinterpret_cast<void *>(&v1::list_iterator_has_next_float));
+    AddSymbol(jd, mi, "list_iterator_has_next_double",
+              reinterpret_cast<void *>(&v1::list_iterator_has_next_double));
+
+    AddSymbol(jd, mi, "list_iterator_next_int16",
+              reinterpret_cast<void *>(&v1::list_iterator_next_int16));
+    AddSymbol(jd, mi, "list_iterator_next_int32",
+              reinterpret_cast<void *>(&v1::list_iterator_next_int32));
+    AddSymbol(jd, mi, "list_iterator_next_int64",
+              reinterpret_cast<void *>(&v1::list_iterator_next_int64));
+    AddSymbol(jd, mi, "list_iterator_next_float",
+              reinterpret_cast<void *>(&v1::list_iterator_next_float));
+    AddSymbol(jd, mi, "list_iterator_next_double",
+              reinterpret_cast<void *>(&v1::list_iterator_next_double));
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT
@@ -270,6 +357,23 @@ void RegisterUDFToModule(::llvm::Module *m) {
     m->getOrInsertFunction("list_iterator_int64", i1_ty, i8_ptr_ty, i8_ptr_ty);
     m->getOrInsertFunction("list_iterator_float", i1_ty, i8_ptr_ty, i8_ptr_ty);
     m->getOrInsertFunction("list_iterator_double", i1_ty, i8_ptr_ty, i8_ptr_ty);
+
+    m->getOrInsertFunction("list_iterator_has_next_int16", i1_ty, i8_ptr_ty);
+    m->getOrInsertFunction("list_iterator_has_next_int32", i1_ty, i8_ptr_ty);
+    m->getOrInsertFunction("list_iterator_has_next_int64", i1_ty, i8_ptr_ty);
+    m->getOrInsertFunction("list_iterator_has_next_float", i1_ty, i8_ptr_ty);
+    m->getOrInsertFunction("list_iterator_has_next_double", i1_ty, i8_ptr_ty);
+
+    m->getOrInsertFunction("list_iterator_next_int16", i1_ty, i8_ptr_ty,
+                           i8_ptr_ty);
+    m->getOrInsertFunction("list_iterator_next_int32", i1_ty, i8_ptr_ty,
+                           i8_ptr_ty);
+    m->getOrInsertFunction("list_iterator_next_int64", i1_ty, i8_ptr_ty,
+                           i8_ptr_ty);
+    m->getOrInsertFunction("list_iterator_next_float", i1_ty, i8_ptr_ty,
+                           i8_ptr_ty);
+    m->getOrInsertFunction("list_iterator_next_double", i1_ty, i8_ptr_ty,
+                           i8_ptr_ty);
 }
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                     ::llvm::orc::MangleAndInterner &mi) {  // NOLINT

@@ -422,6 +422,35 @@ bool GetFullType(::llvm::Type* type, ::fesql::type::Type* base,
                 *base = fesql::type::kList;
                 *v1_type = fesql::type::kVarchar;
                 return true;
+            } else if (type->getStructName().equals("fe.iterator_ref_int16")) {
+                *base = fesql::type::kListIterator;
+                *v1_type = fesql::type::kInt16;
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_int32")) {
+                *base = fesql::type::kListIterator;
+                *v1_type = fesql::type::kInt32;
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_int64")) {
+                *base = fesql::type::kListIterator;
+                *v1_type = fesql::type::kInt64;
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_float")) {
+                *base = fesql::type::kListIterator;
+                *v1_type = fesql::type::kFloat;
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_double")) {
+                *base = fesql::type::kListIterator;
+                *v1_type = fesql::type::kDouble;
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_string")) {
+                *base = fesql::type::kListIterator;
+                *v1_type = fesql::type::kVarchar;
+                return true;
             } else if (type->getStructName().equals("fe.string_ref")) {
                 *base = ::fesql::type::kVarchar;
                 return true;

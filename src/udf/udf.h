@@ -39,18 +39,30 @@ int64_t min_int64(int8_t *input);
 float min_float(int8_t *input);
 double min_double(int8_t *input);
 
+int16_t list_at_int16(int8_t *input, int32_t pos);
+int32_t list_at_int32(int8_t *input, int32_t pos);
+int64_t list_at_int64(int8_t *input, int32_t pos);
+float list_at_float(int8_t *input, int32_t pos);
+double list_at_double(int8_t *input, int32_t pos);
+
+bool list_iterator_int16(int8_t *input, int8_t *output);
+bool list_iterator_int32(int8_t *input, int8_t *output);
+bool list_iterator_int64(int8_t *input, int8_t *output);
+bool list_iterator_float(int8_t *input, int8_t *output);
+bool list_iterator_double(int8_t *input, int8_t *output);
+
 #ifdef __cplusplus
 }
 #endif
 }  // namespace v1
-void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);               // NOLINT
-void InitUDFSymbol(::llvm::orc::JITDylib &jd,            // NOLINT
-                   ::llvm::orc::MangleAndInterner &mi);  // NOLINT
+void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
+void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
+                   ::llvm::orc::MangleAndInterner &mi);   // NOLINT
 void InitCLibSymbol(vm::FeSQLJIT *jit_ptr);               // NOLINT
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,            // NOLINT
-                   ::llvm::orc::MangleAndInterner &mi);  // NOLINT
-bool AddSymbol(::llvm::orc::JITDylib &jd,                // NOLINT
-               ::llvm::orc::MangleAndInterner &mi,       // NOLINT
+                    ::llvm::orc::MangleAndInterner &mi);  // NOLINT
+bool AddSymbol(::llvm::orc::JITDylib &jd,                 // NOLINT
+               ::llvm::orc::MangleAndInterner &mi,        // NOLINT
                const std::string &fn_name, void *fn_ptr);
 void RegisterUDFToModule(::llvm::Module *m);
 

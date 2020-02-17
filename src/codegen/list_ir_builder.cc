@@ -166,5 +166,125 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
     *output = iter_ref;
     return true;
 }
+bool ListIRBuilder::BuildIteratorHasNext(::llvm::Value* iterator,
+                                         ::llvm::Value** output,
+                                         base::Status& status) {
+    if (nullptr == iterator) {
+        status.msg = "fail to codegen iter.has_next(): iterator is null";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    fesql::type::Type base;
+    fesql::type::Type v1;
+    fesql::type::Type v2;
+    if (false == GetFullType(iterator->getType(), &base, &v1, &v2) ||
+        fesql::type::kListIterator != base) {
+        status.msg =
+            "fail to codegen iterator.has_next(): invalid iterator type";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::std::string type_name;
+    if (false == GetFesqlTypeName(v1, type_name)) {
+        status.msg =
+            "fail to codegen iterator.has_next(): invliad value type of "
+            "iterator";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    ::std::string fn_name = "list_iterator_has_next_" + type_name;
+    ::llvm::Function* fn =
+        block_->getModule()->getFunction(::llvm::StringRef(fn_name));
+    if (nullptr == fn) {
+        status.msg =
+            "faili to codegen iterator.has_next(): can't find function " +
+            fn_name;
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+    ::llvm::Value* list_i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
+    *output = builder.CreateCall(fn->getFunctionType(), fn,
+                                 ::llvm::ArrayRef<::llvm::Value*>{list_i8_ptr});
+    if (nullptr == *output) {
+        status.msg = "fail to codegen list[pos]: call function error";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    return true;
+}
+bool ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
+                                      ::llvm::Value** output,
+                                      base::Status& status) {
+    if (nullptr == iterator) {
+        status.msg = "fail to codegen iter.has_next(): iterator is null";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    fesql::type::Type base;
+    fesql::type::Type v1;
+    fesql::type::Type v2;
+    if (false == GetFullType(iterator->getType(), &base, &v1, &v2) ||
+        fesql::type::kListIterator != base) {
+        status.msg = "fail to codegen iterator.next(): invalid iterator type";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::std::string type_name;
+    if (false == GetFesqlTypeName(v1, type_name)) {
+        status.msg =
+            "fail to codegen iterator.next(): invalid value type of iterator";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::llvm::Type* v1_type = nullptr;
+    if (false == GetLLVMType(block_, v1, &v1_type)) {
+        status.msg =
+            "fail to codegen iterator.next(): invalid value type of iterator";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    ::std::string fn_name = "list_iterator_next_" + type_name;
+    ::llvm::Function* fn =
+        block_->getModule()->getFunction(::llvm::StringRef(fn_name));
+    if (nullptr == fn) {
+        status.msg =
+            "faili to codegen iterator.next(): can't find function " + fn_name;
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+    ::llvm::Value* list_i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
+    ::llvm::Value* next_addr = builder.CreateAlloca(v1_type);
+    ::llvm::Value* next_addr_i8_ptr =
+        builder.CreatePointerCast(next_addr, i8_ptr_ty);
+    ::llvm::Value* call_res = builder.CreateCall(
+        fn->getFunctionType(), fn,
+        ::llvm::ArrayRef<::llvm::Value*>{list_i8_ptr, next_addr_i8_ptr});
+    if (nullptr == call_res) {
+        status.msg = "fail to codegen iterator.next(): call function error";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    *output = builder.CreateLoad(v1_type, next_addr, "next_v");
+    return true;
+}
 }  // namespace codegen
 }  // namespace fesql

@@ -44,6 +44,7 @@ struct Timestamp {
 struct ListRef {
     int8_t* list;
 };
+
 struct IteratorRef {
     int8_t* iterator;
 };

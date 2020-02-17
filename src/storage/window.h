@@ -277,11 +277,6 @@ class IteratorImpl : public IteratorV<V> {
           iter_start_(list.GetStart()),
           iter_end_(list.GetEnd()),
           pos_(list.GetStart()) {}
-    //    explicit IteratorImpl(const ColumnImpl<V> &column)
-    //        : list_(column),
-    //          iter_start_(column.GetStart()),
-    //          iter_end_(column.GetEnd()),
-    //          pos_(column.GetStart()) {}
     explicit IteratorImpl(const IteratorImpl<V> &impl)
         : list_(impl.list_),
           iter_start_(impl.iter_start_),
