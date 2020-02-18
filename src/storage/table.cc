@@ -149,6 +149,27 @@ bool Table::Put(const char* row, uint32_t size) {
     return true;
 }
 
+std::unique_ptr<FullTableIterator> Table::NewIterator() {
+    //TODO(wangtaize) make sure thread safe
+    std::unique_ptr<FullTableIterator> it(new FullTableIterator(segments_, seg_cnt_));
+    return std::move(it);
+}
+
+std::unique_ptr<vm::WindowIterator> Table::NewWindowIterator() {
+    std::unique_ptr<WindowTableIterator> it(new WindowTableIterator(segments_, seg_cnt_, 0));
+    return std::move(it);
+}
+
+std::unique_ptr<vm::WindowIterator> Table::NewWindowIterator(const std::string& index_name) {
+    auto iter = index_map_.find(index_name);
+    if (iter == index_map_.end()) {
+        LOG(WARNING) << "index name \"" << index_name << "\" not exist";
+        return std::unique_ptr<WindowTableIterator>();
+    }
+    std::unique_ptr<WindowTableIterator> it(new WindowTableIterator(segments_, seg_cnt_, iter->second.index));
+    return std::move(it);
+}
+
 std::unique_ptr<TableIterator> Table::NewIndexIterator(
     const std::string& pk, const uint32_t index) {
     uint32_t seg_idx = 0;

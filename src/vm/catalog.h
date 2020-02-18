@@ -20,7 +20,6 @@
 
 #include <memory>
 #include "proto/type.pb.h"
-#include "base/iterator.h"
 #include "base/slice.h"
 
 namespace fesql {

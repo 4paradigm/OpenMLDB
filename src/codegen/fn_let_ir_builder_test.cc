@@ -38,7 +38,6 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "storage/codec.h"
-#include "storage/type_ir_builder.h"
 #include "storage/window.h"
 #include "udf/udf.h"
 

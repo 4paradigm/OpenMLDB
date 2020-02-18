@@ -25,7 +25,7 @@
 #include "brpc/server.h"
 #include "proto/tablet.pb.h"
 #include "vm/engine.h"
-#include "vm/table_mgr.h"
+#include "tablet/tablet_catalog.h"
 
 namespace fesql {
 namespace tablet {
@@ -33,21 +33,7 @@ namespace tablet {
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
 
-// TODO(wtx): opt db tid pid structure
-
-typedef std::map<uint32_t, std::shared_ptr<vm::TableStatus>> Partition;
-
-typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<vm::TableStatus>>>
-    Table;
-
-typedef std::map<
-    std::string,
-    std::map<uint32_t, std::map<uint32_t, std::shared_ptr<vm::TableStatus>>>>
-    Tables;
-
-typedef std::map<std::string, std::map<std::string, uint32_t>> TableNames;
-
-class TabletServerImpl : public TabletServer, public vm::TableMgr {
+class TabletServerImpl : public TabletServer {
 
  public:
     TabletServerImpl();
@@ -68,35 +54,43 @@ class TabletServerImpl : public TabletServer, public vm::TableMgr {
                         const GetTablesSchemaRequest* request,
                         GetTableSchemaReponse* response, Closure* done);
 
-    std::shared_ptr<vm::TableStatus> GetTableDef(const std::string& db,
-                                                 const std::string& name);
-
-    std::shared_ptr<vm::TableStatus> GetTableDef(const std::string& db,
-                                                 const uint32_t tid);
-
  private:
 
-    inline std::shared_ptr<vm::TableStatus> GetTableLocked(
-        const std::string& db, uint32_t tid, uint32_t pid);
+    inline std::shared_ptr<TabletTableHandler> GetTableLocked(
+        const std::string& db, const std::string& name) {
+        std::lock_guard<base::SpinMutex> lock(slock_);
+        return GetTableUnLocked(db, name);
+    }
 
-    std::shared_ptr<vm::TableStatus> GetTableDefUnLocked(const std::string& db,
-                                                         uint32_t tid);
+    inline std::shared_ptr<TabletTableHandler> GetTableUnLocked(const std::string& db,
+           const std::string& name) {
+        return std::static_pointer_cast<TabletTableHandler>(catalog_->GetTable(db, name));
+    }
 
-    std::shared_ptr<vm::TableStatus> GetTableUnLocked(const std::string& db,
-                                                      uint32_t tid,
-                                                      uint32_t pid);
+    inline bool AddTableUnLocked(std::shared_ptr<storage::Table>&
+                              table) {  // NOLINT (runtime/references) 
+        const type::TableDef& table_def = table->GetTableDef();
+        std::shared_ptr<TabletTableHandler> handler(new TabletTableHandler(table_def.columns(),
+                table_def.name(), table_def.catalog(), 
+                table_def.indexes(), table));
+        bool ok = handler->Init();
+        if(!ok) {
+            return false;
+        }
+        return catalog_->AddTable(handler);
+    }
 
-    bool AddTableUnLocked(std::shared_ptr<vm::TableStatus>&
-                              table);  // NOLINT (runtime/references)
 
-    inline bool AddTableLocked(std::shared_ptr<vm::TableStatus>&
-                                   table);  // NOLINT (runtime/references)
+    inline bool AddTableLocked(std::shared_ptr<storage::Table>&
+                               table) {  // NOLINT (runtime/references)
+        std::lock_guard<base::SpinMutex> lock(slock_);
+        return AddTableUnLocked(table);
+    }
 
  private:
     base::SpinMutex slock_;
-    Tables tables_;
-    TableNames table_names_;
     std::unique_ptr<vm::Engine> engine_;
+    std::shared_ptr<TabletCatalog> catalog_;
 };
 
 }  // namespace tablet

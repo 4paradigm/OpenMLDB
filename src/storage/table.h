@@ -17,6 +17,7 @@
 #include "storage/codec.h"
 #include "storage/segment.h"
 #include "vm/catalog.h"
+#include "storage/table_iterator.h"
 
 namespace fesql {
 namespace storage {
@@ -25,7 +26,6 @@ using ::fesql::type::IndexDef;
 using ::fesql::type::TableDef;
 
 static constexpr uint32_t SEG_CNT = 8;
-
 
 class TableIterator : public vm::Iterator {
  public:
@@ -68,6 +68,10 @@ class Table {
 
     bool Put(const char* row, uint32_t size);
 
+    std::unique_ptr<FullTableIterator> NewIterator();
+    std::unique_ptr<vm::WindowIterator> NewWindowIterator();
+    std::unique_ptr<vm::WindowIterator> NewWindowIterator(const std::string& index_name);
+
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
                                                const uint64_t ts);
 
@@ -98,6 +102,10 @@ class Table {
 
     const std::map<std::string, IndexSt>& GetIndexMap() const {
         return index_map_;
+    }
+
+    inline const TableDef& GetTableDef() {
+        return table_def_;
     }
 
  private:

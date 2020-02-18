@@ -20,6 +20,7 @@
 
 #include "base/spin_lock.h"
 #include "vm/catalog.h"
+#include "storage/table.h"
 
 namespace fesql {
 namespace tablet {
@@ -90,13 +91,12 @@ class TabletCatalog : public vm::Catalog {
 
     std::shared_ptr<type::Database> GetDatabase(const std::string& db);
 
-    std::shared_ptr<TableHandler> GetTable(const std::string& db,
-                                           const std::string& table_name);
+    std::shared_ptr<vm::TableHandler> GetTable(const std::string& db,
+                                               const std::string& table_name);
 
  private:
     TabletTables tables_;
     TabletDB db_;
-    base::SpinMutex slock_;
 };
 
 }  // namespace tablet

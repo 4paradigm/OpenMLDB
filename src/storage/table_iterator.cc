@@ -16,6 +16,8 @@
  */
 
 #include "storage/table_iterator.h"
+#include "storage/codec.h"
+#include "base/hash.h"
 
 namespace fesql {
 namespace storage {
@@ -37,6 +39,10 @@ bool WindowInternalIterator::Valid() {
     return ts_it_->Valid();
 }
 
+void WindowInternalIterator::Next() {
+    ts_it_->Next();
+}
+
 const base::Slice WindowInternalIterator::GetValue() {
     return base::Slice(
         ts_it_->GetValue()->data,
@@ -47,7 +53,8 @@ const uint64_t WindowInternalIterator::GetKey() {
     return ts_it_->GetKey();
 }
 
-WindowTableIterator::WindowTableIterator(Segment*** segments, uint32_t seg_cnt, uint32_t index):segments_(segments_), seg_cnt_(seg_cnt),
+
+WindowTableIterator::WindowTableIterator(Segment*** segments, uint32_t seg_cnt, uint32_t index):segments_(segments), seg_cnt_(seg_cnt),
 index_(index){
     GoToStart();
 }
@@ -62,16 +69,10 @@ void WindowTableIterator::Seek(const std::string& key) {
     key_ = pk;
     Segment* segment = segments_[index_][seg_idx];
     if (segment->GetEntries() == NULL) {
-        w_it_ = std::move(std::unique_ptr<EmptyWindowIterator>(new EmptyWindowIterator()));
         return;
     }
-    void* entry = NULL;
-    if (segment->GetEntries()->Get(spk, entry) < 0 || entry == NULL) {
-        w_it_ = std::move(std::unique_ptr<EmptyWindowIterator>(new EmptyWindowIterator()));
-        return;
-    }
-    std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> entry_it(reinterpret_cast<TimeEntry*>(entry))->NewIterator());
-    w_it_ = std::move(std::unique_ptr<WindowInternalIterator>(entr_it));
+    pk_it_ = std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(segments_[index_][seg_idx]->GetEntries()->NewIterator()));
+    pk_it_->Seek(pk);
 }
 
 
@@ -79,8 +80,13 @@ void WindowTableIterator::Seek(const std::string& key) {
 void WindowTableIterator::SeekToFirst() {}
 
 std::unique_ptr<vm::Iterator> WindowTableIterator::GetValue() {
-    return w_it_;
+    if (!pk_it_) return std::move(std::unique_ptr<EmptyWindowIterator>(new EmptyWindowIterator()));
+    std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> it((reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
+                     ->NewIterator());
+    std::unique_ptr<WindowInternalIterator> wit(new WindowInternalIterator(std::move(it)));
+    return std::move(wit);
 }
+
 
 void WindowTableIterator::GoToStart() {
     while (seg_idx_ < seg_cnt_) {
@@ -110,7 +116,14 @@ void WindowTableIterator::GoToNext() {
 }
 
 void WindowTableIterator::Next() {
+    GoToNext();
+}
 
+const base::Slice WindowTableIterator::GetKey() {
+    if (pk_it_) {
+        return pk_it_->GetKey();
+    }
+    return base::Slice();
 }
 
 bool WindowTableIterator::Valid() {
@@ -133,7 +146,7 @@ void FullTableIterator::GoToNext() {
         while (pk_it_->Valid()) {
             auto it = (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
                      ->NewIterator();
-            if (ts->Valid()) {
+            if (it->Valid()) {
                 ts_it_ = std::move(std::unique_ptr<base::Iterator<uint64_t, DataBlock*>>(it));
                 return;
             }else {
@@ -147,7 +160,7 @@ void FullTableIterator::GoToNext() {
             while (pk_it_->Valid()) {
                 auto it = (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
                          ->NewIterator();
-                if (ts->Valid()) {
+                if (it->Valid()) {
                     ts_it_ = std::move(std::unique_ptr<base::Iterator<uint64_t, DataBlock*>>(it));
                     return;
                 }else {

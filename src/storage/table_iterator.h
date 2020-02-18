@@ -41,7 +41,7 @@ class EmptyWindowIterator : public vm::Iterator {
 
     inline void SeekToFirst() {}
 
-    inline bool Valid() { return false}
+    inline bool Valid() { return false;}
 
     inline void Next() {}
 
@@ -87,7 +87,7 @@ class WindowTableIterator : public vm::WindowIterator {
     void SeekToFirst();
     void Next();
     bool Valid();
-    std::unique_ptr<vm:Iterator> GetValue();
+    std::unique_ptr<vm::Iterator> GetValue();
     const base::Slice GetKey();
  private:
     void GoToStart();
@@ -99,7 +99,6 @@ class WindowTableIterator : public vm::WindowIterator {
     uint32_t index_;
     uint32_t seg_idx_;
     std::unique_ptr<base::Iterator<base::Slice, void*>> pk_it_;
-    std::unique_ptr<vm::Iterator> w_it_;
     base::Slice key_;
 };
 
@@ -124,7 +123,7 @@ class FullTableIterator : public vm::Iterator {
     const base::Slice GetValue();
 
     // the key maybe the row num
-    const uint64_t GetKey() {}
+    const uint64_t GetKey() { return 0;}
  private:
     void GoToStart();
     void GoToNext();
