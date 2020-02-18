@@ -30,6 +30,7 @@ void RemoveData(const std::string& path) {
     ::rtidb::base::RemoveDir(path+"/data");
     ::rtidb::base::RemoveDir(path);
     ::rtidb::base::RemoveDir(FLAGS_hdd_root_path);
+    ::rtidb::base::RemoveDir(FLAGS_ssd_root_path);
 }
 
 class DiskTableTest : public ::testing::Test {
@@ -216,6 +217,63 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
 
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_2";
+    RemoveData(path);
+}
+
+TEST_F(DiskTableTest, LongPut) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    mapping.insert(std::make_pair("idx1", 1));
+    DiskTable* table = new DiskTable("yjtable3", 1, 3, mapping, 10, 
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kSSD,
+            FLAGS_ssd_root_path);
+    ASSERT_TRUE(table->Init());
+    for (int idx = 0; idx < 10; idx++) {
+        Dimensions  dimensions;
+        ::rtidb::api::Dimension* d0 = dimensions.Add();
+        d0->set_key("ThisIsAVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx));
+        d0->set_idx(0);
+
+        ::rtidb::api::Dimension* d1 = dimensions.Add();
+        d1->set_key("ThisIsAnotherVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx));
+        d1->set_idx(1);
+        uint64_t ts = 1581931824136;
+        for (int k = 0; k < 10; k++) {
+            ASSERT_TRUE(table->Put(ts + k, "ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", dimensions));
+        }
+    }
+    for (int idx = 0; idx < 10; idx++) {
+        std::string raw_key0 = "ThisIsAVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx);
+        std::string raw_key1 = "ThisIsAnotherVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx);
+        Ticket ticket0, ticket1;
+        TableIterator* it0 = table->NewIterator(0, raw_key0, ticket0);
+        TableIterator* it1 = table->NewIterator(1, raw_key1, ticket1);
+
+        it0->SeekToFirst();
+        it1->SeekToFirst();
+        for (int k = 0; k < 10; k++) {
+            ASSERT_TRUE(it0->Valid());
+            ASSERT_TRUE(it1->Valid());
+            std::string pk0 = it0->GetPK();
+            std::string pk1 = it1->GetPK();
+            ASSERT_EQ(pk0, raw_key0);
+            ASSERT_EQ(pk1, raw_key1);
+            ASSERT_EQ(1581931824136 + 9 - k, it0->GetKey());
+            ASSERT_EQ(1581931824136 + 9 - k, it1->GetKey());
+            std::string value0 = it0->GetValue().ToString();
+            std::string value1 = it1->GetValue().ToString();
+            ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", value0);
+            ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", value1);
+            it0->Next();
+            it1->Next();
+        }
+        ASSERT_FALSE(it0->Valid());
+        ASSERT_FALSE(it1->Valid());
+        delete it0;
+        delete it1;
+    }
+    delete table;
+    std::string path = FLAGS_ssd_root_path + "/1_3";
     RemoveData(path);
 }
 
@@ -1167,5 +1225,6 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
+    FLAGS_ssd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
     return RUN_ALL_TESTS();
 }
