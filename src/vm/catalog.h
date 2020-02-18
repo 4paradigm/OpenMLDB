@@ -62,6 +62,7 @@ class Iterator {
     virtual const base::Slice GetValue() = 0;
 
     virtual const uint64_t GetKey() = 0;
+
 };
 
 class WindowIterator {
