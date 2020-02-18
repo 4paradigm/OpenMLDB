@@ -293,7 +293,7 @@ bool PredicateIRBuilder::IsAcceptType(::llvm::Type* type) {
     }
 
     ::fesql::type::Type fesql_type;
-    if (false == GetTableType(type, &fesql_type)) {
+    if (false == GetBaseType(type, &fesql_type)) {
         return false;
     }
     switch (fesql_type) {

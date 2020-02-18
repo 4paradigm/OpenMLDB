@@ -907,10 +907,11 @@ expr_list:
     }
   	;
 
-expr:	column_ref   { $$ = $1; }
-     | call_expr  { $$ = $1; }
-     | expr_const
-     | var
+expr:
+	 column_ref   	{ $$ = $1; }
+     | call_expr  	{ $$ = $1; }
+     | expr_const 	{ $$ = $1; }
+     | var			{ $$ = $1; }
      | expr '+' expr
      {
      	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAdd);
@@ -963,6 +964,10 @@ expr:	column_ref   { $$ = $1; }
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpOr);
      }
+     | expr '[' expr ']'
+	 {
+	 	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAt);
+	 }
      | '!' expr
      {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
@@ -1010,6 +1015,7 @@ call_expr:
     {
         $$ = node_manager->MakeFuncNode($1, $3, $5);
     }
+    ;
 
 
 /***** Window Definitions */

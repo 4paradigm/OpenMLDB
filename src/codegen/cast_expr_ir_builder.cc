@@ -31,8 +31,8 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
     }
     ::fesql::type::Type src_type;
     ::fesql::type::Type dist_type;
-    ::fesql::codegen::GetTableType(src, &src_type);
-    ::fesql::codegen::GetTableType(dist, &dist_type);
+    ::fesql::codegen::GetBaseType(src, &src_type);
+    ::fesql::codegen::GetBaseType(dist, &dist_type);
 
     switch (src_type) {
         case ::fesql::type::kBool: {
@@ -124,7 +124,7 @@ bool CastExprIRBuilder::IsStringCast(llvm::Type* type) {
     }
 
     ::fesql::type::Type fesql_type;
-    if (false == GetTableType(type, &fesql_type)) {
+    if (false == GetBaseType(type, &fesql_type)) {
         return false;
     }
 

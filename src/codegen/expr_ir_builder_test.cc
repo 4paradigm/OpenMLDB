@@ -62,6 +62,7 @@ void GenAddExpr(node::NodeManager *manager, ::fesql::node::ExprNode **expr) {
         (manager->MakeBinaryExprNode(i32_node, id_node, fesql::node::kFnOpAdd));
     *expr = bexpr;
 }
+
 TEST_F(ExprIRBuilderTest, test_add_int32) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -141,6 +142,9 @@ void BinaryExprCheck(::fesql::type::Type left_type,
     R ret = decode(v1, v2);
     ASSERT_EQ(ret, r);
 }
+
+
+
 
 TEST_F(ExprIRBuilderTest, test_add_int16_x_expr) {
     BinaryExprCheck<int16_t, int16_t, int16_t>(
@@ -537,8 +541,6 @@ TEST_F(ExprIRBuilderTest, test_mod_double_x_expr) {
         ::fesql::type::kDouble, ::fesql::type::kDouble, ::fesql::type::kDouble,
         12.0, 5.1, fmod(12.0, 5.1), ::fesql::node::kFnOpMod);
 }
-
-
 
 TEST_F(ExprIRBuilderTest, test_eq_expr_true) {
     BinaryExprCheck<int16_t, int16_t, bool>(

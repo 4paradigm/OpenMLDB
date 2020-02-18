@@ -311,6 +311,9 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kName:
             output = "kName";
             break;
+        case kType:
+            output = "kType";
+            break;
         case kResTarget:
             output = "kResTarget";
             break;
@@ -548,6 +551,14 @@ void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, name_, "var", true);
 }
 
+void ExprAtNode::Print(std::ostream &output, const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, name_, "var",
+               true);
+}
+
 void ExprListNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -573,6 +584,24 @@ void FnNodeFnHeander::Print(std::ostream &output,
     output << "\n";
     PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(parameters_),
                  "parameters", true);
+}
+const std::string FnNodeFnHeander::GetCodegenFunctionName() const{
+    std::string fn_name = name_;
+    if (!parameters_->children.empty()) {
+        for(node::SQLNode* node: parameters_->children) {
+            node::FnParaNode *para_node =
+                dynamic_cast<node::FnParaNode*>(node);
+            switch (para_node->GetParaType()->base_) {
+                case fesql::type::kList:
+                case fesql::type::kIterator:
+                case fesql::type::kMap:
+                    fn_name.append("_").append(para_node->GetParaType()->GetName());
+                default: {
+                }
+            }
+        }
+    }
+    return fn_name;
 }
 void FnNodeFnDef::Print(std::ostream &output,
                         const std::string &org_tab) const {
@@ -672,17 +701,9 @@ void StructExpr::Print(std::ostream &output, const std::string &org_tab) const {
 void TypeNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
-    std::string type_name = DataTypeName(base_);
-    if (!generics_.empty()) {
-        type_name.append("<");
-        for (DataType type : generics_) {
-            type_name.append(DataTypeName(type));
-            type_name.append(",");
-        }
-        type_name.pop_back();
-        type_name.append(">");
-    }
-    PrintValue(output, tab, type_name, "type", false);
+
+    output << "\n";
+    PrintValue(output, tab, GetName(), "type", true);
 }
 }  // namespace node
 }  // namespace fesql

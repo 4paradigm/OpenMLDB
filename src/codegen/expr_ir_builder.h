@@ -59,7 +59,7 @@ class ExprIRBuilder {
     bool BuildStructExpr(const ::fesql::node::StructExpr* node,
                          ::llvm::Value** output);
     ::llvm::Function* GetFuncion(const std::string& col,
-                                 const ::fesql::node::DataType& type, common::Status& status); // NOLINT
+                                 std::vector<node::TypeNode> generic_types, common::Status& status); // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;
@@ -69,6 +69,7 @@ class ExprIRBuilder {
     std::string row_size_name_;
     VariableIRBuilder variable_ir_builder_;
     BufNativeIRBuilder* buf_ir_builder_;
+    //TODO(chenjing): remove following ir builder member
     ArithmeticIRBuilder arithmetic_ir_builder_;
     PredicateIRBuilder predicate_ir_builder_;
     ::llvm::Module* module_;

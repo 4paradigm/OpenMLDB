@@ -18,6 +18,7 @@
 #ifndef SRC_CODEGEN_IR_BASE_BUILDER_H_
 #define SRC_CODEGEN_IR_BASE_BUILDER_H_
 
+#include <node/sql_node.h>
 #include <string>
 #include "glog/logging.h"
 #include "llvm/IR/IRBuilder.h"
@@ -26,6 +27,8 @@
 namespace fesql {
 namespace codegen {
 
+bool GetLLVMType(::llvm::Module* m, const ::fesql::node::TypeNode* type,
+                 ::llvm::Type** output);
 bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
                  ::llvm::Type** output);
 bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
@@ -37,11 +40,8 @@ bool GetLLVMIteratorType(::llvm::Module* m, const ::fesql::type::Type& type,
 bool GetLLVMIteratorSize(const ::fesql::type::Type& v_type, uint32_t* size);
 bool GetLLVMColumnSize(const ::fesql::type::Type& v_type, uint32_t* size);
 
-bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output);
-bool GetFesqlTypeName(::fesql::type::Type type, ::std::string& name); // NOLINT
-bool GetLLVMTypeName(::llvm::Type* type, ::std::string& name); // NOLINT
-bool GetFullType(::llvm::Type* type, ::fesql::type::Type* base,
-                 ::fesql::type::Type* v1_type, ::fesql::type::Type* v2_type);
+bool GetBaseType(::llvm::Type* type, ::fesql::type::Type* output);
+bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node);
 
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);

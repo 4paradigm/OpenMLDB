@@ -86,6 +86,8 @@ enum ExprType {
     kExprColumnRef,
     kExprPrimary,
     kExprList,
+    kExprAt,
+    kExprRange,
     kExprAll,
     kExprStruct,
     kExprUnknow = 9999
@@ -115,6 +117,8 @@ enum FnOperator {
     kFnOpLe,
     kFnOpGt,
     kFnOpGe,
+    kFnOpDot,
+    kFnOpAt,
     kFnOpBracket,
     kFnOpNone
 };

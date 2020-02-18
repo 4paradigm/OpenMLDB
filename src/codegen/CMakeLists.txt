@@ -7,7 +7,7 @@ add_library(fesql_codegen STATIC scope_var.cc variable_ir_builder.cc list_ir_bui
 add_dependencies(fesql_codegen fesql_proto fesql_vm)
 
 add_executable(ir_base_builder_test ir_base_builder_test.cc)
-target_link_libraries(ir_base_builder_test fesql_codegen fesql_proto protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+target_link_libraries(ir_base_builder_test  fesql_codegen fesql_node fesql_proto protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(ir_base_builder_test ir_base_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/ir_base_builder_test.xml)
 list(APPEND test_list ir_base_builder_test)
 
@@ -52,7 +52,7 @@ add_test(block_ir_builder_test block_ir_builder_test --gtest_output=xml:${CMAKE_
 list(APPEND test_list block_ir_builder_test)
 
 add_executable(fn_ir_builder_test fn_ir_builder_test.cc)
-target_link_libraries(fn_ir_builder_test fesql_codegen fesql_parser fesql_proto fesql_node
+target_link_libraries(fn_ir_builder_test fesql_udf fesql_codegen fesql_parser fesql_storage fesql_vm fesql_proto fesql_node
         protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(fn_ir_builder_test fn_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/fn_ir_builder_test.xml)
 list(APPEND test_list fn_ir_builder_test)

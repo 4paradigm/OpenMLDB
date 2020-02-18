@@ -87,6 +87,10 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "LT";
         case kFnOpLe:
             return "LE";
+        case kFnOpAt:
+            return "[]";
+        case kFnOpDot:
+            return ".";
         case kFnOpBracket:
             return "()";
         case kFnOpNone:
@@ -158,7 +162,7 @@ inline const std::string DataTypeName(const DataType &type) {
         case fesql::type::kVoid:
             return "void";
         default:
-            return "unknownType";
+            return "unknown";
     }
 }
 
@@ -223,16 +227,27 @@ class SQLNodeList {
 
 class TypeNode : public SQLNode {
  public:
-    explicit TypeNode(const DataType &base)
+    TypeNode() : SQLNode(node::kType, 0, 0), base_(type::kNull) {}
+    explicit TypeNode(fesql::type::Type base)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({}) {}
-    explicit TypeNode(const DataType &base, const DataType &v1)
+    explicit TypeNode(fesql::type::Type base, DataType v1)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({v1}) {}
-    explicit TypeNode(const DataType &base, const DataType &v1,
-                      const DataType &v2)
+    explicit TypeNode(fesql::type::Type base, fesql::type::Type v1,
+                      fesql::type::Type v2)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({v1, v2}) {}
     ~TypeNode() {}
-    const DataType base_;
-    const std::vector<DataType> generics_;
+    const std::string GetName() const {
+        std::string type_name = DataTypeName(base_);
+        if (!generics_.empty()) {
+            for (DataType type : generics_) {
+                type_name.append("_");
+                type_name.append(DataTypeName(type));
+            }
+        }
+        return type_name;
+    }
+    fesql::type::Type base_;
+    std::vector<fesql::type::Type> generics_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
 };
 class ExprNode : public SQLNode {
@@ -514,10 +529,27 @@ class ExprIdNode : public ExprNode {
     ExprIdNode() : ExprNode(kExprId) {}
     explicit ExprIdNode(const std::string &name)
         : ExprNode(kExprId), name_(name) {}
-    std::string GetName() const { return name_; }
+    const std::string GetName() const { return name_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
 
  private:
+    std::string name_;
+};
+
+class ExprAtNode : public ExprNode {
+ public:
+    explicit ExprAtNode(const std::string &id, const int32_t pos)
+        : ExprNode(kExprAt), id_name_(id), pos_(pos) {
+        name_ = id_name_ + "[" + std::to_string(pos_) + "]";
+    }
+    const std::string GetIdName() const { return id_name_; }
+    const std::string GetName() const { return name_; }
+    const int32_t GetPos() const { return pos_; }
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
+ private:
+    std::string id_name_;
+    int32_t pos_;
     std::string name_;
 };
 class ConstNode : public ExprNode {
@@ -954,6 +986,7 @@ class FnNodeFnHeander : public FnNode {
           ret_type_(ret_type) {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetCodegenFunctionName() const;
     const std::string name_;
     const FnNodeList *parameters_;
     const TypeNode *ret_type_;

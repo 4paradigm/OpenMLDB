@@ -385,6 +385,7 @@ TEST_P(EngineTest, test_normal) {
         ::fesql::type::ColumnDef* column_def = output_schema.add_columns();
         *column_def = column;
     }
+
     std::unique_ptr<storage::RowView> row_view =
         std::move(std::unique_ptr<storage::RowView>(
             new storage::RowView(output_schema.columns())));

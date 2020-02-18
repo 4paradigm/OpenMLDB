@@ -237,13 +237,20 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
     node::PlanNodeList trees;
     base::Status status;
     const std::string sql =
+        "%%fun\n"
+        "def test_col_at(col:list<float>, pos:i32):float\n"
+        "\treturn col[pos]\n"
+        "end\n"
+        "%%sql\n"
         "SELECT sum(col1) OVER w1 as w1_col1_sum, "
         "sum(col3) OVER w2 as w2_col3_sum, "
         "sum(col4) OVER w2 as w2_col4_sum, "
         "col1, "
         "sum(col3) OVER w1 as w1_col3_sum, "
         "col2, "
-        "sum(col1) OVER w2 as w2_col1_sum "
+        "sum(col1) OVER w2 as w2_col1_sum, "
+        "test_col_at(col1, 0) OVER w2 as w2_col1_at_0, "
+        "test_col_at(col1, 1) OVER w2 as w2_col1_at_1 "
         "FROM t1 "
         "WINDOW "
         "w1 AS (PARTITION BY col2 ORDER BY `TS` RANGE BETWEEN 1d PRECEDING AND "
@@ -253,13 +260,15 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
         "limit 10;";
     int ret = parser_->parse(sql, list, manager_, status);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1u, list.size());
+    ASSERT_EQ(2u, list.size());
 
     std::cout << *(list[0]) << std::endl;
+    std::cout << *(list[1]) << std::endl;
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
-    ASSERT_EQ(1u, trees.size());
-    PlanNode *plan_ptr = trees[0];
+    ASSERT_EQ(2u, trees.size());
+
+    PlanNode *plan_ptr = trees[1];
     ASSERT_TRUE(NULL != plan_ptr);
 
     std::cout << *plan_ptr << std::endl;
@@ -274,7 +283,7 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
 
     std::vector<std::pair<uint32_t, uint32_t>> pos_mapping =
         merge_node->GetPosMapping();
-    ASSERT_EQ(7, pos_mapping.size());
+    ASSERT_EQ(9, pos_mapping.size());
     ASSERT_EQ(std::make_pair(1u, 0u), pos_mapping[0]);
     ASSERT_EQ(std::make_pair(2u, 0u), pos_mapping[1]);
     ASSERT_EQ(std::make_pair(2u, 1u), pos_mapping[2]);
@@ -282,6 +291,8 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
     ASSERT_EQ(std::make_pair(1u, 1u), pos_mapping[4]);
     ASSERT_EQ(std::make_pair(0u, 1u), pos_mapping[5]);
     ASSERT_EQ(std::make_pair(2u, 2u), pos_mapping[6]);
+    ASSERT_EQ(std::make_pair(2u, 3u), pos_mapping[7]);
+    ASSERT_EQ(std::make_pair(2u, 4u), pos_mapping[8]);
 
     // validate project list based on current row
     std::vector<PlanNode *> plan_vec = merge_node->GetChildren();
@@ -355,7 +366,7 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
         node::ProjectListPlanNode *project_list =
             dynamic_cast<node::ProjectListPlanNode *>(plan_vec.at(2));
 
-        ASSERT_EQ(3u, project_list->GetProjects().size());
+        ASSERT_EQ(5u, project_list->GetProjects().size());
         ASSERT_TRUE(nullptr != project_list->GetW());
         ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
         ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
@@ -383,6 +394,21 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
                 dynamic_cast<node::ProjectPlanNode *>(
                     project_list->GetProjects()[2]);
             ASSERT_EQ(6u, project->GetPos());
+        }
+
+        // validate w2_col1_at_0 pos 7
+        {
+            node::ProjectPlanNode *project =
+                dynamic_cast<node::ProjectPlanNode *>(
+                    project_list->GetProjects()[3]);
+            ASSERT_EQ(7u, project->GetPos());
+        }
+        // validate w2_col1_at_1 pos 8
+        {
+            node::ProjectPlanNode *project =
+                dynamic_cast<node::ProjectPlanNode *>(
+                    project_list->GetProjects()[4]);
+            ASSERT_EQ(8u, project->GetPos());
         }
 
         ASSERT_EQ(node::kPlanTypeScan,

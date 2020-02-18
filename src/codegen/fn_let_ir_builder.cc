@@ -100,7 +100,7 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
             return false;
         }
         ::fesql::type::Type ctype;
-        ok = GetTableType(expr_out_val->getType(), &ctype);
+        ok = GetBaseType(expr_out_val->getType(), &ctype);
         if (!ok) {
             return false;
         }

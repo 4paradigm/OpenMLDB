@@ -7,6 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "udf/udf.h"
+#include <node/sql_node.h>
 #include <stdint.h>
 #include <algorithm>
 #include <vector>
@@ -25,6 +26,7 @@ using fesql::storage::Row;
 using fesql::storage::StringColumnImpl;
 using fesql::storage::StringRef;
 using fesql::storage::WindowIteratorImpl;
+
 template <class V>
 int32_t current_time() {
     return 5;
@@ -37,7 +39,7 @@ inline V inc(V i) {
 int32_t inc_int32(int32_t i) { return inc<int32_t>(i); }
 
 template <class V>
-V sum(int8_t *input) {
+V sum_list(int8_t *input) {
     V result = 0;
     if (nullptr == input) {
         return result;
@@ -53,7 +55,7 @@ V sum(int8_t *input) {
 }
 
 template <class V>
-V max(int8_t *input) {
+V max_list(int8_t *input) {
     V result = 0;
     if (nullptr == input) {
         return result;
@@ -76,7 +78,7 @@ V max(int8_t *input) {
 }
 
 template <class V>
-V min(int8_t *input) {
+V min_list(int8_t *input) {
     V result = 0;
     if (nullptr == input) {
         return result;
@@ -99,35 +101,35 @@ V min(int8_t *input) {
 }
 
 template <class V>
-V list_at(int8_t *input, int32_t pos) {
+V at_list(int8_t *input, int32_t pos) {
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
     ::fesql::storage::ListV<V> *list =
         (::fesql::storage::ListV<V> *)(list_ref->list);
     return list->At(pos);
 }
 
-int16_t list_at_int16(int8_t *input, int32_t pos) {
-    return list_at<int16_t>(input, pos);
+int16_t at_list_int16(int8_t *input, int32_t pos) {
+    return at_list<int16_t>(input, pos);
 }
 
-int32_t list_at_int32(int8_t *input, int32_t pos) {
-    return list_at<int32_t>(input, pos);
+int32_t at_list_int32(int8_t *input, int32_t pos) {
+    return at_list<int32_t>(input, pos);
 }
 
-int64_t list_at_int64(int8_t *input, int32_t pos) {
-    return list_at<int64_t>(input, pos);
+int64_t at_list_int64(int8_t *input, int32_t pos) {
+    return at_list<int64_t>(input, pos);
 }
 
-float list_at_float(int8_t *input, int32_t pos) {
-    return list_at<float>(input, pos);
+float at_list_float(int8_t *input, int32_t pos) {
+    return at_list<float>(input, pos);
 }
 
-double list_at_double(int8_t *input, int32_t pos) {
-    return list_at<double>(input, pos);
+double at_list_double(int8_t *input, int32_t pos) {
+    return at_list<double>(input, pos);
 }
 
 template <class V>
-bool list_iterator(int8_t *input, int8_t *output) {
+bool iterator_list(int8_t *input, int8_t *output) {
     if (nullptr == input || nullptr == output) {
         return false;
     }
@@ -141,24 +143,24 @@ bool list_iterator(int8_t *input, int8_t *output) {
     new (iter) IteratorImpl<V>(*col);
     return true;
 }
-bool list_iterator_int16(int8_t *input, int8_t *output) {
-    return list_iterator<int16_t>(input, output);
+bool iterator_list_int16(int8_t *input, int8_t *output) {
+    return iterator_list<int16_t>(input, output);
 }
-bool list_iterator_int32(int8_t *input, int8_t *output) {
-    return list_iterator<int32_t>(input, output);
+bool iterator_list_int32(int8_t *input, int8_t *output) {
+    return iterator_list<int32_t>(input, output);
 }
-bool list_iterator_int64(int8_t *input, int8_t *output) {
-    return list_iterator<int64_t>(input, output);
+bool iterator_list_int64(int8_t *input, int8_t *output) {
+    return iterator_list<int64_t>(input, output);
 }
-bool list_iterator_float(int8_t *input, int8_t *output) {
-    return list_iterator<float>(input, output);
+bool iterator_list_float(int8_t *input, int8_t *output) {
+    return iterator_list<float>(input, output);
 }
-bool list_iterator_double(int8_t *input, int8_t *output) {
-    return list_iterator<double>(input, output);
+bool iterator_list_double(int8_t *input, int8_t *output) {
+    return iterator_list<double>(input, output);
 }
 
 template <class V>
-bool list_iterator_has_next(int8_t *input) {
+bool has_next_iterator(int8_t *input) {
     if (nullptr == input) {
         return false;
     }
@@ -168,77 +170,72 @@ bool list_iterator_has_next(int8_t *input) {
         (::fesql::storage::IteratorImpl<V> *)(iter_ref->iterator);
     return iter == nullptr ? false : iter->Valid();
 }
-
-bool list_iterator_has_next_int16(int8_t *input) {
-    return list_iterator_has_next<int16_t>(input);
+bool has_next_iterator_int16(int8_t *input) {
+    return has_next_iterator<int16_t>(input);
 }
-
-bool list_iterator_has_next_float(int8_t *input) {
-    return list_iterator_has_next<float>(input);
+bool has_next_iterator_float(int8_t *input) {
+    return has_next_iterator<float>(input);
 }
-bool list_iterator_has_next_double(int8_t *input) {
-    return list_iterator_has_next<double>(input);
+bool has_next_iterator_double(int8_t *input) {
+    return has_next_iterator<double>(input);
 }
-bool list_iterator_has_next_int32(int8_t *input) {
-    return list_iterator_has_next<int32_t>(input);
+bool has_next_iterator_int32(int8_t *input) {
+    return has_next_iterator<int32_t>(input);
 }
-bool list_iterator_has_next_int64(int8_t *input) {
-    return list_iterator_has_next<int64_t>(input);
+bool has_next_iterator_int64(int8_t *input) {
+    return has_next_iterator<int64_t>(input);
 }
 
 template <class V>
-bool list_iterator_next(int8_t *input, V *output) {
+V next_iterator(int8_t *input, V default_value) {
     if (nullptr == input) {
-        return false;
+        return default_value;
     }
     ::fesql::storage::IteratorRef *iter_ref =
         (::fesql::storage::IteratorRef *)(input);
     if (nullptr == iter_ref) {
-        return false;
+        return default_value;
     }
     ::fesql::storage::IteratorImpl<V> *iter =
         (::fesql::storage::IteratorImpl<V> *)(iter_ref->iterator);
     if (nullptr == iter) {
-        return false;
+        return default_value;
     }
-    *output = iter->Next();
-    return true;
+    return iter->Next();
+}
+int16_t next_iterator_int16(int8_t *input) {
+    return next_iterator<int16_t>(input, 0u);
+}
+float next_iterator_float(int8_t *input) {
+    return next_iterator<float>(input, 0.0f);
+}
+double next_iterator_double(int8_t *input) {
+    return next_iterator<double>(input, 0.0);
+}
+int32_t next_iterator_int32(int8_t *input) {
+    return next_iterator<int32_t>(input, 0);
+}
+int64_t next_iterator_int64(int8_t *input) {
+    return next_iterator<int64_t>(input, 0L);
 }
 
-bool list_iterator_next_int16(int8_t *input, int16_t *output) {
-    return list_iterator_next<int16_t>(input, output);
-}
+int16_t sum_list_int16(int8_t *input) { return sum_list<int16_t>(input); }
+int32_t sum_list_int32(int8_t *input) { return sum_list<int32_t>(input); }
+int64_t sum_list_int64(int8_t *input) { return sum_list<int64_t>(input); }
+float sum_list_float(int8_t *input) { return sum_list<float>(input); }
+double sum_list_double(int8_t *input) { return sum_list<double>(input); }
 
-bool list_iterator_next_float(int8_t *input, float *output) {
-    return list_iterator_next<float>(input, output);
-}
-bool list_iterator_next_double(int8_t *input, double *output) {
-    return list_iterator_next<double>(input, output);
-}
-bool list_iterator_next_int32(int8_t *input, int32_t *output) {
-    return list_iterator_next<int32_t>(input, output);
-}
-bool list_iterator_next_int64(int8_t *input, int64_t *output) {
-    return list_iterator_next<int64_t>(input, output);
-}
+int16_t max_list_int16(int8_t *input) { return max_list<int16_t>(input); }
+int32_t max_list_int32(int8_t *input) { return max_list<int32_t>(input); }
+int64_t max_list_int64(int8_t *input) { return max_list<int64_t>(input); }
+float max_list_float(int8_t *input) { return max_list<float>(input); }
+double max_list_double(int8_t *input) { return max_list<double>(input); }
 
-int16_t sum_int16(int8_t *input) { return sum<int16_t>(input); }
-int32_t sum_int32(int8_t *input) { return sum<int32_t>(input); }
-int64_t sum_int64(int8_t *input) { return sum<int64_t>(input); }
-float sum_float(int8_t *input) { return sum<float>(input); }
-double sum_double(int8_t *input) { return sum<double>(input); }
-
-int16_t max_int16(int8_t *input) { return max<int16_t>(input); }
-int32_t max_int32(int8_t *input) { return max<int32_t>(input); }
-int64_t max_int64(int8_t *input) { return max<int64_t>(input); }
-float max_float(int8_t *input) { return max<float>(input); }
-double max_double(int8_t *input) { return max<double>(input); }
-
-int16_t min_int16(int8_t *input) { return min<int16_t>(input); }
-int32_t min_int32(int8_t *input) { return min<int32_t>(input); }
-int64_t min_int64(int8_t *input) { return min<int64_t>(input); }
-float min_float(int8_t *input) { return min<float>(input); }
-double min_double(int8_t *input) { return min<double>(input); }
+int16_t min_list_int16(int8_t *input) { return min_list<int16_t>(input); }
+int32_t min_list_int32(int8_t *input) { return min_list<int32_t>(input); }
+int64_t min_list_int64(int8_t *input) { return min_list<int64_t>(input); }
+float min_list_float(int8_t *input) { return min_list<float>(input); }
+double min_list_double(int8_t *input) { return min_list<double>(input); }
 
 }  // namespace v1
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
@@ -249,67 +246,82 @@ void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
     AddSymbol(jd, mi, "inc_int32", reinterpret_cast<void *>(&v1::inc_int32));
-    AddSymbol(jd, mi, "sum_int16", reinterpret_cast<void *>(&v1::sum_int16));
-    AddSymbol(jd, mi, "sum_int32", reinterpret_cast<void *>(&v1::sum_int32));
-    AddSymbol(jd, mi, "sum_int64", reinterpret_cast<void *>(&v1::sum_int64));
-    AddSymbol(jd, mi, "sum_double", reinterpret_cast<void *>(&v1::sum_double));
-    AddSymbol(jd, mi, "sum_float", reinterpret_cast<void *>(&v1::sum_float));
+    AddSymbol(jd, mi, "sum_list_int16",
+              reinterpret_cast<void *>(&v1::sum_list_int16));
+    AddSymbol(jd, mi, "sum_list_int32",
+              reinterpret_cast<void *>(&v1::sum_list_int32));
+    AddSymbol(jd, mi, "sum_list_int64",
+              reinterpret_cast<void *>(&v1::sum_list_int64));
+    AddSymbol(jd, mi, "sum_list_double",
+              reinterpret_cast<void *>(&v1::sum_list_double));
+    AddSymbol(jd, mi, "sum_list_float",
+              reinterpret_cast<void *>(&v1::sum_list_float));
 
-    AddSymbol(jd, mi, "max_int16", reinterpret_cast<void *>(&v1::max_int16));
-    AddSymbol(jd, mi, "max_int32", reinterpret_cast<void *>(&v1::max_int32));
-    AddSymbol(jd, mi, "max_int64", reinterpret_cast<void *>(&v1::max_int64));
-    AddSymbol(jd, mi, "max_double", reinterpret_cast<void *>(&v1::max_double));
-    AddSymbol(jd, mi, "max_float", reinterpret_cast<void *>(&v1::max_float));
+    AddSymbol(jd, mi, "max_list_int16",
+              reinterpret_cast<void *>(&v1::max_list_int16));
+    AddSymbol(jd, mi, "max_list_int32",
+              reinterpret_cast<void *>(&v1::max_list_int32));
+    AddSymbol(jd, mi, "max_list_int64",
+              reinterpret_cast<void *>(&v1::max_list_int64));
+    AddSymbol(jd, mi, "max_list_float",
+              reinterpret_cast<void *>(&v1::max_list_float));
+    AddSymbol(jd, mi, "max_list_double",
+              reinterpret_cast<void *>(&v1::max_list_double));
 
-    AddSymbol(jd, mi, "min_int16", reinterpret_cast<void *>(&v1::min_int16));
-    AddSymbol(jd, mi, "min_int32", reinterpret_cast<void *>(&v1::min_int32));
-    AddSymbol(jd, mi, "min_int64", reinterpret_cast<void *>(&v1::min_int64));
-    AddSymbol(jd, mi, "min_double", reinterpret_cast<void *>(&v1::min_double));
-    AddSymbol(jd, mi, "min_float", reinterpret_cast<void *>(&v1::min_float));
+    AddSymbol(jd, mi, "min_list_int16",
+              reinterpret_cast<void *>(&v1::min_list_int16));
+    AddSymbol(jd, mi, "min_list_int32",
+              reinterpret_cast<void *>(&v1::min_list_int32));
+    AddSymbol(jd, mi, "min_list_int64",
+              reinterpret_cast<void *>(&v1::min_list_int64));
+    AddSymbol(jd, mi, "min_list_float",
+              reinterpret_cast<void *>(&v1::min_list_float));
+    AddSymbol(jd, mi, "min_list_double",
+              reinterpret_cast<void *>(&v1::min_list_double));
 
-    AddSymbol(jd, mi, "list_at_int16",
-              reinterpret_cast<void *>(&v1::list_at_int16));
-    AddSymbol(jd, mi, "list_at_int32",
-              reinterpret_cast<void *>(&v1::list_at_int32));
-    AddSymbol(jd, mi, "list_at_int64",
-              reinterpret_cast<void *>(&v1::list_at_int64));
-    AddSymbol(jd, mi, "list_at_float",
-              reinterpret_cast<void *>(&v1::list_at_float));
-    AddSymbol(jd, mi, "list_at_double",
-              reinterpret_cast<void *>(&v1::list_at_double));
+    AddSymbol(jd, mi, "at_list_int16",
+              reinterpret_cast<void *>(&v1::at_list_int16));
+    AddSymbol(jd, mi, "at_list_int32",
+              reinterpret_cast<void *>(&v1::at_list_int32));
+    AddSymbol(jd, mi, "at_list_int64",
+              reinterpret_cast<void *>(&v1::at_list_int64));
+    AddSymbol(jd, mi, "at_list_float",
+              reinterpret_cast<void *>(&v1::at_list_float));
+    AddSymbol(jd, mi, "at_list_double",
+              reinterpret_cast<void *>(&v1::at_list_double));
 
-    AddSymbol(jd, mi, "list_iterator_int16",
-              reinterpret_cast<void *>(&v1::list_iterator_int16));
-    AddSymbol(jd, mi, "list_iterator_int32",
-              reinterpret_cast<void *>(&v1::list_iterator_int32));
-    AddSymbol(jd, mi, "list_iterator_int64",
-              reinterpret_cast<void *>(&v1::list_iterator_int64));
-    AddSymbol(jd, mi, "list_iterator_float",
-              reinterpret_cast<void *>(&v1::list_iterator_float));
-    AddSymbol(jd, mi, "list_iterator_double",
-              reinterpret_cast<void *>(&v1::list_iterator_double));
+    AddSymbol(jd, mi, "iterator_list_int16",
+              reinterpret_cast<void *>(&v1::iterator_list_int16));
+    AddSymbol(jd, mi, "iterator_list_int32",
+              reinterpret_cast<void *>(&v1::iterator_list_int32));
+    AddSymbol(jd, mi, "iterator_list_int64",
+              reinterpret_cast<void *>(&v1::iterator_list_int64));
+    AddSymbol(jd, mi, "iterator_list_float",
+              reinterpret_cast<void *>(&v1::iterator_list_float));
+    AddSymbol(jd, mi, "iterator_list_double",
+              reinterpret_cast<void *>(&v1::iterator_list_double));
 
-    AddSymbol(jd, mi, "list_iterator_has_next_int16",
-              reinterpret_cast<void *>(&v1::list_iterator_has_next_int16));
-    AddSymbol(jd, mi, "list_iterator_has_next_int32",
-              reinterpret_cast<void *>(&v1::list_iterator_has_next_int32));
-    AddSymbol(jd, mi, "list_iterator_has_next_int64",
-              reinterpret_cast<void *>(&v1::list_iterator_has_next_int64));
-    AddSymbol(jd, mi, "list_iterator_has_next_float",
-              reinterpret_cast<void *>(&v1::list_iterator_has_next_float));
-    AddSymbol(jd, mi, "list_iterator_has_next_double",
-              reinterpret_cast<void *>(&v1::list_iterator_has_next_double));
+    AddSymbol(jd, mi, "has_next_iterator_int16",
+              reinterpret_cast<void *>(&v1::has_next_iterator_int16));
+    AddSymbol(jd, mi, "has_next_iterator_int32",
+              reinterpret_cast<void *>(&v1::has_next_iterator_int32));
+    AddSymbol(jd, mi, "has_next_iterator_int64",
+              reinterpret_cast<void *>(&v1::has_next_iterator_int64));
+    AddSymbol(jd, mi, "has_next_iterator_float",
+              reinterpret_cast<void *>(&v1::has_next_iterator_float));
+    AddSymbol(jd, mi, "has_next_iterator_double",
+              reinterpret_cast<void *>(&v1::has_next_iterator_double));
 
-    AddSymbol(jd, mi, "list_iterator_next_int16",
-              reinterpret_cast<void *>(&v1::list_iterator_next_int16));
-    AddSymbol(jd, mi, "list_iterator_next_int32",
-              reinterpret_cast<void *>(&v1::list_iterator_next_int32));
-    AddSymbol(jd, mi, "list_iterator_next_int64",
-              reinterpret_cast<void *>(&v1::list_iterator_next_int64));
-    AddSymbol(jd, mi, "list_iterator_next_float",
-              reinterpret_cast<void *>(&v1::list_iterator_next_float));
-    AddSymbol(jd, mi, "list_iterator_next_double",
-              reinterpret_cast<void *>(&v1::list_iterator_next_double));
+    AddSymbol(jd, mi, "next_iterator_int16",
+              reinterpret_cast<void *>(&v1::next_iterator_int16));
+    AddSymbol(jd, mi, "next_iterator_int32",
+              reinterpret_cast<void *>(&v1::next_iterator_int32));
+    AddSymbol(jd, mi, "next_iterator_int64",
+              reinterpret_cast<void *>(&v1::next_iterator_int64));
+    AddSymbol(jd, mi, "next_iterator_float",
+              reinterpret_cast<void *>(&v1::next_iterator_float));
+    AddSymbol(jd, mi, "next_iterator_double",
+              reinterpret_cast<void *>(&v1::next_iterator_double));
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT
@@ -326,54 +338,75 @@ void RegisterUDFToModule(::llvm::Module *m) {
     ::llvm::Type *double_ty = ::llvm::Type::getDoubleTy(m->getContext());
     ::llvm::Type *i8_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
 
+    std::vector<std::pair<fesql::type::Type, ::llvm::Type *>> number_types;
+    number_types.push_back(std::make_pair(fesql::type::kInt16, i16_ty));
+    number_types.push_back(std::make_pair(fesql::type::kInt32, i32_ty));
+    number_types.push_back(std::make_pair(fesql::type::kInt64, i64_ty));
+    number_types.push_back(std::make_pair(fesql::type::kFloat, float_ty));
+    number_types.push_back(std::make_pair(fesql::type::kDouble, double_ty));
+
     m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
 
-    m->getOrInsertFunction("sum_int16", i16_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_int32", i32_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_int64", i64_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_float", float_ty, i8_ptr_ty);
-    m->getOrInsertFunction("sum_double", double_ty, i8_ptr_ty);
+    {
+        std::string prefix =
+            "sum_" + node::DataTypeName(fesql::type::kList) + "_";
+        for (auto type : number_types) {
+            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
+                                   type.second, i8_ptr_ty);
+        }
+    }
 
-    m->getOrInsertFunction("max_int16", i16_ty, i8_ptr_ty);
-    m->getOrInsertFunction("max_int32", i32_ty, i8_ptr_ty);
-    m->getOrInsertFunction("max_int64", i64_ty, i8_ptr_ty);
-    m->getOrInsertFunction("max_float", float_ty, i8_ptr_ty);
-    m->getOrInsertFunction("max_double", double_ty, i8_ptr_ty);
+    {
+        std::string prefix =
+            "min_" + node::DataTypeName(fesql::type::kList) + "_";
+        for (auto type : number_types) {
+            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
+                                   type.second, i8_ptr_ty);
+        }
+    }
 
-    m->getOrInsertFunction("min_int16", i16_ty, i8_ptr_ty);
-    m->getOrInsertFunction("min_int32", i32_ty, i8_ptr_ty);
-    m->getOrInsertFunction("min_int64", i64_ty, i8_ptr_ty);
-    m->getOrInsertFunction("min_float", float_ty, i8_ptr_ty);
-    m->getOrInsertFunction("min_double", double_ty, i8_ptr_ty);
+    {
+        std::string prefix =
+            "max_" + node::DataTypeName(fesql::type::kList) + "_";
+        for (auto type : number_types) {
+            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
+                                   type.second, i8_ptr_ty);
+        }
+    }
 
-    m->getOrInsertFunction("list_at_int16", i16_ty, i8_ptr_ty, i32_ty);
-    m->getOrInsertFunction("list_at_int32", i32_ty, i8_ptr_ty, i32_ty);
-    m->getOrInsertFunction("list_at_int64", i64_ty, i8_ptr_ty, i32_ty);
-    m->getOrInsertFunction("list_at_float", float_ty, i8_ptr_ty, i32_ty);
-    m->getOrInsertFunction("list_at_double", double_ty, i8_ptr_ty, i32_ty);
+    {
+        std::string prefix =
+            "at_" + node::DataTypeName(fesql::type::kList) + "_";
+        for (auto type : number_types) {
+            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
+                                   type.second, i8_ptr_ty, i32_ty);
+        }
+    }
 
-    m->getOrInsertFunction("list_iterator_int16", i1_ty, i8_ptr_ty, i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_int32", i1_ty, i8_ptr_ty, i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_int64", i1_ty, i8_ptr_ty, i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_float", i1_ty, i8_ptr_ty, i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_double", i1_ty, i8_ptr_ty, i8_ptr_ty);
-
-    m->getOrInsertFunction("list_iterator_has_next_int16", i1_ty, i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_has_next_int32", i1_ty, i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_has_next_int64", i1_ty, i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_has_next_float", i1_ty, i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_has_next_double", i1_ty, i8_ptr_ty);
-
-    m->getOrInsertFunction("list_iterator_next_int16", i1_ty, i8_ptr_ty,
-                           i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_next_int32", i1_ty, i8_ptr_ty,
-                           i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_next_int64", i1_ty, i8_ptr_ty,
-                           i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_next_float", i1_ty, i8_ptr_ty,
-                           i8_ptr_ty);
-    m->getOrInsertFunction("list_iterator_next_double", i1_ty, i8_ptr_ty,
-                           i8_ptr_ty);
+    {
+        std::string prefix =
+            "iterator_" + node::DataTypeName(fesql::type::kList) + "_";
+        for (auto type : number_types) {
+            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
+                                   i1_ty, i8_ptr_ty, i8_ptr_ty);
+        }
+    }
+    {
+        std::string prefix =
+            "next_" + node::DataTypeName(fesql::type::kIterator) + "_";
+        for (auto type : number_types) {
+            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
+                                   type.second, i8_ptr_ty);
+        }
+    }
+    {
+        std::string prefix =
+            "has_next_" + node::DataTypeName(fesql::type::kIterator) + "_";
+        for (auto type : number_types) {
+            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
+                                   i1_ty, i8_ptr_ty);
+        }
+    }
 }
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                     ::llvm::orc::MangleAndInterner &mi) {  // NOLINT

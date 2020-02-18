@@ -24,7 +24,8 @@
 namespace fesql {
 namespace codegen {
 
-bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
+bool GetLLVMType(::llvm::BasicBlock* block,
+                 const ::fesql::type::Type& type,  // NOLINT
                  ::llvm::Type** output) {
     if (output == NULL || block == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
@@ -32,79 +33,70 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
     }
     return GetLLVMType(block->getModule(), type, output);
 }
+
 bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
-                 ::llvm::Type** output) {
-    if (output == NULL || m == NULL) {
-        LOG(WARNING) << "the output ptr or module  is NULL ";
+                 ::llvm::Type** llvm_type) {
+    if (nullptr == m) {
+        LOG(WARNING) << "fail to convert data type to llvm type";
         return false;
     }
     switch (type) {
-        case ::fesql::type::kInt16: {
-            *output = ::llvm::Type::getInt16Ty(m->getContext());
-            return true;
-        }
-        case ::fesql::type::kInt32: {
-            *output = ::llvm::Type::getInt32Ty(m->getContext());
-            return true;
-        }
-        case ::fesql::type::kInt64: {
-            *output = ::llvm::Type::getInt64Ty(m->getContext());
-            return true;
-        }
-        case ::fesql::type::kFloat: {
-            *output = ::llvm::Type::getFloatTy(m->getContext());
-            return true;
-        }
-        case ::fesql::type::kDouble: {
-            *output = ::llvm::Type::getDoubleTy(m->getContext());
-            return true;
-        }
-        case ::fesql::type::kBool: {
-            *output = ::llvm::Type::getInt1Ty(m->getContext());
-            return true;
-        }
-        case ::fesql::type::kVarchar: {
+        case type::kVoid:
+            *llvm_type = (::llvm::Type::getVoidTy(m->getContext()));
+            break;
+        case type::kBool:
+            *llvm_type = (::llvm::Type::getInt1Ty(m->getContext()));
+            break;
+        case type::kInt16:
+            *llvm_type = (::llvm::Type::getInt16Ty(m->getContext()));
+            break;
+        case type::kInt32:
+            *llvm_type = (::llvm::Type::getInt32Ty(m->getContext()));
+            break;
+        case type::kInt64:
+            *llvm_type = (::llvm::Type::getInt64Ty(m->getContext()));
+            break;
+        case type::kFloat:
+            *llvm_type = (::llvm::Type::getFloatTy(m->getContext()));
+            break;
+        case type::kDouble:
+            *llvm_type = (::llvm::Type::getDoubleTy(m->getContext()));
+            break;
+        case type::kInt8Ptr:
+            *llvm_type = (::llvm::Type::getInt8PtrTy(m->getContext()));
+            break;
+        case type::kVarchar: {
             std::string name = "fe.string_ref";
             ::llvm::StringRef sr(name);
             ::llvm::StructType* stype = m->getTypeByName(sr);
             if (stype != NULL) {
-                *output = stype;
+                *llvm_type = stype;
                 return true;
             }
             stype = ::llvm::StructType::create(m->getContext(), name);
-            ::llvm::Type* size_ty = ::llvm::Type::getInt32Ty(m->getContext());
+            ::llvm::Type* size_ty = (::llvm::Type::getInt32Ty(m->getContext()));
             ::llvm::Type* data_ptr_ty =
-                ::llvm::Type::getInt8PtrTy(m->getContext());
+                (::llvm::Type::getInt8PtrTy(m->getContext()));
             std::vector<::llvm::Type*> elements;
             elements.push_back(size_ty);
             elements.push_back(data_ptr_ty);
             stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
-            *output = stype;
+            *llvm_type = stype;
             return true;
         }
-        case ::fesql::type::kList: {
-            std::string name = "fe.list_ref";
-            ::llvm::StringRef sr(name);
-            ::llvm::StructType* stype = m->getTypeByName(sr);
-            if (stype != NULL) {
-                *output = stype;
-                return true;
-            }
-            stype = ::llvm::StructType::create(m->getContext(), name);
-            ::llvm::Type* data_ptr_ty =
-                ::llvm::Type::getInt8PtrTy(m->getContext());
-            std::vector<::llvm::Type*> elements;
-            elements.push_back(data_ptr_ty);
-            stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
-            *output = stype;
-            return true;
+        case type::kList:
+        case type::kMap:
+        case type::kIterator: {
+            LOG(WARNING) << "fail to convert type" << node::DataTypeName(type)
+                         << "without generic types";
+            return false;
         }
         default: {
-            LOG(WARNING) << "not supported type "
-                         << ::fesql::type::Type_Name(type);
+            LOG(WARNING) << "fail to convert fesql datatype to llvm type: ";
             return false;
         }
     }
+    return true;
 }
 
 bool GetLLVMIteratorSize(const ::fesql::type::Type& v_type, uint32_t* size) {
@@ -147,6 +139,7 @@ bool GetLLVMIteratorSize(const ::fesql::type::Type& v_type, uint32_t* size) {
     }
     return true;
 }
+
 bool GetLLVMColumnSize(const ::fesql::type::Type& v_type, uint32_t* size) {
     if (nullptr == size) {
         LOG(WARNING) << "the size ptr is NULL ";
@@ -187,8 +180,9 @@ bool GetLLVMColumnSize(const ::fesql::type::Type& v_type, uint32_t* size) {
     return true;
 }
 
-bool GetLLVMListType(::llvm::Module* m,  // NOLINT
-                     const ::fesql::type::Type& v_type, ::llvm::Type** output) {
+bool GetLLVMListType(::llvm::Module* m,
+                     const ::fesql::type::Type& v_type,  // NOLINT
+                     ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
@@ -196,27 +190,27 @@ bool GetLLVMListType(::llvm::Module* m,  // NOLINT
     std::string name;
     switch (v_type) {
         case ::fesql::type::kInt16: {
-            name = "fe.list_int16_ref";
+            name = "fe.list_ref_int16";
             break;
         }
         case ::fesql::type::kInt32: {
-            name = "fe.list_int32_ref";
+            name = "fe.list_ref_int32";
             break;
         }
         case ::fesql::type::kInt64: {
-            name = "fe.list_int64_ref";
+            name = "fe.list_ref_int64";
             break;
         }
         case ::fesql::type::kFloat: {
-            name = "fe.list_float_ref";
+            name = "fe.list_ref_float";
             break;
         }
         case ::fesql::type::kDouble: {
-            name = "fe.list_double_ref";
+            name = "fe.list_ref_double";
             break;
         }
         case ::fesql::type::kVarchar: {
-            name = "fe.list_string_ref";
+            name = "fe.list_ref_string";
             break;
         }
         default: {
@@ -241,8 +235,8 @@ bool GetLLVMListType(::llvm::Module* m,  // NOLINT
     return true;
 }
 
-bool GetLLVMIteratorType(::llvm::Module* m,  // NOLINT
-                         const ::fesql::type::Type& v_type,
+bool GetLLVMIteratorType(::llvm::Module* m,
+                         const ::fesql::type::Type& v_type,  // NOLINT
                          ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
@@ -294,6 +288,37 @@ bool GetLLVMIteratorType(::llvm::Module* m,  // NOLINT
     stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
     *output = stype;
     return true;
+}
+
+bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
+                 ::llvm::Type** llvm_type) {
+    if (nullptr == data_type) {
+        LOG(WARNING) << "fail to convert data type to llvm type";
+        return false;
+    }
+    switch (data_type->base_) {
+        case type::kList: {
+            if (data_type->generics_.size() != 1) {
+                LOG(WARNING) << "fail to convert data type: list generic types "
+                                "number is " +
+                                    data_type->generics_.size();
+                return false;
+            }
+            ::llvm::Type* list_type;
+            if (false ==
+                GetLLVMListType(m, data_type->generics_[0], &list_type)) {
+                return false;
+            }
+            *llvm_type = list_type;
+            return true;
+        }
+        case type::kMap: {
+            LOG(WARNING) << "fail to codegen map type, currently not support";
+        }
+        default: {
+            return GetLLVMType(m, data_type->base_, llvm_type);
+        }
+    }
 }
 
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
@@ -356,122 +381,93 @@ bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
     *outptr = builder.CreateIntToPtr(ptr_add_offset, type);
     return true;
 }
-
-bool GetFullType(::llvm::Type* type, ::fesql::type::Type* base,
-                 ::fesql::type::Type* v1_type, ::fesql::type::Type* v2_type) {
-    if (type == NULL || base == NULL) {
+bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
+    if (type == NULL || type_node == NULL) {
         LOG(WARNING) << "type or output is null";
         return false;
     }
-    switch (type->getTypeID()) {
-        case ::llvm::Type::FloatTyID: {
-            *base = ::fesql::type::kFloat;
-            return true;
-        }
-        case ::llvm::Type::DoubleTyID: {
-            *base = ::fesql::type::kDouble;
-            return true;
-        }
-        case ::llvm::Type::IntegerTyID: {
-            switch (type->getIntegerBitWidth()) {
-                case 16: {
-                    *base = ::fesql::type::kInt16;
-                    return true;
-                }
-                case 32: {
-                    *base = ::fesql::type::kInt32;
-                    return true;
-                }
-                case 64: {
-                    *base = ::fesql::type::kInt64;
-                    return true;
-                }
-                default: {
-                    LOG(WARNING) << "no mapping type for llvm type";
-                    return false;
-                }
-            }
-        }
-        case ::llvm::Type::StructTyID:
-        case ::llvm::Type::PointerTyID: {
+    if (false == GetBaseType(type, &type_node->base_)) {
+        return false;
+    }
+    switch (type_node->base_) {
+        case fesql::type::kList: {
             if (type->getTypeID() == ::llvm::Type::PointerTyID) {
                 type = reinterpret_cast<::llvm::PointerType*>(type)
                            ->getElementType();
             }
-            if (type->getStructName().equals("fe.list_int16_ref")) {
-                *base = fesql::type::kList;
-                *v1_type = fesql::type::kInt16;
+            if (type->getStructName().equals("fe.list_ref_int16")) {
+                type_node->generics_.push_back(fesql::type::kInt16);
                 return true;
-            } else if (type->getStructName().equals("fe.list_int32_ref")) {
-                *base = fesql::type::kList;
-                *v1_type = fesql::type::kInt32;
+            } else if (type->getStructName().equals("fe.list_ref_int32")) {
+                type_node->generics_.push_back(fesql::type::kInt32);
                 return true;
-            } else if (type->getStructName().equals("fe.list_int64_ref")) {
-                *base = fesql::type::kList;
-                *v1_type = fesql::type::kInt64;
+            } else if (type->getStructName().equals("fe.list_ref_int64")) {
+                type_node->generics_.push_back(fesql::type::kInt64);
                 return true;
-            } else if (type->getStructName().equals("fe.list_float_ref")) {
-                *base = fesql::type::kList;
-                *v1_type = fesql::type::kFloat;
+            } else if (type->getStructName().equals("fe.list_ref_float")) {
+                type_node->generics_.push_back(fesql::type::kFloat);
                 return true;
-            } else if (type->getStructName().equals("fe.list_double_ref")) {
-                *base = fesql::type::kList;
-                *v1_type = fesql::type::kDouble;
+            } else if (type->getStructName().equals("fe.list_ref_double")) {
+                type_node->generics_.push_back(fesql::type::kDouble);
                 return true;
-            } else if (type->getStructName().equals("fe.list_string_ref")) {
-                *base = fesql::type::kList;
-                *v1_type = fesql::type::kVarchar;
-                return true;
-            } else if (type->getStructName().equals("fe.iterator_ref_int16")) {
-                *base = fesql::type::kIterator;
-                *v1_type = fesql::type::kInt16;
-                return true;
-
-            } else if (type->getStructName().equals("fe.iterator_ref_int32")) {
-                *base = fesql::type::kIterator;
-                *v1_type = fesql::type::kInt32;
-                return true;
-
-            } else if (type->getStructName().equals("fe.iterator_ref_int64")) {
-                *base = fesql::type::kIterator;
-                *v1_type = fesql::type::kInt64;
-                return true;
-
-            } else if (type->getStructName().equals("fe.iterator_ref_float")) {
-                *base = fesql::type::kIterator;
-                *v1_type = fesql::type::kFloat;
-                return true;
-
-            } else if (type->getStructName().equals("fe.iterator_ref_double")) {
-                *base = fesql::type::kIterator;
-                *v1_type = fesql::type::kDouble;
-                return true;
-
-            } else if (type->getStructName().equals("fe.iterator_ref_string")) {
-                *base = fesql::type::kIterator;
-                *v1_type = fesql::type::kVarchar;
-                return true;
-            } else if (type->getStructName().equals("fe.string_ref")) {
-                *base = ::fesql::type::kVarchar;
+            } else if (type->getStructName().equals("fe.list_ref_string")) {
+                type_node->generics_.push_back(fesql::type::kVarchar);
                 return true;
             }
-            // TODO(chenjing): add map type
-            LOG(WARNING) << "no mapping type for llvm type "
+            LOG(WARNING) << "fail to get type of llvm type for "
                          << type->getStructName().str();
             return false;
         }
-        default: {
-            LOG(WARNING) << "no mapping type for llvm type";
+        case fesql::type::kIterator: {
+            if (type->getTypeID() == ::llvm::Type::PointerTyID) {
+                type = reinterpret_cast<::llvm::PointerType*>(type)
+                    ->getElementType();
+            }
+            if (type->getStructName().equals("fe.iterator_ref_int16")) {
+                type_node->generics_.push_back(fesql::type::kInt16);
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_int32")) {
+                type_node->generics_.push_back(fesql::type::kInt32);
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_int64")) {
+                type_node->generics_.push_back(fesql::type::kInt64);
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_float")) {
+                type_node->generics_.push_back(fesql::type::kFloat);
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_double")) {
+                type_node->base_ = fesql::type::kIterator;
+                type_node->generics_.push_back(fesql::type::kDouble);
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_string")) {
+                type_node->base_ = fesql::type::kIterator;
+                type_node->generics_.push_back(fesql::type::kVarchar);
+                return true;
+            }
+            LOG(WARNING) << "fail to get type of llvm type for "
+                         << type->getStructName().str();
             return false;
+        }
+        case fesql::type::kMap: {
+            LOG(WARNING) << "fail to get type for map";
+            return false;
+        }
+        default: {
+            return true;
         }
     }
 }
-bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
+
+bool GetBaseType(::llvm::Type* type, ::fesql::type::Type* output) {
     if (type == NULL || output == NULL) {
         LOG(WARNING) << "type or output is null";
         return false;
     }
-
     switch (type->getTypeID()) {
         case ::llvm::Type::FloatTyID: {
             *output = ::fesql::type::kFloat;
@@ -483,6 +479,10 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
         }
         case ::llvm::Type::IntegerTyID: {
             switch (type->getIntegerBitWidth()) {
+                case 1: {
+                    *output = ::fesql::type::kBool;
+                    return true;
+                }
                 case 16: {
                     *output = ::fesql::type::kInt16;
                     return true;
@@ -495,10 +495,6 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
                     *output = ::fesql::type::kInt64;
                     return true;
                 }
-                case 1: {
-                    *output = ::fesql::type::kBool;
-                    return true;
-                }
                 default: {
                     LOG(WARNING) << "no mapping type for llvm type";
                     return false;
@@ -511,11 +507,14 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
                 type = reinterpret_cast<::llvm::PointerType*>(type)
                            ->getElementType();
             }
-            if (type->getStructName().startswith_lower("fe.list_")) {
+            if (type->getStructName().startswith("fe.list_ref_")) {
                 *output = fesql::type::kList;
                 return true;
+            } else if (type->getStructName().startswith("fe.iterator_ref_")) {
+                *output = fesql::type::kIterator;
+                return true;
             } else if (type->getStructName().equals("fe.string_ref")) {
-                *output = ::fesql::type::kVarchar;
+                *output = fesql::type::kVarchar;
                 return true;
             }
             LOG(WARNING) << "no mapping type for llvm type "
@@ -529,106 +528,6 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
     }
 }
 
-bool GetFesqlTypeName(::fesql::type::Type type,
-                      ::std::string& name) {  // NOLINT
-    if (type == NULL) {
-        LOG(WARNING) << "type or output is null";
-        return false;
-    }
-
-    switch (type) {
-        case ::fesql::type::kFloat: {
-            name = "float";
-            return true;
-        }
-        case ::fesql::type::kDouble: {
-            name = "double";
-            return true;
-        }
-        case ::fesql::type::kInt16: {
-            name = "int16";
-            return true;
-        }
-        case ::fesql::type::kInt32: {
-            name = "int32";
-            return true;
-        }
-        case ::fesql::type::kInt64: {
-            name = "int64";
-            return true;
-        }
-        case ::fesql::type::kList: {
-            name = "list";
-            return true;
-        }
-        case ::fesql::type::kVarchar: {
-            name = "string";
-            return true;
-        }
-        case ::fesql::type::kTimestamp: {
-            name = "timestamp";
-            return true;
-        }
-        default: {
-            LOG(WARNING) << "no mapping type for llvm type";
-            return false;
-        }
-    }  // namespace codegen
-}  // namespace codegen
-bool GetLLVMTypeName(::llvm::Type* type, ::std::string& name) {  // NOLINT
-    if (type == NULL) {
-        LOG(WARNING) << "type or output is null";
-        return false;
-    }
-
-    switch (type->getTypeID()) {
-        case ::llvm::Type::FloatTyID: {
-            name = "float";
-            return true;
-        }
-        case ::llvm::Type::DoubleTyID: {
-            name = "double";
-            return true;
-        }
-        case ::llvm::Type::IntegerTyID: {
-            switch (type->getIntegerBitWidth()) {
-                case 16: {
-                    name = "int16";
-                    return true;
-                }
-                case 32: {
-                    name = "int32";
-                    return true;
-                }
-                case 64: {
-                    name = "int64";
-                    return true;
-                }
-                case 1: {
-                    name = "bool";
-                    return true;
-                }
-                default: {
-                    LOG(WARNING) << "no mapping type for llvm type";
-                    return false;
-                }
-            }
-        }
-        case ::llvm::Type::StructTyID:
-        case ::llvm::Type::PointerTyID: {
-            if (type->getTypeID() == ::llvm::Type::PointerTyID) {
-                type = reinterpret_cast<::llvm::PointerType*>(type)
-                           ->getElementType();
-            }
-            name = type->getStructName();
-            return true;
-        }
-        default: {
-            LOG(WARNING) << "no mapping type for llvm type";
-            return false;
-        }
-    }
-}
 bool BuildLoadOffset(::llvm::IRBuilder<>& builder,  // NOLINT
                      ::llvm::Value* ptr, ::llvm::Value* offset,
                      ::llvm::Type* type, ::llvm::Value** output) {

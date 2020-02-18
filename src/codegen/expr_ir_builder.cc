@@ -20,6 +20,7 @@
 #include <vector>
 #include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/list_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "glog/logging.h"
 #include "proto/common.pb.h"
@@ -56,26 +57,21 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
-::llvm::Function* ExprIRBuilder::GetFuncion(const std::string& fn_name,
-                                            const ::fesql::node::DataType& type,
-                                            common::Status& status) {
-    ::llvm::Function* fn = module_->getFunction(fn_name);
-
-    if (nullptr == fn) {
-        if (::fesql::type::kVoid != type) {
-            const std::string suffix = fesql::node::DataTypeName(type);
-            fn = module_->getFunction(fn_name + "_" + suffix);
-            if (nullptr == fn) {
-                status.set_code(common::kCallMethodError);
-                status.set_msg("fail to find func with name " + fn_name + "_" +
-                               suffix);
-                return fn;
-            }
-        } else {
-            status.set_code(common::kCallMethodError);
-            status.set_msg("fail to find func with name " + fn_name);
-            return fn;
+::llvm::Function* ExprIRBuilder::GetFuncion(
+    const std::string& name, std::vector<node::TypeNode> generic_types,
+    common::Status& status) {
+    std::string fn_name = name;
+    if (!generic_types.empty()) {
+        for (node::TypeNode type_node : generic_types) {
+            fn_name.append("_").append(type_node.GetName());
         }
+    }
+    ::llvm::Function* fn = module_->getFunction(fn_name);
+    if (nullptr == fn) {
+        status.set_code(common::kCallMethodError);
+        status.set_msg("fail to find func with name " + fn_name);
+        LOG(WARNING) << status.msg();
+        return fn;
     }
     return fn;
 }
@@ -134,15 +130,16 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             ::llvm::Value* ptr = NULL;
             if (!variable_ir_builder_.LoadValue(id_node->GetName(), &ptr,
                                                 status) ||
-                ptr == NULL) {
+                nullptr == ptr) {
                 LOG(WARNING) << "fail to find var " << id_node->GetName();
                 return false;
             }
-            if (ptr->getType()->isPointerTy()) {
-                *output = builder.CreateLoad(ptr, id_node->GetName().c_str());
-            } else {
-                *output = ptr;
-            }
+            *output = ptr;
+//            if (ptr->getType()->isPointerTy()) {
+//                *output = builder.CreateLoad(ptr, id_node->GetName().c_str());
+//            } else {
+//                *output = ptr;
+//            }
             return true;
         }
         case ::fesql::node::kExprBinary: {
@@ -178,27 +175,22 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     std::vector<::llvm::Value*> llvm_args;
     const std::vector<::fesql::node::SQLNode*>& args = call_fn->GetArgs();
     std::vector<::fesql::node::SQLNode*>::const_iterator it = args.cbegin();
-    ::fesql::type::Type list_value_type = ::fesql::type::kVoid;
+    std::vector<::fesql::node::TypeNode> generics_types;
     for (; it != args.cend(); ++it) {
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
         ::llvm::Value* llvm_arg = NULL;
         // TODO(chenjing): remove out_name
         if (Build(arg, &llvm_arg)) {
-            if (nullptr != call_fn->GetOver()) {
-                fesql::type::Type base;
-                fesql::type::Type v1_type;
-                fesql::type::Type v2_type;
-                if (false == GetFullType(llvm_arg->getType(), &base, &v1_type,
-                                         &v2_type)) {
-                    LOG(WARNING) << "fail to handle arg type";
-                    return false;
-                }
-                // handle list type
-                if (fesql::type::kList == base) {
-                    list_value_type = v1_type;
-                    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-                    llvm_arg = builder.CreatePointerCast(llvm_arg, i8_ptr_ty);
-                }
+            ::fesql::node::TypeNode value_type;
+            if (false == GetFullType(llvm_arg->getType(), &value_type)) {
+                LOG(WARNING) << "fail to handle arg type ";
+                return false;
+            }
+            // handle list type
+            if (fesql::type::kList == value_type.base_) {
+                generics_types.push_back(value_type);
+                ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+                llvm_arg = builder.CreatePointerCast(llvm_arg, i8_ptr_ty);
             }
             llvm_args.push_back(llvm_arg);
         } else {
@@ -207,10 +199,9 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         }
     }
 
-    ::llvm::Function* fn = GetFuncion(name, list_value_type, status);
+    ::llvm::Function* fn = GetFuncion(name, generics_types, status);
 
     if (common::kOk != status.code()) {
-        LOG(WARNING) << status.msg();
         return false;
     }
 
@@ -458,6 +449,33 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         case ::fesql::node::kFnOpLe: {
             ok = predicate_ir_builder_.BuildLeExpr(left, right, output, status);
             break;
+        }
+        case ::fesql::node::kFnOpAt: {
+            fesql::type::Type left_type;
+            if (false == GetBaseType(left->getType(), &left_type)) {
+                status.code = common::kCodegenError;
+                status.msg =
+                    "fail to codegen var[pos] expression: var type invalid";
+            }
+            switch (left_type) {
+                case fesql::type::kList: {
+                    ::llvm::Value* at_value;
+                    ListIRBuilder list_ir_builder(block_, sv_);
+                    if (false == list_ir_builder.BuildAt(left, right, &at_value,
+                                                         status)) {
+                        return false;
+                    }
+                    *output = at_value;
+                    return true;
+                }
+                default: {
+                    status.code = common::kCodegenError;
+                    status.msg =
+                        "fail to codegen var[pos] expression: var type can't "
+                        "support []";
+                    return false;
+                }
+            }
         }
         default: {
             ok = false;

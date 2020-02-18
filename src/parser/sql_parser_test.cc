@@ -147,7 +147,23 @@ INSTANTIATE_TEST_CASE_P(
         "    \telse\n"
         "    \t\tc=x*y\n"
         "    return c\n"
-        "end"));
+        "end",
+        "%%fun\n"
+        "def test(col:list<float>):float\n"
+        "\tsum = col[0]\n"
+        "\treturn sum\n"
+        "end",
+        "%%fun\n"
+        "def test(col:list<float>, pos:i32):float\n"
+        "\tsum = col[pos]\n"
+        "\treturn sum\n"
+        "end",
+        "%%fun\n"
+        "def test(col:list<float>, pos:i32):float\n"
+        "\tsum = col[pos]\n"
+        "\treturn sum\n"
+        "end"
+        ));
 
 INSTANTIATE_TEST_CASE_P(
     SQLCreate, SqlParserTest,
