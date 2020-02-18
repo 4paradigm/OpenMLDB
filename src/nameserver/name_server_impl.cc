@@ -6048,12 +6048,12 @@ int NameServerImpl::CreateTableRemoteTask(std::shared_ptr<OPData> op_data) {
     uint32_t remote_tid = remote_table_info.tid();
     std::string name = table_info.name();
     for (int idx = 0; idx < remote_table_info.table_partition_size(); idx++) {
-        ::rtidb::nameserver::TablePartition table_partition = remote_table_info.table_partition(idx);
+        const ::rtidb::nameserver::TablePartition& table_partition = remote_table_info.table_partition(idx);
         uint32_t pid = table_partition.pid();
         for (int meta_idx = 0; meta_idx < table_partition.partition_meta_size(); meta_idx++) {
             if (table_partition.partition_meta(meta_idx).is_leader()) {
-                ::rtidb::nameserver::PartitionMeta partition_meta = table_partition.partition_meta(meta_idx);
-                std::string endpoint = partition_meta.endpoint();
+                const ::rtidb::nameserver::PartitionMeta& partition_meta = table_partition.partition_meta(meta_idx);
+                const std::string& endpoint = partition_meta.endpoint();
                 std::string leader_endpoint;
                 std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_tmp = std::make_shared<::rtidb::nameserver::TableInfo> (table_info);
                 if (GetLeader(table_info_tmp, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
@@ -6068,7 +6068,7 @@ int NameServerImpl::CreateTableRemoteTask(std::shared_ptr<OPData> op_data) {
                     return -1;
                 }
                 op_data->task_list_.push_back(task);
-                task = CreateAddTableInfoTask(alias, endpoint, name, partition_meta.remote_tid(), pid,
+                task = CreateAddTableInfoTask(alias, endpoint, name, remote_tid, pid,
                         op_index, ::rtidb::api::OPType::kCreateTableRemoteOP);
                 if (!task) {
                     PDLOG(WARNING, "create addtableinfo task failed. tid[%u] pid[%u]", tid, pid);
