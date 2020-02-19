@@ -714,10 +714,10 @@ void DiskTableIterator::SeekToFirst() {
 void DiskTableIterator::Seek(const uint64_t ts) {
     if (has_ts_idx_) {
         std::string combine_key = CombineKeyTs(pk_, ts, ts_idx_);
-        it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, ts, ts_idx_)));
+        it_->Seek(rocksdb::Slice(combine_key));
     } else {
         std::string combine_key = CombineKeyTs(pk_, ts);
-        it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, ts)));
+        it_->Seek(rocksdb::Slice(combine_key));
     }
 }
 
