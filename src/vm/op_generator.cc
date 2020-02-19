@@ -218,7 +218,7 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
     if (!table_handler) {
         status.code = common::kTableNotFound;
         status.msg = "fail to find table " + node->GetTable();
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status.msg << " with db " << db;
         return false;
     }
 

@@ -398,7 +398,9 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                         // from storage api
                         buffer.reserve(10000);
                         auto wit = it->GetValue();
+                        wit->SeekToFirst();
                         while (wit->Valid()) {
+                            LOG(INFO) << "get ts "  << wit->GetKey();
                             base::Slice value = wit->GetValue();
                             ::fesql::storage::Row row(
                                 {.buf = reinterpret_cast<int8_t*>(
@@ -682,6 +684,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                         }
                         // scan window with single key
                         auto window_it = project_op->table_handler->GetWindowIterator(project_op->w.index_name);
+                        LOG(INFO) << "seek key " << key_name << " ts " << ts;
                         window_it->Seek(key_name);
                         if (!window_it->Valid()) {
                             LOG(WARNING)
@@ -699,6 +702,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                         }
                         while (single_window_it->Valid()) {
                             int64_t current_ts = single_window_it->GetKey();
+                            LOG(INFO) << "cts " << current_ts << " ts" << ts << " end_offset " << project_op->w.end_offset 
+                                << " start_offset " << project_op->w.start_offset;
                             if (current_ts > ts + project_op->w.end_offset) {
                                 single_window_it->Next();
                                 continue;

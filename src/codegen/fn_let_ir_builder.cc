@@ -25,7 +25,7 @@
 namespace fesql {
 namespace codegen {
 
-RowFnLetIRBuilder::RowFnLetIRBuilder(const catalog::Schema& schema,
+RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
                                      ::llvm::Module* module, bool is_window_agg)
     : schema_(schema), module_(module), is_window_agg_(is_window_agg) {}
 
@@ -33,7 +33,7 @@ RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 bool RowFnLetIRBuilder::Build(const std::string& name,
                               const ::fesql::node::ProjectListPlanNode* node,
-                              catalog::Schema& output_schema) {  // NOLINT (runtime/references)
+                              vm::Schema& output_schema) {  // NOLINT (runtime/references)
     if (node == NULL) {
         LOG(WARNING) << "node is null";
         return false;
@@ -124,7 +124,7 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
 
 bool RowFnLetIRBuilder::EncodeBuf(
     const std::map<uint32_t, ::llvm::Value*>* values,
-    const catalog::Schema& schema,
+    const vm::Schema& schema,
     ScopeVar& sv,  // NOLINT (runtime/references)
     ::llvm::BasicBlock* block, 
     const std::string& output_ptr_name) {

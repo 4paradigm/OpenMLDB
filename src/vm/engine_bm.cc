@@ -34,31 +34,16 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "vm/engine.h"
-#include "vm/table_mgr.h"
+#include "vm/test_base.h"
+#include "tablet/tablet_catalog.h"
 
 namespace fesql {
 namespace vm {
 using namespace ::llvm;  // NOLINT
-class TableMgrImpl : public TableMgr {
- public:
-    explicit TableMgrImpl(std::shared_ptr<TableStatus> status)
-        : status_(status) {}
-    ~TableMgrImpl() {}
-    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
-                                             const std::string&) {
-        return status_;
-    }
-    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
-                                             const uint32_t) {
-        return status_;
-    }
-
- private:
-    std::shared_ptr<TableStatus> status_;
-};
 
 static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
+    table.set_catalog("db");
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kVarchar);
@@ -120,18 +105,22 @@ static void BuildBuf(int8_t** buf, uint32_t* size,
     *size = total_size;
 }
 
-static void Data_WindowCase1(TableStatus* status, int32_t data_size) {
+static std::shared_ptr<tablet::TabletCatalog> Data_WindowCase1(int32_t data_size) {
     DLOG(INFO) << "insert window data";
-    BuildTableDef(status->table_def);
+    type::TableDef table_def; 
+    BuildTableDef(table_def);
     // Build index
-    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col0");
     index->set_second_key("col5");
 
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
-    ASSERT_TRUE(table->Init());
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+
+    table->Init();
+
+    auto catalog = BuildCommonCatalog(table_def, table);
 
     ::fesql::bm::Repeater<std::string> col0(
         std::vector<std::string>({"hello"}));
@@ -152,7 +141,7 @@ static void Data_WindowCase1(TableStatus* status, int32_t data_size) {
     for (int i = 0; i < data_size; ++i) {
         std::string str1 = col0.GetValue();
         std::string str2 = col6.GetValue();
-        storage::RowBuilder builder(status->table_def.columns());
+        storage::RowBuilder builder(table_def.columns());
         uint32_t total_size = builder.CalTotalLength(str1.size() + str2.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
@@ -166,25 +155,25 @@ static void Data_WindowCase1(TableStatus* status, int32_t data_size) {
         table->Put(reinterpret_cast<char*>(ptr), total_size);
         free(ptr);
     }
-    status->table = std::move(table);
+    return catalog;
 }
+
 static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    std::shared_ptr<TableStatus> status(new TableStatus());
+    type::TableDef table_def;
     int8_t* ptr = NULL;
     uint32_t size = 0;
-    BuildBuf(&ptr, &size, status->table_def);
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    BuildBuf(&ptr, &size, table_def);
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
+    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql = "SELECT col4 FROM t1 limit 2;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
@@ -200,20 +189,19 @@ static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
 static void BM_EngineSimpleSelectVarchar(benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    std::shared_ptr<TableStatus> status(new TableStatus());
+    type::TableDef table_def;
     int8_t* ptr = NULL;
     uint32_t size = 0;
-    BuildBuf(&ptr, &size, status->table_def);
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    BuildBuf(&ptr, &size, table_def);
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
+    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql = "SELECT col6 FROM t1 limit 1;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
@@ -229,20 +217,19 @@ static void BM_EngineSimpleSelectVarchar(benchmark::State& state) {  // NOLINT
 static void BM_EngineSimpleSelectInt32(benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    std::shared_ptr<TableStatus> status(new TableStatus());
+    type::TableDef table_def;
     int8_t* ptr = NULL;
     uint32_t size = 0;
-    BuildBuf(&ptr, &size, status->table_def);
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    BuildBuf(&ptr, &size, table_def);
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
+    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql = "SELECT col1 FROM t1 limit 1;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
@@ -258,22 +245,21 @@ static void BM_EngineSimpleSelectInt32(benchmark::State& state) {  // NOLINT
 static void BM_EngineSimpleUDF(benchmark::State& state) {  // NOLINT
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    std::shared_ptr<TableStatus> status(new TableStatus());
+    type::TableDef table_def;
     int8_t* ptr = NULL;
     uint32_t size = 0;
-    BuildBuf(&ptr, &size, status->table_def);
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    BuildBuf(&ptr, &size, table_def);
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
     table->Put(reinterpret_cast<char*>(ptr), size);
     table->Put(reinterpret_cast<char*>(ptr), size);
     delete ptr;
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
+    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 1;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
@@ -291,12 +277,10 @@ static void BM_EngineWindowSumFeature1(benchmark::State& state) {  // NOLINT
     InitializeNativeTargetAsmPrinter();
 
     // prepare data into table
-    std::shared_ptr<TableStatus> status(new TableStatus());
 
     int64_t limit_cnt = state.range(0);
     int64_t size = state.range(1);
-    Data_WindowCase1(status.get(), size);
-    TableMgrImpl table_mgr(status);
+    auto catalog = Data_WindowCase1(size);
 
     const std::string sql =
         "SELECT "
@@ -305,7 +289,7 @@ static void BM_EngineWindowSumFeature1(benchmark::State& state) {  // NOLINT
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
@@ -324,12 +308,10 @@ static void BM_EngineRunBatchWindowSumFeature1(
     InitializeNativeTargetAsmPrinter();
 
     // prepare data into table
-    std::shared_ptr<TableStatus> status(new TableStatus());
 
     int64_t limit_cnt = state.range(0);
     int64_t size = state.range(1);
-    Data_WindowCase1(status.get(), size);
-    TableMgrImpl table_mgr(status);
+    auto catalog = Data_WindowCase1(size);
 
     const std::string sql =
         "SELECT "
@@ -338,7 +320,7 @@ static void BM_EngineRunBatchWindowSumFeature1(
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
@@ -355,13 +337,9 @@ static void BM_EngineRunBatchWindowSumFeature5(
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
 
-    // prepare data into table
-    std::shared_ptr<TableStatus> status(new TableStatus());
-
-    int64_t limit_cnt = state.range(0);
     int64_t size = state.range(1);
-    Data_WindowCase1(status.get(), size);
-    TableMgrImpl table_mgr(status);
+    auto catalog = Data_WindowCase1(size);
+    int64_t limit_cnt = state.range(0);
 
     const std::string sql =
         "SELECT "
@@ -374,7 +352,7 @@ static void BM_EngineRunBatchWindowSumFeature5(
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
@@ -392,13 +370,10 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
     InitializeNativeTargetAsmPrinter();
 
     // prepare data into table
-    std::shared_ptr<TableStatus> status(new TableStatus());
 
     int64_t limit_cnt = state.range(0);
     int64_t size = state.range(1);
-    Data_WindowCase1(status.get(), size);
-    TableMgrImpl table_mgr(status);
-
+    auto catalog = Data_WindowCase1(size);
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -410,7 +385,7 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);

@@ -77,7 +77,9 @@ void WindowTableIterator::Seek(const std::string& key) {
 
 
 
-void WindowTableIterator::SeekToFirst() {}
+void WindowTableIterator::SeekToFirst() {
+
+}
 
 std::unique_ptr<vm::Iterator> WindowTableIterator::GetValue() {
     if (!pk_it_) return std::move(std::unique_ptr<EmptyWindowIterator>(new EmptyWindowIterator()));
@@ -92,6 +94,7 @@ void WindowTableIterator::GoToStart() {
     while (seg_idx_ < seg_cnt_) {
         if (!pk_it_) {
             pk_it_ = std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(segments_[index_][seg_idx_]->GetEntries()->NewIterator()));
+            pk_it_->SeekToFirst();
         }
         if (pk_it_->Valid()) {
             return;
@@ -110,6 +113,7 @@ void WindowTableIterator::GoToNext() {
     seg_idx_ ++;
     while (seg_idx_ <  seg_cnt_) {
         pk_it_ = std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(segments_[index_][seg_idx_]->GetEntries()->NewIterator()));
+        pk_it_->SeekToFirst();
         if (pk_it_->Valid()) return;
         seg_idx_ ++;
     }
@@ -143,9 +147,11 @@ void FullTableIterator::GoToNext() {
         if (ts_it_->Valid()) return;
     }
     if (pk_it_) {
+        pk_it_->Next();
         while (pk_it_->Valid()) {
             auto it = (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
                      ->NewIterator();
+            it->SeekToFirst();
             if (it->Valid()) {
                 ts_it_ = std::move(std::unique_ptr<base::Iterator<uint64_t, DataBlock*>>(it));
                 return;
@@ -157,9 +163,11 @@ void FullTableIterator::GoToNext() {
         seg_idx_ ++;
         while (seg_idx_ < seg_cnt_) {
             pk_it_ = std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(segments_[0][seg_idx_]->GetEntries()->NewIterator()));
+            pk_it_->SeekToFirst();
             while (pk_it_->Valid()) {
                 auto it = (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
                          ->NewIterator();
+                it->SeekToFirst();
                 if (it->Valid()) {
                     ts_it_ = std::move(std::unique_ptr<base::Iterator<uint64_t, DataBlock*>>(it));
                     return;
@@ -176,12 +184,14 @@ void FullTableIterator::GoToStart() {
     while (seg_idx_ < seg_cnt_) {
         if (!pk_it_) {
             pk_it_ = std::move(std::unique_ptr<base::Iterator<base::Slice, void*>>(segments_[0][seg_idx_]->GetEntries()->NewIterator()));
+            pk_it_->SeekToFirst();
         }
         if (pk_it_->Valid()) {
             if (!ts_it_) {
                 auto it = (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))
                          ->NewIterator();
                 ts_it_ = std::move(std::unique_ptr<base::Iterator<uint64_t, DataBlock*>>(it));
+                ts_it_->SeekToFirst();
             }
             if (ts_it_->Valid()) {
                 break;

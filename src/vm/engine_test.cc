@@ -37,7 +37,7 @@
 #include "plan/planner.h"
 #include "storage/codec.h"
 #include "storage/window.h"
-#include "vm/table_mgr.h"
+#include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -45,29 +45,12 @@ using namespace llvm::orc;  // NOLINT (build/namespaces)
 namespace fesql {
 namespace vm {
 
-class TableMgrImpl : public TableMgr {
- public:
-    explicit TableMgrImpl(std::shared_ptr<TableStatus> status)
-        : status_(status) {}
-    ~TableMgrImpl() {}
-    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
-                                             const std::string&) {
-        return status_;
-    }
-    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
-                                             const uint32_t) {
-        return status_;
-    }
-
- private:
-    std::shared_ptr<TableStatus> status_;
-};
-
 enum EngineRunMode { RUN, RUNBATCH, RUNONE };
 class EngineTest : public ::testing::TestWithParam<EngineRunMode> {};
 
 void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
+    table.set_catalog("db");
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kVarchar);
@@ -338,26 +321,24 @@ TEST_P(EngineTest, test_normal) {
     int8_t* row1 = NULL;
     uint32_t size1 = 0;
     BuildBuf(&row1, &size1);
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    BuildTableDef(status->table_def);
-    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col0");
     index->set_second_key("col5");
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
-    status->table = std::move(table);
-
-    TableMgrImpl table_mgr(status);
+    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT col0, test(col1,col1), col2 , col6 FROM t1 "
         "limit 2;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
@@ -377,10 +358,9 @@ TEST_P(EngineTest, test_normal) {
             ASSERT_TRUE(false);
         }
     }
-
+    PrintSchema(session.GetSchema());
     ASSERT_EQ(0, ret);
     ASSERT_EQ(2, output.size());
-
     ::fesql::type::TableDef output_schema;
     for (auto column : session.GetSchema()) {
         ::fesql::type::ColumnDef* column_def = output_schema.add_columns();
@@ -442,22 +422,21 @@ TEST_P(EngineTest, test_normal) {
 }
 
 TEST_F(EngineTest, test_window_agg) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    BuildTableDef(status->table_def);
-    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
-
+    auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
     std::vector<fesql::storage::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
+
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -467,16 +446,15 @@ TEST_F(EngineTest, test_window_agg) {
         "sum(col5) OVER w1 as w1_col5_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
+    PrintSchema(session.GetSchema());
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 100);
-
     ASSERT_EQ(5, output.size());
-
     int8_t* output_1 = output[4];
     int8_t* output_22 = output[3];
     int8_t* output_333 = output[2];
@@ -541,22 +519,20 @@ TEST_F(EngineTest, test_window_agg) {
 }
 
 TEST_F(EngineTest, test_window_agg_batch_run) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    BuildTableDef(status->table_def);
-    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
-
+    auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
     std::vector<fesql::storage::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -566,7 +542,7 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
         "sum(col5) OVER w1 as w1_col5_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
@@ -640,22 +616,20 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
     }
 }
 TEST_F(EngineTest, test_window_agg_with_limit) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    BuildTableDef(status->table_def);
-    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
-
+    auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
     std::vector<fesql::storage::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -665,7 +639,7 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
         "sum(col5) OVER w1 as w1_col5_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 2;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
@@ -709,22 +683,21 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
 }
 
 TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    BuildTableDef(status->table_def);
-    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
+    auto catalog = BuildCommonCatalog(table_def, table);
 
     int8_t* rows = NULL;
     std::vector<fesql::storage::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -734,7 +707,7 @@ TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
         "sum(col5) OVER w1 as w1_col5_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 2;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
@@ -774,31 +747,32 @@ TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
     }
 }
 TEST_F(EngineTest, test_multi_windows_agg) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    BuildTableDef(status->table_def);
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+
+    BuildTableDef(table_def);
     {
-        ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1");
         index->add_first_keys("col2");
         index->set_second_key("col5");
     }
     {
-        ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index2");
         index->add_first_keys("col1");
         index->set_second_key("col5");
     }
 
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
     std::vector<fesql::storage::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
+    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -808,7 +782,7 @@ TEST_F(EngineTest, test_multi_windows_agg) {
         "sum(col5) OVER w1 as w1_col5_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
@@ -879,23 +853,21 @@ TEST_F(EngineTest, test_multi_windows_agg) {
 }
 
 TEST_F(EngineTest, test_window_agg_unique_partition) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    BuildTableDef(status->table_def);
-    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
     std::vector<fesql::storage::Row> windows;
     BuildWindowUnique(windows, &rows);
     StoreData(table.get(), rows);
-
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
+    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -905,7 +877,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
         "sum(col5) OVER w1 as w1_col5_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
@@ -984,23 +956,21 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
 }
 
 TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    BuildTableDef(status->table_def);
-    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col2");
     index->set_second_key("col5");
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
     std::vector<fesql::storage::Row> windows;
     BuildWindowUnique(windows, &rows);
     StoreData(table.get(), rows);
-
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
+    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -1010,7 +980,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
         "sum(col5) OVER w1 as w1_col5_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
@@ -1089,23 +1059,20 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
 }
 
 TEST_F(EngineTest, test_window_agg_varchar_pk) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    BuildTableDef(status->table_def);
-    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col0");
     index->set_second_key("col5");
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
-
+    auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
     std::vector<fesql::storage::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
-
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -1115,7 +1082,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
         "sum(col5) OVER w1 as w1_col5_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
@@ -1191,23 +1158,21 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
 }
 
 TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    BuildTableDef(status->table_def);
-    ::fesql::type::IndexDef* index = status->table_def.add_indexes();
+    type::TableDef table_def;
+    BuildTableDef(table_def);
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col0");
     index->set_second_key("col5");
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
     std::vector<fesql::storage::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
-
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
+    auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -1217,7 +1182,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
         "sum(col5) OVER w1 as w1_col5_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
-    Engine engine(&table_mgr);
+    Engine engine(catalog);
     RunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);

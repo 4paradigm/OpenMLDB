@@ -25,7 +25,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "node/plan_node.h"
 #include "proto/type.pb.h"
-#include "catalog/catalog.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace codegen {
@@ -33,14 +33,14 @@ namespace codegen {
 
 class RowFnLetIRBuilder {
  public:
-    RowFnLetIRBuilder(const catalog::Schema& schema , ::llvm::Module* module,
+    RowFnLetIRBuilder(const vm::Schema& schema , ::llvm::Module* module,
                       bool is_window_agg);
 
     ~RowFnLetIRBuilder();
 
     bool Build(const std::string& name,
                const ::fesql::node::ProjectListPlanNode* node,
-               catalog::Schema& schema);  // NOLINT (runtime/references)
+               vm::Schema& schema);  // NOLINT (runtime/references)
 
  private:
 
@@ -56,14 +56,14 @@ class RowFnLetIRBuilder {
                   ScopeVar& sv);  // NOLINT
 
     bool EncodeBuf(const std::map<uint32_t, ::llvm::Value*>* values,
-                   const catalog::Schema& schema,
+                   const vm::Schema& schema,
                    ScopeVar& sv,  // NOLINT (runtime/references)
                    ::llvm::BasicBlock* block,
                    const std::string& output_ptr_name);
 
  private:
     // input schema
-    catalog::Schema schema_;
+    vm::Schema schema_;
     ::llvm::Module* module_;
     bool is_window_agg_;
 };

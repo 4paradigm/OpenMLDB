@@ -33,12 +33,13 @@ TabletTableHandler::TabletTableHandler(const vm::Schema& schema,
       db_(db),
       table_(table),
       types_(),
-      index_list_(index_list) {}
+      index_list_(index_list) {
+}
+
 
 TabletTableHandler::~TabletTableHandler() {}
 
 bool TabletTableHandler::Init() {
-
     // init types var
     for (int32_t i = 0; i < schema_.size(); i++) {
         const type::ColumnDef& column = schema_.Get(i);
@@ -61,8 +62,8 @@ bool TabletTableHandler::Init() {
         }
         index_st.ts_pos = pos;
         index_st.name = index_def.name();
-        for (int32_t j = 0; j < index_def.first_keys_size(); i++) {
-            const std::string& key = index_def.first_keys(i);
+        for (int32_t j = 0; j < index_def.first_keys_size(); j++) {
+            const std::string& key = index_def.first_keys(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
                 LOG(WARNING) << "column " << key << " does not exist in table " << table_;
@@ -101,21 +102,28 @@ std::shared_ptr<type::Database> TabletCatalog::GetDatabase(
 
 std::shared_ptr<vm::TableHandler> TabletCatalog::GetTable(
     const std::string& db, const std::string& table_name) {
-    auto table_in_db = tables_[db];
-    auto it = table_in_db.find(table_name);
-    if (it == table_in_db.end()) {
+    auto db_it = tables_.find(db);
+    if (db_it == tables_.end()) {
+        return std::shared_ptr<vm::TableHandler>();
+    }
+    auto it = db_it->second.find(table_name);
+    if (it == db_it->second.end()) {
         return std::shared_ptr<vm::TableHandler>();
     }
     return it->second;
 }
 
 bool TabletCatalog::AddTable(std::shared_ptr<TabletTableHandler> table) {
-    auto table_in_db = tables_[table->GetDatabase()];
-    auto it = table_in_db.find(table->GetName());
-    if (it != table_in_db.end()) {
+    auto db_it = tables_.find(table->GetDatabase());
+    if (db_it == tables_.end()) {
+        tables_.insert(std::make_pair(table->GetDatabase(), std::map<std::string, std::shared_ptr<TabletTableHandler>>()));
+        db_it = tables_.find(table->GetDatabase());
+    }
+    auto it = db_it->second.find(table->GetName());
+    if (it != db_it->second.end()) {
         return false;
     }
-    table_in_db.insert(std::make_pair(table->GetName(), table));
+    db_it->second.insert(std::make_pair(table->GetName(), table));
     return true;
 }
 
