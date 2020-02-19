@@ -235,11 +235,9 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     for (const auto& table_info : table_info_map_r) {
         if (table_info.second->name() == name) {
             rtid = table_info.second->tid();
-            printf("------------------------------------------remote tid [%d]", rtid);
             for (const auto& table_partition : table_info.second->table_partition()) {
                 if (table_partition.pid() == 1) {
                     ASSERT_EQ(0, table_partition.remote_partition_meta_size());
-                    printf("------------------------------------------remote meta size 0");
                 }
             }
             break;
@@ -253,7 +251,6 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
                    for (const auto& meta : table_partition.remote_partition_meta()) {
                        ASSERT_EQ(rtid, meta.remote_tid()); 
                        ASSERT_EQ("remote", meta.alias());
-                       printf("------------------------------------------remote alias: remote");
                    }
                    break;
                 }
@@ -388,11 +385,9 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     for (const auto& table_info : table_info_map_r) {
         if (table_info.second->name() == name) {
             rtid = table_info.second->tid();
-            printf("------------------------------------------remote tid [%d]", rtid);
             for (const auto& table_partition : table_info.second->table_partition()) {
                 if (table_partition.pid() == 1) {
                     ASSERT_EQ(0, table_partition.remote_partition_meta_size());
-                    printf("------------------------------------------remote meta size 0");
                 }
             }
             break;
@@ -406,7 +401,6 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
                    for (const auto& meta : table_partition.remote_partition_meta()) {
                        ASSERT_EQ(rtid, meta.remote_tid()); 
                        ASSERT_EQ("remote", meta.alias());
-                       printf("------------------------------------------remote alias: remote");
                    }
                    break;
                 }
