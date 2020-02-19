@@ -162,8 +162,7 @@ INSTANTIATE_TEST_CASE_P(
         "def test(col:list<float>, pos:i32):float\n"
         "\tsum = col[pos]\n"
         "\treturn sum\n"
-        "end"
-        ));
+        "end"));
 
 INSTANTIATE_TEST_CASE_P(
     SQLCreate, SqlParserTest,

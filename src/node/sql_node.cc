@@ -555,8 +555,7 @@ void ExprAtNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, name_, "var",
-               true);
+    PrintValue(output, tab, name_, "var", true);
 }
 
 void ExprListNode::Print(std::ostream &output,
@@ -585,17 +584,18 @@ void FnNodeFnHeander::Print(std::ostream &output,
     PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(parameters_),
                  "parameters", true);
 }
-const std::string FnNodeFnHeander::GetCodegenFunctionName() const{
+const std::string FnNodeFnHeander::GetCodegenFunctionName() const {
     std::string fn_name = name_;
     if (!parameters_->children.empty()) {
-        for(node::SQLNode* node: parameters_->children) {
+        for (node::SQLNode *node : parameters_->children) {
             node::FnParaNode *para_node =
-                dynamic_cast<node::FnParaNode*>(node);
+                dynamic_cast<node::FnParaNode *>(node);
             switch (para_node->GetParaType()->base_) {
                 case fesql::type::kList:
                 case fesql::type::kIterator:
                 case fesql::type::kMap:
-                    fn_name.append("_").append(para_node->GetParaType()->GetName());
+                    fn_name.append("_").append(
+                        para_node->GetParaType()->GetName());
                 default: {
                 }
             }

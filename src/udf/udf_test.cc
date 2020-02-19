@@ -227,7 +227,6 @@ TEST_F(UDFTest, UDF_min_test) {
                          reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2,
                          fesql::type::kFloat, buf));
         ASSERT_EQ(3.1f, fesql::udf::v1::min_list_float(col));
-
     }
 
     {

@@ -127,8 +127,9 @@ void AddFunc(const std::string& fn, ::llvm::Module* m) {
     int ret = parser.parse(fn, trees, &manager, status);
     ASSERT_EQ(0, ret);
     FnIRBuilder fn_ir_builder(m);
-    for(node::SQLNode *node: trees) {
-        bool ok = fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node), status);
+    for (node::SQLNode* node : trees) {
+        bool ok =
+            fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node), status);
         ASSERT_TRUE(ok);
     }
 }
@@ -746,8 +747,8 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     //    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output +
     //    2));
     ASSERT_EQ(7 + 4 + 4, *reinterpret_cast<uint32_t*>(output + 2));
-    ASSERT_EQ(3.1f, *reinterpret_cast<float *>(output + 7));
-    ASSERT_EQ(11, *reinterpret_cast<int32_t *>(output + 7 + 4));
+    ASSERT_EQ(3.1f, *reinterpret_cast<float*>(output + 7));
+    ASSERT_EQ(11, *reinterpret_cast<int32_t*>(output + 7 + 4));
     free(ptr);
 }
 }  // namespace codegen
