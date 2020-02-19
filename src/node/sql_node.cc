@@ -652,6 +652,14 @@ void FnElseNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     output << "\n";
 }
+void FnForInNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, var_name_, "var", false);
+    output << "\n";
+    PrintSQLNode(output, tab, in_expression_, "in", true);
+}
 
 void FnIfBlock::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
@@ -661,6 +669,7 @@ void FnIfBlock::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNode(output, tab, block_, "block", true);
 }
+
 void FnElifBlock::Print(std::ostream &output,
                         const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
@@ -687,6 +696,16 @@ void FnIfElseBlock::Print(std::ostream &output,
     PrintSQLVector(output, tab, elif_blocks_, "elif_list", false);
     output << "\n";
     PrintSQLNode(output, tab, else_block_, "else", true);
+}
+
+void FnForInBlock::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, for_in_node_, "for", false);
+    output << "\n";
+    PrintSQLNode(output, tab, block_, "body", true);
 }
 void StructExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);

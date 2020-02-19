@@ -148,6 +148,7 @@ class NodeManager {
     FnNode *MakeIfStmtNode(const ExprNode *value);
     FnNode *MakeElifStmtNode(ExprNode *value);
     FnNode *MakeElseStmtNode();
+    FnNode *MakeForInStmtNode(const std::string &var_name, const ExprNode *value);
 
     SQLNode *MakeCmdNode(node::CmdType cmd_type);
     SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);

@@ -536,22 +536,6 @@ class ExprIdNode : public ExprNode {
     std::string name_;
 };
 
-class ExprAtNode : public ExprNode {
- public:
-    explicit ExprAtNode(const std::string &id, const int32_t pos)
-        : ExprNode(kExprAt), id_name_(id), pos_(pos) {
-        name_ = id_name_ + "[" + std::to_string(pos_) + "]";
-    }
-    const std::string GetIdName() const { return id_name_; }
-    const std::string GetName() const { return name_; }
-    const int32_t GetPos() const { return pos_; }
-    void Print(std::ostream &output, const std::string &org_tab) const override;
-
- private:
-    std::string id_name_;
-    int32_t pos_;
-    std::string name_;
-};
 class ConstNode : public ExprNode {
  public:
     ConstNode() : ExprNode(kExprPrimary), date_type_(fesql::type::kNull) {}
@@ -1039,6 +1023,17 @@ class FnElseNode : public FnNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
 };
 
+class FnForInNode : public FnNode {
+ public:
+    FnForInNode(const std::string &var_name, const ExprNode *in_expression)
+        : FnNode(kFnForInStmt),
+          var_name_(var_name),
+          in_expression_(in_expression) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string var_name_;
+    const ExprNode *in_expression_;
+};
+
 class FnIfBlock : public FnNode {
  public:
     FnIfBlock(const FnIfNode *node, const FnNodeList *block)
@@ -1073,6 +1068,16 @@ class FnIfElseBlock : public FnNode {
     const FnIfBlock *if_block_;
     std::vector<FnNode *> elif_blocks_;
     const FnElseBlock *else_block_;
+};
+
+class FnForInBlock : public FnNode {
+ public:
+    FnForInBlock(const FnForInNode *for_in_node, const FnNodeList *block)
+        : FnNode(kFnForInBlock), for_in_node_(for_in_node), block_(block) {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnForInNode *for_in_node_;
+    const FnNodeList *block_;
 };
 class FnReturnStmt : public FnNode {
  public:
