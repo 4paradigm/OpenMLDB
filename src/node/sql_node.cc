@@ -551,12 +551,6 @@ void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, name_, "var", true);
 }
 
-void ExprAtNode::Print(std::ostream &output, const std::string &org_tab) const {
-    ExprNode::Print(output, org_tab);
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-    output << "\n";
-    PrintValue(output, tab, name_, "var", true);
-}
 
 void ExprListNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
