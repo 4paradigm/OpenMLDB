@@ -1085,6 +1085,32 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         ASSERT_EQ(0, general_response.code());
         general_response.Clear();
     }
+    vector<shared_ptr<NameServerImpl>> follower_nss{f1_ns1, f2_ns1};
+    {
+        CreateTableRequest create_table_request;
+        TableInfo *table_info = create_table_request.mutable_table_info();
+        string name = "test" + GenRand();
+        table_info->set_name(name);
+        table_info->set_partition_num(1);
+        table_info->set_replica_num(2);
+        table_info->set_ttl(0);
+        table_info->set_ttl_type("kAbsoluteTime");
+        f2_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
+        ASSERT_EQ(0, general_response.code());
+        ShowTableRequest show_table_request;
+        ShowTableResponse show_table_response;
+        f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
+        ASSERT_EQ(1, show_table_response.table_info_size());
+        show_table_response.Clear();
+        DropTableRequest drop_table_request;
+        drop_table_request.set_name(name);
+        f2_ns1->DropTable(NULL, &drop_table_request, &general_response, &closure);
+        ASSERT_EQ(0, general_response.code());
+        show_table_response.Clear();
+        f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
+        ASSERT_EQ(0, show_table_response.table_info_size());
+        general_response.Clear();
+    }
     SwitchModeRequest switch_mode_request;
     switch_mode_request.set_sm(kLEADER);
     // switch to leader mode before add replica cluster
@@ -1131,7 +1157,6 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     ASSERT_EQ(0, general_response.code());
     general_response.Clear();
 
-    vector<shared_ptr<NameServerImpl>> follower_nss{f1_ns1, f2_ns1};
     for (auto&ns : follower_nss) {
         ns->CreateTable(NULL, &create_table_request, &general_response, &closure);
         ASSERT_EQ(501, general_response.code());
@@ -1165,7 +1190,8 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     m1_t1->Put(NULL, &put_request, &put_response, &closure);
     ASSERT_EQ(0, put_response.code());
     sleep(4);
-    std::vector<shared_ptr<TabletImpl>> tablets{m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2};
+    std::vector<shared_ptr<TabletImpl>> tablets{m1_t1, m1_t2, f1_t1, f1_t2};
+    std::vector<shared_ptr<TabletImpl>> f2_tablets{f2_t1, f2_t2};
     {
         ::rtidb::api::TraverseRequest traverse_request;
         ::rtidb::api::TraverseResponse traverse_response;
@@ -1178,6 +1204,18 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
             traverse_response.Clear();
         }
     }
+        {
+            ::rtidb::api::TraverseRequest traverse_request;
+            ::rtidb::api::TraverseResponse traverse_response;
+            traverse_request.set_pid(0);
+            traverse_request.set_tid(tid + 1);
+            for (auto& tablet : f2_tablets) {
+                tablet->Traverse(NULL, &traverse_request, &traverse_response, &closure);
+                ASSERT_EQ(0, traverse_response.code());
+                ASSERT_EQ(1, traverse_response.count());
+                traverse_response.Clear();
+            }
+        }
     ::rtidb::api::ScanRequest scan_request;
     scan_request.set_pk(pk);
     scan_request.set_st(0);
@@ -1190,6 +1228,53 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
         ASSERT_EQ(1, scan_response->count());
+        scan_response->Clear();
+    }
+    scan_request.set_tid(tid+1);
+    for (auto& tablet : f2_tablets) {
+        tablet->Scan(NULL, &scan_request, scan_response, &closure);
+        ASSERT_EQ(0, scan_response->code());
+        ASSERT_EQ(1, scan_response->count());
+        scan_response->Clear();
+    }
+    {
+        ChangeLeaderRequest change_leader_request;
+        change_leader_request.set_name(name);
+        change_leader_request.set_pid(0);
+        change_leader_request.set_candidate_leader(m1_t2_ep);
+        m1_ns1->ChangeLeader(NULL, &change_leader_request, &general_response, &closure);
+        ASSERT_EQ(0, general_response.code());
+        sleep(6);
+        general_response.Clear();
+        RecoverTableRequest recover_table_request;
+        recover_table_request.set_name(name);
+        recover_table_request.set_pid(0);
+        recover_table_request.set_endpoint(m1_t1_ep);
+        m1_ns1->RecoverTable(NULL, &recover_table_request, &general_response, &closure);
+        ASSERT_EQ(0, general_response.code());
+        general_response.Clear();
+    }
+    sleep(6);
+    put_request.set_pk(pk);
+    put_request.set_time(2);
+    put_request.set_value("b" );
+    put_request.set_tid(tid);
+    put_request.set_pid(0);
+    m1_t2->Put(NULL, &put_request, &put_response, &closure);
+    ASSERT_EQ(0, put_response.code());
+    sleep(8);
+    scan_request.set_tid(tid);
+    for (auto& tablet : tablets) {
+        tablet->Scan(NULL, &scan_request, scan_response, &closure);
+        ASSERT_EQ(0, scan_response->code());
+        ASSERT_EQ(2, scan_response->count());
+        scan_response->Clear();
+    }
+    scan_request.set_tid(tid+1);
+    for (auto& tablet : f2_tablets) {
+        tablet->Scan(NULL, &scan_request, scan_response, &closure);
+        ASSERT_EQ(0, scan_response->code());
+        ASSERT_EQ(2, scan_response->count());
         scan_response->Clear();
     }
     for (auto& i : follower_nss) {
@@ -1227,38 +1312,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
         ASSERT_EQ(0, general_response.code());
         general_response.Clear();
     }
-    sleep(10);
-    put_request.set_pk(pk);
-    put_request.set_time(2);
-    put_request.set_value("b" );
-    put_request.set_tid(tid);
-    put_request.set_pid(0);
-    m1_t1->Put(NULL, &put_request, &put_response, &closure);
-    ASSERT_EQ(0, put_response.code());
-    sleep(8);
-    for (auto& tablet : tablets) {
-        tablet->Scan(NULL, &scan_request, scan_response, &closure);
-        ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(2, scan_response->count());
-        scan_response->Clear();
-    }
-    {
-        ChangeLeaderRequest change_leader_request;
-        change_leader_request.set_name(name);
-        change_leader_request.set_pid(0);
-        change_leader_request.set_candidate_leader(m1_t2_ep);
-        m1_ns1->ChangeLeader(NULL, &change_leader_request, &general_response, &closure);
-        ASSERT_EQ(0, general_response.code());
-        sleep(6);
-        general_response.Clear();
-        RecoverTableRequest recover_table_request;
-        recover_table_request.set_name(name);
-        recover_table_request.set_pid(0);
-        recover_table_request.set_endpoint(m1_t1_ep);
-        m1_ns1->RecoverTable(NULL, &recover_table_request, &general_response, &closure);
-        ASSERT_EQ(0, general_response.code());
-        general_response.Clear();
-    }
+    sleep(6);
     put_request.set_pk(pk);
     put_request.set_time(3);
     put_request.set_value("c" );
@@ -1267,7 +1321,15 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     m1_t2->Put(NULL, &put_request, &put_response, &closure);
     ASSERT_EQ(0, put_response.code());
     sleep(18);
+    scan_request.set_tid(tid);
     for (auto& tablet : tablets) {
+        tablet->Scan(NULL, &scan_request, scan_response, &closure);
+        ASSERT_EQ(0, scan_response->code());
+        ASSERT_EQ(3, scan_response->count());
+        scan_response->Clear();
+    }
+    scan_request.set_tid(tid+1);
+    for (auto& tablet : f2_tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
         ASSERT_EQ(3, scan_response->count());
