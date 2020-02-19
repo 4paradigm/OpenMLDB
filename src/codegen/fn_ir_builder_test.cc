@@ -91,7 +91,7 @@ void CheckResult(std::string test, R res, V1 a, V2 b) {
     LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
     m->print(::llvm::errs(), NULL, true, true);
     auto J = ExitOnErr(LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
+    auto &jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
 
@@ -100,7 +100,8 @@ void CheckResult(std::string test, R res, V1 a, V2 b) {
 
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
-    auto test_jit = ExitOnErr(J->lookup(fn_def->header_->GetCodegenFunctionName()));
+    auto test_jit =
+        ExitOnErr(J->lookup(fn_def->header_->GetCodegenFunctionName()));
     R (*test_fn)(V1, V2) = (R(*)(V1, V2))test_jit.getAddress();
     ASSERT_EQ(res, test_fn(a, b));
 }
@@ -247,7 +248,8 @@ TEST_F(FnIRBuilderTest, test_list_at_pos) {
     fesql::storage::ListV<int32_t> list(vec);
     fesql::storage::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(test, 1, &list_ref, 0);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(test, 1, &list_ref,
+                                                             0);
     //    CheckResult(test, 3, &list, 1);
     //    CheckResult(test, 5, &list, 2);
 }

@@ -9,8 +9,8 @@
 #include "udf/udf.h"
 #include <node/sql_node.h>
 #include <stdint.h>
-#include <algorithm>
 #include <vector>
+#include <utility>
 #include "proto/type.pb.h"
 #include "storage/type_ir_builder.h"
 #include "storage/window.h"

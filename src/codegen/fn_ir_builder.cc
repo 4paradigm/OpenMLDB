@@ -17,6 +17,7 @@
 
 #include "codegen/fn_ir_builder.h"
 #include <stack>
+#include <string>
 #include "codegen/block_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/variable_ir_builder.h"
@@ -149,8 +150,7 @@ bool FnIRBuilder::BuildParas(const ::fesql::node::FnNodeList *node,
         ::fesql::node::FnParaNode *pnode =
             (::fesql::node::FnParaNode *)node->children[i];
         ::llvm::Type *type = NULL;
-        bool ok =
-            GetLLVMType(module_, pnode->GetParaType(), &type);
+        bool ok = GetLLVMType(module_, pnode->GetParaType(), &type);
         if (!ok) {
             status.code = common::kCodegenError;
             status.msg =
