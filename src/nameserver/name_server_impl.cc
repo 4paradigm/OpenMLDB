@@ -2793,8 +2793,8 @@ void NameServerImpl::DropTable(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("nameserver is follower");
-            PDLOG(WARNING, "cur nameserver is follower");
+            response->set_msg("nameserver is for follower cluster, and request has no zono info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -2898,7 +2898,7 @@ void NameServerImpl::DropTableInternel(const std::string name,
                 continue;
             }
             if(DropTableRemoteOP(name, kv.first, INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
-                PDLOG(WARNING, "drop table for replica cluster failed, table_name: %s, alias: %s", name.c_str(), kv.first.c_str());
+                PDLOG(WARNING, "create DropTableRemoteOP for replica cluster failed, table_name: %s, alias: %s", name.c_str(), kv.first.c_str());
                 code = 505;
                 break;
             }
@@ -3119,8 +3119,8 @@ void NameServerImpl::LoadTable(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("request has no zono info");
-            PDLOG(WARNING, "request has no zono info");
+            response->set_msg("nameserver is for follower cluster, and request has no zono info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -3160,8 +3160,8 @@ void NameServerImpl::LoadTable(RpcController* controller,
         response->set_msg("ok");
     } else {
         PDLOG(WARNING, "request has no zone_info or task_info!"); 
-        response->set_code(504);
-        response->set_msg("add task in replica cluster ns failed");
+        response->set_code(515);
+        response->set_msg("request has no zone_info or task_info");
     }
 } 
 
@@ -3181,8 +3181,8 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("request has no zono info");
-            PDLOG(WARNING, "request has no zono info");
+            response->set_msg("nameserver is for follower cluster, and request has no zono info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -3283,8 +3283,8 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("request has no zono info");
-            PDLOG(WARNING, "request has no zono info");
+            response->set_msg("nameserver is for follower cluster, and request has no zono info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -3434,8 +3434,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("nameserver is follower");
-            PDLOG(WARNING, "cur nameserver is follower");
+            response->set_msg("nameserver is for follower cluster, and request has no zono info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -3624,9 +3624,9 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                 std::lock_guard<std::mutex> lock(mu_);
                 if(CreateTableRemoteOP(*table_info, remote_table_info, kv.first, 
                             INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
-                    PDLOG(WARNING, "create table for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
-                    response.set_code(507);
-                    response.set_msg( "create table for replica cluster failed");
+                    PDLOG(WARNING, "create CreateTableRemoteOP for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
+                    response.set_code(503);
+                    response.set_msg( "create CreateTableRemoteOP for replica cluster failed");
                     break;
                 } 
             }
@@ -3981,13 +3981,13 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         if (!request->has_zone_info()) {
-            response->set_code(502);
-            response->set_msg("request has no zono info");
-            PDLOG(WARNING, "request has no zono info");
+            response->set_code(501);
+            response->set_msg("nameserver is for follower cluster, and request has no zono info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(503);
+            response->set_code(502);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
