@@ -44,6 +44,9 @@ class BlockIRBuilder {
     bool BuildIfElseBlock(const ::fesql::node::FnIfElseBlock* node,
                           llvm::BasicBlock* block, llvm::BasicBlock* end_block,
                           base::Status& status);  // NOLINT
+    bool BuildForInBlock(const ::fesql::node::FnForInBlock* node,
+                         llvm::BasicBlock* start_block, llvm::BasicBlock* end_block,
+                         base::Status& status);
     ScopeVar* sv_;
 };
 

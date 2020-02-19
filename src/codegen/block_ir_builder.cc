@@ -8,6 +8,7 @@
  **/
 #include "codegen/block_ir_builder.h"
 #include "codegen/expr_ir_builder.h"
+#include "codegen/list_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
@@ -31,10 +32,7 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
     }
 
     if (statements->children.empty()) {
-        status.code = common::kCodegenError;
-        status.msg = "fail to codegen block: statements is empty";
-        LOG(WARNING) << status.msg;
-        return false;
+        return true;
     }
     ::llvm::Function *fn = block->getParent();
     ::llvm::IRBuilder<> builder(block);
@@ -76,6 +74,27 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
                 }
                 fn->getBasicBlockList().push_back(if_else_end);
                 builder.SetInsertPoint(if_else_end);
+                break;
+            }
+            case node::kFnForInBlock: {
+                llvm::BasicBlock *loop_start = llvm::BasicBlock::Create(
+                    block->getContext(), "loop_start", fn);
+                llvm::BasicBlock *loop_end =
+                    llvm::BasicBlock::Create(block->getContext(), "loop_end");
+                builder.CreateBr(loop_start);
+                builder.SetInsertPoint(loop_start);
+                if (false ==
+                    BuildForInBlock(
+                        dynamic_cast<const ::fesql::node::FnForInBlock *>(node),
+                        loop_start, loop_end, status)) {
+                    return false;
+                }
+
+                if (::llvm::pred_empty(loop_end)) {
+                    return true;
+                }
+                fn->getBasicBlockList().push_back(loop_end);
+                builder.SetInsertPoint(loop_end);
                 break;
             }
             default: {
@@ -165,6 +184,69 @@ bool BlockIRBuilder::BuildIfElseBlock(
     }
     return true;
 }
+
+bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
+                                     llvm::BasicBlock *start_block,
+                                     llvm::BasicBlock *end_block,
+                                     base::Status &status) {
+    llvm::Function *fn = start_block->getParent();
+    llvm::LLVMContext &ctx = start_block->getContext();
+
+    ::llvm::IRBuilder<> builder(start_block);
+    ListIRBuilder list_ir_builder(builder.GetInsertBlock(), sv_);
+    ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
+
+    // loop start
+    llvm::Value *container_value;
+    if (false == expr_builder.Build(node->for_in_node_->in_expression_,
+                                    &container_value)) {
+        return false;
+    }
+
+    llvm::Value *iterator = nullptr;
+    if (false ==
+        list_ir_builder.BuildIterator(container_value, &iterator, status)) {
+        return false;
+    }
+
+    llvm::BasicBlock *loop_cond =
+        llvm::BasicBlock::Create(ctx, "loop_cond", fn);
+    llvm::BasicBlock *loop = llvm::BasicBlock::Create(ctx, "loop", fn);
+    builder.CreateBr(loop_cond);
+    builder.SetInsertPoint(loop_cond);
+    {
+        ListIRBuilder list_ir_builder(builder.GetInsertBlock(), sv_);
+        // loop condition
+        llvm::Value *condition;
+        if (false == list_ir_builder.BuildIteratorHasNext(iterator, &condition,
+                                                          status)) {
+            return false;
+        }
+
+        builder.CreateCondBr(condition, loop, end_block);
+    }
+
+    builder.SetInsertPoint(loop);
+    {
+        ListIRBuilder list_ir_builder(builder.GetInsertBlock(), sv_);
+        VariableIRBuilder var_ir_builder(builder.GetInsertBlock(), sv_);
+        // loop step
+        llvm::Value *next;
+        if (false ==
+            list_ir_builder.BuildIteratorNext(iterator, &next, status)) {
+            return false;
+        }
+        if (false == var_ir_builder.StoreValue(node->for_in_node_->var_name_,
+                                               next, false, status)) {
+            return false;
+        }
+        // loop body
+        if (false == BuildBlock(node->block_, loop, loop_cond, status)) {
+            return false;
+        }
+    }
+    return true;
+}
 bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
                                      ::llvm::BasicBlock *block,
                                      base::Status &status) {  // NOLINE
@@ -210,12 +292,8 @@ bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
         return false;
     }
 
-    if (node->IsSSA()) {
-        return variable_ir_builder.StoreValue(node->name_, value, true, status);
-    } else {
-        return variable_ir_builder.StoreValue(node->name_, value, false,
-                                              status);
-    }
+    return variable_ir_builder.StoreValue(node->name_, value, false, status);
 }
+
 }  // namespace codegen
 }  // namespace fesql

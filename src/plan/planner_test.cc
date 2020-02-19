@@ -641,6 +641,7 @@ TEST_F(PlannerTest, FunDefIfElsePlanTest) {
     ASSERT_EQ(1, select_plan->GetChildrenSize());
 }
 
+
 TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
     const std::string sql_str =
         "%%fun\n"
@@ -785,6 +786,69 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
     ASSERT_EQ(1, select_plan->GetChildrenSize());
 }
 
+TEST_F(PlannerTest, FunDefForInPlanTest) {
+    const std::string sql_str =
+        "%%fun\n"
+        "def test(l:list<i32>, a:i32):i32\n"
+        "    sum=0\n"
+        "    for x in l\n"
+        "        if x > a\n"
+        "            sum = sum + x\n"
+        "    return sum\n"
+        "end\n"
+        "%%sql\n"
+        "select col1, test(col1, col2) from t1 limit 1;";
+    std::cout << sql_str;
+
+    node::NodePointVector list;
+    node::PlanNodeList trees;
+    base::Status status;
+    int ret = parser_->parse(sql_str, list, manager_, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2u, list.size());
+    std::cout << *(list[0]) << std::endl;
+    std::cout << *(list[1]) << std::endl;
+
+    Planner *planner_ptr = new SimplePlanner(manager_);
+    ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
+    std::cout << status.msg << std::endl;
+    ASSERT_EQ(2u, trees.size());
+    PlanNode *plan_ptr = trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+    std::cout << *plan_ptr << std::endl;
+
+    // validate fundef plan
+    ASSERT_EQ(node::kPlanTypeFuncDef, plan_ptr->GetType());
+    node::FuncDefPlanNode *plan =
+        dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
+
+    ASSERT_TRUE(nullptr != plan->fn_def_);
+    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
+    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
+    ASSERT_EQ(3, plan->fn_def_->block_->children.size());
+
+
+    // validate udf plan
+    ASSERT_EQ(node::kFnAssignStmt,
+              plan->fn_def_->block_->children[0]->GetType());
+    ASSERT_EQ(node::kFnForInBlock,
+              plan->fn_def_->block_->children[1]->GetType());
+    // validate for in block
+    {
+        node::FnForInBlock * for_block = dynamic_cast<node::FnForInBlock*>(plan->fn_def_->block_->children[1]);
+        ASSERT_EQ(1, for_block->block_->children.size());
+        ASSERT_EQ(node::kFnIfElseBlock, for_block->block_->children[0]->GetType());
+    }
+    // validate select plan
+    plan_ptr = trees[1];
+    ASSERT_TRUE(NULL != plan_ptr);
+    std::cout << *plan_ptr << std::endl;
+    // validate fundef plan
+    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    node::SelectPlanNode *select_plan =
+        dynamic_cast<node::SelectPlanNode *>(plan_ptr);
+    ASSERT_EQ(1, select_plan->GetChildrenSize());
+}
 }  // namespace plan
 }  // namespace fesql
 

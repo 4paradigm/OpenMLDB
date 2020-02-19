@@ -404,6 +404,12 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kFnValue:
             output = "kFnValue";
             break;
+        case kFnForInStmt:
+            output = "kFnForInStmt";
+            break;
+        case kFnForInBlock:
+            output = "kFnForInBlock";
+            break;
         default:
             output = "unknown";
     }

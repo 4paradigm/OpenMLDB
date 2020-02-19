@@ -587,5 +587,12 @@ FnNode *NodeManager::MakeForInStmtNode(const std::string &var_name, const ExprNo
     return RegisterNode(node_ptr);
 }
 
+FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
+                                          FnNodeList *block) {
+    FnForInBlock *node_ptr = new FnForInBlock(for_in_node, block);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+
 }  // namespace node
 }  // namespace fesql

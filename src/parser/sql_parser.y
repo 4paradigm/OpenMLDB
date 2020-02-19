@@ -352,6 +352,7 @@ typedef void* yyscan_t;
 			   fun_def_block fn_header_indent_op  func_stmt
                fn_header return_stmt assign_stmt para
                if_stmt elif_stmt else_stmt
+               for_in_stmt
 %type<fnlist> plist stmt_block func_stmts
 
 %type <expr> var expr primary_time column_ref call_expr expr_const frame_expr
@@ -488,7 +489,14 @@ func_stmt:
          	emit("INDENT enter else stmt");
             $2->indent = $1;
             $$ = $2;
-         };
+         }
+         |INDENT for_in_stmt
+         {
+         	emit("INDENT enter for in stmt");
+         	$2->indent = $1;
+         	$$ = $2;
+         }
+         ;
 
 fn_header :
    		DEF VARNAME'(' plist ')' ':' types {
@@ -512,14 +520,23 @@ if_stmt:
 		IF expr {
 			$$ = node_manager->MakeIfStmtNode($2);
 		};
+
 elif_stmt:
 		ELSEIF expr {
 			$$ = node_manager->MakeElifStmtNode($2);
 		};
+
 else_stmt:
 		ELSE {
 			$$ = node_manager->MakeElseStmtNode();
 		}
+		;
+
+for_in_stmt:
+		FOR VARNAME IN expr {
+			$$ = node_manager->MakeForInStmtNode($2, $4);
+		}
+		;
 
 types:  I32
         {

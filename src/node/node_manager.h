@@ -159,6 +159,9 @@ class NodeManager {
     ExprListNode *MakeExprList(ExprNode *node_ptr);
     ExprListNode *MakeExprList();
 
+    node::FnForInBlock *MakeForInBlock(FnForInNode *for_in_node,
+                                       FnNodeList *block);
+
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {
         parser_node_list_.push_back(node_ptr);

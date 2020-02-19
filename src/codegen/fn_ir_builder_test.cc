@@ -75,6 +75,7 @@ void CheckResult(std::string test, R res, V1 a, V2 b) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     FnIRBuilder fn_ir_builder(m.get());
     node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(trees[0]);
+    LOG(INFO) << *fn_def;
     bool ok = fn_ir_builder.Build(fn_def, status);
     ASSERT_TRUE(ok);
     m->print(::llvm::errs(), NULL, true, true);
@@ -250,8 +251,57 @@ TEST_F(FnIRBuilderTest, test_list_at_pos) {
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(test, 1, &list_ref,
                                                              0);
-    //    CheckResult(test, 3, &list, 1);
-    //    CheckResult(test, 5, &list, 2);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(test, 3, &list_ref,
+                                                             1);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(test, 5, &list_ref,
+                                                             2);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(test, 7, &list_ref,
+                                                             3);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(test, 9, &list_ref,
+                                                             4);
+}
+
+TEST_F(FnIRBuilderTest, test_for_in_sum) {
+    const std::string test =
+        "%%fun\n"
+        "def test(l:list<i32>, a:i32):i32\n"
+        "    sum=0\n"
+        "    for x in l\n"
+        "        sum = sum + x\n"
+        "    return sum\n"
+        "end";
+
+    std::vector<int32_t> vec = {1, 3, 5, 7, 9};
+    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListRef list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
+}
+
+TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {
+    const std::string test =
+        "%%fun\n"
+        "def test(l:list<i32>, a:i32):i32\n"
+        "    sum=0\n"
+        "    for x in l\n"
+        "        if x > a\n"
+        "            sum = sum + x\n"
+        "    return sum\n"
+        "end";
+
+    std::vector<int32_t> vec = {1, 3, 5, 7, 9};
+    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListRef list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, 3 + 5 + 7 + 9, &list_ref, 1);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, 3 + 5 + 7 + 9, &list_ref, 2);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(test, 5 + 7 + 9,
+                                                             &list_ref, 3);
 }
 
 }  // namespace codegen

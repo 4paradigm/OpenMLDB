@@ -7,6 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/variable_ir_builder.h"
+#include <glog/logging.h>
 
 fesql::codegen::VariableIRBuilder::VariableIRBuilder(::llvm::BasicBlock* block,
                                                      ScopeVar* scope_var)
@@ -54,6 +55,7 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
             status.msg =
                 "fail to store mutable value: register value exists in scope";
             status.code = common::kCodegenError;
+            LOG(WARNING) << status.msg;
             return false;
         }
         // store value on address
