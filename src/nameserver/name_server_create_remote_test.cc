@@ -120,7 +120,7 @@ void StartTablet(brpc::Server& server) {
     sleep(2);
 }
 
-TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
+TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     // local ns and tablet
     //ns
     FLAGS_zk_cluster="127.0.0.1:6181";
@@ -128,8 +128,9 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     FLAGS_endpoint = "127.0.0.1:9631";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
 
+    NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
-    StartNameServer(server);
+    StartNameServer(server, nameserver_1); 
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_1(FLAGS_endpoint);
     name_server_client_1.Init();
 
@@ -145,8 +146,168 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     FLAGS_endpoint = "127.0.0.1:9632";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
 
+    NameServerImpl* nameserver_2 = new NameServerImpl();
     brpc::Server server2;
-    StartNameServer(server2);
+    StartNameServer(server2, nameserver_2); 
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_2(FLAGS_endpoint);
+    name_server_client_2.Init();
+
+    // tablet
+    FLAGS_endpoint="127.0.0.1:9932";
+    brpc::Server server3;
+    StartTablet(server3);
+    bool ok = false;
+    std::string name = "test" + GenRand();
+    {
+        CreateTableRequest request;
+        GeneralResponse response;
+        TableInfo *table_info = request.mutable_table_info();
+        table_info->set_name(name);
+        TablePartition* partion = table_info->add_table_partition();
+        partion->set_pid(1);
+        PartitionMeta* meta = partion->add_partition_meta();
+        meta->set_endpoint("127.0.0.1:9931");
+        meta->set_is_leader(true);
+        TablePartition* partion1 = table_info->add_table_partition();
+        partion1->set_pid(2);
+        PartitionMeta* meta1 = partion1->add_partition_meta();
+        meta1->set_endpoint("127.0.0.1:9931");
+        meta1->set_is_leader(true);
+        ok = name_server_client_1.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+                &request, &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(307, response.code());
+
+        TablePartition* partion2 = table_info->add_table_partition();
+        partion2->set_pid(0);
+        PartitionMeta* meta2 = partion2->add_partition_meta();
+        meta2->set_endpoint("127.0.0.1:9931");
+        meta2->set_is_leader(true);
+        ok = name_server_client_1.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+                &request, &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+        sleep(3);
+    }
+    {
+        ::rtidb::nameserver::ShowTableRequest request;
+        ::rtidb::nameserver::ShowTableResponse response;
+        ok = name_server_client_2.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
+                &request, &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(0, response.table_info_size());
+    }
+    {
+        ::rtidb::nameserver::SwitchModeRequest request;
+        ::rtidb::nameserver::GeneralResponse response;
+        request.set_sm(kLEADER);
+        ok = name_server_client_1.SendRequest(&::rtidb::nameserver::NameServer_Stub::SwitchMode,
+                &request, &response, FLAGS_request_timeout_ms, 1);
+    }
+    {
+        std::string alias = "remote";
+        std::string msg;
+        ::rtidb::nameserver::ClusterAddress add_request;
+        ::rtidb::nameserver::GeneralResponse add_response;
+        add_request.set_alias(alias);
+        add_request.set_zk_path(FLAGS_zk_root_path);
+        add_request.set_zk_endpoints(FLAGS_zk_cluster);
+        ok = name_server_client_1.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaCluster,
+                &add_request, &add_response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, add_response.code());
+        sleep(20);
+    }
+    {
+        ::rtidb::nameserver::ShowTableRequest request;
+        ::rtidb::nameserver::ShowTableResponse response;
+        ok = name_server_client_2.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
+                &request, &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(1, response.table_info_size());
+        ASSERT_EQ(name, response.table_info(0).name());
+        ASSERT_EQ(3, response.table_info(0).table_partition_size());
+    }
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>& table_info_map_r = GetTableInfo(nameserver_2);
+    uint32_t rtid = 0;
+    for (const auto& table_info : table_info_map_r) {
+        if (table_info.second->name() == name) {
+            rtid = table_info.second->tid();
+            for (const auto& table_partition : table_info.second->table_partition()) {
+                if (table_partition.pid() == 1) {
+                    ASSERT_EQ(0, table_partition.remote_partition_meta_size());
+                }
+            }
+            break;
+        }
+    }
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>& table_info_map = GetTableInfo(nameserver_1);
+    for (const auto& table_info : table_info_map) {
+        if (table_info.second->name() == name) {
+            for (const auto& table_partition : table_info.second->table_partition()) {
+                if (table_partition.pid() == 1) {
+                   for (const auto& meta : table_partition.remote_partition_meta()) {
+                       ASSERT_EQ(rtid, meta.remote_tid()); 
+                       ASSERT_EQ("remote", meta.alias());
+                   }
+                   break;
+                }
+            }
+            break;
+        }
+    }
+    {
+        ::rtidb::nameserver::DropTableRequest request;
+        request.set_name(name);
+        ::rtidb::nameserver::GeneralResponse response;
+        bool ok = name_server_client_1.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
+                &request, &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+        sleep(5);
+    }
+    {
+        ::rtidb::nameserver::ShowTableRequest request;
+        ::rtidb::nameserver::ShowTableResponse response;
+        ok = name_server_client_2.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
+                &request, &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(0, response.table_info_size());
+    }
+}
+
+TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
+    // local ns and tablet
+    //ns
+    FLAGS_zk_cluster="127.0.0.1:6181";
+    FLAGS_zk_root_path="/rtidb3" + GenRand();
+    FLAGS_endpoint = "127.0.0.1:9631";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+
+    NameServerImpl* nameserver_1 = new NameServerImpl();
+    brpc::Server server;
+    StartNameServer(server, nameserver_1); 
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_1(FLAGS_endpoint);
+    name_server_client_1.Init();
+
+    //tablet
+    FLAGS_endpoint="127.0.0.1:9931";
+    brpc::Server server1;
+    StartTablet(server1); 
+
+    // remote ns and tablet
+    //ns
+    FLAGS_zk_cluster="127.0.0.1:6181";
+    FLAGS_zk_root_path="/rtidb3" + GenRand();
+    FLAGS_endpoint = "127.0.0.1:9632";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+
+    NameServerImpl* nameserver_2 = new NameServerImpl();
+    brpc::Server server2;
+    StartNameServer(server2, nameserver_2); 
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client_2(FLAGS_endpoint);
     name_server_client_2.Init();
 
@@ -218,6 +379,34 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
         ASSERT_EQ(1, response.table_info_size());
         ASSERT_EQ(name, response.table_info(0).name());
         ASSERT_EQ(3, response.table_info(0).table_partition_size());
+    }
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>& table_info_map_r = GetTableInfo(nameserver_2);
+    uint32_t rtid = 0;
+    for (const auto& table_info : table_info_map_r) {
+        if (table_info.second->name() == name) {
+            rtid = table_info.second->tid();
+            for (const auto& table_partition : table_info.second->table_partition()) {
+                if (table_partition.pid() == 1) {
+                    ASSERT_EQ(0, table_partition.remote_partition_meta_size());
+                }
+            }
+            break;
+        }
+    }
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>& table_info_map = GetTableInfo(nameserver_1);
+    for (const auto& table_info : table_info_map) {
+        if (table_info.second->name() == name) {
+            for (const auto& table_partition : table_info.second->table_partition()) {
+                if (table_partition.pid() == 1) {
+                   for (const auto& meta : table_partition.remote_partition_meta()) {
+                       ASSERT_EQ(rtid, meta.remote_tid()); 
+                       ASSERT_EQ("remote", meta.alias());
+                   }
+                   break;
+                }
+            }
+            break;
+        }
     }
     {
         ::rtidb::nameserver::DropTableRequest request;
