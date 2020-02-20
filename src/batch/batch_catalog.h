@@ -19,6 +19,10 @@
 #define SRC_BATCH_BATCH_CATALOG_H_
 
 #include <memory>
+#include <utility>
+#include <map>
+#include <string>
+#include <vector>
 #include "arrow/filesystem/filesystem.h"
 #include "parquet/schema.h"
 #include "vm/catalog.h"
@@ -90,11 +94,11 @@ class BatchCatalog : public vm::Catalog {
 
  private:
     // get parquet schema and map it to fesql schema
-    bool GetSchemaFromParquet(const std::string& path, vm::Schema& schema);
+    bool GetSchemaFromParquet(const std::string& path, vm::Schema& schema);  //NOLINT
 
     // map parquet schema to fesql schema
     bool MapParquetSchema(const parquet::SchemaDescriptor* input_schema,
-                          vm::Schema& output_schema);
+                          vm::Schema& output_schema); // NOLINT
 
  private:
     std::shared_ptr<::arrow::fs::FileSystem> fs_;

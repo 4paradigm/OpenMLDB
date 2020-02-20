@@ -31,9 +31,9 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
 
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
-bool RowFnLetIRBuilder::Build(const std::string& name,
-                              const ::fesql::node::ProjectListPlanNode* node,
-                              vm::Schema& output_schema) {  // NOLINT (runtime/references)
+bool RowFnLetIRBuilder::Build(
+    const std::string& name, const ::fesql::node::ProjectListPlanNode* node,
+    vm::Schema& output_schema) {  // NOLINT (runtime/references)
     if (node == NULL) {
         LOG(WARNING) << "node is null";
         return false;
@@ -68,10 +68,8 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
 
-    ExprIRBuilder expr_ir_builder(block, &sv, schema_,
-                                  !node->IsWindowAgg(),
-                                  row_ptr_name,
-                                  row_size_name, module_);
+    ExprIRBuilder expr_ir_builder(block, &sv, schema_, !node->IsWindowAgg(),
+                                  row_ptr_name, row_size_name, module_);
 
     const ::fesql::node::PlanNodeList& children = node->GetProjects();
     ::fesql::node::PlanNodeList::const_iterator it = children.cbegin();
@@ -123,11 +121,9 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
 }
 
 bool RowFnLetIRBuilder::EncodeBuf(
-    const std::map<uint32_t, ::llvm::Value*>* values,
-    const vm::Schema& schema,
+    const std::map<uint32_t, ::llvm::Value*>* values, const vm::Schema& schema,
     ScopeVar& sv,  // NOLINT (runtime/references)
-    ::llvm::BasicBlock* block, 
-    const std::string& output_ptr_name) {
+    ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
     BufNativeEncoderIRBuilder encoder(values, schema, block);
     ::llvm::Value* row_ptr = NULL;
     bool ok = sv.FindVar(output_ptr_name, &row_ptr);

@@ -234,7 +234,7 @@ void DBMSServerImpl::AddDatabase(RpcController* ctr,
     ::fesql::common::Status* status = response->mutable_status();
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
-    DLOG(INFO) << "create database " << request->name() << " done";
+    LOG(INFO) << "create database " << request->name() << " done";
 }
 
 void DBMSServerImpl::IsExistDatabase(RpcController* ctr,

@@ -19,6 +19,8 @@
 #include <stdlib.h> /* srand, rand */
 #include <time.h>   /* time */
 #include <sstream>
+#include <string>
+#include <utility>
 #include "arrow/api.h"
 #include "arrow/filesystem/localfs.h"
 #include "arrow/io/api.h"
@@ -64,7 +66,7 @@ TEST_F(BatchCatalogTest, test_init) {
     std::shared_ptr<::arrow::fs::FileSystem> fs(
         new arrow::fs::LocalFileSystem());
     InputTables tables;
-    int id = rand() % 1000;
+    int id = rand() % 1000; //NOLINT
     std::stringstream ss;
     ss << "batch_catalog_test" << id << ".parquet";
     std::string file_path = ss.str();

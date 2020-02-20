@@ -60,13 +60,15 @@ static bool fesql_server_init(brpc::Server &tablet_server,  // NOLINT
 }
 
 static bool init_db(::fesql::sdk::DBMSSdk *dbms_sdk, std::string db_name) {
-    DLOG(INFO) << ("Creating database 'test'...");
+    LOG(INFO) << "Creating database " << db_name;
     // create database
     fesql::sdk::Status status;
     ::fesql::sdk::DatabaseDef db;
     db.name = db_name;
     dbms_sdk->CreateDatabase(db, status);
     if (0 != status.code) {
+        LOG(WARNING) << "create database faled " << db_name << " with error "
+                     << status.msg;
         return false;
     }
     return true;

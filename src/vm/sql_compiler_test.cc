@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
+#include "vm/sql_compiler.h"
 #include <memory>
 #include <utility>
-#include "vm/sql_compiler.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -81,10 +81,10 @@ TEST_F(SQLCompilerTest, test_normal) {
         new ::fesql::storage::Table(1, 1, table_def));
     std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
     ASSERT_TRUE(catalog->Init());
-    std::shared_ptr<tablet::TabletTableHandler> handler(new tablet::TabletTableHandler(table_def.columns(),
-            table_def.name(),
-            table_def.catalog(), 
-            table_def.indexes(), table));
+    std::shared_ptr<tablet::TabletTableHandler> handler(
+        new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
+                                       table_def.catalog(), table_def.indexes(),
+                                       table));
     ASSERT_TRUE(handler->Init());
     ASSERT_TRUE(catalog->AddTable(handler));
     const std::string sql =
