@@ -167,7 +167,6 @@ INSTANTIATE_TEST_CASE_P(
                     "\treturn sum\n"
                     "end"));
 
-
 INSTANTIATE_TEST_CASE_P(IfElseParse, SqlParserTest,
                         testing::Values("%%fun\n"
                                         "def test(x:i32,y:i32):i32\n"
@@ -346,51 +345,56 @@ TEST_F(SqlParserTest, Assign_Op_Test) {
     {
         ASSERT_EQ(fesql::node::kFnAssignStmt,
                   fn_def->block_->children[0]->GetType());
-        fesql::node::FnAssignNode *assign = dynamic_cast<fesql::node::FnAssignNode *>(
-            fn_def->block_->children[0]);
-        ASSERT_EQ(fesql::node::kExprPrimary, assign->expression_->GetExprType());
+        fesql::node::FnAssignNode *assign =
+            dynamic_cast<fesql::node::FnAssignNode *>(
+                fn_def->block_->children[0]);
+        ASSERT_EQ(fesql::node::kExprPrimary,
+                  assign->expression_->GetExprType());
     }
     {
         ASSERT_EQ(fesql::node::kFnAssignStmt,
                   fn_def->block_->children[1]->GetType());
-        fesql::node::FnAssignNode *assign = dynamic_cast<fesql::node::FnAssignNode *>(
-            fn_def->block_->children[1]);
-        ASSERT_EQ(fesql::node::kExprBinary,
-                      assign->expression_->GetExprType());
-        const fesql::node::BinaryExpr *expr = dynamic_cast<const fesql::node::BinaryExpr*>(assign->expression_);
+        fesql::node::FnAssignNode *assign =
+            dynamic_cast<fesql::node::FnAssignNode *>(
+                fn_def->block_->children[1]);
+        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
+        const fesql::node::BinaryExpr *expr =
+            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
         ASSERT_EQ(fesql::node::kFnOpAdd, expr->GetOp());
     }
     {
         ASSERT_EQ(fesql::node::kFnAssignStmt,
                   fn_def->block_->children[2]->GetType());
-        fesql::node::FnAssignNode *assign = dynamic_cast<fesql::node::FnAssignNode *>(
-            fn_def->block_->children[2]);
-        ASSERT_EQ(fesql::node::kExprBinary,
-                  assign->expression_->GetExprType());
-        const fesql::node::BinaryExpr *expr = dynamic_cast<const fesql::node::BinaryExpr*>(assign->expression_);
+        fesql::node::FnAssignNode *assign =
+            dynamic_cast<fesql::node::FnAssignNode *>(
+                fn_def->block_->children[2]);
+        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
+        const fesql::node::BinaryExpr *expr =
+            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
         ASSERT_EQ(fesql::node::kFnOpMinus, expr->GetOp());
     }
     {
         ASSERT_EQ(fesql::node::kFnAssignStmt,
                   fn_def->block_->children[3]->GetType());
-        fesql::node::FnAssignNode *assign = dynamic_cast<fesql::node::FnAssignNode *>(
-            fn_def->block_->children[3]);
-        ASSERT_EQ(fesql::node::kExprBinary,
-                  assign->expression_->GetExprType());
-        const fesql::node::BinaryExpr *expr = dynamic_cast<const fesql::node::BinaryExpr*>(assign->expression_);
+        fesql::node::FnAssignNode *assign =
+            dynamic_cast<fesql::node::FnAssignNode *>(
+                fn_def->block_->children[3]);
+        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
+        const fesql::node::BinaryExpr *expr =
+            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
         ASSERT_EQ(fesql::node::kFnOpMulti, expr->GetOp());
     }
     {
         ASSERT_EQ(fesql::node::kFnAssignStmt,
                   fn_def->block_->children[4]->GetType());
-        fesql::node::FnAssignNode *assign = dynamic_cast<fesql::node::FnAssignNode *>(
-            fn_def->block_->children[4]);
-        ASSERT_EQ(fesql::node::kExprBinary,
-                  assign->expression_->GetExprType());
-        const fesql::node::BinaryExpr *expr = dynamic_cast<const fesql::node::BinaryExpr*>(assign->expression_);
+        fesql::node::FnAssignNode *assign =
+            dynamic_cast<fesql::node::FnAssignNode *>(
+                fn_def->block_->children[4]);
+        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
+        const fesql::node::BinaryExpr *expr =
+            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
         ASSERT_EQ(fesql::node::kFnOpFDiv, expr->GetOp());
     }
-
 }
 TEST_F(SqlParserTest, Parser_Insert_ALL_Stmt) {
     const std::string sqlstr =

@@ -105,7 +105,8 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
         ExitOnErr(J->lookup(fn_def->header_->GetCodegenFunctionName()));
     R (*test_fn)(V1, V2) = (R(*)(V1, V2))test_jit.getAddress();
     R result = test_fn(a, b);
-    LOG(INFO) <<"exp: " << std::to_string(exp) << ", result: " << std::to_string(result);
+    LOG(INFO) << "exp: " << std::to_string(exp)
+              << ", result: " << std::to_string(result);
     ASSERT_EQ(exp, result);
 }
 
