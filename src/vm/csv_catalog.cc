@@ -18,6 +18,11 @@
 #include "vm/csv_catalog.h"
 
 #include <fstream>
+#include <map>
+#include <vector>
+#include <memory>
+#include <string>
+#include <utility>
 #include "arrow/csv/api.h"
 #include "arrow/status.h"
 #include "arrow/type.h"

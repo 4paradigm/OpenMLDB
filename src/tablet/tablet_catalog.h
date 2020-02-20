@@ -18,6 +18,9 @@
 #ifndef SRC_TABLET_TABLET_CATALOG_H_
 #define SRC_TABLET_TABLET_CATALOG_H_
 
+#include <map>
+#include <memory>
+#include <string>
 #include "base/spin_lock.h"
 #include "storage/table.h"
 #include "vm/catalog.h"

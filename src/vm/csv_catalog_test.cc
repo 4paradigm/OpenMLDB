@@ -16,6 +16,10 @@
  */
 
 #include "vm/csv_catalog.h"
+
+#include <vector>
+#include <memory>
+#include <string>
 #include "arrow/filesystem/localfs.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"

@@ -80,7 +80,7 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
             status->set_msg("table exist");
             return;
         }
-        // TODO just one partition
+        // TODO(wangtaize) just one partition
         break;
     }
     status->set_code(common::kOk);

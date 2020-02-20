@@ -27,7 +27,7 @@
 namespace fesql {
 namespace base {
 
-bool ListDir(const std::string& path, std::vector<std::string>& files) {
+bool ListDir(const std::string& path, std::vector<std::string>& files) {  // NOLINT
     DIR* dir = ::opendir(path.c_str());
     if (dir == NULL) {
         LOG(WARNING) << "opendir " << path << " failed err " << strerror(errno);

@@ -150,7 +150,7 @@ bool CSVSegmentIterator::Valid() {
     bool valid = it_ != rend_;
     if (valid) {
         DLOG(INFO) << "key " << it_->first;
-        // TODO memory leak
+        // TODO(wangtaize) memory leak
         //    if (buf_ != NULL) delete buf_;
         buf_size_ = GetRowSize(schema_, it_->second.chunk_offset,
                                it_->second.array_offset, table_, &rb_);

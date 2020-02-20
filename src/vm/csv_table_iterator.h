@@ -18,31 +18,32 @@
 #ifndef SRC_VM_CSV_TABLE_ITERATOR_H_
 #define SRC_VM_CSV_TABLE_ITERATOR_H_
 
+#include <string>
+#include <memory>
+#include <map>
+#include "arrow/table.h"
+#include "storage/codec.h"
 #include "vm/catalog.h"
 #include "vm/csv_catalog.h"
-#include "storage/codec.h"
-#include "arrow/table.h"
 
 namespace fesql {
 namespace vm {
 
-uint32_t GetRowSize(const Schema& schema,
-                    uint64_t chunk_offset, uint64_t array_offset, 
+uint32_t GetRowSize(const Schema& schema, uint64_t chunk_offset,
+                    uint64_t array_offset,
                     const std::shared_ptr<arrow::Table>& table,
                     storage::RowBuilder* rb);
 
 bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
-        uint64_t chunk_offset, uint64_t array_offset,
-        storage::RowBuilder* rb);
+            uint64_t chunk_offset, uint64_t array_offset,
+            storage::RowBuilder* rb);
 
 class CSVSegmentIterator : public Iterator {
-
  public:
     CSVSegmentIterator(const std::shared_ptr<arrow::Table>& table,
-            const IndexDatas* index_datas,
-            const std::string& index_name,
-            const std::string& pk,
-            const Schema& schema);
+                       const IndexDatas* index_datas,
+                       const std::string& index_name, const std::string& pk,
+                       const Schema& schema);
     ~CSVSegmentIterator();
 
     void Seek(uint64_t ts);
@@ -68,14 +69,12 @@ class CSVSegmentIterator : public Iterator {
     uint32_t buf_size_;
     std::map<uint64_t, RowLocation>::const_reverse_iterator it_;
     std::map<uint64_t, RowLocation>::const_reverse_iterator rend_;
-
 };
 
 class CSVTableIterator : public Iterator {
-
  public:
     CSVTableIterator(const std::shared_ptr<arrow::Table>& table,
-            const Schema& schema);
+                     const Schema& schema);
     ~CSVTableIterator();
 
     void Seek(uint64_t ts);
@@ -92,6 +91,7 @@ class CSVTableIterator : public Iterator {
 
  private:
     void BuildRow();
+
  private:
     const std::shared_ptr<arrow::Table> table_;
     const Schema schema_;

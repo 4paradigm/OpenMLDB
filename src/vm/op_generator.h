@@ -20,8 +20,9 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include "base/status.h"
-#include "catalog/catalog.h"
+#include "vm/catalog.h"
 #include "llvm/IR/Module.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"

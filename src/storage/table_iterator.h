@@ -18,6 +18,8 @@
 #ifndef SRC_STORAGE_TABLE_ITERATOR_H_
 #define SRC_STORAGE_TABLE_ITERATOR_H_
 
+#include <string>
+#include <memory>
 #include "base/iterator.h"
 #include "storage/segment.h"
 #include "vm/catalog.h"
@@ -128,7 +130,6 @@ class FullTableIterator : public vm::Iterator {
  private:
     uint32_t seg_cnt_;
     uint32_t seg_idx_;
-    // TODO
     Segment*** segments_;
     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it_;
     std::unique_ptr<base::Iterator<base::Slice, void*>> pk_it_;

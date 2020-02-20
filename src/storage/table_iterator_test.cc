@@ -24,7 +24,7 @@
 namespace fesql {
 namespace storage {
 
-void BuildTableSchema(type::TableDef& table_def) {
+void BuildTableSchema(type::TableDef& table_def) {  //NOLINT
     ::fesql::type::ColumnDef* col = table_def.add_columns();
     col->set_name("col1");
     col->set_type(::fesql::type::kVarchar);

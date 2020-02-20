@@ -17,6 +17,8 @@
 
 #include "codegen/window_ir_builder.h"
 
+#include <utility>
+#include <string>
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "storage/codec.h"

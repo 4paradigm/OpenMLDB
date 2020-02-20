@@ -19,6 +19,8 @@
 #define SRC_CODEGEN_WINDOW_IR_BUILDER_H_
 
 #include <map>
+#include <string>
+#include <utility>
 #include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"

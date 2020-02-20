@@ -16,6 +16,10 @@
  */
 
 #include "storage/table_iterator.h"
+
+#include <string>
+#include <utility>
+#include <memory>
 #include "base/hash.h"
 #include "storage/codec.h"
 

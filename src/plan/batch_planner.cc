@@ -32,7 +32,6 @@ BatchPlanner::~BatchPlanner() {}
 int32_t BatchPlanner::CreateTree(const node::NodePointVector& parse_trees,
                                  node::BatchPlanTree* batch_plan_tree,
                                  base::Status& status) {  // NOLINT
-
     if (batch_plan_tree == NULL) {
         LOG(WARNING) << "batch plan tree is null pointer";
         return -1;

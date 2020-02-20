@@ -17,6 +17,7 @@
 
 #include "vm/csv_window_iterator.h"
 
+#include <utility>
 #include "vm/csv_table_iterator.h"
 
 namespace fesql {

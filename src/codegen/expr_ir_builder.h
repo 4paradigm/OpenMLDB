@@ -19,6 +19,7 @@
 #define SRC_CODEGEN_EXPR_IR_BUILDER_H_
 
 #include <string>
+#include <memory>
 #include "codegen/row_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "codegen/window_ir_builder.h"

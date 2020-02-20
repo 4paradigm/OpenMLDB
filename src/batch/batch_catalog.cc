@@ -17,6 +17,9 @@
 
 #include "batch/batch_catalog.h"
 
+#include <vector>
+#include <utility>
+#include <string>
 #include "arrow/filesystem/api.h"
 #include "arrow/io/api.h"
 #include "arrow/status.h"
@@ -54,7 +57,7 @@ bool BatchCatalog::Init() {
         if (!ok) {
             return false;
         }
-        // TODO support dir
+        // TODO(wangtaize) support dir
         std::shared_ptr<BatchTableHandler> table_handler(new BatchTableHandler(
             schema, table.first, FLAGS_default_db_name, partitions));
         db_[FLAGS_default_db_name].insert(

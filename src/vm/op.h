@@ -36,7 +36,7 @@ struct OpNode {
     virtual ~OpNode() {}
     OpType type;
     uint32_t idx;
-    catalog::Schema output_schema;
+    vm::Schema output_schema;
     std::vector<OpNode*> children;
 };
 

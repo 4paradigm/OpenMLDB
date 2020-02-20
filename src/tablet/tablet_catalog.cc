@@ -18,6 +18,9 @@
 #include "tablet/tablet_catalog.h"
 
 #include <memory>
+#include <string>
+#include <utility>
+#include <map>
 #include "glog/logging.h"
 
 namespace fesql {

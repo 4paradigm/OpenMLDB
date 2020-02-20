@@ -18,6 +18,8 @@
 #ifndef SRC_NODE_BATCH_PLAN_NODE_H_
 #define SRC_NODE_BATCH_PLAN_NODE_H_
 
+#include <string>
+#include <vector>
 #include "node/node_enum.h"
 #include "node/sql_node.h"
 
@@ -60,7 +62,7 @@ class ColumnPartitionNode : public BatchPlanNode {
         : BatchPlanNode(kBatchPartition), columns_() {
         columns_.push_back(column);
     }
-    ColumnPartitionNode(const std::vector<std::string>& columns)
+    explicit ColumnPartitionNode(const std::vector<std::string>& columns)
         : BatchPlanNode(kBatchPartition), columns_(columns) {}
 
     ~ColumnPartitionNode() {}
@@ -96,4 +98,4 @@ class BatchPlanTree {
 }  // namespace node
 }  // namespace fesql
 
-#endif  // SRC_NODE_BATCH_PLAN_NODE_H
+#endif  // SRC_NODE_BATCH_PLAN_NODE_H_

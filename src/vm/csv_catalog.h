@@ -18,6 +18,9 @@
 #ifndef SRC_VM_CSV_CATALOG_H_
 #define SRC_VM_CSV_CATALOG_H_
 
+#include <map>
+#include <string>
+#include <memory>
 #include "vm/catalog.h"
 
 #include "arrow/array.h"
@@ -127,7 +130,7 @@ typedef std::map<std::string, std::shared_ptr<type::Database>> Databases;
 
 class CSVCatalog : public Catalog {
  public:
-    CSVCatalog(const std::string& root_dir);
+    explicit CSVCatalog(const std::string& root_dir);
 
     ~CSVCatalog();
 

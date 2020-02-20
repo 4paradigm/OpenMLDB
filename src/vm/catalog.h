@@ -19,6 +19,9 @@
 #define SRC_VM_CATALOG_H_
 
 #include <memory>
+#include <vector>
+#include <map>
+#include <string>
 #include "base/slice.h"
 #include "proto/type.pb.h"
 

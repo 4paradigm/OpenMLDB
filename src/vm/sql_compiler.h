@@ -54,7 +54,7 @@ class SQLCompiler {
 
     ~SQLCompiler();
 
-    bool Compile(SQLContext& ctx,
+    bool Compile(SQLContext& ctx,  // NOLINT
                  Status& status);  // NOLINT
 
  private:
