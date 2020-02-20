@@ -12,7 +12,8 @@
 
 template <class T>
 T add(T a, T b) {
-    return a+b+1;
+    a += b;
+    return a;
 }
 
 int int_add(int a, int b) {

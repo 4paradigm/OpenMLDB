@@ -425,6 +425,13 @@ FnNode *NodeManager::MakeAssignNode(const std::string &name,
     return RegisterNode(fn_assign);
 }
 
+FnNode *NodeManager::MakeAssignNode(const std::string &name,
+                                    ExprNode *expression, const FnOperator op) {
+    ::fesql::node::FnAssignNode *fn_assign = new fesql::node::FnAssignNode(
+        name, MakeBinaryExprNode(MakeFnIdNode(name), expression, op));
+
+    return RegisterNode(fn_assign);
+}
 FnNode *NodeManager::MakeReturnStmtNode(ExprNode *value) {
     FnNode *fn_node = new FnReturnStmt(value);
     return RegisterNode(fn_node);

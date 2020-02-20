@@ -291,7 +291,6 @@ bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
         LOG(WARNING) << status.msg;
         return false;
     }
-
     return variable_ir_builder.StoreValue(node->name_, value, false, status);
 }
 

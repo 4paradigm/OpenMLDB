@@ -78,6 +78,11 @@ typedef void* yyscan_t;
 
 /* operators and precedence levels */
 
+%right ADD_ASSIGN
+%right SUB_ASSIGN
+%right MINUS_ASSIGN
+%right MULTI_ASSIGN
+%right FDIV_ASSIGN
 %right ASSIGN
 %left OR
 %left XOR
@@ -509,7 +514,20 @@ fn_header :
 assign_stmt:
 		VARNAME ASSIGN expr {
             $$ = node_manager->MakeAssignNode($1, $3);
-        };
+        }
+        |VARNAME ADD_ASSIGN expr {
+        	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpAdd);
+        }
+        |VARNAME MINUS_ASSIGN expr {
+        	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpMinus);
+        }
+        |VARNAME MULTI_ASSIGN expr {
+        	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpMulti);
+        }
+        |VARNAME FDIV_ASSIGN expr {
+        	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpFDiv);
+        }
+        ;
 
 return_stmt:
 		RETURN expr {

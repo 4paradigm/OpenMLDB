@@ -138,6 +138,7 @@ class NodeManager {
 
     FnNode *MakeFnParaNode(const std::string &name, const TypeNode *para_type);
     FnNode *MakeAssignNode(const std::string &name, ExprNode *expression);
+    FnNode *MakeAssignNode(const std::string &name, ExprNode *expression, const FnOperator op);
     FnNode *MakeReturnStmtNode(ExprNode *value);
     FnIfBlock *MakeFnIfBlock(const FnIfNode *if_node, const FnNodeList *block);
     FnElifBlock *MakeFnElifBlock(const FnElifNode *elif_node,

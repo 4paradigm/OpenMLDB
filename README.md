@@ -255,15 +255,8 @@ end
 ```
 
 ### 循环表达式
-```python
-def test(int:a):int
-    i = 0
-    result = 0
-    while(i < 100)
-        result += i
-        i += 1
-end
 
+```python
 def test(list<int>:elements):int
     result = 0
     for x in elements

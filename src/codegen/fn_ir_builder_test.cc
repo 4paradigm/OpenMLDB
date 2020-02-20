@@ -61,7 +61,7 @@ class FnIRBuilderTest : public ::testing::Test {
 };
 
 template <class R, class V1, class V2>
-void CheckResult(std::string test, R res, V1 a, V2 b) {
+void CheckResult(std::string test, R exp, V1 a, V2 b) {
     node::NodePointVector trees;
     node::PlanNodeList plan_trees;
     base::Status status;
@@ -104,25 +104,15 @@ void CheckResult(std::string test, R res, V1 a, V2 b) {
     auto test_jit =
         ExitOnErr(J->lookup(fn_def->header_->GetCodegenFunctionName()));
     R (*test_fn)(V1, V2) = (R(*)(V1, V2))test_jit.getAddress();
-    ASSERT_EQ(res, test_fn(a, b));
+    R result = test_fn(a, b);
+    LOG(INFO) <<"exp: " << std::to_string(exp) << ", result: " << std::to_string(result);
+    ASSERT_EQ(exp, result);
 }
 
 void CheckResult(std::string test, int32_t res, int32_t a, int32_t b) {
     CheckResult<int32_t, int32_t, int32_t>(test, res, a, b);
 }
 
-//
-// TEST_F(ListIRBuilderTest, list_int16_at_test) {
-//    int8_t* ptr = NULL;
-//    std::vector<fesql::storage::Row> rows;
-//    BuildWindow2(rows, &ptr);
-//    RunListAtCase<int16_t>(2, ::fesql::type::kInt16, "col2", ptr, 0);
-//    RunListAtCase<int16_t>(22, ::fesql::type::kInt16, "col2", ptr, 1);
-//    RunListAtCase<int16_t>(22222, ::fesql::type::kInt16, "col2", ptr, 4);
-//    RunListAtCase<int16_t>(2222, ::fesql::type::kInt16, "col2", ptr, 3);
-//    RunListAtCase<int16_t>(222, ::fesql::type::kInt16, "col2", ptr, 2);
-//    free(ptr);
-//}
 TEST_F(FnIRBuilderTest, test_add_int32) {
     const std::string test =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
@@ -331,6 +321,76 @@ TEST_F(FnIRBuilderTest, test_for_in_condition2_sum) {
         test, 4 + 2 + 1 + 2 + 2 + 2 + 2, &list_ref, 2);
 }
 
+TEST_F(FnIRBuilderTest, test_for_in_sum_add_assign) {
+    const std::string test =
+        "%%fun\n"
+        "def test(l:list<i32>, a:i32):i32\n"
+        "    sum=0\n"
+        "    for x in l\n"
+        "        sum += x\n"
+        "    return sum\n"
+        "end";
+
+    std::vector<int32_t> vec = {1, 3, 5, 7, 9};
+    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListRef list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
+}
+TEST_F(FnIRBuilderTest, test_for_in_sum_minus_assign) {
+    const std::string test =
+        "%%fun\n"
+        "def test(l:list<i32>, a:i32):i32\n"
+        "    sum=0\n"
+        "    for x in l\n"
+        "        sum -= x\n"
+        "    return sum\n"
+        "end";
+
+    std::vector<int32_t> vec = {1, 3, 5, 7, 9};
+    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListRef list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, -1 - 3 - 5 - 7 - 9, &list_ref, 0);
+}
+
+TEST_F(FnIRBuilderTest, test_for_in_sum_multi_assign) {
+    const std::string test =
+        "%%fun\n"
+        "def test(l:list<i32>, a:i32):i32\n"
+        "    sum=1\n"
+        "    for x in l\n"
+        "        sum *= x\n"
+        "    return sum\n"
+        "end";
+
+    std::vector<int32_t> vec = {1, 3, 5, 7, 9};
+    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListRef list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, 1 * 3 * 5 * 7 * 9, &list_ref, 0);
+}
+
+TEST_F(FnIRBuilderTest, test_for_in_sum_fdiv_assign) {
+    const std::string test =
+        "%%fun\n"
+        "def test(l:list<i32>, a:i32):double\n"
+        "    sum=1.0\n"
+        "    for x in l\n"
+        "        sum /= x\n"
+        "    return sum\n"
+        "end";
+
+    std::vector<int32_t> vec = {1, 3, 5, 7, 9};
+    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListRef list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckResult<double, fesql::storage::ListRef *, int32_t>(
+        test, 1.0 / 3.0 / 5.0 / 7.0 / 9.0, &list_ref, 0);
+}
 }  // namespace codegen
 }  // namespace fesql
 

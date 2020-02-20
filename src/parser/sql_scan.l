@@ -73,6 +73,10 @@ less_equals		"<="
 greater_equals	">="
 not_equals		"!="
 equals  "=="
+add_assign "+="
+minus_assign "-="
+multi_assign "*="
+fdiv_assign "/="
 assign  "="
 and "&&"
 or  "||"
@@ -430,10 +434,13 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 					/* We accept both "<>" and "!=" as meaning NOT_EQUALS */
 					return NOT_EQUALS;
 				}
-[-+&~|^/%*(),.;!]   { return yytext[0]; }
 
 <INITIAL>":="     { return ASSIGN; }
 <FUN>{assign} { return ASSIGN; }
+<FUN>{add_assign} { return ADD_ASSIGN; }
+<FUN>{minus_assign} { return MINUS_ASSIGN; }
+<FUN>{multi_assign} { return MULTI_ASSIGN; }
+<FUN>{fdiv_assign} { return FDIV_ASSIGN; }
 <INITIAL>{assign} { return EQUALS; }
 {equals} { return EQUALS; }
 <FUN>[A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
@@ -471,6 +478,7 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
             return yytext[0];
 	}
 
+[-+&~|^/%*(),.;!]   { return yytext[0]; }
 #.*		;
 "--"[ \t].*	;
 

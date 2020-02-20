@@ -998,7 +998,6 @@ class FnAssignNode : public FnNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string name_;
     const ExprNode *expression_;
-
  private:
     bool is_ssa_;
 };
