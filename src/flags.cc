@@ -24,4 +24,5 @@ DEFINE_string(tablet_endpoint, "",
               "config the ip and port that fesql tablet for");
 
 // batch config
-DEFINE_string(default_db_name, "_fesql", "config the default batch catalog db name");
+DEFINE_string(default_db_name, "_fesql",
+              "config the default batch catalog db name");

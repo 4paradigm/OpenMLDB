@@ -26,11 +26,9 @@ enum OpType {
     kMap,
 };
 
-class OpNode {
-
-};
+class OpNode {};
 
 }  // namespace batch
 }  // namespace fesql
 
-#endif // SRC_BATCH_BATCH_OP_H_
+#endif  // SRC_BATCH_BATCH_OP_H_

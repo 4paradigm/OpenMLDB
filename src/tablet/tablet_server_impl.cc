@@ -38,8 +38,7 @@ bool TabletServerImpl::Init() {
         LOG(WARNING) << "fail to init catalog ";
         return false;
     }
-    engine_ = std::move(std::unique_ptr<vm::Engine>(
-        new vm::Engine(catalog_)));
+    engine_ = std::move(std::unique_ptr<vm::Engine>(new vm::Engine(catalog_)));
     LOG(INFO) << "init tablet ok";
     return true;
 }
@@ -81,7 +80,7 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
             status->set_msg("table exist");
             return;
         }
-        //TODO just one partition
+        // TODO just one partition
         break;
     }
     status->set_code(common::kOk);
@@ -98,8 +97,8 @@ void TabletServerImpl::Insert(RpcController* ctrl, const InsertRequest* request,
         status->set_msg("db or table name is empty");
         return;
     }
-    std::shared_ptr<TabletTableHandler> handler = GetTableLocked(request->db(),
-            request->table());
+    std::shared_ptr<TabletTableHandler> handler =
+        GetTableLocked(request->db(), request->table());
 
     if (!handler) {
         status->set_code(common::kTableNotFound);
@@ -107,8 +106,8 @@ void TabletServerImpl::Insert(RpcController* ctrl, const InsertRequest* request,
         return;
     }
 
-    bool ok = handler->GetTable()->Put(request->row().c_str(), 
-            request->row().size());
+    bool ok =
+        handler->GetTable()->Put(request->row().c_str(), request->row().size());
     if (!ok) {
         status->set_code(common::kTablePutFailed);
         status->set_msg("fail to put row");
@@ -169,8 +168,8 @@ void TabletServerImpl::GetTableSchema(RpcController* ctrl,
                                       Closure* done) {
     brpc::ClosureGuard done_guard(done);
     ::fesql::common::Status* status = response->mutable_status();
-    std::shared_ptr<TabletTableHandler> handler = GetTableLocked(request->db(),
-            request->name());
+    std::shared_ptr<TabletTableHandler> handler =
+        GetTableLocked(request->db(), request->name());
     if (!handler) {
         status->set_code(common::kTableNotFound);
         status->set_msg("table is not found");

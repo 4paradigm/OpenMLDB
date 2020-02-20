@@ -19,8 +19,6 @@
 #define SRC_BATCH_LET_IMPL_H_
 
 namespace fesql {
-namespace batch {
-
-}  // namespace batch
+namespace batch {}  // namespace batch
 }  // namespace fesql
 #endif  // SRC_BATCH_LET_IMPL_H_

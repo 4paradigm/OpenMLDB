@@ -18,9 +18,9 @@
 #ifndef SRC_STORAGE_TABLE_ITERATOR_H_
 #define SRC_STORAGE_TABLE_ITERATOR_H_
 
-#include "vm/catalog.h"
 #include "base/iterator.h"
 #include "storage/segment.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace storage {
@@ -31,9 +31,8 @@ class WindowInternalIterator;
 class EmptyWindowIterator;
 
 class EmptyWindowIterator : public vm::Iterator {
-
  public:
-    EmptyWindowIterator(): value_() {}
+    EmptyWindowIterator() : value_() {}
 
     ~EmptyWindowIterator() {}
 
@@ -41,17 +40,13 @@ class EmptyWindowIterator : public vm::Iterator {
 
     inline void SeekToFirst() {}
 
-    inline bool Valid() { return false;}
+    inline bool Valid() { return false; }
 
     inline void Next() {}
 
-    inline const base::Slice GetValue() { 
-        return value_;
-    }
+    inline const base::Slice GetValue() { return value_; }
 
-    inline const uint64_t GetKey() {
-        return 0;
-    }
+    inline const uint64_t GetKey() { return 0; }
 
  private:
     base::Slice value_;
@@ -59,8 +54,9 @@ class EmptyWindowIterator : public vm::Iterator {
 
 class WindowInternalIterator : public vm::Iterator {
  public:
-     explicit WindowInternalIterator(std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it);
-     ~WindowInternalIterator();
+    explicit WindowInternalIterator(
+        std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it);
+    ~WindowInternalIterator();
 
     inline void Seek(uint64_t ts);
 
@@ -73,12 +69,12 @@ class WindowInternalIterator : public vm::Iterator {
     const base::Slice GetValue();
 
     const uint64_t GetKey();
+
  private:
     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it_;
 };
 
 class WindowTableIterator : public vm::WindowIterator {
-
  public:
     WindowTableIterator(Segment*** segments, uint32_t seg_cnt, uint32_t index);
     ~WindowTableIterator();
@@ -89,6 +85,7 @@ class WindowTableIterator : public vm::WindowIterator {
     bool Valid();
     std::unique_ptr<vm::Iterator> GetValue();
     const base::Slice GetKey();
+
  private:
     void GoToStart();
     void GoToNext();
@@ -105,16 +102,15 @@ class WindowTableIterator : public vm::WindowIterator {
 // the full table iterator
 class FullTableIterator : public vm::Iterator {
  public:
-
-    FullTableIterator():seg_cnt_(0), seg_idx_(0),segments_(NULL){}
+    FullTableIterator() : seg_cnt_(0), seg_idx_(0), segments_(NULL) {}
 
     explicit FullTableIterator(Segment*** segments, uint32_t seg_cnt);
 
-    ~FullTableIterator(){}
+    ~FullTableIterator() {}
 
-    inline void Seek(uint64_t ts){}
+    inline void Seek(uint64_t ts) {}
 
-    inline void SeekToFirst(){}
+    inline void SeekToFirst() {}
 
     bool Valid();
 
@@ -123,14 +119,16 @@ class FullTableIterator : public vm::Iterator {
     const base::Slice GetValue();
 
     // the key maybe the row num
-    const uint64_t GetKey() { return 0;}
+    const uint64_t GetKey() { return 0; }
+
  private:
     void GoToStart();
     void GoToNext();
+
  private:
     uint32_t seg_cnt_;
     uint32_t seg_idx_;
-    // TODO 
+    // TODO
     Segment*** segments_;
     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it_;
     std::unique_ptr<base::Iterator<base::Slice, void*>> pk_it_;

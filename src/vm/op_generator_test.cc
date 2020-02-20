@@ -46,7 +46,8 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace vm {
 
-void AssertOpGen(const fesql::type::TableDef& table_def, OpVector* op,  // NOLINT
+void AssertOpGen(const fesql::type::TableDef& table_def,
+                 OpVector* op,  // NOLINT
                  const std::string& sql, const Status& exp_status) {
     std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
@@ -105,7 +106,6 @@ void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
         column->set_type(::fesql::type::kInt64);
         column->set_name("col15");
     }
-
 }
 class OpGeneratorTest : public ::testing::Test {
  public:
@@ -232,8 +232,7 @@ TEST_F(OpGeneratorTest, test_multi_windowp_project) {
             ASSERT_TRUE(project_op->window_agg);
             ASSERT_EQ("index1", project_op->w.index_name);
             ASSERT_EQ(1L, project_op->w.keys.size());
-            ASSERT_EQ(::fesql::type::kInt16,
-                      project_op->w.keys.cbegin()->type);
+            ASSERT_EQ(::fesql::type::kInt16, project_op->w.keys.cbegin()->type);
             ASSERT_EQ(1, project_op->w.keys.cbegin()->pos);
             ASSERT_EQ(::fesql::type::kInt64, project_op->w.order.type);
             ASSERT_EQ(4, project_op->w.order.pos);
@@ -246,8 +245,7 @@ TEST_F(OpGeneratorTest, test_multi_windowp_project) {
             ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[2]);
             ASSERT_TRUE(project_op->window_agg);
             ASSERT_EQ("index2", project_op->w.index_name);
-            ASSERT_EQ(::fesql::type::kInt32,
-                      project_op->w.keys.cbegin()->type);
+            ASSERT_EQ(::fesql::type::kInt32, project_op->w.keys.cbegin()->type);
             ASSERT_EQ(0, project_op->w.keys.cbegin()->pos);
             ASSERT_EQ(::fesql::type::kInt64, project_op->w.order.type);
             ASSERT_EQ(4, project_op->w.order.pos);

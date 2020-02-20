@@ -15,10 +15,9 @@
  * limitations under the License.
  */
 
-#include "gflags/gflags.h"
-#include "vm/csv_catalog.h"
 #include "arrow/filesystem/localfs.h"
-#include "vm/engine.h"
+#include "base/texttable.h"
+#include "gflags/gflags.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -28,13 +27,13 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
-#include "base/texttable.h"
+#include "vm/csv_catalog.h"
+#include "vm/engine.h"
 
 DEFINE_string(format, "", "config the format of output, csv or nothing");
 DEFINE_string(db_dir, "", "config the dir of database");
 DEFINE_string(db, "", "config the db to use");
 DEFINE_string(query, "", "config the sql to query");
-
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -56,50 +55,44 @@ void PrintRows(const Schema& schema, const std::vector<int8_t*>& rows) {
         row_decoder.Reset(*it);
         for (int32_t i = 0; i < schema.size(); i++) {
             const type::ColumnDef& column = schema.Get(i);
-            switch(column.type()) {
-                case type::kInt16:
-                    {
-                        int16_t value;
-                        row_decoder.GetInt16((uint32_t)i, &value);
-                        t.add(std::to_string(value));
-                        break;
-                    }
-                case type::kInt32:
-                    {
-                        int32_t value;
-                        row_decoder.GetInt32((uint32_t)i, &value);
-                        t.add(std::to_string(value));
-                        break;
-                    }
-                case type::kInt64:
-                    {
-                        int64_t value;
-                        row_decoder.GetInt64((uint32_t)i, &value);
-                        t.add(std::to_string(value));
-                        break;
-                    }
-                case type::kFloat:
-                    {
-                        float value;
-                        row_decoder.GetFloat((uint32_t)i, &value);
-                        t.add(std::to_string(value));
-                        break;
-                    }
-                case type::kDouble:
-                    {
-                        double value;
-                        row_decoder.GetDouble((uint32_t)i, &value);
-                        t.add(std::to_string(value));
-                        break;
-                    }
-                case type::kVarchar:
-                    {
-                        char *data = NULL;
-                        uint32_t size = 0;
-                        row_decoder.GetString((uint32_t)i, &data, &size);
-                        t.add(std::string(data, size));
-                        break;
-                    }
+            switch (column.type()) {
+                case type::kInt16: {
+                    int16_t value;
+                    row_decoder.GetInt16((uint32_t)i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case type::kInt32: {
+                    int32_t value;
+                    row_decoder.GetInt32((uint32_t)i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case type::kInt64: {
+                    int64_t value;
+                    row_decoder.GetInt64((uint32_t)i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case type::kFloat: {
+                    float value;
+                    row_decoder.GetFloat((uint32_t)i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case type::kDouble: {
+                    double value;
+                    row_decoder.GetDouble((uint32_t)i, &value);
+                    t.add(std::to_string(value));
+                    break;
+                }
+                case type::kVarchar: {
+                    char* data = NULL;
+                    uint32_t size = 0;
+                    row_decoder.GetString((uint32_t)i, &data, &size);
+                    t.add(std::string(data, size));
+                    break;
+                }
                 default: {
                     t.add("NA");
                 }
@@ -117,7 +110,8 @@ void Run() {
     std::shared_ptr<CSVCatalog> catalog(new CSVCatalog(FLAGS_db_dir));
     bool ok = catalog->Init();
     if (!ok) {
-        std::cout << "fail to init catalog from path " << FLAGS_db_dir << std::endl;
+        std::cout << "fail to init catalog from path " << FLAGS_db_dir
+                  << std::endl;
         return;
     }
     Engine engine(catalog);
@@ -133,7 +127,7 @@ void Run() {
     if (code == 0) {
         ::fesql::base::TextTable t('-', '|', '+');
         PrintRows(session.GetSchema(), buf);
-    }else {
+    } else {
         std::cout << "fail to execute sql" << std::endl;
     }
 }
@@ -141,7 +135,7 @@ void Run() {
 }  // namespace vm
 }  // namespace fesql
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();

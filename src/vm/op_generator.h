@@ -21,10 +21,10 @@
 #include <string>
 #include <vector>
 #include "base/status.h"
+#include "catalog/catalog.h"
 #include "llvm/IR/Module.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
-#include "catalog/catalog.h"
 #include "vm/op.h"
 
 namespace fesql {
@@ -56,32 +56,28 @@ class OpGenerator {
                 base::Status& status);  // NOLINT
 
     bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
-                       const std::string& db, ::llvm::Module* module,
-                       OpNode** op,
-                       Status& status);  // NOLINT
-
-    bool GenScan(const ::fesql::node::ScanPlanNode* node,
-                    const std::string& db, ::llvm::Module* module,
-                    OpNode** op,
+                    const std::string& db, ::llvm::Module* module, OpNode** op,
                     Status& status);  // NOLINT
 
+    bool GenScan(const ::fesql::node::ScanPlanNode* node, const std::string& db,
+                 ::llvm::Module* module, OpNode** op,
+                 Status& status);  // NOLINT
+
     bool GenLimit(const ::fesql::node::LimitPlanNode* node,
-                     const std::string& db, ::llvm::Module* module,
-                     OpNode** op,
-                     Status& status);  // NOLINT
+                  const std::string& db, ::llvm::Module* module, OpNode** op,
+                  Status& status);  // NOLINT
 
     bool GenMerge(const ::fesql::node::MergePlanNode* node,
-                    const std::vector<OpNode*> children,
-                     ::llvm::Module* module,
-                     OpNode** op,
-                     Status& status);  // NOLINT
+                  const std::vector<OpNode*> children, ::llvm::Module* module,
+                  OpNode** op,
+                  Status& status);  // NOLINT
 
-    bool RoutingNode(const ::fesql::node::PlanNode* node,
-                        const std::string& db, ::llvm::Module* module,
-                        std::map<const std::string, OpNode*>& ops_map,  // NOLINT
-                        OpVector* ops,
-                        std::vector<OpNode*> &prev_children, //NOLINT
-                        Status& status);  // NOLINT
+    bool RoutingNode(const ::fesql::node::PlanNode* node, const std::string& db,
+                     ::llvm::Module* module,
+                     std::map<const std::string, OpNode*>& ops_map,  // NOLINT
+                     OpVector* ops,
+                     std::vector<OpNode*>& prev_children,  // NOLINT
+                     Status& status);                      // NOLINT
 
  private:
     const std::shared_ptr<Catalog> catalog_;

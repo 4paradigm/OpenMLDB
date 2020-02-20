@@ -18,10 +18,11 @@
 #ifndef SRC_VM_OP_H_
 #define SRC_VM_OP_H_
 
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <set>
+#include <memory>
 #include "proto/type.pb.h"
 #include "storage/window.h"
 #include "vm/catalog.h"
@@ -29,12 +30,7 @@
 namespace fesql {
 namespace vm {
 
-enum OpType {
-    kOpProject = 1,
-    kOpScan,
-    kOpLimit,
-    kOpMerge
-};
+enum OpType { kOpProject = 1, kOpScan, kOpLimit, kOpMerge };
 
 struct OpNode {
     virtual ~OpNode() {}
@@ -91,7 +87,7 @@ struct LimitOp : public OpNode {
 
 struct MergeOp : public OpNode {
     int8_t* fn;
-    std::vector<std::pair<uint32_t , uint32_t >> pos_mapping;
+    std::vector<std::pair<uint32_t, uint32_t>> pos_mapping;
 };
 
 }  // namespace vm

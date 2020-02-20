@@ -18,27 +18,25 @@
 #ifndef SRC_NODE_BATCH_PLAN_NODE_H_
 #define SRC_NODE_BATCH_PLAN_NODE_H_
 
-#include "node/sql_node.h"
 #include "node/node_enum.h"
+#include "node/sql_node.h"
 
 namespace fesql {
 namespace node {
 
 class BatchPlanNode {
  public:
-    explicit BatchPlanNode(const BatchPlanNodeType& type):type_(type), children_() {}
+    explicit BatchPlanNode(const BatchPlanNodeType& type)
+        : type_(type), children_() {}
     virtual ~BatchPlanNode() {}
 
-    const BatchPlanNodeType& GetType() const { return type_;}
-    void AddChild(const BatchPlanNode* node) {
-        children_.push_back(node);
-    }
+    const BatchPlanNodeType& GetType() const { return type_; }
+    void AddChild(const BatchPlanNode* node) { children_.push_back(node); }
     const std::vector<const BatchPlanNode*>& GetChildren() const {
         return children_;
     }
-    const std::vector<const BatchPlanNode*>& GetChildren() {
-        return children_;
-    }
+    const std::vector<const BatchPlanNode*>& GetChildren() { return children_; }
+
  private:
     BatchPlanNodeType type_;
     std::vector<const BatchPlanNode*> children_;
@@ -46,11 +44,11 @@ class BatchPlanNode {
 
 class DatasetNode : public BatchPlanNode {
  public:
-    explicit DatasetNode(const std::string& table):BatchPlanNode(kBatchDataset), table_(table) {}
+    explicit DatasetNode(const std::string& table)
+        : BatchPlanNode(kBatchDataset), table_(table) {}
 
-    const std::string& GetTable() const {
-        return table_;
-    }
+    const std::string& GetTable() const { return table_; }
+
  private:
     std::string table_;
 };
@@ -58,43 +56,39 @@ class DatasetNode : public BatchPlanNode {
 // partition by multi column
 class ColumnPartitionNode : public BatchPlanNode {
  public:
-    explicit ColumnPartitionNode(const std::string& column):BatchPlanNode(kBatchPartition), 
-    columns_(){
+    explicit ColumnPartitionNode(const std::string& column)
+        : BatchPlanNode(kBatchPartition), columns_() {
         columns_.push_back(column);
     }
-    ColumnPartitionNode(const std::vector<std::string>& columns):BatchPlanNode(kBatchPartition),
-    columns_(columns) {}
+    ColumnPartitionNode(const std::vector<std::string>& columns)
+        : BatchPlanNode(kBatchPartition), columns_(columns) {}
 
     ~ColumnPartitionNode() {}
-    const std::vector<std::string>& GetColumns() const {
-        return columns_;
-    }
+    const std::vector<std::string>& GetColumns() const { return columns_; }
+
  private:
     std::vector<std::string> columns_;
 };
 
 class MapNode : public BatchPlanNode {
  public:
-    explicit MapNode(const NodePointVector& nodes ):BatchPlanNode(kBatchMap), nodes_(nodes) {}
+    explicit MapNode(const NodePointVector& nodes)
+        : BatchPlanNode(kBatchMap), nodes_(nodes) {}
     ~MapNode() {}
-    const NodePointVector& GetNodes() const {
-        return nodes_;
-    }
+    const NodePointVector& GetNodes() const { return nodes_; }
+
  private:
     const NodePointVector nodes_;
 };
 
 class BatchPlanTree {
  public:
-    BatchPlanTree():root_(NULL){}
+    BatchPlanTree() : root_(NULL) {}
     ~BatchPlanTree() {}
 
-    void SetRoot(BatchPlanNode* root) {
-        root_ = root;
-    }
-    const BatchPlanNode* GetRoot() const {
-        return root_;
-    }
+    void SetRoot(BatchPlanNode* root) { root_ = root; }
+    const BatchPlanNode* GetRoot() const { return root_; }
+
  private:
     BatchPlanNode* root_;
 };
@@ -102,4 +96,4 @@ class BatchPlanTree {
 }  // namespace node
 }  // namespace fesql
 
-#endif  // SRC_NODE_BATCH_PLAN_NODE_H 
+#endif  // SRC_NODE_BATCH_PLAN_NODE_H

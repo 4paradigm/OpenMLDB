@@ -16,9 +16,8 @@
  */
 
 #include "vm/csv_catalog.h"
-#include "gtest/gtest.h"
 #include "arrow/filesystem/localfs.h"
-#include "vm/engine.h"
+#include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -28,16 +27,15 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
+#include "vm/engine.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
-
 
 namespace fesql {
 namespace vm {
 
 class CSVCatalogTest : public ::testing::Test {
-
  public:
     CSVCatalogTest() {}
     ~CSVCatalogTest() {}
@@ -65,11 +63,12 @@ TEST_F(CSVCatalogTest, test_catalog_init) {
     ASSERT_TRUE(catalog.Init());
 }
 
-TEST_F(CSVCatalogTest, test_handler_init) { 
+TEST_F(CSVCatalogTest, test_handler_init) {
     std::string table_dir = "./table1";
     std::string table_name = "table1";
     std::string db = "db1";
-    std::shared_ptr<::arrow::fs::FileSystem> fs(new arrow::fs::LocalFileSystem());
+    std::shared_ptr<::arrow::fs::FileSystem> fs(
+        new arrow::fs::LocalFileSystem());
     CSVTableHandler handler(table_dir, table_name, db, fs);
     bool ok = handler.Init();
     ASSERT_TRUE(ok);
@@ -82,18 +81,18 @@ TEST_F(CSVCatalogTest, test_handler_init) {
         uint32_t size = 0;
         rv.GetString(0, &data, &size);
         std::string view(data, size);
-        std::cout<< view << std::endl;
+        std::cout << view << std::endl;
         rv.GetString(1, &data, &size);
         std::string view2(data, size);
-        std::cout<< view2 << std::endl;
+        std::cout << view2 << std::endl;
         it->Next();
     }
 }
 
-} // namespace vm
-} // namepsace fesql
+}  // namespace vm
+}  // namespace fesql
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();

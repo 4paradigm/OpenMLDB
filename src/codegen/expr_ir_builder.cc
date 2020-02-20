@@ -18,10 +18,10 @@
 #include "codegen/expr_ir_builder.h"
 #include <string>
 #include <vector>
+#include "codegen/buf_ir_builder.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/type_ir_builder.h"
-#include "codegen/buf_ir_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "glog/logging.h"
 #include "proto/common.pb.h"
@@ -36,11 +36,10 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       row_ptr_name_(""),
       module_(nullptr),
       row_ir_builder_(),
-      window_ir_builder_(){}
+      window_ir_builder_() {}
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                             const vm::Schema& schema,
-                             const bool row_mode,
+                             const vm::Schema& schema, const bool row_mode,
                              const std::string& row_ptr_name,
                              const std::string& row_size_name,
                              ::llvm::Module* module)
@@ -52,9 +51,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
       row_size_name_(row_size_name),
       module_(module),
       row_ir_builder_(new BufNativeIRBuilder(schema, block, scope_var)),
-      window_ir_builder_(new MemoryWindowDecodeIRBuilder(schema, block))
-      {
-}
+      window_ir_builder_(new MemoryWindowDecodeIRBuilder(schema, block)) {}
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
@@ -365,7 +362,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
     }
 
     DLOG(INFO) << "build unary"
-              << ::fesql::node::ExprTypeName(node->GetExprType());
+               << ::fesql::node::ExprTypeName(node->GetExprType());
     ::llvm::Value* left = NULL;
     bool ok = Build(node->children[0], &left);
     if (!ok) {

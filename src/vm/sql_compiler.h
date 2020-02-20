@@ -25,9 +25,9 @@
 #include "llvm/IR/Module.h"
 #include "parser/parser.h"
 #include "proto/common.pb.h"
+#include "vm/catalog.h"
 #include "vm/jit.h"
 #include "vm/op_generator.h"
-#include "vm/catalog.h"
 
 namespace fesql {
 namespace vm {
@@ -54,7 +54,7 @@ class SQLCompiler {
 
     ~SQLCompiler();
 
-    bool Compile(SQLContext& ctx, 
+    bool Compile(SQLContext& ctx,
                  Status& status);  // NOLINT
 
  private:

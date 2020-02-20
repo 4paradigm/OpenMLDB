@@ -17,9 +17,9 @@
 
 #include "vm/op_generator.h"
 
-#include <memory>
 #include <codegen/buf_ir_builder.h>
 #include <proto/common.pb.h>
+#include <memory>
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "node/node_manager.h"
@@ -28,7 +28,8 @@
 namespace fesql {
 namespace vm {
 
-OpGenerator::OpGenerator(const std::shared_ptr<Catalog>& catalog) : catalog_(catalog) {}
+OpGenerator::OpGenerator(const std::shared_ptr<Catalog>& catalog)
+    : catalog_(catalog) {}
 
 OpGenerator::~OpGenerator() {}
 
@@ -206,7 +207,6 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
                           const std::string& db, ::llvm::Module* module,
                           OpNode** op,
                           Status& status) {  // NOLINT
-
     if (node == NULL || module == NULL || nullptr == op) {
         status.code = common::kNullPointer;
         status.msg = "input args has null";
@@ -214,7 +214,8 @@ bool OpGenerator::GenScan(const ::fesql::node::ScanPlanNode* node,
         return false;
     }
 
-    std::shared_ptr<TableHandler> table_handler = catalog_->GetTable(db, node->GetTable());
+    std::shared_ptr<TableHandler> table_handler =
+        catalog_->GetTable(db, node->GetTable());
     if (!table_handler) {
         status.code = common::kTableNotFound;
         status.msg = "fail to find table " + node->GetTable();
@@ -242,7 +243,8 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectListPlanNode* node,
         LOG(WARNING) << status.msg;
         return false;
     }
-    std::shared_ptr<TableHandler> table_handler = catalog_->GetTable(db, node->GetTable());
+    std::shared_ptr<TableHandler> table_handler =
+        catalog_->GetTable(db, node->GetTable());
     if (!table_handler) {
         status.code = common::kTableNotFound;
         status.msg = "fail to find table " + node->GetTable();

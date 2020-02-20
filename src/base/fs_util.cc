@@ -16,24 +16,21 @@
  */
 
 #include "base/fs_util.h"
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include "glog/logging.h"
 
 namespace fesql {
 namespace base {
 
-bool ListDir(const std::string& path,
-        std::vector<std::string>& files) {
-
+bool ListDir(const std::string& path, std::vector<std::string>& files) {
     DIR* dir = ::opendir(path.c_str());
     if (dir == NULL) {
-        LOG(WARNING)<<  "opendir " << path << " failed err "
-                << strerror(errno);
+        LOG(WARNING) << "opendir " << path << " failed err " << strerror(errno);
         return false;
     }
     struct dirent* entry;
@@ -46,8 +43,5 @@ bool ListDir(const std::string& path,
     return true;
 }
 
-}
-}
-
-
-
+}  // namespace base
+}  // namespace fesql

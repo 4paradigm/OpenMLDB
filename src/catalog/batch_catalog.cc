@@ -17,22 +17,23 @@
 
 #include "catalog/batch_catalog.h"
 
+#include "arrow/filesystem/api.h"
+#include "arrow/io/api.h"
+#include "arrow/status.h"
+#include "base/parquet_util.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "arrow/io/api.h"
-#include "arrow/filesystem/api.h"
-#include "arrow/status.h"
 #include "parquet/api/reader.h"
 #include "parquet/file_reader.h"
-#include "base/parquet_util.h"
 
 DECLARE_string(default_db_name);
 
 namespace fesql {
 namespace catalog {
 
-BatchCatalog::BatchCatalog(std::shared_ptr<::arrow::fs::FileSystem> fs, 
-        const InputTables& tables):fs_(fs), input_tables_(tables), db_() {}
+BatchCatalog::BatchCatalog(std::shared_ptr<::arrow::fs::FileSystem> fs,
+                           const InputTables& tables)
+    : fs_(fs), input_tables_(tables), db_() {}
 
 BatchCatalog::~BatchCatalog() {}
 
@@ -54,23 +55,26 @@ bool BatchCatalog::Init() {
         if (!ok) {
             return false;
         }
-        //TODO support dir 
-        std::shared_ptr<BatchTableHandler> table_handler(new BatchTableHandler(schema, 
-                    table.first, FLAGS_default_db_name,
-                    partitions));
-        db_[FLAGS_default_db_name].insert(std::make_pair(table.first, table_handler));
-        LOG(INFO) << "add table " << table.first << " "<< table.second << " ok";
+        // TODO support dir
+        std::shared_ptr<BatchTableHandler> table_handler(new BatchTableHandler(
+            schema, table.first, FLAGS_default_db_name, partitions));
+        db_[FLAGS_default_db_name].insert(
+            std::make_pair(table.first, table_handler));
+        LOG(INFO) << "add table " << table.first << " " << table.second
+                  << " ok";
     }
 
     LOG(INFO) << "init batch catalog successfully";
     return true;
 }
 
-std::shared_ptr<type::Database> BatchCatalog::GetDatabase(const std::string& db) {
+std::shared_ptr<type::Database> BatchCatalog::GetDatabase(
+    const std::string& db) {
     return std::shared_ptr<type::Database>();
 }
 
-std::shared_ptr<TableHandler> BatchCatalog::GetTable(const std::string& db, const std::string& table_name) {
+std::shared_ptr<TableHandler> BatchCatalog::GetTable(
+    const std::string& db, const std::string& table_name) {
     // ignore the input db name
     auto it = db_[FLAGS_default_db_name].find(table_name);
     if (it == db_[FLAGS_default_db_name].end()) {
@@ -80,13 +84,13 @@ std::shared_ptr<TableHandler> BatchCatalog::GetTable(const std::string& db, cons
 }
 
 bool BatchCatalog::GetSchemaFromParquet(const std::string& path,
-        Schema& schema) {
-
+                                        Schema& schema) {
     arrow::fs::FileStats stats;
     arrow::Status ok = fs_->GetTargetStats(path, &stats);
 
     if (!ok.ok()) {
-        LOG(WARNING) << "fail to get path " << path << " stats " << " with error " << ok.message();
+        LOG(WARNING) << "fail to get path " << path << " stats "
+                     << " with error " << ok.message();
         return false;
     }
 
@@ -98,10 +102,12 @@ bool BatchCatalog::GetSchemaFromParquet(const std::string& path,
     std::shared_ptr<arrow::io::RandomAccessFile> input;
     ok = fs_->OpenInputFile(path, &input);
     if (!ok.ok() || !input) {
-        LOG(WARNING) << "fail to open file with path " << path << " and error " << ok.message();
+        LOG(WARNING) << "fail to open file with path " << path << " and error "
+                     << ok.message();
         return false;
     }
-    std::unique_ptr<::parquet::ParquetFileReader> reader = ::parquet::ParquetFileReader::Open(input);
+    std::unique_ptr<::parquet::ParquetFileReader> reader =
+        ::parquet::ParquetFileReader::Open(input);
     std::shared_ptr<parquet::FileMetaData> metadata = reader->metadata();
     bool done = MapParquetSchema(metadata->schema(), schema);
     if (!done) {
@@ -111,9 +117,8 @@ bool BatchCatalog::GetSchemaFromParquet(const std::string& path,
     return true;
 }
 
-bool BatchCatalog::MapParquetSchema(const parquet::SchemaDescriptor* input_schema,
-     Schema& output_schema) {
-
+bool BatchCatalog::MapParquetSchema(
+    const parquet::SchemaDescriptor* input_schema, Schema& output_schema) {
     if (input_schema == nullptr) {
         LOG(WARNING) << "input schema is nullptr";
         return false;
@@ -135,4 +140,3 @@ bool BatchCatalog::MapParquetSchema(const parquet::SchemaDescriptor* input_schem
 
 }  // namespace catalog
 }  // namespace fesql
-

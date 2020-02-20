@@ -47,13 +47,9 @@ class BatchTableHandler : public TableHandler {
 
     inline const std::vector<Partition>& GetPartitions() { return partitions_; }
 
-    inline const Types& GetTypes() {
-        return types_;
-    }
+    inline const Types& GetTypes() { return types_; }
 
-    inline const IndexList& GetIndex() {
-        return index_list_;
-    }
+    inline const IndexList& GetIndex() { return index_list_; }
 
  private:
     Schema schema_;
@@ -66,13 +62,13 @@ class BatchTableHandler : public TableHandler {
 
 // the table and file path pairs
 typedef std::vector<std::pair<std::string, std::string>> InputTables;
-typedef std::map<std::string, std::map<std::string, std::shared_ptr<BatchTableHandler> > > BatchDB;
-
+typedef std::map<std::string,
+                 std::map<std::string, std::shared_ptr<BatchTableHandler>>>
+    BatchDB;
 
 // NOTE not thread safe
 class BatchCatalog : public Catalog {
  public:
-
     BatchCatalog(std::shared_ptr<::arrow::fs::FileSystem> fs,
                  const InputTables& tables);
 
@@ -84,17 +80,15 @@ class BatchCatalog : public Catalog {
     std::shared_ptr<type::Database> GetDatabase(const std::string& db);
 
     std::shared_ptr<TableHandler> GetTable(const std::string& db,
-                                          const std::string& table_name);
+                                           const std::string& table_name);
 
  private:
-
     // get parquet schema and map it to fesql schema
-    bool GetSchemaFromParquet(const std::string& path, 
-            Schema& schema);
+    bool GetSchemaFromParquet(const std::string& path, Schema& schema);
 
     // map parquet schema to fesql schema
     bool MapParquetSchema(const parquet::SchemaDescriptor* input_schema,
-            Schema& output_schema);
+                          Schema& output_schema);
 
  private:
     std::shared_ptr<::arrow::fs::FileSystem> fs_;

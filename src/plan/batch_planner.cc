@@ -20,7 +20,7 @@
 namespace fesql {
 namespace plan {
 
-BatchPlanner::BatchPlanner(node::NodeManager* mgr):mgr_(mgr) {}
+BatchPlanner::BatchPlanner(node::NodeManager* mgr) : mgr_(mgr) {}
 
 BatchPlanner::~BatchPlanner() {}
 
@@ -30,7 +30,8 @@ BatchPlanner::~BatchPlanner() {}
 // 2. left join
 // 3. window
 int32_t BatchPlanner::CreateTree(const node::NodePointVector& parse_trees,
-        node::BatchPlanTree* batch_plan_tree, base::Status& status) { // NOLINT
+                                 node::BatchPlanTree* batch_plan_tree,
+                                 base::Status& status) {  // NOLINT
 
     if (batch_plan_tree == NULL) {
         LOG(WARNING) << "batch plan tree is null pointer";
@@ -52,11 +53,13 @@ int32_t BatchPlanner::CreateTree(const node::NodePointVector& parse_trees,
         return status.code;
     }
 
-    const node::SelectStmt *stmt = reinterpret_cast<const node::SelectStmt*>(sql_node);
+    const node::SelectStmt* stmt =
+        reinterpret_cast<const node::SelectStmt*>(sql_node);
     const node::NodePointVector& tables = stmt->GetTableRefList();
-    const node::TableNode* tn = reinterpret_cast<const node::TableNode*>(tables.at(0));
+    const node::TableNode* tn =
+        reinterpret_cast<const node::TableNode*>(tables.at(0));
     node::DatasetNode* db = mgr_->MakeDataset(tn->GetOrgTableName());
-    //TODO(wangtaize) make sure all projects come from the same dataset
+    // TODO(wangtaize) make sure all projects come from the same dataset
     node::MapNode* mn = mgr_->MakeMapNode(stmt->GetSelectList());
     db->AddChild(mn);
     batch_plan_tree->SetRoot(db);

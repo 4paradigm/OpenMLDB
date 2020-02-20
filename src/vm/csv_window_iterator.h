@@ -18,20 +18,20 @@
 #ifndef SRC_VM_CSV_WINDOW_ITERATOR_H_
 #define SRC_VM_CSV_WINDOW_ITERATOR_H_
 
+#include <memory>
+#include <string>
+#include "arrow/table.h"
 #include "vm/catalog.h"
 #include "vm/csv_catalog.h"
-#include "arrow/table.h"
 
 namespace fesql {
 namespace vm {
 
-class CSVWindowIterator : public WindowIterator { 
-
+class CSVWindowIterator : public WindowIterator {
  public:
     CSVWindowIterator(const std::shared_ptr<arrow::Table>& table,
                       const std::string& index_name,
-                      const IndexDatas* index_datas, 
-                      const Schema& schema);
+                      const IndexDatas* index_datas, const Schema& schema);
 
     ~CSVWindowIterator();
 
@@ -49,7 +49,6 @@ class CSVWindowIterator : public WindowIterator {
     FirstKeyIterator first_it_;
     const Schema schema_;
 };
-
 
 }  // namespace vm
 }  // namespace fesql

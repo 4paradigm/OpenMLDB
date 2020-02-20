@@ -18,6 +18,7 @@
 #ifndef SRC_CODEGEN_ROW_IR_BUILDER_H_
 #define SRC_CODEGEN_ROW_IR_BUILDER_H_
 
+#include <string>
 #include "llvm/IR/IRBuilder.h"
 
 namespace fesql {

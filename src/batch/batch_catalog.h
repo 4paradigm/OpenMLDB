@@ -15,31 +15,31 @@
  * limitations under the License.
  */
 
-#ifndef SRC_VM_BATCH_CATALOG_H_
-#define SRC_VM_BATCH_CATALOG_H_
+#ifndef SRC_BATCH_BATCH_CATALOG_H_
+#define SRC_BATCH_BATCH_CATALOG_H_
 
 #include <memory>
 #include "arrow/filesystem/filesystem.h"
-#include "vm/catalog.h"
 #include "parquet/schema.h"
+#include "vm/catalog.h"
 
 namespace fesql {
-namespace vm {
+namespace batch {
 
 struct Partition {
     std::string path;
 };
 
-class BatchTableHandler : public TableHandler {
+class BatchTableHandler : public vm::TableHandler {
  public:
-    BatchTableHandler(const Schema& schema, const std::string& name,
+    BatchTableHandler(const vm::Schema& schema, const std::string& name,
                       const std::string& db,
                       const std::vector<Partition>& partitons)
         : schema_(schema), name_(name), db_(db), partitions_(partitons) {}
 
     ~BatchTableHandler() {}
 
-    inline Schema& GetSchema() { return schema_; }
+    inline vm::Schema& GetSchema() { return schema_; }
 
     inline const std::string& GetName() { return name_; }
 
@@ -47,35 +47,34 @@ class BatchTableHandler : public TableHandler {
 
     inline const std::vector<Partition>& GetPartitions() { return partitions_; }
 
-    inline const Types& GetTypes() {
-        return types_;
-    }
+    inline const vm::Types& GetTypes() { return types_; }
 
-    inline const IndexList& GetIndex() {
-        return index_list_;
-    }
+    inline const vm::IndexHint& GetIndex() { return index_hint_; }
 
-    std::unique_ptr<Iterator> GetIterator();
+    std::unique_ptr<vm::Iterator> GetIterator() {}
 
-    std::unique_ptr<WindowIterator> GetWindowIterator();
+    std::unique_ptr<vm::WindowIterator> GetWindowIterator(
+        const std::string& index_name) {}
+
  private:
-    Schema schema_;
+    vm::Schema schema_;
     std::string name_;
     std::string db_;
     std::vector<Partition> partitions_;
-    IndexList index_list_;
-    Types types_;
+    vm::IndexList index_list_;
+    vm::Types types_;
+    vm::IndexHint index_hint_;
 };
 
 // the table and file path pairs
 typedef std::vector<std::pair<std::string, std::string>> InputTables;
-typedef std::map<std::string, std::map<std::string, std::shared_ptr<BatchTableHandler> > > BatchDB;
-
+typedef std::map<std::string,
+                 std::map<std::string, std::shared_ptr<BatchTableHandler>>>
+    BatchDB;
 
 // NOTE not thread safe
-class BatchCatalog : public Catalog {
+class BatchCatalog : public vm::Catalog {
  public:
-
     BatchCatalog(std::shared_ptr<::arrow::fs::FileSystem> fs,
                  const InputTables& tables);
 
@@ -86,18 +85,16 @@ class BatchCatalog : public Catalog {
 
     std::shared_ptr<type::Database> GetDatabase(const std::string& db);
 
-    std::shared_ptr<TableHandler> GetTable(const std::string& db,
-                                          const std::string& table_name);
+    std::shared_ptr<vm::TableHandler> GetTable(const std::string& db,
+                                               const std::string& table_name);
 
  private:
-
     // get parquet schema and map it to fesql schema
-    bool GetSchemaFromParquet(const std::string& path, 
-            Schema& schema);
+    bool GetSchemaFromParquet(const std::string& path, vm::Schema& schema);
 
     // map parquet schema to fesql schema
     bool MapParquetSchema(const parquet::SchemaDescriptor* input_schema,
-            Schema& output_schema);
+                          vm::Schema& output_schema);
 
  private:
     std::shared_ptr<::arrow::fs::FileSystem> fs_;
@@ -105,6 +102,6 @@ class BatchCatalog : public Catalog {
     BatchDB db_;
 };
 
-}  // namespace vm
+}  // namespace batch
 }  // namespace fesql
-#endif  // SRC_vm_BATCH_CATALOG_H_
+#endif  // SRC_BATCH_BATCH_CATALOG_H_

@@ -28,19 +28,17 @@
 #include "parser/parser.h"
 #include "proto/type.pb.h"
 
-
 namespace fesql {
 namespace plan {
 
 class BatchPlanner {
  public:
-
     explicit BatchPlanner(node::NodeManager* mgr);
     ~BatchPlanner();
 
     int32_t CreateTree(const node::NodePointVector& parse_trees,
-            node::BatchPlanTree* batch_plan_tree,
-            base::Status& status); // NOLINT
+                       node::BatchPlanTree* batch_plan_tree,
+                       base::Status& status);  // NOLINT
  private:
     node::NodeManager* mgr_;
 };

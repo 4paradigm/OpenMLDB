@@ -23,7 +23,7 @@
 namespace fesql {
 namespace batch {
 
-// convert sql to dag 
+// convert sql to dag
 class BatchPlanner {
  public:
     BatchPlanner();

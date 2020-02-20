@@ -20,14 +20,15 @@
 
 #include <memory>
 #include <sstream>
-#include "tablet/tablet_catalog.h"
 #include "glog/logging.h"
+#include "tablet/tablet_catalog.h"
 #include "vm/catalog.h"
 
 namespace fesql {
 namespace vm {
 
-std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(const fesql::type::TableDef& table_def,
+std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
+    const fesql::type::TableDef& table_def,
     std::shared_ptr<fesql::storage::Table> table) {
     std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
     bool ok = catalog->Init();
@@ -35,20 +36,20 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(const fesql::type::Tab
         return std::shared_ptr<tablet::TabletCatalog>();
     }
 
-    std::shared_ptr<tablet::TabletTableHandler> handler(new tablet::TabletTableHandler(table_def.columns(),
-            table_def.name(),
-            table_def.catalog(), 
-            table_def.indexes(), table));
+    std::shared_ptr<tablet::TabletTableHandler> handler(
+        new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
+                                       table_def.catalog(), table_def.indexes(),
+                                       table));
     ok = handler->Init();
     if (!ok) {
         return std::shared_ptr<tablet::TabletCatalog>();
     }
     catalog->AddTable(handler);
     return catalog;
-
 }
 
-std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(const fesql::type::TableDef& table_def) {
+std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
+    const fesql::type::TableDef& table_def) {
     std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
     return BuildCommonCatalog(table_def, table);
@@ -65,7 +66,6 @@ void PrintSchema(const Schema& schema) {
     }
     LOG(INFO) << "\n" << ss.str();
 }
-
 
 }  // namespace vm
 }  // namespace fesql

@@ -17,17 +17,20 @@
 
 #include "codegen/window_ir_builder.h"
 
-#include "storage/codec.h"
-#include "glog/logging.h"
 #include "codegen/ir_base_builder.h"
+#include "glog/logging.h"
+#include "storage/codec.h"
 
 namespace fesql {
 namespace codegen {
 
-
-MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(const vm::Schema& schema,
-        ::llvm::BasicBlock* block):schema_(schema), block_(block), types_(),
-    next_str_pos_(), str_field_start_offset_(0){
+MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(
+    const vm::Schema& schema, ::llvm::BasicBlock* block)
+    : schema_(schema),
+      block_(block),
+      types_(),
+      next_str_pos_(),
+      str_field_start_offset_(0) {
     uint32_t offset = storage::GetStartOffset(schema_.size());
     uint32_t string_field_cnt = 0;
     for (int32_t i = 0; i < schema_.size(); i++) {
@@ -56,10 +59,9 @@ MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(const vm::Schema& schem
 
 MemoryWindowDecodeIRBuilder::~MemoryWindowDecodeIRBuilder() {}
 
-bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name, 
-            ::llvm::Value* window_ptr,
-            ::llvm::Value** output) {
-
+bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
+                                              ::llvm::Value* window_ptr,
+                                              ::llvm::Value** output) {
     if (window_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null";
         return false;
@@ -102,10 +104,10 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
 }
 
 bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
-        ::llvm::Value* row_ptr, 
-        uint32_t offset, fesql::type::Type type,
-        ::llvm::Value** output) {
-
+                                                     ::llvm::Value* row_ptr,
+                                                     uint32_t offset,
+                                                     fesql::type::Type type,
+                                                     ::llvm::Value** output) {
     if (row_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
         return false;
@@ -151,11 +153,9 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
     return true;
 }
 
-bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(uint32_t offset,
-                                           uint32_t next_str_field_offset,
-                                           fesql::type::Type type,
-                                           ::llvm::Value* window_ptr,
-                                           ::llvm::Value** output) {
+bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
+    uint32_t offset, uint32_t next_str_field_offset, fesql::type::Type type,
+    ::llvm::Value* window_ptr, ::llvm::Value** output) {
     if (window_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
         return false;
@@ -208,9 +208,5 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(uint32_t offset,
     return true;
 }
 
-
 }  // namespace codegen
 }  // namespace fesql
-
-
-

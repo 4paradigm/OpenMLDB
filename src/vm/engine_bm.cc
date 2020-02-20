@@ -33,9 +33,9 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
+#include "tablet/tablet_catalog.h"
 #include "vm/engine.h"
 #include "vm/test_base.h"
-#include "tablet/tablet_catalog.h"
 
 namespace fesql {
 namespace vm {
@@ -105,9 +105,10 @@ static void BuildBuf(int8_t** buf, uint32_t* size,
     *size = total_size;
 }
 
-static std::shared_ptr<tablet::TabletCatalog> Data_WindowCase1(int32_t data_size) {
+static std::shared_ptr<tablet::TabletCatalog> Data_WindowCase1(
+    int32_t data_size) {
     DLOG(INFO) << "insert window data";
-    type::TableDef table_def; 
+    type::TableDef table_def;
     BuildTableDef(table_def);
     // Build index
     ::fesql::type::IndexDef* index = table_def.add_indexes();

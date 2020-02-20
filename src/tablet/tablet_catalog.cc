@@ -33,9 +33,7 @@ TabletTableHandler::TabletTableHandler(const vm::Schema& schema,
       db_(db),
       table_(table),
       types_(),
-      index_list_(index_list) {
-}
-
+      index_list_(index_list) {}
 
 TabletTableHandler::~TabletTableHandler() {}
 
@@ -66,14 +64,16 @@ bool TabletTableHandler::Init() {
             const std::string& key = index_def.first_keys(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
-                LOG(WARNING) << "column " << key << " does not exist in table " << table_;
+                LOG(WARNING) << "column " << key << " does not exist in table "
+                             << table_;
                 return false;
             }
             index_st.keys.push_back(it->second);
         }
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
-    LOG(INFO) << "init table handler for table " << name_ << " in db " << db_ << " done";
+    LOG(INFO) << "init table handler for table " << name_ << " in db " << db_
+              << " done";
     return true;
 }
 
@@ -81,7 +81,8 @@ std::unique_ptr<vm::Iterator> TabletTableHandler::GetIterator() {
     return std::move(table_->NewIterator());
 }
 
-std::unique_ptr<vm::WindowIterator> TabletTableHandler::GetWindowIterator(const std::string& pk) {
+std::unique_ptr<vm::WindowIterator> TabletTableHandler::GetWindowIterator(
+    const std::string& pk) {
     return std::move(table_->NewWindowIterator(pk));
 }
 
@@ -116,7 +117,9 @@ std::shared_ptr<vm::TableHandler> TabletCatalog::GetTable(
 bool TabletCatalog::AddTable(std::shared_ptr<TabletTableHandler> table) {
     auto db_it = tables_.find(table->GetDatabase());
     if (db_it == tables_.end()) {
-        tables_.insert(std::make_pair(table->GetDatabase(), std::map<std::string, std::shared_ptr<TabletTableHandler>>()));
+        tables_.insert(std::make_pair(
+            table->GetDatabase(),
+            std::map<std::string, std::shared_ptr<TabletTableHandler>>()));
         db_it = tables_.find(table->GetDatabase());
     }
     auto it = db_it->second.find(table->GetName());
@@ -134,7 +137,7 @@ bool TabletCatalog::AddDB(const type::Database& db) {
     }
     tables_.insert(std::make_pair(
         db.name(),
-        std::map<std::string, std::shared_ptr<TabletTableHandler> >()));
+        std::map<std::string, std::shared_ptr<TabletTableHandler>>()));
     return true;
 }
 

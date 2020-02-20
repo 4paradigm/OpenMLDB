@@ -1,9 +1,9 @@
-//Copyright (C) 2019, 4paradigm
-//memory_manager.h
+// Copyright (C) 2019, 4paradigm
+// memory_manager.h
 //     负责FeSQL的基础元件（SQLNode, PlanNode)的创建和销毁
 //     SQL的语法解析树、查询计划里面维护的只是这些节点的指针或者引用
-//Author: chenjing
-//Date: 2019/10/28
+// Author: chenjing
+// Date: 2019/10/28
 
 #ifndef SRC_NODE_NODE_MANAGER_H_
 #define SRC_NODE_NODE_MANAGER_H_
@@ -11,16 +11,19 @@
 #include <ctype.h>
 #include <list>
 #include <string>
+#include "node/batch_plan_node.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
-#include "node/batch_plan_node.h"
 
 namespace fesql {
 namespace node {
 class NodeManager {
  public:
-    NodeManager() :  parser_node_list_(), sql_node_list_list_(), plan_node_list_(),
-    batch_plan_node_list_() {}
+    NodeManager()
+        : parser_node_list_(),
+          sql_node_list_list_(),
+          plan_node_list_(),
+          batch_plan_node_list_() {}
 
     ~NodeManager() {
         for (auto sql_node_ite = parser_node_list_.begin();
@@ -143,8 +146,8 @@ class NodeManager {
     ExprListNode *MakeExprList(ExprNode *node_ptr);
     ExprListNode *MakeExprList();
 
-    DatasetNode* MakeDataset(const std::string& table);
-    MapNode* MakeMapNode(const NodePointVector& nodes);
+    DatasetNode *MakeDataset(const std::string &table);
+    MapNode *MakeMapNode(const NodePointVector &nodes);
 
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {
@@ -174,7 +177,7 @@ class NodeManager {
     std::list<SQLNode *> parser_node_list_;
     std::list<SQLNodeList *> sql_node_list_list_;
     std::list<node::PlanNode *> plan_node_list_;
-    std::list<node::BatchPlanNode* > batch_plan_node_list_;
+    std::list<node::BatchPlanNode *> batch_plan_node_list_;
 };
 
 }  // namespace node

@@ -20,8 +20,8 @@
 
 #include <string>
 #include "codegen/row_ir_builder.h"
-#include "codegen/window_ir_builder.h"
 #include "codegen/scope_var.h"
+#include "codegen/window_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
@@ -30,24 +30,18 @@ namespace codegen {
 
 class ExprIRBuilder {
  public:
+    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
 
-    ExprIRBuilder(::llvm::BasicBlock* block, 
-                  ScopeVar* scope_var);
-
-    ExprIRBuilder(::llvm::BasicBlock* block, 
-                  ScopeVar* scope_var,
-                  const vm::Schema& schema,
-                  const bool row_mode,
+    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
+                  const vm::Schema& schema, const bool row_mode,
                   const std::string& row_ptr_name,
-                  const std::string& row_size_name, 
-                  ::llvm::Module* module);
+                  const std::string& row_size_name, ::llvm::Module* module);
 
     ~ExprIRBuilder();
 
     bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
 
  private:
-
     bool BuildColumnIterator(const std::string& col, ::llvm::Value** output);
 
     bool BuildColumnItem(const std::string& col, ::llvm::Value** output);
@@ -68,8 +62,8 @@ class ExprIRBuilder {
                          ::llvm::Value** output);
 
     ::llvm::Function* GetFuncion(const std::string& col,
-                                 const ::fesql::node::DataType& type, 
-                                 common::Status& status); // NOLINT
+                                 const ::fesql::node::DataType& type,
+                                 common::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;

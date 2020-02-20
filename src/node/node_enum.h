@@ -154,12 +154,8 @@ enum PlanType {
     kScanTypeIndexScan,
 };
 
-// batch plan node type 
-enum BatchPlanNodeType {
-    kBatchDataset,
-    kBatchPartition,
-    kBatchMap
-};
+// batch plan node type
+enum BatchPlanNodeType { kBatchDataset, kBatchPartition, kBatchMap };
 
 }  // namespace node
 }  // namespace fesql

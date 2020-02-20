@@ -25,8 +25,8 @@
 #include <vector>
 #include "base/spin_lock.h"
 #include "proto/common.pb.h"
-#include "vm/sql_compiler.h"
 #include "vm/catalog.h"
+#include "vm/sql_compiler.h"
 
 namespace fesql {
 namespace vm {
@@ -38,7 +38,6 @@ class Engine;
 struct CompileInfo {
     SQLContext sql_ctx;
 };
-
 
 class RunSession {
  public:
@@ -52,12 +51,13 @@ class RunSession {
 
     int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
 
-    int32_t RunOne(const Row& in_row, Row& out_row);              // NOLINT
+    int32_t RunOne(const Row& in_row, Row& out_row);  // NOLINT
 
     int32_t RunBatch(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
 
  private:
-    inline void SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info) {
+    inline void SetCompileInfo(
+        const std::shared_ptr<CompileInfo>& compile_info) {
         compile_info_ = compile_info;
     }
 

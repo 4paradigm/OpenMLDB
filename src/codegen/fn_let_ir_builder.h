@@ -30,10 +30,9 @@
 namespace fesql {
 namespace codegen {
 
-
 class RowFnLetIRBuilder {
  public:
-    RowFnLetIRBuilder(const vm::Schema& schema , ::llvm::Module* module,
+    RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module,
                       bool is_window_agg);
 
     ~RowFnLetIRBuilder();
@@ -43,7 +42,6 @@ class RowFnLetIRBuilder {
                vm::Schema& schema);  // NOLINT (runtime/references)
 
  private:
-
     bool BuildFnHeader(const std::string& name, ::llvm::Function** fn);
 
     bool BuildFnHeader(const std::string& name,

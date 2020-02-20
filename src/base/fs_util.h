@@ -18,14 +18,13 @@
 #ifndef SRC_BASE_FS_UTIL_H_
 #define SRC_BASE_FS_UTIL_H_
 
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace fesql {
 namespace base {
 
-bool ListDir(const std::string& path,
-             std::vector<std::string>& files);
+bool ListDir(const std::string& path, std::vector<std::string>& files); // NOLINT
 
 }  // namespace base
 }  // namespace fesql

@@ -33,7 +33,7 @@ inline bool MapParquetType(const parquet::ColumnDescriptor* column_desc,
     }
 
     switch (column_desc->physical_type()) {
-        case ::parquet::Type::BOOLEAN:{
+        case ::parquet::Type::BOOLEAN: {
             *type = ::fesql::type::kBool;
             return true;
         }
@@ -51,12 +51,13 @@ inline bool MapParquetType(const parquet::ColumnDescriptor* column_desc,
             *type = ::fesql::type::kInt32;
             return true;
         }
-                                    
+
         case ::parquet::Type::INT64: {
             *type = ::fesql::type::kInt64;
             return true;
         }
-        default: {}
+        default: {
+        }
     }
 
     switch (column_desc->logical_type()->type()) {

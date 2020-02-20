@@ -19,8 +19,8 @@
 #define SRC_STORAGE_CODEC_H_
 
 #include <map>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
 
@@ -57,7 +57,6 @@ static inline uint8_t GetAddrLength(uint32_t size) {
 }
 
 inline uint32_t GetStartOffset(int32_t column_count) {
-
     return HEADER_LENGTH + BitMapSize(column_count);
 }
 

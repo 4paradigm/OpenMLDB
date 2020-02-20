@@ -123,7 +123,6 @@ void AssertStrEq(int8_t* ptr) {
 namespace fesql {
 namespace codegen {
 
-
 class BufIRBuilderTest : public ::testing::Test {
  public:
     BufIRBuilderTest() {}
@@ -152,7 +151,6 @@ void RunEncode(int8_t** output_ptr) {
     }
 
     {
-
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kDouble);
         column->set_name("col4");
@@ -165,12 +163,10 @@ void RunEncode(int8_t** output_ptr) {
     }
 
     {
-
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col6");
     }
-
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_encode", *ctx);
@@ -448,8 +444,7 @@ void RunCase(T expected, const ::fesql::type::Type& type,
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
-    BufIRBuilder buf_builder(table.columns(), 
-            entry_block, &sv);
+    BufIRBuilder buf_builder(table.columns(), entry_block, &sv);
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
@@ -596,8 +591,7 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
     sv.Enter("enter row scope");
-    BufNativeIRBuilder buf_builder(table.columns(), 
-            entry_block, &sv);
+    BufNativeIRBuilder buf_builder(table.columns(), entry_block, &sv);
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;

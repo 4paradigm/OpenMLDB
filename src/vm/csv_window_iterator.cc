@@ -22,15 +22,18 @@
 namespace fesql {
 namespace vm {
 
-CSVWindowIterator::CSVWindowIterator(const std::shared_ptr<arrow::Table>& table, const std::string& index_name,
-        const IndexDatas* index_datas, const Schema& schema):table_(table),
-    index_name_(index_name), index_datas_(index_datas),
-    schema_(schema){
+CSVWindowIterator::CSVWindowIterator(const std::shared_ptr<arrow::Table>& table,
+                                     const std::string& index_name,
+                                     const IndexDatas* index_datas,
+                                     const Schema& schema)
+    : table_(table),
+      index_name_(index_name),
+      index_datas_(index_datas),
+      schema_(schema) {
     first_it_ = index_datas_->at(index_name_).begin();
 }
 
 CSVWindowIterator::~CSVWindowIterator() {}
-
 
 void CSVWindowIterator::Seek(const std::string& key) {
     first_it_ = index_datas_->at(index_name_).find(key);
@@ -43,21 +46,17 @@ bool CSVWindowIterator::Valid() {
     return first_it_ != index_datas_->at(index_name_).end();
 }
 
-void CSVWindowIterator::Next() {
-    ++first_it_;
-}
+void CSVWindowIterator::Next() { ++first_it_; }
 
 const base::Slice CSVWindowIterator::GetKey() {
     return base::Slice(first_it_->first);
 }
 
 std::unique_ptr<Iterator> CSVWindowIterator::GetValue() {
-    std::unique_ptr<CSVSegmentIterator> segment_it(new CSVSegmentIterator(table_, index_datas_, index_name_, first_it_->first,
-                schema_));
+    std::unique_ptr<CSVSegmentIterator> segment_it(new CSVSegmentIterator(
+        table_, index_datas_, index_name_, first_it_->first, schema_));
     return std::move(segment_it);
 }
 
 }  // namespace vm
 }  // namespace fesql
-
-
