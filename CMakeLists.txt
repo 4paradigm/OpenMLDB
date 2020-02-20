@@ -9,8 +9,8 @@ set(FESQL_VERSION_MEDIUM 1)
 set(FESQL_VERSION_MINOR 0)
 set(FESQL_VERSION_BUG 0)
 
-#set(CMAKE_BUILD_TYPE RelWithDebInfo)
-set(CMAKE_BUILD_TYPE DEBUG)
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
+#set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
 set(COMMON_LIBS glog gflags unwind lzma)
 
