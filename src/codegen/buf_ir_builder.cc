@@ -368,8 +368,10 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
 
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
+    data_ptr_ptr = builder.CreatePointerCast(
+        data_ptr_ptr, col_iter->getType()->getPointerTo());
     builder.CreateStore(col_iter, data_ptr_ptr, false);
-    //    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty);
+    col_iter = builder.CreatePointerCast(col_iter, i8_ptr_ty);
 
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(

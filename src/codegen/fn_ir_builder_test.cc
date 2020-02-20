@@ -304,6 +304,33 @@ TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {
                                                              &list_ref, 3);
 }
 
+TEST_F(FnIRBuilderTest, test_for_in_condition2_sum) {
+    const std::string test =
+        "%%fun\n"
+        "def test(l:list<i32>, a:i32):i32\n"
+        "    sum=0\n"
+        "    for x in l\n"
+        "        if x > a\n"
+        "            sum = sum + a\n"
+        "        elif x >0\n"
+        "            sum = sum + x\n"
+        "        else\n"
+        "            sum = sum - x\n"
+        "    return sum\n"
+        "end\n";
+
+    std::vector<int32_t> vec = {-4, -2, 1, 3, 5, 7, 9};
+    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListRef list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, 4 + 2 + 1 + 3 + 5 + 5 + 5, &list_ref, 5);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, 4 + 2 + 1 + 1 + 1 + 1 + 1, &list_ref, 1);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, 4 + 2 + 1 + 2 + 2 + 2 + 2, &list_ref, 2);
+}
+
 }  // namespace codegen
 }  // namespace fesql
 

@@ -557,7 +557,6 @@ void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, name_, "var", true);
 }
 
-
 void ExprListNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -652,7 +651,8 @@ void FnElseNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     output << "\n";
 }
-void FnForInNode::Print(std::ostream &output, const std::string &org_tab) const {
+void FnForInNode::Print(std::ostream &output,
+                        const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -699,7 +699,7 @@ void FnIfElseBlock::Print(std::ostream &output,
 }
 
 void FnForInBlock::Print(std::ostream &output,
-                          const std::string &org_tab) const {
+                         const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";

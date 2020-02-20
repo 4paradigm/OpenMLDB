@@ -582,8 +582,9 @@ TypeNode *NodeManager::MakeTypeNode(fesql::type::Type base,
     return node_ptr;
 }
 
-FnNode *NodeManager::MakeForInStmtNode(const std::string &var_name, const ExprNode *expression) {
-    FnForInNode * node_ptr = new FnForInNode(var_name, expression);
+FnNode *NodeManager::MakeForInStmtNode(const std::string &var_name,
+                                       const ExprNode *expression) {
+    FnForInNode *node_ptr = new FnForInNode(var_name, expression);
     return RegisterNode(node_ptr);
 }
 

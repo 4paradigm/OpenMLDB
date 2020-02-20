@@ -107,7 +107,7 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
     }
 
     int pos = start;
-    node::FnNode *fn_block= nullptr;
+    node::FnNode *fn_block = nullptr;
     while (pos < end) {
         node::FnNode *node = statements[pos];
         if (nullptr == node) {
@@ -168,12 +168,12 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
                 node::FnIfBlock *if_block =
                     node_manager->MakeFnIfBlock(if_node, inner_block);
                 // start if_elif_else block
-                fn_block =
-                    node_manager->MakeFnIfElseBlock(if_block, nullptr);
+                fn_block = node_manager->MakeFnIfElseBlock(if_block, nullptr);
                 break;
             }
             case node::kFnElifStmt: {
-                if (nullptr == fn_block || node::kFnIfElseBlock != fn_block->GetType()) {
+                if (nullptr == fn_block ||
+                    node::kFnIfElseBlock != fn_block->GetType()) {
                     status.code = common::kFunError;
                     status.msg = "fail to create block: elif not match";
                     LOG(WARNING) << status.msg;
@@ -192,11 +192,13 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
 
                 node::FnElifBlock *elif_block =
                     node_manager->MakeFnElifBlock(elif_node, inner_block);
-                dynamic_cast<node::FnIfElseBlock*>(fn_block)->elif_blocks_.push_back(elif_block);
+                dynamic_cast<node::FnIfElseBlock *>(fn_block)
+                    ->elif_blocks_.push_back(elif_block);
                 break;
             }
             case node::kFnElseStmt: {
-                if (nullptr == fn_block || node::kFnIfElseBlock != fn_block->GetType()) {
+                if (nullptr == fn_block ||
+                    node::kFnIfElseBlock != fn_block->GetType()) {
                     status.code = common::kFunError;
                     status.msg = "fail to create block: else not match";
                     LOG(WARNING) << status.msg;
@@ -210,7 +212,8 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
                 }
                 node::FnElseBlock *else_block =
                     node_manager->MakeFnElseBlock(inner_block);
-                dynamic_cast<node::FnIfElseBlock*>(fn_block)->else_block_ = else_block;
+                dynamic_cast<node::FnIfElseBlock *>(fn_block)->else_block_ =
+                    else_block;
                 // end if_elif_else block
                 block->AddChild(fn_block);
                 fn_block = nullptr;

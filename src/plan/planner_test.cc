@@ -641,7 +641,6 @@ TEST_F(PlannerTest, FunDefIfElsePlanTest) {
     ASSERT_EQ(1, select_plan->GetChildrenSize());
 }
 
-
 TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
     const std::string sql_str =
         "%%fun\n"
@@ -827,7 +826,6 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
     ASSERT_TRUE(nullptr != plan->fn_def_->block_);
     ASSERT_EQ(3, plan->fn_def_->block_->children.size());
 
-
     // validate udf plan
     ASSERT_EQ(node::kFnAssignStmt,
               plan->fn_def_->block_->children[0]->GetType());
@@ -835,9 +833,11 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
               plan->fn_def_->block_->children[1]->GetType());
     // validate for in block
     {
-        node::FnForInBlock * for_block = dynamic_cast<node::FnForInBlock*>(plan->fn_def_->block_->children[1]);
+        node::FnForInBlock *for_block = dynamic_cast<node::FnForInBlock *>(
+            plan->fn_def_->block_->children[1]);
         ASSERT_EQ(1, for_block->block_->children.size());
-        ASSERT_EQ(node::kFnIfElseBlock, for_block->block_->children[0]->GetType());
+        ASSERT_EQ(node::kFnIfElseBlock,
+                  for_block->block_->children[0]->GetType());
     }
     // validate select plan
     plan_ptr = trees[1];
