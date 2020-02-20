@@ -20,38 +20,33 @@
 
 #include "vm/catalog.h"
 
-#include "storage/codec.h"
+#include "arrow/array.h"
+#include "arrow/csv/api.h"
 #include "arrow/filesystem/api.h"
 #include "arrow/io/api.h"
-#include "arrow/csv/api.h"
 #include "arrow/table.h"
 #include "arrow/type_fwd.h"
-#include "arrow/array.h"
 #include "glog/logging.h"
+#include "storage/codec.h"
 
 namespace fesql {
 namespace vm {
 
 class SchemaParser {
-
  public:
     SchemaParser() {}
     ~SchemaParser() {}
 
-    bool Parse(const std::string& path, 
-            Schema* schema);
+    bool Parse(const std::string& path, Schema* schema);
 
-    bool Convert(const std::string& type,
-            type::Type* db_type);
+    bool Convert(const std::string& type, type::Type* db_type);
 };
 
 class IndexParser {
-
  public:
-    IndexParser(){}
-    ~IndexParser(){}
-    bool Parse(const std::string& path,
-            IndexList* index_list);
+    IndexParser() {}
+    ~IndexParser() {}
+    bool Parse(const std::string& path, IndexList* index_list);
 };
 
 struct RowLocation {
@@ -59,15 +54,16 @@ struct RowLocation {
     uint64_t array_offset;
 };
 
-typedef std::map<std::string, std::map<std::string, std::map<uint64_t, RowLocation>>> IndexDatas;
-typedef std::map<std::string, std::map<uint64_t, RowLocation>>::const_iterator FirstKeyIterator;
+typedef std::map<std::string,
+                 std::map<std::string, std::map<uint64_t, RowLocation>>>
+    IndexDatas;
+typedef std::map<std::string, std::map<uint64_t, RowLocation>>::const_iterator
+    FirstKeyIterator;
 typedef std::map<uint64_t, RowLocation>::const_iterator SecondKeyIterator;
 
 class CSVTableHandler : public TableHandler {
  public:
-
-    CSVTableHandler(const std::string& table_dir,
-                    const std::string& table_name,
+    CSVTableHandler(const std::string& table_dir, const std::string& table_name,
                     const std::string& db,
                     std::shared_ptr<::arrow::fs::FileSystem> fs);
 
@@ -75,27 +71,18 @@ class CSVTableHandler : public TableHandler {
 
     bool Init();
 
-    inline const Schema& GetSchema() {
-        return schema_;
-    }
-    inline const std::string& GetName() {
-        return table_name_;
-    }
-    inline const Types& GetTypes() {
-        return types_;
-    }
+    inline const Schema& GetSchema() { return schema_; }
+    inline const std::string& GetName() { return table_name_; }
+    inline const Types& GetTypes() { return types_; }
 
-    inline const IndexHint& GetIndex() {
-        return index_hint_;
-    }
+    inline const IndexHint& GetIndex() { return index_hint_; }
 
     std::unique_ptr<Iterator> GetIterator();
 
-    inline const std::string& GetDatabase() {
-        return db_;
-    }
+    inline const std::string& GetDatabase() { return db_; }
 
-    std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name);
+    std::unique_ptr<WindowIterator> GetWindowIterator(
+        const std::string& idx_name);
 
  private:
     bool InitConfig();
@@ -107,6 +94,7 @@ class CSVTableHandler : public TableHandler {
     bool InitOptions(arrow::csv::ConvertOptions* options);
 
     int32_t GetColumnIndex(const std::string& name);
+
  private:
     std::string table_dir_;
     std::string table_name_;
@@ -121,7 +109,7 @@ class CSVTableHandler : public TableHandler {
 };
 
 // csv catalog is local dbms
-// the dir layout should be 
+// the dir layout should be
 // root
 //   |
 //   db1
@@ -132,11 +120,12 @@ class CSVTableHandler : public TableHandler {
 //       -index
 //     t2
 
-typedef std::map<std::string, std::map<std::string, std::shared_ptr<CSVTableHandler> > > CSVTables;
+typedef std::map<std::string,
+                 std::map<std::string, std::shared_ptr<CSVTableHandler>>>
+    CSVTables;
 typedef std::map<std::string, std::shared_ptr<type::Database>> Databases;
 
 class CSVCatalog : public Catalog {
-
  public:
     CSVCatalog(const std::string& root_dir);
 
@@ -145,10 +134,12 @@ class CSVCatalog : public Catalog {
     bool Init();
 
     std::shared_ptr<type::Database> GetDatabase(const std::string& db);
-    std::shared_ptr<TableHandler> GetTable(const std::string& db, 
-            const std::string& table_name);
+    std::shared_ptr<TableHandler> GetTable(const std::string& db,
+                                           const std::string& table_name);
+
  private:
     bool InitDatabase(const std::string& db);
+
  private:
     std::string root_dir_;
     CSVTables tables_;
@@ -158,4 +149,4 @@ class CSVCatalog : public Catalog {
 
 }  // namespace vm
 }  // namespace fesql
-#endif   // SRC_VM_CSV_CATALOG_H_
+#endif  // SRC_VM_CSV_CATALOG_H_

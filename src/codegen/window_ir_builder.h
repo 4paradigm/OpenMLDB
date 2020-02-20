@@ -19,51 +19,40 @@
 #define SRC_CODEGEN_WINDOW_IR_BUILDER_H_
 
 #include <map>
+#include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
-#include "llvm/IR/IRBuilder.h"
 
 namespace fesql {
 namespace codegen {
 
 class WindowDecodeIRBuilder {
-
  public:
     WindowDecodeIRBuilder() {}
 
     virtual ~WindowDecodeIRBuilder() {}
 
-    virtual bool BuildGetCol(const std::string& name,
-            ::llvm::Value* window_ptr,
-            ::llvm::Value** output) = 0;
-
+    virtual bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
+                             ::llvm::Value** output) = 0;
 };
 
 class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
-
  public:
     MemoryWindowDecodeIRBuilder(const vm::Schema& schema,
-            ::llvm::BasicBlock* block);
+                                ::llvm::BasicBlock* block);
 
     ~MemoryWindowDecodeIRBuilder();
 
-
-    bool BuildGetCol(const std::string& name, 
-            ::llvm::Value* window_ptr,
-            ::llvm::Value** output);
+    bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
+                     ::llvm::Value** output);
 
  private:
+    bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
+                            uint32_t offset, fesql::type::Type type,
+                            ::llvm::Value** output);
 
-    bool BuildGetPrimaryCol(const std::string& fn_name,
-                            ::llvm::Value* row_ptr,
-                             uint32_t offset,
-                             fesql::type::Type type,
-                             ::llvm::Value** output);
-
-    bool BuildGetStringCol(uint32_t offset,
-                           uint32_t next_str_field_offset,
-                           fesql::type::Type type,
-                           ::llvm::Value* window_ptr,
+    bool BuildGetStringCol(uint32_t offset, uint32_t next_str_field_offset,
+                           fesql::type::Type type, ::llvm::Value* window_ptr,
                            ::llvm::Value** output);
 
  private:

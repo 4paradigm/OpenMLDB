@@ -27,8 +27,7 @@
 namespace fesql {
 namespace codegen {
 
-BufIRBuilder::BufIRBuilder(const vm::Schema& schema,
-                           ::llvm::BasicBlock* block, 
+BufIRBuilder::BufIRBuilder(const vm::Schema& schema, ::llvm::BasicBlock* block,
                            ScopeVar* scope_var)
     : schema_(schema), block_(block), sv_(scope_var), types_() {
     // two byte header
@@ -538,9 +537,10 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
 
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
+    data_ptr_ptr = builder.CreatePointerCast(
+        data_ptr_ptr, col_iter->getType()->getPointerTo());
     builder.CreateStore(col_iter, data_ptr_ptr, false);
-    //    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty);
-
+    col_iter = builder.CreatePointerCast(col_iter, i8_ptr_ty);
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         "fesql_storage_get_str_col", i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty,
@@ -560,8 +560,7 @@ bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
 }
 
 BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
-    const std::map<uint32_t, ::llvm::Value*>* outputs,
-    const vm::Schema& schema,
+    const std::map<uint32_t, ::llvm::Value*>* outputs, const vm::Schema& schema,
     ::llvm::BasicBlock* block)
     : outputs_(outputs),
       schema_(schema),
@@ -569,7 +568,6 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
       offset_vec_(),
       str_field_cnt_(0),
       block_(block) {
-
     str_field_start_offset_ = storage::GetStartOffset(schema_.size());
     for (int32_t idx = 0; idx < schema_.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(idx);

@@ -19,8 +19,8 @@
 #define SRC_TABLET_TABLET_CATALOG_H_
 
 #include "base/spin_lock.h"
-#include "vm/catalog.h"
 #include "storage/table.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace tablet {
@@ -60,6 +60,7 @@ class TabletTableHandler : public vm::TableHandler {
         }
         return -1;
     }
+
  private:
     vm::Schema schema_;
     std::string name_;

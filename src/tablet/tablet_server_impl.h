@@ -24,8 +24,8 @@
 #include "base/spin_lock.h"
 #include "brpc/server.h"
 #include "proto/tablet.pb.h"
-#include "vm/engine.h"
 #include "tablet/tablet_catalog.h"
+#include "vm/engine.h"
 
 namespace fesql {
 namespace tablet {
@@ -34,7 +34,6 @@ using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
 
 class TabletServerImpl : public TabletServer {
-
  public:
     TabletServerImpl();
     ~TabletServerImpl();
@@ -55,34 +54,33 @@ class TabletServerImpl : public TabletServer {
                         GetTableSchemaReponse* response, Closure* done);
 
  private:
-
     inline std::shared_ptr<TabletTableHandler> GetTableLocked(
         const std::string& db, const std::string& name) {
         std::lock_guard<base::SpinMutex> lock(slock_);
         return GetTableUnLocked(db, name);
     }
 
-    inline std::shared_ptr<TabletTableHandler> GetTableUnLocked(const std::string& db,
-           const std::string& name) {
-        return std::static_pointer_cast<TabletTableHandler>(catalog_->GetTable(db, name));
+    inline std::shared_ptr<TabletTableHandler> GetTableUnLocked(
+        const std::string& db, const std::string& name) {
+        return std::static_pointer_cast<TabletTableHandler>(
+            catalog_->GetTable(db, name));
     }
 
     inline bool AddTableUnLocked(std::shared_ptr<storage::Table>&
-                              table) {  // NOLINT (runtime/references) 
+                                     table) {  // NOLINT (runtime/references)
         const type::TableDef& table_def = table->GetTableDef();
-        std::shared_ptr<TabletTableHandler> handler(new TabletTableHandler(table_def.columns(),
-                table_def.name(), table_def.catalog(), 
-                table_def.indexes(), table));
+        std::shared_ptr<TabletTableHandler> handler(new TabletTableHandler(
+            table_def.columns(), table_def.name(), table_def.catalog(),
+            table_def.indexes(), table));
         bool ok = handler->Init();
-        if(!ok) {
+        if (!ok) {
             return false;
         }
         return catalog_->AddTable(handler);
     }
 
-
     inline bool AddTableLocked(std::shared_ptr<storage::Table>&
-                               table) {  // NOLINT (runtime/references)
+                                   table) {  // NOLINT (runtime/references)
         std::lock_guard<base::SpinMutex> lock(slock_);
         return AddTableUnLocked(table);
     }

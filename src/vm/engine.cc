@@ -21,8 +21,8 @@
 #include <vector>
 #include "base/strings.h"
 #include "codegen/buf_ir_builder.h"
-#include "storage/window.h"
 #include "storage/codec.h"
+#include "storage/window.h"
 
 namespace fesql {
 namespace vm {
@@ -107,9 +107,9 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                 int32_t (*udf)(int8_t*, int32_t, int8_t**) =
                     (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
                 OpNode* prev = project_op->children[0];
-                std::unique_ptr<storage::RowView> row_view =
-                    std::move(std::unique_ptr<storage::RowView>(
-                        new storage::RowView(project_op->table_handler->GetSchema())));
+                std::unique_ptr<storage::RowView> row_view = std::move(
+                    std::unique_ptr<storage::RowView>(new storage::RowView(
+                        project_op->table_handler->GetSchema())));
 
                 std::vector<::fesql::storage::Row>& in_buffers =
                     temp_buffers[prev->idx];
@@ -227,9 +227,8 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                                 }
                                 case fesql::type::kInt32: {
                                     int32_t v;
-                                    if (0 ==
-                                        row_view->GetInt32(
-                                            project_op->w.order.pos, &v)) {
+                                    if (0 == row_view->GetInt32(
+                                                 project_op->w.order.pos, &v)) {
                                         ts = static_cast<int64_t>(v);
                                     } else {
                                         LOG(WARNING) << "fail to get order "
@@ -240,9 +239,8 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                                 }
                                 case fesql::type::kInt16: {
                                     int16_t v;
-                                    if (0 ==
-                                        row_view->GetInt16(
-                                            project_op->w.order.pos, &v)) {
+                                    if (0 == row_view->GetInt16(
+                                                 project_op->w.order.pos, &v)) {
                                         ts = static_cast<int64_t>(v);
                                     } else {
                                         LOG(WARNING) << "fail to get order "
@@ -258,13 +256,14 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                                 }
                             }
                         }
-                        std::unique_ptr<WindowIterator> window_it = project_op->table_handler->GetWindowIterator(project_op->w.index_name);
+                        std::unique_ptr<WindowIterator> window_it =
+                            project_op->table_handler->GetWindowIterator(
+                                project_op->w.index_name);
                         window_it->Seek(key);
                         if (!window_it->Valid()) {
                             LOG(WARNING)
                                 << "fail get table iterator when index_name: "
-                                << project_op->w.index_name
-                                << " key: " << key;
+                                << project_op->w.index_name << " key: " << key;
                             return 1;
                         }
                         std::unique_ptr<Iterator> it = window_it->GetValue();
@@ -283,8 +282,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                             if (current_ts <= ts + project_op->w.start_offset) {
                                 break;
                             }
-                            base::Slice value =
-                                it->GetValue();
+                            base::Slice value = it->GetValue();
                             ::fesql::storage::Row w_row;
                             w_row.buf = reinterpret_cast<int8_t*>(
                                 const_cast<char*>(value.data()));
@@ -371,9 +369,9 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                 int32_t (*udf)(int8_t*, int32_t, int8_t**) =
                     (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
 
-                std::unique_ptr<storage::RowView> row_view =
-                    std::move(std::unique_ptr<storage::RowView>(
-                        new storage::RowView(project_op->table_handler->GetSchema())));
+                std::unique_ptr<storage::RowView> row_view = std::move(
+                    std::unique_ptr<storage::RowView>(new storage::RowView(
+                        project_op->table_handler->GetSchema())));
 
                 // out buffers
                 std::vector<::fesql::storage::Row>& out_buffers =
@@ -389,7 +387,8 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
 
                 if (project_op->window_agg) {
                     // iterator whole table
-                    auto it = project_op->table_handler->GetWindowIterator(project_op->w.index_name);
+                    auto it = project_op->table_handler->GetWindowIterator(
+                        project_op->w.index_name);
                     it->SeekToFirst();
                     uint64_t count = 0;
                     while (it->Valid() && count < min) {
@@ -400,13 +399,14 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                         auto wit = it->GetValue();
                         wit->SeekToFirst();
                         while (wit->Valid()) {
-                            LOG(INFO) << "get ts "  << wit->GetKey();
+                            LOG(INFO) << "get ts " << wit->GetKey();
                             base::Slice value = wit->GetValue();
                             ::fesql::storage::Row row(
                                 {.buf = reinterpret_cast<int8_t*>(
                                      const_cast<char*>(value.data())),
                                  .size = value.size()});
-                            buffer.push_back(std::make_pair(wit->GetKey(), row));
+                            buffer.push_back(
+                                std::make_pair(wit->GetKey(), row));
                             wit->Next();
                         }
                         it->Next();
@@ -531,9 +531,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                 int32_t (*udf)(int8_t*, int32_t, int8_t**) =
                     (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
                 OpNode* prev = project_op->children[0];
-                std::unique_ptr<storage::RowView> row_view =
-                    std::move(std::unique_ptr<storage::RowView>(
-                        new storage::RowView(project_op->table_handler->GetSchema())));
+                std::unique_ptr<storage::RowView> row_view = std::move(
+                    std::unique_ptr<storage::RowView>(new storage::RowView(
+                        project_op->table_handler->GetSchema())));
 
                 std::vector<::fesql::storage::Row>& in_buffers =
                     temp_buffers[prev->idx];
@@ -633,7 +633,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                                 }
                             }
                         }
-                        int64_t ts;
+                        int64_t ts = 0;
                         if (project_op->w.has_order) {
                             // TODO(chenjing): handle null ts or
                             // timestamp/date ts
@@ -651,9 +651,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                                 }
                                 case fesql::type::kInt32: {
                                     int32_t v;
-                                    if (0 ==
-                                        row_view->GetInt32(
-                                            project_op->w.order.pos, &v)) {
+                                    if (0 == row_view->GetInt32(
+                                                 project_op->w.order.pos, &v)) {
                                         ts = static_cast<int64_t>(v);
                                     } else {
                                         LOG(WARNING) << "fail to get order "
@@ -664,9 +663,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                                 }
                                 case fesql::type::kInt16: {
                                     int16_t v;
-                                    if (0 ==
-                                        row_view->GetInt16(
-                                            project_op->w.order.pos, &v)) {
+                                    if (0 == row_view->GetInt16(
+                                                 project_op->w.order.pos, &v)) {
                                         ts = static_cast<int64_t>(v);
                                     } else {
                                         LOG(WARNING) << "fail to get order "
@@ -683,7 +681,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                             }
                         }
                         // scan window with single key
-                        auto window_it = project_op->table_handler->GetWindowIterator(project_op->w.index_name);
+                        auto window_it =
+                            project_op->table_handler->GetWindowIterator(
+                                project_op->w.index_name);
                         LOG(INFO) << "seek key " << key_name << " ts " << ts;
                         window_it->Seek(key_name);
                         if (!window_it->Valid()) {
@@ -702,8 +702,6 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                         }
                         while (single_window_it->Valid()) {
                             int64_t current_ts = single_window_it->GetKey();
-                            LOG(INFO) << "cts " << current_ts << " ts" << ts << " end_offset " << project_op->w.end_offset 
-                                << " start_offset " << project_op->w.start_offset;
                             if (current_ts > ts + project_op->w.end_offset) {
                                 single_window_it->Next();
                                 continue;
@@ -711,8 +709,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                             if (current_ts <= ts + project_op->w.start_offset) {
                                 break;
                             }
-                            base::Slice value =
-                                single_window_it->GetValue();
+                            base::Slice value = single_window_it->GetValue();
                             storage::Row w_row;
                             w_row.buf = reinterpret_cast<int8_t*>(
                                 const_cast<char*>(value.data()));

@@ -22,11 +22,11 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "codegen/scope_var.h"
-#include "vm/catalog.h"
 #include "codegen/row_ir_builder.h"
+#include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace codegen {
@@ -34,20 +34,16 @@ namespace codegen {
 // the table row access builder refer to fesql-docs/schema.md
 class BufIRBuilder : public RowDecodeIRBuilder {
  public:
-
-    BufIRBuilder(const vm::Schema& schema, 
-                 ::llvm::BasicBlock* block,
+    BufIRBuilder(const vm::Schema& schema, ::llvm::BasicBlock* block,
                  ScopeVar* scope_var);
 
     ~BufIRBuilder();
-
 
     // get reference from row
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
                        ::llvm::Value* row_size, ::llvm::Value** output);
 
  private:
-
     bool BuildGetString(const std::string& name, ::llvm::Value* row_ptr,
                         ::llvm::Value* row_size, ::llvm::Value** output);
 
@@ -60,7 +56,6 @@ class BufIRBuilder : public RowDecodeIRBuilder {
                        ::llvm::Value* row_size, ::llvm::Value** output);
 
  private:
-
     vm::Schema schema_;
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
@@ -71,10 +66,9 @@ class BufIRBuilder : public RowDecodeIRBuilder {
 
 class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
  public:
-    BufNativeEncoderIRBuilder(
-        const std::map<uint32_t, ::llvm::Value*>* outputs,
-        const vm::Schema& schema,
-        ::llvm::BasicBlock* block);
+    BufNativeEncoderIRBuilder(const std::map<uint32_t, ::llvm::Value*>* outputs,
+                              const vm::Schema& schema,
+                              ::llvm::BasicBlock* block);
 
     ~BufNativeEncoderIRBuilder();
 
@@ -104,11 +98,9 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
     ::llvm::BasicBlock* block_;
 };
 
-
 class BufNativeIRBuilder : public RowDecodeIRBuilder {
  public:
-    BufNativeIRBuilder(const vm::Schema& schema,
-                       ::llvm::BasicBlock* block, 
+    BufNativeIRBuilder(const vm::Schema& schema, ::llvm::BasicBlock* block,
                        ScopeVar* scope_var);
     ~BufNativeIRBuilder();
 
@@ -122,7 +114,6 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
                              ::fesql::type::Type* fe_type);
 
  private:
-
     bool BuildGetPrimaryField(const std::string& fn_name,
                               ::llvm::Value* row_ptr, uint32_t offset,
                               ::llvm::Type* type, ::llvm::Value** output);

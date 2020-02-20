@@ -20,14 +20,11 @@
 
 #include "llvm/IR/IRBuilder.h"
 
-
 namespace fesql {
 namespace codegen {
 
 class RowDecodeIRBuilder {
-
  public:
-
     RowDecodeIRBuilder() {}
 
     virtual ~RowDecodeIRBuilder() {}
@@ -37,25 +34,21 @@ class RowDecodeIRBuilder {
     // row_ptr, the row object ptr
     // row_size, the row ptr size
     // output, the output value
-    virtual bool BuildGetField(const std::string& name, 
-            ::llvm::Value* row_ptr,
-            ::llvm::Value* row_size, ::llvm::Value** output) = 0;
-
+    virtual bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
+                               ::llvm::Value* row_size,
+                               ::llvm::Value** output) = 0;
 };
 
 class RowEncodeIRBuilder {
-
  public:
-
     RowEncodeIRBuilder() {}
 
     virtual ~RowEncodeIRBuilder() {}
 
     // build the encode ir, output  the row data to output ptr
     virtual bool BuildEncode(::llvm::Value* output_ptr) = 0;
-
 };
 
 }  // namespace codegen
 }  // namespace fesql
-#endif  // SRC_CODEGEN_ROW_IR_BUILDER_H_ 
+#endif  // SRC_CODEGEN_ROW_IR_BUILDER_H_

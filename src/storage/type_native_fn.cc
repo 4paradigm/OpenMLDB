@@ -155,9 +155,8 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     switch (type) {
         case fesql::type::kVarchar: {
-                new (data) ColumnStringIteratorImpl(*w, str_field_offset,
-                                                    next_str_field_offset,
-                                                    str_start_offset);
+            new (data) ColumnStringIteratorImpl(
+                *w, str_field_offset, next_str_field_offset, str_start_offset);
             break;
         }
         default: {

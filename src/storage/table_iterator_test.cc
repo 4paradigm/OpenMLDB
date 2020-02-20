@@ -15,16 +15,16 @@
  * limitations under the License.
  */
 
-#include "storage/table.h"
 #include <sys/time.h>
+#include <iostream>
 #include <string>
 #include "gtest/gtest.h"
-#include <iostream>
+#include "storage/table.h"
 
 namespace fesql {
 namespace storage {
 
-void BuildTableSchema(type::TableDef& table_def) { 
+void BuildTableSchema(type::TableDef& table_def) {
     ::fesql::type::ColumnDef* col = table_def.add_columns();
     col->set_name("col1");
     col->set_type(::fesql::type::kVarchar);
@@ -44,7 +44,6 @@ class TableIteratorTest : public ::testing::Test {
  public:
     TableIteratorTest() {}
     ~TableIteratorTest() {}
-
 };
 
 TEST_F(TableIteratorTest, empty_table) {
@@ -55,7 +54,6 @@ TEST_F(TableIteratorTest, empty_table) {
     auto it = table.NewIterator();
     ASSERT_FALSE(it->Valid());
 }
-
 
 TEST_F(TableIteratorTest, it_full_table) {
     type::TableDef table_def;
@@ -83,17 +81,41 @@ TEST_F(TableIteratorTest, it_full_table) {
     ASSERT_TRUE(it->Valid());
     char* ch;
     uint32_t length = 0;
-    view.GetValue(reinterpret_cast<const int8_t*>(it->GetValue().data()),
-                      2, &ch, &length);
+    view.GetValue(reinterpret_cast<const int8_t*>(it->GetValue().data()), 2,
+                  &ch, &length);
     ASSERT_STREQ("value1", std::string(ch, length).c_str());
     it->Next();
     ASSERT_TRUE(it->Valid());
-    view.GetValue(reinterpret_cast<const int8_t*>(it->GetValue().data()),
-                      2, &ch, &length);
+    view.GetValue(reinterpret_cast<const int8_t*>(it->GetValue().data()), 2,
+                  &ch, &length);
     ASSERT_STREQ("value2", std::string(ch, length).c_str());
     it->Next();
     ASSERT_FALSE(it->Valid());
+}
 
+TEST_F(TableIteratorTest, it_window_table) {
+    type::TableDef table_def;
+    BuildTableSchema(table_def);
+    Table table(1, 1, table_def);
+    table.Init();
+    RowBuilder builder(table_def.columns());
+    uint32_t size = builder.CalTotalLength(10);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.AppendString("key1", 4);
+    builder.AppendInt64(11);
+    builder.AppendString("value1", 6);
+    table.Put(row.c_str(), row.length());
+    row.clear();
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    builder.AppendString("key2", 4);
+    builder.AppendInt64(22);
+    builder.AppendString("value2", 6);
+    table.Put(row.c_str(), row.length());
+    auto it = table.NewWindowIterator();
+    ASSERT_TRUE(it->Valid());
 }
 
 }  // namespace storage

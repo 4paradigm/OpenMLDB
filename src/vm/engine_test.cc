@@ -749,8 +749,6 @@ TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
 TEST_F(EngineTest, test_multi_windows_agg) {
     type::TableDef table_def;
     BuildTableDef(table_def);
-
-    BuildTableDef(table_def);
     {
         ::fesql::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1");

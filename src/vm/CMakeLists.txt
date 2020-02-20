@@ -12,10 +12,10 @@ set(vm_deps_libs fesql_tablet fesql_storage fesql_vm fesql_parser fesql_planner 
 add_executable(csv_db csv_db.cc)
 target_link_libraries(csv_db  fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
 
-add_executable(csv_catalog_test csv_catalog_test.cc)
-target_link_libraries(csv_catalog_test  fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
-add_test(csv_catalog_test csv_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/csv_catalog_test.xml)
-list(APPEND test_list csv_catalog_test)
+#add_executable(csv_catalog_test csv_catalog_test.cc)
+#target_link_libraries(csv_catalog_test  fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
+#add_test(csv_catalog_test csv_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/csv_catalog_test.xml)
+#list(APPEND test_list csv_catalog_test)
 
 add_executable(jit_test jit_test.cc)
 target_link_libraries(jit_test ${vm_deps_libs}  ${llvm_libs} ${COMMON_LIBS} gtest pthread)

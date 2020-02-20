@@ -19,16 +19,16 @@
 #define SRC_VM_CATALOG_H_
 
 #include <memory>
-#include "proto/type.pb.h"
 #include "base/slice.h"
+#include "proto/type.pb.h"
 
 namespace fesql {
 namespace vm {
 
 struct ColInfo {
-   ::fesql::type::Type type;
-   uint32_t pos;
-   std::string name;
+    ::fesql::type::Type type;
+    uint32_t pos;
+    std::string name;
 };
 
 struct IndexSt {
@@ -39,16 +39,16 @@ struct IndexSt {
 };
 
 typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::ColumnDef> Schema;
-typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::IndexDef> IndexList;
+typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::IndexDef>
+    IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
 
 class Iterator {
  public:
-
     Iterator() {}
 
-    virtual ~Iterator(){}
+    virtual ~Iterator() {}
 
     virtual void Seek(uint64_t ts) = 0;
 
@@ -61,11 +61,9 @@ class Iterator {
     virtual const base::Slice GetValue() = 0;
 
     virtual const uint64_t GetKey() = 0;
-
 };
 
 class WindowIterator {
-
  public:
     WindowIterator() {}
     virtual ~WindowIterator() {}
@@ -101,7 +99,8 @@ class TableHandler {
     // get the table iterator
     virtual std::unique_ptr<Iterator> GetIterator() = 0;
 
-    virtual std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) = 0;
+    virtual std::unique_ptr<WindowIterator> GetWindowIterator(
+        const std::string& idx_name) = 0;
 };
 
 // database/table/schema/type management
