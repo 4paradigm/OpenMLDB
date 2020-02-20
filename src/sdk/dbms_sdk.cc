@@ -262,6 +262,7 @@ void DBMSSdkImpl::ExecuteScript(
             add_table_request.set_db_name(request.database.name);
 
             ::fesql::type::TableDef *table = add_table_request.mutable_table();
+            table->set_catalog(request.database.name);
             plan::TransformTableDef(create->GetTableName(),
                                     create->GetColumnDescList(), table,
                                     sql_status);

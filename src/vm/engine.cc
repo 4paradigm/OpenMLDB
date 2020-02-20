@@ -399,7 +399,6 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                         auto wit = it->GetValue();
                         wit->SeekToFirst();
                         while (wit->Valid()) {
-                            LOG(INFO) << "get ts " << wit->GetKey();
                             base::Slice value = wit->GetValue();
                             ::fesql::storage::Row row(
                                 {.buf = reinterpret_cast<int8_t*>(
@@ -684,7 +683,6 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                         auto window_it =
                             project_op->table_handler->GetWindowIterator(
                                 project_op->w.index_name);
-                        LOG(INFO) << "seek key " << key_name << " ts " << ts;
                         window_it->Seek(key_name);
                         if (!window_it->Valid()) {
                             LOG(WARNING)
