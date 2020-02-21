@@ -18,13 +18,13 @@
 #ifndef SRC_CODEGEN_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_EXPR_IR_BUILDER_H_
 
-#include <string>
 #include <memory>
+#include <string>
+#include "codegen/arithmetic_expr_ir_builder.h"
+#include "codegen/predicate_expr_ir_builder.h"
 #include "codegen/row_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "codegen/window_ir_builder.h"
-#include "codegen/arithmetic_expr_ir_builder.h"
-#include "codegen/predicate_expr_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
@@ -45,7 +45,6 @@ class ExprIRBuilder {
     bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
 
  private:
-
     bool BuildColumnIterator(const std::string& col, ::llvm::Value** output);
 
     bool BuildColumnItem(const std::string& col, ::llvm::Value** output);
