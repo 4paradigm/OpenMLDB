@@ -185,7 +185,7 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    int AddReplicaSimplyRemoteOP(const std::string& name, 
+    int AddReplicaSimplyRemoteOP(const std::string& alias, const std::string& name,
             const std::string& endpoint, 
             uint32_t tid, uint32_t pid); 
 
@@ -324,12 +324,10 @@ public:
         GeneralResponse* response,
         Closure* done);
 
-    int SyncExistTable(const std::string& name,
+    int SyncExistTable(const std::string& alias, const std::string& name,
         const std::vector<::rtidb::nameserver::TableInfo> tables_remote, 
         const ::rtidb::nameserver::TableInfo& table_info_local, 
-        uint32_t pid, 
-        int& code,
-        std::string& msg); 
+        uint32_t pid, int& code, std::string& msg);
     
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,

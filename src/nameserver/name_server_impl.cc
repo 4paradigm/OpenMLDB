@@ -214,7 +214,7 @@ void NameServerImpl::CheckSyncExistTable(const std::string& alias,
                 for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
                     if (table_partition.partition_meta(midx).is_leader() && 
                             table_partition.partition_meta(midx).is_alive()) {
-                        if (AddReplicaSimplyRemoteOP(name, table_partition.partition_meta(midx).endpoint(), 
+                        if (AddReplicaSimplyRemoteOP(alias, name, table_partition.partition_meta(midx).endpoint(),
                                     table_info_remote.tid(), cur_pid) < 0) {
                             PDLOG(WARNING, "create AddReplicasSimplyRemoteOP failed. table[%s] pid[%u] alias[%s]", 
                                     name.c_str(), cur_pid, alias.c_str());
@@ -353,7 +353,7 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std:
                         iter->second->add_partition_meta()->CopyFrom(meta);
 
                         PDLOG(INFO, "table [%s] pid[%u] will add remote endpoint %s", table.name().c_str(), part.pid(), meta.endpoint().c_str());
-                        AddReplicaSimplyRemoteOP(table.name(), meta.endpoint(), table.tid(), part.pid());
+                        AddReplicaSimplyRemoteOP(ci->cluster_add_.alias(), table.name(), meta.endpoint(), table.tid(), part.pid());
                         break;
                     }
                 }
@@ -3666,10 +3666,8 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
 }
 
 //called by function CheckTableInfo and SyncTable
-int NameServerImpl::AddReplicaSimplyRemoteOP(const std::string& name, 
-        const std::string& endpoint, 
-        uint32_t remote_tid, 
-        uint32_t pid) {
+int NameServerImpl::AddReplicaSimplyRemoteOP(const std::string& alias, const std::string& name,
+        const std::string& endpoint, uint32_t remote_tid, uint32_t pid) {
     if (!running_.load(std::memory_order_acquire)) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return -1;
@@ -3685,6 +3683,7 @@ int NameServerImpl::AddReplicaSimplyRemoteOP(const std::string& name,
     data.set_pid(pid);
     data.set_endpoint(endpoint);
     data.set_remote_tid(remote_tid);
+    data.set_alias(alias);
     std::string value;
     data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kAddReplicaSimplyRemoteOP, value, op_data, 
@@ -3722,6 +3721,7 @@ int NameServerImpl::CreateAddReplicaSimplyRemoteOPTask(std::shared_ptr<OPData> o
     }
     uint32_t tid = pos->second->tid();
     uint32_t pid = add_replica_data.pid();
+    std::string alias = add_replica_data.alias();
     std::string leader_endpoint;
     if (GetLeader(pos->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", add_replica_data.name().c_str(), pid);
@@ -3736,7 +3736,7 @@ int NameServerImpl::CreateAddReplicaSimplyRemoteOPTask(std::shared_ptr<OPData> o
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateAddTableInfoTask("", add_replica_data.endpoint(), add_replica_data.name(), add_replica_data.remote_tid(), pid, 
+    task = CreateAddTableInfoTask(alias, add_replica_data.endpoint(), add_replica_data.name(), add_replica_data.remote_tid(), pid,
             op_index, ::rtidb::api::OPType::kAddReplicaSimplyRemoteOP);
     if (!task) {
         PDLOG(WARNING, "create addtableinfo task failed. tid[%u] pid[%u]", tid, pid);
@@ -8130,7 +8130,7 @@ void NameServerImpl::SyncTable(RpcController* controller,
             if (std::find(table_name_vec.begin(), table_name_vec.end(), name) != table_name_vec.end()) {
                 PDLOG(INFO, "table [%s] already exists in replica cluster [%s]", name.c_str(), cluster_alias.c_str());
                 uint32_t pid = request->pid();
-                if (SyncExistTable(name, tables, *table_info, pid, code, msg) < 0) {
+                if (SyncExistTable(cluster_alias, name, tables, *table_info, pid, code, msg) < 0) {
                     break;
                 }
             } else {
@@ -8158,7 +8158,7 @@ void NameServerImpl::SyncTable(RpcController* controller,
             }
             if (std::find(table_name_vec.begin(), table_name_vec.end(), name) != table_name_vec.end()) {
                 PDLOG(INFO, "table [%s] already exists in replica cluster [%s]", name.c_str(), cluster_alias.c_str());
-                if (SyncExistTable(name, tables, *table_info, UINT32_MAX, code, msg) < 0) {
+                if (SyncExistTable(cluster_alias, name, tables, *table_info, UINT32_MAX, code, msg) < 0) {
                     break;
                 }
             } else {
@@ -8192,12 +8192,10 @@ void NameServerImpl::SyncTable(RpcController* controller,
     response->set_msg(msg);
 }
 
-int NameServerImpl::SyncExistTable(const std::string& name,
+int NameServerImpl::SyncExistTable(const std::string& alias, const std::string& name,
         const std::vector<::rtidb::nameserver::TableInfo> tables_remote, 
         const ::rtidb::nameserver::TableInfo& table_info_local, 
-        uint32_t pid, 
-        int& code,
-        std::string& msg) {
+        uint32_t pid, int& code, std::string& msg) {
     std::vector<::rtidb::nameserver::TableInfo> table_vec;
     ::rtidb::nameserver::TableInfo table_info_remote;
     for (const auto& table : tables_remote) {
@@ -8300,7 +8298,7 @@ int NameServerImpl::SyncExistTable(const std::string& name,
                     for (int midx = 0; midx < table_partition.partition_meta_size(); midx++) {
                         if (table_partition.partition_meta(midx).is_leader() && 
                                 table_partition.partition_meta(midx).is_alive()) {
-                            if (AddReplicaSimplyRemoteOP(name, table_partition.partition_meta(midx).endpoint(), 
+                            if (AddReplicaSimplyRemoteOP(alias, name, table_partition.partition_meta(midx).endpoint(),
                                         table_info_remote.tid(), cur_pid) < 0) {
                                 PDLOG(WARNING, "create AddReplicasSimplyRemoteOP failed. table[%s] pid[%u]", 
                                         name.c_str(), cur_pid);
