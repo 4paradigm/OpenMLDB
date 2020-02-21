@@ -16,7 +16,6 @@
 #include "base/iterator.h"
 #include "storage/codec.h"
 #include "storage/segment.h"
-#include "storage/table_iterator.h"
 #include "vm/catalog.h"
 
 namespace fesql {
@@ -68,11 +67,6 @@ class Table {
 
     bool Put(const char* row, uint32_t size);
 
-    std::unique_ptr<FullTableIterator> NewIterator();
-    std::unique_ptr<vm::WindowIterator> NewWindowIterator();
-    std::unique_ptr<vm::WindowIterator> NewWindowIterator(
-        const std::string& index_name);
-
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
                                                const uint64_t ts);
 
@@ -106,6 +100,10 @@ class Table {
     }
 
     inline const TableDef& GetTableDef() { return table_def_; }
+
+    inline Segment*** GetSegments() { return segments_; }
+
+    inline uint32_t GetSegCnt() { return seg_cnt_; }
 
  private:
     std::unique_ptr<TableIterator> NewIndexIterator(const std::string& pk,

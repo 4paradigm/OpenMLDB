@@ -85,8 +85,6 @@ class TabletCatalog : public vm::Catalog {
 
     ~TabletCatalog();
 
-    // TODO(wangtaize) add delete method
-
     bool Init();
 
     bool AddDB(const type::Database& db);

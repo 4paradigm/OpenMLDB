@@ -17,9 +17,9 @@
 
 #include "storage/table_iterator.h"
 
+#include <memory>
 #include <string>
 #include <utility>
-#include <memory>
 #include "base/hash.h"
 #include "storage/codec.h"
 
@@ -50,12 +50,14 @@ const base::Slice WindowInternalIterator::GetValue() {
 const uint64_t WindowInternalIterator::GetKey() { return ts_it_->GetKey(); }
 
 WindowTableIterator::WindowTableIterator(Segment*** segments, uint32_t seg_cnt,
-                                         uint32_t index)
+                                         uint32_t index,
+                                         std::shared_ptr<Table> table)
     : segments_(segments),
       seg_cnt_(seg_cnt),
       index_(index),
       seg_idx_(0),
-      pk_it_() {
+      pk_it_(),
+      table_(table) {
     GoToStart();
 }
 
@@ -135,8 +137,14 @@ bool WindowTableIterator::Valid() {
     return false;
 }
 
-FullTableIterator::FullTableIterator(Segment*** segments, uint32_t seg_cnt)
-    : seg_cnt_(seg_cnt), seg_idx_(0), segments_(segments), ts_it_(), pk_it_() {
+FullTableIterator::FullTableIterator(Segment*** segments, uint32_t seg_cnt,
+                                     std::shared_ptr<Table> table)
+    : seg_cnt_(seg_cnt),
+      seg_idx_(0),
+      segments_(segments),
+      ts_it_(),
+      pk_it_(),
+      table_(table) {
     GoToStart();
 }
 

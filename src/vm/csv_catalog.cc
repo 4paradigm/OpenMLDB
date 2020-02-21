@@ -19,10 +19,10 @@
 
 #include <fstream>
 #include <map>
-#include <vector>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 #include "arrow/csv/api.h"
 #include "arrow/status.h"
 #include "arrow/type.h"
@@ -287,8 +287,8 @@ bool CSVTableHandler::InitIndex() {
         index_st.name = index_def.name();
         index_st.keys.push_back(types_[index_def.first_keys(0)]);
         index_hint_.insert(std::make_pair(index_st.name, index_st));
-        uint64_t chunk_offset = 0;
-        uint64_t array_offset = 0;
+        int64_t chunk_offset = 0;
+        int64_t array_offset = 0;
         while (true) {
             if (table_->num_rows() <= 0 || table_->num_columns() <= 0) break;
             if (table_->column(0)->num_chunks() <= chunk_offset) break;

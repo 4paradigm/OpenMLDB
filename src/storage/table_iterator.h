@@ -18,10 +18,11 @@
 #ifndef SRC_STORAGE_TABLE_ITERATOR_H_
 #define SRC_STORAGE_TABLE_ITERATOR_H_
 
-#include <string>
 #include <memory>
+#include <string>
 #include "base/iterator.h"
 #include "storage/segment.h"
+#include "storage/table.h"
 #include "vm/catalog.h"
 
 namespace fesql {
@@ -78,7 +79,8 @@ class WindowInternalIterator : public vm::Iterator {
 
 class WindowTableIterator : public vm::WindowIterator {
  public:
-    WindowTableIterator(Segment*** segments, uint32_t seg_cnt, uint32_t index);
+    WindowTableIterator(Segment*** segments, uint32_t seg_cnt, uint32_t index,
+                        std::shared_ptr<Table> table);
     ~WindowTableIterator();
 
     void Seek(const std::string& key);
@@ -99,6 +101,8 @@ class WindowTableIterator : public vm::WindowIterator {
     uint32_t seg_idx_;
     std::unique_ptr<base::Iterator<base::Slice, void*>> pk_it_;
     base::Slice key_;
+    // hold the reference
+    std::shared_ptr<Table> table_;
 };
 
 // the full table iterator
@@ -106,7 +110,8 @@ class FullTableIterator : public vm::Iterator {
  public:
     FullTableIterator() : seg_cnt_(0), seg_idx_(0), segments_(NULL) {}
 
-    explicit FullTableIterator(Segment*** segments, uint32_t seg_cnt);
+    explicit FullTableIterator(Segment*** segments, uint32_t seg_cnt,
+                               std::shared_ptr<Table> table);
 
     ~FullTableIterator() {}
 
@@ -133,6 +138,7 @@ class FullTableIterator : public vm::Iterator {
     Segment*** segments_;
     std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> ts_it_;
     std::unique_ptr<base::Iterator<base::Slice, void*>> pk_it_;
+    std::shared_ptr<Table> table_;
 };
 
 }  // namespace storage

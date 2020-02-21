@@ -18,9 +18,9 @@
 #ifndef SRC_VM_CSV_TABLE_ITERATOR_H_
 #define SRC_VM_CSV_TABLE_ITERATOR_H_
 
-#include <string>
-#include <memory>
 #include <map>
+#include <memory>
+#include <string>
 #include "arrow/table.h"
 #include "storage/codec.h"
 #include "vm/catalog.h"
@@ -95,8 +95,8 @@ class CSVTableIterator : public Iterator {
  private:
     const std::shared_ptr<arrow::Table> table_;
     const Schema schema_;
-    uint64_t chunk_offset_;
-    uint64_t array_offset_;
+    int64_t chunk_offset_;
+    int64_t array_offset_;
     int8_t* buf_;
     storage::RowBuilder rb_;
     uint32_t buf_size_;

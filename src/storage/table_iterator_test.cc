@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include "storage/table_iterator.h"
 #include <sys/time.h>
 #include <iostream>
 #include <string>
@@ -24,7 +25,7 @@
 namespace fesql {
 namespace storage {
 
-void BuildTableSchema(type::TableDef& table_def) {  //NOLINT
+void BuildTableSchema(type::TableDef& table_def) {  // NOLINT
     ::fesql::type::ColumnDef* col = table_def.add_columns();
     col->set_name("col1");
     col->set_type(::fesql::type::kVarchar);
@@ -46,20 +47,29 @@ class TableIteratorTest : public ::testing::Test {
     ~TableIteratorTest() {}
 };
 
-TEST_F(TableIteratorTest, empty_table) {
+TEST_F(TableIteratorTest, empty_window_table) {
     type::TableDef table_def;
     BuildTableSchema(table_def);
-    Table table(1, 1, table_def);
-    table.Init();
-    auto it = table.NewIterator();
-    ASSERT_FALSE(it->Valid());
+    std::shared_ptr<Table> table(new Table(1, 1, table_def));
+    table->Init();
+    WindowTableIterator it(table->GetSegments(), table->GetSegCnt(), 0, table);
+    ASSERT_FALSE(it.Valid());
+}
+
+TEST_F(TableIteratorTest, empty_full_table) {
+    type::TableDef table_def;
+    BuildTableSchema(table_def);
+    std::shared_ptr<Table> table(new Table(1, 1, table_def));
+    table->Init();
+    FullTableIterator it(table->GetSegments(), table->GetSegCnt(), table);
+    ASSERT_FALSE(it.Valid());
 }
 
 TEST_F(TableIteratorTest, it_full_table) {
     type::TableDef table_def;
     BuildTableSchema(table_def);
-    Table table(1, 1, table_def);
-    table.Init();
+    std::shared_ptr<Table> table(new Table(1, 1, table_def));
+    table->Init();
     RowBuilder builder(table_def.columns());
     uint32_t size = builder.CalTotalLength(10);
     std::string row;
@@ -68,36 +78,36 @@ TEST_F(TableIteratorTest, it_full_table) {
     builder.AppendString("key1", 4);
     builder.AppendInt64(11);
     builder.AppendString("value1", 6);
-    table.Put(row.c_str(), row.length());
+    table->Put(row.c_str(), row.length());
     row.clear();
     row.resize(size);
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
     builder.AppendString("key2", 4);
     builder.AppendInt64(22);
     builder.AppendString("value2", 6);
-    table.Put(row.c_str(), row.length());
-    auto it = table.NewIterator();
+    table->Put(row.c_str(), row.length());
+    FullTableIterator it(table->GetSegments(), table->GetSegCnt(), table);
     RowView view(table_def.columns());
-    ASSERT_TRUE(it->Valid());
+    ASSERT_TRUE(it.Valid());
     char* ch;
     uint32_t length = 0;
-    view.GetValue(reinterpret_cast<const int8_t*>(it->GetValue().data()), 2,
-                  &ch, &length);
+    view.GetValue(reinterpret_cast<const int8_t*>(it.GetValue().data()), 2, &ch,
+                  &length);
     ASSERT_STREQ("value1", std::string(ch, length).c_str());
-    it->Next();
-    ASSERT_TRUE(it->Valid());
-    view.GetValue(reinterpret_cast<const int8_t*>(it->GetValue().data()), 2,
-                  &ch, &length);
+    it.Next();
+    ASSERT_TRUE(it.Valid());
+    view.GetValue(reinterpret_cast<const int8_t*>(it.GetValue().data()), 2, &ch,
+                  &length);
     ASSERT_STREQ("value2", std::string(ch, length).c_str());
-    it->Next();
-    ASSERT_FALSE(it->Valid());
+    it.Next();
+    ASSERT_FALSE(it.Valid());
 }
 
 TEST_F(TableIteratorTest, it_window_table) {
     type::TableDef table_def;
     BuildTableSchema(table_def);
-    Table table(1, 1, table_def);
-    table.Init();
+    std::shared_ptr<Table> table(new Table(1, 1, table_def));
+    table->Init();
     RowBuilder builder(table_def.columns());
     uint32_t size = builder.CalTotalLength(10);
     std::string row;
@@ -106,16 +116,43 @@ TEST_F(TableIteratorTest, it_window_table) {
     builder.AppendString("key1", 4);
     builder.AppendInt64(11);
     builder.AppendString("value1", 6);
-    table.Put(row.c_str(), row.length());
+    table->Put(row.c_str(), row.length());
     row.clear();
     row.resize(size);
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
     builder.AppendString("key2", 4);
     builder.AppendInt64(22);
     builder.AppendString("value2", 6);
-    table.Put(row.c_str(), row.length());
-    auto it = table.NewWindowIterator();
-    ASSERT_TRUE(it->Valid());
+    table->Put(row.c_str(), row.length());
+    WindowTableIterator it(table->GetSegments(), table->GetSegCnt(), 0, table);
+    ASSERT_TRUE(it.Valid());
+    {
+        auto key = it.GetKey();
+        base::Slice key_expect("key1");
+        ASSERT_EQ(0, key.compare(key_expect));
+        auto wit = it.GetValue();
+        wit->SeekToFirst();
+        ASSERT_TRUE(wit->Valid());
+        uint64_t ts = wit->GetKey();
+        ASSERT_EQ(11u, ts);
+        wit->Next();
+        ASSERT_FALSE(wit->Valid());
+    }
+    it.Next();
+    {
+        auto key = it.GetKey();
+        base::Slice key_expect("key2");
+        ASSERT_EQ(0, key.compare(key_expect));
+        auto wit = it.GetValue();
+        wit->SeekToFirst();
+        ASSERT_TRUE(wit->Valid());
+        uint64_t ts = wit->GetKey();
+        ASSERT_EQ(22u, ts);
+        wit->Next();
+        ASSERT_FALSE(wit->Valid());
+    }
+    it.Next();
+    ASSERT_FALSE(it.Valid());
 }
 
 }  // namespace storage

@@ -17,11 +17,12 @@
 
 #include "tablet/tablet_catalog.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
-#include <map>
 #include "glog/logging.h"
+#include "storage/table_iterator.h"
 
 namespace fesql {
 namespace tablet {
@@ -81,12 +82,24 @@ bool TabletTableHandler::Init() {
 }
 
 std::unique_ptr<vm::Iterator> TabletTableHandler::GetIterator() {
-    return std::move(table_->NewIterator());
+    std::unique_ptr<storage::FullTableIterator> it(
+        new storage::FullTableIterator(table_->GetSegments(),
+                                       table_->GetSegCnt(), table_));
+    return std::move(it);
 }
 
 std::unique_ptr<vm::WindowIterator> TabletTableHandler::GetWindowIterator(
-    const std::string& pk) {
-    return std::move(table_->NewWindowIterator(pk));
+    const std::string& idx_name) {
+    auto iter = index_hint_.find(idx_name);
+    if (iter == index_hint_.end()) {
+        LOG(WARNING) << "index name " << idx_name << " not exist";
+        return std::unique_ptr<storage::WindowTableIterator>();
+    }
+    std::unique_ptr<storage::WindowTableIterator> it(
+        new storage::WindowTableIterator(table_->GetSegments(),
+                                         table_->GetSegCnt(),
+                                         iter->second.index, table_));
+    return std::move(it);
 }
 
 TabletCatalog::TabletCatalog() : tables_(), db_() {}
