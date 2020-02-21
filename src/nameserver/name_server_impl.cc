@@ -46,7 +46,7 @@ const std::string OFFLINE_LEADER_ENDPOINT = "OFFLINE_LEADER_ENDPOINT";
 const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
 ClusterInfo::ClusterInfo(const ::rtidb::nameserver::ClusterAddress& cd) : client_(),
-    last_status(), zk_client_(), mu_(), session_term_(), task_id_() {
+    last_status(), zk_client_(), session_term_(), task_id_() {
     cluster_add_.CopyFrom(cd);
     state_ = kClusterOffline;
     ctime_ = ::baidu::common::timer::get_micros() / 1000;
@@ -2793,8 +2793,8 @@ void NameServerImpl::DropTable(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("nameserver is for follower cluster, and request has no zono info");
-            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -2847,73 +2847,86 @@ void NameServerImpl::DropTableInternel(const std::string name,
         GeneralResponse& response,
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
-    std::lock_guard<std::mutex> lock(mu_);
+    std::map<uint32_t, std::map<std::string, std::shared_ptr<TabletClient>>> pid_endpoint_map;
+    uint32_t tid = table_info->tid();
     int code = 0;
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
-            do {
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+            for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
                 std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
                 if (!table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                    PDLOG(WARNING, "table[%s] is not alive. pid[%u] endpoint[%s]", 
-                                    name.c_str(), table_info->table_partition(idx).pid(), endpoint.c_str());
+                    PDLOG(WARNING, "table[%s] is not alive. pid[%u] endpoint[%s]",
+                            name.c_str(), table_info->table_partition(idx).pid(), endpoint.c_str());
                     continue;
                 }
                 auto tablets_iter = tablets_.find(endpoint);
                 // check tablet if exist
                 if (tablets_iter == tablets_.end()) {
                     PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
-                    break;
+                    continue;
                 }
                 // check tablet healthy
                 if (tablets_iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                     PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
                     continue;
                 }
-                if (!tablets_iter->second->client_->DropTable(table_info->tid(),
-                            table_info->table_partition(idx).pid())){
-                    PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", 
-                            table_info->tid(), table_info->table_partition(idx).pid(),
-                            endpoint.c_str());
-                    code = 313; // if drop table failed, return error
-                    break;
+                uint32_t pid = table_info->table_partition(idx).pid();
+                auto map_iter = pid_endpoint_map.find(pid);
+                if (map_iter == pid_endpoint_map.end()) {
+                    std::map<std::string, std::shared_ptr<TabletClient>> map;
+                    pid_endpoint_map.insert(std::make_pair(pid, map));
                 }
-                PDLOG(INFO, "drop table. tid[%u] pid[%u] endpoint[%s]", 
-                                table_info->tid(), table_info->table_partition(idx).pid(),
-                                endpoint.c_str());
-            } while (0);
+                pid_endpoint_map[pid].insert(std::make_pair(endpoint, tablets_iter->second->client_));
+            }
         }
     }
-    if (!zk_client_->DeleteNode(zk_table_data_path_ + "/" + name)) {
-        PDLOG(WARNING, "delete table node[%s/%s] failed!", 
-                zk_table_data_path_.c_str(), name.c_str());
-        code = 304;
-    } else {
-        PDLOG(INFO, "delete table node[%s/%s]", zk_table_data_path_.c_str(), name.c_str());
-        table_info_.erase(name);
-    }
-    if (!nsc_.empty()) {
-        for (auto kv : nsc_) {
-            if (kv.second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
-                PDLOG(INFO, "cluster[%s] is not Healthy", kv.first.c_str()); 
+    for (const auto& pkv : pid_endpoint_map) {
+        for (const auto& kv : pkv.second) {
+            if (!kv.second->DropTable(tid, pkv.first)) {
+                PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]",
+                        tid, pkv.first, kv.first.c_str());
+                code = 313; // if drop table failed, return error
                 continue;
             }
-            if(DropTableRemoteOP(name, kv.first, INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
-                PDLOG(WARNING, "create DropTableRemoteOP for replica cluster failed, table_name: %s, alias: %s", name.c_str(), kv.first.c_str());
-                code = 505;
-                break;
+            PDLOG(INFO, "drop table. tid[%u] pid[%u] endpoint[%s]",
+                    tid, pkv.first, kv.first.c_str());
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!zk_client_->DeleteNode(zk_table_data_path_ + "/" + name)) {
+            PDLOG(WARNING, "delete table node[%s/%s] failed!", 
+                    zk_table_data_path_.c_str(), name.c_str());
+            code = 304;
+        } else {
+            PDLOG(INFO, "delete table node[%s/%s]", zk_table_data_path_.c_str(), name.c_str());
+            table_info_.erase(name);
+        }
+        if (!nsc_.empty()) {
+            for (auto kv : nsc_) {
+                if (kv.second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+                    PDLOG(INFO, "cluster[%s] is not Healthy", kv.first.c_str()); 
+                    continue;
+                }
+                if(DropTableRemoteOP(name, kv.first, INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
+                    PDLOG(WARNING, "create DropTableRemoteOP for replica cluster failed, table_name: %s, alias: %s", name.c_str(), kv.first.c_str());
+                    code = 505;
+                    continue;
+                }
             }
         }
-    }
-    response.set_code(code);
-    code == 0 ?  response.set_msg("ok") : response.set_msg("drop table error");
-    if (task_ptr) {
-        if (code != 0) {
-            task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-        } else {
-            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        response.set_code(code);
+        code == 0 ?  response.set_msg("ok") : response.set_msg("drop table error");
+        if (task_ptr) {
+            if (code != 0) {
+                task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+            } else {
+                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+            }
         }
+        NotifyTableChanged();
     }
-    NotifyTableChanged();
 }
 
 void NameServerImpl::AddTableField(RpcController* controller,
@@ -3119,8 +3132,8 @@ void NameServerImpl::LoadTable(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("nameserver is for follower cluster, and request has no zono info");
-            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -3181,8 +3194,8 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("nameserver is for follower cluster, and request has no zono info");
-            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -3283,8 +3296,8 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("nameserver is for follower cluster, and request has no zono info");
-            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -3434,8 +3447,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("nameserver is for follower cluster, and request has no zono info");
-            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
@@ -3982,8 +3995,8 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         if (!request->has_zone_info()) {
             response->set_code(501);
-            response->set_msg("nameserver is for follower cluster, and request has no zono info");
-            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zono info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
