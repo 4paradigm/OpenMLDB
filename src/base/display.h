@@ -502,8 +502,30 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
     row.push_back("diskused");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
+    int32_t row_width = row.size();
     for (const auto& value : tables) {
+        if (value.table_partition_size() == 0) {
+            row.clear();
+            row.push_back(value.name());
+            row.push_back(std::to_string(value.tid()));
+            for(int i = row.size(); i < row_width; i++) {
+                row.push_back("-");
+            }
+            tp.AddRow(row);
+            continue;
+        }
         for (int idx = 0; idx < value.table_partition_size(); idx++) {
+            if (value.table_partition(idx).partition_meta_size() == 0) {
+                row.clear();
+                row.push_back(value.name());
+                row.push_back(std::to_string(value.tid()));
+                row.push_back(std::to_string(value.table_partition(idx).pid()));
+                for(int i = row.size(); i < row_width; i++) {
+                    row.push_back("-");
+                }
+                tp.AddRow(row);
+                continue;
+            }
             for (int meta_idx = 0; meta_idx < value.table_partition(idx).partition_meta_size(); meta_idx++) {
                 row.clear();
                 row.push_back(value.name());

@@ -422,11 +422,14 @@ bool NameServerImpl::CompareSnapshotOffset(const std::vector<TableInfo>& tables,
     return true;
 }
 
-bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables) {
+bool NameServerImpl::CompareTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables, bool period_check) {
     for (auto& table : tables) {
         auto iter = table_info_.find(table.name());
         if (iter == table_info_.end()) {
             PDLOG(WARNING, "table [%s] not found in table_info_", table.name().c_str());
+            if (period_check) {
+                continue;
+            }
             return false;
         }
         if (table.ttl() != iter->second->ttl()) {
@@ -2075,6 +2078,10 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     if (endpoint_pid_bucked.size() < replica_num) {
         PDLOG(WARNING, "healthy endpoint num[%u] is less than replica_num[%u]",
                         endpoint_pid_bucked.size(), replica_num);
+        return -1;
+    }
+    if (replica_num < 1) {
+        PDLOG(WARNING, "replica_num less than 1 that is illegal, replica_num[%u]", replica_num);
         return -1;
     }
     std::map<std::string, uint64_t> endpoint_leader = endpoint_pid_bucked;
@@ -7693,7 +7700,7 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
                     }
                 }
                 std::lock_guard<std::mutex> lock(mu_);
-                if (!CompareTableInfo(tables)) {
+                if (!CompareTableInfo(tables, false)) {
                     PDLOG(WARNING, "compare table info error");
                     rpc_msg = "compare table info error";
                     code = 567;
@@ -7983,7 +7990,7 @@ void NameServerImpl::CheckClusterInfo() {
                 continue;
             }
             std::lock_guard<std::mutex> lock(mu_);
-            if ((tables.size() > 0) && !CompareTableInfo(tables)) {
+            if ((tables.size() > 0) && !CompareTableInfo(tables, true)) {
                 // todo :: add cluster statsu, need show in showreplica
                 PDLOG(WARNING, "compare %s table info has error", i.first.c_str());
                 continue;
@@ -8221,7 +8228,7 @@ int NameServerImpl::SyncExistTable(const std::string& name,
             }
         }
         std::lock_guard<std::mutex> lock(mu_);
-        if (!CompareTableInfo(table_vec)) {
+        if (!CompareTableInfo(table_vec, false)) {
             PDLOG(WARNING, "compare table info error");
             msg = "compare table info error";
             code = 567;

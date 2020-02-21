@@ -638,7 +638,7 @@ private:
 
     void CheckSyncTable(const std::string& alias, const std::vector<::rtidb::nameserver::TableInfo> tables, const std::shared_ptr<::rtidb::client::NsClient> ns_client);
 
-    bool CompareTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables);
+    bool CompareTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables, bool period_check);
 
     void CheckTableInfo(std::shared_ptr<ClusterInfo>& ci, const std::vector<::rtidb::nameserver::TableInfo>& tables);
 
