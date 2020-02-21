@@ -2077,6 +2077,10 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
                         endpoint_pid_bucked.size(), replica_num);
         return -1;
     }
+    if (replica_num < 1) {
+        PDLOG(WARNING, "replica_num less than 1 that is illegal, replica_num[%u]", replica_num);
+        return -1;
+    }
     std::map<std::string, uint64_t> endpoint_leader = endpoint_pid_bucked;
     {
         std::lock_guard<std::mutex> lock(mu_);
