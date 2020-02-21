@@ -114,6 +114,10 @@ public class ParseParquetUtil {
 
                 }
             } catch (Exception e) {
+                if (InitClient.contains(";", TIMESTAMP, columnName)) {
+                    logger.error("ts column is null");
+                    return new HashMap<>();
+                }
                 map.put(columnName, null);
             }
             if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
@@ -146,6 +150,9 @@ public class ParseParquetUtil {
             ParquetReader<Group> reader = builder.build();
             while ((group = (SimpleGroup) reader.read()) != null) {
                 HashMap<String, Object> map = read(group);
+                if (map.size() == 0) {
+                    continue;
+                }
                 if (clientIndex == InitClient.MAX_THREAD_NUM) {
                     clientIndex = 0;
                 }
