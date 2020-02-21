@@ -75,7 +75,6 @@ public:
     std::atomic<ClusterStatus> state_;
 private:
     std::shared_ptr<ZkClient> zk_client_;
-    std::mutex mu_;
     uint64_t session_term_;
     int64_t task_id_;
     // todo :: add statsus variable show replicas status
