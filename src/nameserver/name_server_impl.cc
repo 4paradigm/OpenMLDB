@@ -2854,32 +2854,30 @@ void NameServerImpl::DropTableInternel(const std::string name,
         std::lock_guard<std::mutex> lock(mu_);
         for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
             for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
-                do {
-                    std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
-                    if (!table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                        PDLOG(WARNING, "table[%s] is not alive. pid[%u] endpoint[%s]", 
-                                name.c_str(), table_info->table_partition(idx).pid(), endpoint.c_str());
-                        break;
-                    }
-                    auto tablets_iter = tablets_.find(endpoint);
-                    // check tablet if exist
-                    if (tablets_iter == tablets_.end()) {
-                        PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
-                        break;
-                    }
-                    // check tablet healthy
-                    if (tablets_iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                        PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
-                        break;
-                    }
-                    uint32_t pid = table_info->table_partition(idx).pid();
-                    auto map_iter = pid_endpoint_map.find(pid);
-                    if (map_iter == pid_endpoint_map.end()) {
-                        std::map<std::string, std::shared_ptr<TabletClient>> map;
-                        pid_endpoint_map.insert(std::make_pair(pid, map));
-                    }
-                    pid_endpoint_map[pid].insert(std::make_pair(endpoint, tablets_iter->second->client_));
-                } while (0);
+                std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+                if (!table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                    PDLOG(WARNING, "table[%s] is not alive. pid[%u] endpoint[%s]",
+                            name.c_str(), table_info->table_partition(idx).pid(), endpoint.c_str());
+                    continue;
+                }
+                auto tablets_iter = tablets_.find(endpoint);
+                // check tablet if exist
+                if (tablets_iter == tablets_.end()) {
+                    PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
+                    continue;
+                }
+                // check tablet healthy
+                if (tablets_iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                    PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
+                    continue;
+                }
+                uint32_t pid = table_info->table_partition(idx).pid();
+                auto map_iter = pid_endpoint_map.find(pid);
+                if (map_iter == pid_endpoint_map.end()) {
+                    std::map<std::string, std::shared_ptr<TabletClient>> map;
+                    pid_endpoint_map.insert(std::make_pair(pid, map));
+                }
+                pid_endpoint_map[pid].insert(std::make_pair(endpoint, tablets_iter->second->client_));
             }
         }
     }
