@@ -7874,9 +7874,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
             break;
         }
         state = it->second->state_.load(std::memory_order_relaxed);
-        PDLOG(INFO, "last_status size %d", it->second->last_status.size());
         for (auto iter = it->second->last_status.begin(); iter != it->second->last_status.end(); iter++) {
-            PDLOG(INFO, "%s partition size %d", iter->first.c_str(), it->second->last_status.size());
             for (auto part_iter = iter->second.begin(); part_iter != iter->second.end(); part_iter++) {
                 for (auto meta : part_iter->partition_meta()) {
                     if (meta.endpoint().empty()) {
