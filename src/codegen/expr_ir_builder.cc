@@ -16,6 +16,7 @@
  */
 
 #include "codegen/expr_ir_builder.h"
+
 #include <string>
 #include <vector>
 #include "codegen/buf_ir_builder.h"
@@ -34,7 +35,8 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       sv_(scope_var),
       row_mode_(true),
       row_ptr_name_(""),
-      module_(nullptr),
+      arithmetic_ir_builder_(block),
+      predicate_ir_builder_(block),
       row_ir_builder_(),
       window_ir_builder_() {}
 
@@ -49,6 +51,8 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
       row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
       row_size_name_(row_size_name),
+      arithmetic_ir_builder_(block),
+      predicate_ir_builder_(block),
       module_(module),
       row_ir_builder_(new BufNativeIRBuilder(schema, block, scope_var)),
       window_ir_builder_(new MemoryWindowDecodeIRBuilder(schema, block)) {}
@@ -225,13 +229,11 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     return true;
 }
 
-/**
- * Build Struct Expr IR:
- * TODO(chenjing): support method memeber
- * @param node
- * @param output
- * @return
- */
+// Build Struct Expr IR:
+// TODO(chenjing): support method memeber
+// @param node
+// @param output
+// @return
 bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
                                     ::llvm::Value** output) {
     std::vector<::llvm::Type*> members;
@@ -312,14 +314,11 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
     return true;
 }
 
-/**
- * Get col with given col name
- * set iterator struct pointer into output
- * TODO(chenjing): list ref manage
- * @param col
- * @param output
- * @return
- */
+
+// Get col with given col name, set iterator struct pointer into output
+// param col
+// param output
+// return
 bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
                                         ::llvm::Value** output) {
     ::llvm::Value* row_ptr = NULL;
@@ -375,6 +374,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
 
 bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                                     ::llvm::Value** output) {
+    ::fesql::base::Status status;
     if (node == NULL || output == NULL) {
         LOG(WARNING) << "input node or output is null";
         return false;
@@ -400,30 +400,80 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         return false;
     }
 
-    if (right->getType()->isIntegerTy() && left->getType()->isIntegerTy()) {
-        ::llvm::IRBuilder<> builder(block_);
-        // TODO(wangtaize) type check
-        switch (node->GetOp()) {
-            case ::fesql::node::kFnOpAdd: {
-                *output = builder.CreateAdd(left, right, "expr_add");
-                return true;
-            }
-            case ::fesql::node::kFnOpMulti: {
-                *output = builder.CreateMul(left, right, "expr_mul");
-                return true;
-            }
-            case ::fesql::node::kFnOpMinus: {
-                *output = builder.CreateSub(left, right, "expr_sub");
-                return true;
-            }
-            default:
-                LOG(WARNING) << "invalid op ";
-                return false;
+    // TODO(wangtaize) type check
+    switch (node->GetOp()) {
+        case ::fesql::node::kFnOpAdd: {
+            ok = arithmetic_ir_builder_.BuildAddExpr(left, right, output,
+                                                     status);
+            break;
         }
-    } else {
-        LOG(WARNING) << "left mismatch right type";
+        case ::fesql::node::kFnOpMulti: {
+            ok = arithmetic_ir_builder_.BuildMultiExpr(left, right, output,
+                                                       status);
+            break;
+        }
+        case ::fesql::node::kFnOpFDiv: {
+            ok = arithmetic_ir_builder_.BuildFDivExpr(left, right, output,
+                                                      status);
+            break;
+        }
+        case ::fesql::node::kFnOpMinus: {
+            ok = arithmetic_ir_builder_.BuildSubExpr(left, right, output,
+                                                     status);
+            break;
+        }
+        case ::fesql::node::kFnOpMod: {
+            ok = arithmetic_ir_builder_.BuildModExpr(left, right, output,
+                                                     status);
+            break;
+        }
+        case ::fesql::node::kFnOpAnd: {
+            ok =
+                predicate_ir_builder_.BuildAndExpr(left, right, output, status);
+            break;
+        }
+        case ::fesql::node::kFnOpOr: {
+            ok = predicate_ir_builder_.BuildOrExpr(left, right, output, status);
+            break;
+        }
+        case ::fesql::node::kFnOpEq: {
+            ok = predicate_ir_builder_.BuildEqExpr(left, right, output, status);
+            break;
+        }
+        case ::fesql::node::kFnOpNeq: {
+            ok =
+                predicate_ir_builder_.BuildNeqExpr(left, right, output, status);
+            break;
+        }
+        case ::fesql::node::kFnOpGt: {
+            ok = predicate_ir_builder_.BuildGtExpr(left, right, output, status);
+            break;
+        }
+        case ::fesql::node::kFnOpGe: {
+            ok = predicate_ir_builder_.BuildGeExpr(left, right, output, status);
+            break;
+        }
+        case ::fesql::node::kFnOpLt: {
+            ok = predicate_ir_builder_.BuildLtExpr(left, right, output, status);
+            break;
+        }
+        case ::fesql::node::kFnOpLe: {
+            ok = predicate_ir_builder_.BuildLeExpr(left, right, output, status);
+            break;
+        }
+        default: {
+            ok = false;
+            status.msg = "invalid op " + ExprOpTypeName(node->GetOp());
+            status.code = ::fesql::common::kCodegenError;
+            LOG(WARNING) << status.msg;
+        }
+    }
+
+    if (!ok) {
+        LOG(WARNING) << "fail to codegen binary expression: " << status.msg;
         return false;
     }
+    return true;
 }
 
 }  // namespace codegen

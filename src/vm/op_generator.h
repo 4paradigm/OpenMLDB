@@ -60,6 +60,9 @@ class OpGenerator {
                     const std::string& db, ::llvm::Module* module, OpNode** op,
                     Status& status);  // NOLINT
 
+    bool GenConstProject(const ::fesql::node::ProjectListPlanNode* node,
+                         ::llvm::Module* module, OpNode** op, Status& status); // NOLINT
+
     bool GenScan(const ::fesql::node::ScanPlanNode* node, const std::string& db,
                  ::llvm::Module* module, OpNode** op,
                  Status& status);  // NOLINT

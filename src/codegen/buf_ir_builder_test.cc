@@ -207,18 +207,6 @@ void RunEncode(int8_t** output_ptr) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
     ::fesql::storage::InitCodecSymbol(jd, mi);
-    ::llvm::StringRef symbol("malloc");
-    ::llvm::orc::SymbolMap symbol_map;
-    ::llvm::JITEvaluatedSymbol jit_symbol(
-        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&malloc)),
-        ::llvm::JITSymbolFlags());
-
-    symbol_map.insert(std::make_pair(mi(symbol), jit_symbol));
-    // add codec
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        ASSERT_TRUE(false);
-    }
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));

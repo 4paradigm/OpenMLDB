@@ -30,30 +30,40 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
         LOG(WARNING) << "the output ptr is NULL ";
         return false;
     }
-    ::llvm::IRBuilder<> builder(block);
+    return GetLLVMType(block->getModule(), type, output);
+}
+bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
+                 ::llvm::Type** output) {
+    if (output == NULL || m == NULL) {
+        LOG(WARNING) << "the output ptr or module  is NULL ";
+        return false;
+    }
     switch (type) {
         case ::fesql::type::kInt16: {
-            *output = builder.getInt16Ty();
+            *output = ::llvm::Type::getInt16Ty(m->getContext());
             return true;
         }
         case ::fesql::type::kInt32: {
-            *output = builder.getInt32Ty();
+            *output = ::llvm::Type::getInt32Ty(m->getContext());
             return true;
         }
         case ::fesql::type::kInt64: {
-            *output = builder.getInt64Ty();
+            *output = ::llvm::Type::getInt64Ty(m->getContext());
             return true;
         }
         case ::fesql::type::kFloat: {
-            *output = builder.getFloatTy();
+            *output = ::llvm::Type::getFloatTy(m->getContext());
             return true;
         }
         case ::fesql::type::kDouble: {
-            *output = builder.getDoubleTy();
+            *output = ::llvm::Type::getDoubleTy(m->getContext());
+            return true;
+        }
+        case ::fesql::type::kBool: {
+            *output = ::llvm::Type::getInt1Ty(m->getContext());
             return true;
         }
         case ::fesql::type::kVarchar: {
-            ::llvm::Module* m = block->getModule();
             std::string name = "fe.string_ref";
             ::llvm::StringRef sr(name);
             ::llvm::StructType* stype = m->getTypeByName(sr);
@@ -61,9 +71,10 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
                 *output = stype;
                 return true;
             }
-            stype = ::llvm::StructType::create(builder.getContext(), name);
-            ::llvm::Type* size_ty = builder.getInt32Ty();
-            ::llvm::Type* data_ptr_ty = builder.getInt8PtrTy();
+            stype = ::llvm::StructType::create(m->getContext(), name);
+            ::llvm::Type* size_ty = ::llvm::Type::getInt32Ty(m->getContext());
+            ::llvm::Type* data_ptr_ty =
+                ::llvm::Type::getInt8PtrTy(m->getContext());
             std::vector<::llvm::Type*> elements;
             elements.push_back(size_ty);
             elements.push_back(data_ptr_ty);
@@ -72,7 +83,6 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
             return true;
         }
         case ::fesql::type::kList: {
-            ::llvm::Module* m = block->getModule();
             std::string name = "fe.list_ref";
             ::llvm::StringRef sr(name);
             ::llvm::StructType* stype = m->getTypeByName(sr);
@@ -80,8 +90,9 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
                 *output = stype;
                 return true;
             }
-            stype = ::llvm::StructType::create(builder.getContext(), name);
-            ::llvm::Type* data_ptr_ty = builder.getInt8PtrTy();
+            stype = ::llvm::StructType::create(m->getContext(), name);
+            ::llvm::Type* data_ptr_ty =
+                ::llvm::Type::getInt8PtrTy(m->getContext());
             std::vector<::llvm::Type*> elements;
             elements.push_back(data_ptr_ty);
             stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
@@ -357,6 +368,10 @@ bool GetTableType(::llvm::Type* type, ::fesql::type::Type* output) {
                 }
                 case 64: {
                     *output = ::fesql::type::kInt64;
+                    return true;
+                }
+                case 1: {
+                    *output = ::fesql::type::kBool;
                     return true;
                 }
                 default: {

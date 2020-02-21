@@ -23,6 +23,8 @@
 #include "codegen/row_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "codegen/window_ir_builder.h"
+#include "codegen/arithmetic_expr_ir_builder.h"
+#include "codegen/predicate_expr_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
@@ -43,6 +45,7 @@ class ExprIRBuilder {
     bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
 
  private:
+
     bool BuildColumnIterator(const std::string& col, ::llvm::Value** output);
 
     bool BuildColumnItem(const std::string& col, ::llvm::Value** output);
@@ -73,6 +76,8 @@ class ExprIRBuilder {
     bool row_mode_;
     std::string row_ptr_name_;
     std::string row_size_name_;
+    ArithmeticIRBuilder arithmetic_ir_builder_;
+    PredicateIRBuilder predicate_ir_builder_;
     ::llvm::Module* module_;
     std::unique_ptr<RowDecodeIRBuilder> row_ir_builder_;
     std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;

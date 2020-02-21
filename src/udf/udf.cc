@@ -112,7 +112,6 @@ void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
 }  // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
-    // decode
     AddSymbol(jd, mi, "inc_int32", reinterpret_cast<void *>(&v1::inc_int32));
     AddSymbol(jd, mi, "sum_int16", reinterpret_cast<void *>(&v1::sum_int16));
     AddSymbol(jd, mi, "sum_int32", reinterpret_cast<void *>(&v1::sum_int32));
@@ -165,6 +164,16 @@ void RegisterUDFToModule(::llvm::Module *m) {
     m->getOrInsertFunction("min_int64", i64_ty, i8_ptr_ty);
     m->getOrInsertFunction("min_float", float_ty, i8_ptr_ty);
     m->getOrInsertFunction("min_double", double_ty, i8_ptr_ty);
+}
+void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
+                    ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
+    AddSymbol(jd, mi, "fmod", (reinterpret_cast<void *>(&fmod)));
+    AddSymbol(jd, mi, "fmodf", (reinterpret_cast<void *>(&fmodf)));
+}
+void InitCLibSymbol(vm::FeSQLJIT *jit_ptr) {  // NOLINT
+    ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
+                                      jit_ptr->getDataLayout());
+    InitCLibSymbol(jit_ptr->getMainJITDylib(), mi);
 }
 }  // namespace udf
 }  // namespace fesql

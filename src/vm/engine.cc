@@ -101,6 +101,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                 out_buffers.push_back(in_row);
                 break;
             }
+
             case kOpProject: {
                 ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
                 std::vector<int8_t*> output_rows;
@@ -781,6 +782,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     }
     return 0;
 }
+
 
 }  // namespace vm
 }  // namespace fesql

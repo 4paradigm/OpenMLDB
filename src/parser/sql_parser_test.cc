@@ -43,7 +43,7 @@ class SqlParserTest : public ::testing::TestWithParam<std::string> {
 };
 
 INSTANTIATE_TEST_CASE_P(
-    StringReturn, SqlParserTest,
+    SqlParse, SqlParserTest,
     testing::Values(
         "SELECT COL1 FROM t1;", "SELECT COL1 as c1 FROM t1;",
         "SELECT COL1 c1 FROM t1;", "SELECT t1.COL1 FROM t1;",
@@ -71,6 +71,20 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 - COL2 as col12 FROM t1;",
         "SELECT COL1 * COL2 as col12 FROM t1;",
         "SELECT COL1 / COL2 as col12 FROM t1;",
+        "SELECT COL1 % COL2 as col12 FROM t1;",
+        "SELECT COL1 = COL2 as col12 FROM t1;",
+        "SELECT COL1 == COL2 as col12 FROM t1;",
+        "SELECT COL1 < COL2 as col12 FROM t1;",
+        "SELECT COL1 > COL2 as col12 FROM t1;",
+        "SELECT COL1 <= COL2 as col12 FROM t1;",
+        "SELECT COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 && COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 and COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 || COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 or COL1 != COL2 as col12 FROM t1;",
+        "SELECT !(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;",
+
         "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
         "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
@@ -94,7 +108,16 @@ INSTANTIATE_TEST_CASE_P(
         "%%fun\ndef test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n\ndef "
         "test(x:i32,y:i32):i32\n    c=x+y\n    return c\nend\n",
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
-        "d\nend"));
+        "d\nend",
+        // 变量赋值
+        "%%fun\ndef test(x:i32,y:i32):i32\n    result=1\n    c=x+y\n"
+        "    result=c\n    return result\nend",
+        "%%fun\ndef test(x:i32,y:i32):i32\n\tresult=1\n\tc=x+y\n"
+        "\tresult=c\n\treturn result\nend",
+        "%%fun\ndef test(x:i32,y:i32):i32\n    result = 1\n\tc = x + y\n"
+        "\tresult=c\n\treturn result\nend",
+        "%%fun\ndef test(x:i32,y:i32):i32\n\tresult=1\n\tc = x+y\n"
+        "\tresult=c\n\treturn result\nend"));
 
 INSTANTIATE_TEST_CASE_P(
     SQLCreate, SqlParserTest,

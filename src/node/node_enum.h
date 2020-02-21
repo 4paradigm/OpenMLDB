@@ -111,6 +111,17 @@ enum FnOperator {
     kFnOpMinus,
     kFnOpMulti,
     kFnOpDiv,
+    kFnOpFDiv,
+    kFnOpMod,
+    kFnOpAnd,
+    kFnOpOr,
+    kFnOpNot,
+    kFnOpEq,
+    kFnOpNeq,
+    kFnOpLt,
+    kFnOpLe,
+    kFnOpGt,
+    kFnOpGe,
     kFnOpBracket,
     kFnOpNone
 };
@@ -126,11 +137,7 @@ enum CmdType {
     kCmdDropTable,
     kCmdExit
 };
-/**
- * Planner:
- *  basic class for plan
- *
- */
+
 enum PlanType {
     kPlanTypeCmd,
     kPlanTypeFuncDef,

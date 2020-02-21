@@ -24,12 +24,7 @@ struct Row {
     size_t size;
 };
 enum BOUND { UNBOUND, CURRENT, NORMAL };
-/**
- * Window In Buffer
- * is window slide during a given buffer
- * buffer is a vector:
- *
- */
+
 class Window {
  public:
     Window(int64_t start_offset, int64_t end_offset)
@@ -66,12 +61,6 @@ class Window {
     std::vector<uint64_t> keys_;
 };
 
-/**
- * Window In Buffer
- * is window slide during a given buffer
- * buffer is a vector:
- *
- */
 class SlideWindow {
  public:
     SlideWindow(int64_t start_offset, int64_t end_offset,
@@ -115,9 +104,7 @@ class SlideWindow {
 
 // TODO(chenjing):
 // 可以用一个vector引用初始化window，然后提供一个slide接口，只是滑动窗口边界。
-/**
- * 历史窗口，窗口内数据从历史某个时刻记录到当前记录
- */
+// 历史窗口，窗口内数据从历史某个时刻记录到当前记录
 class CurrentHistoryWindow : public Window {
  public:
     explicit CurrentHistoryWindow(int64_t start_offset)
@@ -140,9 +127,7 @@ class CurrentHistoryWindow : public Window {
     void SlideWindow() {}
 };
 
-/**
- * 历史无限窗口，窗口内数据包含所有历史到当前记录
- */
+// 历史无限窗口，窗口内数据包含所有历史到当前记录
 class CurrentHistoryUnboundWindow : public Window {
  public:
     CurrentHistoryUnboundWindow() : Window(INT64_MIN, 0) {}
@@ -161,9 +146,7 @@ class CurrentHistoryUnboundWindow : public Window {
 
 // TODO(chenjing):
 // 可以用一个vector引用初始化window，然后提供一个slide接口，只是滑动窗口边界。
-/**
- * 历史滑动窗口，窗口内数据从历史某个时刻记录到当前记录
- */
+// 历史滑动窗口，窗口内数据从历史某个时刻记录到当前记录
 class CurrentHistorySlideWindow : public SlideWindow {
  public:
     CurrentHistorySlideWindow(int64_t start_offset,
@@ -191,9 +174,7 @@ class CurrentHistorySlideWindow : public SlideWindow {
     }
 };
 
-/**
- * 历史无限滑动窗口，窗口内数据包含所有历史到当前记录
- */
+// 历史无限滑动窗口，窗口内数据包含所有历史到当前记录
 class CurrentHistoryUnboundSlideWindow : public SlideWindow {
  public:
     CurrentHistoryUnboundSlideWindow(const std::vector<Row> &buffer,
@@ -289,6 +270,7 @@ class WrapIteratorImpl : public IteratorV<V> {
     V Next() { return GetField(root_.Next()); }
     virtual const V GetField(R row) const = 0;
     void reset() { root_.reset(); }
+
  protected:
     IteratorImpl<R> root_;
 };

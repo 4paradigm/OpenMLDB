@@ -157,12 +157,10 @@ bool RowFnLetIRBuilder::BuildFnHeader(
     return true;
 }
 
-/**
- * Build function header with two int8 pointer and return int32
- * @param name
- * @param fn
- * @return
- */
+// Build function header with two int8 pointer and return int32
+// param name
+// param fn
+// return
 bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
                                       ::llvm::Function** fn) {
     std::vector<::llvm::Type*> args_type;
