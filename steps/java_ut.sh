@@ -11,6 +11,7 @@ mkdir -p java/src/main/proto/
 cp -rf src/proto/tablet.proto java/src/main/proto/
 cp -rf src/proto/name_server.proto java/src/main/proto/
 cp -rf src/proto/common.proto java/src/main/proto/
+cp -rf src/proto/type.proto java/src/main/proto/
 
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.10/conf
 cd thirdsrc/zookeeper-3.4.10
