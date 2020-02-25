@@ -167,7 +167,7 @@ private:
 
 private:
     uint32_t seg_cnt_;
-    Segment*** segments_;
+    std::vector<Segment**> segments_;
     std::atomic<bool> enable_gc_;
     uint64_t ttl_offset_;
     std::atomic<uint64_t> record_cnt_;
