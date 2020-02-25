@@ -2733,24 +2733,26 @@ void TabletImpl::CreateTable(RpcController* controller,
     std::string msg;
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
-    if (CheckTableMeta(table_meta, msg) != 0) {
-        response->set_code(129);
-        response->set_msg(msg);
-        PDLOG(WARNING, "check table_meta failed. tid[%u] pid[%u], err_msg[%s]", tid, pid, msg.c_str());
-        return;
-    }
-    std::shared_ptr<Table> table = GetTable(tid, pid);
-    std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
-    if (table || snapshot) {
-        if (table) {
-            PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
+    if (table_meta->table_type() != rtidb::api::kRelational) {
+        if (CheckTableMeta(table_meta, msg) != 0) {
+            response->set_code(129);
+            response->set_msg(msg);
+            PDLOG(WARNING, "check table_meta failed. tid[%u] pid[%u], err_msg[%s]", tid, pid, msg.c_str());
+            return;
         }
-        if (snapshot) {
-            PDLOG(WARNING, "snapshot with tid[%u] and pid[%u] exists", tid, pid);
+        std::shared_ptr<Table> table = GetTable(tid, pid);
+        std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
+        if (table || snapshot) {
+            if (table) {
+                PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
+            }
+            if (snapshot) {
+                PDLOG(WARNING, "snapshot with tid[%u] and pid[%u] exists", tid, pid);
+            }
+            response->set_code(101);
+            response->set_msg("table already exists");
+            return;
         }
-        response->set_code(101);
-        response->set_msg("table already exists");
-        return;
     }
     std::string name = table_meta->name();
     PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", 
@@ -2772,8 +2774,14 @@ void TabletImpl::CreateTable(RpcController* controller,
         response->set_msg("write data failed");
         return;
     }
-
-    if (table_meta->storage_mode() != rtidb::common::kMemory) {
+    if (table_meta->table_type() == rtidb::api::kRelational) {
+        std::string msg;
+        if (CreateDiskNoTsTableInternal(table_meta, msg) < 0) {
+            response->set_code(131);
+            response->set_msg(msg.c_str());
+            return;
+        }
+    } else if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::string msg;
         if (CreateDiskTableInternal(table_meta, false, msg) < 0) {
             response->set_code(131);
@@ -2788,30 +2796,42 @@ void TabletImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    table = GetTable(tid, pid);
-    if (!table) {
-        response->set_code(131);
-        response->set_msg("table is not exist");
-        PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
-        return; 
-    }
-    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-    if (!replicator) {
-        response->set_code(131);
-        response->set_msg("replicator is not exist");
-        PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
-        return;
-    }
-    response->set_code(0);
-    response->set_msg("ok");
-    table->SetTableStat(::rtidb::storage::kNormal);
-    replicator->StartSyncing();
-    io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
-    task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
-    PDLOG(INFO, "create table with id %u pid %u name %s abs_ttl %llu lat_ttl %llu type %s", 
+    if (table_meta->table_type() != rtidb::api::kRelational) {
+        std::shared_ptr<Table> table = GetTable(tid, pid);
+        if (!table) {
+            response->set_code(131);
+            response->set_msg("table is not exist");
+            PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
+            return; 
+        }
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        if (!replicator) {
+            response->set_code(131);
+            response->set_msg("replicator is not exist");
+            PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
+            return;
+        }
+        response->set_code(0);
+        response->set_msg("ok");
+        table->SetTableStat(::rtidb::storage::kNormal);
+        replicator->StartSyncing();
+        io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
+        task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+        PDLOG(INFO, "create table with id %u pid %u name %s abs_ttl %llu lat_ttl %llu type %s", 
                 tid, pid, name.c_str(), table_meta->ttl_desc().abs_ttl(), table_meta->ttl_desc().lat_ttl(),
                 ::rtidb::api::TTLType_Name(table_meta->ttl_desc().ttl_type()).c_str());
-    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
+        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
+    } else {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        std::shared_ptr<DiskNoTsTable> table = GetNoTsTableUnLock(tid, pid);
+        if (!table) {
+            response->set_code(131);
+            response->set_msg("table is not exist");
+            PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
+            return; 
+        }
+        table->SetTableStat(::rtidb::storage::kNormal);
+    }
 }
 
 void TabletImpl::ExecuteGc(RpcController* controller,
@@ -3351,6 +3371,32 @@ int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_met
     return 0;
 }
 
+int TabletImpl::CreateDiskNoTsTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
+    uint32_t tid = table_meta->tid();
+    uint32_t pid = table_meta->pid();
+    std::string db_root_path;
+    bool ok = ChooseDBRootPath(table_meta->tid(), table_meta->pid(), table_meta->storage_mode(), db_root_path);
+    if (!ok) {
+        PDLOG(WARNING, "fail to get table db root path");
+        msg.assign("fail to get table db root path");
+        return -1;
+    }
+    DiskNoTsTable* table_ptr = new DiskNoTsTable(*table_meta, db_root_path);
+    if (!table_ptr->Init()) {
+        return -1;
+    }
+    PDLOG(INFO, "create disk no ts table. tid %u pid %u", tid, pid);
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+    std::shared_ptr<DiskNoTsTable> table = GetNoTsTableUnLock(tid, pid);
+    if (table) {
+        PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
+        return -1;
+    }
+    table.reset(table_ptr);
+    no_ts_tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
+    return 0;
+}
+
 void TabletImpl::DropTable(RpcController* controller,
             const ::rtidb::api::DropTableRequest* request,
             ::rtidb::api::DropTableResponse* response,
@@ -3634,6 +3680,17 @@ std::shared_ptr<Table> TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
         }
     }
     return std::shared_ptr<Table>();
+}
+
+std::shared_ptr<DiskNoTsTable> TabletImpl::GetNoTsTableUnLock(uint32_t tid, uint32_t pid) {
+    NoTsTables::iterator it = no_ts_tables_.find(tid);
+    if (it != no_ts_tables_.end()) {
+        auto tit = it->second.find(pid);
+        if (tit != it->second.end()) {
+            return tit->second;
+        }
+    }
+    return std::shared_ptr<DiskNoTsTable>();
 }
 
 void TabletImpl::ShowMemPool(RpcController* controller,

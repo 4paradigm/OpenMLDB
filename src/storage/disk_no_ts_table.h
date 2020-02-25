@@ -61,16 +61,21 @@ public:
     bool Put(const std::string& value,
              const Dimensions& dimensions);
 
-    bool Get(uint32_t idx, const std::string& pk, 
-            std::string& value);
-
     bool Get(uint32_t idx, const std::string& pk, std::string& value);
 
     bool Get(const std::string& pk, std::string& value);
 
-    bool Delete(const std::string& pk, uint32_t idx) override;
+    bool Delete(const std::string& pk, uint32_t idx);
 
-    virtual uint64_t GetRecordCnt() const override {
+    inline uint32_t GetTableStat() {
+        return table_status_.load(std::memory_order_relaxed);
+    }
+
+    inline void SetTableStat(uint32_t table_status) {
+        table_status_.store(table_status, std::memory_order_relaxed);
+    }
+
+    uint64_t GetRecordCnt() const {
         uint64_t count = 0;
         if (cf_hs_.size() == 1)
             db_->GetIntProperty(cf_hs_[0], "rocksdb.estimate-num-keys", &count);
@@ -112,7 +117,6 @@ private:
     std::vector<rocksdb::ColumnFamilyDescriptor> cf_ds_;
     std::vector<rocksdb::ColumnFamilyHandle*> cf_hs_;
     rocksdb::Options options_;
-    rocksdb::Comparator cmp_;
     std::atomic<uint64_t> offset_;
     std::string db_root_path_;
 };

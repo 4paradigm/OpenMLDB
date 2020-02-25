@@ -30,10 +30,8 @@ enum TabletState {
 }
 
 enum TableType {
-    // KV table 
-    kKVTable = 1;
-    // Time Series table
-    kTSTable = 2;
+    kTimeSeries = 1; //时序表
+    kRelational = 2; //关系型表
 }
 
 enum TTLType {
@@ -334,6 +332,7 @@ message TableMeta {
     optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
     optional TTLDesc ttl_desc = 19;
+    optional TableType table_type = 20 [default = kRelational];
 }
 
 message CreateTableRequest {

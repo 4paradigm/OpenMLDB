@@ -22,11 +22,11 @@ static rocksdb::Options hdd_option_template;
 static bool options_template_initialized = false;
 
 DiskNoTsTable::DiskNoTsTable(const std::string &name, uint32_t id, uint32_t pid,
-        bool is_leader, const std::map<std::string, uint32_t> &mapping, 
+        const std::map<std::string, uint32_t> &mapping, 
         ::rtidb::common::StorageMode storage_mode,
         const std::string& db_root_path) :
     storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
-    is_leader_(is_leader), mapping_(mapping), compress_type_(compress_type), last_make_snapshot_time_(0).  
+    mapping_(mapping), last_make_snapshot_time_(0),  
     write_opts_(), offset_(0), db_root_path_(db_root_path){
         if (!options_template_initialized) {
             initOptionTemplate();
@@ -37,8 +37,9 @@ DiskNoTsTable::DiskNoTsTable(const std::string &name, uint32_t id, uint32_t pid,
 
 DiskNoTsTable::DiskNoTsTable(const ::rtidb::api::TableMeta& table_meta,
         const std::string& db_root_path) :
-    storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
-    is_leader_(is_leader), mapping_(mapping), compress_type_(compress_type), last_make_snapshot_time_(0).  
+    storage_mode_(table_meta.storage_mode()), name_(table_meta.name()), id_(table_meta.tid()), pid_(table_meta.pid()),
+    is_leader_(false), mapping_(std::map<std::string, uint32_t>()), 
+    compress_type_(table_meta.compress_type()), last_make_snapshot_time_(0),   
     write_opts_(), offset_(0), db_root_path_(db_root_path){
     table_meta_.CopyFrom(table_meta);
     if (!options_template_initialized) {
@@ -119,7 +120,6 @@ bool DiskNoTsTable::InitColumnFamilyDescriptor() {
             cfo = rocksdb::ColumnFamilyOptions(hdd_option_template);
             options_ = hdd_option_template;
         }
-        cfo.comparator = &cmp_;
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(iter->first, cfo));
         PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
     }
@@ -127,9 +127,11 @@ bool DiskNoTsTable::InitColumnFamilyDescriptor() {
 }
 
 bool DiskNoTsTable::Init() {
+    /**
     if (!InitFromMeta()) {
         return false;
     }
+    */
     InitColumnFamilyDescriptor();
     std::string path = db_root_path_ + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     if (!::rtidb::base::MkdirRecur(path)) {

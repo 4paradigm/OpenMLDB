@@ -15,6 +15,7 @@
 #include "storage/disk_table_snapshot.h"
 #include "storage/mem_table.h"
 #include "storage/disk_table.h"
+#include "storage/disk_no_ts_table.h"
 #include "tablet/file_receiver.h"
 #include "thread_pool.h"
 #include "base/set.h"
@@ -31,6 +32,7 @@ using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
 using ::rtidb::storage::MemTable;
 using ::rtidb::storage::DiskTable;
+using ::rtidb::storage::DiskNoTsTable;
 using ::rtidb::storage::Snapshot;
 using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
@@ -42,6 +44,7 @@ const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 namespace rtidb {
 namespace tablet {
 
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<DiskNoTsTable> > > NoTsTables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
@@ -286,6 +289,7 @@ private:
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
     //std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
     //std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t pid);
+    std::shared_ptr<DiskNoTsTable> GetNoTsTableUnLock(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
@@ -298,6 +302,9 @@ private:
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
 
     int CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta, bool is_load, std::string& msg);
+
+    int CreateDiskNoTsTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
+
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
@@ -376,6 +383,7 @@ private:
     void SchedDelRecycle();
 
 private:
+    NoTsTables no_ts_tables_;
     Tables tables_;
     std::mutex mu_;
     SpinMutex spin_mutex_;
