@@ -490,7 +490,6 @@ void TabletImpl::Get(RpcController* controller,
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
                 response->set_code(100);
                 response->set_msg("table is not exist");
-                done->Run();
                 return;
             }
         }
@@ -1453,7 +1452,6 @@ void TabletImpl::Delete(RpcController* controller,
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
                 response->set_code(100);
                 response->set_msg("table is not exist");
-                done->Run();
                 return;
             }
         }
@@ -2834,6 +2832,77 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
     return 0;
 }
 
+int32_t TabletImpl::DeleteNoTsTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
+    std::string root_path;
+    std::string recycle_bin_root_path;
+    int32_t code = -1;
+    do {
+        std::shared_ptr<DiskNoTsTable> table;
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            table = GetNoTsTableUnLock(tid, pid);
+            if (!table) {
+                PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+                break;
+            }
+        }
+        if (!table) {
+            PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
+            break;
+        }
+        bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path);
+        if (!ok) {
+            PDLOG(WARNING, "fail to get db root path. tid %u pid %u", tid, pid);
+            break;
+        }
+        ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(), recycle_bin_root_path);
+        if (!ok) {
+            PDLOG(WARNING, "fail to get recycle bin root path. tid %u pid %u", tid, pid);
+            break;
+        }
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            tables_[tid].erase(pid);
+            if (tables_[tid].empty()) {
+                tables_.erase(tid);
+            }
+        }
+        code = 0;
+    } while (0);
+    if (code < 0) {
+        if (task_ptr) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+        }
+        return code;
+    }
+
+    std::string source_path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    if (!::rtidb::base::IsExists(source_path)) {
+        if (task_ptr) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        } 
+        PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
+        return 0;
+    }
+
+    if(FLAGS_recycle_bin_enabled) {
+        std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + 
+                "_" + std::to_string(pid) + "_" + ::rtidb::base::GetNowTime();
+        ::rtidb::base::Rename(source_path, recycle_path);
+    } else {
+        ::rtidb::base::RemoveDirRecursive(source_path);
+    }
+
+    if (task_ptr) {
+        std::lock_guard<std::mutex> lock(mu_);
+        task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+    }
+    PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
+    return 0;
+}
+
 void TabletImpl::CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,
@@ -3524,22 +3593,37 @@ void TabletImpl::DropTable(RpcController* controller,
     uint32_t pid = request->pid();
     PDLOG(INFO, "drop table. tid[%u] pid[%u]", tid, pid);
     do {
-        std::shared_ptr<Table> table = GetTable(tid, pid);
-        if (!table) {
-            response->set_code(100);
-            response->set_msg("table is not exist");
-            break;
-        } else {
-            if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
-                PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
-                response->set_code(106);
-                response->set_msg("table status is kMakingSnapshot");
+        if (request->table_type() != rtidb::api::kRelational) {
+            std::shared_ptr<Table> table = GetTable(tid, pid);
+            if (!table) {
+                response->set_code(100);
+                response->set_msg("table is not exist");
                 break;
+            } else {
+                if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
+                    PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
+                    response->set_code(106);
+                    response->set_msg("table status is kMakingSnapshot");
+                    break;
+                }
             }
+            task_pool_.AddTask(boost::bind(&TabletImpl::DeleteTableInternal, this, tid, pid, task_ptr));
+        } else {
+            std::shared_ptr<DiskNoTsTable> table;
+            {
+                std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+                table = GetNoTsTableUnLock(request->tid(), request->pid());
+                if (!table) {
+                    PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+                    response->set_code(100);
+                    response->set_msg("table is not exist");
+                    break;
+                }
+            }
+            task_pool_.AddTask(boost::bind(&TabletImpl::DeleteNoTsTableInternal, this, tid, pid, task_ptr));
         }
         response->set_code(0);
         response->set_msg("ok");
-        task_pool_.AddTask(boost::bind(&TabletImpl::DeleteTableInternal, this, tid, pid, task_ptr));
         return;
     } while (0);
     if (task_ptr) {       

@@ -69,6 +69,10 @@ public:
 
     bool Delete(const std::string& pk, uint32_t idx);
 
+    inline ::rtidb::common::StorageMode GetStorageMode() const {
+        return storage_mode_;
+    }
+
     inline uint32_t GetTableStat() {
         return table_status_.load(std::memory_order_relaxed);
     }

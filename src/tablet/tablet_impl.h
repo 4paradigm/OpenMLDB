@@ -321,6 +321,8 @@ private:
 
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
+    int32_t DeleteNoTsTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+
     int LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
     int LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::rtidb::api::TableMeta& table_meta,
                 std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
