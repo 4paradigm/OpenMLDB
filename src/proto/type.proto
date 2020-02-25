@@ -1,0 +1,18 @@
+package rtidb.type;
+
+option cc_generic_services = false;
+option java_package = "com._4paradigm.rtidb.type";
+option java_outer_classname = "Type";
+
+enum DataType {
+    kBool = 1;
+    kInt16 = 2;
+    kInt32 = 3;
+    kInt64 = 4;
+    kFloat = 5;
+    kDouble = 6;
+    kVarchar = 7;
+    kDate = 8;
+    kTimestamp = 9;
+    kVoid = 100;
+}
