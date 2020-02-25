@@ -61,12 +61,12 @@ RowBuilder::RowBuilder(const Schema& schema)
       str_offset_(0) {
     str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema.size());
     for (int idx = 0; idx < schema.size(); idx++) {
-        const ::rtidb::common::ColumnDef& column = schema.Get(idx);
-        if (column.type() == ::rtidb::common::kVarchar) {
+        const ::rtidb::common::ColumnDesc& column = schema.Get(idx);
+        if (column.data_type() == ::rtidb::common::kVarchar) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
-            auto iter = TYPE_SIZE_MAP.find(column.type());
+            auto iter = TYPE_SIZE_MAP.find(column.data_type());
             if (iter == TYPE_SIZE_MAP.end()) {
                 PDLOG(WARNING, "type is not supported");
             } else {
@@ -117,12 +117,12 @@ bool RowBuilder::Check(::rtidb::common::DataType type) {
     if ((int32_t)cnt_ >= schema_.size()) {
         return false;
     }
-    const ::rtidb::common::ColumnDef& column = schema_.Get(cnt_);
-    if (column.type() != type) {
+    const ::rtidb::common::ColumnDesc& column = schema_.Get(cnt_);
+    if (column.data_type() != type) {
         return false;
     }
-    if (column.type() != ::rtidb::common::kVarchar) {
-        auto iter = TYPE_SIZE_MAP.find(column.type());
+    if (column.data_type() != ::rtidb::common::kVarchar) {
+        auto iter = TYPE_SIZE_MAP.find(column.data_type());
         if (iter == TYPE_SIZE_MAP.end()) {
             return false;
         }
@@ -133,8 +133,8 @@ bool RowBuilder::Check(::rtidb::common::DataType type) {
 bool RowBuilder::AppendNULL() {
     int8_t* ptr = buf_ + HEADER_LENGTH + (cnt_ >> 3);
     *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (cnt_ & 0x07);
-    const ::rtidb::common::ColumnDef& column = schema_.Get(cnt_);
-    if (column.type() == ::rtidb::common::kVarchar) {
+    const ::rtidb::common::ColumnDesc& column = schema_.Get(cnt_);
+    if (column.data_type() == ::rtidb::common::kVarchar) {
         ptr = buf_ + str_field_start_offset_ +
               str_addr_length_ * offset_vec_[cnt_];
         if (str_addr_length_ == 1) {
@@ -267,12 +267,12 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
 bool RowView::Init() {
     uint32_t offset = HEADER_LENGTH + BitMapSize(schema_.size());
     for (int idx = 0; idx < schema_.size(); idx++) {
-        const ::rtidb::common::ColumnDef& column = schema_.Get(idx);
-        if (column.type() == ::rtidb::common::kVarchar) {
+        const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+        if (column.data_type() == ::rtidb::common::kVarchar) {
             offset_vec_.push_back(string_field_cnt_);
             string_field_cnt_++;
         } else {
-            auto iter = TYPE_SIZE_MAP.find(column.type());
+            auto iter = TYPE_SIZE_MAP.find(column.data_type());
             if (iter == TYPE_SIZE_MAP.end()) {
                 is_valid_ = false;
                 return false;
@@ -320,8 +320,8 @@ bool RowView::CheckValid(uint32_t idx, ::rtidb::common::DataType type) {
     if ((int32_t)idx >= schema_.size()) {
         return false;
     }
-    const ::rtidb::common::ColumnDef& column = schema_.Get(idx);
-    if (column.type() != type) {
+    const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+    if (column.data_type() != type) {
         return false;
     }
     return true;
@@ -474,8 +474,8 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
     if ((int32_t)idx >= schema_.size()) {
         return -1;
     }
-    const ::rtidb::common::ColumnDef& column = schema_.Get(idx);
-    if (column.type() != type) {
+    const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+    if (column.data_type() != type) {
         return -1;
     }
     if (GetSize(row) <= HEADER_LENGTH) {
@@ -525,9 +525,8 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
     if ((int32_t)idx >= schema_.size()) {
         return false;
     }
-    const ::rtidb::common::ColumnDef& column = schema_.Get(idx);
-    if (column.type() != ::rtidb::common::kVarchar) {
-
+    const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+    if (column.data_type() != ::rtidb::common::kVarchar) {
         return false;
     }
     uint32_t size = GetSize(row);
