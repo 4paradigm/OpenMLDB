@@ -204,7 +204,7 @@ class RowBuilder {
     bool AppendNULL();
 
  private:
-    bool Check(::rtidb::common::DataType type);
+    bool Check(::rtidb::type::DataType type);
 
  private:
     const Schema& schema_;
@@ -241,17 +241,17 @@ class RowView {
         return *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
     }
 
-    int32_t GetValue(const int8_t* row, uint32_t idx, ::rtidb::common::DataType type,
+    int32_t GetValue(const int8_t* row, uint32_t idx, ::rtidb::type::DataType type,
                      void* val);
 
     int32_t GetInteger(const int8_t* row, uint32_t idx,
-                       ::rtidb::common::DataType type, int64_t* val);
+                       ::rtidb::type::DataType type, int64_t* val);
     int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
                      uint32_t* length);
 
  private:
     bool Init();
-    bool CheckValid(uint32_t idx, ::rtidb::common::DataType type);
+    bool CheckValid(uint32_t idx, ::rtidb::type::DataType type);
 
     inline bool IsNULL(const int8_t* row, uint32_t idx) {
         const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);

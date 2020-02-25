@@ -61,13 +61,13 @@ TEST_F(CodecTest, NULLTest) {
     Schema schema;
     ::rtidb::common::ColumnDesc* col = schema.Add();
     col->set_name("col1");
-    col->set_data_type(::rtidb::common::kInt16);
+    col->set_data_type(::rtidb::type::kInt16);
     col = schema.Add();
     col->set_name("col2");
-    col->set_data_type(::rtidb::common::kBool);
+    col->set_data_type(::rtidb::type::kBool);
     col = schema.Add();
     col->set_name("col3");
-    col->set_data_type(::rtidb::common::kVarchar);
+    col->set_data_type(::rtidb::type::kVarchar);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(1);
     std::string row;
@@ -91,19 +91,19 @@ TEST_F(CodecTest, Normal) {
     Schema schema;
     ::rtidb::common::ColumnDesc* col = schema.Add();
     col->set_name("col1");
-    col->set_data_type(::rtidb::common::kInt32);
+    col->set_data_type(::rtidb::type::kInt32);
     col = schema.Add();
     col->set_name("col2");
-    col->set_data_type(::rtidb::common::kInt16);
+    col->set_data_type(::rtidb::type::kInt16);
     col = schema.Add();
     col->set_name("col3");
-    col->set_data_type(::rtidb::common::kFloat);
+    col->set_data_type(::rtidb::type::kFloat);
     col = schema.Add();
     col->set_name("col4");
-    col->set_data_type(::rtidb::common::kDouble);
+    col->set_data_type(::rtidb::type::kDouble);
     col = schema.Add();
     col->set_name("col5");
-    col->set_data_type(::rtidb::common::kInt64);
+    col->set_data_type(::rtidb::type::kInt64);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
     std::string row;
@@ -129,11 +129,11 @@ TEST_F(CodecTest, Encode) {
         ::rtidb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 3 == 0) {
-            col->set_data_type(::rtidb::common::kInt16);
+            col->set_data_type(::rtidb::type::kInt16);
         } else if (i % 3 == 1) {
-            col->set_data_type(::rtidb::common::kDouble);
+            col->set_data_type(::rtidb::type::kDouble);
         } else {
-            col->set_data_type(::rtidb::common::kVarchar);
+            col->set_data_type(::rtidb::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -180,11 +180,11 @@ TEST_F(CodecTest, AppendNULL) {
         ::rtidb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 3 == 0) {
-            col->set_data_type(::rtidb::common::kInt16);
+            col->set_data_type(::rtidb::type::kInt16);
         } else if (i % 3 == 1) {
-            col->set_data_type(::rtidb::common::kDouble);
+            col->set_data_type(::rtidb::type::kDouble);
         } else {
-            col->set_data_type(::rtidb::common::kVarchar);
+            col->set_data_type(::rtidb::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
@@ -253,9 +253,9 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
         ::rtidb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 2 == 0) {
-            col->set_data_type(::rtidb::common::kInt16);
+            col->set_data_type(::rtidb::type::kInt16);
         } else {
-            col->set_data_type(::rtidb::common::kVarchar);
+            col->set_data_type(::rtidb::type::kVarchar);
         }
     }
     RowBuilder builder(schema);
