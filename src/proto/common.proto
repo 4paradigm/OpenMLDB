@@ -21,6 +21,7 @@ message ColumnDesc {
     optional uint64 ttl = 5 [default = 0, deprecated = true];
     optional uint64 abs_ttl = 6 [default = 0];
     optional uint64 lat_ttl = 7 [default = 0];
+    optional DataType data_type = 8;
 }
 
 message ColumnKey {
@@ -51,11 +52,4 @@ enum DataType {
     kDate = 8;
     kTimestamp = 9;
     kVoid = 100;
-}
-
-message ColumnDef {
-    optional string name = 1;
-    optional DataType type = 2;
-    optional uint32 offset = 3;
-    optional bool is_not_null = 4;
 }
