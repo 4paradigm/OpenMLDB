@@ -1,5 +1,5 @@
 //
-// Created by yangjun on 12/14/18.
+// Created by wangbao on 02/24/20. 
 //
 
 #pragma once
@@ -50,6 +50,10 @@ public:
 
     bool InitColumnFamilyDescriptor();
 
+    int InitColumnDesc();
+    
+    bool InitFromMeta();
+
     bool Init();
 
     static void initOptionTemplate();
@@ -63,12 +67,14 @@ public:
 
     bool Get(uint32_t idx, const std::string& pk, std::string& value);
 
-    bool Get(const std::string& pk, std::string& value);
-
     bool Delete(const std::string& pk, uint32_t idx);
 
     inline uint32_t GetTableStat() {
         return table_status_.load(std::memory_order_relaxed);
+    }
+
+    inline uint32_t GetIdxCnt() const {
+        return idx_cnt_;
     }
 
     inline void SetTableStat(uint32_t table_status) {

@@ -126,12 +126,48 @@ bool DiskNoTsTable::InitColumnFamilyDescriptor() {
     return true;
 }
 
+int DiskNoTsTable::InitColumnDesc() {
+    if (table_meta_.column_desc_size() > 0) {
+        uint32_t key_idx = 0;
+        for (const auto &column_desc : table_meta_.column_desc()) {
+            if (column_desc.add_ts_idx()) {
+                mapping_.insert(std::make_pair(column_desc.name(), key_idx));
+                key_idx++;
+            } 
+        }
+    } else {
+        for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
+            mapping_.insert(std::make_pair(table_meta_.dimensions(i), (uint32_t) i));
+            PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u",
+                  table_meta_.dimensions(i).c_str(), i, table_meta_.name().c_str(), id_, pid_);
+        }
+    }
+    // add default dimension
+    if (mapping_.empty()) {
+        mapping_.insert(std::make_pair("idx0", 0));
+        PDLOG(INFO, "no index specified with default");
+    }
+    return 0;
+}
+
+bool DiskNoTsTable::InitFromMeta() {
+    if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
+        is_leader_ = false;
+    }
+    if (InitColumnDesc() < 0) {
+        PDLOG(WARNING, "init column desc failed, tid %u pid %u", id_, pid_);
+        return false;
+    }
+    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
+    if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
+    idx_cnt_ = mapping_.size();
+    return true;
+}
+
 bool DiskNoTsTable::Init() {
-    /**
     if (!InitFromMeta()) {
         return false;
     }
-    */
     InitColumnFamilyDescriptor();
     std::string path = db_root_path_ + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     if (!::rtidb::base::MkdirRecur(path)) {
