@@ -1,4 +1,6 @@
+import "type.proto";
 package rtidb.common;
+
 option cc_generic_services = false;
 option java_package = "com._4paradigm.rtidb.common";
 option java_outer_classname = "Common";
@@ -21,6 +23,7 @@ message ColumnDesc {
     optional uint64 ttl = 5 [default = 0, deprecated = true];
     optional uint64 abs_ttl = 6 [default = 0];
     optional uint64 lat_ttl = 7 [default = 0];
+    optional rtidb.type.DataType data_type = 8;
 }
 
 message ColumnKey {
