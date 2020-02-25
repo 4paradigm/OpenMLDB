@@ -11,6 +11,18 @@ enum CompressType {
     kSnappy = 1;
 }
 
+enum ServerMode {
+    kNORMAL = 0;
+    kLEADER = 1;
+    kFOLLOWER = 2;
+}
+
+enum ClusterStatus {
+    kClusterHealthy = 0;
+    kClusterOffline = 1;
+    kClusterRemove = 2;
+}
+
 message ColumnDesc {
     required string name = 1;
     required string type = 2;
@@ -25,6 +37,9 @@ message PartitionMeta {
     optional uint64 record_cnt = 5;
     optional uint64 record_byte_size = 6;
     optional bool tablet_has_partition = 7 [default = true];
+    optional uint64 diskused = 8 [default = 0];
+    optional uint32 remote_tid = 9 [default = 4294967295]; // 4294967295 is UINT32 max value
+    optional string alias = 10;
 }
 
 message TermPair {
@@ -38,6 +53,8 @@ message TablePartition {
     repeated TermPair term_offset = 3;
     optional uint64 record_cnt = 4;
     optional uint64 record_byte_size = 5;
+    optional uint64 diskused = 6 [default = 0];
+    repeated PartitionMeta remote_partition_meta = 7;
 }
 
 message UpdateTTLRequest {
@@ -74,10 +91,27 @@ message TableInfo {
 
 message CreateTableRequest {
     required TableInfo table_info = 1;
+    optional ZoneInfo zone_info = 2;
+    optional rtidb.api.TaskInfo task_info = 3;
 }
 
 message DropTableRequest {
     required string name = 1;
+    optional ZoneInfo zone_info = 2;
+    optional rtidb.api.TaskInfo task_info = 3;
+}
+
+message LoadTableRequest {
+    optional string name = 1;
+    optional string endpoint = 2;
+    optional uint32 pid = 3;
+    optional ZoneInfo zone_info = 4;
+    optional rtidb.api.TaskInfo task_info = 5;
+}
+
+message CreateTableInfoRequest {
+    optional TableInfo table_info = 1;
+    optional ZoneInfo zone_info = 2;
 }
 
 message ShowTableRequest {
@@ -93,12 +127,16 @@ message ShowTableResponse {
 message MakeSnapshotNSRequest {
     required string name = 1;
     required uint32 pid = 2;
+    optional uint64 offset = 3;
 }
 
 message AddReplicaData {
     required string name = 1;
     required uint32 pid = 2;
-    required string endpoint = 3;
+    optional string endpoint = 3;
+    optional uint32 remote_tid = 4; //for remote
+    optional string alias = 5; //for remote 
+    optional TablePartition table_partition = 6; //for remote
 }
 
 message AddReplicaNSRequest {
@@ -106,6 +144,9 @@ message AddReplicaNSRequest {
     required uint32 pid = 2;
     required string endpoint = 3;
     repeated uint32 pid_group = 4;
+    repeated string endpoint_group = 5; //for remote
+    optional ZoneInfo zone_info = 6; //for remote
+    optional rtidb.api.TaskInfo task_info = 7; //for remote
 }
 
 message Pair {
@@ -145,6 +186,12 @@ message RecoverEndpointRequest {
 message GeneralResponse {
     required int32 code = 1;
     optional string msg = 2;
+}
+
+message CreateTableInfoResponse {
+    optional TableInfo table_info = 1;
+    required int32 code = 2;
+    optional string msg = 3;
 }
 
 message ShowTabletRequest {}
@@ -204,6 +251,12 @@ message RecoverTableData {
     optional uint32 concurrency = 4;
 }
 
+message CreateTableData {
+    optional string alias = 1;
+    optional TableInfo table_info = 2;
+    optional TableInfo remote_table_info = 3;
+}
+
 message ChangeLeaderData {
     optional string name = 1;
     optional uint32 tid = 2;
@@ -213,6 +266,7 @@ message ChangeLeaderData {
     optional string leader = 6;
     repeated string follower = 7;
     optional string candidate_leader = 8;
+    repeated rtidb.common.EndpointAndTid remote_follower = 9;
 }
 
 message OPStatus {
@@ -224,6 +278,7 @@ message OPStatus {
     required string task_type = 6;
     optional string name = 7;
     optional uint32 pid = 8;
+    optional int32 for_replica_cluster = 9 [default = 0];   
 }
 
 message GetTablePartitionRequest {
@@ -267,6 +322,57 @@ message CancelOPRequest {
     optional uint64 op_id = 1;
 }
 
+message ClusterAddress {
+    optional string zk_endpoints = 1;
+    optional string zk_path = 2;
+    optional string alias = 3;
+}
+
+message GeneralRequest {}
+
+message ClusterAddAge {
+    optional ClusterAddress replica = 1;
+    optional uint64 age = 2;
+    optional string state = 3;
+}
+message ShowReplicaClusterResponse {
+    repeated ClusterAddAge replicas = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message RemoveReplicaOfRequest {
+    optional string alias = 1;
+}
+
+message ReplicaClusterByNsRequest {
+    optional ZoneInfo zone_info = 1;
+}
+
+message ZoneInfo {
+    optional string zone_name = 1;
+    optional string replica_alias = 2;
+    optional uint64 zone_term = 3;
+    optional ServerMode mode = 4;
+}
+
+message AddReplicaClusterByNsResponse {
+    repeated TabletStatus tablets = 1;
+    repeated TableInfo table_info = 2;
+    required int32 code = 3;
+    optional string msg = 4;
+}
+
+message SwitchModeRequest {
+    optional ServerMode sm = 1;
+}
+
+message SyncTableRequest {
+    optional string name = 1;
+    optional string cluster_alias = 2;
+    optional uint32 pid = 3;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -291,4 +397,17 @@ service NameServer {
     rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
     rpc UpdateTableAliveStatus(UpdateTableAliveRequest) returns (GeneralResponse);
     rpc AddTableField(AddTableFieldRequest) returns (GeneralResponse);
+    rpc AddReplicaCluster(ClusterAddress) returns (GeneralResponse);
+    rpc ShowReplicaCluster(GeneralRequest) returns (ShowReplicaClusterResponse);
+    rpc RemoveReplicaCluster(RemoveReplicaOfRequest) returns (GeneralResponse);
+    rpc AddReplicaClusterByNs(ReplicaClusterByNsRequest) returns (AddReplicaClusterByNsResponse);
+    rpc RemoveReplicaClusterByNs(ReplicaClusterByNsRequest) returns (GeneralResponse);
+    rpc SwitchMode(SwitchModeRequest) returns (GeneralResponse);
+    rpc GetTaskStatus(rtidb.api.TaskStatusRequest) returns (rtidb.api.TaskStatusResponse);
+    rpc DeleteOPTask(rtidb.api.DeleteTaskRequest) returns (rtidb.api.GeneralResponse);
+    rpc CreateTableInfo(CreateTableInfoRequest) returns (CreateTableInfoResponse);
+    rpc CreateTableInfoSimply(CreateTableInfoRequest) returns (CreateTableInfoResponse);
+    rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
+    rpc AddReplicaNSFromRemote(AddReplicaNSRequest) returns (GeneralResponse);
+    rpc SyncTable(SyncTableRequest) returns (GeneralResponse);
 }
