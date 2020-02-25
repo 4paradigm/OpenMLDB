@@ -43,7 +43,6 @@ MemTable::MemTable(const std::string& name,
         pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
         ttl_type, ::rtidb::api::CompressType::kNoCompress),
         seg_cnt_(seg_cnt),
-        segments_(NULL), 
         enable_gc_(false), 
         record_cnt_(0), time_offset_(0),
         segment_released_(false), record_byte_size_(0) {}
@@ -54,7 +53,6 @@ MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) :
                 ::rtidb::api::TTLType::kAbsoluteTime, 
                 ::rtidb::api::CompressType::kNoCompress) {
     seg_cnt_ = 8;
-    segments_ = NULL; 
     enable_gc_ = false;
     record_cnt_ = 0;
     time_offset_ = 0;
@@ -65,17 +63,17 @@ MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) :
 }
 
 MemTable::~MemTable() {
-    if (segments_ == NULL) {
+    if (segments_.empty()) {
         return;
     }
     Release();
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
+    for (uint32_t i = 0; i < segments_.size(); i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             delete segments_[i][j];
         }
         delete[] segments_[i];
     }
-    delete[] segments_;
+    segments_.clear();
 }
 
 
@@ -99,20 +97,20 @@ bool MemTable::Init() {
         }
     }
 
-    segments_ = new Segment**[idx_cnt_];
     for (uint32_t i = 0; i < idx_cnt_; i++) {
-        segments_[i] = new Segment*[seg_cnt_];
+        Segment** seg_arr = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             if (column_key_map_.find(i) != column_key_map_.end()) {
-                segments_[i][j] = new Segment(key_entry_max_height_, column_key_map_[i]);
+                seg_arr[j] = new Segment(key_entry_max_height_, column_key_map_[i]);
                 PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u", 
                             i, j, key_entry_max_height_, column_key_map_[i].size());
             } else {
-                segments_[i][j] = new Segment(key_entry_max_height_);
+                seg_arr[j] = new Segment(key_entry_max_height_);
                 PDLOG(INFO, "init %u, %u segment. height %u", 
                             i, j, key_entry_max_height_);
             }
         }
+        segments_.push_back(seg_arr);
     }
     if (abs_ttl_ > 0 || lat_ttl_ > 0) {
         enable_gc_ = true;
@@ -147,6 +145,7 @@ bool MemTable::Put(const std::string& pk,
                 uint64_t time,
                 const char* data, 
                 uint32_t size) {
+    if (segments_.empty()) return false;
     uint32_t index = 0;
     if (seg_cnt_ > 1) {
         index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
@@ -265,11 +264,11 @@ uint64_t MemTable::Release() {
     if (segment_released_) {
         return 0;
     }
-    if (segments_ == NULL) {
+    if (segments_.empty()) {
         return 0;
     }
     uint64_t total_cnt = 0;
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
+    for (uint32_t i = 0; i < segments_.size(); i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             if (segments_[i] != NULL) {
                 total_cnt += segments_[i][j]->Release();
@@ -277,6 +276,7 @@ uint64_t MemTable::Release() {
         }
     }
     segment_released_ = true;
+    segments_.clear();
     return total_cnt;
 }
 
@@ -527,8 +527,9 @@ TableIterator* MemTable::NewIterator(const std::string& pk, Ticket& ticket) {
 }
 
 TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
-    if (index >= idx_cnt_) {
-        PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
+    if (index >= idx_cnt_ || index >= segments_.size()) {
+        PDLOG(WARNING, "invalid idx %u, the max idx cnt %u, segment size %u", 
+                        index, idx_cnt_, segments_.size());
         return NULL;
     }
     auto column_map_iter = column_key_map_.find(index);
@@ -598,7 +599,7 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (stat == NULL) {
         return false;
     }
-    if (idx >= idx_cnt_) {
+    if (idx >= idx_cnt_ || idx >= segments_.size()) {
         return false;
     }
     uint64_t* data_array = new uint64_t[seg_cnt_];
