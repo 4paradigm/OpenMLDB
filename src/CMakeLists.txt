@@ -97,7 +97,7 @@ target_link_libraries(tablet_impl_multi_path_test   gtest pthread tablet gflags 
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/common.pb.cc)
 target_link_libraries(codec_bench_test gtest pthread storage tablet gflags common rt protobuf tcmalloc_minimal)
 
-add_executable(codec_test  base/codec_test.cc proto/common.pb.cc)
+add_executable(codec_test  base/codec_test.cc proto/common.pb.cc base/codec.cc)
 target_link_libraries(codec_test gtest pthread storage tablet gflags rt common protobuf tcmalloc_minimal)
 
 add_executable(log_test  log/log_test.cc)
