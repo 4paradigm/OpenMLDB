@@ -44,7 +44,7 @@ const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 namespace rtidb {
 namespace tablet {
 
-typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<RelationalTable> > > NoTsTables;
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<RelationalTable> > > RelationalTables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
@@ -385,7 +385,7 @@ private:
     void SchedDelRecycle();
 
 private:
-    NoTsTables no_ts_tables_;
+    RelationalTables relational_tables_;
     Tables tables_;
     std::mutex mu_;
     SpinMutex spin_mutex_;

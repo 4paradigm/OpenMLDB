@@ -399,7 +399,7 @@ void TabletImpl::Get(RpcController* controller,
              ::rtidb::api::GetResponse* response,
              Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!request->has_table_type()) {
+    if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
         std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
         if (!table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
@@ -528,7 +528,7 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
-    if (!request->has_table_type()) {
+    if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
         if (request->time() == 0 && request->ts_dimensions_size() == 0) {
             response->set_code(114);
             response->set_msg("ts must be greater than zero");
@@ -1376,7 +1376,7 @@ void TabletImpl::Delete(RpcController* controller,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!request->has_table_type()) {
+    if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
         if (follower_.load(std::memory_order_relaxed)) {
             response->set_code(453);
             response->set_msg("is follower cluster");
@@ -2912,7 +2912,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     std::string msg;
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
-    if (!table_meta->has_table_type()) {
+    if (!table_meta->has_table_type() || table_meta->table_type() == ::rtidb::type::kTimeSeries) {
         if (CheckTableMeta(table_meta, msg) != 0) {
             response->set_code(129);
             response->set_msg(msg);
@@ -2975,7 +2975,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    if (!table_meta->has_table_type()) {
+    if (!table_meta->has_table_type() || table_meta->table_type() == ::rtidb::type::kTimeSeries) {
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
             response->set_code(131);
@@ -3572,7 +3572,7 @@ int TabletImpl::CreateRelationalTableInternal(const ::rtidb::api::TableMeta* tab
         return -1;
     }
     table.reset(table_ptr);
-    no_ts_tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
+    relational_tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     return 0;
 }
 
@@ -3593,7 +3593,7 @@ void TabletImpl::DropTable(RpcController* controller,
     uint32_t pid = request->pid();
     PDLOG(INFO, "drop table. tid[%u] pid[%u]", tid, pid);
     do {
-        if (!request->has_table_type()) {
+        if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
             std::shared_ptr<Table> table = GetTable(tid, pid);
             if (!table) {
                 response->set_code(100);
@@ -3877,8 +3877,8 @@ std::shared_ptr<Table> TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
 }
 
 std::shared_ptr<RelationalTable> TabletImpl::GetRelationalTableUnLock(uint32_t tid, uint32_t pid) {
-    NoTsTables::iterator it = no_ts_tables_.find(tid);
-    if (it != no_ts_tables_.end()) {
+    RelationalTables::iterator it = relational_tables_.find(tid);
+    if (it != relational_tables_.end()) {
         auto tit = it->second.find(pid);
         if (tit != it->second.end()) {
             return tit->second;
