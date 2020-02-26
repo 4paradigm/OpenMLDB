@@ -2172,8 +2172,9 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             storage_mode = ::rtidb::common::StorageMode::kHDD;
         }
     } else {
-        if (table_info->storage_mode() == ::rtidb::common::StorageMode::kHDD) {
-            storage_mode = ::rtidb::common::StorageMode::kHDD;
+        storage_mode = ::rtidb::common::StorageMode::kHDD;
+        if (table_info->storage_mode() == ::rtidb::common::StorageMode::kSSD) {
+            storage_mode = ::rtidb::common::StorageMode::kSSD;
         }
     }
     ::rtidb::api::TableMeta table_meta;

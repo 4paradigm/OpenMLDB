@@ -485,7 +485,7 @@ void TabletImpl::Get(RpcController* controller,
         std::shared_ptr<RelationalTable> table;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table = GetNoTsTableUnLock(request->tid(), request->pid());
+            table = GetRelationalTableUnLock(request->tid(), request->pid());
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
                 response->set_code(100);
@@ -616,7 +616,7 @@ void TabletImpl::Put(RpcController* controller,
         std::shared_ptr<RelationalTable> table;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table = GetNoTsTableUnLock(request->tid(), request->pid());
+            table = GetRelationalTableUnLock(request->tid(), request->pid());
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
                 response->set_code(100);
@@ -1447,7 +1447,7 @@ void TabletImpl::Delete(RpcController* controller,
         std::shared_ptr<RelationalTable> table;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table = GetNoTsTableUnLock(request->tid(), request->pid());
+            table = GetRelationalTableUnLock(request->tid(), request->pid());
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
                 response->set_code(100);
@@ -2832,7 +2832,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
     return 0;
 }
 
-int32_t TabletImpl::DeleteNoTsTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
+int32_t TabletImpl::DeleteRelationalTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     std::string root_path;
     std::string recycle_bin_root_path;
     int32_t code = -1;
@@ -2840,7 +2840,7 @@ int32_t TabletImpl::DeleteNoTsTableInternal(uint32_t tid, uint32_t pid, std::sha
         std::shared_ptr<RelationalTable> table;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table = GetNoTsTableUnLock(tid, pid);
+            table = GetRelationalTableUnLock(tid, pid);
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
                 break;
@@ -3002,7 +3002,7 @@ void TabletImpl::CreateTable(RpcController* controller,
         gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
     } else {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        std::shared_ptr<RelationalTable> table = GetNoTsTableUnLock(tid, pid);
+        std::shared_ptr<RelationalTable> table = GetRelationalTableUnLock(tid, pid);
         if (!table) {
             response->set_code(131);
             response->set_msg("table is not exist");
@@ -3566,7 +3566,7 @@ int TabletImpl::CreateRelationalTableInternal(const ::rtidb::api::TableMeta* tab
     }
     PDLOG(INFO, "create relation table. tid %u pid %u", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    std::shared_ptr<RelationalTable> table = GetNoTsTableUnLock(tid, pid);
+    std::shared_ptr<RelationalTable> table = GetRelationalTableUnLock(tid, pid);
     if (table) {
         PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
         return -1;
@@ -3612,7 +3612,7 @@ void TabletImpl::DropTable(RpcController* controller,
             std::shared_ptr<RelationalTable> table;
             {
                 std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-                table = GetNoTsTableUnLock(request->tid(), request->pid());
+                table = GetRelationalTableUnLock(request->tid(), request->pid());
                 if (!table) {
                     PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
                     response->set_code(100);
@@ -3620,7 +3620,7 @@ void TabletImpl::DropTable(RpcController* controller,
                     break;
                 }
             }
-            task_pool_.AddTask(boost::bind(&TabletImpl::DeleteNoTsTableInternal, this, tid, pid, task_ptr));
+            task_pool_.AddTask(boost::bind(&TabletImpl::DeleteRelationalTableInternal, this, tid, pid, task_ptr));
         }
         response->set_code(0);
         response->set_msg("ok");
@@ -3876,7 +3876,7 @@ std::shared_ptr<Table> TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
     return std::shared_ptr<Table>();
 }
 
-std::shared_ptr<RelationalTable> TabletImpl::GetNoTsTableUnLock(uint32_t tid, uint32_t pid) {
+std::shared_ptr<RelationalTable> TabletImpl::GetRelationalTableUnLock(uint32_t tid, uint32_t pid) {
     NoTsTables::iterator it = no_ts_tables_.find(tid);
     if (it != no_ts_tables_.end()) {
         auto tit = it->second.find(pid);

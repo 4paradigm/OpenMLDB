@@ -289,7 +289,7 @@ private:
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
     //std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
     //std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t pid);
-    std::shared_ptr<RelationalTable> GetNoTsTableUnLock(uint32_t tid, uint32_t pid);
+    std::shared_ptr<RelationalTable> GetRelationalTableUnLock(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
@@ -321,7 +321,7 @@ private:
 
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
-    int32_t DeleteNoTsTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+    int32_t DeleteRelationalTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
     int LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
     int LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::rtidb::api::TableMeta& table_meta,
