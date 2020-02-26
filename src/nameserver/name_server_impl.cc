@@ -2840,20 +2840,21 @@ void NameServerImpl::DropTable(RpcController* controller,
                     task_ptr->op_id(), ::rtidb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                     ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
-        task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableInternel, this, request->name(), *response, table_info, task_ptr));
+        task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableInternel, this, *request, *response, table_info, task_ptr));
         response->set_code(0);
         response->set_msg("ok");
     } else {
-        DropTableInternel(request->name(), *response, table_info, task_ptr);
+        DropTableInternel(*request, *response, table_info, task_ptr);
         response->set_code(response->code());
         response->set_msg(response->msg());
     }
 }
 
-void NameServerImpl::DropTableInternel(const std::string name, 
+void NameServerImpl::DropTableInternel(const DropTableRequest& request, 
         GeneralResponse& response,
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
+    std::string name = request.name();
     std::map<uint32_t, std::map<std::string, std::shared_ptr<TabletClient>>> pid_endpoint_map;
     uint32_t tid = table_info->tid();
     int code = 0;
@@ -2890,7 +2891,7 @@ void NameServerImpl::DropTableInternel(const std::string name,
     }
     for (const auto& pkv : pid_endpoint_map) {
         for (const auto& kv : pkv.second) {
-            if (!kv.second->DropTable(tid, pkv.first)) {
+            if (!kv.second->DropTable(tid, pkv.first, request.table_type())) {
                 PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]",
                         tid, pkv.first, kv.first.c_str());
                 code = 313; // if drop table failed, return error

@@ -181,7 +181,7 @@ message PutRequest {
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7;
-    optional rtidb.type.TableType table_type = 8 [default = kRelational];
+    optional rtidb.type.TableType table_type = 8 [default = kTimeSeries];
 }
 
 message PutResponse {
@@ -194,7 +194,7 @@ message DeleteRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional string idx_name = 4;
-    optional rtidb.type.TableType table_type = 5 [default = kRelational];
+    optional rtidb.type.TableType table_type = 5 [default = kTimeSeries];
 }
 
 message ExecuteGcRequest {
@@ -330,7 +330,7 @@ message TableMeta {
     optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
     optional TTLDesc ttl_desc = 19;
-    optional rtidb.type.TableType table_type = 20 [default = kRelational];
+    optional rtidb.type.TableType table_type = 20 [default = kTimeSeries];
 }
 
 message CreateTableRequest {
@@ -356,7 +356,7 @@ message DropTableRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
     optional TaskInfo task_info = 3;
-    optional rtidb.type.TableType table_type = 4 [default = kRelational];
+    optional rtidb.type.TableType table_type = 4 [default = kTimeSeries];
 }
 
 message DropTableResponse {
@@ -527,7 +527,7 @@ message GetRequest {
     optional string ts_name = 7;
     optional uint64 et = 8;
     optional GetType et_type = 9 [default = kSubKeyGe];
-    optional rtidb.type.TableType table_type = 10 [default = kRelational];
+    optional rtidb.type.TableType table_type = 10 [default = kTimeSeries];
 }
 
 message GetResponse {
