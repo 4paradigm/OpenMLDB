@@ -3564,7 +3564,7 @@ int TabletImpl::CreateRelationalTableInternal(const ::rtidb::api::TableMeta* tab
     if (!table_ptr->Init()) {
         return -1;
     }
-    PDLOG(INFO, "create disk no ts table. tid %u pid %u", tid, pid);
+    PDLOG(INFO, "create relation table. tid %u pid %u", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     std::shared_ptr<RelationalTable> table = GetNoTsTableUnLock(tid, pid);
     if (table) {
