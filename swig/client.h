@@ -4,12 +4,13 @@
 
 class RtidbNSClient {
 private:
-    std::shared_ptr<rtidb::zk::ZkClient> zk_client;
-    std::shared_ptr<rtidb::client::NsClient> client;
+    rtidb::zk::ZkClient* zk_client_;
+    std::shared_ptr<rtidb::client::NsClient> client_;
 
 public:
+    RtidbNSClient();
     ~RtidbNSClient() {};
-    RtidbNSClient(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint);
+    bool Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint);
     std::vector<std::string>* ShowTable(const std::string& name);
 
 };
