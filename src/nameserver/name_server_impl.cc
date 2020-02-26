@@ -8469,9 +8469,9 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
         }
     }
     if (has_column_key) {
-        table_info->mutable_column_desc_v1(idx)->set_add_ts_idx(false);
+        table_info->mutable_column_key(idx)->set_flag(1);
     } else {
-        table_info->mutable_column_key()->DeleteSubrange(idx, 1);
+        table_info->mutable_column_desc_v1(idx)->set_add_ts_idx(false);
     }
     response->set_code(0);
     response->set_msg("ok");

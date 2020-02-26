@@ -169,7 +169,6 @@ public:
         }
         delete[] segments_[iter->second];
         segments_[iter->second] = NULL;
-        idx_cnt_--;
         mapping_.erase(idx_name);
         column_key_map_.erase(iter->second);
         return true;

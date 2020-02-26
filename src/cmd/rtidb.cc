@@ -235,6 +235,10 @@ int SetDimensionData(const std::map<std::string, std::string>& raw_data,
     uint32_t dimension_idx = 0;
     std::set<std::string> index_name_set;
     for (const auto& column_key : column_key_field) {
+        if (column_key.flag() != 0) {
+            dimension_idx++;
+            continue;
+        }
         std::string index_name = column_key.index_name();
         if (index_name_set.find(index_name) != index_name_set.end()) {
             continue;
