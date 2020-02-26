@@ -24,7 +24,7 @@ BlockIRBuilder::~BlockIRBuilder() {}
 bool fesql::codegen::BlockIRBuilder::BuildBlock(
     const fesql::node::FnNodeList *statements, llvm::BasicBlock *block,
     llvm::BasicBlock *end_block, fesql::base::Status &status) {
-    if (statements == NULL || block == NULL) {
+    if (statements == NULL || block == NULL || end_block == NULL) {
         status.code = common::kCodegenError;
         status.msg = "node or block is null";
         LOG(WARNING) << status.msg;
@@ -114,6 +114,15 @@ bool BlockIRBuilder::BuildIfElseBlock(
     const ::fesql::node::FnIfElseBlock *if_else_block,
     llvm::BasicBlock *if_else_start, llvm::BasicBlock *if_else_end,
     base::Status &status) {  // NOLINE
+    if (if_else_block == nullptr || if_else_start == nullptr ||
+        if_else_end == nullptr) {
+        status.code = common::kCodegenError;
+        status.msg =
+            "fail to codegen if else block: node or start block or end expr is "
+            "null";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
     llvm::Function *fn = if_else_start->getParent();
     llvm::LLVMContext &ctx = if_else_start->getContext();
 
@@ -190,6 +199,14 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
                                      llvm::BasicBlock *start_block,
                                      llvm::BasicBlock *end_block,
                                      base::Status &status) {
+    if (node == nullptr || start_block == nullptr || end_block == nullptr) {
+        status.code = common::kCodegenError;
+        status.msg =
+            "fail to codegen for block: node or start block or end expr is "
+            "null";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
     llvm::Function *fn = start_block->getParent();
     llvm::LLVMContext &ctx = start_block->getContext();
 
@@ -263,7 +280,7 @@ bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
         status.code = common::kCodegenError;
         status.msg = "node or block or return expr is null";
         LOG(WARNING) << status.msg;
-        return true;
+        return false;
     }
 
     ::llvm::IRBuilder<> builder(block);
