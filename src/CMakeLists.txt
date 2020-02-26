@@ -24,6 +24,7 @@ add_library(log STATIC log/crc32c.cc
 
 add_library(base STATIC base/status.cc base/ringqueue.h)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
+set_property(TARGET zk_client PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_library(replica STATIC replica/replicate_node.cc
                            replica/log_replicator.cc)
