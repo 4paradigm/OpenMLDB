@@ -269,10 +269,10 @@ uint64_t MemTable::Release() {
     }
     uint64_t total_cnt = 0;
     for (uint32_t i = 0; i < segments_.size(); i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            if (segments_[i] != NULL) {
+        if (segments_[i] != NULL) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
                 total_cnt += segments_[i][j]->Release();
-            } 
+            }
         }
     }
     segment_released_ = true;
@@ -617,6 +617,25 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     }
     *stat = data_array;
     *size = seg_cnt_;
+    return true;
+}
+
+bool MemTable::DeleteIndex(std::string idx_name) {
+    auto iter = mapping_.find(idx_name);
+    if (iter->second == 0) {
+        return false;
+    }
+    for (uint32_t i = 0; i < seg_cnt_; i++) {
+        if (segments_[iter->second] != NULL) {
+            segments_[iter->second][i]->Release();
+            delete segments_[iter->second][i];
+        }
+    }
+    delete[] segments_[iter->second];
+    segments_[iter->second] = NULL;
+    mapping_.erase(idx_name);
+    column_key_map_.erase(iter->second);
+    Release();
     return true;
 }
 
