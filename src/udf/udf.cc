@@ -338,18 +338,18 @@ void RegisterUDFToModule(::llvm::Module *m) {
     ::llvm::Type *double_ty = ::llvm::Type::getDoubleTy(m->getContext());
     ::llvm::Type *i8_ptr_ty = ::llvm::Type::getInt8PtrTy(m->getContext());
 
-    std::vector<std::pair<fesql::type::Type, ::llvm::Type *>> number_types;
-    number_types.push_back(std::make_pair(fesql::type::kInt16, i16_ty));
-    number_types.push_back(std::make_pair(fesql::type::kInt32, i32_ty));
-    number_types.push_back(std::make_pair(fesql::type::kInt64, i64_ty));
-    number_types.push_back(std::make_pair(fesql::type::kFloat, float_ty));
-    number_types.push_back(std::make_pair(fesql::type::kDouble, double_ty));
+    std::vector<std::pair<fesql::node::DataType, ::llvm::Type *>> number_types;
+    number_types.push_back(std::make_pair(fesql::node::kInt16, i16_ty));
+    number_types.push_back(std::make_pair(fesql::node::kInt32, i32_ty));
+    number_types.push_back(std::make_pair(fesql::node::kInt64, i64_ty));
+    number_types.push_back(std::make_pair(fesql::node::kFloat, float_ty));
+    number_types.push_back(std::make_pair(fesql::node::kDouble, double_ty));
 
     m->getOrInsertFunction("inc_int32", i32_ty, i32_ty);
 
     {
         std::string prefix =
-            "sum_" + node::DataTypeName(fesql::type::kList) + "_";
+            "sum_" + node::DataTypeName(fesql::node::kList) + "_";
         for (auto type : number_types) {
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
                                    type.second, i8_ptr_ty);
@@ -358,7 +358,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
 
     {
         std::string prefix =
-            "min_" + node::DataTypeName(fesql::type::kList) + "_";
+            "min_" + node::DataTypeName(fesql::node::kList) + "_";
         for (auto type : number_types) {
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
                                    type.second, i8_ptr_ty);
@@ -367,7 +367,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
 
     {
         std::string prefix =
-            "max_" + node::DataTypeName(fesql::type::kList) + "_";
+            "max_" + node::DataTypeName(fesql::node::kList) + "_";
         for (auto type : number_types) {
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
                                    type.second, i8_ptr_ty);
@@ -376,7 +376,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
 
     {
         std::string prefix =
-            "at_" + node::DataTypeName(fesql::type::kList) + "_";
+            "at_" + node::DataTypeName(fesql::node::kList) + "_";
         for (auto type : number_types) {
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
                                    type.second, i8_ptr_ty, i32_ty);
@@ -385,7 +385,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
 
     {
         std::string prefix =
-            "iterator_" + node::DataTypeName(fesql::type::kList) + "_";
+            "iterator_" + node::DataTypeName(fesql::node::kList) + "_";
         for (auto type : number_types) {
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
                                    i1_ty, i8_ptr_ty, i8_ptr_ty);
@@ -393,7 +393,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
     }
     {
         std::string prefix =
-            "next_" + node::DataTypeName(fesql::type::kIterator) + "_";
+            "next_" + node::DataTypeName(fesql::node::kIterator) + "_";
         for (auto type : number_types) {
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
                                    type.second, i8_ptr_ty);
@@ -401,7 +401,7 @@ void RegisterUDFToModule(::llvm::Module *m) {
     }
     {
         std::string prefix =
-            "has_next_" + node::DataTypeName(fesql::type::kIterator) + "_";
+            "has_next_" + node::DataTypeName(fesql::node::kIterator) + "_";
         for (auto type : number_types) {
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
                                    i1_ty, i8_ptr_ty);

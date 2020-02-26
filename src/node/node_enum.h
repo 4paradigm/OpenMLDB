@@ -94,8 +94,29 @@ enum ExprType {
     kExprStruct,
     kExprUnknow = 9999
 };
-typedef fesql::type::Type DataType;
-
+// typedef fesql::type::Type DataType;
+enum DataType {
+    kBool,
+    kInt16,
+    kInt32,
+    kInt64,
+    kFloat,
+    kDouble,
+    kVarchar,
+    kDate,
+    kTimestamp,
+    kList,
+    kHour,
+    kMinute,
+    kSecond,
+    kDay,
+    kMap,
+    kIterator,
+    kInt8Ptr,
+    kRow,
+    kVoid = 100,
+    kNull = 101
+};
 
 enum TimeUnit {
     kTimeUnitHour,

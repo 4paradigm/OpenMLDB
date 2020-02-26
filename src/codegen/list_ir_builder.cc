@@ -45,7 +45,7 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
 
     fesql::node::TypeNode type_node;
     if (false == GetFullType(list->getType(), &type_node) ||
-        fesql::type::kList != type_node.base_) {
+        fesql::node::kList != type_node.base_) {
         status.msg = "fail to codegen list[pos]: invalid list type";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
@@ -85,7 +85,7 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
     }
     fesql::node::TypeNode type_node;
     if (false == GetFullType(list->getType(), &type_node) ||
-        fesql::type::kList != type_node.base_) {
+        fesql::node::kList != type_node.base_) {
         status.msg = "fail to codegen list[pos]: invalid list type";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
@@ -159,7 +159,7 @@ bool ListIRBuilder::BuildIteratorHasNext(::llvm::Value* iterator,
 
     fesql::node::TypeNode type_node;
     if (false == GetFullType(iterator->getType(), &type_node) ||
-        fesql::type::kIterator != type_node.base_) {
+        fesql::node::kIterator != type_node.base_) {
         status.msg =
             "fail to codegen iterator.has_next(): invalid iterator type";
         status.code = common::kCodegenError;
@@ -202,7 +202,7 @@ bool ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
 
     fesql::node::TypeNode type_node;
     if (false == GetFullType(iterator->getType(), &type_node) ||
-        fesql::type::kIterator != type_node.base_) {
+        fesql::node::kIterator != type_node.base_) {
         status.msg = "fail to codegen iterator.next(): invalid iterator type";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;

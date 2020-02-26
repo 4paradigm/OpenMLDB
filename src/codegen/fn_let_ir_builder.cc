@@ -50,6 +50,7 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
         return false;
     }
 
+    base::Status status;
     bool ok = BuildFnHeader(name, &fn);
 
     if (!ok || fn == NULL) {
@@ -95,16 +96,21 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
         const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
         ::llvm::Value* expr_out_val = NULL;
         std::string col_name = pp_node->GetName();
-        ok = expr_ir_builder.Build(sql_node, &expr_out_val);
+        ok = expr_ir_builder.Build(sql_node, &expr_out_val, status);
+        if (!ok) {
+            LOG(WARNING) << "fail to codegen project expression: "
+                         << status.msg;
+            return false;
+        }
+        ::fesql::node::DataType data_type;
+        ok = GetBaseType(expr_out_val->getType(), &data_type);
         if (!ok) {
             return false;
         }
         ::fesql::type::Type ctype;
-        ok = GetBaseType(expr_out_val->getType(), &ctype);
-        if (!ok) {
+        if (!DataType2SchemaType(data_type, &ctype)) {
             return false;
         }
-
         outputs.insert(std::make_pair(index, expr_out_val));
         index++;
         ::fesql::type::ColumnDef cdef;
@@ -128,8 +134,7 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
 bool RowFnLetIRBuilder::EncodeBuf(
     const std::map<uint32_t, ::llvm::Value*>* values,
     const std::vector<::fesql::type::ColumnDef>* schema,
-    VariableIRBuilder&
-        variable_ir_builder,  // NOLINT (runtime/references)
+    VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
     ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
     base::Status status;
     BufNativeEncoderIRBuilder encoder(values, schema, block);

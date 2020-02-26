@@ -43,28 +43,28 @@ inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
         return false;
     }
     switch (data_type->base_) {
-        case type::kVoid:
+        case fesql::node::kVoid:
             *llvm_type = (::llvm::Type::getVoidTy(m->getContext()));
             break;
-        case type::kInt16:
+        case fesql::node::kInt16:
             *llvm_type = (::llvm::Type::getInt16Ty(m->getContext()));
             break;
-        case type::kInt32:
+        case fesql::node::kInt32:
             *llvm_type = (::llvm::Type::getInt32Ty(m->getContext()));
             break;
-        case type::kInt64:
+        case fesql::node::kInt64:
             *llvm_type = (::llvm::Type::getInt64Ty(m->getContext()));
             break;
-        case type::kFloat:
+        case fesql::node::kFloat:
             *llvm_type = (::llvm::Type::getFloatTy(m->getContext()));
             break;
-        case type::kDouble:
+        case fesql::node::kDouble:
             *llvm_type = (::llvm::Type::getDoubleTy(m->getContext()));
             break;
-        case type::kInt8Ptr:
+        case fesql::node::kInt8Ptr:
             *llvm_type = (::llvm::Type::getInt8PtrTy(m->getContext()));
             break;
-        case type::kVarchar: {
+        case fesql::node::kVarchar: {
             std::string name = "fe.string_ref";
             ::llvm::StringRef sr(name);
             ::llvm::StructType* stype = m->getTypeByName(sr);
@@ -83,7 +83,7 @@ inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
             *llvm_type = stype;
             return true;
         }
-        case type::kList: {
+        case fesql::node::kList: {
             if (data_type->generics_.size() != 1) {
                 LOG(WARNING) << "fail to convert data type: list generic types "
                                 "number is " +

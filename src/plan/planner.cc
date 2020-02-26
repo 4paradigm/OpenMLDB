@@ -483,7 +483,7 @@ void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
     plan->SetCmdNode(dynamic_cast<const node::CmdNode *>(root));
 }
 
-void TransformTableDef(const std::string &table_name,
+bool TransformTableDef(const std::string &table_name,
                        const NodePointVector &column_desc_list,
                        type::TableDef *table,
                        Status &status) {  // NOLINT (runtime/references)
@@ -503,32 +503,33 @@ void TransformTableDef(const std::string &table_name,
                                  column_def->GetColumnName() + " duplicate";
                     status.code = common::kSQLError;
                     LOG(WARNING) << status.msg;
-                    return;
+                    return false;
                 }
                 column->set_name(column_def->GetColumnName());
                 column->set_is_not_null(column_def->GetIsNotNull());
                 column_names.insert(column_def->GetColumnName());
+                fesql::type::Type c_type;
                 switch (column_def->GetColumnType()) {
-                    case type::kBool:
+                    case node::kBool:
                         column->set_type(type::Type::kBool);
                         break;
-                    case type::kInt32:
+                    case node::kInt32:
                         column->set_type(type::Type::kInt32);
                         break;
-                    case type::kInt64:
+                    case node::kInt64:
                         column->set_type(type::Type::kInt64);
                         break;
-                    case type::kFloat:
+                    case node::kFloat:
                         column->set_type(type::Type::kFloat);
                         break;
-                    case type::kDouble:
+                    case node::kDouble:
                         column->set_type(type::Type::kDouble);
                         break;
-                    case type::kTimestamp: {
+                    case node::kTimestamp: {
                         column->set_type(type::Type::kTimestamp);
                         break;
                     }
-                    case type::kVarchar:
+                    case node::kVarchar:
                         column->set_type(type::Type::kVarchar);
                         break;
                     default: {
@@ -537,7 +538,8 @@ void TransformTableDef(const std::string &table_name,
                             node::DataTypeName(column_def->GetColumnType()) +
                             " is not supported";
                         status.code = common::kSQLError;
-                        return;
+                        LOG(WARNING) << status.msg;
+                        return false;
                     }
                 }
                 break;
@@ -557,7 +559,7 @@ void TransformTableDef(const std::string &table_name,
                                  column_index->GetName() + " duplicate";
                     status.code = common::kSQLError;
                     LOG(WARNING) << status.msg;
-                    return;
+                    return false;
                 }
                 index_names.insert(column_index->GetName());
                 type::IndexDef *index = table->add_indexes();
@@ -583,11 +585,12 @@ void TransformTableDef(const std::string &table_name,
                              " when CREATE TABLE";
                 status.code = common::kSQLError;
                 LOG(WARNING) << status.msg;
-                return;
+                return false;
             }
         }
     }
     table->set_name(table_name);
+    return true;
 }
 
 std::string GenerateName(const std::string prefix, int id) {

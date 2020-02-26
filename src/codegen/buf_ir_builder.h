@@ -18,6 +18,7 @@
 #ifndef SRC_CODEGEN_BUF_IR_BUILDER_H_
 #define SRC_CODEGEN_BUF_IR_BUILDER_H_
 
+#include <node/node_enum.h>
 #include <map>
 #include <string>
 #include <utility>
@@ -78,7 +79,7 @@ class BufNativeIRBuilder {
                      ::llvm::Value** output);
 
     bool BuildGetFiledOffset(const std::string& name, uint32_t* offset,
-                             ::fesql::type::Type* fe_type);
+                             ::fesql::node::DataType* fe_type);
 
  private:
     bool BuildGetPrimaryField(const std::string& fn_name,
@@ -86,14 +87,14 @@ class BufNativeIRBuilder {
                               ::llvm::Type* type, ::llvm::Value** output);
 
     bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
-                            uint32_t offset, fesql::type::Type type,
+                            uint32_t offset, fesql::node::DataType type,
                             ::llvm::Value** output);
     bool BuildGetStringField(uint32_t offset, uint32_t next_str_field_offset,
                              ::llvm::Value* row_ptr, ::llvm::Value* size,
                              ::llvm::Value** output);
 
     bool BuildGetStringCol(uint32_t offset, uint32_t next_str_field_offset,
-                           fesql::type::Type type, ::llvm::Value* row_ptr,
+                           fesql::node::DataType type, ::llvm::Value* row_ptr,
                            ::llvm::Value** output);
 
  private:
@@ -102,7 +103,7 @@ class BufNativeIRBuilder {
 
     ScopeVar* sv_;
     VariableIRBuilder variable_ir_builder_;
-    typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
+    typedef std::map<std::string, std::pair<::fesql::node::DataType, int32_t>>
         Types;
     Types types_;
     uint32_t str_field_start_offset_;

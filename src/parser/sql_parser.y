@@ -53,7 +53,7 @@ typedef void* yyscan_t;
 	::fesql::node::SQLNode* node;
 	::fesql::node::FnNode* fnnode;
 	::fesql::node::ExprNode* expr;
-	::fesql::type::Type type;
+	::fesql::node::DataType type;
 	::fesql::node::TypeNode* typenode;
 	::fesql::node::FnNodeList* fnlist;
 	::fesql::node::ExprListNode* exprlist;
@@ -558,38 +558,38 @@ for_in_stmt:
 
 types:  I32
         {
-            $$ = ::fesql::type::kInt32;
+            $$ = ::fesql::node::kInt32;
         }
         |INTEGER
         {
-            $$ = ::fesql::type::kInt32;
+            $$ = ::fesql::node::kInt32;
         }
         |BIGINT
         {
-            $$ = ::fesql::type::kInt64;
+            $$ = ::fesql::node::kInt64;
         }
         |STRINGTYPE
         {
-            $$ = ::fesql::type::kVarchar;
+            $$ = ::fesql::node::kVarchar;
         }
         |FLOAT
         {
-            $$ = ::fesql::type::kFloat;
+            $$ = ::fesql::node::kFloat;
         }
         |DOUBLE
         {
-            $$ = ::fesql::type::kDouble;
+            $$ = ::fesql::node::kDouble;
         }
         |TIMESTAMP
         {
-            $$ = ::fesql::type::kTimestamp;
+            $$ = ::fesql::node::kTimestamp;
         }
         ;
 
 complex_types:
 		LIST '<' types '>'
 		{
-			$$ = node_manager->MakeTypeNode(::fesql::type::kList, $3);
+			$$ = node_manager->MakeTypeNode(::fesql::node::kList, $3);
 		}
 		;
 plist:
@@ -613,16 +613,16 @@ para:
 
 primary_time:
     DAYNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::type::kDay);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kDay);
     }
     |HOURNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::type::kHour);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kHour);
     }
     |MINUTENUM {
-        $$ = node_manager->MakeConstNode($1, fesql::type::kMinute);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kMinute);
     }
     |SECONDNUM{
-        $$ = node_manager->MakeConstNode($1, fesql::type::kSecond);
+        $$ = node_manager->MakeConstNode($1, fesql::node::kSecond);
     }
 var: VARNAME {
         $$ = node_manager->MakeFnIdNode($1);

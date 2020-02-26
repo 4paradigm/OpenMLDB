@@ -453,8 +453,8 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
     node::CreatePlanNode *createStmt = (node::CreatePlanNode *)plan_ptr;
 
     type::TableDef table_def;
-    TransformTableDef(createStmt->GetTableName(),
-                      createStmt->GetColumnDescList(), &table_def, status);
+    ASSERT_TRUE(TransformTableDef(createStmt->GetTableName(),
+                      createStmt->GetColumnDescList(), &table_def, status));
 
     type::TableDef *table = &table_def;
     ASSERT_EQ("test", table->name());

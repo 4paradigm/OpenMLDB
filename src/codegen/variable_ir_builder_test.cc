@@ -31,7 +31,7 @@ class VariableIRBuilderTest : public ::testing::Test {
 };
 
 template <class V1>
-void MutableVariableCheck(::fesql::type::Type type, V1 value1, V1 result) {
+void MutableVariableCheck(::fesql::node::DataType type, V1 value1, V1 result) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("predicate_func", *ctx);
     llvm::Type *llvm_type = NULL;
@@ -68,12 +68,14 @@ void MutableVariableCheck(::fesql::type::Type type, V1 value1, V1 result) {
 }
 
 TEST_F(VariableIRBuilderTest, test_mutable_variable_assign) {
-    MutableVariableCheck<int32_t>(::fesql::type::Type::kInt32, 999, 999);
-    MutableVariableCheck<int64_t>(::fesql::type::Type::kInt64, 99999999L,
+    MutableVariableCheck<int32_t>(::fesql::node::DataType::kInt32, 999, 999);
+    MutableVariableCheck<int64_t>(::fesql::node::DataType::kInt64, 99999999L,
                                   99999999L);
-    MutableVariableCheck<float>(::fesql::type::Type::kFloat, 0.999f, 0.999f);
-    MutableVariableCheck<double>(::fesql::type::Type::kDouble, 0.999, 0.999);
-    MutableVariableCheck<int16_t>(::fesql::type::Type::kInt16, 99, 99);
+    MutableVariableCheck<float>(::fesql::node::DataType::kFloat, 0.999f,
+                                0.999f);
+    MutableVariableCheck<double>(::fesql::node::DataType::kDouble, 0.999,
+                                 0.999);
+    MutableVariableCheck<int16_t>(::fesql::node::DataType::kInt16, 99, 99);
 }
 
 }  // namespace codegen

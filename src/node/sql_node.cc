@@ -141,28 +141,28 @@ void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
         const std::string tab = org_tab + INDENT + SPACE_ED;
         output << tab << SPACE_ST;
         switch (date_type_) {
-            case fesql::type::kInt16:
+            case fesql::node::kInt16:
                 output << "value: " << val_.vsmallint;
                 break;
-            case fesql::type::kInt32:
+            case fesql::node::kInt32:
                 output << "value: " << val_.vint;
                 break;
-            case fesql::type::kInt64:
+            case fesql::node::kInt64:
                 output << "value: " << val_.vlong;
                 break;
-            case fesql::type::kVarchar:
+            case fesql::node::kVarchar:
                 output << "value: " << val_.vstr;
                 break;
-            case fesql::type::kFloat:
+            case fesql::node::kFloat:
                 output << "value: " << val_.vfloat;
                 break;
-            case fesql::type::kDouble:
+            case fesql::node::kDouble:
                 output << "value: " << val_.vdouble;
                 break;
-            case fesql::type::kNull:
+            case fesql::node::kNull:
                 output << "value: null";
                 break;
-            case fesql::type::kVoid:
+            case fesql::node::kVoid:
                 output << "value: void";
                 break;
             default:
@@ -590,9 +590,9 @@ const std::string FnNodeFnHeander::GetCodegenFunctionName() const {
             node::FnParaNode *para_node =
                 dynamic_cast<node::FnParaNode *>(node);
             switch (para_node->GetParaType()->base_) {
-                case fesql::type::kList:
-                case fesql::type::kIterator:
-                case fesql::type::kMap:
+                case fesql::node::kList:
+                case fesql::node::kIterator:
+                case fesql::node::kMap:
                     fn_name.append("_").append(
                         para_node->GetParaType()->GetName());
                 default: {

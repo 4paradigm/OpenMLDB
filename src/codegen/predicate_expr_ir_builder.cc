@@ -292,16 +292,16 @@ bool PredicateIRBuilder::IsAcceptType(::llvm::Type* type) {
         return false;
     }
 
-    ::fesql::type::Type fesql_type;
+    ::fesql::node::DataType fesql_type;
     if (false == GetBaseType(type, &fesql_type)) {
         return false;
     }
     switch (fesql_type) {
-        case ::fesql::type::kVoid:
-        case ::fesql::type::kList:
-        case ::fesql::type::kTimestamp:
-        case ::fesql::type::kDate:
-        case ::fesql::type::kVarchar:
+        case ::fesql::node::kVoid:
+        case ::fesql::node::kList:
+        case ::fesql::node::kTimestamp:
+        case ::fesql::node::kDate:
+        case ::fesql::node::kVarchar:
             return false;
         default: {
             return true;

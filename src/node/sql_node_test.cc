@@ -66,7 +66,7 @@ TEST_F(SqlNodeTest, MakeConstNodeStringTest) {
     ConstNode *node_ptr = dynamic_cast<ConstNode *>(
         node_manager_->MakeConstNode("parser string test"));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(fesql::type::kVarchar, node_ptr->GetDataType());
+    ASSERT_EQ(fesql::node::kVarchar, node_ptr->GetDataType());
     ASSERT_STREQ("parser string test", node_ptr->GetStr());
 }
 
@@ -74,7 +74,7 @@ TEST_F(SqlNodeTest, MakeConstNodeIntTest) {
     ConstNode *node_ptr =
         dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(1));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(fesql::type::kInt32, node_ptr->GetDataType());
+    ASSERT_EQ(fesql::node::kInt32, node_ptr->GetDataType());
     ASSERT_EQ(1, node_ptr->GetInt());
 }
 
@@ -84,12 +84,12 @@ TEST_F(SqlNodeTest, MakeConstNodeLongTest) {
     ConstNode *node_ptr =
         dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(val1));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(fesql::type::kInt64, node_ptr->GetDataType());
+    ASSERT_EQ(fesql::node::kInt64, node_ptr->GetDataType());
     ASSERT_EQ(val1, node_ptr->GetLong());
 
     node_ptr = dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(val2));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(fesql::type::kInt64, node_ptr->GetDataType());
+    ASSERT_EQ(fesql::node::kInt64, node_ptr->GetDataType());
     ASSERT_EQ(val2, node_ptr->GetLong());
 }
 
@@ -97,7 +97,7 @@ TEST_F(SqlNodeTest, MakeConstNodeDoubleTest) {
     ConstNode *node_ptr =
         dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(1.989E30));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(fesql::type::kDouble, node_ptr->GetDataType());
+    ASSERT_EQ(fesql::node::kDouble, node_ptr->GetDataType());
     ASSERT_EQ(1.989E30, node_ptr->GetDouble());
 }
 
@@ -105,7 +105,7 @@ TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
     ConstNode *node_ptr =
         dynamic_cast<ConstNode *>(node_manager_->MakeConstNode(1.234f));
     std::cout << *node_ptr << std::endl;
-    ASSERT_EQ(fesql::type::kFloat, node_ptr->GetDataType());
+    ASSERT_EQ(fesql::node::kFloat, node_ptr->GetDataType());
     ASSERT_EQ(1.234f, node_ptr->GetFloat());
 }
 
@@ -172,7 +172,7 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
     ASSERT_EQ(kExprPrimary,
               dynamic_cast<ExprNode *>(end->GetOffset())->GetExprType());
     ConstNode *const_ptr = dynamic_cast<ConstNode *>(end->GetOffset());
-    ASSERT_EQ(fesql::type::kInt64, const_ptr->GetDataType());
+    ASSERT_EQ(fesql::node::kInt64, const_ptr->GetDataType());
     ASSERT_EQ(86400000, const_ptr->GetLong());
 }
 

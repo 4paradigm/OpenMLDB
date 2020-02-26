@@ -81,7 +81,7 @@ class SimplePlanner : public Planner {
 };
 
 // TODO(chenjing): move to executor module
-void TransformTableDef(const std::string &table_name,
+bool TransformTableDef(const std::string &table_name,
                        const NodePointVector &column_desc_list,
                        type::TableDef *table,
                        Status &status);  // NOLINT (runtime/references)

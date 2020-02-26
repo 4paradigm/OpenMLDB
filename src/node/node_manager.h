@@ -108,10 +108,11 @@ class NodeManager {
 
     SQLNode *MakeResTargetNode(ExprNode *node_ptr, const std::string &name);
 
-    TypeNode *MakeTypeNode(fesql::type::Type base);
-    TypeNode *MakeTypeNode(fesql::type::Type base, fesql::type::Type v1);
-    TypeNode *MakeTypeNode(fesql::type::Type base, fesql::type::Type v1,
-                           fesql::type::Type v2);
+    TypeNode *MakeTypeNode(fesql::node::DataType base);
+    TypeNode *MakeTypeNode(fesql::node::DataType base,
+                           fesql::node::DataType v1);
+    TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
+                           fesql::node::DataType v2);
     ExprNode *MakeColumnRefNode(const std::string &column_name,
                                 const std::string &relation_name);
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,

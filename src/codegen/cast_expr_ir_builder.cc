@@ -29,34 +29,34 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
     if (src == dist) {
         return true;
     }
-    ::fesql::type::Type src_type;
-    ::fesql::type::Type dist_type;
+    ::fesql::node::DataType src_type;
+    ::fesql::node::DataType dist_type;
     ::fesql::codegen::GetBaseType(src, &src_type);
     ::fesql::codegen::GetBaseType(dist, &dist_type);
 
     switch (src_type) {
-        case ::fesql::type::kBool: {
+        case ::fesql::node::kBool: {
             return true;
         }
-        case ::fesql::type::kInt16: {
+        case ::fesql::node::kInt16: {
             return true;
         }
-        case ::fesql::type::kInt32: {
-            if (::fesql::type::kInt16 == dist_type) {
+        case ::fesql::node::kInt32: {
+            if (::fesql::node::kInt16 == dist_type) {
                 return false;
             }
             return true;
         }
-        case ::fesql::type::kInt64: {
+        case ::fesql::node::kInt64: {
             return false;
         }
-        case ::fesql::type::kFloat: {
-            if (::fesql::type::kDouble == dist_type) {
+        case ::fesql::node::kFloat: {
+            if (::fesql::node::kDouble == dist_type) {
                 return true;
             }
             return false;
         }
-        case ::fesql::type::kDouble: {
+        case ::fesql::node::kDouble: {
             return false;
         }
         default: {
@@ -123,12 +123,12 @@ bool CastExprIRBuilder::IsStringCast(llvm::Type* type) {
         return false;
     }
 
-    ::fesql::type::Type fesql_type;
+    ::fesql::node::DataType fesql_type;
     if (false == GetBaseType(type, &fesql_type)) {
         return false;
     }
 
-    return ::fesql::type::kVarchar == fesql_type;
+    return ::fesql::node::kVarchar == fesql_type;
 }
 
 // TODO(chenjing): string cast implement

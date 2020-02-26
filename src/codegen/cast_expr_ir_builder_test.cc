@@ -31,8 +31,9 @@ class CastExprIrBuilderTest : public ::testing::Test {
     node::NodeManager *manager_;
 };
 
-void CastErrorCheck(::fesql::type::Type src_type, ::fesql::type::Type dist_type,
-                    bool safe, const std::string &msg) {
+void CastErrorCheck(::fesql::node::DataType src_type,
+                    ::fesql::node::DataType dist_type, bool safe,
+                    const std::string &msg) {
     // Create an LLJIT instance.
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -66,8 +67,9 @@ void CastErrorCheck(::fesql::type::Type src_type, ::fesql::type::Type dist_type,
 }
 
 template <class S, class D>
-void CastCheck(::fesql::type::Type src_type, ::fesql::type::Type dist_type,
-               S value, D cast_value, bool safe) {
+void CastCheck(::fesql::node::DataType src_type,
+               ::fesql::node::DataType dist_type, S value, D cast_value,
+               bool safe) {
     // Create an LLJIT instance.
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -98,17 +100,17 @@ void CastCheck(::fesql::type::Type src_type, ::fesql::type::Type dist_type,
                                                      &output, status);
     ASSERT_TRUE(ok);
     switch (dist_type) {
-        case ::fesql::type::kInt16:
-        case ::fesql::type::kInt32:
-        case ::fesql::type::kInt64: {
+        case ::fesql::node::kInt16:
+        case ::fesql::node::kInt32:
+        case ::fesql::node::kInt64: {
             ::llvm::Value *output_mul_4 = builder.CreateAdd(
                 builder.CreateAdd(builder.CreateAdd(output, output), output),
                 output);
             builder.CreateRet(output_mul_4);
             break;
         }
-        case ::fesql::type::kFloat:
-        case ::fesql::type::kDouble: {
+        case ::fesql::node::kFloat:
+        case ::fesql::node::kDouble: {
             ::llvm::Value *output_mul_4 = builder.CreateFAdd(
                 builder.CreateFAdd(builder.CreateFAdd(output, output), output),
                 output);
@@ -130,31 +132,31 @@ void CastCheck(::fesql::type::Type src_type, ::fesql::type::Type dist_type,
 }
 
 template <class S, class D>
-void UnSafeCastCheck(::fesql::type::Type src_type,
-                     ::fesql::type::Type dist_type, S value, D cast_value) {
+void UnSafeCastCheck(::fesql::node::DataType src_type,
+                     ::fesql::node::DataType dist_type, S value, D cast_value) {
     CastCheck<S, D>(src_type, dist_type, value, cast_value, false);
 }
 
 template <class S, class D>
-void SafeCastCheck(::fesql::type::Type src_type, ::fesql::type::Type dist_type,
-                   S value, D cast_value) {
+void SafeCastCheck(::fesql::node::DataType src_type,
+                   ::fesql::node::DataType dist_type, S value, D cast_value) {
     CastCheck<S, D>(src_type, dist_type, value, cast_value, true);
 }
 
-void SafeCastErrorCheck(::fesql::type::Type src_type,
-                        ::fesql::type::Type dist_type, std::string msg) {
+void SafeCastErrorCheck(::fesql::node::DataType src_type,
+                        ::fesql::node::DataType dist_type, std::string msg) {
     CastErrorCheck(src_type, dist_type, true, msg);
 }
 
 template <class V>
-void BoolCastCheck(::fesql::type::Type type, V value, bool result) {
+void BoolCastCheck(::fesql::node::DataType type, V value, bool result) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("bool_cast_func", *ctx);
 
     llvm::Type *left_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
     ASSERT_TRUE(::fesql::codegen::GetLLVMType(m.get(), type, &left_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), ::fesql::type::kBool, &dist_llvm_type));
+    ASSERT_TRUE(GetLLVMType(m.get(), ::fesql::node::kBool, &dist_llvm_type));
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
@@ -187,83 +189,83 @@ void BoolCastCheck(::fesql::type::Type type, V value, bool result) {
     ASSERT_EQ(ret, result);
 }
 TEST_F(CastExprIrBuilderTest, unsafe_cast_test) {
-    UnSafeCastCheck<int16_t, int16_t>(::fesql::type::kInt16,
-                                      ::fesql::type::kInt16, 1u, 4u);
-    UnSafeCastCheck<int16_t, int32_t>(::fesql::type::kInt16,
-                                      ::fesql::type::kInt32, 10000u, 40000);
-    UnSafeCastCheck<int16_t, int64_t>(::fesql::type::kInt16,
-                                      ::fesql::type::kInt64, 10000u, 40000L);
-    UnSafeCastCheck<int16_t, float>(::fesql::type::kInt16,
-                                    ::fesql::type::kFloat, 10000u, 40000.0f);
-    UnSafeCastCheck<int16_t, double>(::fesql::type::kInt16,
-                                     ::fesql::type::kDouble, 10000u, 40000.0);
+    UnSafeCastCheck<int16_t, int16_t>(::fesql::node::kInt16,
+                                      ::fesql::node::kInt16, 1u, 4u);
+    UnSafeCastCheck<int16_t, int32_t>(::fesql::node::kInt16,
+                                      ::fesql::node::kInt32, 10000u, 40000);
+    UnSafeCastCheck<int16_t, int64_t>(::fesql::node::kInt16,
+                                      ::fesql::node::kInt64, 10000u, 40000L);
+    UnSafeCastCheck<int16_t, float>(::fesql::node::kInt16,
+                                    ::fesql::node::kFloat, 10000u, 40000.0f);
+    UnSafeCastCheck<int16_t, double>(::fesql::node::kInt16,
+                                     ::fesql::node::kDouble, 10000u, 40000.0);
 
-    UnSafeCastCheck<int32_t, int16_t>(::fesql::type::kInt32,
-                                      ::fesql::type::kInt16, 1, 4u);
-    UnSafeCastCheck<int32_t, int32_t>(::fesql::type::kInt32,
-                                      ::fesql::type::kInt32, 1, 4);
+    UnSafeCastCheck<int32_t, int16_t>(::fesql::node::kInt32,
+                                      ::fesql::node::kInt16, 1, 4u);
+    UnSafeCastCheck<int32_t, int32_t>(::fesql::node::kInt32,
+                                      ::fesql::node::kInt32, 1, 4);
     UnSafeCastCheck<int32_t, int64_t>(
-        ::fesql::type::kInt32, ::fesql::type::kInt64, 2000000000, 8000000000L);
-    UnSafeCastCheck<int32_t, float>(::fesql::type::kInt32,
-                                    ::fesql::type::kFloat, 1, 4.0f);
-    UnSafeCastCheck<int32_t, double>(::fesql::type::kInt32,
-                                     ::fesql::type::kDouble, 2000000000,
+        ::fesql::node::kInt32, ::fesql::node::kInt64, 2000000000, 8000000000L);
+    UnSafeCastCheck<int32_t, float>(::fesql::node::kInt32,
+                                    ::fesql::node::kFloat, 1, 4.0f);
+    UnSafeCastCheck<int32_t, double>(::fesql::node::kInt32,
+                                     ::fesql::node::kDouble, 2000000000,
                                      8000000000.0);
 
-    UnSafeCastCheck<float, int16_t>(::fesql::type::kFloat,
-                                    ::fesql::type::kInt16, 1.5f, 4u);
-    UnSafeCastCheck<float, int32_t>(::fesql::type::kFloat,
-                                    ::fesql::type::kInt32, 10000.5f, 40000);
-    UnSafeCastCheck<float, int64_t>(::fesql::type::kFloat,
-                                    ::fesql::type::kInt64, 2000000000.5f,
+    UnSafeCastCheck<float, int16_t>(::fesql::node::kFloat,
+                                    ::fesql::node::kInt16, 1.5f, 4u);
+    UnSafeCastCheck<float, int32_t>(::fesql::node::kFloat,
+                                    ::fesql::node::kInt32, 10000.5f, 40000);
+    UnSafeCastCheck<float, int64_t>(::fesql::node::kFloat,
+                                    ::fesql::node::kInt64, 2000000000.5f,
                                     8000000000L);
-    UnSafeCastCheck<float, double>(::fesql::type::kFloat,
-                                   ::fesql::type::kDouble, 2000000000.5f,
+    UnSafeCastCheck<float, double>(::fesql::node::kFloat,
+                                   ::fesql::node::kDouble, 2000000000.5f,
                                    static_cast<double>(2000000000.5f) * 4.0);
 }
 
 TEST_F(CastExprIrBuilderTest, safe_cast_error_test) {
-    SafeCastErrorCheck(::fesql::type::kInt32, ::fesql::type::kInt16,
+    SafeCastErrorCheck(::fesql::node::kInt32, ::fesql::node::kInt16,
                        "unsafe cast");
 
-    SafeCastErrorCheck(::fesql::type::kInt64, ::fesql::type::kInt16,
+    SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kInt16,
                        "unsafe cast");
-    SafeCastErrorCheck(::fesql::type::kInt64, ::fesql::type::kInt32,
+    SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kInt32,
                        "unsafe cast");
-    SafeCastErrorCheck(::fesql::type::kInt64, ::fesql::type::kFloat,
+    SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kFloat,
                        "unsafe cast");
-    SafeCastErrorCheck(::fesql::type::kInt64, ::fesql::type::kDouble,
-                       "unsafe cast");
-
-    SafeCastErrorCheck(::fesql::type::kFloat, ::fesql::type::kInt16,
-                       "unsafe cast");
-    SafeCastErrorCheck(::fesql::type::kFloat, ::fesql::type::kInt32,
-                       "unsafe cast");
-    SafeCastErrorCheck(::fesql::type::kFloat, ::fesql::type::kInt64,
+    SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kDouble,
                        "unsafe cast");
 
-    SafeCastErrorCheck(::fesql::type::kDouble, ::fesql::type::kInt16,
+    SafeCastErrorCheck(::fesql::node::kFloat, ::fesql::node::kInt16,
                        "unsafe cast");
-    SafeCastErrorCheck(::fesql::type::kDouble, ::fesql::type::kInt32,
+    SafeCastErrorCheck(::fesql::node::kFloat, ::fesql::node::kInt32,
                        "unsafe cast");
-    SafeCastErrorCheck(::fesql::type::kDouble, ::fesql::type::kInt64,
+    SafeCastErrorCheck(::fesql::node::kFloat, ::fesql::node::kInt64,
                        "unsafe cast");
-    SafeCastErrorCheck(::fesql::type::kDouble, ::fesql::type::kFloat,
+
+    SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kInt16,
+                       "unsafe cast");
+    SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kInt32,
+                       "unsafe cast");
+    SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kInt64,
+                       "unsafe cast");
+    SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kFloat,
                        "unsafe cast");
 }
 
 TEST_F(CastExprIrBuilderTest, bool_cast_test) {
-    BoolCastCheck<int16_t>(::fesql::type::kInt16, 1u, true);
-    BoolCastCheck<int32_t>(::fesql::type::kInt32, 1, true);
-    BoolCastCheck<int64_t>(::fesql::type::kInt64, 1, true);
-    BoolCastCheck<float>(::fesql::type::kFloat, 1.0f, true);
-    BoolCastCheck<double>(::fesql::type::kDouble, 1.0, true);
+    BoolCastCheck<int16_t>(::fesql::node::kInt16, 1u, true);
+    BoolCastCheck<int32_t>(::fesql::node::kInt32, 1, true);
+    BoolCastCheck<int64_t>(::fesql::node::kInt64, 1, true);
+    BoolCastCheck<float>(::fesql::node::kFloat, 1.0f, true);
+    BoolCastCheck<double>(::fesql::node::kDouble, 1.0, true);
 
-    BoolCastCheck<int16_t>(::fesql::type::kInt16, 0, false);
-    BoolCastCheck<int32_t>(::fesql::type::kInt32, 0, false);
-    BoolCastCheck<int64_t>(::fesql::type::kInt64, 0, false);
-    BoolCastCheck<float>(::fesql::type::kFloat, 0.0f, false);
-    BoolCastCheck<double>(::fesql::type::kDouble, 0.0, false);
+    BoolCastCheck<int16_t>(::fesql::node::kInt16, 0, false);
+    BoolCastCheck<int32_t>(::fesql::node::kInt32, 0, false);
+    BoolCastCheck<int64_t>(::fesql::node::kInt64, 0, false);
+    BoolCastCheck<float>(::fesql::node::kFloat, 0.0f, false);
+    BoolCastCheck<double>(::fesql::node::kDouble, 0.0, false);
 }
 
 }  // namespace codegen

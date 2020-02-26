@@ -569,21 +569,21 @@ SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
     }
 }
 
-TypeNode *NodeManager::MakeTypeNode(fesql::type::Type base) {
+TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base) {
     TypeNode *node_ptr = new TypeNode(base);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
-TypeNode *NodeManager::MakeTypeNode(fesql::type::Type base,
-                                    fesql::type::Type v1) {
+TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
+                                    fesql::node::DataType v1) {
     TypeNode *node_ptr = new TypeNode(base, v1);
     RegisterNode(node_ptr);
     return node_ptr;
 }
-TypeNode *NodeManager::MakeTypeNode(fesql::type::Type base,
-                                    fesql::type::Type v1,
-                                    fesql::type::Type v2) {
+TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
+                                    fesql::node::DataType v1,
+                                    fesql::node::DataType v2) {
     TypeNode *node_ptr = new TypeNode(base, v1, v2);
     RegisterNode(node_ptr);
     return node_ptr;

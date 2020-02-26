@@ -20,6 +20,7 @@
 
 #include <string>
 #include <vector>
+#include "base/status.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/predicate_expr_ir_builder.h"
@@ -40,28 +41,37 @@ class ExprIRBuilder {
 
     ~ExprIRBuilder();
 
-    bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
+    bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output,
+               ::fesql::base::Status& status);  // NOLINT
 
  private:
-    bool BuildColumnIterator(const std::string& col, ::llvm::Value** output);
-    bool BuildColumnItem(const std::string& col, ::llvm::Value** output);
+    bool BuildColumnIterator(const std::string& col, ::llvm::Value** output,
+                             ::fesql::base::Status& status);  // NOLINT
+    bool BuildColumnItem(const std::string& col, ::llvm::Value** output,
+                         ::fesql::base::Status& status);  // NOLINT
     bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
-                        ::llvm::Value** output);
+                        ::llvm::Value** output,
+                        ::fesql::base::Status& status);  // NOLINT
 
     bool BuildCallFn(const ::fesql::node::CallExprNode* fn,
-                     ::llvm::Value** output);
+                     ::llvm::Value** output,
+                     ::fesql::base::Status& status);  // NOLINT
 
     bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
-                         ::llvm::Value** output);
+                         ::llvm::Value** output,
+                         ::fesql::base::Status& status);  // NOLINT
 
     bool BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
-                        ::llvm::Value** output);
+                        ::llvm::Value** output,
+                        ::fesql::base::Status& status);  // NOLINT
 
     bool BuildStructExpr(const ::fesql::node::StructExpr* node,
-                         ::llvm::Value** output);
-    ::llvm::Function* GetFuncion(const std::string& col,
-                                 std::vector<node::TypeNode> generic_types,
-                                 common::Status& status);  // NOLINT
+                         ::llvm::Value** output,
+                         ::fesql::base::Status& status);  // NOLINT
+    ::llvm::Function* GetFuncion(
+        const std::string& col,
+        const std::vector<node::TypeNode>& generic_types,
+        base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;

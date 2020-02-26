@@ -29,20 +29,24 @@ namespace codegen {
 
 bool GetLLVMType(::llvm::Module* m, const ::fesql::node::TypeNode* type,
                  ::llvm::Type** output);
-bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::type::Type& type,
+bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::node::DataType& type,
                  ::llvm::Type** output);
-bool GetLLVMType(::llvm::Module* m, const ::fesql::type::Type& type,
+bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
                  ::llvm::Type** output);
-bool GetLLVMListType(::llvm::Module* m, const ::fesql::type::Type& type,
+bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::DataType& type,
                      ::llvm::Type** output);
-bool GetLLVMIteratorType(::llvm::Module* m, const ::fesql::type::Type& type,
+bool GetLLVMIteratorType(::llvm::Module* m, const ::fesql::node::DataType& type,
                          ::llvm::Type** output);
-bool GetLLVMIteratorSize(const ::fesql::type::Type& v_type, uint32_t* size);
-bool GetLLVMColumnSize(const ::fesql::type::Type& v_type, uint32_t* size);
+bool GetLLVMIteratorSize(const ::fesql::node::DataType& v_type, uint32_t* size);
+bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size);
 
-bool GetBaseType(::llvm::Type* type, ::fesql::type::Type* output);
+bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output);
 bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node);
 
+bool SchemaType2DataType(const ::fesql::type::Type type,
+                         ::fesql::node::DataType* output);
+bool DataType2SchemaType(const ::fesql::node::DataType type,
+                         ::fesql::type::Type* output);
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
 

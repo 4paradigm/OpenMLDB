@@ -128,11 +128,10 @@ bool BlockIRBuilder::BuildIfElseBlock(
     ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
     //进行条件的代码
     llvm::Value *cond = nullptr;
-    if (false == expr_builder.Build(
-                     if_else_block->if_block_->if_node->expression_, &cond)) {
-        status.code = common::kCodegenError;
-        status.msg = "fail to codegen condition expression";
-        LOG(WARNING) << status.msg;
+    if (false ==
+        expr_builder.Build(if_else_block->if_block_->if_node->expression_,
+                           &cond, status)) {
+        LOG(WARNING) << "fail to codegen condition expression: " << status.msg;
         return false;
     }
 
@@ -140,6 +139,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
     builder.SetInsertPoint(cond_true);
     if (false == BuildBlock(if_else_block->if_block_->block_, cond_true,
                             if_else_end, status)) {
+        LOG(WARNING) << "fail to build block " << status.msg;
         return false;
     }
     builder.SetInsertPoint(cond_false);
@@ -156,10 +156,9 @@ bool BlockIRBuilder::BuildIfElseBlock(
 
             ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
             if (false == expr_builder.Build(elif_block->elif_node_->expression_,
-                                            &cond)) {
-                status.code = common::kCodegenError;
-                status.msg = "fail to codegen condition expression";
-                LOG(WARNING) << status.msg;
+                                            &cond, status)) {
+                LOG(WARNING)
+                    << "fail to codegen condition expression" << status.msg;
                 return false;
             }
             builder.CreateCondBr(cond, cond_true, cond_false);
@@ -167,6 +166,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
             if (false == BuildBlock(elif_block->block_,
                                     builder.GetInsertBlock(), if_else_end,
                                     status)) {
+                LOG(WARNING) << "fail to codegen block: " << status.msg;
                 return false;
             }
             builder.SetInsertPoint(cond_false);
@@ -179,6 +179,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
         if (false == BuildBlock(if_else_block->else_block_->block_,
                                 builder.GetInsertBlock(), if_else_end,
                                 status)) {
+            LOG(WARNING) << "fail to codegen block: " << status.msg;
             return false;
         }
     }
@@ -199,13 +200,16 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
     // loop start
     llvm::Value *container_value;
     if (false == expr_builder.Build(node->for_in_node_->in_expression_,
-                                    &container_value)) {
+                                    &container_value, status)) {
+        LOG(WARNING) << "fail to build for condition expression: "
+                     << status.msg;
         return false;
     }
 
     llvm::Value *iterator = nullptr;
     if (false ==
         list_ir_builder.BuildIterator(container_value, &iterator, status)) {
+        LOG(WARNING) << "fail to build iterator expression: " << status.msg;
         return false;
     }
 
@@ -220,6 +224,8 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         llvm::Value *condition;
         if (false == list_ir_builder.BuildIteratorHasNext(iterator, &condition,
                                                           status)) {
+            LOG(WARNING) << "fail to build iterator has next expression: "
+                         << status.msg;
             return false;
         }
 
@@ -234,6 +240,8 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         llvm::Value *next;
         if (false ==
             list_ir_builder.BuildIteratorNext(iterator, &next, status)) {
+            LOG(WARNING) << "fail to build iterator next expression: "
+                         << status.msg;
             return false;
         }
         if (false == var_ir_builder.StoreValue(node->for_in_node_->var_name_,
@@ -242,6 +250,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         }
         // loop body
         if (false == BuildBlock(node->block_, loop, loop_cond, status)) {
+            LOG(WARNING) << "fail to codegen block: " << status.msg;
             return false;
         }
     }
@@ -261,11 +270,9 @@ bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
     ExprIRBuilder expr_builder(block, sv_);
     VariableIRBuilder var_ir_builder(block, sv_);
     ::llvm::Value *value = NULL;
-    bool ok = expr_builder.Build(node->return_expr_, &value);
+    bool ok = expr_builder.Build(node->return_expr_, &value, status);
     if (!ok) {
-        status.code = common::kCodegenError;
-        status.msg = "fail to codegen expr";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << "fail to codegen return expression: " << status.msg;
         return false;
     }
     builder.CreateRet(value);
@@ -284,11 +291,9 @@ bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
     ExprIRBuilder builder(block, sv_);
     VariableIRBuilder variable_ir_builder(block, sv_);
     ::llvm::Value *value = NULL;
-    bool ok = builder.Build(node->expression_, &value);
+    bool ok = builder.Build(node->expression_, &value, status);
     if (!ok) {
-        status.code = common::kCodegenError;
-        status.msg = "fail to codegen expr";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << "fail to codegen expr" << status.msg;
         return false;
     }
     return variable_ir_builder.StoreValue(node->name_, value, false, status);

@@ -133,33 +133,33 @@ inline const std::string ExprTypeName(const ExprType &type) {
 
 inline const std::string DataTypeName(const DataType &type) {
     switch (type) {
-        case fesql::type::kBool:
+        case fesql::node::kBool:
             return "bool";
-        case fesql::type::kInt16:
+        case fesql::node::kInt16:
             return "int16";
-        case fesql::type::kInt32:
+        case fesql::node::kInt32:
             return "int32";
-        case fesql::type::kInt64:
+        case fesql::node::kInt64:
             return "int64";
-        case fesql::type::kFloat:
+        case fesql::node::kFloat:
             return "float";
-        case fesql::type::kDouble:
+        case fesql::node::kDouble:
             return "double";
-        case fesql::type::kVarchar:
+        case fesql::node::kVarchar:
             return "string";
-        case fesql::type::kTimestamp:
+        case fesql::node::kTimestamp:
             return "timestamp";
-        case fesql::type::kList:
+        case fesql::node::kList:
             return "list";
-        case fesql::type::kMap:
+        case fesql::node::kMap:
             return "map";
-        case fesql::type::kIterator:
+        case fesql::node::kIterator:
             return "iterator";
-        case fesql::type::kRow:
+        case fesql::node::kRow:
             return "row";
-        case fesql::type::kNull:
+        case fesql::node::kNull:
             return "null";
-        case fesql::type::kVoid:
+        case fesql::node::kVoid:
             return "void";
         default:
             return "unknown";
@@ -227,13 +227,13 @@ class SQLNodeList {
 
 class TypeNode : public SQLNode {
  public:
-    TypeNode() : SQLNode(node::kType, 0, 0), base_(type::kNull) {}
-    explicit TypeNode(fesql::type::Type base)
+    TypeNode() : SQLNode(node::kType, 0, 0), base_(fesql::node::kNull) {}
+    explicit TypeNode(fesql::node::DataType base)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({}) {}
-    explicit TypeNode(fesql::type::Type base, DataType v1)
+    explicit TypeNode(fesql::node::DataType base, DataType v1)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({v1}) {}
-    explicit TypeNode(fesql::type::Type base, fesql::type::Type v1,
-                      fesql::type::Type v2)
+    explicit TypeNode(fesql::node::DataType base, fesql::node::DataType v1,
+                      fesql::node::DataType v2)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({v1, v2}) {}
     ~TypeNode() {}
     const std::string GetName() const {
@@ -246,8 +246,8 @@ class TypeNode : public SQLNode {
         }
         return type_name;
     }
-    fesql::type::Type base_;
-    std::vector<fesql::type::Type> generics_;
+    fesql::node::DataType base_;
+    std::vector<fesql::node::DataType> generics_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
 };
 class ExprNode : public SQLNode {
@@ -538,36 +538,36 @@ class ExprIdNode : public ExprNode {
 
 class ConstNode : public ExprNode {
  public:
-    ConstNode() : ExprNode(kExprPrimary), date_type_(fesql::type::kNull) {}
+    ConstNode() : ExprNode(kExprPrimary), date_type_(fesql::node::kNull) {}
     explicit ConstNode(int16_t val)
-        : ExprNode(kExprPrimary), date_type_(fesql::type::kInt16) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kInt16) {
         val_.vsmallint = val;
     }
     explicit ConstNode(int val)
-        : ExprNode(kExprPrimary), date_type_(fesql::type::kInt32) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kInt32) {
         val_.vint = val;
     }
     explicit ConstNode(int64_t val)
-        : ExprNode(kExprPrimary), date_type_(fesql::type::kInt64) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kInt64) {
         val_.vlong = val;
     }
     explicit ConstNode(float val)
-        : ExprNode(kExprPrimary), date_type_(fesql::type::kFloat) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kFloat) {
         val_.vfloat = val;
     }
 
     explicit ConstNode(double val)
-        : ExprNode(kExprPrimary), date_type_(fesql::type::kDouble) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kDouble) {
         val_.vdouble = val;
     }
 
     explicit ConstNode(const char *val)
-        : ExprNode(kExprPrimary), date_type_(fesql::type::kVarchar) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kVarchar) {
         val_.vstr = strdup(val);
     }
 
     explicit ConstNode(const std::string &val)
-        : ExprNode(kExprPrimary), date_type_(fesql::type::kVarchar) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kVarchar) {
         val_.vstr = val.c_str();
     }
 
@@ -577,7 +577,7 @@ class ConstNode : public ExprNode {
     }
 
     ~ConstNode() {
-        if (date_type_ == fesql::type::kVarchar) {
+        if (date_type_ == fesql::node::kVarchar) {
             delete val_.vstr;
         }
     }
@@ -599,13 +599,13 @@ class ConstNode : public ExprNode {
 
     int64_t GetMillis() const {
         switch (date_type_) {
-            case fesql::type::kDay:
+            case fesql::node::kDay:
                 return 86400000 * val_.vlong;
-            case fesql::type::kHour:
+            case fesql::node::kHour:
                 return 3600000 * val_.vlong;
-            case fesql::type::kMinute:
+            case fesql::node::kMinute:
                 return 60000 * val_.vlong;
-            case fesql::type::kSecond:
+            case fesql::node::kSecond:
                 return 1000 * val_.vlong;
             default: {
                 LOG(WARNING)
@@ -893,16 +893,16 @@ class ColumnIndexNode : public SQLNode {
                 case kExprPrimary: {
                     const ConstNode *ttl = dynamic_cast<ConstNode *>(ttl_node);
                     switch (ttl->GetDataType()) {
-                        case fesql::type::kInt32:
+                        case fesql::node::kInt32:
                             ttl_ = ttl->GetInt();
                             break;
-                        case fesql::type::kInt64:
+                        case fesql::node::kInt64:
                             ttl_ = ttl->GetLong();
                             break;
-                        case fesql::type::kDay:
-                        case fesql::type::kHour:
-                        case fesql::type::kMinute:
-                        case fesql::type::kSecond:
+                        case fesql::node::kDay:
+                        case fesql::node::kHour:
+                        case fesql::node::kMinute:
+                        case fesql::node::kSecond:
                             ttl_ = ttl->GetMillis();
                             break;
                         default: {
