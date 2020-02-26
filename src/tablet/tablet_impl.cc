@@ -482,7 +482,7 @@ void TabletImpl::Get(RpcController* controller,
                 return;
         }
     } else {
-        std::shared_ptr<DiskNoTsTable> table;
+        std::shared_ptr<RelationalTable> table;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table = GetNoTsTableUnLock(request->tid(), request->pid());
@@ -613,7 +613,7 @@ void TabletImpl::Put(RpcController* controller,
             }
         }
     } else {
-        std::shared_ptr<DiskNoTsTable> table;
+        std::shared_ptr<RelationalTable> table;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table = GetNoTsTableUnLock(request->tid(), request->pid());
@@ -1444,7 +1444,7 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
-        std::shared_ptr<DiskNoTsTable> table;
+        std::shared_ptr<RelationalTable> table;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table = GetNoTsTableUnLock(request->tid(), request->pid());
@@ -2837,7 +2837,7 @@ int32_t TabletImpl::DeleteNoTsTableInternal(uint32_t tid, uint32_t pid, std::sha
     std::string recycle_bin_root_path;
     int32_t code = -1;
     do {
-        std::shared_ptr<DiskNoTsTable> table;
+        std::shared_ptr<RelationalTable> table;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table = GetNoTsTableUnLock(tid, pid);
@@ -2955,7 +2955,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
     if (table_meta->table_type() == rtidb::type::kRelational) {
         std::string msg;
-        if (CreateDiskNoTsTableInternal(table_meta, msg) < 0) {
+        if (CreateRelationalTableInternal(table_meta, msg) < 0) {
             response->set_code(131);
             response->set_msg(msg.c_str());
             return;
@@ -3002,7 +3002,7 @@ void TabletImpl::CreateTable(RpcController* controller,
         gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
     } else {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        std::shared_ptr<DiskNoTsTable> table = GetNoTsTableUnLock(tid, pid);
+        std::shared_ptr<RelationalTable> table = GetNoTsTableUnLock(tid, pid);
         if (!table) {
             response->set_code(131);
             response->set_msg("table is not exist");
@@ -3550,7 +3550,7 @@ int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_met
     return 0;
 }
 
-int TabletImpl::CreateDiskNoTsTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
+int TabletImpl::CreateRelationalTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
     std::string db_root_path;
@@ -3560,13 +3560,13 @@ int TabletImpl::CreateDiskNoTsTableInternal(const ::rtidb::api::TableMeta* table
         msg.assign("fail to get table db root path");
         return -1;
     }
-    DiskNoTsTable* table_ptr = new DiskNoTsTable(*table_meta, db_root_path);
+    RelationalTable* table_ptr = new RelationalTable(*table_meta, db_root_path);
     if (!table_ptr->Init()) {
         return -1;
     }
     PDLOG(INFO, "create disk no ts table. tid %u pid %u", tid, pid);
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    std::shared_ptr<DiskNoTsTable> table = GetNoTsTableUnLock(tid, pid);
+    std::shared_ptr<RelationalTable> table = GetNoTsTableUnLock(tid, pid);
     if (table) {
         PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
         return -1;
@@ -3609,7 +3609,7 @@ void TabletImpl::DropTable(RpcController* controller,
             }
             task_pool_.AddTask(boost::bind(&TabletImpl::DeleteTableInternal, this, tid, pid, task_ptr));
         } else {
-            std::shared_ptr<DiskNoTsTable> table;
+            std::shared_ptr<RelationalTable> table;
             {
                 std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
                 table = GetNoTsTableUnLock(request->tid(), request->pid());
@@ -3876,7 +3876,7 @@ std::shared_ptr<Table> TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
     return std::shared_ptr<Table>();
 }
 
-std::shared_ptr<DiskNoTsTable> TabletImpl::GetNoTsTableUnLock(uint32_t tid, uint32_t pid) {
+std::shared_ptr<RelationalTable> TabletImpl::GetNoTsTableUnLock(uint32_t tid, uint32_t pid) {
     NoTsTables::iterator it = no_ts_tables_.find(tid);
     if (it != no_ts_tables_.end()) {
         auto tit = it->second.find(pid);
@@ -3884,7 +3884,7 @@ std::shared_ptr<DiskNoTsTable> TabletImpl::GetNoTsTableUnLock(uint32_t tid, uint
             return tit->second;
         }
     }
-    return std::shared_ptr<DiskNoTsTable>();
+    return std::shared_ptr<RelationalTable>();
 }
 
 void TabletImpl::ShowMemPool(RpcController* controller,
