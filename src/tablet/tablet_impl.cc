@@ -3953,7 +3953,7 @@ void TabletImpl::DeleteIndex(RpcController* controller,
         }
         for (const auto& kv: tables) {
             MemTable* mem_table = dynamic_cast<MemTable*>(kv.second.get());
-            if (mem_table->DeleteIndex(request->idx_name())) {
+            if (!mem_table->DeleteIndex(request->idx_name())) {
                 response->set_code(100);
                 response->set_msg("delete index fail!");
                 return;
