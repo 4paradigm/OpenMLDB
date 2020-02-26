@@ -485,7 +485,7 @@ bool MemTable::IsExpire(const LogEntry& entry) {
 }
 
 int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
-    if (index >= idx_cnt_) {
+    if (index >= idx_cnt_ || segments_[index] == NULL) {
         return -1;
     }
     uint32_t seg_idx = 0;
@@ -502,6 +502,9 @@ int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
 }
 
 int MemTable::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count) {
+    if (segments_[index] == NULL) {
+        return -1;
+    }
     auto column_map_iter = column_key_map_.find(index);
     if (column_map_iter == column_key_map_.end()) {
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
@@ -527,7 +530,7 @@ TableIterator* MemTable::NewIterator(const std::string& pk, Ticket& ticket) {
 }
 
 TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
-    if (index >= idx_cnt_ || index >= segments_.size()) {
+    if (index >= idx_cnt_ || index >= segments_.size() || segments_[index] == NULL) {
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u, segment size %u", 
                         index, idx_cnt_, segments_.size());
         return NULL;
@@ -547,7 +550,7 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
 
 TableIterator* MemTable::NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) {
     auto column_map_iter = column_key_map_.find(index);
-    if (column_map_iter == column_key_map_.end()) {
+    if (column_map_iter == column_key_map_.end() || segments_[index] == NULL) {
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
         return NULL;
     }
@@ -567,9 +570,11 @@ TableIterator* MemTable::NewIterator(uint32_t index, int32_t ts_idx, const std::
 
 uint64_t MemTable::GetRecordIdxByteSize() {
     uint64_t record_idx_byte_size = 0;
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            record_idx_byte_size += segments_[i][j]->GetIdxByteSize(); 
+    for (uint32_t i = 0; i < segments_.size(); i++) {
+        if (segments_[i]!=NULL) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                record_idx_byte_size += segments_[i][j]->GetIdxByteSize(); 
+            }
         }
     }
     return record_idx_byte_size;
@@ -577,9 +582,11 @@ uint64_t MemTable::GetRecordIdxByteSize() {
 
 uint64_t MemTable::GetRecordIdxCnt() {
     uint64_t record_idx_cnt = 0;
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            record_idx_cnt += segments_[i][j]->GetIdxCnt(); 
+    for (uint32_t i = 0; i < segments_.size(); i++) {
+        if (segments_[i] != NULL) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                record_idx_cnt += segments_[i][j]->GetIdxCnt(); 
+            }
         }
     }
     return record_idx_cnt;
@@ -587,9 +594,11 @@ uint64_t MemTable::GetRecordIdxCnt() {
 
 uint64_t MemTable::GetRecordPkCnt() {
     uint64_t record_pk_cnt = 0;
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            record_pk_cnt += segments_[i][j]->GetPkCnt(); 
+    for (uint32_t i = 0; i < segments_.size(); i++) {
+        if (segments_[i] != NULL) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                record_pk_cnt += segments_[i][j]->GetPkCnt(); 
+            }
         }
     }
     return record_pk_cnt;
@@ -599,7 +608,7 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (stat == NULL) {
         return false;
     }
-    if (idx >= idx_cnt_ || idx >= segments_.size()) {
+    if (idx >= idx_cnt_ || idx >= segments_.size() || segments_[idx] == NULL) {
         return false;
     }
     uint64_t* data_array = new uint64_t[seg_cnt_];

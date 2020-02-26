@@ -159,12 +159,20 @@ public:
         return key_entry_max_height_;
     }
 
-    inline void DeleteIndex(uint32_t idx) {
-        for (uint32_t i = 0; i < seg_cnt_; i++) {
-            delete segments_[idx][i];
+    inline bool DeleteIndex(std::string idx_name) {
+        auto iter = mapping_.find(idx_name);
+        if (iter->second == 0) {
+            return false;
         }
-        delete[] segments_[idx];
-        segments_[idx] = NULL;
+        for (uint32_t i = 0; i < seg_cnt_; i++) {
+            delete segments_[iter->second][i];
+        }
+        delete[] segments_[iter->second];
+        segments_[iter->second] = NULL;
+        idx_cnt_--;
+        mapping_.erase(idx_name);
+        column_key_map_.erase(iter->second);
+        return true;
     }
 
 private:

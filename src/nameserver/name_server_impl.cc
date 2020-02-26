@@ -8395,6 +8395,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     uint32_t idx = 0;
+    bool has_column_key = true;
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto table_iter = table_info_.find(request->table_name());
@@ -8405,18 +8406,32 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             return;
         }
         table_info = table_iter->second;
-        for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
-            if (table_info->column_desc_v1(i).name() == request->idx_name() && table_info->column_desc_v1(i).add_ts_idx()) {
-                idx = i;
-                break;
+        bool flag = true;
+        if (table_info->column_key_size() == 0) {
+            has_column_key = false;
+            for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
+                if (table_info->column_desc_v1(i).name() == request->idx_name() && table_info->column_desc_v1(i).add_ts_idx()) {
+                    idx = i;
+                    flag = false;
+                    break;
+                }
+            }
+        } else {
+            for (int i = 0; i < table_info->column_key_size(); i++) {
+                if (table_info->column_key(i).index_name() == request->idx_name()) {
+                    idx = i;
+                    flag = false;
+                    break;
+                }
             }
         }
-        response->set_code(100);
-        response->set_msg("index is not exist!");
-        PDLOG(WARNING, "index[%s] is not exist!", request->idx_name().c_str());
-        return;
-    } while(0);
-
+        if (flag) {
+            response->set_code(100);
+            response->set_msg("index doesn't exist!");
+            PDLOG(WARNING, "index[%s]  doesn't exist!", request->idx_name().c_str());
+            return;
+        }
+    }
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_client_map;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -8453,7 +8468,11 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             return;
         }
     }
-    table_info->mutable_column_desc_v1(idx)->set_add_ts_idx(false);
+    if (has_column_key) {
+        table_info->mutable_column_desc_v1(idx)->set_add_ts_idx(false);
+    } else {
+        table_info->mutable_column_key()->DeleteSubrange(idx, 1);
+    }
     response->set_code(0);
     response->set_msg("ok");
 }

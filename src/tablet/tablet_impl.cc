@@ -3952,11 +3952,11 @@ void TabletImpl::DeleteIndex(RpcController* controller,
             return;
         }
         for (const auto& kv: tables) {
-            std::map<std::string, uint32_t> idx_map =  kv.second->GetMapping();
-            auto iter = idx_map.find(request->idx_name());
-            if (iter != idx_map.end()) {
-                MemTable* mem_table = dynamic_cast<MemTable*>(kv.second.get());
-                mem_table->DeleteIndex(iter->second);
+            MemTable* mem_table = dynamic_cast<MemTable*>(kv.second.get());
+            if (mem_table->DeleteIndex(request->idx_name())) {
+                response->set_code(100);
+                response->set_msg("delete index fail!");
+                return;
             }
         }
     }
