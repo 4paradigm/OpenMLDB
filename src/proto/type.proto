@@ -18,8 +18,8 @@ enum DataType {
 }
 
 enum TableType {
-    kTimeSeries = 1; //时序表
-    kRelational = 2; //关系型表
+    kTimeSeries = 1; 
+    kRelational = 2;
 }
 
 
