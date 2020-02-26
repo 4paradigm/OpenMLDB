@@ -16,3 +16,10 @@ enum DataType {
     kTimestamp = 9;
     kVoid = 100;
 }
+
+enum TableType {
+    kTimeSeries = 1; //时序表
+    kRelational = 2; //关系型表
+}
+
+

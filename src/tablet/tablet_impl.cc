@@ -399,7 +399,7 @@ void TabletImpl::Get(RpcController* controller,
              ::rtidb::api::GetResponse* response,
              Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (request->table_type() != rtidb::api::kRelational) {
+    if (request->table_type() != rtidb::type::kRelational) {
         std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
         if (!table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
@@ -528,7 +528,7 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
-    if (request->table_type() != rtidb::api::kRelational) {
+    if (request->table_type() != rtidb::type::kRelational) {
         if (request->time() == 0 && request->ts_dimensions_size() == 0) {
             response->set_code(114);
             response->set_msg("ts must be greater than zero");
@@ -1376,7 +1376,7 @@ void TabletImpl::Delete(RpcController* controller,
               ::rtidb::api::GeneralResponse* response,
               Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (request->table_type() != rtidb::api::kRelational) {
+    if (request->table_type() != rtidb::type::kRelational) {
         if (follower_.load(std::memory_order_relaxed)) {
             response->set_code(453);
             response->set_msg("is follower cluster");
@@ -2912,7 +2912,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     std::string msg;
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
-    if (table_meta->table_type() != rtidb::api::kRelational) {
+    if (table_meta->table_type() != rtidb::type::kRelational) {
         if (CheckTableMeta(table_meta, msg) != 0) {
             response->set_code(129);
             response->set_msg(msg);
@@ -2953,7 +2953,7 @@ void TabletImpl::CreateTable(RpcController* controller,
         response->set_msg("write data failed");
         return;
     }
-    if (table_meta->table_type() == rtidb::api::kRelational) {
+    if (table_meta->table_type() == rtidb::type::kRelational) {
         std::string msg;
         if (CreateDiskNoTsTableInternal(table_meta, msg) < 0) {
             response->set_code(131);
@@ -2975,7 +2975,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    if (table_meta->table_type() != rtidb::api::kRelational) {
+    if (table_meta->table_type() != rtidb::type::kRelational) {
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
             response->set_code(131);
@@ -3593,7 +3593,7 @@ void TabletImpl::DropTable(RpcController* controller,
     uint32_t pid = request->pid();
     PDLOG(INFO, "drop table. tid[%u] pid[%u]", tid, pid);
     do {
-        if (request->table_type() != rtidb::api::kRelational) {
+        if (request->table_type() != rtidb::type::kRelational) {
             std::shared_ptr<Table> table = GetTable(tid, pid);
             if (!table) {
                 response->set_code(100);
