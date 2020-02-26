@@ -1,9 +1,5 @@
 import client
-endpoint=""
-msg=""
-nsc = client.InitNsClient("172.27.128.33:6181", "/multidc2", endpoint)
-print(dir(nsc))
-table=""
-resp = client.ShowTable(nsc, table)
+nsc = client.RtidbNSClient("172.27.128.33:6181", "/multidc2", "")
+resp = nsc.ShowTable("")
 for i in resp:
     print(i)
