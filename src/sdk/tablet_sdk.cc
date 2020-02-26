@@ -406,32 +406,32 @@ void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
                         node::ConstNode* primary =
                             dynamic_cast<node::ConstNode*>(value);
                         switch (primary->GetDataType()) {
-                            case node::kTypeInt16: {
+                            case node::kInt16: {
                                 insert.values.push_back(
                                     sdk::Value(primary->GetSmallInt()));
                                 break;
                             }
-                            case node::kTypeInt32: {
+                            case node::kInt32: {
                                 insert.values.push_back(
                                     sdk::Value(primary->GetInt()));
                                 break;
                             }
-                            case node::kTypeInt64: {
+                            case node::kInt64: {
                                 insert.values.push_back(
                                     sdk::Value(primary->GetLong()));
                                 break;
                             }
-                            case node::kTypeFloat: {
+                            case node::kFloat: {
                                 insert.values.push_back(
                                     sdk::Value(primary->GetFloat()));
                                 break;
                             }
-                            case node::kTypeDouble: {
+                            case node::kDouble: {
                                 insert.values.push_back(
                                     sdk::Value(primary->GetDouble()));
                                 break;
                             }
-                            case node::kTypeString: {
+                            case node::kVarchar: {
                                 // TODO(wangtaize) use slice
                                 insert.values.push_back(
                                     sdk::Value(primary->GetStr()));
@@ -442,6 +442,7 @@ void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
                                 status.msg =
                                     "can not handle data type " +
                                     node::DataTypeName(primary->GetDataType());
+                                LOG(WARNING) << status.msg;
                                 return;
                             }
                         }

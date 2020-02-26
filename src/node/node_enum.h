@@ -10,6 +10,7 @@
 #ifndef SRC_NODE_NODE_ENUM_H_
 #define SRC_NODE_NODE_ENUM_H_
 
+#include <proto/type.pb.h>
 #include <string>
 #include "proto/common.pb.h"
 namespace fesql {
@@ -27,6 +28,7 @@ enum SQLNodeType {
     kInsertStmt,
     kCmdStmt,
     kExpr,
+    kType,
     kResTarget,
     kTable,
     kWindowFunc,
@@ -42,7 +44,6 @@ enum SQLNodeType {
     kName,
     kConst,
     kLimit,
-    kList,
     kOrderBy,
 
     kDesc,
@@ -57,9 +58,19 @@ enum SQLNodeType {
 
     kFn,
     kFnDef,
+    kFnHeader,
     kFnValue,
+    kFnIfElseBlock,
+    kFnIfBlock,
+    kFnElseBlock,
+    kFnElifBlock,
+    kFnForInBlock,
     kFnAssignStmt,
     kFnReturnStmt,
+    kFnIfStmt,
+    kFnElifStmt,
+    kFnElseStmt,
+    kFnForInStmt,
     kFnPara,
     kFnParaList,
     kFnList,
@@ -77,27 +88,34 @@ enum ExprType {
     kExprColumnRef,
     kExprPrimary,
     kExprList,
+    kExprForIn,
+    kExprRange,
     kExprAll,
     kExprStruct,
     kExprUnknow = 9999
 };
+// typedef fesql::type::Type DataType;
 enum DataType {
-    kTypeBool,
-    kTypeInt16,
-    kTypeInt32,
-    kTypeInt64,
-    kTypeFloat,
-    kTypeDouble,
-    kTypeString,
-    kTypeTimestamp,
-    kTypeHour,
-    kTypeDay,
-    kTypeMinute,
-    kTypeSecond,
-    kTypeRow,
-    kTypeNull,
-    kTypeVoid,
-    kTypeInt8Ptr,
+    kBool,
+    kInt16,
+    kInt32,
+    kInt64,
+    kFloat,
+    kDouble,
+    kVarchar,
+    kDate,
+    kTimestamp,
+    kList,
+    kHour,
+    kMinute,
+    kSecond,
+    kDay,
+    kMap,
+    kIterator,
+    kInt8Ptr,
+    kRow,
+    kVoid = 100,
+    kNull = 101
 };
 
 enum TimeUnit {
@@ -122,6 +140,8 @@ enum FnOperator {
     kFnOpLe,
     kFnOpGt,
     kFnOpGe,
+    kFnOpDot,
+    kFnOpAt,
     kFnOpBracket,
     kFnOpNone
 };

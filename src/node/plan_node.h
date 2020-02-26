@@ -81,9 +81,7 @@ class SelectPlanNode : public MultiChildPlanNode {
     SelectPlanNode() : MultiChildPlanNode(kPlanTypeSelect), limit_cnt_(-1) {}
     ~SelectPlanNode() {}
     int GetLimitCount() { return limit_cnt_; }
-
     void SetLimitCount(int count) { limit_cnt_ = count; }
-
  private:
     int limit_cnt_;
 };
@@ -353,15 +351,13 @@ class FuncDefPlanNode : public LeafPlanNode {
     FuncDefPlanNode() : LeafPlanNode(kPlanTypeFuncDef) {}
     ~FuncDefPlanNode() {}
 
-    void SetFuNodeList(const FnNodeList *fn_node_list) {
-        fn_node_list_ = fn_node_list;
+    void SetDef(const FnNodeFnDef * fn_def) {
+        fn_def_ = fn_def;
     }
-
-    const FnNodeList *GetFnNodeList() const { return fn_node_list_; }
-
- private:
-    const FnNodeList *fn_node_list_;
+    void Print(std::ostream &output, const std::string &orgTab) const;
+    const FnNodeFnDef* fn_def_;
 };
+
 void PrintPlanVector(std::ostream &output, const std::string &tab,
                      PlanNodeList vec, const std::string vector_name,
                      bool last_item);

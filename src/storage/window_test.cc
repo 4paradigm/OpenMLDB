@@ -20,7 +20,8 @@ class WindowIteratorTest : public ::testing::Test {
 
 TEST_F(WindowIteratorTest, IteratorImplTest) {
     std::vector<int> int_vec({1, 2, 3, 4, 5});
-    IteratorImpl<int> impl(int_vec);
+    ListV<int> list(int_vec);
+    IteratorImpl<int> impl(list);
 
     ASSERT_TRUE(impl.Valid());
     ASSERT_EQ(1, impl.Next());
@@ -88,7 +89,8 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
         rows.push_back(Row{.buf = ptr});
     }
 
-    WindowIteratorImpl impl(rows);
+    ListV<Row> list(rows);
+    IteratorImpl<Row> impl(list);
     ASSERT_TRUE(impl.Valid());
     ASSERT_TRUE(impl.Valid());
     ASSERT_TRUE(impl.Valid());
@@ -219,7 +221,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
     Row row({.buf = ptr});
 
-    // history current_ts -1000 ~ current_ts
+//     history current_ts -1000 ~ current_ts
     {
         std::vector<Row> rows;
         std::vector<uint64_t> keys;

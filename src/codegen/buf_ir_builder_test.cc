@@ -20,12 +20,9 @@
 #include <cstdlib>
 #include <memory>
 #include <vector>
+#include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
 #include "gtest/gtest.h"
-#include "storage/codec.h"
-#include "storage/type_ir_builder.h"
-#include "storage/window.h"
-
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -39,6 +36,9 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "storage/codec.h"
+#include "storage/type_ir_builder.h"
+#include "storage/window.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -72,9 +72,10 @@ T PrintList(int8_t* input) {
     }
     ::fesql::storage::ListRef* list_ref =
         reinterpret_cast<::fesql::storage::ListRef*>(input);
-    ::fesql::storage::ColumnIteratorImpl<T>* col =
-        reinterpret_cast<::fesql::storage::ColumnIteratorImpl<T>*>(
-            list_ref->iterator);
+    ::fesql::storage::ColumnImpl<T>* column =
+        reinterpret_cast<::fesql::storage::ColumnImpl<T>*>(list_ref->list);
+    fesql::storage::IteratorImpl<T> iter(*column);
+    ::fesql::storage::IteratorImpl<T>* col = &iter;
     std::cout << "[";
     while (col->Valid()) {
         T v = col->Next();
@@ -98,9 +99,12 @@ int32_t PrintListString(int8_t* input) {
     }
     ::fesql::storage::ListRef* col_string =
         reinterpret_cast<::fesql::storage::ListRef*>(input);
-    ::fesql::storage::ColumnStringIteratorImpl* col =
-        reinterpret_cast<::fesql::storage::ColumnStringIteratorImpl*>(
-            col_string->iterator);
+    ::fesql::storage::ListRef* list_ref =
+        reinterpret_cast<::fesql::storage::ListRef*>(input);
+    ::fesql::storage::StringColumnImpl* column =
+        reinterpret_cast<::fesql::storage::StringColumnImpl*>(list_ref->list);
+    fesql::storage::IteratorImpl<::fesql::storage::StringRef> iter(*column);
+    ::fesql::storage::IteratorImpl<::fesql::storage::StringRef>* col = &iter;
     std::cout << "[";
     while (col->Valid()) {
         ::fesql::storage::StringRef v = col->Next();
@@ -369,150 +373,6 @@ void RunCaseV1(T expected, const ::fesql::type::Type& type,
 }
 
 template <class T>
-void RunCase(T expected, const ::fesql::type::Type& type,
-             const std::string& col, int8_t* row, int32_t row_size) {
-    ::fesql::type::TableDef table;
-    table.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
-    }
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("test_load_float", *ctx);
-    // Create the add1 function entry and insert this entry into module M.  The
-    // function will have a return type of "int" and take an argument of "int".
-    bool is_void = false;
-    ::llvm::Type* retTy = NULL;
-    switch (type) {
-        case ::fesql::type::kInt16:
-            retTy = Type::getInt16Ty(*ctx);
-            break;
-        case ::fesql::type::kInt32:
-            retTy = Type::getInt32Ty(*ctx);
-            break;
-        case ::fesql::type::kInt64:
-            retTy = Type::getInt64Ty(*ctx);
-            break;
-        case ::fesql::type::kDouble:
-            retTy = Type::getDoubleTy(*ctx);
-            break;
-        case ::fesql::type::kFloat:
-            retTy = Type::getFloatTy(*ctx);
-            break;
-        default:
-            is_void = true;
-            retTy = Type::getVoidTy(*ctx);
-    }
-    Function* fn = Function::Create(
-        FunctionType::get(
-            retTy, {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx)}, false),
-        Function::ExternalLinkage, "fn", m.get());
-    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
-    ScopeVar sv;
-    BufIRBuilder buf_builder(&table, entry_block, &sv);
-    IRBuilder<> builder(entry_block);
-    Function::arg_iterator it = fn->arg_begin();
-    Argument* arg0 = &*it;
-    ++it;
-    Argument* arg1 = &*it;
-    ::llvm::Value* val = NULL;
-    bool ok = buf_builder.BuildGetField(col, arg0, arg1, &val);
-    ASSERT_TRUE(ok);
-    if (type == ::fesql::type::kVarchar) {
-        ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-        ::llvm::Value* i8_ptr = builder.CreatePointerCast(val, i8_ptr_ty);
-        ::llvm::Type* void_ty = builder.getVoidTy();
-        ::llvm::FunctionCallee callee =
-            m->getOrInsertFunction("print_str", void_ty, i8_ptr_ty);
-        builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
-    }
-    if (!is_void) {
-        builder.CreateRet(val);
-    } else {
-        builder.CreateRetVoid();
-    }
-    m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    ::llvm::StringRef symbol1("print_str");
-    ::llvm::StringRef symbol2("print_i16");
-    ::llvm::StringRef symbol3("print_i32");
-    ::llvm::StringRef symbol4("print_ptr");
-    ::llvm::orc::SymbolMap symbol_map;
-    ::llvm::JITEvaluatedSymbol jit_symbol1(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&PrintString)),
-        ::llvm::JITSymbolFlags());
-
-    ::llvm::JITEvaluatedSymbol jit_symbol2(
-        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintInt16)),
-        ::llvm::JITSymbolFlags());
-
-    ::llvm::JITEvaluatedSymbol jit_symbol3(
-        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintInt32)),
-        ::llvm::JITSymbolFlags());
-
-    ::llvm::JITEvaluatedSymbol jit_symbol4(
-        ::llvm::pointerToJITTargetAddress(reinterpret_cast<void*>(&PrintPtr)),
-        ::llvm::JITSymbolFlags());
-
-    symbol_map.insert(std::make_pair(mi(symbol1), jit_symbol1));
-    symbol_map.insert(std::make_pair(mi(symbol2), jit_symbol2));
-    symbol_map.insert(std::make_pair(mi(symbol3), jit_symbol3));
-    symbol_map.insert(std::make_pair(mi(symbol4), jit_symbol4));
-    // add codec
-
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        ASSERT_TRUE(false);
-    }
-    ExitOnErr(J->addIRModule(
-        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
-    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
-    if (!is_void) {
-        T(*decode)
-        (int8_t*, int32_t) =
-            reinterpret_cast<T (*)(int8_t*, int32_t)>(load_fn_jit.getAddress());
-        ASSERT_EQ(expected, decode(row, row_size));
-
-    } else {
-        void (*decode)(int8_t*, int32_t) =
-            reinterpret_cast<void (*)(int8_t*, int32_t)>(
-                load_fn_jit.getAddress());
-        decode(row, row_size);
-    }
-}
-template <class T>
 void RunColCase(T expected, const ::fesql::type::Type& type,
                 const std::string& col, int8_t* window) {
     ::fesql::type::TableDef table;
@@ -591,6 +451,7 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
     ::llvm::Value* val = NULL;
     bool ok = buf_builder.BuildGetCol(col, arg0, &val);
     ASSERT_TRUE(ok);
+
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Value* i8_ptr = builder.CreatePointerCast(val, i8_ptr_ty);
     llvm::FunctionCallee callee;
@@ -694,242 +555,6 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
             reinterpret_cast<void (*)(int8_t*)>(load_fn_jit.getAddress());
         decode(window);
     }
-}
-
-TEST_F(BufIRBuilderTest, test_load_str) {
-    int8_t* ptr = static_cast<int8_t*>(malloc(35));
-    *reinterpret_cast<int32_t*>(ptr + 2) = 1;
-    *reinterpret_cast<int16_t*>(ptr + 2 + 4) = 2;
-    *reinterpret_cast<float*>(ptr + 2 + 4 + 2) = 3.1f;
-    *reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4) = 4.1;
-    *reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8) = 5;
-    *reinterpret_cast<int16_t*>(ptr + 2 + 4 + 2 + 4 + 8 + 8) = 30;
-    std::string str = "hello";
-    memcpy(ptr + 30, static_cast<const void*>(str.c_str()), 5);
-    printf("char* start %p\n", ptr + 30);
-    RunCase<int16_t>(2, ::fesql::type::kVarchar, "col6", ptr, 35);
-    free(ptr);
-}
-
-TEST_F(BufIRBuilderTest, test_load_int16) {
-    int8_t* ptr = static_cast<int8_t*>(malloc(35));
-    *reinterpret_cast<int32_t*>(ptr + 2) = 1;
-    *reinterpret_cast<int16_t*>(ptr + 2 + 4) = 2;
-    *reinterpret_cast<float*>(ptr + 2 + 4 + 2) = 3.1f;
-    *reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4) = 4.1;
-    *reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8) = 5;
-    RunCase<int16_t>(2, ::fesql::type::kInt16, "col2", ptr, 28);
-    free(ptr);
-}
-
-TEST_F(BufIRBuilderTest, test_load_float) {
-    int8_t* ptr = static_cast<int8_t*>(malloc(28));
-    *reinterpret_cast<int32_t*>(ptr + 2) = 1;
-    *reinterpret_cast<int16_t*>(ptr + 2 + 4) = 2;
-    *reinterpret_cast<float*>(ptr + 2 + 4 + 2) = 3.1f;
-    *reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4) = 4.1;
-    *reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8) = 5;
-    RunCase<float>(3.1f, ::fesql::type::kFloat, "col3", ptr, 28);
-    free(ptr);
-}
-
-TEST_F(BufIRBuilderTest, test_load_int32) {
-    int8_t* ptr = static_cast<int8_t*>(malloc(28));
-    *reinterpret_cast<int32_t*>(ptr + 2) = 1;
-    *reinterpret_cast<int16_t*>(ptr + 2 + 4) = 2;
-    *reinterpret_cast<float*>(ptr + 2 + 4 + 2) = 3.1f;
-    *reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4) = 4.1;
-    *reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8) = 5;
-    RunCase<int32_t>(1, ::fesql::type::kInt32, "col1", ptr, 28);
-    free(ptr);
-}
-
-TEST_F(BufIRBuilderTest, test_load_double) {
-    int8_t* ptr = static_cast<int8_t*>(malloc(28));
-    *reinterpret_cast<int32_t*>(ptr + 2) = 1;
-    *reinterpret_cast<int16_t*>(ptr + 2 + 4) = 2;
-    *reinterpret_cast<float*>(ptr + 2 + 4 + 2) = 3.1f;
-    *reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4) = 4.1;
-    *reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8) = 5;
-    RunCase<double>(4.1, ::fesql::type::kDouble, "col4", ptr, 28);
-    free(ptr);
-}
-
-TEST_F(BufIRBuilderTest, test_load_int64) {
-    int8_t* ptr = static_cast<int8_t*>(malloc(28));
-    *reinterpret_cast<int32_t*>(ptr + 2) = 1;
-    *reinterpret_cast<int16_t*>(ptr + 2 + 4) = 2;
-    *reinterpret_cast<float*>(ptr + 2 + 4 + 2) = 3.1f;
-    *reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4) = 4.1;
-    *reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8) = 5;
-    RunCase<int64_t>(5, ::fesql::type::kDouble, "col5", ptr, 28);
-    free(ptr);
-}
-
-void BuildBuf(int8_t** buf, uint32_t* size) {
-    ::fesql::type::TableDef table;
-    table.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
-    }
-
-    storage::RowBuilder builder(table.columns());
-    uint32_t total_size = builder.CalTotalLength(1);
-    int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-    builder.SetBuffer(ptr, total_size);
-    builder.AppendInt32(32);
-    builder.AppendInt16(16);
-    builder.AppendFloat(2.1f);
-    builder.AppendDouble(3.1);
-    builder.AppendInt64(64);
-    builder.AppendString("1", 1);
-    *buf = ptr;
-    *size = total_size;
-}
-
-void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
-                 int8_t** buf) {
-    ::fesql::type::TableDef table;
-    table.set_name("t1");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
-    }
-
-    {
-        storage::RowBuilder builder(table.columns());
-        std::string str = "1";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
-    }
-    {
-        storage::RowBuilder builder(table.columns());
-        std::string str = "22";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
-    }
-    {
-        storage::RowBuilder builder(table.columns());
-        std::string str = "333";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
-    }
-    {
-        storage::RowBuilder builder(table.columns());
-        std::string str = "4444";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
-    }
-    {
-        storage::RowBuilder builder(table.columns());
-        std::string str =
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            "a";
-        uint32_t total_size = builder.CalTotalLength(str.size());
-        int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
-        builder.SetBuffer(ptr, total_size);
-        builder.AppendInt32(32);
-        builder.AppendInt16(16);
-        builder.AppendFloat(2.1f);
-        builder.AppendDouble(3.1);
-        builder.AppendInt64(64);
-        builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
-    }
-
-    ::fesql::storage::WindowIteratorImpl* w =
-        new ::fesql::storage::WindowIteratorImpl(rows);
-    *buf = reinterpret_cast<int8_t*>(w);
 }
 
 TEST_F(BufIRBuilderTest, native_test_load_int16) {

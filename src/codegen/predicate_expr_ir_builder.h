@@ -50,8 +50,8 @@ class PredicateIRBuilder {
                         ::llvm::Value** casted_left,
                         ::llvm::Value** casted_right,
                         ::fesql::base::Status& status);  // NOLINT
-    CastExprIRBuilder cast_expr_ir_builder_;
     ::llvm::BasicBlock* block_;
+    CastExprIRBuilder cast_expr_ir_builder_;
 };
 }  // namespace codegen
 }  // namespace fesql

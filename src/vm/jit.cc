@@ -83,6 +83,7 @@ bool FeSQLJIT::OptModule(::llvm::Module* m) {
     fpm.add(::llvm::createReassociatePass());
     fpm.add(::llvm::createGVNPass());
     fpm.add(::llvm::createCFGSimplificationPass());
+    fpm.add(::llvm::createPromoteMemoryToRegisterPass());
     fpm.doInitialization();
     ::llvm::Module::iterator it;
     ::llvm::Module::iterator end = m->end();
@@ -144,6 +145,7 @@ bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
 
 bool InitBasicSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                      ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
+    return true;
 }
 
 }  // namespace vm

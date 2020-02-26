@@ -119,6 +119,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return std::string("kAggWindowFunction");
         case kOpExpr:
             return std::string("kOpExpr");
+        case kPlanTypeFuncDef:
+            return "kPlanTypeFuncDef";
         case kUnknowPlan:
             return std::string("kUnknow");
         default:
@@ -165,5 +167,11 @@ void PrintPlanNode(std::ostream &output, const std::string &org_tab,
     }
 }
 
+void FuncDefPlanNode::Print(std::ostream &output,
+                            const std::string &orgTab) const {
+    PlanNode::Print(output, orgTab);
+    output << "\n";
+    PrintSQLNode(output, orgTab, fn_def_, "fun_def", true);
+}
 }  // namespace node
 }  // namespace fesql

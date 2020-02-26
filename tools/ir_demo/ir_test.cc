@@ -7,9 +7,15 @@
  *--------------------------------------------------------------------------
  **/
 #include <stdbool.h>
+#include <vector>
 #include <stdio.h>
 
+template <class T>
+T add(T a, T b) {
+    a += b;
+    return a;
+}
 
-float add(float a, float b) {
-    return (a==b) + 1.0;
+int int_add(int a, int b) {
+    return add(a,b)+1;
 }

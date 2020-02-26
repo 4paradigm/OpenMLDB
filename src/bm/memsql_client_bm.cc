@@ -21,7 +21,7 @@ const static std::string host = "172.17.0.2";  // NOLINT
 const static std::string user = "root";  // NOLINT
 const static std::string passwd = "";    // NOLINT
 const static size_t port = 3306;         // NOLINT
-static bool init(MYSQL &conn) {          // NOLINT
+static bool Init(MYSQL &conn) {          // NOLINT
     mysql_init(&conn);
     mysql_options(&conn, MYSQL_DEFAULT_AUTH, "mysql_native_password");
 
@@ -34,7 +34,7 @@ static bool init(MYSQL &conn) {          // NOLINT
     return true;
 }
 
-static bool init_db(MYSQL &conn, const char *db_sql) {  // NOLINT
+static bool InitDB(MYSQL &conn, const char *db_sql) {  // NOLINT
     DLOG(INFO) << ("Creating database 'test'...");
     if (mysql_query(&conn, db_sql)) {
         LOG(WARNING) << ("Could not create 'test' database!");
@@ -44,7 +44,7 @@ static bool init_db(MYSQL &conn, const char *db_sql) {  // NOLINT
     return true;
 }
 
-static bool use_db(MYSQL &conn, const char *use_sql) {  // NOLINT
+static bool UseDB(MYSQL &conn, const char *use_sql) {  // NOLINT
     DLOG(INFO) << ("use database 'test'...");
     if (mysql_query(&conn, use_sql)) {
         LOG(WARNING) << ("Could not use 'test' database!");
@@ -53,7 +53,7 @@ static bool use_db(MYSQL &conn, const char *use_sql) {  // NOLINT
     }
     return true;
 }
-static bool init_tbl(MYSQL &conn, const char *schema_sql) {  // NOLINT
+static bool InitTable(MYSQL &conn, const char *schema_sql) {  // NOLINT
     DLOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
     if (mysql_query(&conn, schema_sql)) {
         LOG(WARNING)
@@ -64,7 +64,7 @@ static bool init_tbl(MYSQL &conn, const char *schema_sql) {  // NOLINT
     return true;
 }
 
-static bool create_index(MYSQL &conn, const char *index_sql) {  // NOLINT
+static bool CreateIndex(MYSQL &conn, const char *index_sql) {  // NOLINT
     DLOG(INFO) << ("Creating table 'tbl' index in database 'test'...\n");
     if (mysql_query(&conn, index_sql)) {
         LOG(WARNING)
@@ -74,7 +74,7 @@ static bool create_index(MYSQL &conn, const char *index_sql) {  // NOLINT
     }
     return true;
 }
-static bool repeated_insert_tbl(MYSQL &conn, const char *insert_sql,  // NOLINT
+static bool RepeatedInsertTable(MYSQL &conn, const char *insert_sql,  // NOLINT
                                 int32_t record_size) {
     DLOG(INFO) << ("Running inserts ...\n");
     int32_t fail = 0;
@@ -90,7 +90,7 @@ static bool repeated_insert_tbl(MYSQL &conn, const char *insert_sql,  // NOLINT
     return true;
 }
 
-static bool delete_tbl(MYSQL &conn, const char *delete_tbl) {  // NOLINT
+static bool DeleteTable(MYSQL &conn, const char *delete_tbl) {  // NOLINT
     if (mysql_query(&conn, delete_tbl)) {
         LOG(WARNING) << ("Could not delete tbl 'test'!\n");
         mysql_close(&conn);
@@ -100,7 +100,7 @@ static bool delete_tbl(MYSQL &conn, const char *delete_tbl) {  // NOLINT
     return true;
 }
 
-static bool drop_tbl(MYSQL &conn, const char *drop_tbl) {  // NOLINT
+static bool DropTable(MYSQL &conn, const char *drop_tbl) {  // NOLINT
     if (mysql_query(&conn, drop_tbl)) {
         LOG(WARNING) << ("Could not drop table tbl 'test'!\n");
         mysql_close(&conn);
@@ -110,7 +110,7 @@ static bool drop_tbl(MYSQL &conn, const char *drop_tbl) {  // NOLINT
     return true;
 }
 
-static bool drop_db(MYSQL &conn, const char *drop_db) {  // NOLINT
+static bool DropDB(MYSQL &conn, const char *drop_db) {  // NOLINT
     if (mysql_query(&conn, drop_db)) {
         LOG(WARNING) << ("Could not drop the testing database 'test'!\n");
         mysql_close(&conn);
@@ -137,9 +137,9 @@ static void BM_SIMPLE_INSERT(benchmark::State &state) {  // NOLINT
     const char *drop_tbl_sql = "drop table tbl";
 
     MYSQL conn;
-    if (!init(conn)) goto failure;
-    if (!use_db(conn, use_sql)) goto failure;
-    if (!init_tbl(conn, schema_sql)) goto failure;
+    if (!Init(conn)) goto failure;
+    if (!UseDB(conn, use_sql)) goto failure;
+    if (!InitTable(conn, schema_sql)) goto failure;
 
     {
         LOG(INFO) << ("Running insert ...\n");
@@ -154,8 +154,8 @@ static void BM_SIMPLE_INSERT(benchmark::State &state) {  // NOLINT
         LOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
     }
 
-    if (!delete_tbl(conn, delete_sql)) goto failure;
-    if (!drop_tbl(conn, drop_tbl_sql)) goto failure;
+    if (!DeleteTable(conn, delete_sql)) goto failure;
+    if (!DropTable(conn, drop_tbl_sql)) goto failure;
     mysql_close(&conn);
 
 failure:
@@ -182,19 +182,19 @@ static void BM_INSERT_WITH_INDEX(benchmark::State &state) {  // NOLINT
     const char *drop_tbl_sql = "drop table tbl";
 
     MYSQL conn;
-    if (!init(conn)) goto failure;
-    if (!use_db(conn, use_sql)) goto failure;
-    if (!init_tbl(conn, schema_sql)) goto failure;
+    if (!Init(conn)) goto failure;
+    if (!UseDB(conn, use_sql)) goto failure;
+    if (!InitTable(conn, schema_sql)) goto failure;
 
     {
         const char *index_sql =
             "CREATE INDEX col_str64_index ON tbl (col_str64);";
-        if (!create_index(conn, index_sql)) goto failure;
+        if (!CreateIndex(conn, index_sql)) goto failure;
     }
 
     {
         const char *index_sql = "CREATE INDEX col_i64_index ON tbl (col_i64);";
-        if (!create_index(conn, index_sql)) goto failure;
+        if (!CreateIndex(conn, index_sql)) goto failure;
     }
 
     {
@@ -210,8 +210,8 @@ static void BM_INSERT_WITH_INDEX(benchmark::State &state) {  // NOLINT
         LOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
     }
 
-    if (!delete_tbl(conn, delete_sql)) goto failure;
-    if (!drop_tbl(conn, drop_tbl_sql)) goto failure;
+    if (!DeleteTable(conn, delete_sql)) goto failure;
+    if (!DropTable(conn, drop_tbl_sql)) goto failure;
     mysql_close(&conn);
 
 failure:
@@ -243,10 +243,10 @@ static void BM_SIMPLE_QUERY(benchmark::State &state) {  // NOLINT
     int64_t record_size = state.range(0);
     MYSQL conn;
 
-    if (!init(conn)) goto failure;
-    if (!use_db(conn, use_sql)) goto failure;
-    if (!init_tbl(conn, schema_sql)) goto failure;
-    if (!repeated_insert_tbl(conn, schema_insert_sql, record_size))
+    if (!Init(conn)) goto failure;
+    if (!UseDB(conn, use_sql)) goto failure;
+    if (!InitTable(conn, schema_sql)) goto failure;
+    if (!RepeatedInsertTable(conn, schema_insert_sql, record_size))
         goto failure;
 
     {
@@ -266,8 +266,8 @@ static void BM_SIMPLE_QUERY(benchmark::State &state) {  // NOLINT
         LOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
     }
 
-    if (!delete_tbl(conn, delete_sql)) goto failure;
-    if (!drop_tbl(conn, drop_tbl_sql)) goto failure;
+    if (!DeleteTable(conn, delete_sql)) goto failure;
+    if (!DropTable(conn, drop_tbl_sql)) goto failure;
     //    if (!drop_db(conn, drop_db_sql)) goto failure;
     mysql_close(&conn);
 
@@ -297,13 +297,13 @@ static void BM_WINDOW_CASE_QUERY(benchmark::State &state,  // NOLINT
     int64_t record_size = group_size * window_max_size;
     MYSQL conn;
 
-    if (!init(conn)) goto failure;
-    if (!use_db(conn, use_sql)) goto failure;
-    if (!init_tbl(conn, schema_sql)) goto failure;
+    if (!Init(conn)) goto failure;
+    if (!UseDB(conn, use_sql)) goto failure;
+    if (!InitTable(conn, schema_sql)) goto failure;
     {
         const char *index_sql =
             "CREATE INDEX col_str64_index ON tbl (col_str64, col_i64);";
-        if (!create_index(conn, index_sql)) goto failure;
+        if (!CreateIndex(conn, index_sql)) goto failure;
     }
 
     {
@@ -337,7 +337,7 @@ static void BM_WINDOW_CASE_QUERY(benchmark::State &state,  // NOLINT
                 << "\"" << col_str255.GetValue() << "\""
                 << ");";
             LOG(INFO) << oss.str();
-            if (!repeated_insert_tbl(conn, oss.str().c_str(), 1)) {
+            if (!RepeatedInsertTable(conn, oss.str().c_str(), 1)) {
                 fail += 1;
             }
         }
@@ -360,8 +360,8 @@ static void BM_WINDOW_CASE_QUERY(benchmark::State &state,  // NOLINT
         LOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
     }
 
-    if (!delete_tbl(conn, delete_sql)) goto failure;
-    if (!drop_tbl(conn, drop_tbl_sql)) goto failure;
+    if (!DeleteTable(conn, delete_sql)) goto failure;
+    if (!DropTable(conn, drop_tbl_sql)) goto failure;
     mysql_close(&conn);
 
 failure:

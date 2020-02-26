@@ -300,7 +300,8 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                             window.push_back(w_row);
                             window_it->Next();
                         }
-                        fesql::storage::WindowIteratorImpl impl(window);
+                        fesql::storage::ListV<Row> list(window);
+                        fesql::storage::WindowImpl impl(list);
                         uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl),
                                            row.size, &output);
                         if (ret != 0) {
@@ -405,7 +406,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                 }
 
                 if (project_op->window_agg) {
-                    // iterator whole table
+                    // list whole table
                     std::unique_ptr<::fesql::storage::TableIterator> it =
                         status->table->NewTraverseIterator(
                             project_op->w.index_name);
@@ -438,7 +439,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                             int8_t* output = NULL;
                             size_t output_size = 0;
                             // handle window
-                            fesql::storage::WindowIteratorImpl impl(window);
+                            fesql::storage::WindowImpl impl(window);
                             uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl),
                                                0, &output);
                             if (ret != 0) {
@@ -451,7 +452,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                         }
                     }
                 } else {
-                    // iterator whole table
+                    // list whole table
                     std::unique_ptr<::fesql::storage::TableIterator> it =
                         status->table->NewTraverseIterator();
                     it->SeekToFirst();
@@ -750,7 +751,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                             window.push_back(w_row);
                             window_it->Next();
                         }
-                        fesql::storage::WindowIteratorImpl impl(window);
+                        fesql::storage::WindowImpl impl(window);
                         uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl),
                                            row.size, &output);
                         if (ret != 0) {

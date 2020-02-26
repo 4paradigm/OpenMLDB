@@ -141,23 +141,29 @@ void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
         const std::string tab = org_tab + INDENT + SPACE_ED;
         output << tab << SPACE_ST;
         switch (date_type_) {
-            case kTypeInt32:
+            case fesql::node::kInt16:
+                output << "value: " << val_.vsmallint;
+                break;
+            case fesql::node::kInt32:
                 output << "value: " << val_.vint;
                 break;
-            case kTypeInt64:
+            case fesql::node::kInt64:
                 output << "value: " << val_.vlong;
                 break;
-            case kTypeString:
+            case fesql::node::kVarchar:
                 output << "value: " << val_.vstr;
                 break;
-            case kTypeFloat:
+            case fesql::node::kFloat:
                 output << "value: " << val_.vfloat;
                 break;
-            case kTypeDouble:
+            case fesql::node::kDouble:
                 output << "value: " << val_.vdouble;
                 break;
-            case kTypeNull:
+            case fesql::node::kNull:
                 output << "value: null";
+                break;
+            case fesql::node::kVoid:
+                output << "value: void";
                 break;
             default:
                 output << "value: unknow";
@@ -305,6 +311,9 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kName:
             output = "kName";
             break;
+        case kType:
+            output = "kType";
+            break;
         case kResTarget:
             output = "kResTarget";
             break;
@@ -359,6 +368,9 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kFnDef:
             output = "kFnDef";
             break;
+        case kFnHeader:
+            output = "kFnHeader";
+            break;
         case kFnPara:
             output = "kFnPara";
             break;
@@ -368,8 +380,35 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kFnAssignStmt:
             output = "kFnAssignStmt";
             break;
+        case kFnIfStmt:
+            output = "kFnIfStmt";
+            break;
+        case kFnElifStmt:
+            output = "kFnElseifStmt";
+            break;
+        case kFnElseStmt:
+            output = "kFnElseStmt";
+            break;
+        case kFnIfBlock:
+            output = "kFnIfBlock";
+            break;
+        case kFnElseBlock:
+            output = "kFnElseBlock";
+            break;
+        case kFnIfElseBlock:
+            output = "kFnIfElseBlock";
+            break;
+        case kFnElifBlock:
+            output = "kFnElIfBlock";
+            break;
         case kFnValue:
             output = "kFnValue";
+            break;
+        case kFnForInStmt:
+            output = "kFnForInStmt";
+            break;
+        case kFnForInBlock:
+            output = "kFnForInBlock";
             break;
         default:
             output = "unknown";
@@ -529,19 +568,48 @@ void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, DataTypeName(para_type_), name_, true);
+
+    PrintSQLNode(output, tab, para_type_, name_, true);
+}
+void FnNodeFnHeander::Print(std::ostream &output,
+                            const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, this->name_, "func_name", true);
+    output << "\n";
+    PrintSQLNode(output, tab, ret_type_, "return_type", true);
+    output << "\n";
+    PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(parameters_),
+                 "parameters", true);
+}
+const std::string FnNodeFnHeander::GetCodegenFunctionName() const {
+    std::string fn_name = name_;
+    if (!parameters_->children.empty()) {
+        for (node::SQLNode *node : parameters_->children) {
+            node::FnParaNode *para_node =
+                dynamic_cast<node::FnParaNode *>(node);
+            switch (para_node->GetParaType()->base_) {
+                case fesql::node::kList:
+                case fesql::node::kIterator:
+                case fesql::node::kMap:
+                    fn_name.append("_").append(
+                        para_node->GetParaType()->GetName());
+                default: {
+                }
+            }
+        }
+    }
+    return fn_name;
 }
 void FnNodeFnDef::Print(std::ostream &output,
                         const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, this->name_, "func_name", true);
+    PrintSQLNode(output, tab, header_, "header", false);
     output << "\n";
-    PrintValue(output, tab, DataTypeName(this->ret_type_), "return_type", true);
-    output << "\n";
-    PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(parameters_),
-                 "parameters", true);
+    PrintSQLNode(output, tab, block_, "block", true);
 }
 void FnNodeList::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
@@ -554,6 +622,8 @@ void FnAssignNode::Print(std::ostream &output,
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
+    PrintValue(output, tab, is_ssa_ ? "true" : "false", "ssa", false);
+    output << "\n";
     PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(expression_),
                  name_, true);
 }
@@ -564,6 +634,79 @@ void FnReturnStmt::Print(std::ostream &output,
     output << "\n";
     PrintSQLNode(output, tab, return_expr_, "return", true);
 }
+
+void FnIfNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, expression_, "if", true);
+}
+void FnElifNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, expression_, "elif", true);
+}
+void FnElseNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    output << "\n";
+}
+void FnForInNode::Print(std::ostream &output,
+                        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, var_name_, "var", false);
+    output << "\n";
+    PrintSQLNode(output, tab, in_expression_, "in", true);
+}
+
+void FnIfBlock::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, if_node, "if", false);
+    output << "\n";
+    PrintSQLNode(output, tab, block_, "block", true);
+}
+
+void FnElifBlock::Print(std::ostream &output,
+                        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, elif_node_, "elif", false);
+    output << "\n";
+    PrintSQLNode(output, tab, block_, "block", true);
+}
+void FnElseBlock::Print(std::ostream &output,
+                        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, block_, "block", true);
+}
+void FnIfElseBlock::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, if_block_, "if", false);
+    output << "\n";
+    PrintSQLVector(output, tab, elif_blocks_, "elif_list", false);
+    output << "\n";
+    PrintSQLNode(output, tab, else_block_, "else", true);
+}
+
+void FnForInBlock::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, for_in_node_, "for", false);
+    output << "\n";
+    PrintSQLNode(output, tab, block_, "body", true);
+}
 void StructExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -572,6 +715,14 @@ void StructExpr::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSQLNode(output, tab, fileds_, "fileds", false);
     output << "\n";
     PrintSQLNode(output, tab, methods_, "methods", true);
+}
+
+void TypeNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+
+    output << "\n";
+    PrintValue(output, tab, GetName(), "type", true);
 }
 }  // namespace node
 }  // namespace fesql

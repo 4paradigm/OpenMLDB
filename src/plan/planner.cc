@@ -202,19 +202,19 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
     node::ConstNode *primary =
         dynamic_cast<node::ConstNode *>(bound->GetOffset());
     switch (primary->GetDataType()) {
-        case node::DataType::kTypeInt16:
+        case node::DataType::kInt16:
             offset = static_cast<int64_t>(primary->GetSmallInt());
             break;
-        case node::DataType::kTypeInt32:
+        case node::DataType::kInt32:
             offset = static_cast<int64_t>(primary->GetInt());
             break;
-        case node::DataType::kTypeInt64:
+        case node::DataType::kInt64:
             offset = (primary->GetLong());
             break;
-        case node::DataType::kTypeDay:
-        case node::DataType::kTypeHour:
-        case node::DataType::kTypeMinute:
-        case node::DataType::kTypeSecond:
+        case node::DataType::kDay:
+        case node::DataType::kHour:
+        case node::DataType::kMinute:
+        case node::DataType::kSecond:
             offset = (primary->GetMillis());
             break;
         default: {
@@ -391,7 +391,7 @@ int SimplePlanner::CreatePlanTree(
                 plan_trees.push_back(insert_plan);
                 break;
             }
-            case ::fesql::node::kFnList: {
+            case ::fesql::node::kFnDef: {
                 node::PlanNode *fn_plan =
                     node_manager_->MakePlanNode(node::kPlanTypeFuncDef);
                 CreateFuncDefPlan(
@@ -409,10 +409,22 @@ int SimplePlanner::CreatePlanTree(
             }
         }
     }
+
     return status.code;
 }
-void Planner::CreateFuncDefPlan(const SQLNode *root,
-                                node::FuncDefPlanNode *plan, Status &status) {
+/***
+ * Create function def plan node
+ * 1. check indent
+ * 2. construct sub blocks
+ *      if_then_else block
+ *
+ * @param root
+ * @param plan
+ * @param status
+ */
+void Planner::CreateFuncDefPlan(
+    const SQLNode *root, node::FuncDefPlanNode *plan,
+    Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg =
             "fail to create func def plan node: query tree node it null";
@@ -421,7 +433,7 @@ void Planner::CreateFuncDefPlan(const SQLNode *root,
         return;
     }
 
-    if (root->GetType() != node::kFnList) {
+    if (root->GetType() != node::kFnDef) {
         status.code = common::kSQLError;
         status.msg =
             "fail to create cmd plan node: query tree node it not function def "
@@ -429,11 +441,12 @@ void Planner::CreateFuncDefPlan(const SQLNode *root,
         LOG(WARNING) << status.msg;
         return;
     }
-    plan->SetFuNodeList(dynamic_cast<const node::FnNodeList *>(root));
+    plan->fn_def_ = dynamic_cast<const node::FnNodeFnDef *>(root);
 }
 
 void Planner::CreateInsertPlan(const node::SQLNode *root,
-                               node::InsertPlanNode *plan, Status &status) {
+                               node::InsertPlanNode *plan,
+                               Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kSQLError;
@@ -452,7 +465,7 @@ void Planner::CreateInsertPlan(const node::SQLNode *root,
 }
 
 void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
-                            Status &status) {
+                            Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kPlanError;
@@ -470,7 +483,7 @@ void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
     plan->SetCmdNode(dynamic_cast<const node::CmdNode *>(root));
 }
 
-void TransformTableDef(const std::string &table_name,
+bool TransformTableDef(const std::string &table_name,
                        const NodePointVector &column_desc_list,
                        type::TableDef *table,
                        Status &status) {  // NOLINT (runtime/references)
@@ -490,32 +503,33 @@ void TransformTableDef(const std::string &table_name,
                                  column_def->GetColumnName() + " duplicate";
                     status.code = common::kSQLError;
                     LOG(WARNING) << status.msg;
-                    return;
+                    return false;
                 }
                 column->set_name(column_def->GetColumnName());
                 column->set_is_not_null(column_def->GetIsNotNull());
                 column_names.insert(column_def->GetColumnName());
+                fesql::type::Type c_type;
                 switch (column_def->GetColumnType()) {
-                    case node::kTypeBool:
+                    case node::kBool:
                         column->set_type(type::Type::kBool);
                         break;
-                    case node::kTypeInt32:
+                    case node::kInt32:
                         column->set_type(type::Type::kInt32);
                         break;
-                    case node::kTypeInt64:
+                    case node::kInt64:
                         column->set_type(type::Type::kInt64);
                         break;
-                    case node::kTypeFloat:
+                    case node::kFloat:
                         column->set_type(type::Type::kFloat);
                         break;
-                    case node::kTypeDouble:
+                    case node::kDouble:
                         column->set_type(type::Type::kDouble);
                         break;
-                    case node::kTypeTimestamp: {
+                    case node::kTimestamp: {
                         column->set_type(type::Type::kTimestamp);
                         break;
                     }
-                    case node::kTypeString:
+                    case node::kVarchar:
                         column->set_type(type::Type::kVarchar);
                         break;
                     default: {
@@ -524,7 +538,8 @@ void TransformTableDef(const std::string &table_name,
                             node::DataTypeName(column_def->GetColumnType()) +
                             " is not supported";
                         status.code = common::kSQLError;
-                        return;
+                        LOG(WARNING) << status.msg;
+                        return false;
                     }
                 }
                 break;
@@ -544,7 +559,7 @@ void TransformTableDef(const std::string &table_name,
                                  column_index->GetName() + " duplicate";
                     status.code = common::kSQLError;
                     LOG(WARNING) << status.msg;
-                    return;
+                    return false;
                 }
                 index_names.insert(column_index->GetName());
                 type::IndexDef *index = table->add_indexes();
@@ -570,11 +585,12 @@ void TransformTableDef(const std::string &table_name,
                              " when CREATE TABLE";
                 status.code = common::kSQLError;
                 LOG(WARNING) << status.msg;
-                return;
+                return false;
             }
         }
     }
     table->set_name(table_name);
+    return true;
 }
 
 std::string GenerateName(const std::string prefix, int id) {

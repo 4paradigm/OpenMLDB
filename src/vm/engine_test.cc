@@ -210,8 +210,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowIteratorImpl* w =
-        new ::fesql::storage::WindowIteratorImpl(rows);
+    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
@@ -303,13 +302,14 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowIteratorImpl* w =
-        new ::fesql::storage::WindowIteratorImpl(rows);
+    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void StoreData(::fesql::storage::Table* table, int8_t* rows) {
+    ::fesql::storage::WindowImpl* window =
+        reinterpret_cast<::fesql::storage::WindowImpl*>(rows);
     ::fesql::storage::WindowIteratorImpl* w =
-        reinterpret_cast<::fesql::storage::WindowIteratorImpl*>(rows);
+        new storage::WindowIteratorImpl(*window);
     ASSERT_TRUE(w->Valid());
     ::fesql::storage::Row row = w->Next();
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
@@ -385,6 +385,7 @@ TEST_P(EngineTest, test_normal) {
         ::fesql::type::ColumnDef* column_def = output_schema.add_columns();
         *column_def = column;
     }
+
     std::unique_ptr<storage::RowView> row_view =
         std::move(std::unique_ptr<storage::RowView>(
             new storage::RowView(output_schema.columns())));
@@ -439,7 +440,6 @@ TEST_P(EngineTest, test_normal) {
     free(output[0]);
     free(output[1]);
 }
-
 
 TEST_F(EngineTest, test_window_agg) {
     std::shared_ptr<TableStatus> status(new TableStatus());

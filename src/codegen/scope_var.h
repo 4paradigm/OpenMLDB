@@ -21,6 +21,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <utility>
 #include "llvm/IR/IRBuilder.h"
 
 namespace fesql {
@@ -28,8 +29,9 @@ namespace codegen {
 
 struct Scope {
     std::string name;
+    ::llvm::Value* ret_addr = nullptr;
     // the value is the pointer or  value
-    std::map<std::string, ::llvm::Value*> scope_map;
+    std::map<std::string, std::pair<::llvm::Value*, bool>> scope_map;
 };
 
 typedef std::vector<Scope> Scopes;
@@ -40,10 +42,11 @@ class ScopeVar {
     ~ScopeVar();
 
     bool Enter(const std::string& name);
-
     bool Exit();
-    bool AddVar(const std::string& name, ::llvm::Value*);
-    bool FindVar(const std::string& name, ::llvm::Value** value);
+    bool AddVar(const std::string& name, ::llvm::Value*,
+                bool is_register = true);
+    bool FindVar(const std::string& name, ::llvm::Value** value,
+                 bool* is_register);
 
  private:
     Scopes scopes_;
