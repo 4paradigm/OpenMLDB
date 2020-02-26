@@ -36,3 +36,17 @@ rtidb::client::NsClient* InitNsClient(const std::string& zk_cluster, const std::
     }
     return client;
 }
+
+std::vector<std::string>* ShowTable(rtidb::client::NsClient* client, const std::string& name) {
+    std::vector<rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    std::vector<std::string>* table_names = new std::vector<std::string>;
+    bool ok = client->ShowTable(name, tables, msg);
+    if (ok) {
+        for (uint32_t i = 0; i < tables.size(); i++) {
+            std::string name = tables[i].name();
+            table_names->push_back(name);
+        }
+    }
+    return table_names;
+}
