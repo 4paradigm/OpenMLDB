@@ -13,6 +13,7 @@
 #include <chrono>
 #include <boost/algorithm/string.hpp>
 #include <algorithm>
+#include <set>
 #include <base/strings.h>
 
 DECLARE_string(endpoint);
@@ -8336,8 +8337,8 @@ void NameServerImpl::DistributeTabletMode() {
             PDLOG(WARNING, "set tablet %s mode failed!", tablet.first.c_str());
         }
     }
-
 }
+
 bool NameServerImpl::CreateTableRemote(const ::rtidb::api::TaskInfo& task_info,
         const ::rtidb::nameserver::TableInfo& table_info, 
         const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info) {
@@ -8379,6 +8380,82 @@ void NameServerImpl::MakeTablePartitionSnapshot(uint32_t pid, uint64_t end_offse
             client->MakeSnapshot(table_info->tid(), pid, end_offset,std::shared_ptr<rtidb::api::TaskInfo>());
         }
     }
+}
+
+void NameServerImpl::DeleteIndex(RpcController* controller,
+        const DeleteIndexRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(300);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    uint32_t idx = 0;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto table_iter = table_info_.find(request->table_name());
+        if (table_iter == table_info_.end()) {
+            response->set_code(100);
+            response->set_msg("table is not exist!");
+            PDLOG(WARNING, "table[%s] is not exist!", request->table_name().c_str());
+            return;
+        }
+        table_info = table_iter->second;
+        for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
+            if (table_info->column_desc_v1(i).name() == request->idx_name() && table_info->column_desc_v1(i).add_ts_idx()) {
+                idx = i;
+                break;
+            }
+        }
+        response->set_code(100);
+        response->set_msg("index is not exist!");
+        PDLOG(WARNING, "index[%s] is not exist!", request->idx_name().c_str());
+        return;
+    } while(0);
+
+    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_client_map;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& kv : tablets_) {
+            if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                response->set_code(100);
+                response->set_msg("tablet is offline!");
+                PDLOG(WARNING, "tablet[%s] is offline!", kv.second->client_->GetEndpoint());
+                return;
+            }
+            tablet_client_map.insert(std::make_pair(kv.second->client_->GetEndpoint(), kv.second->client_));
+        }
+    }
+    std::set<std::string> tablets;
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                tablets.insert(table_info->table_partition(idx).partition_meta(meta_idx).endpoint());
+            } else {
+                response->set_code(100);
+                response->set_msg("partition is not alive!");
+                PDLOG(WARNING, "partition[%s][%d] is not alive!", 
+                    table_info->table_partition(idx).partition_meta(meta_idx).endpoint(), 
+                    table_info->table_partition(idx).pid());
+                return;
+            }
+        }
+    }
+    for(const auto &endpoint : tablets) {
+        if(!tablet_client_map[endpoint]->DeleteIndex(table_info->tid(), request->idx_name())) {
+            response->set_code(100);
+            response->set_msg("delete index on tablet failed!");
+            PDLOG(WARNING, "tablet[%s] delete index failed!", endpoint.c_str());
+            return;
+        }
+    }
+    table_info->mutable_column_desc_v1(idx)->set_add_ts_idx(false);
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 }

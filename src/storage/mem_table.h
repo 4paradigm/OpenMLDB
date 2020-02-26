@@ -159,6 +159,14 @@ public:
         return key_entry_max_height_;
     }
 
+    inline void DeleteIndex(uint32_t idx) {
+        for (uint32_t i = 0; i < seg_cnt_; i++) {
+            delete segments_[idx][i];
+        }
+        delete[] segments_[idx];
+        segments_[idx] = NULL;
+    }
+
 private:
 
     inline bool CheckAbsolute(const LogEntry& entry, const std::map<uint32_t, uint64_t>& ts_dimemsions_map);

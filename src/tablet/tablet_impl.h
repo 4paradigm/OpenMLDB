@@ -252,6 +252,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void DeleteIndex(RpcController* controller,
+            const ::rtidb::api::DeleteIndexRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     inline void SetServer(brpc::Server* server) {
         server_ = server;
     }

@@ -238,6 +238,8 @@ public:
 
     bool SetMode(bool mode);
 
+    bool DeleteIndex(uint32_t tid, const std::string& idx_name);
+    
 private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> client_;

@@ -175,7 +175,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         const ::rtidb::api::UpdateTTLRequest* request,
         ::rtidb::api::UpdateTTLResponse* response,
         Closure* done) {
-    brpc::ClosureGuard done_guard(done);         
+    brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
 
     if (!table) {
@@ -3929,6 +3929,39 @@ void TabletImpl::AlignTable(RpcController* controller,
         return;
     }
     // replicator.GetLogPart().Get
+}
+
+void TabletImpl::DeleteIndex(RpcController* controller,
+        const ::rtidb::api::DeleteIndexRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::map<uint32_t, std::shared_ptr<Table>> tables;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        auto iter = tables_.find(request->tid());
+        if (iter == tables_.end()) {
+            response->set_code(100);
+            response->set_msg("table is not exist");
+            return;
+        }
+        tables = iter->second;
+        if (tables.begin()->second->GetStorageMode() != ::rtidb::common::kMemory) {
+            response->set_code(100);
+            response->set_msg("only support mem_table");
+            return;
+        }
+        for (const auto& kv: tables) {
+            std::map<std::string, uint32_t> idx_map =  kv.second->GetMapping();
+            auto iter = idx_map.find(request->idx_name());
+            if (iter != idx_map.end()) {
+                MemTable* mem_table = dynamic_cast<MemTable*>(kv.second.get());
+                mem_table->DeleteIndex(iter->second);
+            }
+        }
+    }
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 }
