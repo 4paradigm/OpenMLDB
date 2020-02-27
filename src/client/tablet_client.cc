@@ -751,14 +751,21 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     return kv_it;
 }
 
+bool TabletClient::DropTable(uint32_t id, uint32_t pid, 
+        std::shared_ptr<TaskInfo> task_info) {
+    return DropTable(id, pid, ::rtidb::type::kTimeSeries, task_info);
+}
 
-
-bool TabletClient::DropTable(uint32_t id, uint32_t pid, std::shared_ptr<TaskInfo> task_info) {
+bool TabletClient::DropTable(uint32_t id, uint32_t pid, 
+        TableType table_type, std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::DropTableRequest request;
     request.set_tid(id);
     request.set_pid(pid);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    if (table_type == ::rtidb::type::kRelational) {
+        request.set_table_type(::rtidb::type::kRelational);
     }
     ::rtidb::api::DropTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DropTable,
