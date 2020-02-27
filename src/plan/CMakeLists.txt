@@ -2,16 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_planner STATIC planner.cc batch_planner.cc)
+add_library(fesql_planner STATIC planner.cc)
 
-add_executable(planner_test planner_test.cc)
-target_link_libraries(planner_test  fesql_proto fesql_parser fesql_analyser
-        fesql_node fesql_planner protobuf gtest ${COMMON_LIBS} pthread)
 add_test(planner_test planner_test --gtest_output=xml:${CMAKE_BINARY_DIR}/planner_test.xml)
 list(APPEND test_list planner_test)
-
-add_executable(batch_planner_test batch_planner_test.cc)
-target_link_libraries(batch_planner_test  fesql_proto fesql_parser fesql_analyser
-        fesql_node fesql_planner protobuf gtest ${COMMON_LIBS} pthread)
-add_test(batch_planner_test batch_planner_test --gtest_output=xml:${CMAKE_BINARY_DIR}/batch_planner_test.xml)
-list(APPEND test_list batch_planner_test)

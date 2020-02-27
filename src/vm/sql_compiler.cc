@@ -22,6 +22,8 @@
 #include <vector>
 #include "analyser/analyser.h"
 #include "codegen/ir_base_builder.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Support/raw_ostream.h"
 #include "glog/logging.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
@@ -33,9 +35,22 @@ namespace fesql {
 namespace vm {
 using ::fesql::base::Status;
 
-SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl) : cl_(cl) {}
+SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
+        bool keep_ir) : cl_(cl), keep_ir_(keep_ir){}
 
 SQLCompiler::~SQLCompiler() {}
+
+
+void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
+    if (m == NULL) {
+        LOG(WARNING) << "module is null";
+        return;
+    }
+    ctx.ir.reserve(1024);
+    llvm::raw_string_ostream buf(ctx.ir);
+    llvm::WriteBitcodeToFile(*m, buf);
+    buf.flush();
+}
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     DLOG(INFO) << "start to compile sql " << ctx.sql;
@@ -67,12 +82,15 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
             return false;
         }
     }
-
     ctx.jit = std::move(*jit_expected);
     ctx.jit->Init();
     if (false == ctx.jit->OptModule(m.get())) {
         LOG(WARNING) << "fail to opt ir module for sql " << ctx.sql;
         return false;
+    }
+
+    if (keep_ir_) {
+        KeepIR(ctx, m.get());
     }
 
     ::llvm::Error e = ctx.jit->addIRModule(std::move(
@@ -81,6 +99,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         LOG(WARNING) << "fail to add ir module  for sql " << ctx.sql;
         return false;
     }
+
     storage::InitCodecSymbol(ctx.jit.get());
     udf::InitUDFSymbol(ctx.jit.get());
     std::vector<OpNode*>::iterator it = ctx.ops.ops.begin();

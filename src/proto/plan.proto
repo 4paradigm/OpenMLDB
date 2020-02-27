@@ -1,49 +1,53 @@
 import "type.proto";
 import "common.proto";
 
-package fesql.plan;
+package fesql.batch;
 
 option cc_generic_services = true;
 
 enum PlanOpType {
     kPartitionOp = 1;
     kMapOp = 2;
+    kDataSink = 3;
+    kDataSource = 4;
 }
 
 message NodeDesc {
     // the op id
-    optional string id = 1;
+    optional uint32 id = 1;
     // the op name 
     optional string op = 2;
     // the id of other nodes
-    repeated string inputs = 3;
+    repeated uint32 inputs = 3;
 }
 
 message NodeValue {
-    optional PlanOpType type = 1;
-    optional bytes value = 2;
+    optional uint32 id = 1;
+    optional PlanOpType type = 2;
+    optional bytes value = 3;
 }
 
 message GraphDesc {
-    optional string id = 1;
+    optional uint32 id = 1;
     // the graph desc information
     repeated NodeDesc nodes = 2;
     // the op data list
     repeated NodeValue values = 3;
+    optional string ir = 4;
 }
 
-message PartitionDesc {
-    // partition key list
-    repeated string colunms = 1;
-    // partition key generator function
-    optional string fn_ir = 2;
-    optional string id = 3;
+message DataSource {
+    optional string db = 1;
+    optional string name = 2;
+    repeated type.ColumnDef schema = 3;
+}
+
+message DataSink {
+    optional string db = 1;
+    optional string name = 2;
 }
 
 message MapDesc {
-    optional string id = 1;
-    // map function
-    optional string fn_ir = 2;
-    // the output schema
-    repeated type.ColumnDef schema = 3;
+    optional string fn_id = 1;
+    repeated type.ColumnDef output_schema = 2;
 }

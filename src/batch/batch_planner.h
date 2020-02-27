@@ -19,6 +19,7 @@
 #define SRC_BATCH_BATCH_PLANNER_H_
 
 #include "proto/plan.pb.h"
+#include "batch/batch_catalog.h"
 
 namespace fesql {
 namespace batch {
@@ -26,8 +27,18 @@ namespace batch {
 // convert sql to dag
 class BatchPlanner {
  public:
-    BatchPlanner();
+    BatchPlanner(const std::shared_ptr<BatchCatalog>& catalog,
+                 const std::string& db,
+                 const std::string& sql);
+
     ~BatchPlanner();
+
+    bool MakePlan(GraphDesc* graph);
+
+ private:
+    std::shared_ptr<BatchCatalog> catalog_;
+    std::string db_;
+    std::string sql_;
 };
 
 }  // namespace batch

@@ -57,6 +57,7 @@ bool BatchCatalog::Init() {
         if (!ok) {
             return false;
         }
+
         // TODO(wangtaize) support dir
         std::shared_ptr<BatchTableHandler> table_handler(new BatchTableHandler(
             schema, table.first, FLAGS_default_db_name, partitions));

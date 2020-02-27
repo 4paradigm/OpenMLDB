@@ -46,11 +46,13 @@ struct SQLContext {
     std::unique_ptr<FeSQLJIT> jit;
     Schema schema;
     uint32_t row_size;
+    std::string ir;
 };
 
 class SQLCompiler {
  public:
-    explicit SQLCompiler(const std::shared_ptr<Catalog>& cl);
+    explicit SQLCompiler(const std::shared_ptr<Catalog>& cl, 
+            bool keep_ir = false);
 
     ~SQLCompiler();
 
@@ -58,11 +60,14 @@ class SQLCompiler {
                  Status& status);  // NOLINT
 
  private:
+    void KeepIR(SQLContext& ctx, llvm::Module* m);
+ private:
     bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT
                ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT
 
  private:
     const std::shared_ptr<Catalog> cl_;
+    bool keep_ir_;
 };
 
 }  // namespace vm

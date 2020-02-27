@@ -5,26 +5,20 @@ import "plan.proto";
 package fesql.batch;
 option cc_generic_services = true;
 
-message DataSource {
-    optional string url = 1;
-    optional type.TableDef schema = 2;
-}
-
-message DataSink {
-    optional string url = 1;
+message DataSet {
+    optional string name = 1; 
     optional type.TableDef schema = 2;
 }
 
 message JobDesc {
     optional string sql = 1;
-    repeated DataSource inputs = 2;
-    repeated DataSink outputs = 3;
+    optional string db = 2;
     // the endpoint of worker
-    repeated string workers = 4;
+    repeated string workers = 3;
 }
 
 message TaskDesc {
-    optional plan.GraphDesc graph = 1;
+    optional GraphDesc graph = 1;
 }
 
 message StartRequest {
