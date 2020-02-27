@@ -1,7 +1,7 @@
 #include "client.h"
 
 RtidbNSClient::RtidbNSClient() {
-
+    zk_client_ = NULL;
 }
 
 bool RtidbNSClient::Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint) {
@@ -59,3 +59,33 @@ std::vector<std::string>* RtidbNSClient::ShowTable(const std::string& name) {
     return table_names;
 }
 
+RtidbTabletClient::RtidbTabletClient() {
+    client_ = NULL;
+};
+
+bool RtidbTabletClient::Init(const std::string& endpoint) {
+    if (endpoint.empty()) {
+        return false;
+    }
+    client_ = new rtidb::client::TabletClient(endpoint);
+    if (client_->Init() < 0) {
+        delete client_;
+        std::cerr << "client init failed" << std::endl;
+        return false;
+    }
+    return true;
+};
+
+bool RtidbTabletClient::Put(const uint32_t tid, const uint32_t pid, const std::string& pk, const uint64_t time, const std::string& value) {
+    return client_->Put(tid, pid, pk.c_str(), time, value.c_str(), value.size());
+};
+
+std::string RtidbTabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time) {
+    std::string value, msg;
+    uint64_t ts;
+    bool ok = client_->Get(tid, pid, pk, time, value, ts, msg);
+    if (!ok) {
+        return value;
+    }
+    return value;
+};
