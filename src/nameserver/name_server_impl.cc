@@ -2145,7 +2145,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
     ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
-    if (!table_info->has_table_type()) {
+    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
         if (!table_info->has_ttl_desc()) {
             if (table_info->ttl_type() == "kLatestTime") {
                 ttl_type = ::rtidb::api::TTLType::kLatestTime;
@@ -2165,7 +2165,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         compress_type = ::rtidb::api::CompressType::kSnappy;
     }
     ::rtidb::common::StorageMode storage_mode = ::rtidb::common::StorageMode::kMemory;
-    if (!table_info->has_table_type()) {
+    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
         if (table_info->storage_mode() == ::rtidb::common::StorageMode::kSSD) {
             storage_mode = ::rtidb::common::StorageMode::kSSD;
         } else if (table_info->storage_mode() == ::rtidb::common::StorageMode::kHDD) {
@@ -3491,7 +3491,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    if (!request->has_table_type()) {
+    if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
         if (CheckTableMeta(*table_info) < 0) {
             response->set_code(307);
             response->set_msg("check TableMeta failed, index column type can not float or double");
