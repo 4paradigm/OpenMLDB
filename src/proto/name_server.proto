@@ -373,6 +373,11 @@ message SyncTableRequest {
     optional uint32 pid = 3;
 }
 
+message AddIndexRequest {
+    optional string name = 1;
+    optional string idx_name = 4;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -410,4 +415,5 @@ service NameServer {
     rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
     rpc AddReplicaNSFromRemote(AddReplicaNSRequest) returns (GeneralResponse);
     rpc SyncTable(SyncTableRequest) returns (GeneralResponse);
+    rpc AddIndex(AddIndexRequest) returns (GeneralResponse);
 }

@@ -824,6 +824,20 @@ void HandleNSClientSyncTable(const std::vector<std::string>& parts, ::rtidb::cli
     }
 }
 
+void HandleNSClientAddIndex(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad format for addindex! eg. addindex table_name index_name" << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ret = client->AddIndex(parts[1], parts[2], msg);
+    if (!ret) {
+        std::cout << "failed to addindex. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "addindex ok" << std::endl;
+}
+
 void HandleNSClientConfSet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
@@ -2485,6 +2499,8 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
 
 void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() == 1) {
+        printf("addindex - add index to table \n");
+        printf("addtablefield - add field to the schema table \n");
         printf("addreplica - add replica to leader\n");
         printf("cancelop - cancel the op\n");
         printf("create - create table\n");
@@ -2517,7 +2533,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("settablepartition - update partition info\n");
         printf("setttl - set table ttl\n");
         printf("updatetablealive - update table alive status\n");
-        printf("addtablefield - add field to the schema table \n");
         printf("info - show information of the table\n");
         printf("addrepcluster - add remote replica cluster\n");
         printf("showrepcluster - show remote replica cluster\n");
@@ -2721,6 +2736,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: synctable table_name cluster_alias [pid]\n");
             printf("ex: synctable test bj\n");
             printf("ex: synctable test bj 0\n");
+        } else if (parts[1] == "addindex") {
+            printf("desc: add new index to table\n");
+            printf("usage: addindex table_name index_name\n");
+            printf("ex: addindex test card\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -4907,8 +4926,9 @@ void StartNsClient() {
             HandleNSSwitchMode(parts, &client);
         } else if (parts[0] == "synctable") {
            HandleNSClientSyncTable(parts, &client); 
-        }
-        else if (parts[0] == "exit" || parts[0] == "quit") {
+        } else if (parts[0] == "addindex") {
+           HandleNSClientAddIndex(parts, &client); 
+        } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
         } else if (parts[0] == "help" || parts[0] == "man") {

@@ -138,6 +138,8 @@ public:
 
     bool SwitchMode(const ::rtidb::nameserver::ServerMode mode, std::string& msg);
 
+    bool AddIndex(const std::string& table_name, const std::string& idx_name, std::string& msg);
+
 private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;
