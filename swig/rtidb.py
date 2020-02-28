@@ -44,7 +44,7 @@ class RTIDBCliet:
     value = dict();
     for k in columns:
       value.update({k, str(columns[k])})
-    retutn self.__client.Put(table_name, value, _wo)
+    return self.__client.Put(table_name, value, _wo)
 
   def update(self, table_name: str, condition_columns: map, value_columns: map, write_option: WriteOption = None):
     pass
