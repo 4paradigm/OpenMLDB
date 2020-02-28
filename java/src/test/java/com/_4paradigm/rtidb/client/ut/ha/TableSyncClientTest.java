@@ -8,7 +8,7 @@ import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
-import com._4paradigm.rtidb.client.impl.RelationalKvIterator;
+import com._4paradigm.rtidb.client.impl.RelationalIterator;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.ReadOption;
@@ -467,7 +467,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Map<String, Object> index = new HashMap<>();
             index.put("card", "card0");
             ReadOption ro = new ReadOption(index, null, null, 1);
-            RelationalKvIterator it = tableSyncClient.query(name, ro);
+            RelationalIterator it = tableSyncClient.query(name, ro);
             Assert.assertTrue(it.valid());
 
             Map<String, Object> queryMap = it.getDecodedValue();
