@@ -1,6 +1,5 @@
 package com._4paradigm.rtidb.client.impl;
 
-import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
@@ -11,9 +10,11 @@ import com.google.protobuf.ByteString;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class RelationalKvIterator implements KvIterator {
+public class RelationalKvIterator {
 
     private ByteString bs;
     private int offset;
@@ -40,10 +41,6 @@ public class RelationalKvIterator implements KvIterator {
         this.th = th;
     }
 
-    @Override
-    public int getCount() {
-        return count;
-    }
 
     public List<ColumnDesc> getSchema() {
         if (th != null && th.getSchemaMap().size() > 0) {
@@ -67,16 +64,6 @@ public class RelationalKvIterator implements KvIterator {
         this.compressType = compressType;
     }
 
-    @Override
-    public long getKey() {
-        return 0;
-    }
-
-    @Override
-    public String getPK() {
-        return null;
-    }
-
     // no copy
     public ByteBuffer getValue() {
         if (compressType == NS.CompressType.kSnappy) {
@@ -89,7 +76,8 @@ public class RelationalKvIterator implements KvIterator {
         }
     }
 
-    public Object[] getDecodedValue() throws TabletException {
+    public Map<String, Object> getDecodedValue() throws TabletException {
+
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
@@ -99,8 +87,7 @@ public class RelationalKvIterator implements KvIterator {
         } else {
             row = new Object[schema.size()];
         }
-        getDecodedValue(row, 0, row.length);
-        return row;
+        return getDecodedValue(row, 0, row.length);
     }
 
     public void next() {
@@ -122,8 +109,8 @@ public class RelationalKvIterator implements KvIterator {
         slice.limit(bs.size());
     }
 
-    @Override
-    public void getDecodedValue(Object[] row, int start, int length) throws TabletException {
+    public Map<String, Object> getDecodedValue(Object[] row, int start, int length) throws TabletException {
+        Map<String, Object> map = new HashMap<>();
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
@@ -138,5 +125,10 @@ public class RelationalKvIterator implements KvIterator {
         } else {
             RowCodec.decode(slice, schema, row, start, length);
         }
+        for (int i = 0; i < schema.size(); i++) {
+            map.put(schema.get(i).getName(), row[i]);
+        }
+        return map;
     }
+
 }

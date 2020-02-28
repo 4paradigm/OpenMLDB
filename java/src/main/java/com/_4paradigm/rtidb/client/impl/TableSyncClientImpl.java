@@ -288,7 +288,7 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public KvIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException {
+    public RelationalKvIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tableName);
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
@@ -344,8 +344,8 @@ public class TableSyncClientImpl implements TableSyncClient {
         return key;
     }
 
-    private KvIterator queryRelationTable(int tid, int pid, String key, String idxName, Tablet.GetType type,
-                                          TableHandler th) throws TabletException {
+    private RelationalKvIterator queryRelationTable(int tid, int pid, String key, String idxName, Tablet.GetType type,
+                                                    TableHandler th) throws TabletException {
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -1166,27 +1166,28 @@ public class TableSyncClientImpl implements TableSyncClient {
         Map<String, Object> index = new HashMap<>();
         index.put(idxName, idxValue);
         ReadOption ro = new ReadOption(index, null, null, 1);
-        KvIterator kvIterator = query(tableName, ro);
+        RelationalKvIterator kvIterator = query(tableName, ro);
         if (!kvIterator.valid()) {
             throw new TabletException("KvIterator is invalid " + tableName);
         }
-        Object[] decodedValue = new Object[th.getSchema().size()];
+        Map<String, Object> objectMap = new HashMap<>();
         while (kvIterator.valid()) {
-            decodedValue = kvIterator.getDecodedValue();
+            objectMap = kvIterator.getDecodedValue();
             break;
         }
-        Map<String, Object> updateMap = updateInternel(decodedValue, valueColumns, th);
+        Map<String, Object> updateMap = updateInternel(objectMap, valueColumns, th);
 
         return put(tableName, updateMap, wo);
     }
 
-    public Map<String, Object> updateInternel(Object[] inRow, Map<String, Object> valueColumns, TableHandler th) {
+    public Map<String, Object> updateInternel(Map<String, Object> inMap, Map<String, Object> valueColumns, TableHandler th) {
         Map<String, Object> map = new HashMap<>();
         for (int i = 0; i < th.getSchema().size(); i++) {
             String colName = th.getSchema().get(i).getName();
-            map.put(colName, inRow[i]);
             if (valueColumns.containsKey(colName)) {
                 map.put(colName, valueColumns.get(colName));
+            } else {
+                map.put(colName, inMap.get(colName));
             }
         }
         return map;

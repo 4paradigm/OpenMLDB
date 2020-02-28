@@ -8,6 +8,7 @@ import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
+import com._4paradigm.rtidb.client.impl.RelationalKvIterator;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.ReadOption;
@@ -466,14 +467,14 @@ public class TableSyncClientTest extends TestCaseBase {
             Map<String, Object> index = new HashMap<>();
             index.put("card", "card0");
             ReadOption ro = new ReadOption(index, null, null, 1);
-            KvIterator it = tableSyncClient.query(name, ro);
+            RelationalKvIterator it = tableSyncClient.query(name, ro);
             Assert.assertTrue(it.valid());
 
-            Object[] row = it.getDecodedValue();
-            Assert.assertEquals(row.length, 3);
-            Assert.assertEquals(row[0], "card0");
-            Assert.assertEquals(row[1], "mcc0");
-            Assert.assertEquals(row[2], 2020);
+            Map<String, Object> queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.size(), 3);
+            Assert.assertEquals(queryMap.get("card"), "card0");
+            Assert.assertEquals(queryMap.get("mcc"), "mcc0");
+            Assert.assertEquals(queryMap.get("p_biz_date"), 2020);
 
             Map<String, Object> index2 = new HashMap<>();
             index2.put("card", "card1");
@@ -481,11 +482,11 @@ public class TableSyncClientTest extends TestCaseBase {
             it = tableSyncClient.query(name, ro);
             Assert.assertTrue(it.valid());
 
-            row = it.getDecodedValue();
-            Assert.assertEquals(row.length, 3);
-            Assert.assertEquals(row[0], "card1");
-            Assert.assertEquals(row[1], "mcc1");
-            Assert.assertEquals(row[2], 2021);
+            queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.size(), 3);
+            Assert.assertEquals(queryMap.get("card"), "card1");
+            Assert.assertEquals(queryMap.get("mcc"), "mcc1");
+            Assert.assertEquals(queryMap.get("p_biz_date"), 2021);
 
             //update
             Map<String, Object> conditionColumns = new HashMap<>();
@@ -499,11 +500,11 @@ public class TableSyncClientTest extends TestCaseBase {
             it = tableSyncClient.query(name, ro);
             Assert.assertTrue(it.valid());
 
-            row = it.getDecodedValue();
-            Assert.assertEquals(row.length, 3);
-            Assert.assertEquals(row[0], "card0");
-            Assert.assertEquals(row[1], "mcc0");
-            Assert.assertEquals(row[2], 3020);
+            queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.size(), 3);
+            Assert.assertEquals(queryMap.get("card"), "card0");
+            Assert.assertEquals(queryMap.get("mcc"), "mcc0");
+            Assert.assertEquals(queryMap.get("p_biz_date"), 3020);
 
             Map<String, Object> conditionColumns2 = new HashMap<>();
             conditionColumns2.put("card", "card1");
@@ -516,11 +517,11 @@ public class TableSyncClientTest extends TestCaseBase {
             it = tableSyncClient.query(name, ro);
             Assert.assertTrue(it.valid());
 
-            row = it.getDecodedValue();
-            Assert.assertEquals(row.length, 3);
-            Assert.assertEquals(row[0], "card1");
-            Assert.assertEquals(row[1], "mcc1_1");
-            Assert.assertEquals(row[2], 2021);
+            queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.size(), 3);
+            Assert.assertEquals(queryMap.get("card"), "card1");
+            Assert.assertEquals(queryMap.get("mcc"), "mcc1_1");
+            Assert.assertEquals(queryMap.get("p_biz_date"), 2021);
 
         } catch (Exception e) {
             e.printStackTrace();

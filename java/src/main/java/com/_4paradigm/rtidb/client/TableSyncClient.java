@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client;
 
+import com._4paradigm.rtidb.client.impl.RelationalKvIterator;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ReadOption;
 import com._4paradigm.rtidb.client.schema.WriteOption;
@@ -92,7 +93,7 @@ public interface TableSyncClient {
     Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type,
                     long et, Tablet.GetType etType) throws TimeoutException, TabletException;
 
-    KvIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException;
+    RelationalKvIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
     Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
