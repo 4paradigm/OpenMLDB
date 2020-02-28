@@ -2369,6 +2369,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     type_set.insert("smallint");
     type_set.insert("int");
     type_set.insert("bigint");
+    type_set.insert("varchar");
     type_set.insert("blob");
     ::rtidb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
