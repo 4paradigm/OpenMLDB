@@ -399,15 +399,19 @@ void TabletImpl::Get(RpcController* controller,
              ::rtidb::api::GetResponse* response,
              Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
-        std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-        if (!table) {
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    std::shared_ptr<RelationalTable> r_table;
+    if (!table) {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        r_table = GetRelationalTableUnLock(request->tid(), request->pid());
+        if (!r_table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(100);
             response->set_msg("table is not exist");
             return;
         }
-
+    }
+    if (table) {
         if (table->GetTableStat() == ::rtidb::storage::kLoading) {
             PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                     request->tid(), request->pid());
@@ -482,23 +486,13 @@ void TabletImpl::Get(RpcController* controller,
                 return;
         }
     } else {
-        std::shared_ptr<RelationalTable> table;
-        {
-            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table = GetRelationalTableUnLock(request->tid(), request->pid());
-            if (!table) {
-                PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-                response->set_code(100);
-                response->set_msg("table is not exist");
-                return;
-            }
-        }
         std::string * value = response->mutable_value(); 
         bool ok = false;
         uint32_t index = 0;
+        /**
         if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end()) {
+            std::map<std::string, uint32_t>::iterator iit = r_table->GetMapping().find(request->idx_name());
+            if (iit == r_table->GetMapping().end()) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
                 response->set_code(108);
@@ -507,7 +501,8 @@ void TabletImpl::Get(RpcController* controller,
             }
             index = iit->second;
         }
-        ok = table->Get(index, request->key(), *value);
+        */
+        ok = r_table->Get(index, request->key(), *value);
         if (!ok) {
             response->set_code(109);
             response->set_msg("key not found");
@@ -528,7 +523,20 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
-    if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    std::shared_ptr<RelationalTable> r_table;
+    if (!table) {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        r_table = GetRelationalTableUnLock(request->tid(), request->pid());
+        if (!r_table) {
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(100);
+            response->set_msg("table is not exist");
+            done->Run();
+            return;
+        }
+    }
+    if (table) {
         if (request->time() == 0 && request->ts_dimensions_size() == 0) {
             response->set_code(114);
             response->set_msg("ts must be greater than zero");
@@ -536,14 +544,6 @@ void TabletImpl::Put(RpcController* controller,
             return;
         }
 
-        std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-        if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(100);
-            response->set_msg("table is not exist");
-            done->Run();
-            return;
-        }    
         if (!table->IsLeader()) {
             response->set_code(103);
             response->set_msg("table is follower");
@@ -613,30 +613,18 @@ void TabletImpl::Put(RpcController* controller,
             }
         }
     } else {
-        std::shared_ptr<RelationalTable> table;
-        {
-            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table = GetRelationalTableUnLock(request->tid(), request->pid());
-            if (!table) {
-                PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-                response->set_code(100);
-                response->set_msg("table is not exist");
-                done->Run();
-                return;
-            }
-        }
         bool ok = false;
         if (request->dimensions_size() > 0) {
-            int32_t ret_code = CheckDimessionPut(request, table->GetIdxCnt());
+            int32_t ret_code = CheckDimessionPut(request, r_table->GetIdxCnt());
             if (ret_code != 0) {
                 response->set_code(115);
                 response->set_msg("invalid dimension parameter");
                 done->Run();
                 return;
             }
-            ok = table->Put(request->value(), request->dimensions());
+            ok = r_table->Put(request->value(), request->dimensions());
         } else {
-            ok = table->Put(request->pk(), 
+            ok = r_table->Put(request->pk(), 
                     request->value().c_str(),
                     request->value().size());
         }
@@ -646,6 +634,7 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
+        done->Run();
         response->set_code(0);
     }
 }
@@ -2841,10 +2830,6 @@ int32_t TabletImpl::DeleteRelationalTableInternal(uint32_t tid, uint32_t pid, st
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table = GetRelationalTableUnLock(tid, pid);
-            if (!table) {
-                PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
-                break;
-            }
         }
         if (!table) {
             PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);

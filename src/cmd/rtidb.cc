@@ -1841,16 +1841,20 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     if (tables[0].column_desc_v1_size() > 0) {
         uint64_t ts = 0;
         uint32_t start_index = 0;
-        if (!HasIsTsCol(tables[0].column_desc_v1())) {
-            try {
-                ts = boost::lexical_cast<uint64_t>(parts[2]);
-            } catch (std::exception const& e) {
-                printf("Invalid args. ts %s should be unsigned int\n", parts[2].c_str());
-                return;
-            } 
-            start_index = 3;
-        } else {
+        if (tables[0].has_table_type() && tables[0].table_type() == ::rtidb::type::TableType::kRelational) {
             start_index = 2;
+        } else {
+            if (!HasIsTsCol(tables[0].column_desc_v1())) {
+                try {
+                    ts = boost::lexical_cast<uint64_t>(parts[2]);
+                } catch (std::exception const& e) {
+                    printf("Invalid args. ts %s should be unsigned int\n", parts[2].c_str());
+                    return;
+                } 
+                start_index = 3;
+            } else {
+                start_index = 2;
+            }
         }
         google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> column_desc_list_1 = tables[0].column_desc_v1();
         google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> column_desc_list_2 = tables[0].added_column_desc();
@@ -2139,8 +2143,18 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         name_map.insert(std::make_pair(table_info.column_desc(idx).name(), cur_type));
         ::rtidb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc_v1();
         column_desc->CopyFrom(table_info.column_desc(idx));
+        if (cur_type == "smallint") {
+            column_desc->set_type("int16");
+        } else if (cur_type == "int") {
+            column_desc->set_type("int32");
+        } else if (cur_type == "bigint") {
+            column_desc->set_type("int64");
+        } else if (cur_type == "blob" || cur_type == "varchar") {
+            column_desc->set_type("string");
+        }
     }
-    if (table_info.column_key_size() == 0) {
+    if (table_info.column_key_size() == 0
+            && (!table_info.has_table_type() || table_info.table_type() != "Relational")) {
         if (ts_col_set.size() > 1) {
             printf("column_key should be set when has two or more ts columns\n");
             return -1;
@@ -2203,6 +2217,22 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
             }
             ::rtidb::common::ColumnKey* column_key = ns_table_info.add_column_key();
             column_key->CopyFrom(table_info.column_key(idx));
+        }
+    }
+    if (table_info.has_table_type() && table_info.table_type() == "Relational") {
+        ns_table_info.set_table_type(::rtidb::type::TableType::kRelational);
+        ns_table_info.set_storage_mode(::rtidb::common::kSSD);
+        ns_table_info.set_replica_num(1);
+        ns_table_info.set_partition_num(1);
+        ns_table_info.clear_column_key();
+        index_set.clear();
+        for (int idx = 0; idx < table_info.index_size(); idx++) {
+            ::rtidb::common::ColumnKey* column_key = ns_table_info.add_column_key();
+            column_key->set_index_name(table_info.index(idx).index_name());
+            for (int inner = 0; inner < table_info.index(idx).col_name_size(); inner++) {
+                column_key->add_col_name(table_info.index(idx).col_name(inner));
+            }
+            index_set.insert(table_info.index(idx).index_name());
         }
     }
     if (index_set.empty() && table_info.column_desc_size() > 0) {
@@ -2336,6 +2366,11 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     type_set.insert("date");
     type_set.insert("int16");
     type_set.insert("uint16");
+    type_set.insert("smallint");
+    type_set.insert("int");
+    type_set.insert("bigint");
+    type_set.insert("varchar");
+    type_set.insert("blob");
     ::rtidb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
         if (GenTableInfo(parts[1], type_set, ns_table_info) < 0) {
