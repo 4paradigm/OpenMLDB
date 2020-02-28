@@ -46,6 +46,22 @@ class ReadOption:
 
 import interclient
 
+class RtidbResult:
+  def __init__(self, data):
+    self.__data = data
+  def __iter__(self):
+    self.__index = 0
+    return self
+  def count(self):
+    return len(self.__data)
+  def __next__(self):
+    if self.__index >= len(self.__data):
+      raise StopIteration
+    else:
+      result = self.__data[self.__index]
+      self.__index+=1
+      return result
+
 from typing import List
 ReadOptions = List[ReadOption]
 defaultWriteOption = WriteOption()
@@ -104,10 +120,11 @@ class RTIDBClient:
         continue
       print(type_map[resp[k].type](resp[k].buffer))
       result.update({k: type_map[resp[k].type](resp[k].buffer)})
-    return result
+    
+    return RtidbResult([result])
 
   def batch_query(self, table_name: str, read_options: ReadOptions):
-    pass
+    return RtidbResult([{}])
 
   def delete(self, table_name: str, condition_columns: map):
     if (condition_columns.size < 1):
@@ -118,4 +135,4 @@ class RTIDBClient:
     return self.__client.Delete(table_name, v)
 
   def traverse(self, table_name: str):
-    pass
+    return RtidbResult([{}])
