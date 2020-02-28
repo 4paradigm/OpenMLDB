@@ -194,7 +194,6 @@ message DeleteRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional string idx_name = 4;
-    optional rtidb.type.TableType table_type = 5;
 }
 
 message ExecuteGcRequest {
