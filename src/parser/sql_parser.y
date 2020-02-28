@@ -78,26 +78,32 @@ typedef void* yyscan_t;
 
 /* operators and precedence levels */
 
-%right ADD_ASSIGN
-%right SUB_ASSIGN
-%right MINUS_ASSIGN
-%right MULTI_ASSIGN
-%right FDIV_ASSIGN
-%right ASSIGN
-%left OR
-%left XOR
-%left ANDOP
+%left ','
+%right ASSIGN ADD_ASSIGN SUB_ASSIGN MULTI_ASSIGN MINUS_ASSIGN FDIV_ASSIGN
 %nonassoc IN IS LIKE REGEXP
-%left NOT '!'
+// ? : expr
+
+%left OR
+%left ANDOP
+// | & ^
+%left XOR
+
 %left BETWEEN
-%left '<' '>' EQUALS LESS_EQUALS GREATER_EQUALS NOT_EQUALS
+%left EQUALS NOT_EQUALS
+%left '<' '>' LESS_EQUALS GREATER_EQUALS
 %left '|'
 %left '&'
 %left <subtok> SHIFT /* << >> */
 %left '+' '-'
 %left '*' '/' '%' MOD
 %left '^'
+%left '(' ')' '[' ']' LPARENT RPARENT
+%left NOT '!'
 %nonassoc UMINUS
+%nonassoc IDEXPR
+%nonassoc CALLEXPR
+
+
 
 %token <intval> I32
 %token <strval> NEWLINE
@@ -460,12 +466,7 @@ func_stmts:
         }
         ;
 func_stmt:
-         return_stmt {
-            emit("enter return stmt");
-            $1->indent = 0;
-            $$ = $1;
-         }
-         |INDENT return_stmt
+         INDENT return_stmt
          {
             emit("INDENT enter return stmt");
             $2->indent = $1;
