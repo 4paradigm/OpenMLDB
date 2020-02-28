@@ -3,6 +3,30 @@
 #include "zk/zk_client.h"
 #include <string>
 
+struct WriteOption {
+    bool updateIfExist;
+    bool updateIfEqual;
+    WriteOption() {
+        updateIfEqual = true;
+        updateIfEqual = true;
+    }
+};
+
+struct ReadFilter {
+        std::string column;
+        uint8_t type;
+        std::string value;
+};
+
+struct ReadOption {
+    std::map<std::string, std::string> index;
+    std::vector<ReadFilter> read_filter;
+    std::set<std::string> col_set;
+    uint64_t limit;
+    ReadOption(const std::map<std::string, std::string>& indexs) {
+        index.insert(indexs.begin(), indexs.end());
+    };
+};
 class RtidbNSClient {
 private:
     rtidb::zk::ZkClient* zk_client_;
@@ -15,8 +39,9 @@ public:
             delete zk_client_;
         }
     };
-    bool Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint);
+    bool Init(const std::string& zk_cluster, const std::string& zk_path);
     std::vector<std::string>* ShowTable(const std::string& name);
+    std::vector<std::map<std::string, rtidb::base::Column>> Get(const std::string& name, struct ReadOption& ro);
 
 };
 
