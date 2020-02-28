@@ -1,12 +1,13 @@
 package com._4paradigm.rtidb.client;
 
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.WriteOption;
+import com._4paradigm.rtidb.tablet.Tablet;
+import com.google.protobuf.ByteString;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.tablet.Tablet;
-import com.google.protobuf.ByteString;
 
 public interface TableSyncClient {
 
@@ -63,6 +64,8 @@ public interface TableSyncClient {
     boolean put(String tname, Object[] row) throws TimeoutException, TabletException;
     boolean put(String tname, long time, Map<String, Object> row) throws TimeoutException, TabletException;
     boolean put(String tname, Map<String, Object> row) throws TimeoutException, TabletException;
+
+    boolean put(String tname, Map<String, Object> row, WriteOption wo) throws TimeoutException, TabletException;
     List<ColumnDesc> getSchema(String tname) throws TabletException;
     ByteString get(String tname, String key) throws TimeoutException, TabletException;
 

@@ -12,7 +12,7 @@ add_library(tablet STATIC proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc
 set_property(TARGET tablet PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_impl.cc flags.cc)
 set_property(TARGET nameserver PROPERTY POSITION_INDEPENDENT_CODE ON)
-add_library(storage STATIC storage/mem_table.cc storage/disk_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc)
+add_library(storage STATIC storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc)
 target_link_libraries(storage rocksdb z)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc)
 set_property(TARGET client PROPERTY POSITION_INDEPENDENT_CODE ON)
