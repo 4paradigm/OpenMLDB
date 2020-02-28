@@ -489,6 +489,7 @@ void TabletImpl::Get(RpcController* controller,
         std::string * value = response->mutable_value(); 
         bool ok = false;
         uint32_t index = 0;
+        /**
         if (request->has_idx_name() && request->idx_name().size() > 0) {
             std::map<std::string, uint32_t>::iterator iit = r_table->GetMapping().find(request->idx_name());
             if (iit == r_table->GetMapping().end()) {
@@ -500,6 +501,7 @@ void TabletImpl::Get(RpcController* controller,
             }
             index = iit->second;
         }
+        */
         ok = r_table->Get(index, request->key(), *value);
         if (!ok) {
             response->set_code(109);
