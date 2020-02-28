@@ -9,6 +9,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.ReadOption;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.client.schema.WriteOption;
 import com._4paradigm.rtidb.ns.NS;
@@ -287,6 +288,25 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public KvIterator get(String tableName, ReadOption ro) throws TimeoutException, TabletException{
+        TableHandler th = client.getHandler(tableName);
+        if (th == null) {
+            throw new TabletException("no table with name " + tableName);
+        }
+        String idxName = "";
+        String idxValue = "";
+        Iterator<Map.Entry<String, Object>> iter = ro.getIndex().entrySet().iterator();
+        while (iter.hasNext()) {
+            idxName = iter.next().getKey();
+            idxValue = iter.next().getValue().toString();
+            break;
+        }
+        idxValue = validateKey(idxValue);
+        int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
+        return getRelationTable(th.getTableInfo().getTid(), pid, idxName, idxValue, null, th);
+    }
+
+    @Override
     public Object[] getRow(String tname, String key, long time, Tablet.GetType type) throws TimeoutException, TabletException {
         return getRow(tname, key, null, time, null, type);
     }
@@ -321,6 +341,49 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
         }
         return key;
+    }
+
+    private KvIterator getRelationTable(int tid, int pid, String key, String idxName, Tablet.GetType type,
+                           TableHandler th) throws TabletException {
+        key = validateKey(key);
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
+        builder.setTableType(Type.TableType.kRelational);
+
+        builder.setTid(tid);
+        builder.setPid(pid);
+        builder.setKey(key);
+        if (type != null) builder.setType(type);
+        if (idxName != null && !idxName.isEmpty()) {
+            builder.setIdxName(idxName);
+        }
+        Tablet.GetRequest request = builder.build();
+        Tablet.GetResponse response = ts.get(request);
+        ByteString bs = null;
+        if (response != null && response.getCode() == 0) {
+            if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+                byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
+                bs = ByteString.copyFrom(uncompressed);
+            } else {
+                bs = response.getValue();
+            }
+        }
+        if (response != null) {
+            if (response.getCode() == 109) {
+                return null;
+            }
+            throw new TabletException(response.getCode(), response.getMsg());
+        }
+        RelationalKvIterator it = new RelationalKvIterator(bs, th);
+//        it.setCount(response.getCount());
+        if (th.getTableInfo().hasCompressType()) {
+            it.setCompressType(th.getTableInfo().getCompressType());
+        }
+        return it;
     }
 
     private ByteString get(int tid, int pid, String key, String idxName, long time, String tsName, Tablet.GetType type,
@@ -1081,6 +1144,33 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
         }
         return putRelationTable(tname, arrayRow);
+    }
+
+    @Override
+    public boolean update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo) 
+            throws TimeoutException, TabletException{
+        String idxName = "";
+        String idxValue = "";
+        Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
+        while (iter.hasNext()) {
+            idxName = iter.next().getKey();
+            idxValue = iter.next().getValue().toString();
+            break;
+        }
+        idxValue = validateKey(idxValue);
+        Map<String, Object> index = new HashMap<>();
+        index.put(idxName, idxValue);
+        ReadOption ro = new ReadOption(index, null, null, 1);
+        KvIterator kvIterator = get(tableName, ro);
+        if (!kvIterator.valid()) {
+            throw new TabletException("KvIterator is invalid " + tableName);
+        }
+        while (kvIterator.valid()) {
+            Object[] decodedValue = kvIterator.getDecodedValue();
+            //还未完成。。。
+        }
+        return true;
+
     }
 
     @Override
