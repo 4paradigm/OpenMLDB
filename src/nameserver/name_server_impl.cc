@@ -2903,7 +2903,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request,
     }
     for (const auto& pkv : pid_endpoint_map) {
         for (const auto& kv : pkv.second) {
-            if (!kv.second->DropTable(tid, pkv.first, request.table_type())) {
+            if (!kv.second->DropTable(tid, pkv.first, table_info->table_type())) {
                 PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]",
                         tid, pkv.first, kv.first.c_str());
                 code = 313; // if drop table failed, return error
@@ -3491,7 +3491,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
+    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
         if (CheckTableMeta(*table_info) < 0) {
             response->set_code(307);
             response->set_msg("check TableMeta failed, index column type can not float or double");
