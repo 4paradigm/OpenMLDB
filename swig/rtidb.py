@@ -118,7 +118,6 @@ class RTIDBClient:
     for k in resp:
       if k == None:
         continue
-      print(type_map[resp[k].type](resp[k].buffer))
       result.update({k: type_map[resp[k].type](resp[k].buffer)})
     
     return RtidbResult([result])
