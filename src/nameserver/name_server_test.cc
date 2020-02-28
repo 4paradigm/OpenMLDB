@@ -1424,7 +1424,6 @@ TEST_F(NameServerImplTest, CreateRelationalTable) {
     }
     {
         ::rtidb::nameserver::DropTableRequest request;
-        request.set_table_type(::rtidb::type::kRelational);
         request.set_name(name);
         ::rtidb::nameserver::GeneralResponse response;
         bool ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
