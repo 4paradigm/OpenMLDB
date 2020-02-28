@@ -393,10 +393,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                 bs = response.getValue();
             }
         } else if (response != null && response.getCode() != 0) {
-            if (response.getCode() == 109) {
-                return null;
-            }
-            throw new TabletException(response.getCode(), response.getMsg());
+            return new RelationalIterator();
         }
         RelationalIterator it = new RelationalIterator(bs, th);
 //        it.setCount(response.getCount());
@@ -612,6 +609,26 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException(response.getCode(), response.getMsg());
         }
         throw new TabletException("rtidb internal server error");
+    }
+
+    @Override
+    public boolean delete(String tableName, Map<String, Object> conditionColumns) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tableName);
+        if (th == null) {
+            throw new TabletException("no table with name " + tableName);
+        }
+        String idxName = "";
+        String idxValue = "";
+        Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<String, Object> entry = iter.next();
+            idxName = entry.getKey();
+            idxValue = entry.getValue().toString();
+            break;
+        }
+        idxValue = validateKey(idxValue);
+        int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
+        return delete(th.getTableInfo().getTid(), pid, idxValue, idxName, th);
     }
 
     @Override

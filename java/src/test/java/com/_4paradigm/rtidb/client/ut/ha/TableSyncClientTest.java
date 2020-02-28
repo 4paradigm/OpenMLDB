@@ -523,6 +523,18 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(queryMap.get("mcc"), "mcc1_1");
             Assert.assertEquals(queryMap.get("p_biz_date"), 2021);
 
+            //delete
+            ok = tableSyncClient.delete(name, conditionColumns2);
+            Assert.assertTrue(ok);
+//            try {
+//                it = tableSyncClient.query(name, ro);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                Assert.assertTrue(false);
+//            }
+            it = tableSyncClient.query(name, ro);
+            Assert.assertFalse(it.valid());
+
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
