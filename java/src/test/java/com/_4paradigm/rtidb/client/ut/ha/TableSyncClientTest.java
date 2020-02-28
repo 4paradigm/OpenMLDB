@@ -526,12 +526,6 @@ public class TableSyncClientTest extends TestCaseBase {
             //delete
             ok = tableSyncClient.delete(name, conditionColumns2);
             Assert.assertTrue(ok);
-//            try {
-//                it = tableSyncClient.query(name, ro);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//                Assert.assertTrue(false);
-//            }
             it = tableSyncClient.query(name, ro);
             Assert.assertFalse(it.valid());
 
