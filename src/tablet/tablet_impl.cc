@@ -1379,7 +1379,6 @@ void TabletImpl::Delete(RpcController* controller,
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(100);
             response->set_msg("table is not exist");
-            done->Run();
             return;
         }
     }
