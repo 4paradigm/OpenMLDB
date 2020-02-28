@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class RelationalKvIterator {
+public class RelationalIterator {
 
     private ByteString bs;
     private int offset;
@@ -28,10 +28,10 @@ public class RelationalKvIterator {
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private TableHandler th;
 
-    public RelationalKvIterator() {
+    public RelationalIterator() {
     }
 
-    public RelationalKvIterator(ByteString bs, TableHandler th) {
+    public RelationalIterator(ByteString bs, TableHandler th) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
         this.offset = 0;
@@ -56,16 +56,8 @@ public class RelationalKvIterator {
         return false;
     }
 
-    public NS.CompressType getCompressType() {
-        return compressType;
-    }
-
-    public void setCompressType(NS.CompressType compressType) {
-        this.compressType = compressType;
-    }
-
     // no copy
-    public ByteBuffer getValue() {
+    private ByteBuffer getValue() {
         if (compressType == NS.CompressType.kSnappy) {
             byte[] data = new byte[slice.remaining()];
             slice.get(data);
@@ -77,7 +69,6 @@ public class RelationalKvIterator {
     }
 
     public Map<String, Object> getDecodedValue() throws TabletException {
-
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
@@ -109,7 +100,7 @@ public class RelationalKvIterator {
         slice.limit(bs.size());
     }
 
-    public Map<String, Object> getDecodedValue(Object[] row, int start, int length) throws TabletException {
+    private Map<String, Object> getDecodedValue(Object[] row, int start, int length) throws TabletException {
         Map<String, Object> map = new HashMap<>();
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");

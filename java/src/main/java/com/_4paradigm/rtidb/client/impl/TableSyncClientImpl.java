@@ -288,7 +288,27 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public RelationalKvIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException {
+    public RelationalIterator traverse(String tableName, ReadOption ro) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tableName);
+        if (th == null) {
+            throw new TabletException("no table with name " + tableName);
+        }
+        //TODO
+        return new RelationalIterator();
+    }
+
+    @Override
+    public RelationalIterator batchQuery(String tableName, ReadOption ro) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tableName);
+        if (th == null) {
+            throw new TabletException("no table with name " + tableName);
+        }
+        //TODO
+        return new RelationalIterator();
+    }
+
+    @Override
+    public RelationalIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tableName);
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
@@ -344,8 +364,8 @@ public class TableSyncClientImpl implements TableSyncClient {
         return key;
     }
 
-    private RelationalKvIterator queryRelationTable(int tid, int pid, String key, String idxName, Tablet.GetType type,
-                                                    TableHandler th) throws TabletException {
+    private RelationalIterator queryRelationTable(int tid, int pid, String key, String idxName, Tablet.GetType type,
+                                                  TableHandler th) throws TabletException {
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -378,11 +398,11 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
             throw new TabletException(response.getCode(), response.getMsg());
         }
-        RelationalKvIterator it = new RelationalKvIterator(bs, th);
+        RelationalIterator it = new RelationalIterator(bs, th);
 //        it.setCount(response.getCount());
-        if (th.getTableInfo().hasCompressType()) {
-            it.setCompressType(th.getTableInfo().getCompressType());
-        }
+//        if (th.getTableInfo().hasCompressType()) {
+//            it.setCompressType(th.getTableInfo().getCompressType());
+//        }
         return it;
     }
 
@@ -1166,7 +1186,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Map<String, Object> index = new HashMap<>();
         index.put(idxName, idxValue);
         ReadOption ro = new ReadOption(index, null, null, 1);
-        RelationalKvIterator kvIterator = query(tableName, ro);
+        RelationalIterator kvIterator = query(tableName, ro);
         if (!kvIterator.valid()) {
             throw new TabletException("KvIterator is invalid " + tableName);
         }
