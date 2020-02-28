@@ -8,15 +8,15 @@
 #include "client.h"
 %}
 namespace std {
-   %template(StringVector) vector<string>;
-   %template(map_string_string) map<string, string>;
-   %template(set_strig) set<string>;
+   %template(VectorString) vector<string>;
+   %template(MapStringString) map<string, string>;
+   %template(SetString) set<string>;
 }
 
 %include "client.h"
-
 namespace std {
-        %template(ReadFilterVector) vector<ReadFilter>;
+        %template(VectorReadFilter) vector<ReadFilter>;
+        %template(MapStringColumn) map<string, GetColumn>;
 }
 %include "client/ns_client.h"
 %include "base/schema_codec.h"

@@ -13,9 +13,14 @@ struct WriteOption {
 };
 
 struct ReadFilter {
-        std::string column;
-        uint8_t type;
-        std::string value;
+    std::string column;
+    uint8_t type;
+    std::string value;
+};
+
+struct GetColumn {
+    uint8_t type;
+    std::string buffer;
 };
 
 struct ReadOption {
@@ -41,7 +46,7 @@ public:
     };
     bool Init(const std::string& zk_cluster, const std::string& zk_path);
     std::vector<std::string>* ShowTable(const std::string& name);
-    std::vector<std::map<std::string, rtidb::base::Column>> Get(const std::string& name, struct ReadOption& ro);
+    std::map<std::string, GetColumn> Get(const std::string& name, struct ReadOption& ro);
     bool Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& ro);
 
 };

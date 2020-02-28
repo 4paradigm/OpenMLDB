@@ -3,6 +3,9 @@
 #include <boost/lexical_cast.hpp>
 #include "base/hash.h"
 #include <boost/algorithm/string.hpp>
+#ifdef DISALLOW_COPY_AND_ASSIGN
+#undef DISALLOW_COPY_AND_ASSIGN
+#endif
 #include <snappy.h>
 
 int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
@@ -252,10 +255,10 @@ std::vector<std::string>* RtidbNSClient::ShowTable(const std::string& name) {
     return table_names;
 }
 
-std::vector<std::map<std::string, rtidb::base::Column>> RtidbNSClient::Get(const std::string& name, struct ReadOption& ro) {
+std::map<std::string, GetColumn> RtidbNSClient::Get(const std::string& name, struct ReadOption& ro) {
     std::vector<rtidb::nameserver::TableInfo> tables;
     std::string msg;
-    std::vector<std::map<std::string, rtidb::base::Column>> result;
+    std::map<std::string, GetColumn> result;
     bool ok = client_->ShowTable(name, tables, msg);
     if (!ok) {
         std::cerr << "get table failed, error msg: " << msg << std::endl;
@@ -284,22 +287,28 @@ std::vector<std::map<std::string, rtidb::base::Column>> RtidbNSClient::Get(const
     std::vector<rtidb::base::ColumnDesc> columns;
     if (tables[0].added_column_desc_size() > 0) {
         if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns, tables[0].added_column_desc_size()) < 0) {
-            std::cout << "convert table column desc failed" << std::endl;
+            std::cerr << "convert table column desc failed" << std::endl;
             return result;
         }
     } else {
         if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
-            std::cout << "convert table column desc failed" << std::endl;
+            std::cerr << "convert table column desc failed" << std::endl;
             return result;
         }
     }
     rtidb::client::TabletClient tablet_client(tablet_endpoint);
+    int code = tablet_client.Init();
+    if (code < 0) {
+        std::cerr << "failed init table client" << std::endl;
+        return result;
+    }
     for (const auto& iter : ro.index) {
         std::string value;
-        uint64_t ts;
-        ok = tablet_client.Get(tables[0].tid(), 0, iter.second, 0, iter.first, "", value, ts, msg);
+        uint64_t ts = 0;
+        // TODO: current server do not support multi dimesnions
+        ok = tablet_client.Get(tables[0].tid(), 0, iter.second, 0, "", "", value, ts, msg);
         if (!ok) {
-            std::cerr << "failed to get index " << iter.first << "value " << std::endl;
+            std::cerr << "failed to get index " << iter.first << " " << iter.second << " value " << std::endl;
             continue;
         }
         rtidb::base::FlatArrayIterator fit(value.data(), value.size(), columns.size());
@@ -336,18 +345,18 @@ std::vector<std::map<std::string, rtidb::base::Column>> RtidbNSClient::Get(const
             fit.Next();
             values.push_back(col);
         }
-        std::map<std::string, rtidb::base::Column> resp;
         for (int i = 0; i < columns.size(); i++) {
             std::string value = "";
             if (i < values.size()) {
                 value = values[i];
             }
-            rtidb::base::Column result;
-            result.type = columns[i].type;
-            result.buffer = value;
-            resp.insert(std::make_pair(columns[i].name, result));
+            GetColumn col;
+            col.type = columns[i].type;
+            col.buffer = value;
+            result.insert(std::make_pair(columns[i].name, col));
         }
-        result.push_back(resp);
+        // TODO: current server do not support multi dimesions
+        break;
     }
     return result;
 };
@@ -362,6 +371,7 @@ bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std
     }
     if (tables.empty()) {
         std::cerr << "failed to get table info, error msg: " << msg << std::endl;
+        return false;
     }
     if (tables[0].table_type() != rtidb::type::TableType::kRelational) {
         std::cerr << "not support is not relation table" << std::endl;
