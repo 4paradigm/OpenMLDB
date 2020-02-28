@@ -47,9 +47,9 @@ public:
     bool Init(const std::string& zk_cluster, const std::string& zk_path);
     std::vector<std::string>* ShowTable(const std::string& name);
     std::map<std::string, GetColumn> Get(const std::string& name, struct ReadOption& ro);
-    bool Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& ro);
+    bool Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
     bool Delete(const std::string& name, const std::map<std::string, std::string>& values);
-    bool Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> value);
+    bool Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> value, const WriteOption& wo);
 
 };
 

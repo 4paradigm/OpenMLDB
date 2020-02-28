@@ -70,8 +70,18 @@ class RTIDBClient:
     return self.__client.Put(table_name, value, _wo)
 
   def update(self, table_name: str, condition_columns: map, value_columns: map, write_option: WriteOption = None):
-    pass
-
+    _wo = interclient.WriteOption();
+    if write_option != None:
+      _wo.updateIfExist = defaultWriteOption.updateIfExist
+      _wo.updateIfEqual = defaultWriteOption.updateIfEqual
+    cond = dict()
+    for k in condition_columns:
+      cond.update({k: str(condition_columns[k])})
+    v = dict()
+    for k in value_columns:
+      v.update({k: str(value_columns[k])})
+    return self.__client.Update(table_name, cond, v, _wo)
+  
   def query(self, table_name: str, read_option: ReadOption):
     if (len(read_option.index) < 1):
       raise Exception("must set index")
