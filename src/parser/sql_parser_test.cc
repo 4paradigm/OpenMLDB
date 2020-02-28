@@ -153,8 +153,7 @@ INSTANTIATE_TEST_CASE_P(
         "def test(x:i32,y:i32):i32\n"
         "    c = test_at(x,y)\n"
         "    return c\n"
-        "end"
-        ));
+        "end"));
 
 INSTANTIATE_TEST_CASE_P(
     ListOpParse, SqlParserTest,
