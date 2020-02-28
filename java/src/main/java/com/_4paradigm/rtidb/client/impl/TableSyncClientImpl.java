@@ -14,7 +14,6 @@ import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.client.schema.WriteOption;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
-import com._4paradigm.rtidb.type.Type;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
@@ -373,7 +372,6 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
         }
         Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
-        builder.setTableType(Type.TableType.kRelational);
 
         builder.setTid(tid);
         builder.setPid(pid);
@@ -1058,7 +1056,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         row.rewind();
         builder.setValue(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
-        builder.setTableType(Type.TableType.kRelational);
 
         Tablet.PutRequest request = builder.build();
         Tablet.PutResponse response = tablet.put(request);
