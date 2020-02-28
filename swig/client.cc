@@ -413,42 +413,43 @@ bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std
         for (auto& col : key.col_name()) {
             keys.insert(col);
         }
-    }
-    std::map<std::string, std::string> raw_value;
-    for (auto& column : columns) {
-        auto iter = value.find(column.name);
-        if (iter == value.end()) {
-            std::cerr << column.name << " not found, put error" << std::endl;
-            return false;
+        std::map<std::string, std::string> raw_value;
+        for (auto& column : columns) {
+            auto iter = value.find(column.name);
+            if (iter == value.end()) {
+                std::cerr << column.name << " not found, put error" << std::endl;
+                return false;
+            }
+            values.push_back(iter->second);
+            auto set_iter = keys.find(column.name);
+            if (set_iter != keys.end()) {
+                raw_value.insert(std::make_pair(column.name, iter->second));
+            }
         }
-        values.push_back(iter->second);
-        auto set_iter = keys.find(column.name);
-        if (set_iter != keys.end()) {
-            raw_value.insert(std::make_pair(column.name, iter->second));
-        }
-    }
-    int code = EncodeMultiDimensionData(values, columns, tables[0].table_partition_size(), buffer, dimensions, ts_dimensions, add_column_descs.size());
-    if (code < 0) {
-        std::cerr << "encode data error" << std::endl;
-        return false;
-    }
-    if (keys.size() > 0) {
-        int code = SetDimensionData(raw_value, tables[0].column_key(), tables[0].table_partition_size(), dimensions);
+        int code = EncodeMultiDimensionData(values, columns, tables[0].table_partition_size(), buffer, dimensions, ts_dimensions, add_column_descs.size());
         if (code < 0) {
-            std::cerr << "set dimension data error" << std::endl;
+            std::cerr << "encode data error" << std::endl;
             return false;
         }
-    }
-    std::string actual_value = buffer;
-    if (tables[0].compress_type() == rtidb::nameserver::kSnappy) {
-        std::string compressed;
-        snappy::Compress(actual_value.c_str(), actual_value.length(), &compressed);
-        actual_value = compressed;
-    }
-    code = PutData(tables[0].tid(), dimensions, ts_dimensions, 0, actual_value, tables[0].table_partition());
-    if (code < 0) {
-        std::cerr << "put data error" << std::endl;
-        return false;
+        if (keys.size() > 0) {
+            int code = SetDimensionData(raw_value, tables[0].column_key(), tables[0].table_partition_size(), dimensions);
+            if (code < 0) {
+                std::cerr << "set dimension data error" << std::endl;
+                return false;
+            }
+        }
+        std::string actual_value = buffer;
+        if (tables[0].compress_type() == rtidb::nameserver::kSnappy) {
+            std::string compressed;
+            snappy::Compress(actual_value.c_str(), actual_value.length(), &compressed);
+            actual_value = compressed;
+        }
+        code = PutData(tables[0].tid(), dimensions, ts_dimensions, 0, actual_value, tables[0].table_partition());
+        if (code < 0) {
+            std::cerr << "put data error" << std::endl;
+            return false;
+        }
+        keys.clear();
     }
     return true;
 }
@@ -502,6 +503,120 @@ bool RtidbNSClient::Delete(const std::string& name, const std::map<std::string, 
     }
     return true;
 }
+
+bool RtidbNSClient::Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> value) {
+    return true;
+    /*
+    std::vector<rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    std::map<std::string, GetColumn> result;
+    bool ok = client_->ShowTable(name, tables, msg);
+    if (!ok) {
+        std::cerr << "get table failed, error msg: " << msg << std::endl;
+        return false;
+    }
+    if (tables.empty()) {
+        std::cerr << "failed to get table info, error msg: " << msg << std::endl;
+    }
+    if (tables[0].table_type() != rtidb::type::TableType::kRelational) {
+        std::cerr << "not support is not relation table" << std::endl;
+        return false;
+    }
+    std::string tablet_endpoint;
+
+    for (const auto& part : tables[0].table_partition()) {
+        for (const auto& meta : part.partition_meta()) {
+            if (meta.is_alive() && meta.is_leader()) {
+                tablet_endpoint = meta.endpoint();
+            }
+        }
+    }
+    if (tablet_endpoint.empty()) {
+        std::cerr << "failed to get table server endpoint" << std::endl;
+        return false;
+    }
+    if (tables[0].added_column_desc_size() > 0) {
+        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns, tables[0].added_column_desc_size()) < 0) {
+            std::cerr << "convert table column desc failed" << std::endl;
+            return result;
+        }
+    } else {
+        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
+            std::cerr << "convert table column desc failed" << std::endl;
+            return result;
+        }
+    }
+    rtidb::client::TabletClient tablet_client(tablet_endpoint);
+    int code = tablet_client.Init();
+    if (code < 0) {
+        std::cerr << "failed init table client" << std::endl;
+        return result;
+    }
+    for (const auto& iter : ro.index) {
+        std::string value;
+        uint64_t ts = 0;
+        // TODO: current server do not support multi dimesnions
+        ok = tablet_client.Get(tables[0].tid(), 0, iter.second, 0, "", "", value, ts, msg);
+        if (!ok) {
+            std::cerr << "failed to get index " << iter.first << " " << iter.second << " value " << std::endl;
+            continue;
+        }
+        rtidb::base::FlatArrayIterator fit(value.data(), value.size(), columns.size());
+        std::vector<std::string> values;
+        while (fit.Valid()) {
+            std::string col;
+            if (fit.GetType() == ::rtidb::base::ColType::kString) {
+                fit.GetString(&col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kInt32) {
+                int32_t int32_col = 0;
+                fit.GetInt32(&int32_col);
+                col = boost::lexical_cast<std::string>(int32_col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kInt64) {
+                int64_t int64_col = 0;
+                fit.GetInt64(&int64_col);
+                col = boost::lexical_cast<std::string>(int64_col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kUInt32) {
+                uint32_t uint32_col = 0;
+                fit.GetUInt32(&uint32_col);
+                col = boost::lexical_cast<std::string>(uint32_col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kUInt64) {
+                uint64_t uint64_col = 0;
+                fit.GetUInt64(&uint64_col);
+                col = boost::lexical_cast<std::string>(uint64_col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kDouble) {
+                double double_col = 0.0;
+                fit.GetDouble(&double_col);
+                col = boost::lexical_cast<std::string>(double_col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kFloat) {
+                float float_col = 0.0f;
+                fit.GetFloat(&float_col);
+                col = boost::lexical_cast<std::string>(float_col);
+            }
+            fit.Next();
+            values.push_back(col);
+        }
+        for (int i = 0; i < columns.size(); i++) {
+            std::string value = "";
+            if (i < values.size()) {
+                value = values[i];
+            }
+            auto& iter = condition.find(columns[i].name);
+            if (iter == condition.end()) {
+                continue;
+            }
+            GetColumn col;
+            col.type = columns[i].type;
+            col.buffer = value;
+            result.insert(std::make_pair(columns[i].name, col));
+        }
+        // TODO: current server do not support multi dimesions
+        break;
+    }
+    std::vector<rtidb::base::ColumnDesc> columns;
+    return false;
+     */
+}
+
 RtidbTabletClient::RtidbTabletClient() {
     client_ = NULL;
 };

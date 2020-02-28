@@ -72,7 +72,7 @@ class RTIDBClient:
   def update(self, table_name: str, condition_columns: map, value_columns: map, write_option: WriteOption = None):
     pass
 
-  def quert(self, table_name: str, read_option: ReadOption):
+  def query(self, table_name: str, read_option: ReadOption):
     if (len(read_option.index) < 1):
       raise Exception("must set index")
     mid_map = dict()
