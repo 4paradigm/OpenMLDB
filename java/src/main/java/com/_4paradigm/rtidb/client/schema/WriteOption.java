@@ -5,6 +5,14 @@ public class WriteOption {
     private boolean updateIfExist = true;
     private boolean updateIfEqual = true;
 
+    public WriteOption() {
+    }
+
+    public WriteOption(boolean updateIfExist, boolean updateIfEqual) {
+        this.updateIfExist = updateIfExist;
+        this.updateIfEqual = updateIfEqual;
+    }
+
     public boolean isUpdateIfExist() {
         return updateIfExist;
     }

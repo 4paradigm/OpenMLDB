@@ -2,7 +2,6 @@ package com._4paradigm.rtidb.client.impl;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
@@ -28,6 +27,9 @@ public class RelationalKvIterator implements KvIterator {
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private TableHandler th;
 
+    public RelationalKvIterator() {
+    }
+
     public RelationalKvIterator(ByteString bs, TableHandler th) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -51,7 +53,7 @@ public class RelationalKvIterator implements KvIterator {
     }
 
     public boolean valid() {
-        if (offset <= totalSize) {
+        if (offset <= totalSize && totalSize != 0) {
             return true;
         }
         return false;

@@ -8,6 +8,12 @@ public class ReadFilter {
     private Tablet.GetType getType = Tablet.GetType.kSubKeyEq;
     private Object value;
 
+    public ReadFilter(String colName, Tablet.GetType getType, Object value) {
+        this.colName = colName;
+        this.getType = getType;
+        this.value = value;
+    }
+
     public String getColName() {
         return colName;
     }
