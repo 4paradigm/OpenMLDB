@@ -154,7 +154,7 @@ bool RowFnLetIRBuilder::BuildFnHeader(
         LOG(WARNING) << "fn is null";
         return false;
     }
-    DLOG(INFO) << "create fn header " << name << " done";
+    DLOG(INFO) << "create fn header " << name << " start";
     ::llvm::ArrayRef<::llvm::Type*> array_ref(args_type);
     ::llvm::FunctionType* fnt =
         ::llvm::FunctionType::get(ret_type, array_ref, false);

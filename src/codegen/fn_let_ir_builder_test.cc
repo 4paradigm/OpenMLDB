@@ -128,6 +128,7 @@ void AddFunc(const std::string& fn, ::llvm::Module* m) {
     ASSERT_EQ(0, ret);
     FnIRBuilder fn_ir_builder(m);
     for (node::SQLNode* node : trees) {
+        LOG(INFO) << "Add Func: " << *node;
         bool ok =
             fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node), status);
         ASSERT_TRUE(ok);
@@ -682,11 +683,14 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
         "def test_at(col:list<float>, pos:i32):float\n"
         "\treturn col[pos]\n"
         "end\n"
-        "def test_at(col:list<i32>, pos:i32):i32\n"
+        "def test_at(col:list<int>, pos:i32):i32\n"
         "\treturn col[pos]\n"
         "end\n"
+        "def test_add(x:i32, y:i32):i32\n"
+        "\treturn x+y\n"
+        "end\n"
         "def count_list(col:list<float>, pos:i32):i32\n"
-        "\tquery_value=col[pos]\n"
+        "\tquery_value=test_at(col,pos)\n"
         "\tcnt = 0\n"
         "\tfor x in col\n"
         "\t\tif query_value >= x\n"
@@ -730,6 +734,7 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_at_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
+    LOG(INFO) << "fn let ir build ok";
     ASSERT_EQ(3u, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());

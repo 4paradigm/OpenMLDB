@@ -61,7 +61,7 @@ typedef void* yyscan_t;
 }
 
 /* names and literal values */
-%token <strval> NAME
+%token <strval> IDNENTIFIER
 %token <strval> STRING
 %token <intval> INTNUM
 %token <intval> DAYNUM
@@ -74,7 +74,7 @@ typedef void* yyscan_t;
 /* user @abc names */
 
 %token <strval> USERVAR
-%token <strval> VARNAME
+%token <strval> FUN_IDENTIFIER
 
 /* operators and precedence levels */
 
@@ -268,7 +268,7 @@ typedef void* yyscan_t;
 %token REFERENCES
 %token REGEXP
 %token RELEASE
-%token RENAME
+%token REIDNENTIFIER
 %token REPEAT
 %token REPLACE
 %token REQUIRE
@@ -290,7 +290,7 @@ typedef void* yyscan_t;
 %token SHOW
 %token SMALLINT
 %token SOME
-%token SONAME
+%token SOIDNENTIFIER
 %token SPATIAL
 %token SPECIFIC
 %token SQL
@@ -505,27 +505,27 @@ func_stmt:
          ;
 
 fn_header :
-   		DEF VARNAME'(' plist ')' ':' types {
+   		DEF FUN_IDENTIFIER'(' plist ')' ':' types {
 			$$ = node_manager->MakeFnHeaderNode($2, $4, node_manager->MakeTypeNode($7));
    		};
-   		|DEF VARNAME'(' plist ')' ':' complex_types {
+   		|DEF FUN_IDENTIFIER'(' plist ')' ':' complex_types {
 			$$ = node_manager->MakeFnHeaderNode($2, $4, $7);
    		};
 
 assign_stmt:
-		VARNAME ASSIGN expr {
+		FUN_IDENTIFIER ASSIGN expr {
             $$ = node_manager->MakeAssignNode($1, $3);
         }
-        |VARNAME ADD_ASSIGN expr {
+        |FUN_IDENTIFIER ADD_ASSIGN expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpAdd);
         }
-        |VARNAME MINUS_ASSIGN expr {
+        |FUN_IDENTIFIER MINUS_ASSIGN expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpMinus);
         }
-        |VARNAME MULTI_ASSIGN expr {
+        |FUN_IDENTIFIER MULTI_ASSIGN expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpMulti);
         }
-        |VARNAME FDIV_ASSIGN expr {
+        |FUN_IDENTIFIER FDIV_ASSIGN expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpFDiv);
         }
         ;
@@ -552,7 +552,7 @@ else_stmt:
 		;
 
 for_in_stmt:
-		FOR VARNAME IN expr {
+		FOR FUN_IDENTIFIER IN expr {
 			$$ = node_manager->MakeForInStmtNode($2, $4);
 		}
 		;
@@ -603,10 +603,10 @@ plist:
      };
 
 para:
-	VARNAME ':' types {
+	FUN_IDENTIFIER ':' types {
         $$ = node_manager->MakeFnParaNode($1, node_manager->MakeTypeNode($3));
     }
-    |VARNAME ':' complex_types {
+    |FUN_IDENTIFIER ':' complex_types {
     	$$ = node_manager->MakeFnParaNode($1, $3);
     }
     ;
@@ -625,7 +625,7 @@ primary_time:
     |SECONDNUM{
         $$ = node_manager->MakeConstNode($1, fesql::node::kSecond);
     }
-var: VARNAME {
+var: FUN_IDENTIFIER {
         $$ = node_manager->MakeFnIdNode($1);
      };
 
@@ -870,12 +870,12 @@ projection:	expr
 			{
 				$$ = node_manager->MakeResTargetNode($1, "");
 			}
-			|expr NAME
+			|expr IDNENTIFIER
 			{
         		$$ = node_manager->MakeResTargetNode($1, $2);
 				free($2);
     		}
-    		| expr AS NAME
+    		| expr AS IDNENTIFIER
     		{
     			$$ = node_manager->MakeResTargetNode($1, $3);
     			free($3);
@@ -889,7 +889,7 @@ projection:	expr
 
 over_clause: OVER window_specification
 				{ $$ = $2; }
-			| OVER NAME
+			| OVER IDNENTIFIER
 				{
 				    $$ = node_manager->MakeWindowDefNode($2);
 				    free($2);
@@ -1073,7 +1073,7 @@ window_definition_list:
 	;
 
 window_definition:
-		NAME AS window_specification
+		IDNENTIFIER AS window_specification
 		{
 		    ((::fesql::node::WindowDefNode*)$3)->SetName($1);
 			free($1);
@@ -1089,7 +1089,7 @@ window_specification: '(' opt_existing_window_name opt_partition_clause
 		;
 
 opt_existing_window_name:
-						NAME { $$ = $1; }
+						IDNENTIFIER { $$ = $1; }
 						| /*EMPTY*/		{ $$ = NULL; }
 
                         ;
@@ -1201,26 +1201,27 @@ column_ref:
  *===========================================================*/
 
 database_name:
-	NAME
+	IDNENTIFIER
 	;
 
 group_name:
-	NAME
+	IDNENTIFIER
 	;
 
 table_name:
-	NAME
+	IDNENTIFIER
 	;
 column_name:
-    NAME
+    IDNENTIFIER
   ;
 
 relation_name:
-    NAME
+    IDNENTIFIER
   ;
 
 function_name:
-    NAME
+    IDNENTIFIER
+    |FUN_IDENTIFIER
   ;
 
 %%

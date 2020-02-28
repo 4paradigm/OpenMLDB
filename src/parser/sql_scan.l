@@ -265,7 +265,7 @@ REAL	{ return REAL; }
 REFERENCES	{ return REFERENCES; }
 REGEXP|RLIKE	{ return REGEXP; }
 RELEASE	{ return RELEASE; }
-RENAME	{ return RENAME; }
+REIDNENTIFIER	{ return REIDNENTIFIER; }
 REPEAT	{ return REPEAT; }
 REPLACE	{ return REPLACE; }
 REQUIRE	{ return REQUIRE; }
@@ -284,7 +284,7 @@ SET	{ return SET; }
 SHOW	{ return SHOW; }
 INT2|SMALLINT	{ return SMALLINT; }
 SOME	{ return SOME; }
-SONAME	{ return SONAME; }
+SOIDNENTIFIER	{ return SOIDNENTIFIER; }
 SPATIAL	{ return SPATIAL; }
 SPECIFIC	{ return SPECIFIC; }
 SQL	{ return SQL; }
@@ -327,7 +327,7 @@ UTC_DATE	{ return UTC_DATE; }
 UTC_TIME	{ return UTC_TIME; }
 UTC_TIMESTAMP	{ return UTC_TIMESTAMP; }
 VALUES?	{ return VALUES; }
-VARNAME     { return VARNAME; }
+FUN_IDENTIFIER     { return FUN_IDENTIFIER; }
 VARBINARY	{ return VARBINARY; }
 VARCHAR(ACTER)?	{ return VARCHAR; }
 VARYING	{ return VARYING; }
@@ -444,17 +444,17 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 <INITIAL>{assign} { return EQUALS; }
 {equals} { return EQUALS; }
 <FUN>[A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
-                          return VARNAME; }
+                          return FUN_IDENTIFIER; }
 
 <FUN>`[^`/\\.\n]+`           { yylval->strval = strdup(yytext+1);
                           yylval->strval[yyleng-2] = 0;
-                          return VARNAME; }
+                          return FUN_IDENTIFIER; }
 
 [A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
-                          return NAME; }
+                          return IDNENTIFIER; }
 `[^`/\\.\n]+`           { yylval->strval = strdup(yytext+1);
                           yylval->strval[yyleng-2] = 0;
-                          return NAME; }
+                          return IDNENTIFIER; }
 
 `[^`\n]*$               { yyerror("unterminated quoted name %s", yytext); }
 
@@ -471,7 +471,7 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 
 <FUN>{identifier} {
             yylval->strval = strdup(yytext);
-            return VARNAME;
+            return FUN_IDENTIFIER;
     }
 
 {self} {

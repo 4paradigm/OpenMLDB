@@ -151,7 +151,7 @@ INSTANTIATE_TEST_CASE_P(
         // call function in udf
         "%%fun\n"
         "def test(x:i32,y:i32):i32\n"
-        "    c = (x+y)\n"
+        "    c = test_at(x,y)\n"
         "    return c\n"
         "end"
         ));

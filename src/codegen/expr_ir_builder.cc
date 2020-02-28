@@ -36,7 +36,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       buf_ir_builder_(nullptr),
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
-      module_(nullptr) {}
+      module_(block->getModule()) {}
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                              BufNativeIRBuilder* buf_ir_builder,
@@ -66,7 +66,7 @@ ExprIRBuilder::~ExprIRBuilder() {}
             fn_name.append("_").append(type_node.GetName());
         }
     }
-    ::llvm::Function* fn = module_->getFunction(fn_name);
+    ::llvm::Function* fn = module_->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
         status.code = common::kCallMethodError;
         status.msg = "fail to find func with name " + fn_name;
@@ -137,7 +137,9 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             if (!variable_ir_builder_.LoadValue(id_node->GetName(), &ptr,
                                                 status) ||
                 nullptr == ptr) {
-                LOG(WARNING) << "fail to find var " << id_node->GetName();
+                status.msg = "fail to find var " + id_node->GetName();
+                status.code = common::kCodegenError;
+                LOG(WARNING) << status.msg;
                 return false;
             }
             *output = ptr;
@@ -307,7 +309,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
         // TODO(wangtaize) buf ir builder add build get field ptr
         ok = buf_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
         if (!ok || value == NULL) {
-            status.msg =  "fail to find column " + col;
+            status.msg = "fail to find column " + col;
             status.code = common::kCodegenError;
             LOG(WARNING) << status.msg;
             return false;
@@ -418,7 +420,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
     ::llvm::Value* left = NULL;
     bool ok = Build(node->children[0], &left, status);
     if (!ok) {
-        LOG(WARNING) << "fail to build left node" << status.msg;
+        LOG(WARNING) << "fail to build left node: " << status.msg;
         return false;
     }
 

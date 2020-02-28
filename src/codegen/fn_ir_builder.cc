@@ -95,7 +95,7 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *fn_def,
     ::llvm::FunctionType *fnt =
         ::llvm::FunctionType::get(ret_type, array_ref, false);
 
-    *fn = ::llvm::Function::Create(fnt, ::llvm::Function::ExternalLinkage,
+    *fn = ::llvm::Function::Create(fnt, ::llvm::GlobalValue::ExternalLinkage,
                                    fn_name, module_);
     sv->Enter(fn_name);
     if (fn_def->parameters_) {
