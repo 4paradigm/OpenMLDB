@@ -106,7 +106,7 @@ class RTIDBClient:
       result.update({k: type_map[resp[k].type](resp[k].buffer)})
     return result
 
-  def batch_get(self, table_name: str, read_options: ReadOptions):
+  def batch_query(self, table_name: str, read_options: ReadOptions):
     pass
 
   def delete(self, table_name: str, condition_columns: map):
