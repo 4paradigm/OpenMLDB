@@ -452,6 +452,56 @@ bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std
     }
     return true;
 }
+
+bool RtidbNSClient::Delete(const std::string& name, const std::map<std::string, std::string>& values) {
+
+    std::vector<rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ok = client_->ShowTable(name, tables, msg);
+    if (!ok) {
+        std::cerr << "get table failed, error msg: " << msg << std::endl;
+        return false;
+    }
+    if (tables.empty()) {
+        std::cerr << "failed to get table info, error msg: " << msg << std::endl;
+        return false;
+    }
+    if (tables[0].table_type() != rtidb::type::TableType::kRelational) {
+        std::cerr << "not support is not relation table" << std::endl;
+        return false;
+    }
+    std::string tablet_endpoint;
+
+    for (const auto& part : tables[0].table_partition()) {
+        for (const auto& meta : part.partition_meta()) {
+            if (meta.is_alive() && meta.is_leader()) {
+                tablet_endpoint = meta.endpoint();
+            }
+        }
+    }
+    if (tablet_endpoint.empty()) {
+        std::cerr << "failed to get table server endpoint" << std::endl;
+        return false;
+    }
+    rtidb::client::TabletClient tablet(tablet_endpoint);
+    int code = tablet.Init();
+    if (code < 0) {
+        std::cerr << "init table client failed!" << std::endl;
+        return false;
+    }
+    msg.clear();
+    for (auto& iter : values) {
+        ok = tablet.Delete(tables[0].tid(), 0, iter.second, iter.first, msg);
+        if (!ok) {
+            std::cerr << "delete " << iter.first << " " << iter.second << std::endl;
+            return false;
+        } else {
+            std::cout << "delete ok " << iter.second << std::endl;
+        }
+        msg.clear();
+    }
+    return true;
+}
 RtidbTabletClient::RtidbTabletClient() {
     client_ = NULL;
 };

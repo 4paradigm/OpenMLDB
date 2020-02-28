@@ -72,7 +72,7 @@ class RTIDBClient:
   def update(self, table_name: str, condition_columns: map, value_columns: map, write_option: WriteOption = None):
     pass
 
-  def get(self, table_name: str, read_option: ReadOption):
+  def quert(self, table_name: str, read_option: ReadOption):
     if (len(read_option.index) < 1):
       raise Exception("must set index")
     mid_map = dict()
@@ -100,7 +100,12 @@ class RTIDBClient:
     pass
 
   def delete(self, table_name: str, condition_columns: map):
-    pass
+    if (condition_columns.size < 1):
+      raise Exception("empty map")
+    v = dict()
+    for k in condition_columns:
+      v.update({k:str(condition_columns[k])})
+    return self.__client.Delete(table_name, v)
 
   def traverse(self, table_name: str):
     pass

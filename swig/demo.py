@@ -5,7 +5,7 @@ data = {"card":"card0","mcc":"mcc0", "p_biz_date":3}
 nsc.put("test1", data, None)
 ro = rtidb.ReadOption()
 ro.index.update({"card":"card0"})
-resp = nsc.get("test1", ro)
+resp = nsc.query("test1", ro)
 print(resp)
 for l in resp:
   print(l, resp[l])

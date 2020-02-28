@@ -48,6 +48,7 @@ public:
     std::vector<std::string>* ShowTable(const std::string& name);
     std::map<std::string, GetColumn> Get(const std::string& name, struct ReadOption& ro);
     bool Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& ro);
+    bool Delete(const std::string& name, const std::map<std::string, std::string>& values);
 
 };
 
