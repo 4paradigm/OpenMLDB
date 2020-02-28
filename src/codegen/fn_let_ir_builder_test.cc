@@ -126,8 +126,11 @@ void AddFunc(const std::string& fn, ::llvm::Module* m) {
     int ret = parser.parse(fn, trees, &manager, status);
     ASSERT_EQ(0, ret);
     FnIRBuilder fn_ir_builder(m);
-    bool ok = fn_ir_builder.Build((node::FnNodeList*)trees[0]);
-    ASSERT_TRUE(ok);
+    for (node::SQLNode* node : trees) {
+        bool ok =
+            fn_ir_builder.Build(dynamic_cast<node::FnNodeFnDef*>(node), status);
+        ASSERT_TRUE(ok);
+    }
 }
 
 TEST_F(FnLetIRBuilderTest, test_primary) {
@@ -461,8 +464,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowIteratorImpl* w =
-        new ::fesql::storage::WindowIteratorImpl(rows);
+    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 
@@ -513,7 +515,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     ::fesql::storage::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
-
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
@@ -526,6 +527,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, 0, &output);
+    ASSERT_EQ(0, ret2);
     ASSERT_EQ(1 + 11 + 111 + 1111 + 11111,
               *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
@@ -583,7 +585,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
 
     ::fesql::storage::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
-
 
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
@@ -672,6 +673,82 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     ASSERT_EQ(44444.1, *reinterpret_cast<double*>(output + 7 + 4 + 4));
     ASSERT_EQ(22222, *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 8));
     ASSERT_EQ(55555, *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
+    free(ptr);
+}
+
+TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
+    std::string udf_str =
+        "%%fun\n"
+        "def test_at(col:list<float>, pos:i32):float\n"
+        "\treturn col[pos]\n"
+        "end\n"
+        "def test_at(col:list<i32>, pos:i32):i32\n"
+        "\treturn col[pos]\n"
+        "end\n";
+    std::string sql =
+        "SELECT "
+        "test_at(col3,0) OVER w1 as col3_at_0, "
+        "test_at(col1,1) OVER w1 as col1_at_1 "
+        "FROM t1 WINDOW "
+        "w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "FOLLOWING) limit 10;";
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_project", *ctx);
+    ::fesql::udf::RegisterUDFToModule(m.get());
+    AddFunc(udf_str, m.get());
+
+    ::fesql::node::NodePointVector list;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::node::NodeManager manager;
+    ::fesql::base::Status status;
+
+    int ret = parser.parse(sql, list, &manager, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+    ::fesql::plan::SimplePlanner planner(&manager);
+    ::fesql::node::PlanNodeList trees;
+    ret = planner.CreatePlanTree(list, trees, status);
+    ASSERT_EQ(0, ret);
+    ::fesql::node::ProjectListPlanNode* pp_node_ptr =
+        (::fesql::node::ProjectListPlanNode*)(trees[0]->GetChildren()[0]);
+
+    // Create an LLJIT instance.
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "int" and take an argument of "int".
+
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    vm::Schema schema;
+    bool ok = ir_builder.Build("test_at_fn", pp_node_ptr, schema);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(2u, schema.size());
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    auto& jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+
+    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::udf::InitUDFSymbol(jd, mi);
+
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("test_at_fn"));
+
+    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+
+    int8_t* ptr = NULL;
+    std::vector<fesql::storage::Row> window;
+    BuildWindow(window, &ptr);
+    int8_t* output = NULL;
+    int32_t ret2 = decode(ptr, 0, &output);
+    ASSERT_EQ(ret2, 0u);
+    //    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output +
+    //    2));
+    ASSERT_EQ(7 + 4 + 4, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(3.1f, *reinterpret_cast<float*>(output + 7));
+    ASSERT_EQ(11, *reinterpret_cast<int32_t*>(output + 7 + 4));
     free(ptr);
 }
 }  // namespace codegen

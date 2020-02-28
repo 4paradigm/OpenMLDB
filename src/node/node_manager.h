@@ -110,6 +110,11 @@ class NodeManager {
 
     SQLNode *MakeResTargetNode(ExprNode *node_ptr, const std::string &name);
 
+    TypeNode *MakeTypeNode(fesql::node::DataType base);
+    TypeNode *MakeTypeNode(fesql::node::DataType base,
+                           fesql::node::DataType v1);
+    TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
+                           fesql::node::DataType v2);
     ExprNode *MakeColumnRefNode(const std::string &column_name,
                                 const std::string &relation_name);
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
@@ -130,12 +135,26 @@ class NodeManager {
 
     FnNode *MakeFnNode(const SQLNodeType &type);
     FnNodeList *MakeFnListNode();
-    FnNode *MakeFnDefNode(const std::string &name, FnNodeList *plist,
-                          const DataType return_type);
+    FnNode *MakeFnDefNode(const FnNode *header, const FnNodeList *block);
+    FnNode *MakeFnHeaderNode(const std::string &name, FnNodeList *plist,
+                             const TypeNode *return_type);
 
-    FnNode *MakeFnParaNode(const std::string &name, const DataType &para_type);
+    FnNode *MakeFnParaNode(const std::string &name, const TypeNode *para_type);
     FnNode *MakeAssignNode(const std::string &name, ExprNode *expression);
+    FnNode *MakeAssignNode(const std::string &name, ExprNode *expression,
+                           const FnOperator op);
     FnNode *MakeReturnStmtNode(ExprNode *value);
+    FnIfBlock *MakeFnIfBlock(const FnIfNode *if_node, const FnNodeList *block);
+    FnElifBlock *MakeFnElifBlock(const FnElifNode *elif_node,
+                                 const FnNodeList *block);
+    FnIfElseBlock *MakeFnIfElseBlock(const FnIfBlock *if_block,
+                                     const FnElseBlock *else_block);
+    FnElseBlock *MakeFnElseBlock(const FnNodeList *block);
+    FnNode *MakeIfStmtNode(const ExprNode *value);
+    FnNode *MakeElifStmtNode(ExprNode *value);
+    FnNode *MakeElseStmtNode();
+    FnNode *MakeForInStmtNode(const std::string &var_name,
+                              const ExprNode *value);
 
     SQLNode *MakeCmdNode(node::CmdType cmd_type);
     SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
@@ -148,6 +167,8 @@ class NodeManager {
 
     DatasetNode *MakeDataset(const std::string &table);
     MapNode *MakeMapNode(const NodePointVector &nodes);
+    node::FnForInBlock *MakeForInBlock(FnForInNode *for_in_node,
+                                       FnNodeList *block);
 
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {

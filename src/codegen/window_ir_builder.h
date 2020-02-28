@@ -24,6 +24,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
+#include "codegen/ir_base_builder.h"
 
 namespace fesql {
 namespace codegen {
@@ -50,17 +51,17 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
 
  private:
     bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
-                            uint32_t offset, fesql::type::Type type,
+                            uint32_t offset, const fesql::node::DataType& type,
                             ::llvm::Value** output);
 
     bool BuildGetStringCol(uint32_t offset, uint32_t next_str_field_offset,
-                           fesql::type::Type type, ::llvm::Value* window_ptr,
+                           const fesql::node::DataType& type, ::llvm::Value* window_ptr,
                            ::llvm::Value** output);
 
  private:
     vm::Schema schema_;
     ::llvm::BasicBlock* block_;
-    typedef std::map<std::string, std::pair<::fesql::type::Type, int32_t>>
+    typedef std::map<std::string, std::pair<::fesql::node::DataType, int32_t>>
         Types;
     Types types_;
     std::map<uint32_t, uint32_t> next_str_pos_;

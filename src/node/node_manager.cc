@@ -352,13 +352,12 @@ ScanPlanNode *NodeManager::MakeIndexScanPlanNode(const std::string &table) {
 }
 
 WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
-    WindowPlanNode * node_ptr = new WindowPlanNode(w_id);
+    WindowPlanNode *node_ptr = new WindowPlanNode(w_id);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(
     const std::string &table, WindowPlanNode *w_ptr) {
-
     ProjectListPlanNode *node_ptr =
         new ProjectListPlanNode(table, w_ptr, w_ptr != nullptr);
     RegisterNode(node_ptr);
@@ -405,13 +404,20 @@ PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
     return node_ptr;
 }
 
-FnNode *NodeManager::MakeFnDefNode(const std::string &name, FnNodeList *plist,
-                                   DataType return_type) {
-    ::fesql::node::FnNodeFnDef *fn_def =
-        new FnNodeFnDef(name, plist, return_type);
-    return RegisterNode(fn_def);
+FnNode *NodeManager::MakeFnHeaderNode(const std::string &name,
+                                      FnNodeList *plist,
+                                      const TypeNode *return_type) {
+    ::fesql::node::FnNodeFnHeander *fn_header =
+        new FnNodeFnHeander(name, plist, return_type);
+    return RegisterNode(fn_header);
 }
 
+FnNode *NodeManager::MakeFnDefNode(const FnNode *header,
+                                   const FnNodeList *block) {
+    ::fesql::node::FnNodeFnDef *fn_def =
+        new FnNodeFnDef(dynamic_cast<const FnNodeFnHeander *>(header), block);
+    return RegisterNode(fn_def);
+}
 FnNode *NodeManager::MakeAssignNode(const std::string &name,
                                     ExprNode *expression) {
     ::fesql::node::FnAssignNode *fn_assign =
@@ -419,11 +425,30 @@ FnNode *NodeManager::MakeAssignNode(const std::string &name,
     return RegisterNode(fn_assign);
 }
 
+FnNode *NodeManager::MakeAssignNode(const std::string &name,
+                                    ExprNode *expression, const FnOperator op) {
+    ::fesql::node::FnAssignNode *fn_assign = new fesql::node::FnAssignNode(
+        name, MakeBinaryExprNode(MakeFnIdNode(name), expression, op));
+
+    return RegisterNode(fn_assign);
+}
 FnNode *NodeManager::MakeReturnStmtNode(ExprNode *value) {
     FnNode *fn_node = new FnReturnStmt(value);
     return RegisterNode(fn_node);
 }
 
+FnNode *NodeManager::MakeIfStmtNode(const ExprNode *value) {
+    FnNode *fn_node = new FnIfNode(value);
+    return RegisterNode(fn_node);
+}
+FnNode *NodeManager::MakeElseStmtNode() {
+    FnNode *fn_node = new FnElseNode();
+    return RegisterNode(fn_node);
+}
+FnNode *NodeManager::MakeElifStmtNode(ExprNode *value) {
+    FnNode *fn_node = new FnElifNode(value);
+    return RegisterNode(fn_node);
+}
 FnNode *NodeManager::MakeFnNode(const SQLNodeType &type) {
     return RegisterNode(new FnNode(type));
 }
@@ -433,8 +458,38 @@ FnNodeList *NodeManager::MakeFnListNode() {
     RegisterNode(fn_list);
     return fn_list;
 }
+
+FnIfBlock *NodeManager::MakeFnIfBlock(const FnIfNode *if_node,
+                                      const FnNodeList *block) {
+    ::fesql::node::FnIfBlock *if_block =
+        new ::fesql::node::FnIfBlock(if_node, block);
+    RegisterNode(if_block);
+    return if_block;
+}
+
+FnElifBlock *NodeManager::MakeFnElifBlock(const FnElifNode *elif_node,
+                                          const FnNodeList *block) {
+    ::fesql::node::FnElifBlock *elif_block =
+        new ::fesql::node::FnElifBlock(elif_node, block);
+    RegisterNode(elif_block);
+    return elif_block;
+}
+FnIfElseBlock *NodeManager::MakeFnIfElseBlock(const FnIfBlock *if_block,
+                                              const FnElseBlock *else_block) {
+    ::fesql::node::FnIfElseBlock *if_else_block =
+        new ::fesql::node::FnIfElseBlock(if_block, else_block);
+    RegisterNode(if_else_block);
+    return if_else_block;
+}
+FnElseBlock *NodeManager::MakeFnElseBlock(const FnNodeList *block) {
+    ::fesql::node::FnElseBlock *else_block =
+        new ::fesql::node::FnElseBlock(block);
+    RegisterNode(else_block);
+    return else_block;
+}
+
 FnNode *NodeManager::MakeFnParaNode(const std::string &name,
-                                    const DataType &para_type) {
+                                    const TypeNode *para_type) {
     ::fesql::node::FnParaNode *para_node =
         new ::fesql::node::FnParaNode(name, para_type);
     return RegisterNode(para_node);
@@ -524,6 +579,39 @@ MapNode* NodeManager::MakeMapNode(const NodePointVector& nodes) {
     MapNode* mn = new MapNode(nodes);
     batch_plan_node_list_.push_back(mn);
     return mn;
+}
+
+TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base) {
+    TypeNode *node_ptr = new TypeNode(base);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+
+TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
+                                    fesql::node::DataType v1) {
+    TypeNode *node_ptr = new TypeNode(base, v1);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
+                                    fesql::node::DataType v1,
+                                    fesql::node::DataType v2) {
+    TypeNode *node_ptr = new TypeNode(base, v1, v2);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+
+FnNode *NodeManager::MakeForInStmtNode(const std::string &var_name,
+                                       const ExprNode *expression) {
+    FnForInNode *node_ptr = new FnForInNode(var_name, expression);
+    return RegisterNode(node_ptr);
+}
+
+FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
+                                          FnNodeList *block) {
+    FnForInBlock *node_ptr = new FnForInBlock(for_in_node, block);
+    RegisterNode(node_ptr);
+    return node_ptr;
 }
 
 }  // namespace node

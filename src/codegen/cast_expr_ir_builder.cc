@@ -29,34 +29,34 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
     if (src == dist) {
         return true;
     }
-    ::fesql::type::Type src_type;
-    ::fesql::type::Type dist_type;
-    ::fesql::codegen::GetTableType(src, &src_type);
-    ::fesql::codegen::GetTableType(dist, &dist_type);
+    ::fesql::node::DataType src_type;
+    ::fesql::node::DataType dist_type;
+    ::fesql::codegen::GetBaseType(src, &src_type);
+    ::fesql::codegen::GetBaseType(dist, &dist_type);
 
     switch (src_type) {
-        case ::fesql::type::kBool: {
+        case ::fesql::node::kBool: {
             return true;
         }
-        case ::fesql::type::kInt16: {
+        case ::fesql::node::kInt16: {
             return true;
         }
-        case ::fesql::type::kInt32: {
-            if (::fesql::type::kInt16 == dist_type) {
+        case ::fesql::node::kInt32: {
+            if (::fesql::node::kInt16 == dist_type) {
                 return false;
             }
             return true;
         }
-        case ::fesql::type::kInt64: {
+        case ::fesql::node::kInt64: {
             return false;
         }
-        case ::fesql::type::kFloat: {
-            if (::fesql::type::kDouble == dist_type) {
+        case ::fesql::node::kFloat: {
+            if (::fesql::node::kDouble == dist_type) {
                 return true;
             }
             return false;
         }
-        case ::fesql::type::kDouble: {
+        case ::fesql::node::kDouble: {
             return false;
         }
         default: {
@@ -123,12 +123,12 @@ bool CastExprIRBuilder::IsStringCast(llvm::Type* type) {
         return false;
     }
 
-    ::fesql::type::Type fesql_type;
-    if (false == GetTableType(type, &fesql_type)) {
+    ::fesql::node::DataType fesql_type;
+    if (false == GetBaseType(type, &fesql_type)) {
         return false;
     }
 
-    return ::fesql::type::kVarchar == fesql_type;
+    return ::fesql::node::kVarchar == fesql_type;
 }
 
 // TODO(chenjing): string cast implement
@@ -137,7 +137,6 @@ bool CastExprIRBuilder::StringCast(llvm::Value* value,
                                    llvm::Value** casted_value,
                                    base::Status& status) {
     return false;
-
 }
 
 // cast fesql type to bool: compare value with 0
@@ -148,9 +147,14 @@ bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
     if (type->isIntegerTy()) {
         *casted_value =
             builder.CreateICmpNE(value, ::llvm::ConstantInt::get(type, 0));
-    } else if (type->isFloatingPointTy()) {
-        *casted_value = builder.CreateICmpNE(
-            value, ::llvm::ConstantFP::get(type, 0.0));
+    } else if (type->isFloatTy()) {
+        ::llvm::Value* float0 =
+            ::llvm::ConstantFP::get(type, ::llvm::APFloat(0.0f));
+        *casted_value = builder.CreateFCmpUNE(value, float0);
+    } else if (type->isDoubleTy()) {
+        ::llvm::Value* double0 =
+            ::llvm::ConstantFP::get(type, ::llvm::APFloat(0.0));
+        *casted_value = builder.CreateFCmpUNE(value, double0);
     } else {
         status.msg =
             "fail to codegen cast bool expr: value type isn't compatible";

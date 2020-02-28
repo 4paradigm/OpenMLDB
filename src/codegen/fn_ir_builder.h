@@ -19,6 +19,7 @@
 #define SRC_CODEGEN_FN_IR_BUILDER_H_
 
 #include <vector>
+#include "base/status.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/Module.h"
 #include "node/sql_node.h"
@@ -32,32 +33,20 @@ class FnIRBuilder {
     // TODO(wangtaize) provide a module manager
     explicit FnIRBuilder(::llvm::Module* module);
     ~FnIRBuilder();
-    bool Build(const ::fesql::node::FnNodeList* node);
+    bool Build(const ::fesql::node::FnNodeFnDef* node,
+               base::Status& status);  // NOLINT
 
-    bool BuildFnHead(const ::fesql::node::FnNodeFnDef* fn_def,
-                     ::llvm::Function** fn);
-
-    bool BuildStmt(int32_t pindent, const ::fesql::node::FnNode* node,
-                   ::llvm::BasicBlock* block);
-
-    bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node,
-                         ::llvm::BasicBlock* block);
-
-    bool BuildReturnStmt(const ::fesql::node::FnReturnStmt* node,
-                         ::llvm::BasicBlock* block);
-
+    bool BuildFnHead(const ::fesql::node::FnNodeFnHeander* fn_def, ScopeVar* sv,
+                     ::llvm::Function** fn, base::Status& status);  // NOLINT
  private:
-    bool MapLLVMType(const ::fesql::node::DataType& fn_type,
-                     ::llvm::Type** type);
-
     bool BuildParas(const ::fesql::node::FnNodeList* node,
-                    std::vector<::llvm::Type*>& paras);  // NOLINT
+                    std::vector<::llvm::Type*>& paras,  // NOLINT
+                    base::Status& status);              // NOLINT
 
-    bool FillArgs(const ::fesql::node::FnNodeList* node, ::llvm::Function* fn);
-
- private:
+    bool FillArgs(const ::fesql::node::FnNodeList* node, ScopeVar* sv,
+                  ::llvm::Function* fn,
+                  base::Status& status);  // NOLINT
     ::llvm::Module* module_;
-    ScopeVar sv_;
 };
 
 }  // namespace codegen

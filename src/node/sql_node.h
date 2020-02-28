@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include "node/node_enum.h"
+
 namespace fesql {
 namespace node {
 
@@ -75,17 +76,21 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
         case kFnOpNot:
             return "NOT";
         case kFnOpEq:
-            return "==";
+            return "EQ";
         case kFnOpNeq:
-            return "!=";
+            return "NEQ";
         case kFnOpGt:
-            return ">";
+            return "GT";
         case kFnOpGe:
-            return ">=";
+            return "GE";
         case kFnOpLt:
-            return "<";
+            return "LT";
         case kFnOpLe:
-            return "<=";
+            return "LE";
+        case kFnOpAt:
+            return "[]";
+        case kFnOpDot:
+            return ".";
         case kFnOpBracket:
             return "()";
         case kFnOpNone:
@@ -128,28 +133,36 @@ inline const std::string ExprTypeName(const ExprType &type) {
 
 inline const std::string DataTypeName(const DataType &type) {
     switch (type) {
-        case kTypeBool:
+        case fesql::node::kBool:
             return "bool";
-        case kTypeInt16:
+        case fesql::node::kInt16:
             return "int16";
-        case kTypeInt32:
+        case fesql::node::kInt32:
             return "int32";
-        case kTypeInt64:
+        case fesql::node::kInt64:
             return "int64";
-        case kTypeFloat:
+        case fesql::node::kFloat:
             return "float";
-        case kTypeDouble:
+        case fesql::node::kDouble:
             return "double";
-        case kTypeString:
+        case fesql::node::kVarchar:
             return "string";
-        case kTypeTimestamp:
+        case fesql::node::kTimestamp:
             return "timestamp";
-        case kTypeRow:
+        case fesql::node::kList:
+            return "list";
+        case fesql::node::kMap:
+            return "map";
+        case fesql::node::kIterator:
+            return "iterator";
+        case fesql::node::kRow:
             return "row";
-        case kTypeNull:
+        case fesql::node::kNull:
             return "null";
+        case fesql::node::kVoid:
+            return "void";
         default:
-            return "unknownType";
+            return "unknown";
     }
 }
 
@@ -212,6 +225,31 @@ class SQLNodeList {
     std::vector<SQLNode *> list_;
 };
 
+class TypeNode : public SQLNode {
+ public:
+    TypeNode() : SQLNode(node::kType, 0, 0), base_(fesql::node::kNull) {}
+    explicit TypeNode(fesql::node::DataType base)
+        : SQLNode(node::kType, 0, 0), base_(base), generics_({}) {}
+    explicit TypeNode(fesql::node::DataType base, DataType v1)
+        : SQLNode(node::kType, 0, 0), base_(base), generics_({v1}) {}
+    explicit TypeNode(fesql::node::DataType base, fesql::node::DataType v1,
+                      fesql::node::DataType v2)
+        : SQLNode(node::kType, 0, 0), base_(base), generics_({v1, v2}) {}
+    ~TypeNode() {}
+    const std::string GetName() const {
+        std::string type_name = DataTypeName(base_);
+        if (!generics_.empty()) {
+            for (DataType type : generics_) {
+                type_name.append("_");
+                type_name.append(DataTypeName(type));
+            }
+        }
+        return type_name;
+    }
+    fesql::node::DataType base_;
+    std::vector<fesql::node::DataType> generics_;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+};
 class ExprNode : public SQLNode {
  public:
     explicit ExprNode(ExprType expr_type)
@@ -493,7 +531,7 @@ class ExprIdNode : public ExprNode {
     ExprIdNode() : ExprNode(kExprId) {}
     explicit ExprIdNode(const std::string &name)
         : ExprNode(kExprId), name_(name) {}
-    std::string GetName() const { return name_; }
+    const std::string GetName() const { return name_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
 
  private:
@@ -502,36 +540,36 @@ class ExprIdNode : public ExprNode {
 
 class ConstNode : public ExprNode {
  public:
-    ConstNode() : ExprNode(kExprPrimary), date_type_(kTypeNull) {}
+    ConstNode() : ExprNode(kExprPrimary), date_type_(fesql::node::kNull) {}
     explicit ConstNode(int16_t val)
-        : ExprNode(kExprPrimary), date_type_(kTypeInt16) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kInt16) {
         val_.vsmallint = val;
     }
     explicit ConstNode(int val)
-        : ExprNode(kExprPrimary), date_type_(kTypeInt32) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kInt32) {
         val_.vint = val;
     }
     explicit ConstNode(int64_t val)
-        : ExprNode(kExprPrimary), date_type_(kTypeInt64) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kInt64) {
         val_.vlong = val;
     }
     explicit ConstNode(float val)
-        : ExprNode(kExprPrimary), date_type_(kTypeFloat) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kFloat) {
         val_.vfloat = val;
     }
 
     explicit ConstNode(double val)
-        : ExprNode(kExprPrimary), date_type_(kTypeDouble) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kDouble) {
         val_.vdouble = val;
     }
 
     explicit ConstNode(const char *val)
-        : ExprNode(kExprPrimary), date_type_(kTypeString) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kVarchar) {
         val_.vstr = strdup(val);
     }
 
     explicit ConstNode(const std::string &val)
-        : ExprNode(kExprPrimary), date_type_(kTypeString) {
+        : ExprNode(kExprPrimary), date_type_(fesql::node::kVarchar) {
         val_.vstr = val.c_str();
     }
 
@@ -541,7 +579,7 @@ class ConstNode : public ExprNode {
     }
 
     ~ConstNode() {
-        if (date_type_ == kTypeString) {
+        if (date_type_ == fesql::node::kVarchar) {
             delete val_.vstr;
         }
     }
@@ -563,13 +601,13 @@ class ConstNode : public ExprNode {
 
     int64_t GetMillis() const {
         switch (date_type_) {
-            case kTypeDay:
+            case fesql::node::kDay:
                 return 86400000 * val_.vlong;
-            case kTypeHour:
+            case fesql::node::kHour:
                 return 3600000 * val_.vlong;
-            case kTypeMinute:
+            case fesql::node::kMinute:
                 return 60000 * val_.vlong;
-            case kTypeSecond:
+            case fesql::node::kSecond:
                 return 1000 * val_.vlong;
             default: {
                 LOG(WARNING)
@@ -694,9 +732,7 @@ class SelectStmt : public SQLNode {
 class ColumnDefNode : public SQLNode {
  public:
     ColumnDefNode()
-        : SQLNode(kColumnDesc, 0, 0),
-          column_name_(""),
-          column_type_(kTypeNull) {}
+        : SQLNode(kColumnDesc, 0, 0), column_name_(""), column_type_() {}
     ColumnDefNode(const std::string &name, const DataType &data_type,
                   bool op_not_null)
         : SQLNode(kColumnDesc, 0, 0),
@@ -862,16 +898,16 @@ class ColumnIndexNode : public SQLNode {
                 case kExprPrimary: {
                     const ConstNode *ttl = dynamic_cast<ConstNode *>(ttl_node);
                     switch (ttl->GetDataType()) {
-                        case kTypeInt32:
+                        case fesql::node::kInt32:
                             ttl_ = ttl->GetInt();
                             break;
-                        case kTypeInt64:
+                        case fesql::node::kInt64:
                             ttl_ = ttl->GetLong();
                             break;
-                        case kTypeDay:
-                        case kTypeHour:
-                        case kTypeMinute:
-                        case kTypeSecond:
+                        case fesql::node::kDay:
+                        case fesql::node::kHour:
+                        case fesql::node::kMinute:
+                        case fesql::node::kSecond:
                             ttl_ = ttl->GetMillis();
                             break;
                         default: {
@@ -918,40 +954,134 @@ class CmdNode : public SQLNode {
 
 class FnParaNode : public FnNode {
  public:
-    FnParaNode() : FnNode(kFnPara) {}
-    FnParaNode(const std::string &name, const DataType &para_type)
+    FnParaNode(const std::string &name, const TypeNode *para_type)
         : FnNode(kFnPara), name_(name), para_type_(para_type) {}
-    std::string GetName() const { return name_; }
+    const std::string &GetName() const { return name_; }
 
-    DataType GetParaType() { return para_type_; }
+    const TypeNode *GetParaType() const { return para_type_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     std::string name_;
-    DataType para_type_;
+    const TypeNode *para_type_;
 };
-class FnNodeFnDef : public FnNode {
+class FnNodeFnHeander : public FnNode {
  public:
-    FnNodeFnDef(const std::string &name, FnNodeList *parameters,
-                const DataType ret_type)
-        : FnNode(kFnDef),
+    FnNodeFnHeander(const std::string &name, FnNodeList *parameters,
+                    const TypeNode *ret_type)
+        : FnNode(kFnHeader),
           name_(name),
           parameters_(parameters),
           ret_type_(ret_type) {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetCodegenFunctionName() const;
     const std::string name_;
     const FnNodeList *parameters_;
-    const DataType ret_type_;
+    const TypeNode *ret_type_;
 };
+class FnNodeFnDef : public FnNode {
+ public:
+    FnNodeFnDef(const FnNodeFnHeander *header, const FnNodeList *block)
+        : FnNode(kFnDef), header_(header), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnNodeFnHeander *header_;
+    const FnNodeList *block_;
+};
+
 class FnAssignNode : public FnNode {
  public:
     explicit FnAssignNode(const std::string &name, ExprNode *expression)
-        : FnNode(kFnAssignStmt), name_(name), expression_(expression) {}
+        : FnNode(kFnAssignStmt),
+          name_(name),
+          expression_(expression),
+          is_ssa_(false) {}
     std::string GetName() const { return name_; }
+    const bool IsSSA() const { return is_ssa_; }
+    void EnableSSA() { is_ssa_ = true; }
+    void DisableSSA() { is_ssa_ = false; }
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string name_;
     const ExprNode *expression_;
+ private:
+    bool is_ssa_;
+};
+
+class FnIfNode : public FnNode {
+ public:
+    explicit FnIfNode(const ExprNode *expression)
+        : FnNode(kFnIfStmt), expression_(expression) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const ExprNode *expression_;
+};
+class FnElifNode : public FnNode {
+ public:
+    explicit FnElifNode(ExprNode *expression)
+        : FnNode(kFnElifStmt), expression_(expression) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const ExprNode *expression_;
+};
+class FnElseNode : public FnNode {
+ public:
+    FnElseNode() : FnNode(kFnElseStmt) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+};
+
+class FnForInNode : public FnNode {
+ public:
+    FnForInNode(const std::string &var_name, const ExprNode *in_expression)
+        : FnNode(kFnForInStmt),
+          var_name_(var_name),
+          in_expression_(in_expression) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string var_name_;
+    const ExprNode *in_expression_;
+};
+
+class FnIfBlock : public FnNode {
+ public:
+    FnIfBlock(const FnIfNode *node, const FnNodeList *block)
+        : FnNode(kFnIfBlock), if_node(node), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnIfNode *if_node;
+    const FnNodeList *block_;
+};
+
+class FnElifBlock : public FnNode {
+ public:
+    FnElifBlock(const FnElifNode *node, const FnNodeList *block)
+        : FnNode(kFnElifBlock), elif_node_(node), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnElifNode *elif_node_;
+    const FnNodeList *block_;
+};
+class FnElseBlock : public FnNode {
+ public:
+    explicit FnElseBlock(const FnNodeList *block)
+        : FnNode(kFnElseBlock), block_(block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnNodeList *block_;
+};
+class FnIfElseBlock : public FnNode {
+ public:
+    FnIfElseBlock(const FnIfBlock *if_block, const FnElseBlock *else_block)
+        : FnNode(kFnIfElseBlock),
+          if_block_(if_block),
+          else_block_(else_block) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnIfBlock *if_block_;
+    std::vector<FnNode *> elif_blocks_;
+    const FnElseBlock *else_block_;
+};
+
+class FnForInBlock : public FnNode {
+ public:
+    FnForInBlock(const FnForInNode *for_in_node, const FnNodeList *block)
+        : FnNode(kFnForInBlock), for_in_node_(for_in_node), block_(block) {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const FnForInNode *for_in_node_;
+    const FnNodeList *block_;
 };
 class FnReturnStmt : public FnNode {
  public:

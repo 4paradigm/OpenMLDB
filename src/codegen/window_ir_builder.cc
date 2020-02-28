@@ -37,10 +37,16 @@ MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(
     uint32_t string_field_cnt = 0;
     for (int32_t i = 0; i < schema_.size(); i++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(i);
-        if (column.type() == ::fesql::type::kVarchar) {
+        fesql::node::DataType data_type;
+        if (!SchemaType2DataType(column.type(), &data_type)) {
+            LOG(WARNING) << "fail to convert schema type to data type " +
+                             fesql::type::Type_Name(column.type());
+            return;
+        }
+        if (data_type == ::fesql::node::kVarchar) {
             types_.insert(std::make_pair(
                 column.name(),
-                std::make_pair(column.type(), string_field_cnt)));
+                std::make_pair(data_type, string_field_cnt)));
             next_str_pos_.insert(
                 std::make_pair(string_field_cnt, string_field_cnt));
             string_field_cnt += 1;
@@ -51,7 +57,7 @@ MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(
                              << ::fesql::type::Type_Name(column.type());
             } else {
                 types_.insert(std::make_pair(
-                    column.name(), std::make_pair(column.type(), offset)));
+                    column.name(), std::make_pair(data_type, offset)));
                 offset += it->second;
             }
         }
@@ -75,20 +81,19 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
         return false;
     }
 
-    // TODO(wangtaize) support null check
-    ::fesql::type::Type& fe_type = it->second.first;
+    ::fesql::node::DataType& fe_type = it->second.first;
     ::llvm::IRBuilder<> builder(block_);
     uint32_t offset = it->second.second;
     switch (fe_type) {
-        case ::fesql::type::kInt16:
-        case ::fesql::type::kInt32:
-        case ::fesql::type::kInt64:
-        case ::fesql::type::kFloat:
-        case ::fesql::type::kDouble: {
+        case ::fesql::node::kInt16:
+        case ::fesql::node::kInt32:
+        case ::fesql::node::kInt64:
+        case ::fesql::node::kFloat:
+        case ::fesql::node::kDouble: {
             return BuildGetPrimaryCol("fesql_storage_get_col", window_ptr,
                                       offset, fe_type, output);
         }
-        case ::fesql::type::kVarchar: {
+        case ::fesql::node::kVarchar: {
             uint32_t next_offset = 0;
             auto nit = next_str_pos_.find(offset);
             if (nit != next_str_pos_.end()) {
@@ -108,7 +113,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
 bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
                                                      ::llvm::Value* row_ptr,
                                                      uint32_t offset,
-                                                     fesql::type::Type type,
+                                                     const fesql::node::DataType& type,
                                                      ::llvm::Value** output) {
     if (row_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
@@ -127,7 +132,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
         return false;
     }
     uint32_t col_iterator_size = 0;
-    ok = GetLLVMColumnIteratorSize(type, &col_iterator_size);
+    ok = GetLLVMIteratorSize(type, &col_iterator_size);
     if (!ok || col_iterator_size == 0) {
         LOG(WARNING) << "fail to get col iterator size";
     }
@@ -156,7 +161,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
 }
 
 bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
-    uint32_t offset, uint32_t next_str_field_offset, fesql::type::Type type,
+    uint32_t offset, uint32_t next_str_field_offset, const fesql::node::DataType& type,
     ::llvm::Value* window_ptr, ::llvm::Value** output) {
     if (window_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
@@ -175,7 +180,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
         return false;
     }
     uint32_t col_iterator_size;
-    ok = GetLLVMColumnIteratorSize(type, &col_iterator_size);
+    ok = GetLLVMIteratorSize(type, &col_iterator_size);
     if (!ok) {
         LOG(WARNING) << "fail to get col iterator size";
     }

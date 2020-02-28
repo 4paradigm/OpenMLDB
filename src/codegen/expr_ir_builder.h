@@ -20,11 +20,15 @@
 
 #include <memory>
 #include <string>
+#include <vector>
+#include "base/status.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
+#include "codegen/buf_ir_builder.h"
 #include "codegen/predicate_expr_ir_builder.h"
 #include "codegen/row_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "codegen/window_ir_builder.h"
+#include "codegen/variable_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
@@ -42,31 +46,39 @@ class ExprIRBuilder {
 
     ~ExprIRBuilder();
 
-    bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output);
+    bool Build(const ::fesql::node::ExprNode* node, ::llvm::Value** output,
+               ::fesql::base::Status& status);  // NOLINT
 
  private:
-    bool BuildColumnIterator(const std::string& col, ::llvm::Value** output);
 
-    bool BuildColumnItem(const std::string& col, ::llvm::Value** output);
 
+    bool BuildColumnIterator(const std::string& col, ::llvm::Value** output,
+                             ::fesql::base::Status& status);  // NOLINT
+    bool BuildColumnItem(const std::string& col, ::llvm::Value** output,
+                         ::fesql::base::Status& status);  // NOLINT
     bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
-                        ::llvm::Value** output);
+                        ::llvm::Value** output,
+                        ::fesql::base::Status& status);  // NOLINT
 
     bool BuildCallFn(const ::fesql::node::CallExprNode* fn,
-                     ::llvm::Value** output);
+                     ::llvm::Value** output,
+                     ::fesql::base::Status& status);  // NOLINT
 
     bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
-                         ::llvm::Value** output);
+                         ::llvm::Value** output,
+                         ::fesql::base::Status& status);  // NOLINT
 
     bool BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
-                        ::llvm::Value** output);
+                        ::llvm::Value** output,
+                        ::fesql::base::Status& status);  // NOLINT
 
     bool BuildStructExpr(const ::fesql::node::StructExpr* node,
-                         ::llvm::Value** output);
-
-    ::llvm::Function* GetFuncion(const std::string& col,
-                                 const ::fesql::node::DataType& type,
-                                 common::Status& status);  // NOLINT
+                         ::llvm::Value** output,
+                         ::fesql::base::Status& status);  // NOLINT
+    ::llvm::Function* GetFuncion(
+        const std::string& col,
+        const std::vector<node::TypeNode>& generic_types,
+        base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;
@@ -75,6 +87,8 @@ class ExprIRBuilder {
     bool row_mode_;
     std::string row_ptr_name_;
     std::string row_size_name_;
+    VariableIRBuilder variable_ir_builder_;
+    // TODO(chenjing): remove following ir builder member
     ArithmeticIRBuilder arithmetic_ir_builder_;
     PredicateIRBuilder predicate_ir_builder_;
     ::llvm::Module* module_;

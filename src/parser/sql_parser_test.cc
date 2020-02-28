@@ -117,7 +117,104 @@ INSTANTIATE_TEST_CASE_P(
         "%%fun\ndef test(x:i32,y:i32):i32\n    result = 1\n\tc = x + y\n"
         "\tresult=c\n\treturn result\nend",
         "%%fun\ndef test(x:i32,y:i32):i32\n\tresult=1\n\tc = x+y\n"
-        "\tresult=c\n\treturn result\nend"));
+        "\tresult=c\n\treturn result\nend",
+        "%%fun\n"
+        "def test(x:i32,y:i32):i32\n"
+        "    if x > 1\n"
+        "    \tc=x+y\n"
+        "    elif y >1\n"
+        "    \tc=x-y\n"
+        "    else\n"
+        "    \tc=x*y\n"
+        "    return c\n"
+        "end",
+        "%%fun\n"
+        "def test(x:i32,y:i32):i32\n"
+        "    if x > 1\n"
+        "    \tc=x+y\n"
+        "    elif y >1\n"
+        "    \tif x-y >0\n"
+        "    \t\tc=x-y\n"
+        "    \telif x-y <0\n"
+        "    \t\tc = y-x\n"
+        "    \telse\n"
+        "    \t\tc = 9999\n"
+        "    else\n"
+        "    \tif x < -100\n"
+        "    \t\tc = x+100\n"
+        "    \telif y < -100\n"
+        "    \t\tc = y+100\n"
+        "    \telse\n"
+        "    \t\tc=x*y\n"
+        "    return c\n"
+        "end"));
+
+INSTANTIATE_TEST_CASE_P(
+    ListOpParse, SqlParserTest,
+    testing::Values("%%fun\n"
+                    "def test(col:list<float>):float\n"
+                    "\tsum = col[0]\n"
+                    "\treturn sum\n"
+                    "end",
+                    "%%fun\n"
+                    "def test(col:list<float>, pos:i32):float\n"
+                    "\tsum = col[pos]\n"
+                    "\treturn sum\n"
+                    "end",
+                    "%%fun\n"
+                    "def test(col:list<float>, pos:i32):float\n"
+                    "\tsum = col[pos]\n"
+                    "\treturn sum\n"
+                    "end"));
+
+INSTANTIATE_TEST_CASE_P(IfElseParse, SqlParserTest,
+                        testing::Values("%%fun\n"
+                                        "def test(x:i32,y:i32):i32\n"
+                                        "    if x > 1\n"
+                                        "    \tc=x+y\n"
+                                        "    elif y >1\n"
+                                        "    \tc=x-y\n"
+                                        "    else\n"
+                                        "    \tc=x*y\n"
+                                        "    return c\n"
+                                        "end",
+                                        "%%fun\n"
+                                        "def test(x:i32,y:i32):i32\n"
+                                        "    if x > 1\n"
+                                        "    \tc=x+y\n"
+                                        "    elif y >1\n"
+                                        "    \tif x-y >0\n"
+                                        "    \t\tc=x-y\n"
+                                        "    \telif x-y <0\n"
+                                        "    \t\tc = y-x\n"
+                                        "    \telse\n"
+                                        "    \t\tc = 9999\n"
+                                        "    else\n"
+                                        "    \tif x < -100\n"
+                                        "    \t\tc = x+100\n"
+                                        "    \telif y < -100\n"
+                                        "    \t\tc = y+100\n"
+                                        "    \telse\n"
+                                        "    \t\tc=x*y\n"
+                                        "    return c\n"
+                                        "end"));
+
+INSTANTIATE_TEST_CASE_P(LoopParse, SqlParserTest,
+                        testing::Values("%%fun\n"
+                                        "def test_sum(col:list<i32>):i32\n"
+                                        "\tres = 0\n"
+                                        "\tfor x in col\n"
+                                        "\t\tres = res + x\n"
+                                        "\treturn res\n"
+                                        "end",
+                                        "%%fun\n"
+                                        "def test(l:list<i32>, a:i32):i32\n"
+                                        "    sum=0\n"
+                                        "    for x in l\n"
+                                        "        if x > a\n"
+                                        "            sum = sum + x\n"
+                                        "    return sum\n"
+                                        "end"));
 
 INSTANTIATE_TEST_CASE_P(
     SQLCreate, SqlParserTest,
@@ -218,6 +315,87 @@ TEST_P(SqlParserTest, Parser_Select_Expr_List) {
     std::cout << *(trees.front()) << std::endl;
 }
 
+TEST_F(SqlParserTest, Assign_Op_Test) {
+    std::string sqlstr =
+        "%%fun\n"
+        "def test(a:int, b:int):int\n"
+        "\tres= 0\n"
+        "\tres += a\n"
+        "\tres -= b\n"
+        "\tres *= a\n"
+        "\tres /= b\n"
+        "\treturn res\n"
+        "end";
+    std::cout << sqlstr << std::endl;
+
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
+
+    if (0 != status.code) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1, trees.size());
+    std::cout << *(trees.front()) << std::endl;
+    ASSERT_EQ(fesql::node::kFnDef, trees[0]->GetType());
+    node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(trees[0]);
+    ASSERT_EQ(6, fn_def->block_->children.size());
+
+    {
+        ASSERT_EQ(fesql::node::kFnAssignStmt,
+                  fn_def->block_->children[0]->GetType());
+        fesql::node::FnAssignNode *assign =
+            dynamic_cast<fesql::node::FnAssignNode *>(
+                fn_def->block_->children[0]);
+        ASSERT_EQ(fesql::node::kExprPrimary,
+                  assign->expression_->GetExprType());
+    }
+    {
+        ASSERT_EQ(fesql::node::kFnAssignStmt,
+                  fn_def->block_->children[1]->GetType());
+        fesql::node::FnAssignNode *assign =
+            dynamic_cast<fesql::node::FnAssignNode *>(
+                fn_def->block_->children[1]);
+        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
+        const fesql::node::BinaryExpr *expr =
+            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
+        ASSERT_EQ(fesql::node::kFnOpAdd, expr->GetOp());
+    }
+    {
+        ASSERT_EQ(fesql::node::kFnAssignStmt,
+                  fn_def->block_->children[2]->GetType());
+        fesql::node::FnAssignNode *assign =
+            dynamic_cast<fesql::node::FnAssignNode *>(
+                fn_def->block_->children[2]);
+        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
+        const fesql::node::BinaryExpr *expr =
+            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
+        ASSERT_EQ(fesql::node::kFnOpMinus, expr->GetOp());
+    }
+    {
+        ASSERT_EQ(fesql::node::kFnAssignStmt,
+                  fn_def->block_->children[3]->GetType());
+        fesql::node::FnAssignNode *assign =
+            dynamic_cast<fesql::node::FnAssignNode *>(
+                fn_def->block_->children[3]);
+        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
+        const fesql::node::BinaryExpr *expr =
+            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
+        ASSERT_EQ(fesql::node::kFnOpMulti, expr->GetOp());
+    }
+    {
+        ASSERT_EQ(fesql::node::kFnAssignStmt,
+                  fn_def->block_->children[4]->GetType());
+        fesql::node::FnAssignNode *assign =
+            dynamic_cast<fesql::node::FnAssignNode *>(
+                fn_def->block_->children[4]);
+        ASSERT_EQ(fesql::node::kExprBinary, assign->expression_->GetExprType());
+        const fesql::node::BinaryExpr *expr =
+            dynamic_cast<const fesql::node::BinaryExpr *>(assign->expression_);
+        ASSERT_EQ(fesql::node::kFnOpFDiv, expr->GetOp());
+    }
+}
 TEST_F(SqlParserTest, Parser_Insert_ALL_Stmt) {
     const std::string sqlstr =
         "insert into t1 values(1, 2.3, 3.1, \"string\");";
@@ -301,7 +479,8 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
         "    column3 int NOT NULL,\n"
         "    column4 string NOT NULL,\n"
         "    column5 int,\n"
-        "    index(key=(column4, column3), version=(column5, 3), ts=column2, "
+        "    index(key=(column4, column3), version=(column5, 3), "
+        "ts=column2, "
         "ttl=60d)\n"
         ");";
     NodePointVector trees;
@@ -323,7 +502,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column1",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
                   ->GetColumnName());
-    ASSERT_EQ(node::kTypeInt32,
+    ASSERT_EQ(node::kInt32,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
                   ->GetColumnType());
     ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[0]))
@@ -332,7 +511,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column2",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
                   ->GetColumnName());
-    ASSERT_EQ(node::kTypeTimestamp,
+    ASSERT_EQ(node::kTimestamp,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
                   ->GetColumnType());
     ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[1]))
@@ -341,7 +520,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column3",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
                   ->GetColumnName());
-    ASSERT_EQ(node::kTypeInt32,
+    ASSERT_EQ(node::kInt32,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
                   ->GetColumnType());
     ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[2]))
@@ -350,7 +529,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column4",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
                   ->GetColumnName());
-    ASSERT_EQ(node::kTypeString,
+    ASSERT_EQ(node::kVarchar,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
                   ->GetColumnType());
     ASSERT_EQ(true, ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[3]))
@@ -359,7 +538,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column5",
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
                   ->GetColumnName());
-    ASSERT_EQ(node::kTypeInt32,
+    ASSERT_EQ(node::kInt32,
               ((node::ColumnDefNode *)(createStmt->GetColumnDefList()[4]))
                   ->GetColumnType());
     ASSERT_EQ(false,
@@ -427,9 +606,9 @@ INSTANTIATE_TEST_CASE_P(
         std::make_pair(common::kSQLError,
                        "%%fun\ndef 123test(x:i32,y:i32):i32\n    c=x+y\n    "
                        "return c\nend"),
-        std::make_pair(
-            common::kSQLError,
-            "%%fun\ndef test(x:i32,y:i32):i32\n    c=x)(y\n    return c\nend"),
+        std::make_pair(common::kSQLError,
+                       "%%fun\ndef test(x:i32,y:i32):i32\n    c=x)(y\n    "
+                       "return c\nend"),
         std::make_pair(common::kSQLError, "SELECT t1;")));
 
 }  // namespace parser

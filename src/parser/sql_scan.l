@@ -73,6 +73,10 @@ less_equals		"<="
 greater_equals	">="
 not_equals		"!="
 equals  "=="
+add_assign "+="
+minus_assign "-="
+multi_assign "*="
+fdiv_assign "/="
 assign  "="
 and "&&"
 or  "||"
@@ -161,6 +165,7 @@ DROP	{ return DROP; }
 DUAL	{ return DUAL; }
 EACH	{ return EACH; }
 ELSE	{ return ELSE; }
+ELIF	{ return ELSEIF; }
 ELSEIF	{ return ELSEIF; }
 <FUN_INDENT>END {return FUNDEFEND;}
 END	{return END; }
@@ -206,6 +211,8 @@ LEADING	{ return LEADING; }
 LEAVE	{ return LEAVE; }
 LEFT	{ return LEFT; }
 LIKE	{ return LIKE; }
+LIST    { return LIST; }
+LOAD	{ return LOAD; }
 LIMIT	{ return LIMIT; }
 LINES	{ return LINES; }
 LOAD	{ return LOAD; }
@@ -218,6 +225,7 @@ LONGTEXT	{ return LONGTEXT; }
 LOOP	{ return LOOP; }
 LOW_PRIORITY	{ return LOW_PRIORITY; }
 MATCH	{ return MATCH; }
+MAP     { return MAP; }
 MEDIUMBLOB	{ return MEDIUMBLOB; }
 MIDDLEINT|MEDIUMINT	{ return MEDIUMINT; }
 MEDIUMTEXT	{ return MEDIUMTEXT; }
@@ -353,7 +361,15 @@ ZEROFILL	{ return ZEROFILL; }
 <FUN_INDENT>{newline} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINE;}
 
 <FUN_INDENT>{indent} {
-        yylval->intval = strlen(yytext);
+        int space_cnt = 0;
+        for(int i=0; i < strlen(yytext); i++) {
+            if (yytext[i] == '\t') {
+                space_cnt += 4;
+            } else {
+                space_cnt += 1;
+            }
+        }
+        yylval->intval = space_cnt;
         BEGIN FUN;
         return INDENT;
 }
@@ -418,10 +434,13 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 					/* We accept both "<>" and "!=" as meaning NOT_EQUALS */
 					return NOT_EQUALS;
 				}
-[-+&~|^/%*(),.;!]   { return yytext[0]; }
 
 <INITIAL>":="     { return ASSIGN; }
 <FUN>{assign} { return ASSIGN; }
+<FUN>{add_assign} { return ADD_ASSIGN; }
+<FUN>{minus_assign} { return MINUS_ASSIGN; }
+<FUN>{multi_assign} { return MULTI_ASSIGN; }
+<FUN>{fdiv_assign} { return FDIV_ASSIGN; }
 <INITIAL>{assign} { return EQUALS; }
 {equals} { return EQUALS; }
 <FUN>[A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
@@ -459,6 +478,7 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
             return yytext[0];
 	}
 
+[-+&~|^/%*(),.;!]   { return yytext[0]; }
 #.*		;
 "--"[ \t].*	;
 

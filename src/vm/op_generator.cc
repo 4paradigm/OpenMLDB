@@ -51,7 +51,7 @@ bool OpGenerator::Gen(const ::fesql::node::PlanNodeList& trees,
             case ::fesql::node::kPlanTypeFuncDef: {
                 const ::fesql::node::FuncDefPlanNode* func_def_plan =
                     dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
-                bool ok = GenFnDef(module, func_def_plan);
+                bool ok = GenFnDef(module, func_def_plan, status);
                 if (!ok) {
                     status.code = (common::kCodegenError);
                     status.msg = ("Fail to codegen function");
@@ -426,14 +426,16 @@ bool OpGenerator::GenLimit(const ::fesql::node::LimitPlanNode* node,
 }
 
 bool OpGenerator::GenFnDef(::llvm::Module* module,
-                           const ::fesql::node::FuncDefPlanNode* plan) {
-    if (module == NULL || plan == NULL || plan->GetFnNodeList() == NULL) {
-        LOG(WARNING) << "module or node is null";
+                           const ::fesql::node::FuncDefPlanNode* plan,
+                           base::Status& status) {  // NOLINE
+    if (module == NULL || plan == NULL || plan->fn_def_ == NULL) {
+        status.msg = "module or plan node or fndef node is null";
+        status.code = common::kOpGenError;
         return false;
     }
 
     ::fesql::codegen::FnIRBuilder builder(module);
-    bool ok = builder.Build(plan->GetFnNodeList());
+    bool ok = builder.Build(plan->fn_def_, status);
     if (!ok) {
         LOG(WARNING) << "fail to build fn node with line ";
     }
