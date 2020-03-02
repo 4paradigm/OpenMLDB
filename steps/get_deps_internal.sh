@@ -229,7 +229,7 @@ else
     wget http://pkg.4paradigm.com/rtidb/dev/zookeeper-3.4.10.tar.gz
     tar -zxvf zookeeper-3.4.10.tar.gz
     cd zookeeper-3.4.10/src/c/
-    ./configure --prefix=${DEPS_PREFIX} --enable-shared=no --enable-static=yes
+    CFLAGS=" -fPIC " ./configure --prefix=${DEPS_PREFIX} --enable-shared=no --enable-static=yes
     make -j4 >/dev/null 
     make install
     cd -
