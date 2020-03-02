@@ -1,3 +1,4 @@
+#pragma once
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "zk/zk_client.h"
