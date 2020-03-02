@@ -489,6 +489,7 @@ void TabletImpl::Get(RpcController* controller,
         std::string * value = response->mutable_value(); 
         bool ok = false;
         uint32_t index = 0;
+        /**
         if (request->has_idx_name() && request->idx_name().size() > 0) {
             std::map<std::string, uint32_t>::iterator iit = r_table->GetMapping().find(request->idx_name());
             if (iit == r_table->GetMapping().end()) {
@@ -500,6 +501,7 @@ void TabletImpl::Get(RpcController* controller,
             }
             index = iit->second;
         }
+        */
         ok = r_table->Get(index, request->key(), *value);
         if (!ok) {
             response->set_code(109);
@@ -1363,19 +1365,24 @@ void TabletImpl::Delete(RpcController* controller,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
-        if (follower_.load(std::memory_order_relaxed)) {
-            response->set_code(453);
-            response->set_msg("is follower cluster");
-            return;
-        }
-        std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-        if (!table) {
-            PDLOG(DEBUG, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+    if (follower_.load(std::memory_order_relaxed)) {
+        response->set_code(453);
+        response->set_msg("is follower cluster");
+        return;
+    }
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    std::shared_ptr<RelationalTable> r_table;
+    if (!table) {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        r_table = GetRelationalTableUnLock(request->tid(), request->pid());
+        if (!r_table) {
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(100);
             response->set_msg("table is not exist");
             return;
-        }    
+        }
+    }
+    if (table) {
         if (!table->IsLeader()) {
             PDLOG(DEBUG, "table is follower. tid %u, pid %u", request->tid(),
                     request->pid());
@@ -1431,18 +1438,8 @@ void TabletImpl::Delete(RpcController* controller,
         }
         return;
     } else {
-        std::shared_ptr<RelationalTable> table;
-        {
-            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table = GetRelationalTableUnLock(request->tid(), request->pid());
-            if (!table) {
-                PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-                response->set_code(100);
-                response->set_msg("table is not exist");
-                return;
-            }
-        }
         uint32_t idx = 0;
+        /**
         if (request->has_idx_name() && request->idx_name().size() > 0) {
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
             if (iit == table->GetMapping().end()) {
@@ -1454,7 +1451,8 @@ void TabletImpl::Delete(RpcController* controller,
             }
             idx = iit->second;
         }
-        if (table->Delete(request->key(), idx)) {
+        */
+        if (r_table->Delete(request->key(), idx)) {
             response->set_code(0);
             response->set_msg("ok");
             PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s", request->tid(), request->pid(), request->key().c_str());

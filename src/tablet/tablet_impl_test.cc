@@ -595,7 +595,6 @@ TEST_F(TabletImplTest, MultiGetRelationalTable) {
         std::vector<std::pair<std::string, uint32_t>> dimensions;
         MultiDimensionEncode(columns, input, dimensions, value);
         ::rtidb::api::PutRequest request;
-        request.set_table_type(::rtidb::type::kRelational);
         request.set_value(value);
         request.set_tid(id);
         request.set_pid(1);
@@ -612,7 +611,6 @@ TEST_F(TabletImplTest, MultiGetRelationalTable) {
     // get
     ::rtidb::api::GetRequest get_request;
     ::rtidb::api::GetResponse get_response;
-    get_request.set_table_type(::rtidb::type::kRelational);
     get_request.set_tid(id);
     get_request.set_pid(1);
     get_request.set_key("abcd2");
@@ -641,7 +639,6 @@ TEST_F(TabletImplTest, MultiGetRelationalTable) {
     // table not found
     {
         ::rtidb::api::GetRequest request;
-        request.set_table_type(::rtidb::type::kRelational);
         request.set_tid(1);
         request.set_pid(0);
         request.set_key("test");
@@ -659,7 +656,6 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     // table not found
     {
         ::rtidb::api::GetRequest request;
-        request.set_table_type(::rtidb::type::kRelational);
         request.set_tid(1);
         request.set_pid(0);
         request.set_key("test");
@@ -689,7 +685,6 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     // key not found
     {
         ::rtidb::api::GetRequest request;
-        request.set_table_type(::rtidb::type::kRelational);
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
@@ -701,7 +696,6 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     // put some key
     {
         ::rtidb::api::PutRequest prequest;
-        prequest.set_table_type(::rtidb::type::kRelational);
         prequest.set_pk("key1");
         prequest.set_value("value1");
         prequest.set_tid(id);
@@ -714,7 +708,6 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     }
     {
         ::rtidb::api::PutRequest prequest;
-        prequest.set_table_type(::rtidb::type::kRelational);
         prequest.set_pk("key2");
         prequest.set_value("value2");
         prequest.set_tid(id);
@@ -727,7 +720,6 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     }
     {
         ::rtidb::api::GetRequest request;
-        request.set_table_type(::rtidb::type::kRelational);
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("key1");
@@ -755,7 +747,6 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     // table not found
     {
         ::rtidb::api::GetRequest request;
-        request.set_table_type(::rtidb::type::kRelational);
         request.set_tid(1);
         request.set_pid(0);
         request.set_key("test");

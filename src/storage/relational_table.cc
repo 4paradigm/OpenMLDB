@@ -225,7 +225,7 @@ bool RelationalTable::Put(const std::string &value, const Dimensions &dimensions
 
 bool RelationalTable::Delete(const std::string& pk, uint32_t idx) {
     rocksdb::WriteBatch batch;
-    batch.DeleteRange(cf_hs_[idx+1], rocksdb::Slice(pk), rocksdb::Slice(pk));
+    batch.Delete(cf_hs_[idx+1], rocksdb::Slice(pk));
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
