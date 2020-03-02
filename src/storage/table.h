@@ -175,6 +175,10 @@ public:
         return column_key_map_;
     }
 
+    inline bool IsIndexDeleted(uint32_t idx) {
+        return column_key_map_[idx] && column_key_map_[idx]->deleted.load();
+    }
+
     inline void SetTTLType(const ::rtidb::api::TTLType& type) {
         ttl_type_ = type;
     }

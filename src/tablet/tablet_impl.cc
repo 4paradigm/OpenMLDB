@@ -419,7 +419,7 @@ void TabletImpl::Get(RpcController* controller,
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end()) {
+        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                   request->tid(), request->pid());
             response->set_code(108);
@@ -978,7 +978,7 @@ void TabletImpl::Scan(RpcController* controller,
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end()) {
+        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                   request->tid(), request->pid());
             response->set_code(108);
@@ -1071,7 +1071,7 @@ void TabletImpl::Count(RpcController* controller,
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end()) {
+        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                   request->tid(), request->pid());
             response->set_code(108);
@@ -1183,7 +1183,7 @@ void TabletImpl::Traverse(RpcController* controller,
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end()) {
+        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                   request->tid(), request->pid());
             response->set_code(108);
@@ -1331,7 +1331,7 @@ void TabletImpl::Delete(RpcController* controller,
     uint32_t idx = 0;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end()) {
+        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                   request->tid(), request->pid());
             response->set_code(108);
