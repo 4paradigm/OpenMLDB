@@ -500,7 +500,7 @@ bool MemTable::IsExpire(const LogEntry& entry) {
 }
 
 int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
-    if (index >= idx_cnt_ || column_key_map_[index]->deleted.load()) {
+    if (index >= idx_cnt_ || (column_key_map_.count(index) && column_key_map_[index]->deleted.load())) {
         return -1;
     }
     uint32_t seg_idx = 0;
@@ -517,9 +517,6 @@ int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
 }
 
 int MemTable::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count) {
-    if (column_key_map_[index]->deleted.load()) {
-        return -1;
-    }
     auto column_map_iter = column_key_map_.find(index);
     if (column_map_iter == column_key_map_.end()) {
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
@@ -546,7 +543,8 @@ TableIterator* MemTable::NewIterator(const std::string& pk, Ticket& ticket) {
 }
 
 TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
-    if (index >= idx_cnt_ || index >= segments_.size() || column_key_map_[index]->deleted.load()) {
+    if (index >= idx_cnt_ || index >= segments_.size() || 
+        (column_key_map_.count(index) && column_key_map_[index]->deleted.load())) {
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u, segment size %u", 
                         index, idx_cnt_, segments_.size());
         return NULL;
