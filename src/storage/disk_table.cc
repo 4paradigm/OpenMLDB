@@ -126,10 +126,10 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
         if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime || ttl_type_ == ::rtidb::api::TTLType::kAbsOrLat) {
             auto column_key_map_iter = column_key_map_.find(iter->second);
-            if (column_key_map_iter == column_key_map_.end() || column_key_map_iter->second.empty()) {
+            if (column_key_map_iter == column_key_map_.end() || column_key_map_iter->second->column_idx.empty()) {
                 cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(&abs_ttl_);
-            } else if (column_key_map_iter->second.size() == 1) {
-                cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(abs_ttl_vec_[column_key_map_iter->second.front()].get());
+            } else if (column_key_map_iter->second->column_idx.size() == 1) {
+                cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(abs_ttl_vec_[column_key_map_iter->second->column_idx.front()].get());
             } else {
                 cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(&abs_ttl_vec_);
             }
@@ -215,11 +215,11 @@ bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsi
           }
           auto& ts_vector = column_key_map_[it->idx()];
           for (const auto& cur_ts : ts_dimemsions) {
-              if (std::find(ts_vector.cbegin(), ts_vector.cend(), cur_ts.idx()) == ts_vector.cend()) {
+              if (std::find(ts_vector->column_idx.cbegin(), ts_vector->column_idx.cend(), cur_ts.idx()) == ts_vector->column_idx.cend()) {
                 continue;
               }
               rocksdb::Slice spk;
-              if (ts_vector.size() == 1) {
+              if (ts_vector->column_idx.size() == 1) {
                   std::string combine_key = CombineKeyTs(it->key(), cur_ts.ts());
                   spk = rocksdb::Slice(combine_key);
               } else {
@@ -240,15 +240,15 @@ bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsi
 
 bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
     rocksdb::WriteBatch batch;
-    std::map<uint32_t, std::vector<uint32_t>>::iterator it = column_key_map_.find(idx);
+    auto it = column_key_map_.find(idx);
     if (it != column_key_map_.end()) {
-        if (it->second.size() == 1) {
+        if (it->second->column_idx.size() == 1) {
             std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX);
             std::string combine_key2 = CombineKeyTs(pk, 0);
             batch.DeleteRange(cf_hs_[idx+1],
                 rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
         } else {
-            for (auto ts : it->second) {
+            for (auto ts : it->second->column_idx) {
                 std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX, ts);
                 std::string combine_key2 = CombineKeyTs(pk, 0, ts);
                 batch.DeleteRange(cf_hs_[idx+1], rocksdb::Slice(combine_key1),
@@ -282,14 +282,14 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk,
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", idx, id_, pid_);
         return false;
     }
-    if (std::find(column_map_iter->second.begin(), column_map_iter->second.end(), ts_idx) 
-                            == column_map_iter->second.end()) {
+    if (std::find(column_map_iter->second->column_idx.begin(), column_map_iter->second->column_idx.end(), ts_idx) 
+                            == column_map_iter->second->column_idx.end()) {
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", 
                         ts_idx, idx, id_, pid_);
         return false;
     }
     rocksdb::Slice spk ;
-    if (column_map_iter->second.size() > 1) {
+    if (column_map_iter->second->column_idx.size() > 1) {
         std::string combine_key = CombineKeyTs(pk, ts, ts_idx);
         spk = rocksdb::Slice(combine_key);
     } else {
@@ -312,8 +312,8 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
     }
     rocksdb::Slice spk ;
     auto pos = column_key_map_.find(idx);
-    if ((pos != column_key_map_.end()) && (pos->second.size() > 1)) {
-        std::string combine_key = CombineKeyTs(pk, ts, pos->second[0]);
+    if ((pos != column_key_map_.end()) && (pos->second->column_idx.size() > 1)) {
+        std::string combine_key = CombineKeyTs(pk, ts, pos->second->column_idx[0]);
         spk = rocksdb::Slice(combine_key);
     } else {
         std::string combine_key = CombineKeyTs(pk, ts);
@@ -424,10 +424,10 @@ void DiskTable::GcHead() {
         rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
         it->SeekToFirst();
         auto column_key_map_iter = column_key_map_.find(iter->second);
-        if (column_key_map_iter != column_key_map_.end() && column_key_map_iter->second.size() > 1) {
+        if (column_key_map_iter != column_key_map_.end() && column_key_map_iter->second->column_idx.size() > 1) {
             bool need_ttl = false;
             std::map<uint32_t, uint64_t> ttl_map;
-            for (auto ts_idx : column_key_map_iter->second) {
+            for (auto ts_idx : column_key_map_iter->second->column_idx) {
                 uint64_t ttl = lat_ttl_vec_[ts_idx]->load(std::memory_order_relaxed);
                 ttl_map.insert(std::make_pair(ts_idx, ttl));
                 if (ttl > 0) {
@@ -486,8 +486,8 @@ void DiskTable::GcHead() {
             }
         } else {
             uint64_t ttl_num = lat_ttl_;
-            if (column_key_map_iter != column_key_map_.end() && column_key_map_iter->second.front() < lat_ttl_vec_.size()) {
-                ttl_num = lat_ttl_vec_[column_key_map_iter->second.front()]->load(std::memory_order_relaxed);
+            if (column_key_map_iter != column_key_map_.end() && column_key_map_iter->second->column_idx.front() < lat_ttl_vec_.size()) {
+                ttl_num = lat_ttl_vec_[column_key_map_iter->second->column_idx.front()]->load(std::memory_order_relaxed);
             }
             if (ttl_num < 1) {
                 continue;
@@ -579,8 +579,8 @@ TableIterator* DiskTable::NewIterator(const std::string &pk, Ticket& ticket) {
 
 TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) {
     auto column_map_iter = column_key_map_.find(idx);
-    if (column_map_iter != column_key_map_.end() && !column_map_iter->second.empty()) {
-        return NewIterator(idx, column_map_iter->second.front(), pk, ticket);
+    if (column_map_iter != column_key_map_.end() && !column_map_iter->second->column_idx.empty()) {
+        return NewIterator(idx, column_map_iter->second->column_idx.front(), pk, ticket);
     }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
@@ -597,8 +597,8 @@ TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std:
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
         return NULL;
     }
-    if (std::find(column_map_iter->second.cbegin(), column_map_iter->second.cend(), ts_idx) 
-                == column_map_iter->second.cend()) {
+    if (std::find(column_map_iter->second->column_idx.cbegin(), column_map_iter->second->column_idx.cend(), ts_idx) 
+                == column_map_iter->second->column_idx.cend()) {
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", 
                     ts_idx, index, id_, pid_);
         return NULL;
@@ -609,7 +609,7 @@ TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std:
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[index + 1]);
-    if (column_map_iter->second.size() == 1) {
+    if (column_map_iter->second->column_idx.size() == 1) {
         return new DiskTableIterator(db_, it, snapshot, pk);
     }
     return new DiskTableIterator(db_, it, snapshot, pk, ts_idx);
@@ -617,8 +617,8 @@ TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std:
 
 TableIterator* DiskTable::NewTraverseIterator(uint32_t index) {
     auto column_map_iter = column_key_map_.find(index);
-    if (column_map_iter != column_key_map_.end() && !column_map_iter->second.empty()) {
-        return NewTraverseIterator(index, column_map_iter->second.front());
+    if (column_map_iter != column_key_map_.end() && !column_map_iter->second->column_idx.empty()) {
+        return NewTraverseIterator(index, column_map_iter->second->column_idx.front());
     }
     uint64_t expire_time = GetExpireTime(GetTTL(index, 0).abs_ttl*60*1000);
     uint64_t expire_cnt = GetTTL(index, 0).lat_ttl;
@@ -640,7 +640,7 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_index)
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
         return NULL;
     }
-    if (std::find(column_map_iter->second.cbegin(), column_map_iter->second.cend(), ts_index) == column_map_iter->second.cend()) {
+    if (std::find(column_map_iter->second->column_idx.cbegin(), column_map_iter->second->column_idx.cend(), ts_index) == column_map_iter->second->column_idx.cend()) {
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %u, failed getting table tid %u pid %u", ts_index, index, id_, pid_);
         return NULL;
     }
@@ -652,7 +652,7 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_index)
     //ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[index + 1]);
-    if (column_map_iter->second.size() == 1) {
+    if (column_map_iter->second->column_idx.size() == 1) {
         return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_, expire_time, expire_cnt);
     }
     return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_, expire_time, expire_cnt, ts_index);
