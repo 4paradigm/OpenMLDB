@@ -76,6 +76,7 @@ bool fesql::codegen::VariableIRBuilder::LoadValue(std::string name,
     if (!sv_->FindVar(name, &value, &is_register)) {
         return false;
     }
+
     if (nullptr == value) {
         status.msg = "fail to get value: value is null";
         status.code = common::kCodegenError;

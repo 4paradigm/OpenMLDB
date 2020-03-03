@@ -89,6 +89,7 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         status.code = common::kCodegenError;
         return false;
     }
+    DLOG(INFO) << "expr node type " << fesql::node::ExprTypeName(node->GetExprType());
     ::llvm::IRBuilder<> builder(block_);
     switch (node->GetExprType()) {
         case ::fesql::node::kExprColumnRef: {
@@ -138,6 +139,7 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprId: {
             ::fesql::node::ExprIdNode* id_node =
                 (::fesql::node::ExprIdNode*)node;
+            DLOG(INFO) << "id node name " << id_node->GetName();
             ::llvm::Value* ptr = NULL;
             if (!variable_ir_builder_.LoadValue(id_node->GetName(), &ptr,
                                                 status) ||
@@ -262,6 +264,7 @@ bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
     *output = (::llvm::Value*)llvm_struct;
     return true;
 }
+
 bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
                                    ::llvm::Value** output,
                                    base::Status& status) {  // NOLINT

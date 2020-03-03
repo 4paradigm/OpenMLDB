@@ -277,6 +277,7 @@ class IteratorImpl : public IteratorV<V> {
           iter_start_(list.GetStart()),
           iter_end_(list.GetEnd()),
           pos_(list.GetStart()) {}
+
     explicit IteratorImpl(const IteratorImpl<V> &impl)
         : list_(impl.list_),
           iter_start_(impl.iter_start_),

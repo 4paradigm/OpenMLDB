@@ -61,7 +61,6 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
         LOG(WARNING) << status.msg;
         return false;
     }
-    LOG(INFO) << "list type " << list->getType();
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Value* list_i8_ptr = builder.CreatePointerCast(list, i8_ptr_ty);

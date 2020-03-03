@@ -13,7 +13,7 @@ namespace fesql {
 namespace codegen {
 
 PredicateIRBuilder::PredicateIRBuilder(::llvm::BasicBlock* block)
-    : cast_expr_ir_builder_(block), block_(block) {}
+    : block_(block), cast_expr_ir_builder_(block) {}
 PredicateIRBuilder::~PredicateIRBuilder() {}
 bool PredicateIRBuilder::BuildAndExpr(::llvm::Value* left, ::llvm::Value* right,
                                       ::llvm::Value** output,
