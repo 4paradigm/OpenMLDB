@@ -26,14 +26,14 @@ add_test(cast_expr_ir_builder_test cast_expr_ir_builder_test --gtest_output=xml:
 list(APPEND test_list cast_expr_ir_builder_test)
 
 add_executable(arithmetic_expr_ir_builder_test arithmetic_expr_ir_builder_test.cc)
-target_link_libraries(arithmetic_expr_ir_builder_test fesql_udf fesql_codegen fesql_parser fesql_storage fesql_vm fesql_proto fesql_node
-        protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+target_link_libraries(arithmetic_expr_ir_builder_test gflags fesql_codegen fesql_parser
+        fesql_node fesql_proto fesql_udf fesql_storage fesql_vm protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(arithmetic_expr_ir_builder_test arithmetic_expr_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/arithmetic_expr_ir_builder_test.xml)
 list(APPEND test_list arithmetic_expr_ir_builder_test)
 
 add_executable(predicate_expr_ir_builder_test predicate_expr_ir_builder_test.cc)
-target_link_libraries(predicate_expr_ir_builder_test fesql_udf fesql_codegen fesql_parser fesql_storage fesql_vm fesql_proto fesql_node
-        protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+target_link_libraries(predicate_expr_ir_builder_test gflags fesql_codegen fesql_parser
+        fesql_node fesql_proto protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(predicate_expr_ir_builder_test predicate_expr_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/predicate_expr_ir_builder_test.xml)
 list(APPEND test_list predicate_expr_ir_builder_test)
 
