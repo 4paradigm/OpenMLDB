@@ -62,11 +62,9 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* list_i8_ptr = builder.CreatePointerCast(list, i8_ptr_ty);
-    *output = builder.CreateCall(
-        fn->getFunctionType(), fn,
-        ::llvm::ArrayRef<::llvm::Value*>{list_i8_ptr, casted_pos});
+    *output =
+        builder.CreateCall(fn->getFunctionType(), fn,
+                           ::llvm::ArrayRef<::llvm::Value*>{list, casted_pos});
     if (nullptr == *output) {
         status.msg = "fail to codegen list[pos]: call function error";
         status.code = common::kCodegenError;
@@ -105,8 +103,6 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     ::llvm::Type* i8_ty = builder.getInt8Ty();
-    ::llvm::Value* list_i8_ptr = builder.CreatePointerCast(list, i8_ptr_ty);
-
     ::llvm::Type* iter_ref_type = NULL;
     if (!GetLLVMIteratorType(block_->getModule(), type_node.generics_[0],
                              &iter_ref_type)) {
@@ -133,9 +129,9 @@ bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
     builder.CreateStore(col_iter, data_ptr_ptr, false);
     ::llvm::Value* iter_i8_ptr = builder.CreatePointerCast(iter_ref, i8_ptr_ty);
 
-    ::llvm::Value* call_res = builder.CreateCall(
-        fn->getFunctionType(), fn,
-        ::llvm::ArrayRef<::llvm::Value*>{list_i8_ptr, iter_i8_ptr});
+    ::llvm::Value* call_res =
+        builder.CreateCall(fn->getFunctionType(), fn,
+                           ::llvm::ArrayRef<::llvm::Value*>{list, iter_i8_ptr});
     if (nullptr == call_res) {
         status.msg = "fail to codegen list.iterator(): call function error";
         status.code = common::kCodegenError;
@@ -178,10 +174,8 @@ bool ListIRBuilder::BuildIteratorHasNext(::llvm::Value* iterator,
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* list_i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
     *output = builder.CreateCall(fn->getFunctionType(), fn,
-                                 ::llvm::ArrayRef<::llvm::Value*>{list_i8_ptr});
+                                 ::llvm::ArrayRef<::llvm::Value*>{iterator});
     if (nullptr == *output) {
         status.msg = "fail to codegen list[pos]: call function error";
         status.code = common::kCodegenError;
@@ -228,11 +222,8 @@ bool ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* list_i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
-    ::llvm::Value* next_value =
-        builder.CreateCall(fn->getFunctionType(), fn,
-                           ::llvm::ArrayRef<::llvm::Value*>{list_i8_ptr});
+    ::llvm::Value* next_value = builder.CreateCall(
+        fn->getFunctionType(), fn, ::llvm::ArrayRef<::llvm::Value*>{iterator});
     if (nullptr == next_value) {
         status.msg = "fail to codegen iterator.next(): call function error";
         status.code = common::kCodegenError;

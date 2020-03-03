@@ -36,7 +36,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       buf_ir_builder_(nullptr),
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
-      module_(nullptr) {}
+      module_(block->getModule()) {}
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                              BufNativeIRBuilder* buf_ir_builder,
@@ -66,7 +66,7 @@ ExprIRBuilder::~ExprIRBuilder() {}
             fn_name.append("_").append(type_node.GetName());
         }
     }
-    ::llvm::Function* fn = module_->getFunction(fn_name);
+    ::llvm::Function* fn = module_->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
         status.code = common::kCallMethodError;
         status.msg = "fail to find func with name " + fn_name;
@@ -137,7 +137,9 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             if (!variable_ir_builder_.LoadValue(id_node->GetName(), &ptr,
                                                 status) ||
                 nullptr == ptr) {
-                LOG(WARNING) << "fail to find var " << id_node->GetName();
+                status.msg = "fail to find var " + id_node->GetName();
+                status.code = common::kCodegenError;
+                LOG(WARNING) << status.msg;
                 return false;
             }
             *output = ptr;
@@ -191,10 +193,11 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
                 return false;
             }
             // handle list type
-            if (fesql::node::kList == value_type.base_) {
+            // 泛型类型还需要优化，目前是hard
+            // code识别list或者迭代器类型，然后取generic type
+            if (fesql::node::kList == value_type.base_ ||
+                fesql::node::kIterator == value_type.base_) {
                 generics_types.push_back(value_type);
-                ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-                llvm_arg = builder.CreatePointerCast(llvm_arg, i8_ptr_ty);
             }
             llvm_args.push_back(llvm_arg);
         } else {
@@ -307,7 +310,7 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
         // TODO(wangtaize) buf ir builder add build get field ptr
         ok = buf_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
         if (!ok || value == NULL) {
-            status.msg =  "fail to find column " + col;
+            status.msg = "fail to find column " + col;
             status.code = common::kCodegenError;
             LOG(WARNING) << status.msg;
             return false;
@@ -418,7 +421,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
     ::llvm::Value* left = NULL;
     bool ok = Build(node->children[0], &left, status);
     if (!ok) {
-        LOG(WARNING) << "fail to build left node" << status.msg;
+        LOG(WARNING) << "fail to build left node: " << status.msg;
         return false;
     }
 

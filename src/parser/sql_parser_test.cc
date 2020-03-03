@@ -147,6 +147,12 @@ INSTANTIATE_TEST_CASE_P(
         "    \telse\n"
         "    \t\tc=x*y\n"
         "    return c\n"
+        "end",
+        // call function in udf
+        "%%fun\n"
+        "def test(x:i32,y:i32):i32\n"
+        "    c = test_at(x,y)\n"
+        "    return c\n"
         "end"));
 
 INSTANTIATE_TEST_CASE_P(

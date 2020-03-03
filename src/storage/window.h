@@ -33,9 +33,13 @@ class ListV {
     ListV(const std::vector<V> &buffer, uint32_t start, uint32_t end)
         : start_(start), end_(end), buffer_(buffer) {}
 
+    ListV(const ListV<V>& list)
+        : start_(list.start_), end_(list.end_), buffer_(list.buffer_) {}
     ~ListV() {}
     // TODO(chenjing): at 数组越界处理
-    virtual const V At(int32_t pos) const { return buffer_.at(pos); }
+    virtual const V At(int32_t pos) const {
+        return buffer_.at(pos);
+    }
     virtual const uint32_t Count() const { return end_ - start_; }
     virtual const uint32_t GetStart() const { return start_; }
     virtual const uint32_t GetEnd() const { return end_; }
