@@ -124,7 +124,9 @@ bool FeSQLJIT::AddSymbol(const std::string& name, void* fn_ptr) {
     return AddSymbol(jd, name, fn_ptr);
 }
 
-void FeSQLJIT::Init() { AddSymbol("malloc", reinterpret_cast<void*>(&malloc)); }
+void FeSQLJIT::Init() {
+//    AddSymbol("malloc", reinterpret_cast<void*>(&malloc));
+}
 bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
                          ::llvm::orc::MangleAndInterner& mi,
                          const std::string& fn_name, void* fn_ptr) {
