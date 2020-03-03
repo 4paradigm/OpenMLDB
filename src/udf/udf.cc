@@ -7,10 +7,11 @@
  *--------------------------------------------------------------------------
  **/
 #include "udf/udf.h"
-#include <node/sql_node.h>
+#include "codegen/ir_base_builder.h"
+#include "node/sql_node.h"
 #include <stdint.h>
-#include <vector>
 #include <utility>
+#include <vector>
 #include "proto/type.pb.h"
 #include "storage/type_ir_builder.h"
 #include "storage/window.h"
@@ -350,9 +351,13 @@ void RegisterUDFToModule(::llvm::Module *m) {
     {
         std::string prefix =
             "sum_" + node::DataTypeName(fesql::node::kList) + "_";
+
         for (auto type : number_types) {
+            fesql::node::TypeNode type_node(fesql::node::kList, type.first);
+            ::llvm::Type* llvm_type;
+            ::fesql::codegen::GetLLVMType(m, &type_node, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   type.second, i8_ptr_ty);
+                                   type.second, llvm_type);
         }
     }
 
