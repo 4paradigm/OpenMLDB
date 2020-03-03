@@ -16,14 +16,10 @@
 namespace fesql {
 namespace udf {
 namespace v1 {
-//#ifdef __cplusplus
-// extern "C" {
-//#endif
 int32_t inc_int32(int32_t i);
 
 template <class V>
 V sum_list(int8_t *input);
-
 
 template <class V>
 V max_list(int8_t *input);
@@ -43,9 +39,6 @@ bool has_next_iterator(int8_t *input);
 template <class V>
 V next_iterator(int8_t *input);
 
-//#ifdef __cplusplus
-//}
-//#endif
 }  // namespace v1
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
