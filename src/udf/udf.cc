@@ -187,7 +187,7 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "min_list_double",
               reinterpret_cast<void *>(&v1::min_list<double>));
 
-    AddSymbol(jd, mi, "at_list",
+    AddSymbol(jd, mi, "at_list_int16",
               reinterpret_cast<void *>(&v1::at_list<int16_t>));
     AddSymbol(jd, mi, "at_list_int32",
               reinterpret_cast<void *>(&v1::at_list<int32_t >));
