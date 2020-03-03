@@ -7,11 +7,10 @@
  *--------------------------------------------------------------------------
  **/
 #include "udf/udf.h"
-#include "codegen/ir_base_builder.h"
-#include "node/sql_node.h"
 #include <stdint.h>
 #include <utility>
 #include <vector>
+#include "codegen/ir_base_builder.h"
 #include "proto/type.pb.h"
 #include "storage/type_ir_builder.h"
 #include "storage/window.h"
@@ -353,23 +352,20 @@ void RegisterUDFToModule(::llvm::Module *m) {
             "sum_" + node::DataTypeName(fesql::node::kList) + "_";
 
         for (auto type : number_types) {
-            fesql::node::TypeNode type_node(fesql::node::kList, type.first);
-            ::llvm::Type* llvm_type;
-            ::fesql::codegen::GetLLVMType(m, &type_node, &llvm_type);
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   type.second, llvm_type);
+                                   type.second, llvm_type->getPointerTo());
         }
     }
-
     {
         std::string prefix =
             "min_" + node::DataTypeName(fesql::node::kList) + "_";
         for (auto type : number_types) {
-            fesql::node::TypeNode type_node(fesql::node::kList, type.first);
-            ::llvm::Type* llvm_type;
-            ::fesql::codegen::GetLLVMType(m, &type_node, &llvm_type);
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   type.second, llvm_type);
+                                   type.second, llvm_type->getPointerTo());
         }
     }
 
@@ -377,11 +373,10 @@ void RegisterUDFToModule(::llvm::Module *m) {
         std::string prefix =
             "max_" + node::DataTypeName(fesql::node::kList) + "_";
         for (auto type : number_types) {
-            fesql::node::TypeNode type_node(fesql::node::kList, type.first);
-            ::llvm::Type* llvm_type;
-            ::fesql::codegen::GetLLVMType(m, &type_node, &llvm_type);
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   type.second, llvm_type);
+                                   type.second, llvm_type->getPointerTo());
         }
     }
 
@@ -389,11 +384,11 @@ void RegisterUDFToModule(::llvm::Module *m) {
         std::string prefix =
             "at_" + node::DataTypeName(fesql::node::kList) + "_";
         for (auto type : number_types) {
-            fesql::node::TypeNode type_node(fesql::node::kList, type.first);
-            ::llvm::Type* llvm_type;
-            ::fesql::codegen::GetLLVMType(m, &type_node, &llvm_type);
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
-                                   type.second, llvm_type, i32_ty);
+                                   type.second, llvm_type->getPointerTo(),
+                                   i32_ty);
         }
     }
 
@@ -401,33 +396,30 @@ void RegisterUDFToModule(::llvm::Module *m) {
         std::string prefix =
             "iterator_" + node::DataTypeName(fesql::node::kList) + "_";
         for (auto type : number_types) {
-            fesql::node::TypeNode type_node(fesql::node::kList, type.first);
-            ::llvm::Type* llvm_type;
-            ::fesql::codegen::GetLLVMType(m, &type_node, &llvm_type);
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
-                                   i1_ty, llvm_type, i8_ptr_ty);
+                                   i1_ty, llvm_type->getPointerTo(), i8_ptr_ty);
         }
     }
     {
         std::string prefix =
             "next_" + node::DataTypeName(fesql::node::kIterator) + "_";
         for (auto type : number_types) {
-            fesql::node::TypeNode type_node(fesql::node::kIterator, type.first);
-            ::llvm::Type* llvm_type;
-            ::fesql::codegen::GetLLVMType(m, &type_node, &llvm_type);
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
-                                   type.second, llvm_type);
+                                   type.second, llvm_type->getPointerTo());
         }
     }
     {
         std::string prefix =
             "has_next_" + node::DataTypeName(fesql::node::kIterator) + "_";
         for (auto type : number_types) {
-            fesql::node::TypeNode type_node(fesql::node::kIterator, type.first);
-            ::llvm::Type* llvm_type;
-            ::fesql::codegen::GetLLVMType(m, &type_node, &llvm_type);
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
-                                   i1_ty, llvm_type);
+                                   i1_ty, llvm_type->getPointerTo());
         }
     }
 }
