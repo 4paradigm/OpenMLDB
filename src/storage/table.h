@@ -29,6 +29,7 @@ enum TableStat {
 
 enum IndexStat {
     kReady = 0,
+    kWaiting,
     kDeleting,
     kDeleted
 };

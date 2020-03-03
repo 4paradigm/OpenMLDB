@@ -300,6 +300,8 @@ void MemTable::SchedGc() {
             auto pos = column_key_map_.find(i);
             if (pos == column_key_map_.end()) {
                 continue;
+            } else if (pos->second->status.load(std::memory_order_relaxed) == IndexStat::kWaiting) {
+                pos->second->status.store(IndexStat::kDeleting);
             } else if(pos->second->status.load(std::memory_order_relaxed) == IndexStat::kDeleting) {
                 if (segments_[i] != NULL) {
                     for (uint32_t k = 0; k < seg_cnt_; i++) {
@@ -654,7 +656,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
     auto column_key_iter = column_key_map_.find(iter->second);
     if (column_key_iter != column_key_map_.end() && 
             !column_key_iter->second->status.load(std::memory_order_relaxed)) {
-        column_key_iter->second->status.store(IndexStat::kDeleting);
+        column_key_iter->second->status.store(IndexStat::kWaiting);
     }
     return true;
 }
