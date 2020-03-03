@@ -62,10 +62,12 @@ class NodeManager {
                                        bool is_range_between);
     ScanPlanNode *MakeSeqScanPlanNode(const std::string &table);
     ScanPlanNode *MakeIndexScanPlanNode(const std::string &table);
-    ProjectPlanNode *MakeProjectPlanNode(node::SQLNode *expression,
+    ProjectNode *MakeProjectNode(node::SQLNode *expression,
                                          const std::string &name,
                                          const std::string &table,
                                          const std::string &w);
+    PlanNode* MakeRelationNode(TableNode *node);
+    PlanNode *MakeCrossProductNode(PlanNode *left, PlanNode* right);
     // Make SQLxxx Node
     SQLNode *MakeSQLNode(const SQLNodeType &type);
     SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
@@ -165,6 +167,14 @@ class NodeManager {
 
     node::FnForInBlock *MakeForInBlock(FnForInNode *for_in_node,
                                        FnNodeList *block);
+
+    node::SelectPlanNode *MakeSelectPlanNode(PlanNode* node, const ExprNode *condition);
+
+    PlanNode *MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list);
+
+    PlanNode *MakeProjectPlanNode(PlanNode *node, const NodePointVector &projection_list);
+
+    PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {

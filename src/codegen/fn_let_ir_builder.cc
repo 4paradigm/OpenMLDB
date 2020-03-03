@@ -91,8 +91,8 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
             return false;
         }
 
-        const ::fesql::node::ProjectPlanNode* pp_node =
-            (const ::fesql::node::ProjectPlanNode*)pn;
+        const ::fesql::node::ProjectNode* pp_node =
+            (const ::fesql::node::ProjectNode*)pn;
         const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
         ::llvm::Value* expr_out_val = NULL;
         std::string col_name = pp_node->GetName();

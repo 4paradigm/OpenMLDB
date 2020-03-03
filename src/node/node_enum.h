@@ -175,6 +175,11 @@ enum PlanType {
     kOpExpr,
     kAggFunction,
     kAggWindowFunction,
+    kPlanTypeRelation,
+    kPlanTypeJoin,
+    kPlanTypeUnion,
+    kPlanTypeSort,
+    kPlanTypeProject,
     kUnknowPlan,
 
     kScanTypeSeqScan,

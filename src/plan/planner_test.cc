@@ -62,17 +62,17 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
         3u,
         ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
     {
-        node::ProjectPlanNode *project = dynamic_cast<node::ProjectPlanNode *>(
+        node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
             ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects()[0]);
         ASSERT_EQ(0u, project->GetPos());
     }
     {
-        node::ProjectPlanNode *project = dynamic_cast<node::ProjectPlanNode *>(
+        node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
             ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects()[1]);
         ASSERT_EQ(1u, project->GetPos());
     }
     {
-        node::ProjectPlanNode *project = dynamic_cast<node::ProjectPlanNode *>(
+        node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
             ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects()[2]);
         ASSERT_EQ(2u, project->GetPos());
     }
@@ -311,15 +311,15 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
 
         // validate col1 pos 3
         {
-            node::ProjectPlanNode *project =
-                dynamic_cast<node::ProjectPlanNode *>(
+            node::ProjectNode *project =
+                dynamic_cast<node::ProjectNode *>(
                     project_list->GetProjects()[0]);
             ASSERT_EQ(3u, project->GetPos());
         }
         // validate col2 pos 5
         {
-            node::ProjectPlanNode *project =
-                dynamic_cast<node::ProjectPlanNode *>(
+            node::ProjectNode *project =
+                dynamic_cast<node::ProjectNode *>(
                     project_list->GetProjects()[1]);
             ASSERT_EQ(5u, project->GetPos());
         }
@@ -341,15 +341,15 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
 
         // validate w1_col1_sum pos 0
         {
-            node::ProjectPlanNode *project =
-                dynamic_cast<node::ProjectPlanNode *>(
+            node::ProjectNode *project =
+                dynamic_cast<node::ProjectNode *>(
                     project_list->GetProjects()[0]);
             ASSERT_EQ(0, project->GetPos());
         }
         // validate w1_col3_sum pos 0
         {
-            node::ProjectPlanNode *project =
-                dynamic_cast<node::ProjectPlanNode *>(
+            node::ProjectNode *project =
+                dynamic_cast<node::ProjectNode *>(
                     project_list->GetProjects()[1]);
             ASSERT_EQ(4u, project->GetPos());
         }
@@ -376,37 +376,37 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
 
         // validate w2_col3_sum pos 1
         {
-            node::ProjectPlanNode *project =
-                dynamic_cast<node::ProjectPlanNode *>(
+            node::ProjectNode *project =
+                dynamic_cast<node::ProjectNode *>(
                     project_list->GetProjects()[0]);
             ASSERT_EQ(1u, project->GetPos());
         }
         // validate w2_col4_sum pos 2
         {
-            node::ProjectPlanNode *project =
-                dynamic_cast<node::ProjectPlanNode *>(
+            node::ProjectNode *project =
+                dynamic_cast<node::ProjectNode *>(
                     project_list->GetProjects()[1]);
             ASSERT_EQ(2u, project->GetPos());
         }
         // validate w2_col1_sum pos 6
         {
-            node::ProjectPlanNode *project =
-                dynamic_cast<node::ProjectPlanNode *>(
+            node::ProjectNode *project =
+                dynamic_cast<node::ProjectNode *>(
                     project_list->GetProjects()[2]);
             ASSERT_EQ(6u, project->GetPos());
         }
 
         // validate w2_col1_at_0 pos 7
         {
-            node::ProjectPlanNode *project =
-                dynamic_cast<node::ProjectPlanNode *>(
+            node::ProjectNode *project =
+                dynamic_cast<node::ProjectNode *>(
                     project_list->GetProjects()[3]);
             ASSERT_EQ(7u, project->GetPos());
         }
         // validate w2_col1_at_1 pos 8
         {
-            node::ProjectPlanNode *project =
-                dynamic_cast<node::ProjectPlanNode *>(
+            node::ProjectNode *project =
+                dynamic_cast<node::ProjectNode *>(
                     project_list->GetProjects()[4]);
             ASSERT_EQ(8u, project->GetPos());
         }

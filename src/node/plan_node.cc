@@ -66,7 +66,7 @@ void MultiChildPlanNode::Print(std::ostream &output,
     PrintPlanVector(output, org_tab + INDENT, children_, "children", true);
 }
 
-void ProjectPlanNode::Print(std::ostream &output,
+void ProjectNode::Print(std::ostream &output,
                             const std::string &orgTab) const {
     PlanNode::Print(output, orgTab);
     output << "\n";

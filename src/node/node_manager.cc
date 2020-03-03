@@ -339,6 +339,11 @@ PlanNode *NodeManager::MakeMergeNode(int columns_size) {
     return node_ptr;
 }
 
+PlanNode *NodeManager::MakeRelationNode(TableNode *node) {
+    PlanNode *node_ptr = new RelationNode("", node->GetOrgTableName());
+    return RegisterNode(node_ptr);
+}
+
 ScanPlanNode *NodeManager::MakeSeqScanPlanNode(const std::string &table) {
     node::ScanPlanNode *node_ptr = new ScanPlanNode(table, kScanTypeSeqScan);
     RegisterNode(node_ptr);
@@ -363,46 +368,46 @@ ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(
     RegisterNode(node_ptr);
     return node_ptr;
 }
-
-PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
-    PlanNode *node_ptr;
-    switch (type) {
-        case kPlanTypeSelect:
-            node_ptr = new SelectPlanNode();
-            break;
-        case kProjectList:
-            node_ptr = new ProjectListPlanNode();
-            break;
-        case kProject:
-            node_ptr = new ProjectPlanNode();
-            break;
-        case kPlanTypeLimit:
-            node_ptr = new LimitPlanNode();
-            break;
-        case kPlanTypeCreate:
-            node_ptr = new CreatePlanNode();
-            break;
-        case kPlanTypeCmd:
-            node_ptr = new CmdPlanNode();
-            break;
-        case kPlanTypeInsert:
-            node_ptr = new InsertPlanNode();
-            break;
-        case kPlanTypeFuncDef:
-            node_ptr = new FuncDefPlanNode();
-            break;
-        case kPlanTypeWindow:
-            node_ptr = new WindowPlanNode(0);
-            break;
-        case kPlanTypeMerge:
-            node_ptr = new MergePlanNode(0);
-            break;
-        default:
-            node_ptr = new LeafPlanNode(kUnknowPlan);
-    }
-    RegisterNode(node_ptr);
-    return node_ptr;
-}
+//
+// PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
+//    PlanNode *node_ptr;
+//    switch (type) {
+//        case kPlanTypeSelect:
+//            node_ptr = new SelectPlanNode();
+//            break;
+//        case kProjectList:
+//            node_ptr = new ProjectListPlanNode();
+//            break;
+//        case kProject:
+//            node_ptr = new ProjectNode();
+//            break;
+//        case kPlanTypeLimit:
+//            node_ptr = new LimitPlanNode();
+//            break;
+//        case kPlanTypeCreate:
+//            node_ptr = new CreatePlanNode();
+//            break;
+//        case kPlanTypeCmd:
+//            node_ptr = new CmdPlanNode();
+//            break;
+//        case kPlanTypeInsert:
+//            node_ptr = new InsertPlanNode();
+//            break;
+//        case kPlanTypeFuncDef:
+//            node_ptr = new FuncDefPlanNode();
+//            break;
+//        case kPlanTypeWindow:
+//            node_ptr = new WindowPlanNode(0);
+//            break;
+//        case kPlanTypeMerge:
+//            node_ptr = new MergePlanNode(0);
+//            break;
+//        default:
+//            node_ptr = new LeafPlanNode(kUnknowPlan);
+//    }
+//    RegisterNode(node_ptr);
+//    return node_ptr;
+//}
 
 FnNode *NodeManager::MakeFnHeaderNode(const std::string &name,
                                       FnNodeList *plist,
@@ -600,6 +605,31 @@ FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
     FnForInBlock *node_ptr = new FnForInBlock(for_in_node, block);
     RegisterNode(node_ptr);
     return node_ptr;
+}
+PlanNode *NodeManager::MakeCrossProductNode(PlanNode *left, PlanNode *right) {
+    node::CrossProductPlanNode *node_ptr =
+        new CrossProductPlanNode(left, right);
+    return RegisterNode(node_ptr);
+}
+PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node,
+                                          const ExprNode *condition) {
+    node::SelectPlanNode *select_plan_ptr = new SelectPlanNode(node, condition);
+    return RegisterNode(select_plan_ptr);
+}
+PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node,
+                                         const ExprListNode *by_list) {
+    node::GroupPlanNode *node_ptr = new GroupPlanNode(node, by_list);
+    return RegisterNode(node_ptr);
+}
+PlanNode *NodeManager::MakeProjectPlanNode(
+    PlanNode *node, const NodePointVector &projection_list) {
+    node::ProjectPlanNode *node_ptr =
+        new ProjectPlanNode(node, projection_list);
+    return RegisterNode(node_ptr);
+}
+PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {
+    node::LimitPlanNode *node_ptr = new LimitPlanNode(node, limit_cnt);
+    return RegisterNode(node_ptr);
 }
 
 }  // namespace node

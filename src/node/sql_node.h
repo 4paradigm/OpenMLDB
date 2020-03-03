@@ -713,12 +713,12 @@ class SelectStmt : public SQLNode {
     // Print
     void Print(std::ostream &output, const std::string &org_tab) const;
 
+    const int distinct_opt_;
+    const ExprNode *where_clause_ptr_;
+    const ExprListNode *group_clause_ptr_;
+    const SQLNode *having_clause_ptr_;
+    const SQLNode *order_clause_ptr_;
  private:
-    int distinct_opt_;
-    SQLNode *where_clause_ptr_;
-    SQLNode *group_clause_ptr_;
-    SQLNode *having_clause_ptr_;
-    SQLNode *order_clause_ptr_;
     SQLNode *limit_ptr_;
     NodePointVector select_list_ptr_;
     NodePointVector tableref_list_ptr_;
