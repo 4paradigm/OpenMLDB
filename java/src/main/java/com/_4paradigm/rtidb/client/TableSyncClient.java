@@ -1,6 +1,8 @@
 package com._4paradigm.rtidb.client;
 
+import com._4paradigm.rtidb.client.impl.RelationalIterator;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.ReadOption;
 import com._4paradigm.rtidb.client.schema.WriteOption;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
@@ -66,6 +68,9 @@ public interface TableSyncClient {
     boolean put(String tname, Map<String, Object> row) throws TimeoutException, TabletException;
 
     boolean put(String tname, Map<String, Object> row, WriteOption wo) throws TimeoutException, TabletException;
+
+    public boolean update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo)
+            throws TimeoutException, TabletException;
     List<ColumnDesc> getSchema(String tname) throws TabletException;
     ByteString get(String tname, String key) throws TimeoutException, TabletException;
 
@@ -87,6 +92,13 @@ public interface TableSyncClient {
                     long et, Tablet.GetType etType) throws TimeoutException, TabletException;
     Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type,
                     long et, Tablet.GetType etType) throws TimeoutException, TabletException;
+
+    public RelationalIterator traverse(String tableName, ReadOption ro) throws TimeoutException, TabletException;
+
+    public RelationalIterator batchQuery(String tableName, ReadOption ro) throws TimeoutException, TabletException;
+
+    RelationalIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException;
+
     Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
     Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
 
@@ -142,6 +154,7 @@ public interface TableSyncClient {
     int count(int tid, int pid, String key, boolean filter_expired_data) throws TimeoutException, TabletException;
     int count(int tid, int pid, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException;
 
+    boolean delete(String tableName, Map<String, Object> conditionColumns) throws TimeoutException, TabletException;
     boolean delete(String tname, String key) throws TimeoutException, TabletException;
     boolean delete(String tname, String key, String idxName) throws TimeoutException, TabletException;
     boolean delete(int tid, int pid, String key) throws TimeoutException, TabletException;

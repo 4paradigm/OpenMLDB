@@ -188,7 +188,6 @@ message PutRequest {
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7;
-    optional rtidb.type.TableType table_type = 8;
 }
 
 message PutResponse {
