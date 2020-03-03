@@ -251,6 +251,8 @@ public:
         gc_version_.fetch_add(1, std::memory_order_relaxed);
     }
 
+    void ReleaseAndCount(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+
 private:
     void FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
                   uint64_t& gc_idx_cnt, 

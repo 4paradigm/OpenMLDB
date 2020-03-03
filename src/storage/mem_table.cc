@@ -304,7 +304,7 @@ void MemTable::SchedGc() {
                 if (segments_[i] != NULL) {
                     for (uint32_t k = 0; k < seg_cnt_; i++) {
                         if (segments_[i][k] != NULL) {
-                            gc_record_cnt += segments_[i][k]->Release();
+                            segments_[i][k]->ReleaseAndCount(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                             delete segments_[i][k];
                             segments_[i][k] = NULL;
                         }
