@@ -4,8 +4,8 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 add_library(fesql_vm STATIC jit.cc op_generator.cc sql_compiler.cc engine.cc)
 add_dependencies(fesql_vm fesql_proto fesql_parser)
-set(vm_deps_libs fesql_storage fesql_vm fesql_parser fesql_planner fesql_codegen fesql_proto
-    fesql_node fesql_udf)
+set(vm_deps_libs fesql_storage fesql_vm fesql_parser fesql_planner fesql_udf fesql_codegen fesql_proto
+    fesql_node)
 
 add_executable(jit_test jit_test.cc)
 target_link_libraries(jit_test ${vm_deps_libs}  ${llvm_libs} ${COMMON_LIBS} gtest pthread)
