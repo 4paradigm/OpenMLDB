@@ -181,6 +181,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     const std::vector<::fesql::node::SQLNode*>& args = call_fn->GetArgs();
     std::vector<::fesql::node::SQLNode*>::const_iterator it = args.cbegin();
     std::vector<::fesql::node::TypeNode> generics_types;
+    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
     for (; it != args.cend(); ++it) {
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
         ::llvm::Value* llvm_arg = NULL;
@@ -193,10 +194,9 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
                 return false;
             }
             // handle list type
-            if (fesql::node::kList == value_type.base_) {
+            // 泛型类型还需要优化，目前是hard code识别list或者迭代器类型，然后取generic type
+            if (fesql::node::kList == value_type.base_ || fesql::node::kIterator == value_type.base_) {
                 generics_types.push_back(value_type);
-                ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-                llvm_arg = builder.CreatePointerCast(llvm_arg, i8_ptr_ty);
             }
             llvm_args.push_back(llvm_arg);
         } else {
@@ -210,6 +210,13 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
 
     ::llvm::Function* fn = GetFuncion(name, generics_types, status);
 
+//
+//    for (int i = 0; i < llvm_args.size(); ++i) {
+//        ::llvm::Type* param_type = fn->getType()->getFunctionParamType(i);
+//        if (i8_ptr_ty == param_type && i8_ptr_ty != llvm_args[i]->getType()) {
+//                llvm_args[i] = builder.CreatePointerCast(llvm_args[i], i8_ptr_ty);
+//        }
+//    }
     if (common::kOk != status.code) {
         return false;
     }
@@ -219,6 +226,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         status.code = (common::kCallMethodError);
         return false;
     }
+
 
     ::llvm::ArrayRef<::llvm::Value*> array_ref(llvm_args);
     *output = builder.CreateCall(fn->getFunctionType(), fn, array_ref);
