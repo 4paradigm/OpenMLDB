@@ -17,7 +17,6 @@
 
 #include "base/codec.h"
 #include <unordered_map>
-#include <utility>
 #include "logging.h"
 
 using ::baidu::common::INFO;
