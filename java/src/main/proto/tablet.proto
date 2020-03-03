@@ -1,4 +1,5 @@
 import "common.proto";
+import "type.proto";
 package rtidb.api;
 
 option cc_generic_services = true;

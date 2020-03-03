@@ -33,6 +33,12 @@ message ColumnKey {
     optional uint32 flag = 4[default=0];
 }
 
+message IndexDef {
+    optional string index_name = 1;
+    repeated string col_name = 2;
+    optional rtidb.type.IndexType index_type = 3;
+}
+
 enum StorageMode {
     kMemory = 1;
     kSSD = 2;

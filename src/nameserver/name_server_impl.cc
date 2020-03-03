@@ -2146,28 +2146,37 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
     ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
-    if (!table_info->has_ttl_desc()) {
-        if (table_info->ttl_type() == "kLatestTime") {
-            ttl_type = ::rtidb::api::TTLType::kLatestTime;
-        } else if (table_info->ttl_type() == "kAbsOrLat") {
-            ttl_type = ::rtidb::api::TTLType::kAbsOrLat;
-        } else if (table_info->ttl_type() == "kAbsAndLat") {
-            ttl_type = ::rtidb::api::TTLType::kAbsAndLat;
-        } else if (table_info->ttl_type() != "kAbsoluteTime") {
-            return -1;
+    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
+        if (!table_info->has_ttl_desc()) {
+            if (table_info->ttl_type() == "kLatestTime") {
+                ttl_type = ::rtidb::api::TTLType::kLatestTime;
+            } else if (table_info->ttl_type() == "kAbsOrLat") {
+                ttl_type = ::rtidb::api::TTLType::kAbsOrLat;
+            } else if (table_info->ttl_type() == "kAbsAndLat") {
+                ttl_type = ::rtidb::api::TTLType::kAbsAndLat;
+            } else if (table_info->ttl_type() != "kAbsoluteTime") {
+                return -1;
+            }
+        } else {
+            ttl_type = table_info->ttl_desc().ttl_type();
         }
-    } else {
-        ttl_type = table_info->ttl_desc().ttl_type();
     }
     ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
     if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
         compress_type = ::rtidb::api::CompressType::kSnappy;
     }
     ::rtidb::common::StorageMode storage_mode = ::rtidb::common::StorageMode::kMemory;
-    if (table_info->storage_mode() == ::rtidb::common::StorageMode::kSSD) {
-        storage_mode = ::rtidb::common::StorageMode::kSSD;
-    } else if (table_info->storage_mode() == ::rtidb::common::StorageMode::kHDD) {
+    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
+        if (table_info->storage_mode() == ::rtidb::common::StorageMode::kSSD) {
+            storage_mode = ::rtidb::common::StorageMode::kSSD;
+        } else if (table_info->storage_mode() == ::rtidb::common::StorageMode::kHDD) {
+            storage_mode = ::rtidb::common::StorageMode::kHDD;
+        }
+    } else {
         storage_mode = ::rtidb::common::StorageMode::kHDD;
+        if (table_info->storage_mode() == ::rtidb::common::StorageMode::kSSD) {
+            storage_mode = ::rtidb::common::StorageMode::kSSD;
+        }
     }
     ::rtidb::api::TableMeta table_meta;
     for (uint32_t i = 0; i < columns.size(); i++) {
@@ -2182,6 +2191,9 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         return false;
     }
 
+    if (table_info->has_table_type() && table_info->table_type() == ::rtidb::type::kRelational) {
+        table_meta.set_table_type(::rtidb::type::kRelational);
+    }
     table_meta.set_name(table_info->name());
     table_meta.set_tid(table_info->tid());
     table_meta.set_ttl(table_info->ttl());
@@ -2841,20 +2853,21 @@ void NameServerImpl::DropTable(RpcController* controller,
                     task_ptr->op_id(), ::rtidb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                     ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
-        task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableInternel, this, request->name(), *response, table_info, task_ptr));
+        task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableInternel, this, *request, *response, table_info, task_ptr));
         response->set_code(0);
         response->set_msg("ok");
     } else {
-        DropTableInternel(request->name(), *response, table_info, task_ptr);
+        DropTableInternel(*request, *response, table_info, task_ptr);
         response->set_code(response->code());
         response->set_msg(response->msg());
     }
 }
 
-void NameServerImpl::DropTableInternel(const std::string name, 
+void NameServerImpl::DropTableInternel(const DropTableRequest& request, 
         GeneralResponse& response,
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
+    std::string name = request.name();
     std::map<uint32_t, std::map<std::string, std::shared_ptr<TabletClient>>> pid_endpoint_map;
     uint32_t tid = table_info->tid();
     int code = 0;
@@ -2891,7 +2904,7 @@ void NameServerImpl::DropTableInternel(const std::string name,
     }
     for (const auto& pkv : pid_endpoint_map) {
         for (const auto& kv : pkv.second) {
-            if (!kv.second->DropTable(tid, pkv.first)) {
+            if (!kv.second->DropTable(tid, pkv.first, table_info->table_type())) {
                 PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]",
                         tid, pkv.first, kv.first.c_str());
                 code = 313; // if drop table failed, return error
@@ -3470,11 +3483,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
-    if (CheckTableMeta(*table_info) < 0) {
-        response->set_code(307);
-        response->set_msg("check TableMeta failed, index column type can not float or double");
-        return;
-    }
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info_.find(table_info->name()) != table_info_.end()) {
@@ -3484,25 +3492,32 @@ void NameServerImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    if (table_info->has_ttl_desc()) {
-        if ((table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) || (table_info->ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
+    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
+        if (CheckTableMeta(*table_info) < 0) {
             response->set_code(307);
-            uint32_t max_ttl = table_info->ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
-            uint64_t ttl = table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max ? table_info->ttl_desc().abs_ttl() : table_info->ttl_desc().lat_ttl();
-            response->set_msg("invalid parameter");
-            PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
-                            ttl, ::rtidb::api::TTLType_Name(table_info->ttl_desc().ttl_type()).c_str(), max_ttl);
+            response->set_msg("check TableMeta failed, index column type can not float or double");
             return;
         }
-    } else if (table_info->has_ttl()) {
-        if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max)
-                || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
-            response->set_code(307);
-            uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
-            response->set_msg("invalid parameter");
-            PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
-                            table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
-            return;
+        if (table_info->has_ttl_desc()) {
+            if ((table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) || (table_info->ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
+                response->set_code(307);
+                uint32_t max_ttl = table_info->ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+                uint64_t ttl = table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max ? table_info->ttl_desc().abs_ttl() : table_info->ttl_desc().lat_ttl();
+                response->set_msg("invalid parameter");
+                PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
+                        ttl, ::rtidb::api::TTLType_Name(table_info->ttl_desc().ttl_type()).c_str(), max_ttl);
+                return;
+            }
+        } else if (table_info->has_ttl()) {
+            if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max)
+                    || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
+                response->set_code(307);
+                uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+                response->set_msg("invalid parameter");
+                PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
+                        table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
+                return;
+            }
         }
     }
     if (!request->has_zone_info()) { 

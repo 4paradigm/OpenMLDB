@@ -155,7 +155,7 @@ public:
         GeneralResponse* response,
         Closure* done);
 
-    void DropTableInternel(const std::string name,
+    void DropTableInternel(const DropTableRequest& request,
             GeneralResponse& response,
             std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             std::shared_ptr<::rtidb::api::TaskInfo> task_ptr); 
