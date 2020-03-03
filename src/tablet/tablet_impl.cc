@@ -3947,7 +3947,7 @@ void TabletImpl::DeleteIndex(RpcController* controller,
         }
         tables = iter->second;
         if (tables.begin()->second->GetStorageMode() != ::rtidb::common::kMemory) {
-            response->set_code(100);
+            response->set_code(701);
             response->set_msg("only support mem_table");
             return;
         }
@@ -3960,6 +3960,7 @@ void TabletImpl::DeleteIndex(RpcController* controller,
             }
         }
     }
+    PDLOG(INFO, "delete index : tid[%u] index[%s]", request->tid(), request->idx_name());
     response->set_code(0);
     response->set_msg("ok");
 }

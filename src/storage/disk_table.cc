@@ -486,7 +486,9 @@ void DiskTable::GcHead() {
             }
         } else {
             uint64_t ttl_num = lat_ttl_;
-            if (column_key_map_iter != column_key_map_.end() && column_key_map_iter->second->column_idx.front() < lat_ttl_vec_.size()) {
+            if (column_key_map_iter != column_key_map_.end() &&
+                !column_key_map_iter->second->column_idx.empty() && 
+                column_key_map_iter->second->column_idx.front() < lat_ttl_vec_.size()) {
                 ttl_num = lat_ttl_vec_[column_key_map_iter->second->column_idx.front()]->load(std::memory_order_relaxed);
             }
             if (ttl_num < 1) {

@@ -260,6 +260,8 @@ private:
                   uint64_t& gc_record_byte_size);
     void SplitList(KeyEntry* entry, uint64_t ts, 
                    ::rtidb::base::Node<uint64_t, DataBlock*>** node);
+
+    void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
 private:
     KeyEntries* entries_;
     // only Put need mutex

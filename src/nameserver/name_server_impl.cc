@@ -8470,6 +8470,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
     } else {
         table_info->mutable_column_desc_v1(idx)->set_add_ts_idx(false);
     }
+    PDLOG(INFO, "delete index : table[%s] index[%s]", request->table_name(), request->idx_name());
     response->set_code(0);
     response->set_msg("ok");
 }
