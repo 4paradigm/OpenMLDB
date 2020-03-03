@@ -352,7 +352,6 @@ void RegisterUDFToModule(::llvm::Module *m) {
             "sum_" + node::DataTypeName(fesql::node::kList) + "_";
 
         for (auto type : number_types) {
-            fesql::node::TypeNode type_node(fesql::node::kList, type.first);
             ::llvm::Type *llvm_type;
             ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
@@ -363,7 +362,6 @@ void RegisterUDFToModule(::llvm::Module *m) {
         std::string prefix =
             "min_" + node::DataTypeName(fesql::node::kList) + "_";
         for (auto type : number_types) {
-            fesql::node::TypeNode type_node(fesql::node::kList, type.first);
             ::llvm::Type *llvm_type;
             ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
