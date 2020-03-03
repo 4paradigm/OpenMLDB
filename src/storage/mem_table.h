@@ -116,7 +116,7 @@ public:
     ::rtidb::api::CompressType GetCompressType();
 
     inline uint64_t GetRecordByteSize() const {
-        return record_byte_size_.load(std::memory_order_relaxed);    
+        return record_byte_size_.load(std::memory_order_relaxed);
     }
 
     virtual uint64_t GetRecordCnt() const override {

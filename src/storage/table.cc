@@ -126,6 +126,13 @@ int Table::InitColumnDesc() {
         mapping_.insert(std::make_pair("idx0", 0));
         PDLOG(INFO, "no index specified with default");
     }
+    if (column_key_map_.empty()) {
+        for (const auto& iter : mapping_) {
+            std::shared_ptr<ColumnKey> column_key_ptr = std::make_shared<ColumnKey>();
+            column_key_ptr->column_idx.push_back(iter.second);
+            column_key_map_.insert(std::make_pair(iter.second, column_key_ptr));
+        }
+    }
     return 0;
 }
 

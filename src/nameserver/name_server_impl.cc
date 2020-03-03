@@ -8459,7 +8459,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
     }
     for(const auto &endpoint : tablets) {
         if(!tablet_client_map[endpoint]->DeleteIndex(table_info->tid(), request->idx_name())) {
-            response->set_code(100);
+            response->set_code(601);
             response->set_msg("delete index on tablet failed!");
             PDLOG(WARNING, "tablet[%s] delete index failed!", endpoint.c_str());
             return;

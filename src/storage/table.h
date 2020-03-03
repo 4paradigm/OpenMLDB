@@ -27,10 +27,17 @@ enum TableStat {
     kSnapshotPaused
 };
 
+enum IndexStat {
+    kReady = 0,
+    kDeleting,
+    kDeleted
+};
+
 struct ColumnKey {
-    ColumnKey() : deleted(0) {};
+    ColumnKey() : status(IndexStat::kReady) {}
+    // ColumnKey(std::initializer_list<uint32_t> list) : status(IndexStat::kReady), column_idx(list) {}
     ~ColumnKey() = default;
-    std::atomic<uint32_t> deleted; // 0: exist, 1: waiting to delete, 2: has deleted
+    std::atomic<IndexStat> status;
     std::vector<uint32_t> column_idx;
 };
 
@@ -176,7 +183,7 @@ public:
     }
 
     inline bool IsIndexDeleted(uint32_t idx) {
-        return column_key_map_.count(idx) && column_key_map_[idx]->deleted.load();
+        return column_key_map_.count(idx) && column_key_map_[idx]->status.load(std::memory_order_relaxed);
     }
 
     inline void SetTTLType(const ::rtidb::api::TTLType& type) {
