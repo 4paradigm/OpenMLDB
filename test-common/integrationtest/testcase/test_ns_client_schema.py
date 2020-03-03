@@ -104,6 +104,21 @@ class TestSchema(TestCaseBase):
         self.assertEqual(column_key[0], ["0", "card", "card", "ts1", "14400min"])
         self.assertEqual(column_key[1], ["1", "card", "card", "ts2", "100min"])
         self.assertEqual(column_key[2], ["2", "mcc", "mcc", "ts2", "100min"])
+
+        rs = self.ns_deleteindex(self.ns_leader, name, "card")
+        self.assertIn('Fail to delete index')
+        rs = self.ns_deleteindex(self.ns_leader, name, "mcc")
+        self.assertIn('delete index ok')
+
+        (schema, column_key) = self.ns_showschema(self.ns_leader, name)
+        self.assertEqual(len(schema), 5)
+        self.assertEqual(schema[0], ['0', 'card', 'string'])
+        self.assertEqual(schema[2], ['2', 'amt', 'double'])
+        self.assertEqual(schema[3], ['3', 'ts1', 'int64'])
+        self.assertEqual(len(column_key), 2)
+        self.assertEqual(column_key[0], ["0", "card", "card", "ts1", "14400min"])
+        self.assertEqual(column_key[1], ["1", "card", "card", "ts2", "100min"])
+
         self.ns_drop(self.ns_leader, name)
 
     def test_showschema_no_columnkey(self):
@@ -130,6 +145,20 @@ class TestSchema(TestCaseBase):
         self.assertEqual(len(column_key), 2)
         self.assertEqual(column_key[0], ["0", "card", "card", "ts1", "14400min"])
         self.assertEqual(column_key[1], ["1", "mcc", "mcc", "ts1", "14400min"])
+
+        rs = self.ns_deleteindex(self.ns_leader, name, "card")
+        self.assertIn('Fail to delete index')
+        rs = self.ns_deleteindex(self.ns_leader, name, "mcc")
+        self.assertIn('delete index ok')
+
+        (schema, column_key) = self.ns_showschema(self.ns_leader, name)
+        self.assertEqual(len(schema), 4)
+        self.assertEqual(schema[0], ["0", "card", "string"])
+        self.assertEqual(schema[2], ["2", "amt", "double"])
+        self.assertEqual(schema[3], ["3", "ts1", "int64"])
+        self.assertEqual(len(column_key), 1)
+        self.assertEqual(column_key[0], ["0", "card", "card", "ts1", "14400min"])
+
         self.ns_drop(self.ns_leader, name)
 
     def test_showschema_no_columnkey_no_tskey(self):

@@ -1231,15 +1231,49 @@ TEST_F(TabletImplTest, MultiGet) {
     get_request.set_idx_name("amt");
 
     tablet.Get(NULL, &get_request, &get_response, &closure);
-      ASSERT_EQ(0, get_response.code());
-      ASSERT_EQ(1100, get_response.ts());
+    ASSERT_EQ(0, get_response.code());
+    ASSERT_EQ(1100, get_response.ts());
     std::string value(get_response.value());
     std::vector<std::string> vec;
     MultiDimensionDecode(value, vec, columns.size());
-      ASSERT_EQ(3, vec.size());
+    ASSERT_EQ(3, vec.size());
     ASSERT_STREQ("test2", vec[0].c_str());
     ASSERT_STREQ("abcd2", vec[1].c_str());
     ASSERT_STREQ("12122", vec[2].c_str());
+    
+    // delete index
+    ::rtidb::api::DeleteIndexRequest deleteindex_request;
+    ::rtidb::api::GeneralResponse deleteindex_response;
+    // delete first index should fail
+    deleteindex_request.set_idx_name("pk");
+    deleteindex_request.set_tid(id);
+    tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
+    ASSERT_EQ(601, deleteindex_response.code());
+    // delete other index
+    deleteindex_request.set_idx_name("amt");
+    deleteindex_request.set_tid(id);
+    tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
+    ASSERT_EQ(0, deleteindex_response.code());
+
+    // get index not found
+    get_request.set_tid(id);
+    get_request.set_pid(1);
+    get_request.set_key("abcd2");
+    get_request.set_ts(1100);
+    get_request.set_idx_name("amt");
+    tablet.Get(NULL, &get_request, &get_response, &closure);
+    ASSERT_EQ(108, get_response.code());
+
+    // scan index not found
+    ::rtidb::api::ScanRequest scan_request;
+    ::rtidb::api::ScanResponse scan_response;
+    scan_request.set_tid(id);
+    scan_request.set_pid(1);
+    scan_request.set_pk("abcd2");
+    scan_request.set_st(1100);
+    scan_request.set_idx_name("amt");
+    tablet.Scan(NULL, &scan_request, &scan_response, &closure);
+    ASSERT_EQ(108, scan_response.code());
 }
 
 TEST_F(TabletImplTest, TTL) {
