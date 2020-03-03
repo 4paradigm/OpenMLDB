@@ -310,7 +310,23 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
                 GetLLVMListType(m, data_type->generics_[0], &list_type)) {
                 return false;
             }
-            *llvm_type = list_type;
+            *llvm_type = list_type->getPointerTo();
+            return true;
+        }
+        case fesql::node::kIterator: {
+            if (data_type->generics_.size() != 1) {
+                LOG(WARNING)
+                    << "fail to convert data type: iterator generic types "
+                       "number is " +
+                           data_type->generics_.size();
+                return false;
+            }
+            ::llvm::Type* list_type;
+            if (false ==
+                GetLLVMIteratorType(m, data_type->generics_[0], &list_type)) {
+                return false;
+            }
+            *llvm_type = list_type->getPointerTo();
             return true;
         }
         case fesql::node::kMap: {
