@@ -247,15 +247,15 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
     AddSymbol(jd, mi, "inc_int32", reinterpret_cast<void *>(&v1::inc_int32));
     AddSymbol(jd, mi, "sum_list_int16",
-              reinterpret_cast<void *>(&v1::sum_list_int16));
+              reinterpret_cast<void *>(&v1::sum_list<int16_t>));
     AddSymbol(jd, mi, "sum_list_int32",
-              reinterpret_cast<void *>(&v1::sum_list_int32));
+              reinterpret_cast<void *>(&v1::sum_list<int32_t>));
     AddSymbol(jd, mi, "sum_list_int64",
-              reinterpret_cast<void *>(&v1::sum_list_int64));
+              reinterpret_cast<void *>(&v1::sum_list<int64_t>));
     AddSymbol(jd, mi, "sum_list_double",
-              reinterpret_cast<void *>(&v1::sum_list_double));
+              reinterpret_cast<void *>(&v1::sum_list<double>));
     AddSymbol(jd, mi, "sum_list_float",
-              reinterpret_cast<void *>(&v1::sum_list_float));
+              reinterpret_cast<void *>(&v1::sum_list<float>));
 
     AddSymbol(jd, mi, "max_list_int16",
               reinterpret_cast<void *>(&v1::max_list_int16));
