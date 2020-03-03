@@ -10,8 +10,8 @@
 
 int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
             const std::vector<uint64_t>& ts_dimensions, uint64_t ts, const std::string& value,
-            const google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition>& table_partition) {
-    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> clients;
+            const google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition>& table_partition,
+            std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>& clients) {
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         uint32_t pid = iter->first;
         std::string endpoint;
@@ -107,7 +107,9 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
         return -1;
     }
     uint8_t cnt = (uint8_t)data.size();
-    ::rtidb::base::FlatArrayCodec codec;
+    ::rtidb::base::FlatArrayCodec codec(columns);
+    rtidb::base::RowBuilder codec(columns);
+    uint32_t size = rb.
     if (modify_times == 0) {
         ::rtidb::base::FlatArrayCodec codec_tmp(&value, cnt);
         codec = codec_tmp;
@@ -198,7 +200,7 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
     return 0;
 }
 
-RtidbNSClient::RtidbNSClient() {
+RtidbNSClient::RtidbNSClient():tablets_() {
     zk_client_ = NULL;
 }
 
@@ -284,6 +286,10 @@ std::map<std::string, GetColumn> RtidbNSClient::Get(const std::string& name, str
         std::cerr << "failed to get table server endpoint" << std::endl;
         return result;
     }
+    std::shared_ptr<rtidb::client::TabletClient> tablet = GetTabletClient(tablet_endpoint);
+    if (tablet == NULL) {
+        return result;
+    }
     std::vector<rtidb::base::ColumnDesc> columns;
     if (tables[0].added_column_desc_size() > 0) {
         if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns, tables[0].added_column_desc_size()) < 0) {
@@ -296,17 +302,11 @@ std::map<std::string, GetColumn> RtidbNSClient::Get(const std::string& name, str
             return result;
         }
     }
-    rtidb::client::TabletClient tablet_client(tablet_endpoint);
-    int code = tablet_client.Init();
-    if (code < 0) {
-        std::cerr << "failed init table client" << std::endl;
-        return result;
-    }
     for (const auto& iter : ro.index) {
         std::string value;
         uint64_t ts = 0;
         // TODO: current server do not support multi dimesnions
-        ok = tablet_client.Get(tables[0].tid(), 0, iter.second, 0, "", "", value, ts, msg);
+        ok = tablet->Get(tables[0].tid(), 0, iter.second, 0, "", "", value, ts, msg);
         if (!ok) {
             std::cerr << "failed to get index " << iter.first << " " << iter.second << " value " << std::endl;
             continue;
@@ -361,6 +361,22 @@ std::map<std::string, GetColumn> RtidbNSClient::Get(const std::string& name, str
     return result;
 };
 
+std::shared_ptr<rtidb::client::TabletClient> RtidbNSClient::GetTabletClient(const std::string& endpoint) {
+    std::lock_guard<std::mutex> mx(mu_);
+    auto iter = tablets_.find(endpoint);
+    if (iter != tablets_.end()) {
+        return iter->second;
+    }
+    std::shared_ptr<rtidb::client::TabletClient> tablet = std::make_shared<rtidb::client::TabletClient>(endpoint);
+    int code = tablet->Init();
+    if (code < 0) {
+        std::cerr << "failed init table client" << std::endl;
+        return NULL;
+    }
+    tablets_.insert(std::make_pair(endpoint, tablet));
+    return tablet;
+}
+
 bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std::string>& value, const WriteOption& wo) {
     std::vector<rtidb::nameserver::TableInfo> tables;
     std::string msg;
@@ -377,19 +393,7 @@ bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std
         std::cerr << "not support is not relation table" << std::endl;
         return false;
     }
-    std::string tablet_endpoint;
 
-    for (const auto& part : tables[0].table_partition()) {
-        for (const auto& meta : part.partition_meta()) {
-            if (meta.is_alive() && meta.is_leader()) {
-                tablet_endpoint = meta.endpoint();
-            }
-        }
-    }
-    if (tablet_endpoint.empty()) {
-        std::cerr << "failed to get table server endpoint" << std::endl;
-        return false;
-    }
     auto column_descs = tables[0].column_desc_v1();
     auto add_column_descs = tables[0].added_column_desc();
     if (value.size() - column_descs.size() - add_column_descs.size() != 0) {
@@ -405,7 +409,6 @@ bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std
     }
     std::string buffer;
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
-    rtidb::client::TabletClient tablet_client(tablet_endpoint);
     std::vector<std::string> values;
     std::vector<uint64_t> ts_dimensions;
     std::set<std::string> keys;
@@ -445,7 +448,10 @@ bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std
         snappy::Compress(actual_value.c_str(), actual_value.length(), &compressed);
         actual_value = compressed;
     }
-    code = PutData(tables[0].tid(), dimensions, ts_dimensions, 0, actual_value, tables[0].table_partition());
+    {
+        std::lock_guard<std::mutex> mx(mu_);
+        code = PutData(tables[0].tid(), dimensions, ts_dimensions, 0, actual_value, tables[0].table_partition(), tablets_);
+    }
     if (code < 0) {
         std::cerr << "put data error" << std::endl;
         return false;
@@ -483,15 +489,13 @@ bool RtidbNSClient::Delete(const std::string& name, const std::map<std::string, 
         std::cerr << "failed to get table server endpoint" << std::endl;
         return false;
     }
-    rtidb::client::TabletClient tablet(tablet_endpoint);
-    int code = tablet.Init();
-    if (code < 0) {
-        std::cerr << "init table client failed!" << std::endl;
+    std::shared_ptr<rtidb::client::TabletClient> tablet = GetTabletClient(tablet_endpoint);
+    if (tablet == NULL) {
         return false;
     }
     msg.clear();
     for (auto& iter : values) {
-        ok = tablet.Delete(tables[0].tid(), 0, iter.second, iter.first, msg);
+        ok = tablet->Delete(tables[0].tid(), 0, iter.second, iter.first, msg);
         if (!ok) {
             std::cerr << "delete " << iter.first << " " << iter.second << std::endl;
             return false;
@@ -535,6 +539,10 @@ bool RtidbNSClient::Update(const std::string& name, const std::map<std::string, 
         std::cerr << "failed to get table server endpoint" << std::endl;
         return false;
     }
+    std::shared_ptr<rtidb::client::TabletClient> tablet_client = GetTabletClient(tablet_endpoint);
+    if (tablet_client == NULL) {
+        return false;
+    }
     std::vector<rtidb::base::ColumnDesc> columns;
     if (tables[0].added_column_desc_size() > 0) {
         if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns, tables[0].added_column_desc_size()) < 0) {
@@ -547,16 +555,10 @@ bool RtidbNSClient::Update(const std::string& name, const std::map<std::string, 
             return false;
         }
     }
-    rtidb::client::TabletClient tablet_client(tablet_endpoint);
-    int code = tablet_client.Init();
-    if (code < 0) {
-        std::cerr << "failed init table client" << std::endl;
-        return false;
-    }
     msg.clear();
     std::string result;
     uint64_t ts = 0;
-    ok = tablet_client.Get(tables[0].tid(), 0, condition.begin()->second, 0, "", "",result, ts, msg);
+    ok = tablet_client->Get(tables[0].tid(), 0, condition.begin()->second, 0, "", "",result, ts, msg);
     if (!ok) {
         std::cerr << "pk " << condition.begin()->second << " not found" << std::endl;
         return false;
@@ -614,7 +616,7 @@ bool RtidbNSClient::Update(const std::string& name, const std::map<std::string, 
     std::string buffer;
     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
     std::vector<uint64_t> ts_dimensions;
-    code = EncodeMultiDimensionData(values, columns, tables[0].table_partition_size(), buffer, dimensions, ts_dimensions, tables[0].added_column_desc_size());
+    int code = EncodeMultiDimensionData(values, columns, tables[0].table_partition_size(), buffer, dimensions, ts_dimensions, tables[0].added_column_desc_size());
     if (code < 0) {
         std::cerr << "encode data error" << std::endl;
         return false;
@@ -638,7 +640,10 @@ bool RtidbNSClient::Update(const std::string& name, const std::map<std::string, 
         snappy::Compress(actual_value.c_str(), actual_value.length(), &compressed);
         actual_value = compressed;
     }
-    code = PutData(tables[0].tid(), dimensions, ts_dimensions, 0, actual_value, tables[0].table_partition());
+    {
+        std::lock_guard<std::mutex> mx(mu_);
+        code = PutData(tables[0].tid(), dimensions, ts_dimensions, 0, actual_value, tables[0].table_partition(), tablets_);
+    }
     if (code < 0) {
         std::cerr << "put data error" << std::endl;
         return false;

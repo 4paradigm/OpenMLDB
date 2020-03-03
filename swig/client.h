@@ -37,6 +37,9 @@ class RtidbNSClient {
 private:
     rtidb::zk::ZkClient* zk_client_;
     std::shared_ptr<rtidb::client::NsClient> client_;
+    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>> tablets_;
+    std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint);
+    std::mutex mu_;
 
 public:
     RtidbNSClient();
