@@ -16,6 +16,7 @@
 #include <vector>
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
+#include "codegen/window_ir_builder.h"
 #include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
 #include "gtest/gtest.h"
@@ -159,10 +160,8 @@ void GetListAtPos(T* result, const ::fesql::type::Type& type,
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
     sv.Enter("enter row scope");
-
-    BufNativeIRBuilder buf_builder(table.columns(), entry_block, &sv);
+    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
     ListIRBuilder list_builder(entry_block, &sv);
-
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
@@ -269,7 +268,7 @@ void GetListIterator(T expected, const ::fesql::type::Type& type,
     ScopeVar sv;
     sv.Enter("enter row scope");
 
-    BufNativeIRBuilder buf_builder(table.columns(), entry_block, &sv);
+    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
     ListIRBuilder list_builder(entry_block, &sv);
 
     IRBuilder<> builder(entry_block);
@@ -457,7 +456,7 @@ void GetListIteratorNext(T expected, const ::fesql::type::Type& type,
     ScopeVar sv;
     sv.Enter("enter row scope");
 
-    BufNativeIRBuilder buf_builder(table.columns(), entry_block, &sv);
+    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
     ListIRBuilder list_builder(entry_block, &sv);
 
     IRBuilder<> builder(entry_block);

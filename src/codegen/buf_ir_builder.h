@@ -76,9 +76,6 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
                        ::llvm::Value* row_size, ::llvm::Value** output);
 
-    bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
-                     ::llvm::Value** output);
-
     bool BuildGetFiledOffset(const std::string& name, uint32_t* offset,
                              ::fesql::node::DataType* fe_type);
 

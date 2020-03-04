@@ -132,7 +132,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
         return false;
     }
     uint32_t col_iterator_size = 0;
-    ok = GetLLVMIteratorSize(type, &col_iterator_size);
+    ok = GetLLVMColumnSize(type, &col_iterator_size);
     if (!ok || col_iterator_size == 0) {
         LOG(WARNING) << "fail to get col iterator size";
     }
@@ -150,8 +150,14 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
     col_iter = builder.CreatePointerCast(col_iter, i8_ptr_ty);
 
     ::llvm::Value* val_offset = builder.getInt32(offset);
-    ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(type));
+    ::fesql::type::Type schema_type;
+    if (!DataType2SchemaType(type, &schema_type)) {
+         LOG(WARNING) << "fail to convert data type to schema type: "
+                      << node::DataTypeName(type);
+         return false;
+    }
 
+    ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(schema_type));
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         fn_name, i32_ty, i8_ptr_ty, i32_ty, i32_ty, i8_ptr_ty);
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
@@ -180,7 +186,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
         return false;
     }
     uint32_t col_iterator_size;
-    ok = GetLLVMIteratorSize(type, &col_iterator_size);
+    ok = GetLLVMColumnSize(type, &col_iterator_size);
     if (!ok) {
         LOG(WARNING) << "fail to get col iterator size";
     }
@@ -191,11 +197,12 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
 
     // alloca memory on stack
     ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
-
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
+    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, 
+            col_iter->getType()->getPointerTo());
     builder.CreateStore(col_iter, data_ptr_ptr, false);
-    //    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, i8_ptr_ty);
+    col_iter = builder.CreatePointerCast(col_iter, i8_ptr_ty);
 
     // get str field declear
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
@@ -204,9 +211,13 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
 
     ::llvm::Value* str_offset = builder.getInt32(offset);
     ::llvm::Value* next_str_offset = builder.getInt32(next_str_field_offset);
-    ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(type));
-    // get the data ptr
-    // TODO(wangtaize) add status check
+	::fesql::type::Type schema_type;
+    if (!DataType2SchemaType(type, &schema_type)) {
+        LOG(WARNING) << "fail to convert data type to schema type: "
+                     << node::DataTypeName(type);
+        return false;
+    }
+    ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(schema_type));
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
                                    window_ptr, str_offset, next_str_offset,
                                    builder.getInt32(str_field_start_offset_),

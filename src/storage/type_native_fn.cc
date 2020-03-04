@@ -196,7 +196,8 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
         }
         default: {
             LOG(WARNING) << "cannot get col for type "
-                         << ::fesql::type::Type_Name(type);
+                         << ::fesql::type::Type_Name(type)
+                         << " type id " << type_id;
             return -2;
         }
     }

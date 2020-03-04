@@ -22,6 +22,7 @@
 #include <vector>
 #include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
 #include "storage/codec.h"
 #include "storage/type_native_fn.h"
@@ -438,7 +439,7 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
     sv.Enter("enter row scope");
-    BufNativeIRBuilder buf_builder(table.columns(), entry_block, &sv);
+    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;

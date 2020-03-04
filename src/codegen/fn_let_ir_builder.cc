@@ -16,7 +16,6 @@
  */
 
 #include "codegen/fn_let_ir_builder.h"
-#include "codegen/buf_ir_builder.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
@@ -71,10 +70,10 @@ bool RowFnLetIRBuilder::Build(
 
 
     VariableIRBuilder variable_ir_builder(block, &sv);
-    BufNativeIRBuilder buf_ir_builder(schema_, block, &sv);
     ExprIRBuilder expr_ir_builder(block, &sv, schema_,
                                   !node->IsWindowAgg(), row_ptr_name,
                                   row_size_name, module_);
+
     const ::fesql::node::PlanNodeList& children = node->GetProjects();
     ::fesql::node::PlanNodeList::const_iterator it = children.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
@@ -152,7 +151,7 @@ bool RowFnLetIRBuilder::BuildFnHeader(
         LOG(WARNING) << "fn is null";
         return false;
     }
-    DLOG(INFO) << "create fn header " << name << " done";
+    DLOG(INFO) << "create fn header " << name << " start";
     ::llvm::ArrayRef<::llvm::Type*> array_ref(args_type);
     ::llvm::FunctionType* fnt =
         ::llvm::FunctionType::get(ret_type, array_ref, false);
