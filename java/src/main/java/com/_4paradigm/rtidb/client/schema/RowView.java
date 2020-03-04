@@ -191,7 +191,8 @@ public class RowView {
         if (column.getDataType() != type) {
             throw new TabletException("data type mismatch");
         }
-        if (getSize(row) <= RowCodecCommon.HEADER_LENGTH) {
+        int size = getSize(row);
+        if (size <= RowCodecCommon.HEADER_LENGTH) {
             throw new TabletException("row size is not bigger than header length");
         }
         if (isNull(row, idx)) {
@@ -225,53 +226,22 @@ public class RowView {
             case kDouble:
                 val = row.getDouble(offset);
                 break;
+            case kVarchar:
+                int field_offset = offset;
+                int next_str_field_offset = 0;
+                if (field_offset < string_field_cnt - 1) {
+                    next_str_field_offset = field_offset + 1;
+                }
+                return getStrField(row, field_offset, next_str_field_offset,
+                        str_field_start_offset, RowCodecCommon.getAddrLength(size));
             default:
                 throw new TabletException("unsupported data type");
         }
         return val;
     }
 
-    public String getValue(ByteBuffer row, int idx) throws TabletException {
-        if (schema.size() == 0 || row == null || idx >= schema.size()) {
-            throw new TabletException("input mistake");
-        }
-        if (row.order() == ByteOrder.BIG_ENDIAN) {
-            row = row.order(ByteOrder.LITTLE_ENDIAN);
-        }
-        ColumnDesc column = schema.get(idx);
-        if (column.getDataType() != DataType.kVarchar) {
-            throw new TabletException("data type mismatch");
-        }
-        int size = getSize(row);
-        if (size <= RowCodecCommon.HEADER_LENGTH) {
-            throw new TabletException("row size is not bigger than header length");
-        }
-        if (isNull(row, idx)) {
-            return null;
-        }
-        int field_offset = offset_vec.get(idx);
-        int next_str_field_offset = 0;
-        if (offset_vec.get(idx) < string_field_cnt - 1) {
-            next_str_field_offset = field_offset + 1;
-        }
-        return getStrField(row, field_offset, next_str_field_offset,
-                str_field_start_offset, RowCodecCommon.getAddrLength(size));
-    }
-
     public String getString(int idx) throws TabletException {
-        if (!checkValid(idx, DataType.kVarchar)) {
-            throw new TabletException("checkValid false");
-        }
-        if (isNull(row, idx)) {
-            return null;
-        }
-        int field_offset = offset_vec.get(idx);
-        int next_str_field_offset = 0;
-        if (field_offset < string_field_cnt - 1) {
-            next_str_field_offset = field_offset + 1;
-        }
-        return getStrField(row, field_offset, next_str_field_offset,
-                str_field_start_offset, str_addr_length);
+        return (String) getValue(row, idx, DataType.kVarchar);
     }
 
     public String getStrField(ByteBuffer row, int field_offset,
