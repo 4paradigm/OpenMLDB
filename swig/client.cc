@@ -391,11 +391,6 @@ bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std
     buffer.resize(total_size);
     rb.SetBuffer(reinterpret_cast<int8_t*>(&buffer[0]), total_size);
     for (uint32_t i = 0; i < columns.size(); i++) {
-        std::cout << columns.Get(i).type() << std::endl;
-        std::cout << columns.Get(i).data_type() << std::endl;
-        std::cout << columns.Get(i).has_data_type() << " ---" << std::endl;
-    }
-    for (uint32_t i = 0; i < columns.size(); i++) {
         switch (columns.Get(i).data_type()) {
             case rtidb::type::kInt32:
                 rb.AppendInt32(boost::lexical_cast<int32_t>(values[i]));
