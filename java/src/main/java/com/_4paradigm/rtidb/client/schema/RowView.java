@@ -50,20 +50,20 @@ public class RowView {
     }
 
     private boolean init() {
-        str_field_start_offset = RowCodecUtil.HEADER_LENGTH + RowCodecUtil.getBitMapSize(schema.size());
+        str_field_start_offset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
             if (column.getDataType() == DataType.kVarchar) {
                 offset_vec.add(string_field_cnt);
                 string_field_cnt++;
             } else {
-                if (RowCodecUtil.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
+                if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                     is_valid = false;
                     logger.warn("type is not supported");
                     return false;
                 } else {
                     offset_vec.add(str_field_start_offset);
-                    str_field_start_offset += RowCodecUtil.TYPE_SIZE_MAP.get(column.getDataType());
+                    str_field_start_offset += RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType());
                 }
             }
         }
@@ -71,8 +71,8 @@ public class RowView {
     }
 
     private boolean reset(ByteBuffer row, int size) {
-        if (schema.size() == 0 || row == null || size <= RowCodecUtil.HEADER_LENGTH ||
-                row.getInt(RowCodecUtil.VERSION_LENGTH) != size) {
+        if (schema.size() == 0 || row == null || size <= RowCodecCommon.HEADER_LENGTH ||
+                row.getInt(RowCodecCommon.VERSION_LENGTH) != size) {
             is_valid = false;
             return false;
         }
@@ -81,7 +81,7 @@ public class RowView {
         }
         this.row = row;
         this.size = size;
-        str_addr_length = RowCodecUtil.getAddrLength(size);
+        str_addr_length = RowCodecCommon.getAddrLength(size);
         return true;
     }
 
@@ -94,12 +94,12 @@ public class RowView {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
         }
         this.row = row;
-        this.size = row.getInt(RowCodecUtil.VERSION_LENGTH);
-        if (this.size < RowCodecUtil.HEADER_LENGTH) {
+        this.size = row.getInt(RowCodecCommon.VERSION_LENGTH);
+        if (this.size < RowCodecCommon.HEADER_LENGTH) {
             is_valid = false;
             return false;
         }
-        str_addr_length = RowCodecUtil.getAddrLength(size);
+        str_addr_length = RowCodecCommon.getAddrLength(size);
         return true;
     }
 
@@ -125,41 +125,41 @@ public class RowView {
         if (row.order() == ByteOrder.BIG_ENDIAN) {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
         }
-        int ptr = RowCodecUtil.HEADER_LENGTH + (idx >> 3);
+        int ptr = RowCodecCommon.HEADER_LENGTH + (idx >> 3);
         byte bt = row.get(ptr);
         int ret = bt & (1 << (idx & 0x07));
         return (ret > 0) ? true : false;
     }
 
     public static int getSize(ByteBuffer row) {
-        return row.getInt(RowCodecUtil.VERSION_LENGTH);
+        return row.getInt(RowCodecCommon.VERSION_LENGTH);
     }
 
-    public boolean getBool(int idx) throws TabletException {
+    public Boolean getBool(int idx) throws TabletException {
         return (Boolean) getValue(row, idx, DataType.kBool);
     }
 
-    public int getInt32(int idx) throws TabletException {
+    public Integer getInt32(int idx) throws TabletException {
         return (Integer) getValue(row, idx, DataType.kInt32);
     }
 
-    public long getTimestamp(int idx) throws TabletException {
+    public Long getTimestamp(int idx) throws TabletException {
         return (Long) getValue(row, idx, DataType.kTimestamp);
     }
 
-    public long getInt64(int idx) throws TabletException {
+    public Long getInt64(int idx) throws TabletException {
         return (Long) getValue(row, idx, DataType.kInt64);
     }
 
-    public short getInt16(int idx) throws TabletException {
+    public Short getInt16(int idx) throws TabletException {
         return (Short) getValue(row, idx, DataType.kInt16);
     }
 
-    public float getFloat(int idx) throws TabletException {
+    public Float getFloat(int idx) throws TabletException {
         return (Float) getValue(row, idx, DataType.kFloat);
     }
 
-    public double getDouble(int idx) throws TabletException {
+    public Double getDouble(int idx) throws TabletException {
         return (Double) getValue(row, idx, DataType.kDouble);
     }
 
@@ -191,7 +191,7 @@ public class RowView {
         if (column.getDataType() != type) {
             throw new TabletException("data type mismatch");
         }
-        if (getSize(row) <= RowCodecUtil.HEADER_LENGTH) {
+        if (getSize(row) <= RowCodecCommon.HEADER_LENGTH) {
             throw new TabletException("row size is not bigger than header length");
         }
         if (isNull(row, idx)) {
@@ -243,7 +243,7 @@ public class RowView {
             throw new TabletException("data type mismatch");
         }
         int size = getSize(row);
-        if (size <= RowCodecUtil.HEADER_LENGTH) {
+        if (size <= RowCodecCommon.HEADER_LENGTH) {
             throw new TabletException("row size is not bigger than header length");
         }
         if (isNull(row, idx)) {
@@ -255,7 +255,7 @@ public class RowView {
             next_str_field_offset = field_offset + 1;
         }
         return getStrField(row, field_offset, next_str_field_offset,
-                str_field_start_offset, RowCodecUtil.getAddrLength(size));
+                str_field_start_offset, RowCodecCommon.getAddrLength(size));
     }
 
     public String getString(int idx) throws TabletException {
@@ -327,7 +327,7 @@ public class RowView {
         }
         int len;
         if (next_str_field_offset <= 0) {
-            int total_length = row.getInt(RowCodecUtil.VERSION_LENGTH);
+            int total_length = row.getInt(RowCodecCommon.VERSION_LENGTH);
             len = total_length - str_offset;
         } else {
             len = next_str_offset - str_offset;
@@ -335,6 +335,6 @@ public class RowView {
         byte[] arr = new byte[len];
         row.position(str_offset);
         row.get(arr, 0, len);
-        return new String(arr, RowCodecUtil.CHARSET);
+        return new String(arr, RowCodecCommon.CHARSET);
     }
 }

@@ -12,6 +12,7 @@ import java.nio.ByteOrder;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class RowCodecTest {
@@ -422,11 +423,315 @@ public class RowCodecTest {
 
             RowView rowView = new RowView(schema, buffer, size);
             Assert.assertTrue(rowView.isNull(0));
-            Assert.assertEquals(rowView.getBool(1), false);
+            Assert.assertEquals(rowView.getBool(1), new Boolean(false));
             Assert.assertEquals(rowView.getString(2), "1");
         } catch (TabletException e) {
             Assert.assertTrue(false);
         }
     }
 
+    @Test
+    public void testNormal() {
+        try {
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            {
+                ColumnDesc col1 = new ColumnDesc();
+                col1.setName("col1");
+                col1.setDataType(DataType.kInt32);
+                schema.add(col1);
+            }
+            {
+                ColumnDesc col2 = new ColumnDesc();
+                col2.setName("col2");
+                col2.setDataType(DataType.kInt16);
+                schema.add(col2);
+            }
+            {
+                ColumnDesc col3 = new ColumnDesc();
+                col3.setName("col3");
+                col3.setDataType(DataType.kFloat);
+                schema.add(col3);
+            }
+            {
+                ColumnDesc col4 = new ColumnDesc();
+                col4.setName("col4");
+                col4.setDataType(DataType.kDouble);
+                schema.add(col4);
+            }
+            {
+                ColumnDesc col5 = new ColumnDesc();
+                col5.setName("col5");
+                col5.setDataType(DataType.kInt64);
+                schema.add(col5);
+            }
+            RowBuilder builder = new RowBuilder(schema);
+            int size = builder.calTotalLength(1);
+            ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+            buffer = builder.setBuffer(buffer, size);
+            Assert.assertTrue(builder.appendInt32(1));
+            Assert.assertTrue(builder.appendInt16((short) 2));
+            Assert.assertTrue(builder.appendFloat(3.1f));
+            Assert.assertTrue(builder.appendDouble(4.1));
+            Assert.assertTrue(builder.appendInt64(5));
+
+            RowView rowView = new RowView(schema, buffer, size);
+            Assert.assertEquals(rowView.getInt32(0), new Integer(1));
+            Assert.assertEquals(rowView.getInt16(1), new Short((short) 2));
+            Assert.assertEquals(rowView.getFloat(2), 3.1f);
+            Assert.assertEquals(rowView.getDouble(3), 4.1);
+            Assert.assertEquals(rowView.getInt64(4), new Long(5));
+        } catch (TabletException e) {
+            Assert.assertTrue(false);
+        }
+    }
+
+    @Test
+    public void testEncode() {
+        try {
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            for (int i = 0; i < 10; i++) {
+                ColumnDesc col = new ColumnDesc();
+                col.setName("col" + i);
+                if (i % 3 == 0) {
+                    col.setDataType(DataType.kInt16);
+                } else if (i % 3 == 1) {
+                    col.setDataType(DataType.kDouble);
+                } else {
+                    col.setDataType(DataType.kVarchar);
+                }
+                schema.add(col);
+            }
+            RowBuilder builder = new RowBuilder(schema);
+            int size = builder.calTotalLength(30);
+            ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+            buffer = builder.setBuffer(buffer, size);
+
+            for (int i = 0; i < 10; i++) {
+                if (i % 3 == 0) {
+                    Assert.assertTrue(builder.appendInt16((short) i));
+                } else if (i % 3 == 1) {
+                    Assert.assertTrue(builder.appendDouble(2.3));
+                } else {
+                    String s = String.join("", Collections.nCopies(10, String.valueOf(i)));
+                    Assert.assertTrue(builder.appendString(s));
+                }
+            }
+            Assert.assertFalse(builder.appendInt16((short) 1));
+
+            RowView rowView = new RowView(schema, buffer, size);
+            for (int i = 0; i < 10; i++) {
+                if (i % 3 == 0) {
+                    Assert.assertEquals(rowView.getInt16(i), new Short((short) i));
+                } else if (i % 3 == 1) {
+                    Assert.assertEquals(rowView.getDouble(i), 2.3);
+                } else {
+                    String s = String.join("", Collections.nCopies(10, String.valueOf(i)));
+                    Assert.assertEquals(rowView.getString(i), s);
+                }
+            }
+            try {
+                rowView.getDouble(10);
+                Assert.assertTrue(false);
+            } catch (TabletException e) {
+                Assert.assertTrue(true);
+            }
+        } catch (TabletException e) {
+            Assert.assertTrue(false);
+        }
+    }
+
+    @Test
+    public void testAppendNull() {
+        try {
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            for (int i = 0; i < 20; i++) {
+                ColumnDesc col = new ColumnDesc();
+                col.setName("col" + i);
+                if (i % 3 == 0) {
+                    col.setDataType(DataType.kInt16);
+                } else if (i % 3 == 1) {
+                    col.setDataType(DataType.kDouble);
+                } else {
+                    col.setDataType(DataType.kVarchar);
+                }
+                schema.add(col);
+            }
+            RowBuilder builder = new RowBuilder(schema);
+            int size = builder.calTotalLength(30);
+            ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+            buffer = builder.setBuffer(buffer, size);
+
+            for (int i = 0; i < 20; i++) {
+                if (i % 2 == 0) {
+                    Assert.assertTrue(builder.appendNULL());
+                    continue;
+                }
+                if (i % 3 == 0) {
+                    Assert.assertTrue(builder.appendInt16((short) i));
+                } else if (i % 3 == 1) {
+                    Assert.assertTrue(builder.appendDouble(2.3));
+                } else {
+                    String s = String.join("", Collections.nCopies(10, String.valueOf(i % 10)));
+                    Assert.assertTrue(builder.appendString(s));
+                }
+            }
+            Assert.assertFalse(builder.appendInt16((short) 1));
+
+            RowView rowView = new RowView(schema, buffer, size);
+            for (int i = 0; i < 20; i++) {
+                if (i % 2 == 0) {
+                    Assert.assertTrue(rowView.isNull(i));
+                    if (i % 3 == 0) {
+                        Assert.assertEquals(rowView.getInt16(i), null);
+                    } else if (i % 3 == 1) {
+                        Assert.assertEquals(rowView.getDouble(i), null);
+                    } else {
+                        Assert.assertEquals(rowView.getString(i), null);
+                    }
+                    continue;
+                }
+                if (i % 3 == 0) {
+                    Assert.assertEquals(rowView.getInt16(i), new Short((short) i));
+                } else if (i % 3 == 1) {
+                    Assert.assertEquals(rowView.getDouble(i), 2.3);
+                } else {
+                    String s = String.join("", Collections.nCopies(10, String.valueOf(i % 10)));
+                    Assert.assertEquals(rowView.getString(i), s);
+                }
+            }
+            try {
+                rowView.getDouble(20);
+                Assert.assertTrue(false);
+            } catch (TabletException e) {
+                Assert.assertTrue(true);
+            }
+        } catch (TabletException e) {
+            Assert.assertTrue(false);
+        }
+    }
+
+    @Test
+    public void testAppendNullAndEmpty() {
+        try {
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            for (int i = 0; i < 20; i++) {
+                ColumnDesc col = new ColumnDesc();
+                col.setName("col" + i);
+                if (i % 2 == 0) {
+                    col.setDataType(DataType.kInt16);
+                } else {
+                    col.setDataType(DataType.kVarchar);
+                }
+                schema.add(col);
+            }
+            RowBuilder builder = new RowBuilder(schema);
+            int size = builder.calTotalLength(30);
+            ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+            buffer = builder.setBuffer(buffer, size);
+
+            for (int i = 0; i < 20; i++) {
+                if (i % 2 == 0) {
+                    if (i % 3 == 0) {
+                        Assert.assertTrue(builder.appendNULL());
+                    } else {
+                        Assert.assertTrue(builder.appendInt16((short) i));
+                    }
+                } else {
+                    if (i % 3 == 0) {
+                        Assert.assertTrue(builder.appendNULL());
+                    } else if (i % 3 == 1) {
+                        Assert.assertTrue(builder.appendString(""));
+                    } else {
+                        String s = String.join("", Collections.nCopies(10, String.valueOf(i % 10)));
+                        Assert.assertTrue(builder.appendString(s));
+                    }
+                }
+            }
+            Assert.assertFalse(builder.appendInt16((short) 1));
+
+            RowView rowView = new RowView(schema, buffer, size);
+            for (int i = 0; i < 20; i++) {
+                if (i % 2 == 0) {
+                    if (i % 3 == 0) {
+                        Assert.assertTrue(rowView.isNull(i));
+                        Assert.assertEquals(rowView.getInt16(i), null);
+                    } else {
+                        Assert.assertEquals(rowView.getInt16(i), new Short((short) i));
+                    }
+                } else {
+                    if (i % 3 == 0) {
+                        Assert.assertTrue(rowView.isNull(i));
+                        Assert.assertEquals(rowView.getString(i), null);
+                    } else if (i % 3 == 1) {
+                        Assert.assertEquals(rowView.getString(i), "");
+                    } else {
+                        String s = String.join("", Collections.nCopies(10, String.valueOf(i % 10)));
+                        Assert.assertEquals(rowView.getString(i), s);
+                    }
+                }
+            }
+            try {
+                rowView.getDouble(20);
+                Assert.assertTrue(false);
+            } catch (TabletException e) {
+                Assert.assertTrue(true);
+            }
+        } catch (TabletException e) {
+            Assert.assertTrue(false);
+        }
+    }
+
+//    @Test
+//    public void testManyCol() {
+//        int[] arr = {10000, 100000};
+//        try {
+//            for (int colNum : arr) {
+//                System.out.println("<<<<<<<<<<<< : " + colNum);
+//                List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+//                for (int i = 0; i < colNum; i++) {
+//                    {
+//                        ColumnDesc col = new ColumnDesc();
+//                        col.setName("col" + i + 1);
+//                        col.setDataType(DataType.kVarchar);
+//                        schema.add(col);
+//                    }
+//                    {
+//                        ColumnDesc col = new ColumnDesc();
+//                        col.setName("col" + i + 2);
+//                        col.setDataType(DataType.kInt64);
+//                        schema.add(col);
+//                    }
+//                    {
+//                        ColumnDesc col = new ColumnDesc();
+//                        col.setName("col" + i + 3);
+//                        col.setDataType(DataType.kDouble);
+//                        schema.add(col);
+//                    }
+//                }
+//                RowBuilder builder = new RowBuilder(schema);
+//                int size = builder.calTotalLength(10 * colNum);
+//                ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+//                buffer = builder.setBuffer(buffer, size);
+//
+//                long base = 1000000000l;
+//                long ts = 1576811755000l;
+//                for (int idx = 0; idx < colNum; idx++) {
+//                    String s = String.join("", Collections.nCopies(10, String.valueOf((base + idx) % 10)));
+//                    Assert.assertTrue(builder.appendString(s));
+//                    Assert.assertTrue(builder.appendInt64(ts + idx));
+//                    Assert.assertTrue(builder.appendDouble(1.3));
+//                }
+//
+//                RowView rowView = new RowView(schema, buffer, size);
+//                for (int idx = 0; idx < colNum; idx++) {
+//                    String s = String.join("", Collections.nCopies(10, String.valueOf((base + idx) % 10)));
+//                    Assert.assertEquals(rowView.getString(3 * idx), s);
+//                    Assert.assertEquals(rowView.getInt64(3 * idx + 1), new Long(ts + idx));
+//                    Assert.assertEquals(rowView.getDouble(3 * idx + 2), 1.3);
+//                }
+//            }
+//        } catch (TabletException e) {
+//            Assert.assertTrue(false);
+//        }
+//    }
 }

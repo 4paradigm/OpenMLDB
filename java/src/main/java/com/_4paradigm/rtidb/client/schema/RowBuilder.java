@@ -24,7 +24,7 @@ public class RowBuilder {
     private List<Integer> offset_vec = new ArrayList<>();
 
     public RowBuilder(List<ColumnDesc> schema) {
-        str_field_start_offset = RowCodecUtil.HEADER_LENGTH + RowCodecUtil.getBitMapSize(schema.size());
+        str_field_start_offset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         this.schema = schema;
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
@@ -32,11 +32,11 @@ public class RowBuilder {
                 offset_vec.add(str_field_cnt);
                 str_field_cnt++;
             } else {
-                if (RowCodecUtil.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
+                if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                     logger.warn("type is not supported");
                 } else {
                     offset_vec.add(str_field_start_offset);
-                    str_field_start_offset += RowCodecUtil.TYPE_SIZE_MAP.get(column.getDataType());
+                    str_field_start_offset += RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType());
                 }
             }
         }
@@ -48,13 +48,13 @@ public class RowBuilder {
         }
         int total_length = str_field_start_offset;
         total_length += string_length;
-        if (total_length + str_field_cnt <= RowCodecUtil.UINT8_MAX) {
+        if (total_length + str_field_cnt <= RowCodecCommon.UINT8_MAX) {
             return total_length + str_field_cnt;
-        } else if (total_length + str_field_cnt * 2 <= RowCodecUtil.UINT16_MAX) {
+        } else if (total_length + str_field_cnt * 2 <= RowCodecCommon.UINT16_MAX) {
             return total_length + str_field_cnt * 2;
-        } else if (total_length + str_field_cnt * 3 <= RowCodecUtil.UINT24_MAX) {
+        } else if (total_length + str_field_cnt * 3 <= RowCodecCommon.UINT24_MAX) {
             return total_length + str_field_cnt * 3;
-        } else if (total_length + str_field_cnt * 4 <= RowCodecUtil.UINT32_MAX) {
+        } else if (total_length + str_field_cnt * 4 <= RowCodecCommon.UINT32_MAX) {
             return total_length + str_field_cnt * 4;
         }
         return 0;
@@ -74,7 +74,7 @@ public class RowBuilder {
         buffer.put((byte) 1); // SVersion
         buffer.putInt(size); // size
         this.buf = buffer;
-        str_addr_length = RowCodecUtil.getAddrLength(size);
+        str_addr_length = RowCodecCommon.getAddrLength(size);
         str_offset = str_field_start_offset + str_addr_length * str_field_cnt;
         return this.buf;
     }
@@ -88,7 +88,7 @@ public class RowBuilder {
             return false;
         }
         if (column.getDataType() != DataType.kVarchar) {
-            if (RowCodecUtil.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
+            if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                 return false;
             }
         }
@@ -96,7 +96,7 @@ public class RowBuilder {
     }
 
     public boolean appendNULL() {
-        int index = RowCodecUtil.HEADER_LENGTH + (cnt >> 3);
+        int index = RowCodecCommon.HEADER_LENGTH + (cnt >> 3);
         byte bt = buf.get(index);
         buf.put(index, (byte) (bt | (1 << (cnt & 0x07))));
         ColumnDesc column = schema.get(cnt);
@@ -173,7 +173,7 @@ public class RowBuilder {
         return true;
     }
 
-    public boolean AppendFloat(float val) {
+    public boolean appendFloat(float val) {
         if (!check(DataType.kFloat)) {
             return false;
         }
@@ -216,7 +216,7 @@ public class RowBuilder {
         }
         if (length != 0) {
             buf.position(str_offset);
-            buf.put(val.getBytes(RowCodecUtil.CHARSET), 0, length);
+            buf.put(val.getBytes(RowCodecCommon.CHARSET), 0, length);
         }
         str_offset += length;
         cnt++;

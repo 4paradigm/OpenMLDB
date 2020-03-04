@@ -6,7 +6,7 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RowCodecUtil {
+public class RowCodecCommon {
 
     public static final Charset CHARSET = Charset.forName("utf-8");
     public static final int VERSION_LENGTH = 2;
@@ -33,7 +33,7 @@ public class RowCodecUtil {
         if (((size) & 0x07) > 0) {
             tmp = 1;
         }
-        return ((size) >> 3) + tmp;
+        return (size >> 3) + tmp;
     }
 
     public static int getAddrLength(int size) {
