@@ -10,7 +10,7 @@ add_test(hash_test hash_test --gtest_output=xml:${CMAKE_BINARY_DIR}/hash_test.xm
 list(APPEND test_list hash_test)
 
 add_executable(hash_mk hash_mk.cc)
-target_link_libraries(hash_mk gflags benchmark benchmark_main pthread)
+target_link_libraries(hash_mk gflags benchmark benchmark_main pthread rt)
 
 add_executable(texttable_test texttable_test.cc)
 target_link_libraries(texttable_test fesql_base gflags gtest pthread)
