@@ -258,9 +258,9 @@ public class RowView {
         int next_str_offset = 0;
         switch (addr_space) {
             case 1: {
-                str_offset = row.get(row_with_offset + field_offset * addr_space);
+                str_offset = row.get(row_with_offset + field_offset * addr_space) & 0xFF;
                 if (next_str_field_offset > 0) {
-                    next_str_offset = row.get(row_with_offset + next_str_field_offset * addr_space);
+                    next_str_offset = row.get(row_with_offset + next_str_field_offset * addr_space) & 0xFF;
                 }
                 break;
             }

@@ -107,7 +107,7 @@ public class RowBuilder {
             index = str_field_start_offset + str_addr_length * offset_vec.get(cnt);
             buf.position(index);
             if (str_addr_length == 1) {
-                buf.put((byte) str_offset);
+                buf.put((byte) (str_offset & 0xFF));
             } else if (str_addr_length == 2) {
                 buf.putShort((short) (str_offset & 0xFFFF));
             } else if (str_addr_length == 3) {
@@ -146,7 +146,7 @@ public class RowBuilder {
         return true;
     }
 
-    public boolean appendInt16(Short val) {
+    public boolean appendInt16(short val) {
         if (!check(DataType.kInt16)) {
             return false;
         }
@@ -207,7 +207,7 @@ public class RowBuilder {
         int index = str_field_start_offset + str_addr_length * offset_vec.get(cnt);
         buf.position(index);
         if (str_addr_length == 1) {
-            buf.put((byte) str_offset);
+            buf.put((byte) (str_offset & 0xFF));
         } else if (str_addr_length == 2) {
             buf.putShort((short) (str_offset & 0xFFFF));
         } else if (str_addr_length == 3) {
