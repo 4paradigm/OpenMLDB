@@ -3,9 +3,11 @@ package com._4paradigm.rtidb.client.schema;
 import com._4paradigm.rtidb.type.Type.DataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RowBuilder {
 
@@ -67,7 +69,7 @@ public class RowBuilder {
         this.size = size;
         buffer.put((byte) 1); // FVersion
         buffer.put((byte) 1); // SVersion
-        buffer.putInt(size);// size
+        buffer.putInt(size); // size
         this.buf = buffer;
         str_addr_length = RowCodecUtil.getAddrLength(size);
         str_offset = str_field_start_offset + str_addr_length * str_field_cnt;
@@ -92,11 +94,8 @@ public class RowBuilder {
 
     boolean appendNULL() {
         int index = RowCodecUtil.HEADER_LENGTH + (cnt >> 3);
-        buf.position(index);
-        byte bt = buf.get();
-        buf.position(index);
-        buf.put((byte) (bt | (1 << (cnt & 0x07))));
-
+        byte bt = buf.get(index);
+        buf.put(index, (byte) (bt | (1 << (cnt & 0x07))));
         ColumnDesc column = schema.get(cnt);
         if (column.getDataType() == DataType.kVarchar) {
             index = str_field_start_offset + str_addr_length * offset_vec.get(cnt);
@@ -127,7 +126,6 @@ public class RowBuilder {
         } else {
             buf.put((byte) 0);
         }
-
         cnt++;
         return true;
     }
@@ -214,8 +212,7 @@ public class RowBuilder {
             buf.putInt(str_offset);
         }
         if (length != 0) {
-            buf.position(str_offset);
-            buf.put(val.getBytes(RowCodecUtil.CHARSET));
+            buf.put(val.getBytes(RowCodecUtil.CHARSET), str_offset, length);
         }
         str_offset += length;
         cnt++;

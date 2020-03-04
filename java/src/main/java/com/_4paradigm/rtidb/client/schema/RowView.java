@@ -15,12 +15,10 @@ public class RowView {
     private final static Logger logger = LoggerFactory.getLogger(RowView.class);
     private ByteBuffer row;
     private int size = 0;
-    private int cnt = 0;
     List<ColumnDesc> schema = new ArrayList<>();
     private int string_field_cnt = 0;
     private int str_field_start_offset = 0;
     private int str_addr_length = 0;
-    private int str_offset = 0;
     private List<Integer> offset_vec = new ArrayList<>();
     private boolean is_valid = false;
 
@@ -74,7 +72,7 @@ public class RowView {
 
     private boolean reset(ByteBuffer row, int size) {
         if (schema.size() == 0 || row == null || size <= RowCodecUtil.HEADER_LENGTH ||
-                row.get(RowCodecUtil.VERSION_LENGTH) != size) {
+                row.getInt(RowCodecUtil.VERSION_LENGTH) != size) {
             is_valid = false;
             return false;
         }
@@ -96,7 +94,7 @@ public class RowView {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
         }
         this.row = row;
-        this.size = row.get(RowCodecUtil.VERSION_LENGTH);
+        this.size = row.getInt(RowCodecUtil.VERSION_LENGTH);
         if (this.size < RowCodecUtil.HEADER_LENGTH) {
             is_valid = false;
             return false;
@@ -257,6 +255,9 @@ public class RowView {
     }
 
     public String getString(int idx, int[] length) throws TabletException {
+        if (length == null) {
+            throw new TabletException("length is null");
+        }
         if (!checkValid(idx, DataType.kVarchar)) {
             throw new TabletException("checkValid false");
         }
@@ -276,7 +277,7 @@ public class RowView {
                               int next_str_field_offset, int str_start_offset,
                               int addr_space, int[] size) throws TabletException {
         if (row == null || size == null) {
-            return null;
+            throw new TabletException("row or size is null");
         }
         if (row.order() == ByteOrder.BIG_ENDIAN) {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
