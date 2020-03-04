@@ -9,7 +9,7 @@ stages:
 style_check:
     stage: build
     script:
-        - bash tools/style_check.sh
+        - source /opt/rh/python27/enable && bash tools/style_check.sh
     artifacts:
         reports:
             junit:
