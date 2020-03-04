@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/fesql_build_base:1.0
+image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.6
 variables:
     GIT_SUBMODULE_STRATEGY: normal
 
@@ -19,7 +19,7 @@ build_fesql_and_case:
     stage: build
     script:
         - ln -sf /depends/thirdparty thirdparty
-        - source /opt/rh/devtoolset-8/enable && bash tools/compile.sh
+        - source /opt/rh/devtoolset-7/enable && bash tools/compile.sh
         - cd build && make coverage
     artifacts:
         reports:
@@ -31,7 +31,7 @@ micro_benchmark:
     stage: benchmark
     script:
         - ln -sf /depends/thirdparty thirdparty
-        - source /opt/rh/devtoolset-8/enable && bash tools/micro_bench.sh
+        - source /opt/rh/devtoolset-7/enable && bash tools/micro_bench.sh
 
 
 
