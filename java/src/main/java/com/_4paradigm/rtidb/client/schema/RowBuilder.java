@@ -60,12 +60,15 @@ public class RowBuilder {
         return 0;
     }
 
-    public boolean setBuffer(ByteBuffer buffer, int size) {
+    public ByteBuffer setBuffer(ByteBuffer buffer, int size) {
         if (buffer == null || size == 0 ||
                 size < str_field_start_offset + str_field_cnt) {
-            return false;
+            return null;
         }
-        buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+        if (buffer.order() == ByteOrder.BIG_ENDIAN) {
+            buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
+        }
+//        buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
         this.size = size;
         buffer.put((byte) 1); // FVersion
         buffer.put((byte) 1); // SVersion
@@ -73,7 +76,7 @@ public class RowBuilder {
         this.buf = buffer;
         str_addr_length = RowCodecUtil.getAddrLength(size);
         str_offset = str_field_start_offset + str_addr_length * str_field_cnt;
-        return true;
+        return this.buf;
     }
 
     private boolean check(DataType type) {
@@ -92,7 +95,7 @@ public class RowBuilder {
         return true;
     }
 
-    boolean appendNULL() {
+    public boolean appendNULL() {
         int index = RowCodecUtil.HEADER_LENGTH + (cnt >> 3);
         byte bt = buf.get(index);
         buf.put(index, (byte) (bt | (1 << (cnt & 0x07))));
@@ -116,7 +119,7 @@ public class RowBuilder {
         return true;
     }
 
-    boolean appendBool(boolean val) {
+    public boolean appendBool(boolean val) {
         if (!check(DataType.kBool)) {
             return false;
         }
@@ -130,7 +133,7 @@ public class RowBuilder {
         return true;
     }
 
-    boolean appendInt32(int val) {
+    public boolean appendInt32(int val) {
         if (!check(DataType.kInt32)) {
             return false;
         }
@@ -140,7 +143,7 @@ public class RowBuilder {
         return true;
     }
 
-    boolean appendInt16(Short val) {
+    public boolean appendInt16(Short val) {
         if (!check(DataType.kInt16)) {
             return false;
         }
@@ -150,7 +153,7 @@ public class RowBuilder {
         return true;
     }
 
-    boolean appendTimestamp(long val) {
+    public boolean appendTimestamp(long val) {
         if (!check(DataType.kTimestamp)) {
             return false;
         }
@@ -160,7 +163,7 @@ public class RowBuilder {
         return true;
     }
 
-    boolean appendInt64(long val) {
+    public boolean appendInt64(long val) {
         if (!check(DataType.kInt64)) {
             return false;
         }
@@ -170,7 +173,7 @@ public class RowBuilder {
         return true;
     }
 
-    boolean AppendFloat(float val) {
+    public boolean AppendFloat(float val) {
         if (!check(DataType.kFloat)) {
             return false;
         }
@@ -180,7 +183,7 @@ public class RowBuilder {
         return true;
     }
 
-    boolean appendDouble(double val) {
+    public boolean appendDouble(double val) {
         if (!check(DataType.kDouble)) {
             return false;
         }
@@ -212,7 +215,8 @@ public class RowBuilder {
             buf.putInt(str_offset);
         }
         if (length != 0) {
-            buf.put(val.getBytes(RowCodecUtil.CHARSET), str_offset, length);
+            buf.position(str_offset);
+            buf.put(val.getBytes(RowCodecUtil.CHARSET), 0, length);
         }
         str_offset += length;
         cnt++;

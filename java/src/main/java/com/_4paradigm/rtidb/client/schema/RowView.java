@@ -117,7 +117,11 @@ public class RowView {
         return true;
     }
 
-    private boolean isNull(ByteBuffer row, int idx) {
+    public boolean isNull(int idx) {
+        return isNull(row, idx);
+    }
+
+    public boolean isNull(ByteBuffer row, int idx) {
         if (row.order() == ByteOrder.BIG_ENDIAN) {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
         }
@@ -131,31 +135,31 @@ public class RowView {
         return row.getInt(RowCodecUtil.VERSION_LENGTH);
     }
 
-    public Boolean getBool(int idx) throws TabletException {
+    public boolean getBool(int idx) throws TabletException {
         return (Boolean) getValue(row, idx, DataType.kBool);
     }
 
-    public Integer getInt32(int idx) throws TabletException {
+    public int getInt32(int idx) throws TabletException {
         return (Integer) getValue(row, idx, DataType.kInt32);
     }
 
-    public Long getTimestamp(int idx) throws TabletException {
+    public long getTimestamp(int idx) throws TabletException {
         return (Long) getValue(row, idx, DataType.kTimestamp);
     }
 
-    public Long getInt64(int idx) throws TabletException {
+    public long getInt64(int idx) throws TabletException {
         return (Long) getValue(row, idx, DataType.kInt64);
     }
 
-    public Short getInt16(int idx) throws TabletException {
+    public short getInt16(int idx) throws TabletException {
         return (Short) getValue(row, idx, DataType.kInt16);
     }
 
-    public Float getFloat(int idx) throws TabletException {
+    public float getFloat(int idx) throws TabletException {
         return (Float) getValue(row, idx, DataType.kFloat);
     }
 
-    public Double getDouble(int idx) throws TabletException {
+    public double getDouble(int idx) throws TabletException {
         return (Double) getValue(row, idx, DataType.kDouble);
     }
 
@@ -227,8 +231,8 @@ public class RowView {
         return val;
     }
 
-    public String getValue(ByteBuffer row, int idx, int[] length) throws TabletException{
-        if (schema.size() == 0 || row == null || length == null || idx >= schema.size()) {
+    public String getValue(ByteBuffer row, int idx) throws TabletException {
+        if (schema.size() == 0 || row == null || idx >= schema.size()) {
             throw new TabletException("input mistake");
         }
         if (row.order() == ByteOrder.BIG_ENDIAN) {
@@ -251,13 +255,10 @@ public class RowView {
             next_str_field_offset = field_offset + 1;
         }
         return getStrField(row, field_offset, next_str_field_offset,
-                str_field_start_offset, RowCodecUtil.getAddrLength(size), length);
+                str_field_start_offset, RowCodecUtil.getAddrLength(size));
     }
 
-    public String getString(int idx, int[] length) throws TabletException {
-        if (length == null) {
-            throw new TabletException("length is null");
-        }
+    public String getString(int idx) throws TabletException {
         if (!checkValid(idx, DataType.kVarchar)) {
             throw new TabletException("checkValid false");
         }
@@ -270,14 +271,14 @@ public class RowView {
             next_str_field_offset = field_offset + 1;
         }
         return getStrField(row, field_offset, next_str_field_offset,
-                str_field_start_offset, str_addr_length, length);
+                str_field_start_offset, str_addr_length);
     }
 
     public String getStrField(ByteBuffer row, int field_offset,
                               int next_str_field_offset, int str_start_offset,
-                              int addr_space, int[] size) throws TabletException {
-        if (row == null || size == null) {
-            throw new TabletException("row or size is null");
+                              int addr_space) throws TabletException {
+        if (row == null) {
+            throw new TabletException("row is null");
         }
         if (row.order() == ByteOrder.BIG_ENDIAN) {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
@@ -324,14 +325,16 @@ public class RowView {
                 throw new TabletException("addr_space mistakes");
             }
         }
+        int len;
         if (next_str_field_offset <= 0) {
             int total_length = row.getInt(RowCodecUtil.VERSION_LENGTH);
-            size[0] = total_length - str_offset;
+            len = total_length - str_offset;
         } else {
-            size[0] = next_str_offset - str_offset;
+            len = next_str_offset - str_offset;
         }
-        byte[] arr = null;
-        row.get(arr, str_offset, size[0]);
+        byte[] arr = new byte[len];
+        row.position(str_offset);
+        row.get(arr, 0, len);
         return new String(arr, RowCodecUtil.CHARSET);
     }
 }
