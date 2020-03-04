@@ -83,7 +83,7 @@ void ProjectListPlanNode::Print(std::ostream &output,
     output << "\n";
     if (nullptr == w_ptr_) {
         PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on table " + table_, true);
+                        "projects on table ", true);
     } else {
         PrintSQLNode(
             output, org_tab,

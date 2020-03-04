@@ -130,44 +130,40 @@ void SQLNodeList::Print(std::ostream &output, const std::string &tab) const {
     PrintSQLVector(output, tab, list_, "list", true);
 }
 
-void ExprNode::Print(std::ostream &output, const std::string &org_tab) const {
-    output << org_tab << SPACE_ST << "expr[" << ExprTypeName(expr_type_) << "]";
+const std::string AllNode::GetExprString() const {
+    if (relation_name_.empty()) {
+        return "*";
+    } else {
+        return relation_name_ + ".*";
+    }
 }
 
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
-    {
         ExprNode::Print(output, org_tab);
-        output << "\n";
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        output << tab << SPACE_ST;
-        switch (date_type_) {
-            case fesql::node::kInt16:
-                output << "value: " << val_.vsmallint;
-                break;
-            case fesql::node::kInt32:
-                output << "value: " << val_.vint;
-                break;
-            case fesql::node::kInt64:
-                output << "value: " << val_.vlong;
-                break;
-            case fesql::node::kVarchar:
-                output << "value: " << val_.vstr;
-                break;
-            case fesql::node::kFloat:
-                output << "value: " << val_.vfloat;
-                break;
-            case fesql::node::kDouble:
-                output << "value: " << val_.vdouble;
-                break;
-            case fesql::node::kNull:
-                output << "value: null";
-                break;
-            case fesql::node::kVoid:
-                output << "value: void";
-                break;
-            default:
-                output << "value: unknow";
-        }
+        output << org_tab << SPACE_ST;
+        output << "value: " << GetExprString();
+}
+const std::string ConstNode::GetExprString() const {
+    switch (date_type_) {
+        case fesql::node::kInt16:
+            return std::to_string(val_.vsmallint);
+        case fesql::node::kInt32:
+            return std::to_string( val_.vint);
+        case fesql::node::kInt64:
+            return std::to_string( val_.vlong);
+        case fesql::node::kVarchar:
+            return val_.vstr;
+        case fesql::node::kFloat:
+            return std::to_string( val_.vfloat);
+        case fesql::node::kDouble:
+            return std::to_string(val_.vdouble);
+        case fesql::node::kNull:
+            return "null";
+            break;
+        case fesql::node::kVoid:
+            return "void";
+        default:
+            return "unknow";
     }
 }
 
@@ -195,6 +191,14 @@ void ColumnRefNode::Print(std::ostream &output,
     PrintValue(output, tab, relation_name_, "relation_name", false);
     output << "\n";
     PrintValue(output, tab, column_name_, "column_name", true);
+}
+const std::string ColumnRefNode::GetExprString() const {
+    std::string str = "";
+    if (!relation_name_.empty()) {
+        str.append(relation_name_).append(".");
+    }
+    str.append(column_name_);
+    return str;
 }
 
 void OrderByNode::Print(std::ostream &output,
@@ -238,9 +242,18 @@ void CallExprNode::Print(std::ostream &output,
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << tab << "function_name: " << function_name_;
     output << "\n";
-    PrintSQLVector(output, tab, args_, "args", false);
+    PrintSQLNode(output, tab, args_, "args", false);
     output << "\n";
     PrintSQLNode(output, tab, over_, "over", true);
+}
+const std::string CallExprNode::GetExprString() const {
+    std::string str = function_name_;
+    str.append(args_->GetExprString());
+
+    if (nullptr != over_) {
+        str.append("over ").append(over_->GetName());
+    }
+    return str;
 }
 
 void WindowDefNode::Print(std::ostream &output,
@@ -448,10 +461,10 @@ WindowDefNode *WindowOfExpression(
                 return windows.at(func_node_ptr->GetOver()->GetName());
             }
 
-            if (func_node_ptr->GetArgs().empty()) {
+            if (nullptr == func_node_ptr->GetArgs() || func_node_ptr->GetArgs()->IsEmpty()) {
                 return nullptr;
             }
-            for (auto arg : func_node_ptr->GetArgs()) {
+            for (auto arg : func_node_ptr->GetArgs()->children) {
                 WindowDefNode *ptr =
                     WindowOfExpression(windows, dynamic_cast<ExprNode *>(arg));
                 if (nullptr != ptr && nullptr != w_ptr) {
@@ -544,11 +557,21 @@ void BinaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLVector(output, tab, children, ExprOpTypeName(op_), true);
 }
+const std::string BinaryExpr::GetExprString() const {
+    std::string str = "";
+    str.append(children[0]->GetExprString()).append(ExprOpTypeName(op_)).append(children[1]->GetExprString());
+    return str;
+}
 void UnaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintSQLVector(output, tab, children, ExprOpTypeName(op_), true);
+}
+const std::string UnaryExpr::GetExprString() const {
+    std::string str = ExprOpTypeName(op_);
+    str.append(children[0]->GetExprString());
+    return str;
 }
 void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -556,13 +579,36 @@ void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, name_, "var", true);
 }
+const std::string ExprIdNode::GetExprString() const {
+    return name_;
+}
+
+void ExprNode::Print(std::ostream &output, const std::string &org_tab) const {
+    output << org_tab << SPACE_ST << "expr[" << ExprTypeName(expr_type_) << "]";
+}
+const std::string ExprNode::GetExprString() const { return ""; }
 
 void ExprListNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
-    ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
-    output << "\n";
-    PrintSQLVector(output, tab, children, "list", true);
+    for (ExprNode* node: children) {
+        node->Print(output, org_tab);
+    }
+}
+const std::string ExprListNode::GetExprString() const {
+    if (children.empty()) {
+        return "()";
+    } else {
+        std::string str = "(";
+        auto iter = children.cbegin();
+        str.append((*iter)->GetExprString());
+        for(;iter != children.cend(); iter ++) {
+            str.append(",");
+            str.append((*iter)->GetExprString());
+        }
+        str.append(")");
+        return str;
+    }
 }
 void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
@@ -724,5 +770,6 @@ void TypeNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, GetName(), "type", true);
 }
+
 }  // namespace node
 }  // namespace fesql

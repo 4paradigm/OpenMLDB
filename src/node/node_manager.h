@@ -30,6 +30,7 @@ class NodeManager {
             sql_node_ite = parser_node_list_.erase(sql_node_ite);
         }
 
+
         for (auto plan_node_ite = plan_node_list_.begin();
              plan_node_ite != plan_node_list_.end(); ++plan_node_ite) {
             delete (*plan_node_ite);
@@ -42,6 +43,7 @@ class NodeManager {
             delete (*sql_node_list_iter);
             sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
         }
+
     }
 
     int GetParserNodeListSize() { return parser_node_list_.size(); }
@@ -56,8 +58,7 @@ class NodeManager {
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
-    ProjectListPlanNode *MakeProjectListPlanNode(const std::string &table,
-                                                 WindowPlanNode *w);
+    ProjectListPlanNode *MakeProjectListPlanNode(WindowPlanNode *w);
     WindowPlanNode *MakeWindowPlanNode(int64_t start, int64_t end,
                                        bool is_range_between);
     ScanPlanNode *MakeSeqScanPlanNode(const std::string &table);
@@ -75,8 +76,8 @@ class NodeManager {
                                 SQLNodeList *window_clause_ptr,
                                 SQLNode *limit_clause_ptr);
     SQLNode *MakeTableNode(const std::string &name, const std::string &alias);
-    ExprNode *MakeFuncNode(const std::string &name, SQLNodeList *args,
-                           SQLNode *over);
+    ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
+                           const SQLNode *over);
     SQLNode *MakeWindowDefNode(const std::string &name);
     SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprListNode *orders,
                                SQLNode *frame);
@@ -168,11 +169,11 @@ class NodeManager {
     node::FnForInBlock *MakeForInBlock(FnForInNode *for_in_node,
                                        FnNodeList *block);
 
-    node::SelectPlanNode *MakeSelectPlanNode(PlanNode* node, const ExprNode *condition);
+    PlanNode *MakeSelectPlanNode(PlanNode* node, const ExprNode *condition);
 
     PlanNode *MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list);
 
-    PlanNode *MakeProjectPlanNode(PlanNode *node, const NodePointVector &projection_list);
+    PlanNode *MakeProjectPlanNode(PlanNode *node, const PlanNodeList &project_list);
 
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 

@@ -89,7 +89,7 @@ class FeSQLAnalyser {
     void TransformFuncNode(node::CallExprNode *node_ptr,
                            const std::string &table_name,
                            Status &status);  // NOLINT (runtime/references)
-    void TransformWindowDef(node::WindowDefNode *node_ptr,
+    void TransformWindowDef(const node::WindowDefNode *node_ptr,
                             const std::string &table_name,
                             Status &status);  // NOLINT (runtime/references)
     void TransformAllRef(node::AllNode *node_ptr,

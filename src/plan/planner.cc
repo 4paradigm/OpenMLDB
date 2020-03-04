@@ -15,136 +15,6 @@
 namespace fesql {
 namespace plan {
 
-int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
-                              PlanNode *plan_tree,
-                              Status &status) {  // NOLINT (runtime/references)
-    const node::SelectStmt *root = (const node::SelectStmt *)select_tree;
-    node::SelectPlanNode *select_plan = (node::SelectPlanNode *)plan_tree;
-    const node::NodePointVector &table_ref_list = root->GetTableRefList();
-    if (table_ref_list.empty()) {
-        status.msg =
-            "can not create select plan node with empty table references";
-        status.code = common::kSQLError;
-        return status.code;
-    }
-    if (table_ref_list.size() > 1) {
-        status.msg =
-            "can not create select plan node based on more than 2 tables";
-        status.code = common::kUnSupport;
-        return status.code;
-    }
-
-    const node::TableNode *table_node_ptr =
-        (const node::TableNode *)table_ref_list.at(0);
-    node::PlanNode *current_node = select_plan;
-    std::map<const node::WindowDefNode *, node::ProjectListPlanNode *>
-        project_list_map;
-
-    // prepare window def
-    int w_id = 1;
-    std::map<std::string, node::WindowDefNode *> windows;
-    if (!root->GetWindowList().empty()) {
-        for (auto node : root->GetWindowList()) {
-            node::WindowDefNode *w = dynamic_cast<node::WindowDefNode *>(node);
-            windows[w->GetName()] = w;
-        }
-    }
-
-    // prepare project list plan node
-    const node::NodePointVector &select_expr_list = root->GetSelectList();
-    if (false == select_expr_list.empty()) {
-        for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
-            auto expr = select_expr_list[pos];
-            node::ProjectNode *project_node_ptr =
-                (node::ProjectNode *)(node_manager_->MakePlanNode(
-                    node::kProject));
-
-            CreateProjectPlanNode(expr, pos, table_node_ptr->GetOrgTableName(),
-                                  project_node_ptr, status);
-            if (0 != status.code) {
-                return status.code;
-            }
-            node::WindowDefNode *w_ptr = node::WindowOfExpression(
-                windows, project_node_ptr->GetExpression());
-
-            if (project_list_map.find(w_ptr) == project_list_map.end()) {
-                if (w_ptr == nullptr) {
-                    project_list_map[w_ptr] =
-                        node_manager_->MakeProjectListPlanNode(
-                            project_node_ptr->GetTable(), nullptr);
-                } else {
-                    node::WindowPlanNode *w_node_ptr =
-                        node_manager_->MakeWindowPlanNode(w_id++);
-                    CreateWindowPlanNode(w_ptr, w_node_ptr, status);
-                    if (common::kOk != status.code) {
-                        return status.code;
-                    }
-                    project_list_map[w_ptr] =
-                        node_manager_->MakeProjectListPlanNode(
-                            project_node_ptr->GetTable(), w_node_ptr);
-                }
-            }
-            project_list_map[w_ptr]->AddProject(project_node_ptr);
-        }
-
-        // TODO(chenjing): apply limit optimized rule, remove limit node, fill
-        // limit_cnt into Scan node
-        bool optimized_limit = true;
-        // TODO(chenjing): handle multi table scan
-        // TODO(chenjing): Scan optimized
-        node::ScanPlanNode *scan_node_ptr = node_manager_->MakeSeqScanPlanNode(
-            table_node_ptr->GetOrgTableName());
-        // set limit
-        if (nullptr != root->GetLimit()) {
-            const node::LimitNode *limit_ptr =
-                (node::LimitNode *)root->GetLimit();
-            if (optimized_limit) {
-                scan_node_ptr->SetLimit(limit_ptr->GetLimitCount());
-            } else {
-                node::LimitPlanNode *limit_plan_ptr =
-                    (node::LimitPlanNode *)node_manager_->MakePlanNode(
-                        node::kPlanTypeLimit);
-                limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
-                current_node->AddChild(limit_plan_ptr);
-                current_node = limit_plan_ptr;
-            }
-        }
-
-        // add MergeNode if multi ProjectionLists exist
-        int32_t project_list_size = project_list_map.size();
-        if (project_list_size > 1) {
-            uint32_t columns_size = 0;
-            for (auto project : project_list_map) {
-                columns_size += project.second->GetProjects().size();
-            }
-            node::PlanNode *merge_node =
-                node_manager_->MakeMergeNode(columns_size);
-            current_node->AddChild(merge_node);
-            current_node = merge_node;
-        }
-        std::vector<node::ProjectListPlanNode *> project_list_vec(w_id);
-        for (auto &v : project_list_map) {
-            node::ProjectListPlanNode *project_list = v.second;
-            int pos = nullptr == project_list->GetW()
-                          ? 0
-                          : project_list->GetW()->GetId();
-            if (1 == project_list_size) {
-                project_list->SetScanLimit(scan_node_ptr->GetLimit());
-            }
-            project_list->AddChild(scan_node_ptr);
-            project_list_vec[pos] = project_list;
-        }
-        for (auto project_list : project_list_vec) {
-            if (nullptr != project_list) {
-                current_node->AddChild(project_list);
-            }
-        }
-    }
-
-    return 0;
-}
-
-
 int Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
                                   PlanNode **plan_tree, Status &status) {
     const node::SelectStmt *root = (const node::SelectStmt *)select_tree;
@@ -193,19 +63,72 @@ int Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
     // prepare project list plan node
     const node::NodePointVector &select_expr_list = root->GetSelectList();
     if (false == select_expr_list.empty()) {
-        current_node =
-            node_manager_->MakeProjectPlanNode(current_node, select_expr_list);
-    }
+        std::map<node::WindowDefNode *, node::ProjectListPlanNode *>
+            project_list_map;
+        // prepare window def
+        int w_id = 1;
+        std::map<std::string, node::WindowDefNode *> windows;
+        if (!root->GetWindowList().empty()) {
+            for (auto node : root->GetWindowList()) {
+                node::WindowDefNode *w =
+                    dynamic_cast<node::WindowDefNode *>(node);
+                windows[w->GetName()] = w;
+            }
+        }
 
-    // set limit
-    if (nullptr != root->GetLimit()) {
-        const node::LimitNode *limit_ptr = (node::LimitNode *)root->GetLimit();
-        node::LimitPlanNode *limit_plan_ptr =
-            (node::LimitPlanNode *)node_manager_->MakePlanNode(
-                node::kPlanTypeLimit);
-        limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
-        current_node = node_manager_->MakeLimitPlanNode(
-            current_node, limit_ptr->GetLimitCount());
+        for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
+            auto expr = select_expr_list[pos];
+            node::ProjectNode *project_node_ptr =
+                (node::ProjectNode *)(node_manager_->MakePlanNode(
+                    node::kProject));
+
+            CreateProjectPlanNode(expr, pos, project_node_ptr, status);
+            if (0 != status.code) {
+                return status.code;
+            }
+            node::WindowDefNode *w_ptr = node::WindowOfExpression(
+                windows, project_node_ptr->GetExpression());
+
+            if (project_list_map.find(w_ptr) == project_list_map.end()) {
+                if (w_ptr == nullptr) {
+                    project_list_map[w_ptr] =
+                        node_manager_->MakeProjectListPlanNode(nullptr);
+                } else {
+                    node::WindowPlanNode *w_node_ptr =
+                        node_manager_->MakeWindowPlanNode(w_id++);
+                    CreateWindowPlanNode(w_ptr, w_node_ptr, status);
+                    if (common::kOk != status.code) {
+                        return status.code;
+                    }
+                    project_list_map[w_ptr] =
+                        node_manager_->MakeProjectListPlanNode(nullptr);
+                }
+            }
+//            project_list_map[w_ptr]->AddProject(project_node_ptr);
+        }
+        //        // add MergeNode if multi ProjectionLists exist
+        //        PlanNodeList project_list_vec(w_id);
+        //        for (auto &v : project_list_map) {
+        //            node::ProjectListPlanNode *project_list = v.second;
+        //            int pos = nullptr == project_list->GetW()
+        //                      ? 0
+        //                      : project_list->GetW()->GetId();
+        //            project_list_vec[pos] = project_list;
+        //        }
+        //        current_node =
+        //            node_manager_->MakeProjectPlanNode(current_node,
+        //            project_list_vec);
+        // set limit
+        if (nullptr != root->GetLimit()) {
+            const node::LimitNode *limit_ptr =
+                (node::LimitNode *)root->GetLimit();
+            node::LimitPlanNode *limit_plan_ptr =
+                (node::LimitPlanNode *)node_manager_->MakePlanNode(
+                    node::kPlanTypeLimit);
+            limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
+            current_node = node_manager_->MakeLimitPlanNode(
+                current_node, limit_ptr->GetLimitCount());
+        }
     }
     *plan_tree = current_node;
     return true;
@@ -228,7 +151,8 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
         }
         default: {
             status.msg =
-                "cannot create window frame with unrecognized bound type, only "
+                "cannot create window frame with unrecognized bound type, "
+                "only "
                 "support CURRENT|PRECEDING|FOLLOWING";
             status.code = common::kUnSupport;
             return -1;
@@ -325,10 +249,10 @@ void Planner::CreateWindowPlanNode(
             return;
         }
     }
-}  // namespace plan
+}
+
 void Planner::CreateProjectPlanNode(
-    const SQLNode *root, const uint32_t pos, const std::string &table_name,
-    node::ProjectNode *plan_tree,
+    const SQLNode *root, const uint32_t pos, node::ProjectNode *plan_tree,
     Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create project node: query tree node it null";
@@ -342,18 +266,12 @@ void Planner::CreateProjectPlanNode(
             const node::ResTarget *target_ptr = (const node::ResTarget *)root;
 
             if (target_ptr->GetName().empty()) {
-                if (target_ptr->GetVal()->GetExprType() ==
-                    node::kExprColumnRef) {
-                    plan_tree->SetName(dynamic_cast<node::ColumnRefNode *>(
-                                           target_ptr->GetVal())
-                                           ->GetColumnName());
-                }
+                plan_tree->SetName(target_ptr->GetVal()->GetExprString());
             } else {
                 plan_tree->SetName(target_ptr->GetName());
             }
             plan_tree->SetPos(pos);
             plan_tree->SetExpression(target_ptr->GetVal());
-            plan_tree->SetTable(table_name);
             return;
         }
         default: {
@@ -366,15 +284,6 @@ void Planner::CreateProjectPlanNode(
     }
 }
 
-void Planner::CreateDataProviderPlanNode(
-    const SQLNode *root, PlanNode *plan_tree,
-    Status &status) {  // NOLINT (runtime/references)
-}
-
-void Planner::CreateDataCollectorPlanNode(
-    const SQLNode *root, PlanNode *plan_tree,
-    Status &status) {  // NOLINT (runtime/references)
-}
 void Planner::CreateCreateTablePlan(
     const node::SQLNode *root, node::CreatePlanNode *plan_tree,
     Status &status) {  // NOLINT (runtime/references)
@@ -396,8 +305,7 @@ int SimplePlanner::CreatePlanTree(
     for (auto parser_tree : parser_trees) {
         switch (parser_tree->GetType()) {
             case node::kSelectStmt: {
-                PlanNode *select_plan =
-                    nullptr;
+                PlanNode *select_plan = nullptr;
                 CreateSelectStmtPlan(parser_tree, &select_plan, status);
                 if (0 != status.code) {
                     return status.code;
@@ -483,7 +391,8 @@ void Planner::CreateFuncDefPlan(
     if (root->GetType() != node::kFnDef) {
         status.code = common::kSQLError;
         status.msg =
-            "fail to create cmd plan node: query tree node it not function def "
+            "fail to create cmd plan node: query tree node it not function "
+            "def "
             "type";
         LOG(WARNING) << status.msg;
         return;
@@ -503,7 +412,8 @@ void Planner::CreateInsertPlan(const node::SQLNode *root,
 
     if (root->GetType() != node::kInsertStmt) {
         status.msg =
-            "fail to create cmd plan node: query tree node it not insert type";
+            "fail to create cmd plan node: query tree node it not insert "
+            "type";
         status.code = common::kSQLError;
         return;
     }

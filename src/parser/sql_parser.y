@@ -379,7 +379,7 @@ typedef void* yyscan_t;
 
  /* insert table */
 %type<node> insert_stmt
-%type<exprlist> insert_expr_list column_ref_list opt_partition_clause sort_clause opt_sort_clause
+%type<exprlist> insert_expr_list column_ref_list opt_partition_clause sort_clause opt_sort_clause expr_list
 %type<expr> insert_expr
 
  /* create table */
@@ -389,7 +389,7 @@ typedef void* yyscan_t;
 %type <list>  column_desc_list column_index_item_list
 
 %type <list> opt_target_list
-            select_projection_list expr_list
+            select_projection_list
             table_references
 
             window_clause window_definition_list
@@ -934,12 +934,12 @@ relation_factor:
 expr_list:
     expr
     {
-      $$ = node_manager->MakeNodeList($1);
+      $$ = node_manager->MakeExprList($1);
     }
   	| expr_list ',' expr
     {
         $$ = $1;
-        $$->PushBack($3);
+        $$->AddChild($3);
     }
   	;
 

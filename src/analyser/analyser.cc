@@ -167,8 +167,8 @@ void FeSQLAnalyser::TransformFuncNode(
     Status &status) {  // NOLINT (runtime/references)
     // TODO(chenjing): 细化参数校验
     // TODO(chenjing): 表达式节点修改：需要带上DataType属性
-    for (int i = 0; i < static_cast<int>(node_ptr->GetArgs().size()); ++i) {
-        TransformExprNode(node_ptr->GetArgs()[i], table_name, status);
+    for (int i = 0; i < static_cast<int>(node_ptr->GetArgs()->children.size()); ++i) {
+        TransformExprNode(node_ptr->GetArgs()->children[i], table_name, status);
         if (0 != status.code) {
             return;
         }
@@ -283,7 +283,7 @@ FuncDefType FeSQLAnalyser::GetAggFunDefType(node::CallExprNode *node_ptr) {
 }
 
 void FeSQLAnalyser::TransformWindowDef(
-    node::WindowDefNode *node_ptr, const std::string &table_name,
+    const node::WindowDefNode *node_ptr, const std::string &table_name,
     Status &status) {  // NOLINT (runtime/references)
     // TODO(chenjing): window is exist
     // TODO(chenjing): partions type is valid

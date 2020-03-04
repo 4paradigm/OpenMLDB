@@ -199,7 +199,6 @@ class ProjectNode : public LeafPlanNode {
           pos_(0),
           expression_(nullptr),
           name_(""),
-          table_(""),
           w_("") {}
 
     ~ProjectNode() {}
@@ -211,13 +210,9 @@ class ProjectNode : public LeafPlanNode {
     void SetW(const std::string w) { w_ = w; }
     std::string GetW() const { return w_; }
 
-    std::string GetTable() const { return table_; }
-
-    void SetTable(const std::string table) { table_ = table; }
-
     std::string GetName() const { return name_; }
 
-    void SetName(const std::string name) { name_ = name; }
+    void SetName(const std::string &name) { name_ = name; }
 
     node::ExprNode *GetExpression() const { return expression_; }
 
@@ -229,7 +224,6 @@ class ProjectNode : public LeafPlanNode {
     uint32_t pos_;
     node::ExprNode *expression_;
     std::string name_;
-    std::string table_;
     std::string w_;
 };
 
@@ -277,21 +271,21 @@ class ProjectListPlanNode : public MultiChildPlanNode {
         : MultiChildPlanNode(kProjectList),
           w_ptr_(nullptr),
           is_window_agg_(false),
-          scan_limit_(0L) {}
-    ProjectListPlanNode(const std::string &table, WindowPlanNode *w_ptr,
+          scan_limit_(0L),
+          projects({}){}
+    ProjectListPlanNode(WindowPlanNode *w_ptr,
                         const bool is_window_agg)
         : MultiChildPlanNode(kProjectList),
-          table_(table),
           w_ptr_(w_ptr),
           is_window_agg_(is_window_agg),
-          scan_limit_(0L) {}
+          scan_limit_(0L),
+          projects({}){}
     ~ProjectListPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const PlanNodeList &GetProjects() const { return projects; }
     void AddProject(ProjectNode *project) { projects.push_back(project); }
 
-    const std::string GetTable() const { return table_; }
 
     WindowPlanNode *GetW() const { return w_ptr_; }
 
@@ -302,7 +296,6 @@ class ProjectListPlanNode : public MultiChildPlanNode {
 
  private:
     PlanNodeList projects;
-    std::string table_;
     WindowPlanNode *w_ptr_;
     bool is_window_agg_;
     uint64_t scan_limit_;
@@ -310,9 +303,9 @@ class ProjectListPlanNode : public MultiChildPlanNode {
 
 class ProjectPlanNode : public UnaryPlanNode {
  public:
-    explicit ProjectPlanNode(PlanNode *node, const NodePointVector &expression)
-        : UnaryPlanNode(node, kPlanTypeProject), expressions_(expression) {}
-    const NodePointVector &expressions_;
+    explicit ProjectPlanNode(PlanNode *node, const PlanNodeList &project_list)
+        : UnaryPlanNode(node, kPlanTypeProject), project_list(project_list) {}
+    const PlanNodeList project_list;
 };
 
 class MergePlanNode : public MultiChildPlanNode {

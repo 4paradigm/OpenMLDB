@@ -261,6 +261,7 @@ class ExprNode : public SQLNode {
 
     std::vector<ExprNode *> children;
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual const std::string GetExprString() const;
 
  private:
     ExprType expr_type_;
@@ -449,6 +450,8 @@ class ExprListNode : public ExprNode {
  public:
     ExprListNode() : ExprNode(kExprList) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const bool IsEmpty() const { return children.empty(); }
+    const std::string GetExprString() const;
 };
 
 class AllNode : public ExprNode {
@@ -463,46 +466,45 @@ class AllNode : public ExprNode {
     void SetRelationName(const std::string &relation_name) {
         relation_name_ = relation_name;
     }
-
+    const std::string GetExprString() const;
  private:
     std::string relation_name_;
 };
 class CallExprNode : public ExprNode {
  public:
-    CallExprNode()
-        : ExprNode(kExprCall),
-          is_agg_(true),
-          function_name_(""),
-          over_(nullptr) {}
-    explicit CallExprNode(const std::string &function_name)
+    explicit CallExprNode(const std::string &function_name,
+                          const ExprListNode *args, const WindowDefNode *over)
         : ExprNode(kExprCall),
           is_agg_(true),
           function_name_(function_name),
-          over_(nullptr) {}
+          over_(over),
+          args_(args) {}
 
     ~CallExprNode() {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
 
     std::string GetFunctionName() const { return function_name_; }
 
-    WindowDefNode *GetOver() const { return over_; }
+    const WindowDefNode *GetOver() const { return over_; }
 
     void SetOver(WindowDefNode *over) { over_ = over; }
 
     bool GetIsAgg() const { return is_agg_; }
 
     void SetAgg(bool is_agg) { is_agg_ = is_agg; }
-    NodePointVector &GetArgs() { return args_; }
-    const NodePointVector &GetArgs() const { return args_; }
+    const ExprListNode *GetArgs() const { return args_; }
 
-    const int GetArgsSize() const { return args_.size(); }
+    const int GetArgsSize() const {
+        return nullptr == args_ ? 0 : args_->children.size();
+    }
 
  private:
     bool is_agg_;
-    std::string function_name_;
-    WindowDefNode *over_;
-    NodePointVector args_;
+    const std::string function_name_;
+    const WindowDefNode *over_;
+    const ExprListNode *args_;
 };
 class BinaryExpr : public ExprNode {
  public:
@@ -510,6 +512,7 @@ class BinaryExpr : public ExprNode {
     explicit BinaryExpr(FnOperator op) : ExprNode(kExprBinary), op_(op) {}
     FnOperator GetOp() const { return op_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
 
  private:
     FnOperator op_;
@@ -520,6 +523,7 @@ class UnaryExpr : public ExprNode {
     explicit UnaryExpr(FnOperator op) : ExprNode(kExprUnary), op_(op) {}
     FnOperator GetOp() const { return op_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const;
 
  private:
     FnOperator op_;
@@ -531,6 +535,7 @@ class ExprIdNode : public ExprNode {
         : ExprNode(kExprId), name_(name) {}
     const std::string GetName() const { return name_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const;
 
  private:
     std::string name_;
@@ -582,6 +587,7 @@ class ConstNode : public ExprNode {
         }
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
 
     int16_t GetSmallInt() const { return val_.vsmallint; }
 
@@ -651,6 +657,7 @@ class ColumnRefNode : public ExprNode {
     }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
 
  private:
     std::string column_name_;
@@ -718,6 +725,7 @@ class SelectStmt : public SQLNode {
     const ExprListNode *group_clause_ptr_;
     const SQLNode *having_clause_ptr_;
     const SQLNode *order_clause_ptr_;
+
  private:
     SQLNode *limit_ptr_;
     NodePointVector select_list_ptr_;
@@ -998,6 +1006,7 @@ class FnAssignNode : public FnNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string name_;
     const ExprNode *expression_;
+
  private:
     bool is_ssa_;
 };
