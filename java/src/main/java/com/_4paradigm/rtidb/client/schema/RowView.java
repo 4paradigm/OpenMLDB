@@ -265,9 +265,9 @@ public class RowView {
                 break;
             }
             case 2: {
-                str_offset = row.getShort(row_with_offset + field_offset * addr_space);
+                str_offset = row.getShort(row_with_offset + field_offset * addr_space) & 0xFFFF;
                 if (next_str_field_offset > 0) {
-                    next_str_offset = row.getShort(row_with_offset + next_str_field_offset * addr_space);
+                    next_str_offset = row.getShort(row_with_offset + next_str_field_offset * addr_space) & 0xFFFF;
                 }
                 break;
             }

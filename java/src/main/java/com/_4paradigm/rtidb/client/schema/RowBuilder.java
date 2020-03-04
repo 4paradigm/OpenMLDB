@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client.schema;
 
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.type.Type.DataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,22 +43,24 @@ public class RowBuilder {
         }
     }
 
-    public int calTotalLength(int string_length) {
+    public int calTotalLength(int string_length) throws TabletException {
         if (schema.size() == 0) {
             return 0;
         }
-        int total_length = str_field_start_offset;
-        total_length += string_length;
+        long total_length = str_field_start_offset + string_length;
         if (total_length + str_field_cnt <= RowCodecCommon.UINT8_MAX) {
-            return total_length + str_field_cnt;
+            total_length += str_field_cnt;
         } else if (total_length + str_field_cnt * 2 <= RowCodecCommon.UINT16_MAX) {
-            return total_length + str_field_cnt * 2;
+            total_length += str_field_cnt * 2;
         } else if (total_length + str_field_cnt * 3 <= RowCodecCommon.UINT24_MAX) {
-            return total_length + str_field_cnt * 3;
+            total_length += str_field_cnt * 3;
         } else if (total_length + str_field_cnt * 4 <= RowCodecCommon.UINT32_MAX) {
-            return total_length + str_field_cnt * 4;
+            total_length += str_field_cnt * 4;
         }
-        return 0;
+        if (total_length > Integer.MAX_VALUE) {
+            throw new TabletException("total length is bigger than integer max value");
+        }
+        return (int) total_length;
     }
 
     public ByteBuffer setBuffer(ByteBuffer buffer, int size) {
@@ -106,7 +109,7 @@ public class RowBuilder {
             if (str_addr_length == 1) {
                 buf.put((byte) str_offset);
             } else if (str_addr_length == 2) {
-                buf.putShort((short) str_offset);
+                buf.putShort((short) (str_offset & 0xFFFF));
             } else if (str_addr_length == 3) {
                 buf.put((byte) (str_offset >> 16));
                 buf.put((byte) ((str_offset & 0xFF00) >> 8));
@@ -206,7 +209,7 @@ public class RowBuilder {
         if (str_addr_length == 1) {
             buf.put((byte) str_offset);
         } else if (str_addr_length == 2) {
-            buf.putShort((short) str_offset);
+            buf.putShort((short) (str_offset & 0xFFFF));
         } else if (str_addr_length == 3) {
             buf.put((byte) (str_offset >> 16));
             buf.put((byte) ((str_offset & 0xFF00) >> 8));
