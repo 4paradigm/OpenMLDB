@@ -56,18 +56,3 @@ public:
     bool Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> value, const WriteOption& wo);
 
 };
-
-class RtidbTabletClient {
-private:
-    rtidb::client::TabletClient* client_;
-public:
-    RtidbTabletClient();
-    ~RtidbTabletClient() {
-        if (client_ != NULL) {
-            delete client_;
-        }
-    };
-    bool Init(const std::string& endpoint);
-    bool Put(const uint32_t tid, const uint32_t pid, const std::string& pk, const uint64_t time, const std::string& value);
-    std::string Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time);
-};
