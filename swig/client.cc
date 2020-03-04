@@ -1,5 +1,6 @@
 #include "client.h"
 #include "base/flat_array.h"
+#include "base/codec.h"
 #include <boost/lexical_cast.hpp>
 #include "base/hash.h"
 #include <boost/algorithm/string.hpp>
@@ -8,6 +9,47 @@
 #endif
 #include <snappy.h>
 
+const std::map<std::string, rtidb::type::DataType> NameToDataType = {
+        {"string", rtidb::type::DataType::kVarchar},
+        {"int16", rtidb::type::DataType::kInt16},
+        {"int32", rtidb::type::DataType::kInt32},
+        {"int64", rtidb::type::DataType::kInt64},
+        {"float", rtidb::type::DataType::kFloat},
+        {"double", rtidb::type::DataType::kDouble},
+        {"date", rtidb::type::DataType::kDate},
+        {"timestamp", rtidb::type::DataType::kTimestamp},
+};
+static int ConvertColumnDesc(
+        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
+        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& columns,
+        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& added_column_field) {
+    columns.Clear();
+    for (const auto& cur_column_desc : column_desc_field) {
+        rtidb::common::ColumnDesc* column_desc = columns.Add();
+        column_desc->CopyFrom(cur_column_desc);
+        if (!cur_column_desc.has_data_type()) {
+            auto iter = NameToDataType.find(cur_column_desc.type());
+            if (iter == NameToDataType.end()) {
+                column_desc->set_data_type(rtidb::type::DataType::kVoid);
+            } else {
+                column_desc->set_data_type(iter->second);
+            }
+        }
+    }
+    for (const auto& cur_column_desc : added_column_field) {
+        rtidb::common::ColumnDesc* column_desc = columns.Add();
+        column_desc->CopyFrom(cur_column_desc);
+        if (!cur_column_desc.has_data_type()) {
+            auto iter = NameToDataType.find(cur_column_desc.type());
+            if (iter == NameToDataType.end()) {
+                column_desc->set_data_type(rtidb::type::DataType::kVoid);
+            } else {
+                column_desc->set_data_type(iter->second);
+            }
+        }
+    }
+    return 0;
+}
 int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
             const std::vector<uint64_t>& ts_dimensions, uint64_t ts, const std::string& value,
             const google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition>& table_partition,
@@ -107,9 +149,7 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
         return -1;
     }
     uint8_t cnt = (uint8_t)data.size();
-    ::rtidb::base::FlatArrayCodec codec(columns);
-    rtidb::base::RowBuilder codec(columns);
-    uint32_t size = rb.
+    ::rtidb::base::FlatArrayCodec codec;
     if (modify_times == 0) {
         ::rtidb::base::FlatArrayCodec codec_tmp(&value, cnt);
         codec = codec_tmp;
@@ -394,6 +434,23 @@ bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std
         return false;
     }
 
+    std::string tablet_endpoint;
+
+    for (const auto& part : tables[0].table_partition()) {
+        for (const auto& meta : part.partition_meta()) {
+            if (meta.is_alive() && meta.is_leader()) {
+                tablet_endpoint = meta.endpoint();
+            }
+        }
+    }
+    if (tablet_endpoint.empty()) {
+        std::cerr << "failed to get table server endpoint" << std::endl;
+        return false;
+    }
+    std::shared_ptr<rtidb::client::TabletClient> tablet = GetTabletClient(tablet_endpoint);
+    if (tablet == NULL) {
+        return false;
+    }
     auto column_descs = tables[0].column_desc_v1();
     auto add_column_descs = tables[0].added_column_desc();
     if (value.size() - column_descs.size() - add_column_descs.size() != 0) {
@@ -403,38 +460,86 @@ bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std
     for (int i = 0;i < add_column_descs.size();i++) {
         column_descs.Add()->CopyFrom(add_column_descs.Get(i));
     }
-    std::vector<::rtidb::base::ColumnDesc> columns;
-    if (rtidb::base::SchemaCodec::ConvertColumnDesc(column_descs, columns) < 0) {
+    google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc> columns;
+    if (ConvertColumnDesc(column_descs, columns, add_column_descs) < 0) {
         std::cerr << "conmver table column desc failed!" << std::endl;
     }
-    std::string buffer;
-    std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
-    std::vector<std::string> values;
-    std::vector<uint64_t> ts_dimensions;
     std::set<std::string> keys;
     for (auto& key : tables[0].column_key()) {
         for (auto &col : key.col_name()) {
             keys.insert(col);
         }
     }
+    std::vector<std::string> values;
+    std::uint32_t string_length = 0;
     std::map<std::string, std::string> raw_value;
     for (auto& column : columns) {
-        auto iter = value.find(column.name);
+        auto iter = value.find(column.name());
         if (iter == value.end()) {
-            std::cerr << column.name << " not found, put error" << std::endl;
+            std::cerr << column.name() << " not found, put error" << std::endl;
             return false;
         }
         values.push_back(iter->second);
-        auto set_iter = keys.find(column.name);
+        string_length += iter->second.size();
+        auto set_iter = keys.find(column.name());
         if (set_iter != keys.end()) {
-            raw_value.insert(std::make_pair(column.name, iter->second));
+            raw_value.insert(std::make_pair(column.name(), iter->second));
         }
     }
-    int code = EncodeMultiDimensionData(values, columns, tables[0].table_partition_size(), buffer, dimensions, ts_dimensions, add_column_descs.size());
-    if (code < 0) {
-        std::cerr << "encode data error" << std::endl;
-        return false;
+    rtidb::base::RowBuilder rb(columns);
+    uint32_t total_size = rb.CalTotalLength(string_length);
+    std::string buffer;
+    buffer.resize(total_size);
+    rb.SetBuffer(reinterpret_cast<int8_t*>(&buffer[0]), total_size);
+    for (uint32_t i = 0; i < columns.size(); i++) {
+        std::cout << columns.Get(i).type() << std::endl;
+        std::cout << columns.Get(i).data_type() << std::endl;
+        std::cout << columns.Get(i).has_data_type() << " ---" << std::endl;
     }
+    for (uint32_t i = 0; i < columns.size(); i++) {
+        switch (columns.Get(i).data_type()) {
+            case rtidb::type::kInt32:
+                rb.AppendInt32(boost::lexical_cast<int32_t>(values[i]));
+                break;
+            case rtidb::type::kTimestamp:
+                rb.AppendTimestamp(boost::lexical_cast<int64_t>(values[i]));
+                break;
+            case rtidb::type::kInt64:
+                rb.AppendInt64(boost::lexical_cast<int64_t>(values[i]));
+                break;
+            case rtidb::type::kBool:
+                rb.AppendBool(boost::lexical_cast<bool>(values[i]));
+                break;
+            case rtidb::type::kFloat:
+                rb.AppendFloat(boost::lexical_cast<float>(values[i]));
+                break;
+            case rtidb::type::kInt16:
+                rb.AppendInt16(boost::lexical_cast<int16_t>(values[i]));
+                break;
+            case rtidb::type::kDouble:
+                rb.AppendDouble(boost::lexical_cast<double>(values[i]));
+                break;
+            case rtidb::type::kVarchar:
+                rb.AppendString(values[i].data(), values[i].size());
+                break;
+            case rtidb::type::kDate:
+                rb.AppendNULL();
+                break;
+            case rtidb::type::kVoid:
+                rb.AppendNULL();
+                break;
+            default:
+                rb.AppendNULL();
+        }
+    }
+    std::string actual_value = buffer;
+    if (tables[0].compress_type() == rtidb::nameserver::kSnappy) {
+        std::string compressed;
+        snappy::Compress(buffer.data(), buffer.size(), &compressed);
+        actual_value = compressed;
+    }
+    std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
+    std::vector<uint64_t> ts_dimensions;
     if (keys.size() > 0) {
         int code = SetDimensionData(raw_value, tables[0].column_key(), tables[0].table_partition_size(), dimensions);
         if (code < 0) {
@@ -442,12 +547,7 @@ bool RtidbNSClient::Put(const std::string& name, const std::map<std::string, std
             return false;
         }
     }
-    std::string actual_value = buffer;
-    if (tables[0].compress_type() == rtidb::nameserver::kSnappy) {
-        std::string compressed;
-        snappy::Compress(actual_value.c_str(), actual_value.length(), &compressed);
-        actual_value = compressed;
-    }
+    int code = 0;
     {
         std::lock_guard<std::mutex> mx(mu_);
         code = PutData(tables[0].tid(), dimensions, ts_dimensions, 0, actual_value, tables[0].table_partition(), tablets_);
