@@ -681,57 +681,56 @@ public class RowCodecTest {
         }
     }
 
-//    @Test
-//    public void testManyCol() {
-//        int[] arr = {10000, 100000};
-//        try {
-//            for (int colNum : arr) {
-//                System.out.println("<<<<<<<<<<<< : " + colNum);
-//                List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
-//                for (int i = 0; i < colNum; i++) {
-//                    {
-//                        ColumnDesc col = new ColumnDesc();
-//                        col.setName("col" + i + 1);
-//                        col.setDataType(DataType.kVarchar);
-//                        schema.add(col);
-//                    }
-//                    {
-//                        ColumnDesc col = new ColumnDesc();
-//                        col.setName("col" + i + 2);
-//                        col.setDataType(DataType.kInt64);
-//                        schema.add(col);
-//                    }
-//                    {
-//                        ColumnDesc col = new ColumnDesc();
-//                        col.setName("col" + i + 3);
-//                        col.setDataType(DataType.kDouble);
-//                        schema.add(col);
-//                    }
-//                }
-//                RowBuilder builder = new RowBuilder(schema);
-//                int size = builder.calTotalLength(10 * colNum);
-//                ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
-//                buffer = builder.setBuffer(buffer, size);
-//
-//                long base = 1000000000l;
-//                long ts = 1576811755000l;
-//                for (int idx = 0; idx < colNum; idx++) {
-//                    String s = String.join("", Collections.nCopies(10, String.valueOf((base + idx) % 10)));
-//                    Assert.assertTrue(builder.appendString(s));
-//                    Assert.assertTrue(builder.appendInt64(ts + idx));
-//                    Assert.assertTrue(builder.appendDouble(1.3));
-//                }
-//
-//                RowView rowView = new RowView(schema, buffer, size);
-//                for (int idx = 0; idx < colNum; idx++) {
-//                    String s = String.join("", Collections.nCopies(10, String.valueOf((base + idx) % 10)));
-//                    Assert.assertEquals(rowView.getString(3 * idx), s);
-//                    Assert.assertEquals(rowView.getInt64(3 * idx + 1), new Long(ts + idx));
-//                    Assert.assertEquals(rowView.getDouble(3 * idx + 2), 1.3);
-//                }
-//            }
-//        } catch (TabletException e) {
-//            Assert.assertTrue(false);
-//        }
-//    }
+    @Test
+    public void testManyCol() {
+        int[] arr = {10, 20, 50, 100, 1000, 10000, 100000};
+        try {
+            for (int colNum : arr) {
+                List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+                for (int i = 0; i < colNum; i++) {
+                    {
+                        ColumnDesc col = new ColumnDesc();
+                        col.setName("col" + i + 1);
+                        col.setDataType(DataType.kVarchar);
+                        schema.add(col);
+                    }
+                    {
+                        ColumnDesc col = new ColumnDesc();
+                        col.setName("col" + i + 2);
+                        col.setDataType(DataType.kInt64);
+                        schema.add(col);
+                    }
+                    {
+                        ColumnDesc col = new ColumnDesc();
+                        col.setName("col" + i + 3);
+                        col.setDataType(DataType.kDouble);
+                        schema.add(col);
+                    }
+                }
+                RowBuilder builder = new RowBuilder(schema);
+                int size = builder.calTotalLength(10 * colNum);
+                ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+                buffer = builder.setBuffer(buffer, size);
+
+                long base = 1000000000l;
+                long ts = 1576811755000l;
+                for (int idx = 0; idx < colNum; idx++) {
+                    String s = String.join("", Collections.nCopies(10, String.valueOf((base + idx) % 10)));
+                    Assert.assertTrue(builder.appendString(s));
+                    Assert.assertTrue(builder.appendInt64(ts + idx));
+                    Assert.assertTrue(builder.appendDouble(1.3));
+                }
+
+                RowView rowView = new RowView(schema, buffer, size);
+                for (int idx = 0; idx < colNum; idx++) {
+                    String s = String.join("", Collections.nCopies(10, String.valueOf((base + idx) % 10)));
+                    Assert.assertEquals(rowView.getString(3 * idx), s);
+                    Assert.assertEquals(rowView.getInt64(3 * idx + 1), new Long(ts + idx));
+                    Assert.assertEquals(rowView.getDouble(3 * idx + 2), 1.3);
+                }
+            }
+        } catch (TabletException e) {
+            Assert.assertTrue(false);
+        }
+    }
 }

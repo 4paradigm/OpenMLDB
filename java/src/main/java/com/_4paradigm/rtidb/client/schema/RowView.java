@@ -303,14 +303,14 @@ public class RowView {
             }
             case 3: {
                 int cur_row_with_offset = row_with_offset + field_offset * addr_space;
-                str_offset = row.get(cur_row_with_offset);
-                str_offset = (str_offset << 8) + row.get((cur_row_with_offset + 1));
-                str_offset = (str_offset << 8) + row.get((cur_row_with_offset + 2));
+                str_offset = row.get(cur_row_with_offset) & 0xFF;
+                str_offset = (str_offset << 8) + (row.get((cur_row_with_offset + 1)) & 0xFF);
+                str_offset = (str_offset << 8) + (row.get((cur_row_with_offset + 2)) & 0xFF);
                 if (next_str_field_offset > 0) {
                     int next_row_with_offset = row_with_offset + next_str_field_offset * addr_space;
-                    next_str_offset = row.get((next_row_with_offset));
-                    next_str_offset = (next_str_offset << 8) + row.get(next_row_with_offset + 1);
-                    next_str_offset = (next_str_offset << 8) + row.get(next_row_with_offset + 2);
+                    next_str_offset = row.get((next_row_with_offset)) & 0xFF;
+                    next_str_offset = (next_str_offset << 8) + (row.get(next_row_with_offset + 1) & 0xFF);
+                    next_str_offset = (next_str_offset << 8) + (row.get(next_row_with_offset + 2) & 0xFF);
                 }
                 break;
             }
