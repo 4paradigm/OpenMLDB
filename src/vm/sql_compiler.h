@@ -60,7 +60,7 @@ class SQLCompiler {
                  Status& status);  // NOLINT
 
  private:
-    void KeepIR(SQLContext& ctx, llvm::Module* m);
+    void KeepIR(SQLContext& ctx, llvm::Module* m); // NOLINT
 
  private:
     bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT

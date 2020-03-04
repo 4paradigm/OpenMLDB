@@ -18,6 +18,8 @@
 #ifndef SRC_BATCH_BATCH_PLANNER_H_
 #define SRC_BATCH_BATCH_PLANNER_H_
 
+#include <memory>
+#include <string>
 #include "batch/batch_catalog.h"
 #include "proto/plan.pb.h"
 

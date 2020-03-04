@@ -36,7 +36,7 @@ variable_ir_builder_(block, scope_var),
     uint32_t string_field_cnt = 0;
     for (int32_t i = 0; i < schema_.size(); i++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(i);
-		fesql::node::DataType data_type;
+        fesql::node::DataType data_type;
         if (!SchemaType2DataType(column.type(), &data_type)) {
             LOG(WARNING) << "fail to convert schema type to data type " +
                              fesql::type::Type_Name(column.type());
@@ -75,7 +75,6 @@ BufNativeIRBuilder::~BufNativeIRBuilder() {}
 bool BufNativeIRBuilder::BuildGetFiledOffset(const std::string& name,
                                              uint32_t* offset,
                                              ::fesql::node::DataType* fe_type) {
-
     if (nullptr == offset || nullptr == fe_type) {
         LOG(WARNING) << "input args have null";
         return false;
