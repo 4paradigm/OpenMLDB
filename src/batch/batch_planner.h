@@ -18,8 +18,8 @@
 #ifndef SRC_BATCH_BATCH_PLANNER_H_
 #define SRC_BATCH_BATCH_PLANNER_H_
 
-#include "proto/plan.pb.h"
 #include "batch/batch_catalog.h"
+#include "proto/plan.pb.h"
 
 namespace fesql {
 namespace batch {
@@ -28,8 +28,7 @@ namespace batch {
 class BatchPlanner {
  public:
     BatchPlanner(const std::shared_ptr<BatchCatalog>& catalog,
-                 const std::string& db,
-                 const std::string& sql);
+                 const std::string& db, const std::string& sql);
 
     ~BatchPlanner();
 

@@ -17,16 +17,16 @@
 
 #include "batch/batch_planner.h"
 
+#include "base/status.h"
 #include "glog/logging.h"
 #include "vm/sql_compiler.h"
-#include "base/status.h"
 
 namespace fesql {
 namespace batch {
 
 BatchPlanner::BatchPlanner(const std::shared_ptr<BatchCatalog>& catalog,
-        const std::string& db, const std::string& sql):catalog_(catalog),
-    db_(db), sql_(sql) {}
+                           const std::string& db, const std::string& sql)
+    : catalog_(catalog), db_(db), sql_(sql) {}
 
 BatchPlanner::~BatchPlanner() {}
 
@@ -43,9 +43,8 @@ bool BatchPlanner::MakePlan(GraphDesc* graph) {
     graph->set_ir(ctx.ir);
     uint64_t id_counter = 0;
     // a simple logic plan to physic plan transform
-    if (ctx.ops.size() == 2 
-            &&ctx.ops[0].type == vm::kOpScan
-            &&ctx.ops[1].type == vm::kOpProject) {
+    if (ctx.ops.size() == 2 && ctx.ops[0].type == vm::kOpScan &&
+        ctx.ops[1].type == vm::kOpProject) {
         vm::ScanOP* sop = reinterpret_cast<vm::ScanOP>(ctx.ops[0]);
         // add datasource node
         DataSource ds;
@@ -53,7 +52,7 @@ bool BatchPlanner::MakePlan(GraphDesc* graph) {
         ds.set_name(sop->table_handler->GetName());
         ds.mutable_schema()->CopyFrom(sop->table_handler->GetSchema());
         NodeDesc* ds_node = graph->add_nodes();
-        NodeValue* ds_value =  graph->add_values();
+        NodeValue* ds_value = graph->add_values();
         ds_value->set_id(id_counter++);
         ds_value->set_type(kDataSource);
         ds.SerializeToString(ds_value->mutable_value());
@@ -64,5 +63,5 @@ bool BatchPlanner::MakePlan(GraphDesc* graph) {
     }
 }
 
-}
-}
+}  // namespace batch
+}  // namespace fesql

@@ -27,8 +27,8 @@
 #include "codegen/predicate_expr_ir_builder.h"
 #include "codegen/row_ir_builder.h"
 #include "codegen/scope_var.h"
-#include "codegen/window_ir_builder.h"
 #include "codegen/variable_ir_builder.h"
+#include "codegen/window_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
@@ -50,8 +50,6 @@ class ExprIRBuilder {
                ::fesql::base::Status& status);  // NOLINT
 
  private:
-
-
     bool BuildColumnIterator(const std::string& col, ::llvm::Value** output,
                              ::fesql::base::Status& status);  // NOLINT
     bool BuildColumnItem(const std::string& col, ::llvm::Value** output,

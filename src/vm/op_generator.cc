@@ -36,7 +36,6 @@ OpGenerator::~OpGenerator() {}
 bool OpGenerator::Gen(const ::fesql::node::PlanNodeList& trees,
                       const std::string& db, ::llvm::Module* module,
                       OpVector* ops, base::Status& status) {
-
     if (module == NULL || ops == NULL) {
         status.msg = "module or ops is null";
         status.code = common::kNullPointer;

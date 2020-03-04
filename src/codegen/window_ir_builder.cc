@@ -17,8 +17,8 @@
 
 #include "codegen/window_ir_builder.h"
 
-#include <utility>
 #include <string>
+#include <utility>
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "storage/codec.h"
@@ -40,13 +40,12 @@ MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(
         fesql::node::DataType data_type;
         if (!SchemaType2DataType(column.type(), &data_type)) {
             LOG(WARNING) << "fail to convert schema type to data type " +
-                             fesql::type::Type_Name(column.type());
+                                fesql::type::Type_Name(column.type());
             return;
         }
         if (data_type == ::fesql::node::kVarchar) {
             types_.insert(std::make_pair(
-                column.name(),
-                std::make_pair(data_type, string_field_cnt)));
+                column.name(), std::make_pair(data_type, string_field_cnt)));
             next_str_pos_.insert(
                 std::make_pair(string_field_cnt, string_field_cnt));
             string_field_cnt += 1;
@@ -110,11 +109,9 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
     }
 }
 
-bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
-                                                     ::llvm::Value* row_ptr,
-                                                     uint32_t offset,
-                                                     const fesql::node::DataType& type,
-                                                     ::llvm::Value** output) {
+bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(
+    const std::string& fn_name, ::llvm::Value* row_ptr, uint32_t offset,
+    const fesql::node::DataType& type, ::llvm::Value** output) {
     if (row_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
         return false;
@@ -152,12 +149,13 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
     ::llvm::Value* val_offset = builder.getInt32(offset);
     ::fesql::type::Type schema_type;
     if (!DataType2SchemaType(type, &schema_type)) {
-         LOG(WARNING) << "fail to convert data type to schema type: "
-                      << node::DataTypeName(type);
-         return false;
+        LOG(WARNING) << "fail to convert data type to schema type: "
+                     << node::DataTypeName(type);
+        return false;
     }
 
-    ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(schema_type));
+    ::llvm::Value* val_type_id =
+        builder.getInt32(static_cast<int32_t>(schema_type));
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         fn_name, i32_ty, i8_ptr_ty, i32_ty, i32_ty, i8_ptr_ty);
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
@@ -167,8 +165,9 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
 }
 
 bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
-    uint32_t offset, uint32_t next_str_field_offset, const fesql::node::DataType& type,
-    ::llvm::Value* window_ptr, ::llvm::Value** output) {
+    uint32_t offset, uint32_t next_str_field_offset,
+    const fesql::node::DataType& type, ::llvm::Value* window_ptr,
+    ::llvm::Value** output) {
     if (window_ptr == NULL || output == NULL) {
         LOG(WARNING) << "input args have null ptr";
         return false;
@@ -199,8 +198,8 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
     ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
-    data_ptr_ptr = builder.CreatePointerCast(data_ptr_ptr, 
-            col_iter->getType()->getPointerTo());
+    data_ptr_ptr = builder.CreatePointerCast(
+        data_ptr_ptr, col_iter->getType()->getPointerTo());
     builder.CreateStore(col_iter, data_ptr_ptr, false);
     col_iter = builder.CreatePointerCast(col_iter, i8_ptr_ty);
 
@@ -211,13 +210,14 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
 
     ::llvm::Value* str_offset = builder.getInt32(offset);
     ::llvm::Value* next_str_offset = builder.getInt32(next_str_field_offset);
-	::fesql::type::Type schema_type;
+    ::fesql::type::Type schema_type;
     if (!DataType2SchemaType(type, &schema_type)) {
         LOG(WARNING) << "fail to convert data type to schema type: "
                      << node::DataTypeName(type);
         return false;
     }
-    ::llvm::Value* val_type_id = builder.getInt32(static_cast<int32_t>(schema_type));
+    ::llvm::Value* val_type_id =
+        builder.getInt32(static_cast<int32_t>(schema_type));
     builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
                                    window_ptr, str_offset, next_str_offset,
                                    builder.getInt32(str_field_start_offset_),

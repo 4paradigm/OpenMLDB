@@ -22,9 +22,9 @@
 #include <vector>
 #include "analyser/analyser.h"
 #include "codegen/ir_base_builder.h"
+#include "glog/logging.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/raw_ostream.h"
-#include "glog/logging.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "storage/type_native_fn.h"
@@ -35,11 +35,10 @@ namespace fesql {
 namespace vm {
 using ::fesql::base::Status;
 
-SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
-        bool keep_ir) : cl_(cl), keep_ir_(keep_ir){}
+SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir)
+    : cl_(cl), keep_ir_(keep_ir) {}
 
 SQLCompiler::~SQLCompiler() {}
-
 
 void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
     if (m == NULL) {

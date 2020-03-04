@@ -21,10 +21,10 @@
 #include <map>
 #include <string>
 #include <utility>
+#include "codegen/ir_base_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
-#include "codegen/ir_base_builder.h"
 
 namespace fesql {
 namespace codegen {
@@ -55,8 +55,8 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
                             ::llvm::Value** output);
 
     bool BuildGetStringCol(uint32_t offset, uint32_t next_str_field_offset,
-                           const fesql::node::DataType& type, ::llvm::Value* window_ptr,
-                           ::llvm::Value** output);
+                           const fesql::node::DataType& type,
+                           ::llvm::Value* window_ptr, ::llvm::Value** output);
 
  private:
     vm::Schema schema_;

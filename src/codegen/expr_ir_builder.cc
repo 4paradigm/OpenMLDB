@@ -61,10 +61,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
       row_ir_builder_(new BufNativeIRBuilder(schema, block, scope_var)),
       window_ir_builder_(new MemoryWindowDecodeIRBuilder(schema, block)) {}
 
-ExprIRBuilder::~ExprIRBuilder() {
-
-
-}
+ExprIRBuilder::~ExprIRBuilder() {}
 
 ::llvm::Function* ExprIRBuilder::GetFuncion(
     const std::string& name, const std::vector<node::TypeNode>& generic_types,
@@ -93,7 +90,8 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         status.code = common::kCodegenError;
         return false;
     }
-    DLOG(INFO) << "expr node type " << fesql::node::ExprTypeName(node->GetExprType());
+    DLOG(INFO) << "expr node type "
+               << fesql::node::ExprTypeName(node->GetExprType());
     ::llvm::IRBuilder<> builder(block_);
     switch (node->GetExprType()) {
         case ::fesql::node::kExprColumnRef: {

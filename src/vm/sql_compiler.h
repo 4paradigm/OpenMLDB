@@ -51,8 +51,8 @@ struct SQLContext {
 
 class SQLCompiler {
  public:
-    explicit SQLCompiler(const std::shared_ptr<Catalog>& cl, 
-            bool keep_ir = false);
+    explicit SQLCompiler(const std::shared_ptr<Catalog>& cl,
+                         bool keep_ir = false);
 
     ~SQLCompiler();
 
@@ -61,6 +61,7 @@ class SQLCompiler {
 
  private:
     void KeepIR(SQLContext& ctx, llvm::Module* m);
+
  private:
     bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT
                ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT

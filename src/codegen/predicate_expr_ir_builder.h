@@ -51,7 +51,6 @@ class PredicateIRBuilder {
                         ::llvm::Value** casted_right,
                         ::fesql::base::Status& status);  // NOLINT
  private:
-
     ::llvm::BasicBlock* block_;
     CastExprIRBuilder cast_expr_ir_builder_;
 };
