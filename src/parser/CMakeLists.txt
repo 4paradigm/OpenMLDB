@@ -9,7 +9,7 @@ set(SQL_AST_PARSER_GEN
         ${CMAKE_CURRENT_BINARY_DIR}/sql_parser.gen.cc)
 
 add_custom_command(OUTPUT ${SQL_AST_LEXER_GEN}
-        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/flex ${PROJECT_SOURCE_DIR}/src/parser/sql_scan.l
+        COMMAND flex ${PROJECT_SOURCE_DIR}/src/parser/sql_scan.l
         )
 
 add_custom_command(OUTPUT ${SQL_AST_PARSER_GEN}
