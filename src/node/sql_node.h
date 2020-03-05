@@ -217,12 +217,11 @@ class SQLNodeList {
     SQLNodeList() {}
     ~SQLNodeList() {}
     void PushBack(SQLNode *node_ptr) { list_.push_back(node_ptr); }
-    const bool IsEmpty() const {
-        return list_.empty();
-    }
+    const bool IsEmpty() const { return list_.empty(); }
     const int GetSize() const { return list_.size(); }
-    const std::vector<SQLNode *>& GetList() const { return list_; }
+    const std::vector<SQLNode *> &GetList() const { return list_; }
     void Print(std::ostream &output, const std::string &tab) const;
+
  private:
     std::vector<SQLNode *> list_;
 };
@@ -689,40 +688,37 @@ class ResTarget : public SQLNode {
 };
 class SelectStmt : public SQLNode {
  public:
-    SelectStmt(SQLNodeList* select_list, SQLNodeList *tableref_list,
+    SelectStmt(SQLNodeList *select_list, SQLNodeList *tableref_list,
                ExprNode *where_expr, ExprListNode *group_expr_list,
-               ExprNode *having_expr, SQLNodeList *window_list,
-               SQLNode *limit_ptr)
+               ExprNode *having_expr, ExprListNode *order_expr_list,
+               SQLNodeList *window_list, SQLNode *limit_ptr)
         : SQLNode(kSelectStmt, 0, 0),
           distinct_opt_(0),
           where_clause_ptr_(where_expr),
           group_clause_ptr_(group_expr_list),
           having_clause_ptr_(having_expr),
-          order_clause_ptr_(nullptr),
+          order_clause_ptr_(order_expr_list),
           limit_ptr_(limit_ptr),
           select_list_(select_list),
           tableref_list_(tableref_list),
-          window_list_(window_list)
-          {}
+          window_list_(window_list) {}
 
     ~SelectStmt() {}
 
     // Getter and Setter
-    const SQLNodeList* GetSelectList() const { return select_list_; }
+    const SQLNodeList *GetSelectList() const { return select_list_; }
 
-    SQLNodeList* GetSelectList() { return select_list_; }
+    SQLNodeList *GetSelectList() { return select_list_; }
 
     const SQLNode *GetLimit() const { return limit_ptr_; }
 
-    const SQLNodeList* GetTableRefList() const {
-        return tableref_list_;
-    }
+    const SQLNodeList *GetTableRefList() const { return tableref_list_; }
 
-    SQLNodeList* GetTableRefList() { return tableref_list_; }
+    SQLNodeList *GetTableRefList() { return tableref_list_; }
 
-    const SQLNodeList* GetWindowList() const { return window_list_; }
+    const SQLNodeList *GetWindowList() const { return window_list_; }
 
-    SQLNodeList* GetWindowList() { return window_list_; }
+    SQLNodeList *GetWindowList() { return window_list_; }
 
     void SetLimit(SQLNode *limit) { limit_ptr_ = limit; }
 
@@ -738,10 +734,10 @@ class SelectStmt : public SQLNode {
     const SQLNode *limit_ptr_;
 
  private:
-    SQLNodeList* select_list_;
-    SQLNodeList* tableref_list_;
-    SQLNodeList* window_list_;
-    void PrintSQLNodeList(std::ostream &output, const std::string& tab,
+    SQLNodeList *select_list_;
+    SQLNodeList *tableref_list_;
+    SQLNodeList *window_list_;
+    void PrintSQLNodeList(std::ostream &output, const std::string &tab,
                           SQLNodeList *list, const std::string &name,
                           bool last_item) const;
 };

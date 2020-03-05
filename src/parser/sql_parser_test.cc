@@ -115,8 +115,6 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SqlHavingParse, SqlParserTest,
     testing::Values(
-        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having sum(COL1) > 0;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having col1sum > 0;",
         "SELECT COL1 FROM t1 having COL1+COL2;",
         "SELECT COL1 FROM t1 having COL1;",
         "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20 or COL1 =0;",
@@ -124,8 +122,18 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 FROM t1 HAVING COL1 > 10;"
     ));
 INSTANTIATE_TEST_CASE_P(
-    SqlWhereGroupHavingParse, SqlParserTest,
+    SqlOrderParse, SqlParserTest,
     testing::Values(
+        "SELECT COL1 FROM t1 order by COL1 + COL2 - COL3;",
+        "SELECT COL1 FROM t1 order by COL1, COL2, COL3;",
+        "SELECT COL1 FROM t1 order by COL1, COL2;",
+        "SELECT COL1 FROM t1 order by COL1;"
+    ));
+INSTANTIATE_TEST_CASE_P(
+    SqlWhereGroupHavingOrderParse, SqlParserTest,
+    testing::Values(
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col1sum > 0 order by COL1+COL2 limit 10;"
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col1sum > 0 order by COL1 limit 10;"
         "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col1sum > 0 limit 10;"
         "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col1sum > 0;"
         "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having sum(COL1) > 0;",

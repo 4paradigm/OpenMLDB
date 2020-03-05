@@ -73,6 +73,7 @@ class NodeManager {
                                 ExprNode *where_expr,
                                 ExprListNode *group_expr_list,
                                 ExprNode *having_expr,
+                                ExprListNode* order_expr_list,
                                 SQLNodeList *window_list_ptr,
                                 SQLNode *limit_ptr);
     SQLNode *MakeTableNode(const std::string &name, const std::string &alias);

@@ -45,10 +45,11 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
 SQLNode *NodeManager::MakeSelectStmtNode(
     SQLNodeList *select_list, SQLNodeList *tableref_list,
     ExprNode *where_expr, ExprListNode *group_expr_list, ExprNode *having_expr,
+    ExprListNode* order_expr_list,
     SQLNodeList *window_list, SQLNode *limit_ptr) {
     SelectStmt *node_ptr =
         new SelectStmt(select_list, tableref_list, where_expr, group_expr_list,
-                       having_expr, window_list, limit_ptr);
+                       having_expr, order_expr_list, window_list, limit_ptr);
     return RegisterNode(node_ptr);
 }
 

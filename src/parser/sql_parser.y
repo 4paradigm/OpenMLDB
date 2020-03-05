@@ -660,9 +660,9 @@ stmt:   select_stmt
 
 select_stmt:
 			SELECT opt_all_clause opt_target_list FROM table_references
-			where_expr group_expr having_expr window_clause limit_clause
+			where_expr group_expr having_expr opt_sort_clause window_clause limit_clause
             {
-                $$ = node_manager->MakeSelectStmtNode($3, $5, $6, $7, $8, $9, $10);
+                $$ = node_manager->MakeSelectStmtNode($3, $5, $6, $7, $8, $9, $10, $11);
             }
     		;
 
@@ -1149,7 +1149,7 @@ opt_sort_clause:
 		    ;
 
 sort_clause:
-			ORDER BY column_ref_list					{ $$ = $3; }
+			ORDER BY expr_list { $$ = $3; }
 		    ;
 /*===========================================================
  *
