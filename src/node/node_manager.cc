@@ -17,8 +17,6 @@ namespace node {
 
 SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
     switch (type) {
-        case kSelectStmt:
-            return RegisterNode(new SelectStmt());
         case kExpr:
             return RegisterNode(new ExprNode(kExprUnknow));
         case kResTarget:
@@ -44,22 +42,25 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
     }
 }
 
-SQLNode *NodeManager::MakeSelectStmtNode(SQLNodeList *select_list_ptr,
-                                         SQLNodeList *tableref_list_ptr,
-                                         SQLNodeList *window_clause_ptr,
-                                         SQLNode *limit_ptr) {
-    SelectStmt *node_ptr = new SelectStmt();
-
-    FillSQLNodeList2NodeVector(select_list_ptr, node_ptr->GetSelectList());
+SQLNode *NodeManager::MakeSelectStmtNode(
+    SQLNodeList *select_list_ptr, SQLNodeList *tableref_list_ptr,
+    ExprNode *where_expr, ExprListNode *group_expr_list, ExprNode *having_expr,
+    SQLNodeList *window_list_ptr, SQLNode *limit_ptr) {
+    
+    std::vector<SQLNode *> select_list;
+    FillSQLNodeList2NodeVector(select_list_ptr, select_list);
     // 释放SQLNodeList
 
-    FillSQLNodeList2NodeVector(tableref_list_ptr, node_ptr->GetTableRefList());
+    std::vector<SQLNode *> tableref_list;
+    FillSQLNodeList2NodeVector(tableref_list_ptr, tableref_list);
     // 释放SQLNodeList
 
-    FillSQLNodeList2NodeVector(window_clause_ptr, node_ptr->GetWindowList());
-    // 释放SQLNodeList
-    node_ptr->SetLimit(limit_ptr);
+    std::vector<SQLNode *> window_list;
+    FillSQLNodeList2NodeVector(window_list_ptr, window_list);
 
+    SelectStmt *node_ptr =
+        new SelectStmt(select_list, tableref_list, where_expr, group_expr_list,
+                       having_expr, window_list, limit_ptr);
     return RegisterNode(node_ptr);
 }
 

@@ -379,8 +379,9 @@ typedef void* yyscan_t;
 
  /* insert table */
 %type<node> insert_stmt
-%type<exprlist> insert_expr_list column_ref_list opt_partition_clause sort_clause opt_sort_clause expr_list
-%type<expr> insert_expr
+%type<exprlist> insert_expr_list column_ref_list opt_partition_clause
+				sort_clause opt_sort_clause expr_list group_expr
+%type<expr> insert_expr where_expr having_expr
 
  /* create table */
 %type <node>  create_stmt column_desc column_index_item column_index_key
@@ -658,11 +659,12 @@ stmt:   select_stmt
 
 
 select_stmt:
-    SELECT opt_all_clause opt_target_list FROM table_references window_clause limit_clause
+			SELECT opt_all_clause opt_target_list FROM table_references
+			where_expr group_expr having_expr window_clause limit_clause
             {
-                $$ = node_manager->MakeSelectStmtNode($3, $5, $6, $7);
+                $$ = node_manager->MakeSelectStmtNode($3, $5, $6, $7, $8, $9, $10);
             }
-    ;
+    		;
 
 
 create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')'
@@ -1053,6 +1055,35 @@ call_expr:
     }
     ;
 
+where_expr:
+			WHERE expr
+			{
+				$$ = $2;
+			}
+			| /*EMPTY*/
+			{
+				$$ = NULL;
+			}
+			;
+group_expr:
+			GROUP BY expr_list
+			{
+				$$ = $3;
+			}
+			|/*EMPTY*/
+			{
+				$$ = NULL;
+			}
+
+having_expr:
+			HAVING expr
+			{
+				$$ = $2;
+			}
+			| /*EMPTY*/
+            {
+            	$$ = NULL;
+            }
 
 /***** Window Definitions */
 window_clause:

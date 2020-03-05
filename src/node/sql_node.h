@@ -266,6 +266,13 @@ class ExprNode : public SQLNode {
  private:
     ExprType expr_type_;
 };
+class ExprListNode : public ExprNode {
+ public:
+    ExprListNode() : ExprNode(kExprList) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const bool IsEmpty() const { return children.empty(); }
+    const std::string GetExprString() const;
+};
 class FnNode : public SQLNode {
  public:
     FnNode() : SQLNode(kFn, 0, 0), indent(0) {}
@@ -296,6 +303,7 @@ class NameNode : public SQLNode {
  private:
     std::string name_;
 };
+
 class LimitNode : public SQLNode {
  public:
     LimitNode() : SQLNode(kLimit, 0, 0), limit_cnt_(0) {}
@@ -446,14 +454,6 @@ class WindowDefNode : public SQLNode {
     std::vector<std::string> orders_;     /* ORDER BY (list of SortBy) */
 };
 
-class ExprListNode : public ExprNode {
- public:
-    ExprListNode() : ExprNode(kExprList) {}
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const bool IsEmpty() const { return children.empty(); }
-    const std::string GetExprString() const;
-};
-
 class AllNode : public ExprNode {
  public:
     AllNode() : ExprNode(kExprAll), relation_name_("") {}
@@ -467,6 +467,7 @@ class AllNode : public ExprNode {
         relation_name_ = relation_name;
     }
     const std::string GetExprString() const;
+
  private:
     std::string relation_name_;
 };
@@ -686,33 +687,40 @@ class ResTarget : public SQLNode {
 };
 class SelectStmt : public SQLNode {
  public:
-    SelectStmt()
+    SelectStmt(NodePointVector &select_list, NodePointVector &tableref_list,
+               ExprNode *where_expr, ExprListNode *group_expr_list,
+               ExprNode *having_expr, NodePointVector &window_list,
+               SQLNode *limit_ptr)
         : SQLNode(kSelectStmt, 0, 0),
           distinct_opt_(0),
-          where_clause_ptr_(nullptr),
-          group_clause_ptr_(nullptr),
-          having_clause_ptr_(nullptr),
+          where_clause_ptr_(where_expr),
+          group_clause_ptr_(group_expr_list),
+          having_clause_ptr_(having_expr),
           order_clause_ptr_(nullptr),
-          limit_ptr_(nullptr) {}
+          limit_ptr_(limit_ptr),
+          select_list_(select_list),
+          tableref_list_(tableref_list),
+          window_list_(window_list)
+          {}
 
     ~SelectStmt() {}
 
     // Getter and Setter
-    const NodePointVector &GetSelectList() const { return select_list_ptr_; }
+    const NodePointVector &GetSelectList() const { return select_list_; }
 
-    NodePointVector &GetSelectList() { return select_list_ptr_; }
+    NodePointVector &GetSelectList() { return select_list_; }
 
-    SQLNode *GetLimit() const { return limit_ptr_; }
+    const SQLNode *GetLimit() const { return limit_ptr_; }
 
     const NodePointVector &GetTableRefList() const {
-        return tableref_list_ptr_;
+        return tableref_list_;
     }
 
-    NodePointVector &GetTableRefList() { return tableref_list_ptr_; }
+    NodePointVector &GetTableRefList() { return tableref_list_; }
 
-    const NodePointVector &GetWindowList() const { return window_list_ptr_; }
+    const NodePointVector &GetWindowList() const { return window_list_; }
 
-    NodePointVector &GetWindowList() { return window_list_ptr_; }
+    NodePointVector &GetWindowList() { return window_list_; }
 
     void SetLimit(SQLNode *limit) { limit_ptr_ = limit; }
 
@@ -723,14 +731,14 @@ class SelectStmt : public SQLNode {
     const int distinct_opt_;
     const ExprNode *where_clause_ptr_;
     const ExprListNode *group_clause_ptr_;
-    const SQLNode *having_clause_ptr_;
+    const ExprNode *having_clause_ptr_;
     const SQLNode *order_clause_ptr_;
+    const SQLNode *limit_ptr_;
 
  private:
-    SQLNode *limit_ptr_;
-    NodePointVector select_list_ptr_;
-    NodePointVector tableref_list_ptr_;
-    NodePointVector window_list_ptr_;
+    NodePointVector select_list_;
+    NodePointVector tableref_list_;
+    NodePointVector window_list_;
 };
 class ColumnDefNode : public SQLNode {
  public:

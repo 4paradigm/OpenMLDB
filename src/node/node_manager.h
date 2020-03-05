@@ -14,8 +14,8 @@
 #include <ctype.h>
 #include <list>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 
@@ -68,10 +68,13 @@ class NodeManager {
     PlanNode *MakeCrossProductNode(PlanNode *left, PlanNode *right);
     // Make SQLxxx Node
     SQLNode *MakeSQLNode(const SQLNodeType &type);
-    SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
+    SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr,
                                 SQLNodeList *tableref_list_ptr,
-                                SQLNodeList *window_clause_ptr,
-                                SQLNode *limit_clause_ptr);
+                                ExprNode *where_expr,
+                                ExprListNode *group_expr_list,
+                                ExprNode *having_expr,
+                                SQLNodeList *window_list_ptr,
+                                SQLNode *limit_ptr);
     SQLNode *MakeTableNode(const std::string &name, const std::string &alias);
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
                            const SQLNode *over);

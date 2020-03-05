@@ -288,23 +288,23 @@ void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     bool last_child = false;
-    PrintSQLNode(output, tab, where_clause_ptr_, "where_clause", last_child);
+    PrintSQLNode(output, tab, where_clause_ptr_, "where_expr", last_child);
     output << "\n";
-    PrintSQLNode(output, tab, group_clause_ptr_, "group_clause", last_child);
+    PrintSQLNode(output, tab, group_clause_ptr_, "group_expr_list", last_child);
     output << "\n";
-    PrintSQLNode(output, tab, having_clause_ptr_, "haveing_clause", last_child);
+    PrintSQLNode(output, tab, having_clause_ptr_, "having_expr", last_child);
     output << "\n";
-    PrintSQLNode(output, tab, order_clause_ptr_, "order_clause", last_child);
+    PrintSQLNode(output, tab, order_clause_ptr_, "order_expr_list", last_child);
     output << "\n";
     PrintSQLNode(output, tab, limit_ptr_, "limit", last_child);
     output << "\n";
-    PrintSQLVector(output, tab, select_list_ptr_, "select_list", last_child);
+    PrintSQLVector(output, tab, select_list_, "select_list", last_child);
     output << "\n";
-    PrintSQLVector(output, tab, tableref_list_ptr_, "tableref_list",
+    PrintSQLVector(output, tab, tableref_list_, "tableref_list",
                    last_child);
     output << "\n";
     last_child = true;
-    PrintSQLVector(output, tab, window_list_ptr_, "window_list", last_child);
+    PrintSQLVector(output, tab, window_list_, "window_list", last_child);
 }
 
 // Return the node type name
