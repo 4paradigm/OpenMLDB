@@ -43,18 +43,18 @@ class Planner {
     int CreateSelectStmtPlan(const node::SQLNode *root, PlanNode **plan_tree,
                          Status &status);  // NOLINT (runtime/references)
     void CreateCreateTablePlan(const node::SQLNode *root,
-                               node::CreatePlanNode *plan_tree,
+                               node::PlanNode **output,
                                Status &status);  // NOLINT (runtime/references)
     void CreateProjectPlanNode(const node::SQLNode *root, const uint32_t pos,
-                               node::ProjectNode *plan_tree,
+                               node::ProjectNode **output,
                                Status &status);  // NOLINT (runtime/references)
-    void CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan_tree,
+    void CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
                        Status &status);  // NOLINT (runtime/references)
-    void CreateInsertPlan(const SQLNode *root, node::InsertPlanNode *plan_tree,
+    void CreateInsertPlan(const SQLNode *root, node::PlanNode **output,
                           Status &status);  // NOLINT (runtime/references)
 
     void CreateFuncDefPlan(const SQLNode *root,
-                           node::FuncDefPlanNode *plan_tree,
+                           node::PlanNode **output,
                            Status &status);  // NOLINT (runtime/references)
     void CreateWindowPlanNode(node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,
@@ -62,6 +62,7 @@ class Planner {
     int64_t CreateFrameOffset(const node::FrameBound *bound,
                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
+    std::string MakeTableName(std::vector<node::PlanNode*>& relation_nodes);
 };
 
 class SimplePlanner : public Planner {

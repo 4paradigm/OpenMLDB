@@ -353,7 +353,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[limit_op->idx];
                 uint32_t cnt = 0;
-                for (uint32_t i = 0; i < limit_op->limit; ++i) {
+                for (uint32_t i = 0; i < in_buffers.size(); ++i) {
                     if (cnt >= limit_op->limit) {
                         break;
                     }
@@ -500,7 +500,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[limit_op->idx];
                 uint32_t cnt = 0;
-                for (uint32_t i = 0; i < limit_op->limit; ++i) {
+                for (uint32_t i = 0; i < in_buffers.size(); ++i) {
                     if (cnt >= limit_op->limit) {
                         break;
                     }
@@ -803,7 +803,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                 std::vector<::fesql::storage::Row>& out_buffers =
                     temp_buffers[limit_op->idx];
                 uint32_t cnt = 0;
-                for (uint32_t i = 0; i < limit_op->limit; ++i) {
+                for (uint32_t i = 0; i < in_buffers.size(); ++i) {
                     if (cnt >= limit_op->limit) {
                         break;
                     }

@@ -157,8 +157,10 @@ ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
 }
 
 ExprNode *NodeManager::MakeFuncNode(const std::string &name,
-                                    const ExprListNode *list_ptr, const SQLNode *over) {
-    CallExprNode *node_ptr = new CallExprNode(name, list_ptr, dynamic_cast<const WindowDefNode *>(over));
+                                    const ExprListNode *list_ptr,
+                                    const SQLNode *over) {
+    CallExprNode *node_ptr = new CallExprNode(
+        name, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
 ExprNode *NodeManager::MakeConstNode(int value) {
@@ -329,25 +331,13 @@ PlanNode *NodeManager::MakeMultiPlanNode(const PlanType &type) {
     return node_ptr;
 }
 
-PlanNode *NodeManager::MakeMergeNode(int columns_size) {
-    PlanNode *node_ptr = new MergePlanNode(columns_size);
-    RegisterNode(node_ptr);
-    return node_ptr;
-}
-
 PlanNode *NodeManager::MakeRelationNode(TableNode *node) {
     PlanNode *node_ptr = new RelationNode("", node->GetOrgTableName());
     return RegisterNode(node_ptr);
 }
 
-ScanPlanNode *NodeManager::MakeSeqScanPlanNode(const std::string &table) {
-    node::ScanPlanNode *node_ptr = new ScanPlanNode(table, kScanTypeSeqScan);
-    RegisterNode(node_ptr);
-    return node_ptr;
-}
-
-ScanPlanNode *NodeManager::MakeIndexScanPlanNode(const std::string &table) {
-    node::ScanPlanNode *node_ptr = new ScanPlanNode(table, kScanTypeIndexScan);
+FilterPlanNode *NodeManager::MakeFilterPlanNode(PlanNode* node, const ExprNode* condition) {
+    node::FilterPlanNode *node_ptr = new FilterPlanNode(node, condition);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -357,42 +347,10 @@ WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
     RegisterNode(node_ptr);
     return node_ptr;
 }
-ProjectListPlanNode *NodeManager::MakeProjectListPlanNode(
-    WindowPlanNode *w_ptr) {
-    ProjectListPlanNode *node_ptr =
-        new ProjectListPlanNode(w_ptr, w_ptr != nullptr);
-    RegisterNode(node_ptr);
-    return node_ptr;
-}
-
- PlanNode *NodeManager::MakePlanNode(const PlanType &type) {
-    PlanNode *node_ptr;
-    switch (type) {
-        case kProjectList:
-            node_ptr = new ProjectListPlanNode();
-            break;
-        case kProject:
-            node_ptr = new ProjectNode();
-            break;
-
-        case kPlanTypeCmd:
-            node_ptr = new CmdPlanNode();
-            break;
-        case kPlanTypeInsert:
-            node_ptr = new InsertPlanNode();
-            break;
-        case kPlanTypeFuncDef:
-            node_ptr = new FuncDefPlanNode();
-            break;
-        case kPlanTypeWindow:
-            node_ptr = new WindowPlanNode(0);
-            break;
-        case kPlanTypeMerge:
-            node_ptr = new MergePlanNode(0);
-            break;
-        default:
-            node_ptr = new LeafPlanNode(kUnknowPlan);
-    }
+ProjectListNode *NodeManager::MakeProjectListPlanNode(
+    const std::string &table_name, WindowPlanNode *w_ptr) {
+    ProjectListNode *node_ptr =
+        new ProjectListNode(table_name, w_ptr, w_ptr != nullptr);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -599,9 +557,8 @@ PlanNode *NodeManager::MakeCrossProductNode(PlanNode *left, PlanNode *right) {
         new CrossProductPlanNode(left, right);
     return RegisterNode(node_ptr);
 }
-PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node,
-                                          const ExprNode *condition) {
-    node::SelectPlanNode *select_plan_ptr = new SelectPlanNode(node, condition);
+PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {
+    node::SelectPlanNode *select_plan_ptr = new SelectPlanNode(node);
     return RegisterNode(select_plan_ptr);
 }
 PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node,
@@ -610,14 +567,45 @@ PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node,
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeProjectPlanNode(
-    PlanNode *node, const PlanNodeList &projection_list) {
+    PlanNode *node, const PlanNodeList &projection_list,
+    const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping) {
     node::ProjectPlanNode *node_ptr =
-        new ProjectPlanNode(node, projection_list);
+        new ProjectPlanNode(node, projection_list, pos_mapping);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {
     node::LimitPlanNode *node_ptr = new LimitPlanNode(node, limit_cnt);
     return RegisterNode(node_ptr);
+}
+ProjectNode *NodeManager::MakeProjectNode(const int32_t pos,
+                                          const std::string &name,
+                                          node::ExprNode *expression) {
+    node::ProjectNode *node_ptr = new ProjectNode(pos, name, expression);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+CreatePlanNode *NodeManager::MakeCreateTablePlanNode(
+    std::string table_name, const NodePointVector &column_list) {
+    node::CreatePlanNode *node_ptr =
+        new CreatePlanNode(table_name, column_list);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+CmdPlanNode *NodeManager::MakeCmdPlanNode(const CmdNode *node) {
+    node::CmdPlanNode *node_ptr =
+        new CmdPlanNode(node->GetCmdType(), node->GetArgs());
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+InsertPlanNode *NodeManager::MakeInsertPlanNode(const InsertStmt *node) {
+    node::InsertPlanNode *node_ptr = new InsertPlanNode(node);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+FuncDefPlanNode *NodeManager::MakeFuncPlanNode(const FnNodeFnDef *node) {
+    node::FuncDefPlanNode *node_ptr = new FuncDefPlanNode(node);
+    RegisterNode(node_ptr);
+    return node_ptr;
 }
 
 }  // namespace node

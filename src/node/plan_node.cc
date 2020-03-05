@@ -14,7 +14,8 @@ namespace node {
 
 void PlanNode::Print(std::ostream &output, const std::string &tab) const {
     output << tab << SPACE_ST << "plan[" << node::NameOfPlanNodeType(type_)
-           << "]";
+           << "]\n";
+    PrintPlanVector(output, tab + "\t", children_, "children", true);
 }
 
 bool LeafPlanNode::AddChild(PlanNode *node) {
@@ -66,51 +67,33 @@ void MultiChildPlanNode::Print(std::ostream &output,
     PrintPlanVector(output, org_tab + INDENT, children_, "children", true);
 }
 
-void ProjectNode::Print(std::ostream &output,
-                            const std::string &orgTab) const {
+void ProjectNode::Print(std::ostream &output, const std::string &orgTab) const {
     PlanNode::Print(output, orgTab);
     output << "\n";
     PrintSQLNode(output, orgTab, expression_, "expression", false);
     output << "\n";
-    PrintValue(output, orgTab, std::to_string(pos_), "org_pos", true);
+    PrintValue(output, orgTab, std::to_string(pos_), "org_pos", false);
     output << "\n";
     PrintValue(output, orgTab, name_, "name", true);
 }
 
-void ProjectListPlanNode::Print(std::ostream &output,
-                                const std::string &org_tab) const {
-    PlanNode::Print(output, org_tab);
-    output << "\n";
-    if (nullptr == w_ptr_) {
-        PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on table ", true);
-    } else {
-        PrintSQLNode(
-            output, org_tab,
-            const_cast<SQLNode *>(dynamic_cast<const SQLNode *>(w_ptr_)),
-            "window", false);
-        PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on window ", true);
-        output << "\n";
-    }
-    output << "\n";
-    PrintPlanVector(output, org_tab + INDENT, children_, "children", true);
-}
 
 std::string NameOfPlanNodeType(const PlanType &type) {
     switch (type) {
         case kPlanTypeSelect:
-            return std::string("kSelect");
+            return std::string("kSelectPlan");
         case kPlanTypeScan:
             return std::string("kScan");
-        case kPlanTypeMerge:
-            return std::string("kMerge");
         case kPlanTypeLimit:
             return std::string("kLimit");
+        case kPlanTypeProject:
+            return std::string("kProjectPlan");
+        case kPlanTypeRelation:
+            return std::string("kRelation");
         case kProjectList:
             return std::string("kProjectList");
-        case kProject:
-            return std::string("kProject");
+        case kProjectNode:
+            return std::string("kProjectNode");
         case kScalarFunction:
             return std::string("kScalarFunction");
         case kAggFunction:
@@ -167,11 +150,53 @@ void PrintPlanNode(std::ostream &output, const std::string &org_tab,
     }
 }
 
+void ProjectListNode::Print(std::ostream &output,
+                            const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    if (nullptr == w_ptr_) {
+        PrintPlanVector(output, org_tab + INDENT, projects,
+                        "projects on table ", false);
+    } else {
+        PrintPlanNode(output, org_tab, (PlanNode *)w_ptr_, "window", false);
+        output << "\n";
+        PrintPlanVector(output, org_tab + INDENT, projects,
+                        "projects on window ", false);
+        output << "\n";
+    }
+    output << "\n";
+    PrintPlanVector(output, org_tab + INDENT, children_, "children", true);
+}
 void FuncDefPlanNode::Print(std::ostream &output,
                             const std::string &orgTab) const {
     PlanNode::Print(output, orgTab);
     output << "\n";
-    PrintSQLNode(output, orgTab, fn_def_, "fun_def", true);
+    PrintSQLNode(output, orgTab + "\t", fn_def_, "fun_def", true);
+}
+void ProjectPlanNode::Print(std::ostream &output,
+                            const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    PrintPlanVector(output, org_tab + "\t", project_list_vec_, "project_plan", true);
+}
+void LimitPlanNode::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    PrintValue(output, org_tab, std::to_string(limit_cnt_), "limit_cnt", true);
+}
+void RelationNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+
+    PrintValue(output, org_tab + "\t", table_, "table", true);
+}
+void WindowPlanNode::Print(std::ostream &output,
+                           const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    PrintValue(output, org_tab, name, "window name", true);
 }
 }  // namespace node
 }  // namespace fesql

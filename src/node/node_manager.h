@@ -30,7 +30,6 @@ class NodeManager {
             sql_node_ite = parser_node_list_.erase(sql_node_ite);
         }
 
-
         for (auto plan_node_ite = plan_node_list_.begin();
              plan_node_ite != plan_node_list_.end(); ++plan_node_ite) {
             delete (*plan_node_ite);
@@ -43,7 +42,6 @@ class NodeManager {
             delete (*sql_node_list_iter);
             sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
         }
-
     }
 
     int GetParserNodeListSize() { return parser_node_list_.size(); }
@@ -51,24 +49,20 @@ class NodeManager {
     int GetPlanNodeListSize() { return plan_node_list_.size(); }
 
     // Make xxxPlanNode
-    PlanNode *MakePlanNode(const PlanType &type);
+    //    PlanNode *MakePlanNode(const PlanType &type);
     PlanNode *MakeLeafPlanNode(const PlanType &type);
     PlanNode *MakeUnaryPlanNode(const PlanType &type);
     PlanNode *MakeBinaryPlanNode(const PlanType &type);
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
-    ProjectListPlanNode *MakeProjectListPlanNode(WindowPlanNode *w);
-    WindowPlanNode *MakeWindowPlanNode(int64_t start, int64_t end,
-                                       bool is_range_between);
-    ScanPlanNode *MakeSeqScanPlanNode(const std::string &table);
-    ScanPlanNode *MakeIndexScanPlanNode(const std::string &table);
-    ProjectNode *MakeProjectNode(node::SQLNode *expression,
-                                         const std::string &name,
-                                         const std::string &table,
-                                         const std::string &w);
-    PlanNode* MakeRelationNode(TableNode *node);
-    PlanNode *MakeCrossProductNode(PlanNode *left, PlanNode* right);
+    ProjectListNode *MakeProjectListPlanNode(const std::string &table_name,
+                                             WindowPlanNode *w);
+    FilterPlanNode *MakeFilterPlanNode(PlanNode* node, const ExprNode* condition);
+    ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
+                                 node::ExprNode *expression);
+    PlanNode *MakeRelationNode(TableNode *node);
+    PlanNode *MakeCrossProductNode(PlanNode *left, PlanNode *right);
     // Make SQLxxx Node
     SQLNode *MakeSQLNode(const SQLNodeType &type);
     SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
@@ -169,13 +163,24 @@ class NodeManager {
     node::FnForInBlock *MakeForInBlock(FnForInNode *for_in_node,
                                        FnNodeList *block);
 
-    PlanNode *MakeSelectPlanNode(PlanNode* node, const ExprNode *condition);
+    PlanNode *MakeSelectPlanNode(PlanNode *node);
 
     PlanNode *MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list);
 
-    PlanNode *MakeProjectPlanNode(PlanNode *node, const PlanNodeList &project_list);
+    PlanNode *MakeProjectPlanNode(
+        PlanNode *node, const PlanNodeList &project_list,
+        const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping);
 
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
+
+    CreatePlanNode *MakeCreateTablePlanNode(std::string table_name,
+                                            const NodePointVector &column_list);
+
+    CmdPlanNode *MakeCmdPlanNode(const CmdNode *node);
+
+    InsertPlanNode *MakeInsertPlanNode(const InsertStmt *node);
+
+    FuncDefPlanNode *MakeFuncPlanNode(const FnNodeFnDef *node);
 
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {

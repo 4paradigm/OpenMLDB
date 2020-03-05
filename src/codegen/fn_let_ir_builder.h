@@ -40,7 +40,7 @@ class RowFnLetIRBuilder {
     ~RowFnLetIRBuilder();
 
     bool Build(const std::string& name,
-               const ::fesql::node::ProjectListPlanNode* node,
+               const ::fesql::node::ProjectListNode* node,
                std::vector<::fesql::type::ColumnDef>&
                    schema);  // NOLINT (runtime/references)
 

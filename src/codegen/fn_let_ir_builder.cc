@@ -32,7 +32,7 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(::fesql::type::TableDef* table,
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 bool RowFnLetIRBuilder::Build(const std::string& name,
-                              const ::fesql::node::ProjectListPlanNode* node,
+                              const ::fesql::node::ProjectListNode* node,
                               std::vector<::fesql::type::ColumnDef>&
                                   schema) {  // NOLINT (runtime/references)
     if (node == NULL) {
@@ -85,7 +85,7 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
             LOG(WARNING) << "plan node is null";
             return false;
         }
-        if (pn->GetType() != ::fesql::node::kProject) {
+        if (pn->GetType() != ::fesql::node::kProjectNode) {
             LOG(WARNING) << "project node is required but "
                          << ::fesql::node::NameOfPlanNodeType(pn->GetType());
             return false;

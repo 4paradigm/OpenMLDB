@@ -50,42 +50,44 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
     Planner *planner_ptr = new SimplePlanner(manager_);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, plan_trees, status));
-//    ASSERT_EQ(1u, plan_trees.size());
-//    PlanNode *plan_ptr = plan_trees.front();
-//    std::cout << *(plan_ptr) << std::endl;
-//    // validate select plan
-//    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
-//    node::SelectPlanNode *select_ptr = (node::SelectPlanNode *)plan_ptr;
-//
-//    // validate project list based on current row
-//    std::vector<PlanNode *> plan_vec = select_ptr->GetChildren();
-//    ASSERT_EQ(1u, plan_vec.size());
-//    ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
-//    ASSERT_EQ(
-//        3u,
-//        ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
-//    {
-//        node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
-//            ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects()[0]);
-//        ASSERT_EQ(0u, project->GetPos());
-//    }
-//    {
-//        node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
-//            ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects()[1]);
-//        ASSERT_EQ(1u, project->GetPos());
-//    }
-//    {
-//        node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
-//            ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects()[2]);
-//        ASSERT_EQ(2u, project->GetPos());
-//    }
-//
-//    // validate limit 10
-//    ASSERT_EQ(node::kPlanTypeScan, plan_vec.at(0)->GetChildren()[0]->GetType());
-//    node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
-//        plan_vec.at(0)->GetChildren()[0]);
-//    ASSERT_EQ(10, scan_ptr->GetLimit());
-//    delete planner_ptr;
+    ASSERT_EQ(1u, plan_trees.size());
+    PlanNode *plan_ptr = plan_trees.front();
+    std::cout << *(plan_ptr) << std::endl;
+    //     validate select plan
+    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    plan_ptr = plan_ptr->GetChildren()[0];
+
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
+    // validate project list based on current row
+    ASSERT_EQ(10u, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(node::kPlanTypeProject,
+              limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node =
+        (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
+
+    node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(
+        project_plan_node->project_list_vec_[0]);
+
+    ASSERT_EQ(0u,
+              dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[0])
+                  ->GetPos());
+    ASSERT_EQ(1u,
+              dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[1])
+                  ->GetPos());
+    ASSERT_EQ(2u,
+              dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[2])
+                  ->GetPos());
+
+    plan_ptr = project_plan_node->GetChildren()[0];
+    // validate limit 10
+    ASSERT_EQ(node::kPlanTypeRelation, plan_ptr->GetType());
+    node::RelationNode *relation_node =
+        reinterpret_cast<node::RelationNode *>(plan_ptr);
+    ASSERT_EQ("t1", relation_node->table_);
+    delete planner_ptr;
 }
 
 TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
@@ -111,49 +113,46 @@ TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
     std::cout << *plan_ptr << std::endl;
     // validate select plan
     ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
-    node::SelectPlanNode *select_ptr = (node::SelectPlanNode *)plan_ptr;
-
-    // validate merge node
-    ASSERT_EQ(node::kPlanTypeMerge, select_ptr->GetChildren()[0]->GetType());
-    node::MergePlanNode *merge_ptr =
-        (node::MergePlanNode *)select_ptr->GetChildren()[0];
-
+    plan_ptr = plan_ptr->GetChildren()[0];
+    // validate limit node
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
     // validate project list based on current row
-    std::vector<PlanNode *> plan_vec = merge_ptr->GetChildren();
-    ASSERT_EQ(2u, plan_vec.size());
+    ASSERT_EQ(10u, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(node::kPlanTypeProject,
+              limit_ptr->GetChildren().at(0)->GetType());
 
-    // check projections 1: simple projection
-    ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
-    ASSERT_EQ(
-        1u,
-        ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
-    ASSERT_EQ(nullptr, ((node::ProjectListPlanNode *)plan_vec.at(0))->GetW());
-    ASSERT_FALSE(((node::ProjectListPlanNode *)plan_vec.at(0))->IsWindowAgg());
+    node::ProjectPlanNode *project_plan_node =
+        (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    plan_ptr = project_plan_node;
+    ASSERT_EQ(2u, project_plan_node->project_list_vec_.size());
 
-    // check projections 2: window agg projection
-    ASSERT_EQ(node::kProjectList, plan_vec.at(1)->GetType());
-    ASSERT_EQ(
-        1u,
-        ((node::ProjectListPlanNode *)plan_vec.at(1))->GetProjects().size());
-    ASSERT_TRUE(nullptr !=
-                ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW());
-    ASSERT_EQ(-3, ((node::ProjectListPlanNode *)plan_vec.at(1))
-                      ->GetW()
-                      ->GetStartOffset());
-    ASSERT_EQ(
-        3,
-        ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetEndOffset());
+    // validate projection 0
+    node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(
+        project_plan_node->project_list_vec_[0]);
+
+    ASSERT_EQ(1u, project_list->GetProjects().size());
+    ASSERT_TRUE(nullptr == project_list->GetW());
+
+    ASSERT_FALSE(project_list->IsWindowAgg());
+
+    // validate projection 1: window agg over w2
+    project_list = dynamic_cast<node::ProjectListNode *>(
+        project_plan_node->project_list_vec_[1]);
+    ASSERT_EQ(1u, project_list->GetProjects().size());
+    ASSERT_TRUE(nullptr != project_list->GetW());
+    ASSERT_EQ(-3, project_list->GetW()->GetStartOffset());
+    ASSERT_EQ(3, project_list->GetW()->GetEndOffset());
+
     ASSERT_EQ(std::vector<std::string>({"COL2"}),
-              ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetKeys());
-    ASSERT_TRUE(((node::ProjectListPlanNode *)plan_vec.at(1))->IsWindowAgg());
+              project_list->GetW()->GetKeys());
+    ASSERT_TRUE(project_list->IsWindowAgg());
 
-    // validate scan node with limit 10
-    ASSERT_EQ(plan_vec.at(0)->GetChildren()[0],
-              plan_vec.at(1)->GetChildren()[0]);
-    ASSERT_EQ(node::kPlanTypeScan, plan_vec.at(0)->GetChildren()[0]->GetType());
-    node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
-        plan_vec.at(0)->GetChildren()[0]);
-    ASSERT_EQ(10, scan_ptr->GetLimit());
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeRelation, plan_ptr->GetType());
+    node::RelationNode *relation_node =
+        reinterpret_cast<node::RelationNode *>(plan_ptr);
+    ASSERT_EQ("t", relation_node->table_);
     delete planner_ptr;
 }
 
@@ -173,8 +172,7 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
     int ret = parser_->parse(sql, list, manager_, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
-
-    std::cout << *(list[0]) << std::endl;
+    //    std::cout << *(list[0]) << std::endl;
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
     ASSERT_EQ(1u, trees.size());
@@ -184,58 +182,55 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
     std::cout << *plan_ptr << std::endl;
     // validate select plan
     ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
-    node::SelectPlanNode *select_ptr = (node::SelectPlanNode *)plan_ptr;
-
-    // validate merge node
-    ASSERT_EQ(node::kPlanTypeMerge, select_ptr->GetChildren().at(0)->GetType());
-    node::MergePlanNode *merge_node =
-        (node::MergePlanNode *)select_ptr->GetChildren()[0];
-
+    plan_ptr = plan_ptr->GetChildren()[0];
+    // validate limit node
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
     // validate project list based on current row
-    std::vector<PlanNode *> plan_vec = merge_node->GetChildren();
-    ASSERT_EQ(2u, merge_node->GetChildren().size());
-    plan_vec = merge_node->GetChildren();
+    ASSERT_EQ(10u, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(node::kPlanTypeProject,
+              limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node =
+        (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    plan_ptr = project_plan_node;
+    ASSERT_EQ(2u, project_plan_node->project_list_vec_.size());
 
     // validate projection 1: window agg over w1
-    ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
-    ASSERT_EQ(
-        1u,
-        ((node::ProjectListPlanNode *)plan_vec.at(0))->GetProjects().size());
-    ASSERT_TRUE(nullptr !=
-                ((node::ProjectListPlanNode *)plan_vec.at(0))->GetW());
-    ASSERT_TRUE(((node::ProjectListPlanNode *)plan_vec.at(0))->IsWindowAgg());
-    ASSERT_EQ(-1 * 86400000, ((node::ProjectListPlanNode *)plan_vec.at(0))
-                                 ->GetW()
-                                 ->GetStartOffset());
-    ASSERT_EQ(
-        -1000,
-        ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetEndOffset());
+    node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(
+        project_plan_node->project_list_vec_[0]);
+
+    ASSERT_EQ(1u, project_list->GetProjects().size());
+    ASSERT_TRUE(nullptr != project_list->GetW());
+
+    ASSERT_TRUE(project_list->IsWindowAgg());
+
+    ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
+    ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
+    ASSERT_EQ(std::vector<std::string>({"col2"}),
+              project_list->GetW()->GetKeys());
 
     // validate projection 1: window agg over w2
-    ASSERT_EQ(node::kProjectList, plan_vec.at(1)->GetType());
-    ASSERT_EQ(
-        1u,
-        ((node::ProjectListPlanNode *)plan_vec.at(1))->GetProjects().size());
-    ASSERT_TRUE(nullptr !=
-                ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW());
-    ASSERT_EQ(-2 * 86400000, ((node::ProjectListPlanNode *)plan_vec.at(1))
-                                 ->GetW()
-                                 ->GetStartOffset());
-    ASSERT_EQ(
-        -1000,
-        ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetEndOffset());
-    ASSERT_EQ(std::vector<std::string>({"col3"}),
-              ((node::ProjectListPlanNode *)plan_vec.at(1))->GetW()->GetKeys());
-    ASSERT_TRUE(((node::ProjectListPlanNode *)plan_vec.at(1))->IsWindowAgg());
+    project_list = dynamic_cast<node::ProjectListNode *>(
+        project_plan_node->project_list_vec_[1]);
+    ASSERT_EQ(1u, project_list->GetProjects().size());
+    ASSERT_TRUE(nullptr != project_list->GetW());
+    ASSERT_EQ(-2 * 86400000, project_list->GetW()->GetStartOffset());
+    ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
 
-    ASSERT_EQ(node::kPlanTypeScan, plan_vec.at(0)->GetChildren()[0]->GetType());
-    node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
-        plan_vec.at(0)->GetChildren()[0]);
-    ASSERT_EQ(10, scan_ptr->GetLimit());
+    ASSERT_EQ(std::vector<std::string>({"col3"}),
+              project_list->GetW()->GetKeys());
+    ASSERT_TRUE(project_list->IsWindowAgg());
+
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeRelation, plan_ptr->GetType());
+    node::RelationNode *relation_node =
+        reinterpret_cast<node::RelationNode *>(plan_ptr);
+    ASSERT_EQ("t1", relation_node->table_);
     delete planner_ptr;
 }
 
-TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
+TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
     node::NodePointVector list;
     node::PlanNodeList trees;
     base::Status status;
@@ -277,15 +272,24 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
     std::cout << *plan_ptr << std::endl;
     // validate select plan
     ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
-    node::SelectPlanNode *select_ptr = (node::SelectPlanNode *)plan_ptr;
+    plan_ptr = plan_ptr->GetChildren()[0];
 
-    // validate merge node
-    ASSERT_EQ(node::kPlanTypeMerge, select_ptr->GetChildren().at(0)->GetType());
-    node::MergePlanNode *merge_node =
-        (node::MergePlanNode *)select_ptr->GetChildren()[0];
+    // validate limit node
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
 
-    std::vector<std::pair<uint32_t, uint32_t>> pos_mapping =
-        merge_node->GetPosMapping();
+    // validate project list based on current row
+    ASSERT_EQ(10u, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(node::kPlanTypeProject,
+              limit_ptr->GetChildren().at(0)->GetType());
+
+    node::ProjectPlanNode *project_plan_node =
+        (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
+    plan_ptr = project_plan_node;
+    ASSERT_EQ(3u, project_plan_node->project_list_vec_.size());
+
+    const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping =
+        project_plan_node->pos_mapping_;
     ASSERT_EQ(9, pos_mapping.size());
     ASSERT_EQ(std::make_pair(1u, 0u), pos_mapping[0]);
     ASSERT_EQ(std::make_pair(2u, 0u), pos_mapping[1]);
@@ -297,16 +301,11 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
     ASSERT_EQ(std::make_pair(2u, 3u), pos_mapping[7]);
     ASSERT_EQ(std::make_pair(2u, 4u), pos_mapping[8]);
 
-    // validate project list based on current row
-    std::vector<PlanNode *> plan_vec = merge_node->GetChildren();
-    ASSERT_EQ(3u, merge_node->GetChildren().size());
-    plan_vec = merge_node->GetChildren();
-
-    // validate projection 1: window agg over w1
-    ASSERT_EQ(node::kProjectList, plan_vec.at(0)->GetType());
+    // validate projection 0: window agg over w1
     {
-        node::ProjectListPlanNode *project_list =
-            dynamic_cast<node::ProjectListPlanNode *>(plan_vec.at(0));
+        node::ProjectListNode *project_list =
+            dynamic_cast<node::ProjectListNode *>(
+                project_plan_node->project_list_vec_.at(0));
 
         ASSERT_EQ(2u, project_list->GetProjects().size());
         ASSERT_TRUE(nullptr == project_list->GetW());
@@ -314,28 +313,21 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
 
         // validate col1 pos 3
         {
-            node::ProjectNode *project =
-                dynamic_cast<node::ProjectNode *>(
-                    project_list->GetProjects()[0]);
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[0]);
             ASSERT_EQ(3u, project->GetPos());
         }
         // validate col2 pos 5
         {
-            node::ProjectNode *project =
-                dynamic_cast<node::ProjectNode *>(
-                    project_list->GetProjects()[1]);
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[1]);
             ASSERT_EQ(5u, project->GetPos());
         }
-
-        ASSERT_EQ(node::kPlanTypeScan,
-                  project_list->GetChildren()[0]->GetType());
-        node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
-            project_list->GetChildren()[0]);
-        ASSERT_EQ(10, scan_ptr->GetLimit());
     }
     {
-        node::ProjectListPlanNode *project_list =
-            dynamic_cast<node::ProjectListPlanNode *>(plan_vec.at(1));
+        node::ProjectListNode *project_list =
+            dynamic_cast<node::ProjectListNode *>(
+                project_plan_node->project_list_vec_.at(1));
 
         ASSERT_EQ(2u, project_list->GetProjects().size());
         ASSERT_FALSE(nullptr == project_list->GetW());
@@ -344,30 +336,22 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
 
         // validate w1_col1_sum pos 0
         {
-            node::ProjectNode *project =
-                dynamic_cast<node::ProjectNode *>(
-                    project_list->GetProjects()[0]);
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[0]);
             ASSERT_EQ(0, project->GetPos());
         }
         // validate w1_col3_sum pos 0
         {
-            node::ProjectNode *project =
-                dynamic_cast<node::ProjectNode *>(
-                    project_list->GetProjects()[1]);
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[1]);
             ASSERT_EQ(4u, project->GetPos());
         }
-
-        ASSERT_EQ(node::kPlanTypeScan,
-                  project_list->GetChildren()[0]->GetType());
-        node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
-            project_list->GetChildren()[0]);
-        ASSERT_EQ(10, scan_ptr->GetLimit());
     }
     {
         // validate projection 1: window agg over w2
-        ASSERT_EQ(node::kProjectList, plan_vec.at(2)->GetType());
-        node::ProjectListPlanNode *project_list =
-            dynamic_cast<node::ProjectListPlanNode *>(plan_vec.at(2));
+        node::ProjectListNode *project_list =
+            dynamic_cast<node::ProjectListNode *>(
+                project_plan_node->project_list_vec_.at(2));
 
         ASSERT_EQ(5u, project_list->GetProjects().size());
         ASSERT_TRUE(nullptr != project_list->GetW());
@@ -379,50 +363,44 @@ TEST_F(PlannerTest, MergeProjectListPlanPostTest) {
 
         // validate w2_col3_sum pos 1
         {
-            node::ProjectNode *project =
-                dynamic_cast<node::ProjectNode *>(
-                    project_list->GetProjects()[0]);
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[0]);
             ASSERT_EQ(1u, project->GetPos());
         }
         // validate w2_col4_sum pos 2
         {
-            node::ProjectNode *project =
-                dynamic_cast<node::ProjectNode *>(
-                    project_list->GetProjects()[1]);
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[1]);
             ASSERT_EQ(2u, project->GetPos());
         }
         // validate w2_col1_sum pos 6
         {
-            node::ProjectNode *project =
-                dynamic_cast<node::ProjectNode *>(
-                    project_list->GetProjects()[2]);
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[2]);
             ASSERT_EQ(6u, project->GetPos());
         }
 
         // validate w2_col1_at_0 pos 7
         {
-            node::ProjectNode *project =
-                dynamic_cast<node::ProjectNode *>(
-                    project_list->GetProjects()[3]);
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[3]);
             ASSERT_EQ(7u, project->GetPos());
         }
         // validate w2_col1_at_1 pos 8
         {
-            node::ProjectNode *project =
-                dynamic_cast<node::ProjectNode *>(
-                    project_list->GetProjects()[4]);
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[4]);
             ASSERT_EQ(8u, project->GetPos());
         }
-
-        ASSERT_EQ(node::kPlanTypeScan,
-                  project_list->GetChildren()[0]->GetType());
-        node::ScanPlanNode *scan_ptr = reinterpret_cast<node::ScanPlanNode *>(
-            project_list->GetChildren()[0]);
-        ASSERT_EQ(10, scan_ptr->GetLimit());
     }
 
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeRelation, plan_ptr->GetType());
+    node::RelationNode *relation_node =
+        reinterpret_cast<node::RelationNode *>(plan_ptr);
+    ASSERT_EQ("t1", relation_node->table_);
     delete planner_ptr;
-}  // namespace plan
+}
 
 TEST_F(PlannerTest, CreateStmtPlanTest) {
     const std::string sql_str =
@@ -457,7 +435,8 @@ TEST_F(PlannerTest, CreateStmtPlanTest) {
 
     type::TableDef table_def;
     ASSERT_TRUE(TransformTableDef(createStmt->GetTableName(),
-                      createStmt->GetColumnDescList(), &table_def, status));
+                                  createStmt->GetColumnDescList(), &table_def,
+                                  status));
 
     type::TableDef *table = &table_def;
     ASSERT_EQ("test", table->name());
@@ -555,30 +534,33 @@ TEST_F(PlannerTest, FunDefAndSelectPlanTest) {
 
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
-//    std::cout << status.msg << std::endl;
-//    ASSERT_EQ(2u, trees.size());
-//    PlanNode *plan_ptr = trees[0];
-//    ASSERT_TRUE(NULL != plan_ptr);
-//    std::cout << *plan_ptr << std::endl;
-//
-//    // validate fundef plan
-//    ASSERT_EQ(node::kPlanTypeFuncDef, plan_ptr->GetType());
-//    node::FuncDefPlanNode *plan =
-//        dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
-//
-//    ASSERT_TRUE(nullptr != plan->fn_def_);
-//    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
-//    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
-//
-//    // validate select plan
-//    plan_ptr = trees[1];
-//    ASSERT_TRUE(NULL != plan_ptr);
-//    std::cout << *plan_ptr << std::endl;
-//    // validate fundef plan
-//    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
-//    node::SelectPlanNode *select_plan =
-//        dynamic_cast<node::SelectPlanNode *>(plan_ptr);
-//    ASSERT_EQ(1, select_plan->GetChildrenSize());
+    std::cout << status.msg << std::endl;
+    ASSERT_EQ(2u, trees.size());
+    PlanNode *plan_ptr = trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+    std::cout << *plan_ptr << std::endl;
+
+    // validate fundef plan
+    ASSERT_EQ(node::kPlanTypeFuncDef, plan_ptr->GetType());
+    node::FuncDefPlanNode *plan =
+        dynamic_cast<node::FuncDefPlanNode *>(plan_ptr);
+
+    ASSERT_TRUE(nullptr != plan->fn_def_);
+    ASSERT_TRUE(nullptr != plan->fn_def_->header_);
+    ASSERT_TRUE(nullptr != plan->fn_def_->block_);
+
+    // validate select plan
+    plan_ptr = trees[1];
+    ASSERT_TRUE(NULL != plan_ptr);
+    std::cout << *plan_ptr << std::endl;
+    // validate select plan
+
+    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_plan =
+        dynamic_cast<node::LimitPlanNode *>(plan_ptr);
+    ASSERT_EQ(1, limit_plan->GetLimitCnt());
 }
 
 TEST_F(PlannerTest, FunDefIfElsePlanTest) {
@@ -637,11 +619,12 @@ TEST_F(PlannerTest, FunDefIfElsePlanTest) {
     plan_ptr = trees[1];
     ASSERT_TRUE(NULL != plan_ptr);
     std::cout << *plan_ptr << std::endl;
-    // validate fundef plan
     ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
-    node::SelectPlanNode *select_plan =
-        dynamic_cast<node::SelectPlanNode *>(plan_ptr);
-    ASSERT_EQ(1, select_plan->GetChildrenSize());
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_plan =
+        dynamic_cast<node::LimitPlanNode *>(plan_ptr);
+    ASSERT_EQ(1, limit_plan->GetLimitCnt());
 }
 
 TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
@@ -781,11 +764,12 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
     plan_ptr = trees[1];
     ASSERT_TRUE(NULL != plan_ptr);
     std::cout << *plan_ptr << std::endl;
-    // validate fundef plan
     ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
-    node::SelectPlanNode *select_plan =
-        dynamic_cast<node::SelectPlanNode *>(plan_ptr);
-    ASSERT_EQ(1, select_plan->GetChildrenSize());
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_plan =
+        dynamic_cast<node::LimitPlanNode *>(plan_ptr);
+    ASSERT_EQ(1, limit_plan->GetLimitCnt());
 }
 
 TEST_F(PlannerTest, FunDefForInPlanTest) {
@@ -846,11 +830,12 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
     plan_ptr = trees[1];
     ASSERT_TRUE(NULL != plan_ptr);
     std::cout << *plan_ptr << std::endl;
-    // validate fundef plan
     ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
-    node::SelectPlanNode *select_plan =
-        dynamic_cast<node::SelectPlanNode *>(plan_ptr);
-    ASSERT_EQ(1, select_plan->GetChildrenSize());
+    plan_ptr = plan_ptr->GetChildren()[0];
+    ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
+    node::LimitPlanNode *limit_plan =
+        dynamic_cast<node::LimitPlanNode *>(plan_ptr);
+    ASSERT_EQ(1, limit_plan->GetLimitCnt());
 }
 }  // namespace plan
 }  // namespace fesql

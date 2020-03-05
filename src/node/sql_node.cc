@@ -139,22 +139,23 @@ const std::string AllNode::GetExprString() const {
 }
 
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
-        ExprNode::Print(output, org_tab);
-        output << org_tab << SPACE_ST;
-        output << "value: " << GetExprString();
+    ExprNode::Print(output, org_tab);
+    output << "\n";
+    output << org_tab << SPACE_ST;
+    output << "value: " << GetExprString();
 }
 const std::string ConstNode::GetExprString() const {
     switch (date_type_) {
         case fesql::node::kInt16:
             return std::to_string(val_.vsmallint);
         case fesql::node::kInt32:
-            return std::to_string( val_.vint);
+            return std::to_string(val_.vint);
         case fesql::node::kInt64:
-            return std::to_string( val_.vlong);
+            return std::to_string(val_.vlong);
         case fesql::node::kVarchar:
             return val_.vstr;
         case fesql::node::kFloat:
-            return std::to_string( val_.vfloat);
+            return std::to_string(val_.vfloat);
         case fesql::node::kDouble:
             return std::to_string(val_.vdouble);
         case fesql::node::kNull:
@@ -460,8 +461,8 @@ WindowDefNode *WindowOfExpression(
             if (nullptr != func_node_ptr->GetOver()) {
                 return windows.at(func_node_ptr->GetOver()->GetName());
             }
-
-            if (nullptr == func_node_ptr->GetArgs() || func_node_ptr->GetArgs()->IsEmpty()) {
+            if (nullptr == func_node_ptr->GetArgs() ||
+                func_node_ptr->GetArgs()->IsEmpty()) {
                 return nullptr;
             }
             for (auto arg : func_node_ptr->GetArgs()->children) {
@@ -559,7 +560,9 @@ void BinaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
 }
 const std::string BinaryExpr::GetExprString() const {
     std::string str = "";
-    str.append(children[0]->GetExprString()).append(ExprOpTypeName(op_)).append(children[1]->GetExprString());
+    str.append(children[0]->GetExprString())
+        .append(ExprOpTypeName(op_))
+        .append(children[1]->GetExprString());
     return str;
 }
 void UnaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
@@ -579,9 +582,7 @@ void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, name_, "var", true);
 }
-const std::string ExprIdNode::GetExprString() const {
-    return name_;
-}
+const std::string ExprIdNode::GetExprString() const { return name_; }
 
 void ExprNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << org_tab << SPACE_ST << "expr[" << ExprTypeName(expr_type_) << "]";
@@ -590,9 +591,15 @@ const std::string ExprNode::GetExprString() const { return ""; }
 
 void ExprListNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
+    if (children.empty()) {
+        return;
+    }
     const std::string tab = org_tab + INDENT + SPACE_ED;
-    for (ExprNode* node: children) {
-        node->Print(output, org_tab);
+    auto iter = children.cbegin();
+    (*iter)->Print(output, org_tab);
+    for (;iter != children.cend(); iter++) {
+        output << "\n";
+        (*iter)->Print(output, org_tab);
     }
 }
 const std::string ExprListNode::GetExprString() const {
@@ -602,7 +609,7 @@ const std::string ExprListNode::GetExprString() const {
         std::string str = "(";
         auto iter = children.cbegin();
         str.append((*iter)->GetExprString());
-        for(;iter != children.cend(); iter ++) {
+        for (; iter != children.cend(); iter++) {
             str.append(",");
             str.append((*iter)->GetExprString());
         }

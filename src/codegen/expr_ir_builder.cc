@@ -178,10 +178,10 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     ::llvm::StringRef name(call_fn->GetFunctionName());
 
     std::vector<::llvm::Value*> llvm_args;
-    const std::vector<::fesql::node::SQLNode*>& args = call_fn->GetArgs();
-    std::vector<::fesql::node::SQLNode*>::const_iterator it = args.cbegin();
+    const fesql::node::ExprListNode* args = call_fn->GetArgs();
+    std::vector<::fesql::node::ExprNode*>::const_iterator it = args->children.cbegin();
     std::vector<::fesql::node::TypeNode> generics_types;
-    for (; it != args.cend(); ++it) {
+    for (; it != args->children.cend(); ++it) {
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
         ::llvm::Value* llvm_arg = NULL;
         // TODO(chenjing): remove out_name
@@ -215,7 +215,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         return false;
     }
 
-    if (args.size() != fn->arg_size()) {
+    if (args->children.size() != fn->arg_size()) {
         status.msg = ("Incorrect arguments passed");
         status.code = (common::kCallMethodError);
         return false;
