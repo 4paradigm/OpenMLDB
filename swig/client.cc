@@ -52,95 +52,6 @@ static int ConvertColumnDesc(
     return 0;
 }
 
-int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
-            const std::vector<uint64_t>& ts_dimensions, uint64_t ts, const std::string& value,
-            const google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition>& table_partition,
-            std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>& clients) {
-    for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
-        uint32_t pid = iter->first;
-        std::string endpoint;
-        for (const auto& cur_table_partition : table_partition) {
-            if (cur_table_partition.pid() != pid) {
-                continue;
-            }
-            for (int inner_idx = 0; inner_idx < cur_table_partition.partition_meta_size(); inner_idx++) {
-                if (cur_table_partition.partition_meta(inner_idx).is_leader() &&
-                    cur_table_partition.partition_meta(inner_idx).is_alive()) {
-                    endpoint = cur_table_partition.partition_meta(inner_idx).endpoint();
-                    break;
-                }
-            }
-            break;
-        }
-        if (endpoint.empty()) {
-            printf("put error. cannot find healthy endpoint. pid is %u\n", pid);
-            return -1;
-        }
-        if (clients.find(endpoint) == clients.end()) {
-            clients.insert(std::make_pair(endpoint, std::make_shared<::rtidb::client::TabletClient>(endpoint)));
-            if (clients[endpoint]->Init() < 0) {
-                printf("tablet client init failed, endpoint is %s\n", endpoint.c_str());
-                return -1;
-            }
-        }
-        if (ts_dimensions.empty()) {
-            if (!clients[endpoint]->Put(tid, pid, ts, value, iter->second)) {
-                printf("put failed. tid %u pid %u endpoint %s\n", tid, pid, endpoint.c_str());
-                return -1;
-            }
-        } else {
-            if (!clients[endpoint]->Put(tid, pid, iter->second, ts_dimensions, value)) {
-                printf("put failed. tid %u pid %u endpoint %s\n", tid, pid, endpoint.c_str());
-                return -1;
-            }
-        }
-    }
-    std::cout << "Put ok" << std::endl;
-    return 0;
-}
-
-int SetDimensionData(const std::map<std::string, std::string>& raw_data,
-                     const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& column_key_field,
-                     uint32_t pid_num,
-                     std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions) {
-    uint32_t dimension_idx = 0;
-    std::set<std::string> index_name_set;
-    for (const auto& column_key : column_key_field) {
-        std::string index_name = column_key.index_name();
-        if (index_name_set.find(index_name) != index_name_set.end()) {
-            continue;
-        }
-        index_name_set.insert(index_name);
-        std::string key;
-        for (int i = 0; i < column_key.col_name_size(); i++) {
-            auto pos = raw_data.find(column_key.col_name(i));
-            if (pos == raw_data.end()) {
-                return -1;
-            }
-            if (!key.empty()) {
-                key += "|";
-            }
-            key += pos->second;
-        }
-        if (key.empty()) {
-            auto pos = raw_data.find(index_name);
-            if (pos == raw_data.end()) {
-                return -1;
-            }
-            key = pos->second;
-        }
-        uint32_t pid = 0;
-        if (pid_num > 0) {
-            pid = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
-        }
-        if (dimensions.find(pid) == dimensions.end()) {
-            dimensions.insert(std::make_pair(pid, std::vector<std::pair<std::string, uint32_t>>()));
-        }
-        dimensions[pid].push_back(std::make_pair(key, dimension_idx));
-        dimension_idx++;
-    }
-    return 0;
-}
 
 void encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, const std::vector<std::string>& value_vec, std::string& buffer) {
     rtidb::base::RowBuilder rb(schema);
@@ -333,7 +244,7 @@ std::shared_ptr<rtidb::client::TabletClient> RtidbClient::GetTabletClient(const 
     tablets_.insert(std::make_pair(endpoint, tablet));
     return tablet;
 }
-// TODO: feature not complete
+
 GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::string, std::string>& value, const WriteOption& wo) {
     GeneralResult result;
     std::shared_ptr<TableHandler> th;
