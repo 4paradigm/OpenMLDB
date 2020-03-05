@@ -61,7 +61,22 @@ T FeCheck(::llvm::Expected<T>&& E) {
     }
     return std::move(*E);
 }
+node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
+    ::fesql::node::ProjectPlanNode* plan_node = nullptr;
+    auto node = trees[0]->GetChildren();
+    while (!node.empty()) {
+        if (node[0]->GetType() == node::kPlanTypeProject) {
+            plan_node = dynamic_cast<fesql::node::ProjectPlanNode*>(node[0]);
+            break;
+        }
+        node = node[0]->GetChildren();
+    }
 
+    ::fesql::node::ProjectListNode* pp_node_ptr =
+        dynamic_cast<fesql::node::ProjectListNode*>(
+            plan_node->project_list_vec_[0]);
+    return pp_node_ptr;
+}
 class FnLetIRBuilderTest : public ::testing::Test {
  public:
     FnLetIRBuilderTest() { GetSchema(table_); }
@@ -152,8 +167,9 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     ::fesql::node::PlanNodeList trees;
     ret = planner.CreatePlanTree(list, trees, status);
     ASSERT_EQ(0, ret);
-    ::fesql::node::ProjectListNode* pp_node_ptr =
-        (::fesql::node::ProjectListNode*)(trees[0]->GetChildren()[0]);
+    ::fesql::node::ProjectPlanNode* plan_ptr = nullptr;
+    std::cout << *(trees[0]);
+    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(trees);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
@@ -212,8 +228,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     ::fesql::node::PlanNodeList trees;
     ret = planner.CreatePlanTree(list, trees, status);
     ASSERT_EQ(0, ret);
-    ::fesql::node::ProjectListNode* pp_node_ptr =
-        (::fesql::node::ProjectListNode*)(trees[0]->GetChildren()[0]);
+    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(trees);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
@@ -262,8 +277,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     ::fesql::node::PlanNodeList plan;
     ret = planner.CreatePlanTree(list, plan, status);
     ASSERT_EQ(0, ret);
-    ::fesql::node::ProjectListNode* pp_node_ptr =
-        (::fesql::node::ProjectListNode*)(plan[0]->GetChildren()[0]);
+    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
 
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -300,7 +314,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     free(ptr);
 }
 
-TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
+TEST_F(FnLetIRBuilderTest, test_extern_udf_project){
     ::fesql::node::NodePointVector list;
     ::fesql::parser::FeSQLParser parser;
     ::fesql::node::NodeManager manager;
@@ -314,8 +328,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     ::fesql::node::PlanNodeList plan;
     ret = planner.CreatePlanTree(list, plan, status);
     ASSERT_EQ(0, ret);
-    ::fesql::node::ProjectListNode* pp_node_ptr =
-        (::fesql::node::ProjectListNode*)(plan[0]->GetChildren()[0]);
+    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
 
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -494,8 +507,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     ::fesql::node::PlanNodeList plan;
     ret = planner.CreatePlanTree(list, plan, status);
     ASSERT_EQ(0, ret);
-    ::fesql::node::ProjectListNode* pp_node_ptr =
-        (::fesql::node::ProjectListNode*)(plan[0]->GetChildren()[0]);
+    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
 
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -560,12 +572,11 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
     ::fesql::plan::SimplePlanner planner(&manager);
-
     ::fesql::node::PlanNodeList plan;
     ret = planner.CreatePlanTree(list, plan, status);
     ASSERT_EQ(0, ret);
-    ::fesql::node::ProjectListNode* pp_node_ptr =
-        (::fesql::node::ProjectListNode*)(plan[0]->GetChildren()[0]);
+    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
+
 
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -632,9 +643,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     ::fesql::node::PlanNodeList plan;
     ret = planner.CreatePlanTree(list, plan, status);
     ASSERT_EQ(0, ret);
-    ::fesql::node::ProjectListNode* pp_node_ptr =
-        (::fesql::node::ProjectListNode*)(plan[0]->GetChildren()[0]);
-
+    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_project", *ctx);
@@ -720,11 +729,10 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
     ::fesql::plan::SimplePlanner planner(&manager);
-    ::fesql::node::PlanNodeList trees;
-    ret = planner.CreatePlanTree(list, trees, status);
+    ::fesql::node::PlanNodeList plan;
+    ret = planner.CreatePlanTree(list, plan, status);
     ASSERT_EQ(0, ret);
-    ::fesql::node::ProjectListNode* pp_node_ptr =
-        (::fesql::node::ProjectListNode*)(trees[0]->GetChildren()[0]);
+    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
 
     // Create an LLJIT instance.
     // Create the add1 function entry and insert this entry into module M.  The

@@ -264,6 +264,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectPlanNode* node,
         }
         merge_op->type = kOpMerge;
         merge_op->fn = nullptr;
+        merge_op->children = children;
         *op = merge_op;
     }
 }

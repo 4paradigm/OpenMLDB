@@ -26,14 +26,12 @@ TEST_F(NodeManagerTest, MakeSQLNode) {
     manager->MakeSQLNode(node::kOrderBy);
     manager->MakeSQLNode(node::kLimit);
 
-    manager->MakePlanNode(node::kPlanTypeSelect);
-    manager->MakePlanNode(node::kProjectList);
-    manager->MakePlanNode(node::kProject);
-    manager->MakePlanNode(node::kProject);
-    manager->MakePlanNode(node::kOpExpr);
+    manager->MakeRelationNode(dynamic_cast<TableNode*>(manager->MakeTableNode("", "t1")));
+    manager->MakeRelationNode(dynamic_cast<TableNode*>(manager->MakeTableNode("", "t2")));
+    manager->MakeRelationNode(dynamic_cast<TableNode*>(manager->MakeTableNode("", "t3")));
 
-    ASSERT_EQ(3, manager->GetParserNodeListSize());
-    ASSERT_EQ(5, manager->GetPlanNodeListSize());
+    ASSERT_EQ(6, manager->GetParserNodeListSize());
+    ASSERT_EQ(3, manager->GetPlanNodeListSize());
     delete manager;
 }
 

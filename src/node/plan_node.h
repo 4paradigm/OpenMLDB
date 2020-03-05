@@ -252,11 +252,11 @@ class ProjectListNode : public LeafPlanNode {
     const uint64_t GetScanLimit() const { return scan_limit_; }
 
  private:
-    PlanNodeList projects;
     const WindowPlanNode *w_ptr_;
     const std::string table_name_;
     bool is_window_agg_;
     uint64_t scan_limit_;
+    PlanNodeList projects;
 };
 
 class ProjectPlanNode : public UnaryPlanNode {
