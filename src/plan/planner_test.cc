@@ -10,7 +10,6 @@
 #include "plan/planner.h"
 #include <utility>
 #include <vector>
-#include "analyser/analyser.h"
 #include "gtest/gtest.h"
 #include "parser/parser.h"
 namespace fesql {

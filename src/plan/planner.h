@@ -11,7 +11,6 @@
 
 #include <string>
 #include <vector>
-#include "analyser/analyser.h"
 #include "base/status.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"

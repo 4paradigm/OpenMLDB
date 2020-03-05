@@ -22,7 +22,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include "analyser/analyser.h"
 #include "base/texttable.h"
 #include "plan/planner.h"
 #include "sdk/tablet_sdk.h"
@@ -313,7 +312,6 @@ void HandleSQLScript(
     {
         fesql::node::NodeManager node_manager;
         fesql::parser::FeSQLParser parser;
-        fesql::analyser::FeSQLAnalyser analyser(&node_manager);
         fesql::plan::SimplePlanner planner(&node_manager);
         fesql::base::Status sql_status;
 

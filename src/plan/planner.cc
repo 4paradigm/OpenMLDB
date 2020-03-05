@@ -19,20 +19,21 @@ namespace plan {
 int Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
                                   PlanNode **plan_tree, Status &status) {
     const node::SelectStmt *root = (const node::SelectStmt *)select_tree;
-    const node::NodePointVector &table_ref_list = root->GetTableRefList();
-    if (table_ref_list.empty()) {
+    if (nullptr == root->GetTableRefList() || root->GetTableRefList()->GetList().empty()) {
         status.msg =
-            "can not create select plan node with empty table references";
+            "can not create select plan node with null or empty table references";
         status.code = common::kSQLError;
         return status.code;
     }
 
+    const node::NodePointVector &table_ref_list = root->GetTableRefList()->GetList();
     std::vector<node::PlanNode *> relation_nodes;
     for (node::SQLNode *node : table_ref_list) {
         if (node::kTable != node->GetType()) {
             status.msg = "can not create Relation plan node with sql node " +
                          node::NameOfSQLNodeType(node->GetType());
             status.code = common::kPlanError;
+            return status.code;
         }
         node::TableNode *table_node = dynamic_cast<node::TableNode *>(node);
         relation_nodes.push_back(node_manager_->MakeRelationNode(table_node));
@@ -61,92 +62,93 @@ int Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
     }
 
     // select target_list
+    if (nullptr == root->GetSelectList() ||
+        root->GetSelectList()->GetList().empty()) {
+        status.msg =
+            "fail to create select query plan: select expr list is null or "
+            "empty";
+        status.code = common::kPlanError;
+        return status.code;
+    }
+    const node::NodePointVector &select_expr_list =
+        root->GetSelectList()->GetList();
 
-    // prepare project list plan node
-    const node::NodePointVector &select_expr_list = root->GetSelectList();
-    if (false == select_expr_list.empty()) {
-        std::map<node::WindowDefNode *, node::ProjectListNode *>
-            project_list_map;
-        // prepare window def
-        int w_id = 1;
-        std::map<std::string, node::WindowDefNode *> windows;
-        if (!root->GetWindowList().empty()) {
-            for (auto node : root->GetWindowList()) {
-                node::WindowDefNode *w =
-                    dynamic_cast<node::WindowDefNode *>(node);
-                windows[w->GetName()] = w;
-            }
+    // prepare window list
+    std::map<node::WindowDefNode *, node::ProjectListNode *> project_list_map;
+    // prepare window def
+    int w_id = 1;
+    std::map<std::string, node::WindowDefNode *> windows;
+    if (nullptr != root->GetWindowList() && !root->GetWindowList()->IsEmpty()) {
+        for (auto node : root->GetWindowList()->GetList()) {
+            node::WindowDefNode *w = dynamic_cast<node::WindowDefNode *>(node);
+            windows[w->GetName()] = w;
         }
+    }
 
-        for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
-            auto expr = select_expr_list[pos];
-            node::ProjectNode *project_node_ptr = nullptr;
+    for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
+        auto expr = select_expr_list[pos];
+        node::ProjectNode *project_node_ptr = nullptr;
 
-            CreateProjectPlanNode(expr, pos, &project_node_ptr, status);
-            if (0 != status.code) {
-                return status.code;
-            }
-            node::WindowDefNode *w_ptr = node::WindowOfExpression(
-                windows, project_node_ptr->GetExpression());
+        CreateProjectPlanNode(expr, pos, &project_node_ptr, status);
+        if (0 != status.code) {
+            return status.code;
+        }
+        node::WindowDefNode *w_ptr = node::WindowOfExpression(
+            windows, project_node_ptr->GetExpression());
 
-            if (project_list_map.find(w_ptr) == project_list_map.end()) {
-                if (w_ptr == nullptr) {
-                    project_list_map[w_ptr] =
-                        node_manager_->MakeProjectListPlanNode(table_name,
-                                                               nullptr);
-                } else {
-                    node::WindowPlanNode *w_node_ptr =
-                        node_manager_->MakeWindowPlanNode(w_id++);
-                    CreateWindowPlanNode(w_ptr, w_node_ptr, status);
-                    if (common::kOk != status.code) {
-                        return status.code;
-                    }
-                    project_list_map[w_ptr] =
-                        node_manager_->MakeProjectListPlanNode(table_name,
-                                                               w_node_ptr);
+        if (project_list_map.find(w_ptr) == project_list_map.end()) {
+            if (w_ptr == nullptr) {
+                project_list_map[w_ptr] =
+                    node_manager_->MakeProjectListPlanNode(table_name, nullptr);
+            } else {
+                node::WindowPlanNode *w_node_ptr =
+                    node_manager_->MakeWindowPlanNode(w_id++);
+                CreateWindowPlanNode(w_ptr, w_node_ptr, status);
+                if (common::kOk != status.code) {
+                    return status.code;
                 }
+                project_list_map[w_ptr] =
+                    node_manager_->MakeProjectListPlanNode(table_name,
+                                                           w_node_ptr);
             }
-            project_list_map[w_ptr]->AddProject(project_node_ptr);
         }
-        // add MergeNode if multi ProjectionLists exist
-        PlanNodeList project_list_vec(w_id);
-        for (auto &v : project_list_map) {
-            node::ProjectListNode *project_list = v.second;
-            int pos = nullptr == project_list->GetW()
-                          ? 0
-                          : project_list->GetW()->GetId();
-            project_list_vec[pos] = project_list;
+        project_list_map[w_ptr]->AddProject(project_node_ptr);
+    }
+    // add MergeNode if multi ProjectionLists exist
+    PlanNodeList project_list_vec(w_id);
+    for (auto &v : project_list_map) {
+        node::ProjectListNode *project_list = v.second;
+        int pos =
+            nullptr == project_list->GetW() ? 0 : project_list->GetW()->GetId();
+        project_list_vec[pos] = project_list;
+    }
+    PlanNodeList project_list_vec2;
+    std::vector<std::pair<uint32_t, uint32_t>> pos_mapping(
+        select_expr_list.size());
+    int project_list_id = 0;
+    for (auto &v : project_list_vec) {
+        if (nullptr == v) {
+            continue;
         }
-        PlanNodeList project_list_vec2;
-        std::vector<std::pair<uint32_t, uint32_t>> pos_mapping(
-            select_expr_list.size());
-        int project_list_id = 0;
-        for (auto &v : project_list_vec) {
-            if (nullptr == v) {
-                continue;
-            }
-            auto project_list =
-                dynamic_cast<node::ProjectListNode *>(v)->GetProjects();
-            int project_pos = 0;
-            for (auto project : project_list) {
-                pos_mapping[dynamic_cast<node::ProjectNode *>(project)
-                                ->GetPos()] =
-                    std::make_pair(project_list_id, project_pos);
-                project_pos++;
-            }
-            project_list_vec2.push_back(v);
-            project_list_id++;
+        auto project_list =
+            dynamic_cast<node::ProjectListNode *>(v)->GetProjects();
+        int project_pos = 0;
+        for (auto project : project_list) {
+            pos_mapping[dynamic_cast<node::ProjectNode *>(project)->GetPos()] =
+                std::make_pair(project_list_id, project_pos);
+            project_pos++;
         }
+        project_list_vec2.push_back(v);
+        project_list_id++;
+    }
 
-        current_node = node_manager_->MakeProjectPlanNode(
-            current_node, project_list_vec2, pos_mapping);
-        // set limit
-        if (nullptr != root->GetLimit()) {
-            const node::LimitNode *limit_ptr =
-                (node::LimitNode *)root->GetLimit();
-            current_node = node_manager_->MakeLimitPlanNode(
-                current_node, limit_ptr->GetLimitCount());
-        }
+    current_node = node_manager_->MakeProjectPlanNode(
+        current_node, project_list_vec2, pos_mapping);
+    // set limit
+    if (nullptr != root->GetLimit()) {
+        const node::LimitNode *limit_ptr = (node::LimitNode *)root->GetLimit();
+        current_node = node_manager_->MakeLimitPlanNode(
+            current_node, limit_ptr->GetLimitCount());
     }
     current_node = node_manager_->MakeSelectPlanNode(current_node);
     *plan_tree = current_node;

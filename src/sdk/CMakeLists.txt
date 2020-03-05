@@ -8,7 +8,7 @@ add_executable(dbms_sdk_test dbms_sdk_test.cc)
 target_link_libraries(dbms_sdk_test fesql_sdk 
     fesql_dbms
     fesql_tablet 
-    fesql_storage fesql_vm fesql_analyser fesql_parser fesql_planner fesql_codegen fesql_udf
+    fesql_storage fesql_vm fesql_parser fesql_planner fesql_codegen fesql_udf
     fesql_node
     fesql_proto brpc protobuf gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread)
 add_test(dbms_sdk_test dbms_sdk_test --gtest_output=xml:${CMAKE_BINARY_DIR}/dbms_sdk_test.xml)
@@ -18,7 +18,7 @@ add_executable(tablet_sdk_test tablet_sdk_test.cc)
 target_link_libraries(tablet_sdk_test fesql_sdk 
     fesql_dbms
     fesql_tablet 
-    fesql_storage fesql_vm fesql_analyser fesql_parser fesql_planner fesql_codegen fesql_udf
+    fesql_storage fesql_vm fesql_parser fesql_planner fesql_codegen fesql_udf
     fesql_node
     fesql_proto brpc protobuf gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread)
 add_test(tablet_sdk_test tablet_sdk_test

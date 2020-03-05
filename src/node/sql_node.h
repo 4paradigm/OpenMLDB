@@ -217,8 +217,11 @@ class SQLNodeList {
     SQLNodeList() {}
     ~SQLNodeList() {}
     void PushBack(SQLNode *node_ptr) { list_.push_back(node_ptr); }
+    const bool IsEmpty() const {
+        return list_.empty();
+    }
     const int GetSize() const { return list_.size(); }
-    std::vector<SQLNode *>& GetList() { return list_; }
+    const std::vector<SQLNode *>& GetList() const { return list_; }
     void Print(std::ostream &output, const std::string &tab) const;
  private:
     std::vector<SQLNode *> list_;
@@ -738,6 +741,9 @@ class SelectStmt : public SQLNode {
     SQLNodeList* select_list_;
     SQLNodeList* tableref_list_;
     SQLNodeList* window_list_;
+    void PrintSQLNodeList(std::ostream &output, const std::string& tab,
+                          SQLNodeList *list, const std::string &name,
+                          bool last_item) const;
 };
 class ColumnDefNode : public SQLNode {
  public:

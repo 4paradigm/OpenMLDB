@@ -20,7 +20,6 @@
 #include <iostream>
 #include <memory>
 #include "plan/planner.h"
-#include "analyser/analyser.h"
 #include "brpc/channel.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
@@ -209,7 +208,6 @@ void DBMSSdkImpl::ExecuteScript(
     sdk::Status &status) {  // NOLINT (runtime/references)
     node::NodeManager node_manager;
     parser::FeSQLParser parser;
-    analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
 
     DLOG(INFO) << "start to execute script from dbms:\n" << request.sql;
@@ -225,7 +223,6 @@ void DBMSSdkImpl::ExecuteScript(
         return;
     }
     node::NodePointVector query_trees;
-    analyser.Analyse(parser_trees, query_trees, sql_status);
     if (0 != sql_status.code) {
         LOG(WARNING) << status.msg;
         status.code = sql_status.code;
