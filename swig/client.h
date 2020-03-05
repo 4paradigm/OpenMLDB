@@ -3,6 +3,7 @@
 #include "client/tablet_client.h"
 #include "zk/zk_client.h"
 #include <string>
+#include <set>
 
 struct WriteOption {
     bool updateIfExist;
@@ -24,6 +25,34 @@ struct GetColumn {
     std::string buffer;
 };
 
+struct QueryResult {
+    int code;
+    std::string msg;
+    std::map<std::string, GetColumn> values;
+    QueryResult():code(0), msg() {
+    };
+};
+
+struct GeneralResult {
+    int code;
+    std::string msg;
+    GeneralResult():code(0), msg() {}
+    GeneralResult(int err_num):code(err_num), msg() {};
+    GeneralResult(int err_num, const std::string error_msg):code(err_num), msg(error_msg) {};
+    void SetError(int err_num, const std::string error_msg) {
+        code = err_num;
+        msg = error_msg;
+    }
+};
+
+struct ShowTableResult {
+    int code;
+    std::string msg;
+    std::vector<std::string> tables;
+    ShowTableResult():code(0), msg(), tables() {
+    };
+};
+
 struct ReadOption {
     std::map<std::string, std::string> index;
     std::vector<ReadFilter> read_filter;
@@ -33,26 +62,42 @@ struct ReadOption {
         index.insert(indexs.begin(), indexs.end());
     };
 };
-class RtidbNSClient {
+
+
+struct TableHandler {
+    std::shared_ptr<rtidb::nameserver::TableInfo>  table_info;
+    std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> columns;
+};
+
+class RtidbClient {
 private:
-    rtidb::zk::ZkClient* zk_client_;
+    std::shared_ptr<rtidb::zk::ZkClient> zk_client_;
     std::shared_ptr<rtidb::client::NsClient> client_;
     std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>> tablets_;
-    std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint);
     std::mutex mu_;
+    std::string zk_cluster_;
+    std::string zk_path_;
+    std::string zk_table_data_path_;
+    std::string zk_table_notify_path_;
+    std::map<std::string, TableHandler> tables_;
+
+    std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint, std::string& msg);
+    void CheckZkClient();
+    void UpdateEndpoint(const std::set<std::string>& alive_endpoints);
+    bool RefreshNodeList();
+    void RefreshTable();
+    void DoFresh(const std::vector<std::string>& events) {
+        RefreshNodeList();
+        RefreshTable();
+    }
 
 public:
-    RtidbNSClient();
-    ~RtidbNSClient() {
-        if (zk_client_ != NULL) {
-            delete zk_client_;
-        }
-    };
-    bool Init(const std::string& zk_cluster, const std::string& zk_path);
-    std::vector<std::string>* ShowTable(const std::string& name);
-    std::map<std::string, GetColumn> Get(const std::string& name, struct ReadOption& ro);
-    bool Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
-    bool Delete(const std::string& name, const std::map<std::string, std::string>& values);
-    bool Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> value, const WriteOption& wo);
+    RtidbClient();
+    ~RtidbClient();
+    GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path);
+    QueryResult Query(const std::string& name, struct ReadOption& ro);
+    GeneralResult Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
+    GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
+    GeneralResult Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> value, const WriteOption& wo);
 
 };

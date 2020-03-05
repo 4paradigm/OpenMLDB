@@ -67,10 +67,10 @@ ReadOptions = List[ReadOption]
 defaultWriteOption = WriteOption()
 class RTIDBClient:
   def __init__(self, zk_cluster: str, zk_path: str):
-    self.__client = interclient.RtidbNSClient()
+    self.__client = interclient.RtidbClient()
     ok = self.__client.Init(zk_cluster, zk_path)
-    if not ok:
-      raise Exception("Initial client error!")
+    if ok.code != 0:
+      raise Exception(ok.code, ok.msg)
 
   def __del__(self):
     del self.__client
@@ -83,7 +83,10 @@ class RTIDBClient:
     value = dict();
     for k in columns:
       value.update({k: str(columns[k])})
-    return self.__client.Put(table_name, value, _wo)
+    ok = self.__client.Put(table_name, value, _wo)
+    if ok.code != 0:
+      raise Exception(ok.code, ok.msg)
+    return true
 
   def update(self, table_name: str, condition_columns: map, value_columns: map, write_option: WriteOption = None):
     _wo = interclient.WriteOption();
