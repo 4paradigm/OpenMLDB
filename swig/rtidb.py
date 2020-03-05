@@ -86,7 +86,7 @@ class RTIDBClient:
     ok = self.__client.Put(table_name, value, _wo)
     if ok.code != 0:
       raise Exception(ok.code, ok.msg)
-    return true
+    return True
 
   def update(self, table_name: str, condition_columns: map, value_columns: map, write_option: WriteOption = None):
     _wo = interclient.WriteOption();
@@ -116,9 +116,11 @@ class RTIDBClient:
       ro.read_filter.append(mid_rf)
     for col in read_option.col_set:
       ro.col_set.append(col)
-    resp = self.__client.Get(table_name, ro)
+    resp = self.__client.Query(table_name, ro)
+    if resp.code != 0:
+      raise Exception(resp.code, resp.msg)
     result = dict()
-    for k in resp:
+    for k in resp.values:
       if k == None:
         continue
       result.update({k: type_map[resp[k].type](resp[k].buffer)})

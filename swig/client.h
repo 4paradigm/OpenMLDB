@@ -63,10 +63,15 @@ struct ReadOption {
     };
 };
 
+struct PartitionInfo {
+    std::string leader;
+    std::set<std::string> follower;
+};
 
 struct TableHandler {
     std::shared_ptr<rtidb::nameserver::TableInfo>  table_info;
     std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> columns;
+    std::vector<PartitionInfo> partition;
 };
 
 class RtidbClient {
@@ -79,7 +84,7 @@ private:
     std::string zk_path_;
     std::string zk_table_data_path_;
     std::string zk_table_notify_path_;
-    std::map<std::string, TableHandler> tables_;
+    std::map<std::string, std::shared_ptr<TableHandler>> tables_;
 
     std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint, std::string& msg);
     void CheckZkClient();

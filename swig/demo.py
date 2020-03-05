@@ -19,16 +19,17 @@ for l in resp:
     print(k, l[k])
 
 
-#print("begin update============================")
-#cond = {"card":"card2"}
-#v = {"mcc":"mcc1", "p_biz_date":4}
-#nsc.update("test1", cond, v, None)
-#
-#resp = nsc.batch_query("test1", [ro])
-#print("size ", resp.count())
-#for l in resp:
-#  print(l)
+print("begin update============================")
+cond = {"card":"card2"}
+v = {"mcc":"mcc1", "p_biz_date":4}
+nsc.update("test1", cond, v, None)
 
+print("begin batch query==============")
+resp = nsc.batch_query("test1", [ro])
+print("size ", resp.count())
+for l in resp:
+  print(l)
+print("begin traverse=============")
 resp = nsc.traverse("test1")
 print("size ", resp.count())
 for l in resp:
