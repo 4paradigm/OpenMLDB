@@ -218,9 +218,8 @@ class SQLNodeList {
     ~SQLNodeList() {}
     void PushBack(SQLNode *node_ptr) { list_.push_back(node_ptr); }
     const int GetSize() const { return list_.size(); }
-    std::vector<SQLNode *> GetList() const { return list_; }
+    std::vector<SQLNode *>& GetList() { return list_; }
     void Print(std::ostream &output, const std::string &tab) const;
-
  private:
     std::vector<SQLNode *> list_;
 };
@@ -687,9 +686,9 @@ class ResTarget : public SQLNode {
 };
 class SelectStmt : public SQLNode {
  public:
-    SelectStmt(NodePointVector &select_list, NodePointVector &tableref_list,
+    SelectStmt(SQLNodeList* select_list, SQLNodeList *tableref_list,
                ExprNode *where_expr, ExprListNode *group_expr_list,
-               ExprNode *having_expr, NodePointVector &window_list,
+               ExprNode *having_expr, SQLNodeList *window_list,
                SQLNode *limit_ptr)
         : SQLNode(kSelectStmt, 0, 0),
           distinct_opt_(0),
@@ -706,21 +705,21 @@ class SelectStmt : public SQLNode {
     ~SelectStmt() {}
 
     // Getter and Setter
-    const NodePointVector &GetSelectList() const { return select_list_; }
+    const SQLNodeList* GetSelectList() const { return select_list_; }
 
-    NodePointVector &GetSelectList() { return select_list_; }
+    SQLNodeList* GetSelectList() { return select_list_; }
 
     const SQLNode *GetLimit() const { return limit_ptr_; }
 
-    const NodePointVector &GetTableRefList() const {
+    const SQLNodeList* GetTableRefList() const {
         return tableref_list_;
     }
 
-    NodePointVector &GetTableRefList() { return tableref_list_; }
+    SQLNodeList* GetTableRefList() { return tableref_list_; }
 
-    const NodePointVector &GetWindowList() const { return window_list_; }
+    const SQLNodeList* GetWindowList() const { return window_list_; }
 
-    NodePointVector &GetWindowList() { return window_list_; }
+    SQLNodeList* GetWindowList() { return window_list_; }
 
     void SetLimit(SQLNode *limit) { limit_ptr_ = limit; }
 
@@ -736,9 +735,9 @@ class SelectStmt : public SQLNode {
     const SQLNode *limit_ptr_;
 
  private:
-    NodePointVector select_list_;
-    NodePointVector tableref_list_;
-    NodePointVector window_list_;
+    SQLNodeList* select_list_;
+    SQLNodeList* tableref_list_;
+    SQLNodeList* window_list_;
 };
 class ColumnDefNode : public SQLNode {
  public:

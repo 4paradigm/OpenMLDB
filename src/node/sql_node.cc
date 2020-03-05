@@ -298,13 +298,13 @@ void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNode(output, tab, limit_ptr_, "limit", last_child);
     output << "\n";
-    PrintSQLVector(output, tab, select_list_, "select_list", last_child);
+    PrintSQLVector(output, tab, select_list_->GetList(), "select_list", last_child);
     output << "\n";
-    PrintSQLVector(output, tab, tableref_list_, "tableref_list",
+    PrintSQLVector(output, tab, tableref_list_->GetList(), "tableref_list",
                    last_child);
     output << "\n";
     last_child = true;
-    PrintSQLVector(output, tab, window_list_, "window_list", last_child);
+    PrintSQLVector(output, tab, window_list_->GetList(), "window_list", last_child);
 }
 
 // Return the node type name
