@@ -36,7 +36,6 @@ enum IndexStat {
 
 struct ColumnKey {
     ColumnKey() : status(IndexStat::kReady) {}
-    // ColumnKey(std::initializer_list<uint32_t> list) : status(IndexStat::kReady), column_idx(list) {}
     ~ColumnKey() = default;
     std::atomic<IndexStat> status;
     std::vector<uint32_t> column_idx;
