@@ -335,14 +335,7 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
         LOG(WARNING) << status.msg;
         return;
     }
-    node::NodePointVector query_trees;
-    if (0 != sql_status.code) {
-        status.code = sql_status.code;
-        status.msg = sql_status.msg;
-        LOG(WARNING) << status.msg;
-        return;
-    }
-    planner.CreatePlanTree(query_trees, plan_trees, sql_status);
+    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
 
     if (0 != sql_status.code) {
         status.code = sql_status.code;
