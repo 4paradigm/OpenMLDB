@@ -179,7 +179,8 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
 
     std::vector<::llvm::Value*> llvm_args;
     const fesql::node::ExprListNode* args = call_fn->GetArgs();
-    std::vector<::fesql::node::ExprNode*>::const_iterator it = args->children.cbegin();
+    std::vector<::fesql::node::ExprNode*>::const_iterator it =
+        args->children.cbegin();
     std::vector<::fesql::node::TypeNode> generics_types;
     for (; it != args->children.cend(); ++it) {
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);

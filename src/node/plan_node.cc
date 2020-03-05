@@ -77,7 +77,6 @@ void ProjectNode::Print(std::ostream &output, const std::string &orgTab) const {
     PrintValue(output, orgTab, name_, "name", true);
 }
 
-
 std::string NameOfPlanNodeType(const PlanType &type) {
     switch (type) {
         case kPlanTypeSelect:
@@ -135,7 +134,7 @@ void PrintPlanVector(std::ostream &output, const std::string &tab,
 }
 
 void PrintPlanNode(std::ostream &output, const std::string &org_tab,
-                   PlanNode *node_ptr, const std::string &item_name,
+                   const PlanNode *node_ptr, const std::string &item_name,
                    bool last_child) {
     output << org_tab << SPACE_ST << item_name << ":";
 
@@ -158,7 +157,7 @@ void ProjectListNode::Print(std::ostream &output,
         PrintPlanVector(output, org_tab + INDENT, projects,
                         "projects on table ", false);
     } else {
-        PrintPlanNode(output, org_tab, (PlanNode *)w_ptr_, "window", false);
+        PrintPlanNode(output, org_tab, (w_ptr_), "window", false);
         output << "\n";
         PrintPlanVector(output, org_tab + INDENT, projects,
                         "projects on window ", false);
@@ -177,7 +176,8 @@ void ProjectPlanNode::Print(std::ostream &output,
                             const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintPlanVector(output, org_tab + "\t", project_list_vec_, "project_plan", true);
+    PrintPlanVector(output, org_tab + "\t", project_list_vec_, "project_plan",
+                    true);
 }
 void LimitPlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {

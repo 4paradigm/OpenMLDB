@@ -314,7 +314,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     free(ptr);
 }
 
-TEST_F(FnLetIRBuilderTest, test_extern_udf_project){
+TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     ::fesql::node::NodePointVector list;
     ::fesql::parser::FeSQLParser parser;
     ::fesql::node::NodeManager manager;
@@ -576,7 +576,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     ret = planner.CreatePlanTree(list, plan, status);
     ASSERT_EQ(0, ret);
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
-
 
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();

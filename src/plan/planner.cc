@@ -11,6 +11,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 namespace fesql {
 namespace plan {
@@ -49,7 +50,8 @@ int Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
 
     // where condition
     if (nullptr != root->where_clause_ptr_) {
-        current_node = node_manager_->MakeFilterPlanNode(current_node, root->where_clause_ptr_);
+        current_node = node_manager_->MakeFilterPlanNode(
+            current_node, root->where_clause_ptr_);
     }
 
     // group by
@@ -445,7 +447,7 @@ void Planner::CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
         dynamic_cast<const node::CmdNode *>(root));
 }
 std::string Planner::MakeTableName(
-    std::vector<node::PlanNode *> &relation_nodes) {
+    const std::vector<node::PlanNode *> &relation_nodes) const {
     // from tables
     auto iter = relation_nodes.cbegin();
     std::string table_name = dynamic_cast<node::RelationNode *>(*iter)->table_;

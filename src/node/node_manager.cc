@@ -9,6 +9,7 @@
 
 #include "node/node_manager.h"
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace fesql {
@@ -336,7 +337,8 @@ PlanNode *NodeManager::MakeRelationNode(TableNode *node) {
     return RegisterNode(node_ptr);
 }
 
-FilterPlanNode *NodeManager::MakeFilterPlanNode(PlanNode* node, const ExprNode* condition) {
+FilterPlanNode *NodeManager::MakeFilterPlanNode(PlanNode *node,
+                                                const ExprNode *condition) {
     node::FilterPlanNode *node_ptr = new FilterPlanNode(node, condition);
     RegisterNode(node_ptr);
     return node_ptr;

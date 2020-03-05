@@ -10,6 +10,7 @@
 #define SRC_PLAN_PLANNER_H_
 
 #include <string>
+#include <vector>
 #include "analyser/analyser.h"
 #include "base/status.h"
 #include "glog/logging.h"
@@ -41,7 +42,7 @@ class Planner {
     void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
     int CreateSelectStmtPlan(const node::SQLNode *root, PlanNode **plan_tree,
-                         Status &status);  // NOLINT (runtime/references)
+                             Status &status);  // NOLINT (runtime/references)
     void CreateCreateTablePlan(const node::SQLNode *root,
                                node::PlanNode **output,
                                Status &status);  // NOLINT (runtime/references)
@@ -53,8 +54,7 @@ class Planner {
     void CreateInsertPlan(const SQLNode *root, node::PlanNode **output,
                           Status &status);  // NOLINT (runtime/references)
 
-    void CreateFuncDefPlan(const SQLNode *root,
-                           node::PlanNode **output,
+    void CreateFuncDefPlan(const SQLNode *root, node::PlanNode **output,
                            Status &status);  // NOLINT (runtime/references)
     void CreateWindowPlanNode(node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,
@@ -62,7 +62,8 @@ class Planner {
     int64_t CreateFrameOffset(const node::FrameBound *bound,
                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
-    std::string MakeTableName(std::vector<node::PlanNode*>& relation_nodes);
+    std::string MakeTableName(
+        const std::vector<node::PlanNode *> &relation_nodes) const;
 };
 
 class SimplePlanner : public Planner {

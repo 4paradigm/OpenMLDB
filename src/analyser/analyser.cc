@@ -167,7 +167,8 @@ void FeSQLAnalyser::TransformFuncNode(
     Status &status) {  // NOLINT (runtime/references)
     // TODO(chenjing): 细化参数校验
     // TODO(chenjing): 表达式节点修改：需要带上DataType属性
-    for (int i = 0; i < static_cast<int>(node_ptr->GetArgs()->children.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(node_ptr->GetArgs()->children.size());
+         ++i) {
         TransformExprNode(node_ptr->GetArgs()->children[i], table_name, status);
         if (0 != status.code) {
             return;

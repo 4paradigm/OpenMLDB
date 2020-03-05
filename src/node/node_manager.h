@@ -14,6 +14,8 @@
 #include <ctype.h>
 #include <list>
 #include <string>
+#include <vector>
+#include <utility>
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 
@@ -58,7 +60,8 @@ class NodeManager {
     WindowPlanNode *MakeWindowPlanNode(int w_id);
     ProjectListNode *MakeProjectListPlanNode(const std::string &table_name,
                                              WindowPlanNode *w);
-    FilterPlanNode *MakeFilterPlanNode(PlanNode* node, const ExprNode* condition);
+    FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
+                                       const ExprNode *condition);
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
                                  node::ExprNode *expression);
     PlanNode *MakeRelationNode(TableNode *node);

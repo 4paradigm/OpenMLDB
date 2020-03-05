@@ -132,14 +132,14 @@ class GroupPlanNode : public UnaryPlanNode {
 
 class SelectPlanNode : public UnaryPlanNode {
  public:
-    SelectPlanNode(PlanNode *node)
+    explicit SelectPlanNode(PlanNode *node)
         : UnaryPlanNode(node, kPlanTypeSelect) {}
     ~SelectPlanNode() {}
 };
 
 class FilterPlanNode : public UnaryPlanNode {
  public:
-    FilterPlanNode(PlanNode* node, const ExprNode *condition)
+    FilterPlanNode(PlanNode *node, const ExprNode *condition)
         : UnaryPlanNode(node, kPlanTypeScan), condition_(condition) {}
     ~FilterPlanNode() {}
     const ExprNode *condition_;
@@ -158,7 +158,6 @@ class LimitPlanNode : public UnaryPlanNode {
  private:
     int limit_cnt_;
 };
-
 
 class ProjectNode : public LeafPlanNode {
  public:
@@ -351,7 +350,7 @@ class CmdPlanNode : public LeafPlanNode {
 
 class InsertPlanNode : public LeafPlanNode {
  public:
-    InsertPlanNode(const InsertStmt *insert_node)
+    explicit InsertPlanNode(const InsertStmt *insert_node)
         : LeafPlanNode(kPlanTypeInsert), insert_node_(insert_node) {}
     ~InsertPlanNode() {}
     const InsertStmt *GetInsertNode() const { return insert_node_; }
@@ -362,7 +361,7 @@ class InsertPlanNode : public LeafPlanNode {
 
 class FuncDefPlanNode : public LeafPlanNode {
  public:
-    FuncDefPlanNode(const FnNodeFnDef *fn_def)
+    explicit FuncDefPlanNode(const FnNodeFnDef *fn_def)
         : LeafPlanNode(kPlanTypeFuncDef), fn_def_(fn_def) {}
     ~FuncDefPlanNode() {}
     void Print(std::ostream &output, const std::string &orgTab) const;
@@ -374,7 +373,7 @@ void PrintPlanVector(std::ostream &output, const std::string &tab,
                      bool last_item);
 
 void PrintPlanNode(std::ostream &output, const std::string &org_tab,
-                   PlanNode *node_ptr, const std::string &item_name,
+                   const PlanNode *node_ptr, const std::string &item_name,
                    bool last_child);
 
 }  // namespace node
