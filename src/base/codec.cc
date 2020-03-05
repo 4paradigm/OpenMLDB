@@ -31,10 +31,10 @@ namespace base {
 
 static const std::unordered_map<::rtidb::type::DataType, uint8_t> TYPE_SIZE_MAP = {
     {::rtidb::type::kBool, sizeof(bool)},
-    {::rtidb::type::kInt16, sizeof(int16_t)},
-    {::rtidb::type::kInt32, sizeof(int32_t)},
+    {::rtidb::type::kSmallInt, sizeof(int16_t)},
+    {::rtidb::type::kInt, sizeof(int32_t)},
     {::rtidb::type::kFloat, sizeof(float)},
-    {::rtidb::type::kInt64, sizeof(int64_t)},
+    {::rtidb::type::kBigInt, sizeof(int64_t)},
     {::rtidb::type::kTimestamp, sizeof(int64_t)},
     {::rtidb::type::kDouble, sizeof(double)}};
 

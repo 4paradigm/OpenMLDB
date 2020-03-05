@@ -61,7 +61,7 @@ TEST_F(CodecTest, NULLTest) {
     Schema schema;
     ::rtidb::common::ColumnDesc* col = schema.Add();
     col->set_name("col1");
-    col->set_data_type(::rtidb::type::kInt16);
+    col->set_data_type(::rtidb::type::kSmallInt);
     col = schema.Add();
     col->set_name("col2");
     col->set_data_type(::rtidb::type::kBool);
@@ -91,10 +91,10 @@ TEST_F(CodecTest, Normal) {
     Schema schema;
     ::rtidb::common::ColumnDesc* col = schema.Add();
     col->set_name("col1");
-    col->set_data_type(::rtidb::type::kInt32);
+    col->set_data_type(::rtidb::type::kInt);
     col = schema.Add();
     col->set_name("col2");
-    col->set_data_type(::rtidb::type::kInt16);
+    col->set_data_type(::rtidb::type::kSmallInt);
     col = schema.Add();
     col->set_name("col3");
     col->set_data_type(::rtidb::type::kFloat);
@@ -103,7 +103,7 @@ TEST_F(CodecTest, Normal) {
     col->set_data_type(::rtidb::type::kDouble);
     col = schema.Add();
     col->set_name("col5");
-    col->set_data_type(::rtidb::type::kInt64);
+    col->set_data_type(::rtidb::type::kBigInt);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(0);
     std::string row;
@@ -129,7 +129,7 @@ TEST_F(CodecTest, Encode) {
         ::rtidb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 3 == 0) {
-            col->set_data_type(::rtidb::type::kInt16);
+            col->set_data_type(::rtidb::type::kSmallInt);
         } else if (i % 3 == 1) {
             col->set_data_type(::rtidb::type::kDouble);
         } else {
@@ -180,7 +180,7 @@ TEST_F(CodecTest, AppendNULL) {
         ::rtidb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 3 == 0) {
-            col->set_data_type(::rtidb::type::kInt16);
+            col->set_data_type(::rtidb::type::kSmallInt);
         } else if (i % 3 == 1) {
             col->set_data_type(::rtidb::type::kDouble);
         } else {
@@ -253,7 +253,7 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
         ::rtidb::common::ColumnDesc* col = schema.Add();
         col->set_name("col" + std::to_string(i));
         if (i % 2 == 0) {
-            col->set_data_type(::rtidb::type::kInt16);
+            col->set_data_type(::rtidb::type::kSmallInt);
         } else {
             col->set_data_type(::rtidb::type::kVarchar);
         }
