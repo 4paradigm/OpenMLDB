@@ -40,6 +40,11 @@ int Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
     }
 
     std::string table_name = MakeTableName(relation_nodes);
+    if (table_name.empty()) {
+        status.msg = "fail to create select query plan: can not get table name";
+        status.code = common::kCodegenError;
+        return status.code;
+    }
     // from tables
     auto iter = relation_nodes.cbegin();
     node::PlanNode *current_node = *iter;
@@ -458,8 +463,8 @@ std::string Planner::MakeTableName(
     for (; iter != relation_nodes.cend(); iter++) {
         table_name.append("_").append(
             dynamic_cast<node::RelationNode *>(*iter)->table_);
-        return table_name;
     }
+    return table_name;
 }
 
 bool TransformTableDef(const std::string &table_name,
@@ -487,7 +492,6 @@ bool TransformTableDef(const std::string &table_name,
                 column->set_name(column_def->GetColumnName());
                 column->set_is_not_null(column_def->GetIsNotNull());
                 column_names.insert(column_def->GetColumnName());
-                fesql::type::Type c_type;
                 switch (column_def->GetColumnType()) {
                     case node::kBool:
                         column->set_type(type::Type::kBool);

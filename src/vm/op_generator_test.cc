@@ -85,6 +85,7 @@ void AssertOpGen(fesql::type::TableDef& table_def, OpVector* op,  // NOLINT
         parser.parse(sql, parser_trees, &manager, base_status);
         ASSERT_EQ(0, base_status.code);
         planner.CreatePlanTree(parser_trees, plan_trees, base_status);
+        std::cout << base_status.msg ;
         ASSERT_EQ(0, base_status.code);
         std::cout.flush();
     }
@@ -149,19 +150,18 @@ TEST_F(OpGeneratorTest, test_normal) {
         "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
     const Status exp_status(::fesql::common::kOk, "ok");
     AssertOpGen(table_def, &op, sql, exp_status);
-    ASSERT_EQ(3, op.ops.size());
+    ASSERT_EQ(3u, op.ops.size());
 
     {
-        ASSERT_EQ(0, op.ops[0]->idx);
+        ASSERT_EQ(0u, op.ops[0]->idx);
         ASSERT_EQ(kOpScan, op.ops[0]->type);
-        ScanOp* scan_op = dynamic_cast<ScanOp*>(op.ops[0]);
     }
 
-    ASSERT_EQ(1, op.ops[1]->idx);
+    ASSERT_EQ(1u, op.ops[1]->idx);
     ASSERT_EQ(kOpProject, op.ops[1]->type);
 
     {
-        ASSERT_EQ(2, op.ops[2]->idx);
+        ASSERT_EQ(2u, op.ops[2]->idx);
         ASSERT_EQ(kOpLimit, op.ops[2]->type);
         LimitOp* limit_op = dynamic_cast<LimitOp*>(op.ops[2]);
         ASSERT_EQ(10u, limit_op->limit);
@@ -185,29 +185,27 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
             "PRECEDING) limit 10;";
         const Status exp_status(::fesql::common::kOk, "ok");
         AssertOpGen(table_def, &op, sql, exp_status);
-        ASSERT_EQ(3, op.ops.size());
+        ASSERT_EQ(3u, op.ops.size());
         {
-            ASSERT_EQ(0, op.ops[0]->idx);
+            ASSERT_EQ(0u, op.ops[0]->idx);
             ASSERT_EQ(kOpScan, op.ops[0]->type);
-            ASSERT_EQ(kOpScan, op.ops[0]->type);
-            ScanOp* scan_op = dynamic_cast<ScanOp*>(op.ops[0]);
         }
 
-        ASSERT_EQ(1, op.ops[1]->idx);
+        ASSERT_EQ(1u, op.ops[1]->idx);
         ASSERT_EQ(kOpProject, op.ops[1]->type);
         ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[1]);
         ASSERT_TRUE(project_op->window_agg);
         ASSERT_EQ(::fesql::type::kInt16, project_op->w.keys.cbegin()->first);
-        ASSERT_EQ(1, project_op->w.keys.cbegin()->second);
+        ASSERT_EQ(1u, project_op->w.keys.cbegin()->second);
 
         ASSERT_EQ(::fesql::type::kInt64, project_op->w.order.first);
-        ASSERT_EQ(4, project_op->w.order.second);
+        ASSERT_EQ(4u, project_op->w.order.second);
         ASSERT_TRUE(project_op->w.is_range_between);
         ASSERT_EQ(-86400000 * 2, project_op->w.start_offset);
         ASSERT_EQ(-1000, project_op->w.end_offset);
 
         {
-            ASSERT_EQ(2, op.ops[2]->idx);
+            ASSERT_EQ(2u, op.ops[2]->idx);
             ASSERT_EQ(kOpLimit, op.ops[2]->type);
             LimitOp* limit_op = dynamic_cast<LimitOp*>(op.ops[2]);
             ASSERT_EQ(10u, limit_op->limit);

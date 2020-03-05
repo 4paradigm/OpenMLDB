@@ -605,7 +605,6 @@ void ExprListNode::Print(std::ostream &output,
     }
     const std::string tab = org_tab + INDENT + SPACE_ED;
     auto iter = children.cbegin();
-    int32_t id = 0;
     (*iter)->Print(output, org_tab);
     iter++;
     for (; iter != children.cend(); iter++) {

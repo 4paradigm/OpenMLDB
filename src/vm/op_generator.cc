@@ -267,6 +267,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectPlanNode* node,
         merge_op->children = children;
         *op = merge_op;
     }
+    return true;
 }
 bool OpGenerator::GenProjectListOp(const ::fesql::node::ProjectListNode* node,
                                    const std::string& db,

@@ -391,11 +391,11 @@ TEST_F(SqlParserTest, Assign_Op_Test) {
         std::cout << status.msg << std::endl;
     }
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, trees.size());
+    ASSERT_EQ(1u, trees.size());
     std::cout << *(trees.front()) << std::endl;
     ASSERT_EQ(fesql::node::kFnDef, trees[0]->GetType());
     node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(trees[0]);
-    ASSERT_EQ(6, fn_def->block_->children.size());
+    ASSERT_EQ(6u, fn_def->block_->children.size());
 
     {
         ASSERT_EQ(fesql::node::kFnAssignStmt,

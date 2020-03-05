@@ -378,7 +378,7 @@ TEST_P(EngineTest, test_normal) {
     }
 
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, output.size());
+    ASSERT_EQ(2u, output.size());
 
     ::fesql::type::TableDef output_schema;
     for (auto column : session.GetSchema()) {
@@ -490,7 +490,7 @@ TEST_F(EngineTest, test_window_agg) {
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 100);
 
-    ASSERT_EQ(5, output.size());
+    ASSERT_EQ(5u, output.size());
 
     int8_t* output_1 = output[4];
     int8_t* output_22 = output[3];
@@ -499,14 +499,14 @@ TEST_F(EngineTest, test_window_agg) {
     int8_t* output_aaa = output[0];
 
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(5, output.size());
+    ASSERT_EQ(5u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8 + 4,
               *(reinterpret_cast<int32_t*>(output_1 + 2)));
     ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
     ASSERT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
     ASSERT_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
-    ASSERT_EQ(5u, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(5, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
     ASSERT_EQ(1,
               *(reinterpret_cast<int32_t*>(output_1 + 7 + 4 + 4 + 8 + 2 + 8)));
@@ -516,7 +516,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
     ASSERT_EQ(1.1f + 2.2f, *(reinterpret_cast<float*>(output_22 + 7 + 4)));
     ASSERT_EQ(11.1 + 22.2, *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
-    ASSERT_EQ(5u + 5u,
+    ASSERT_EQ(5 + 5,
               *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
@@ -528,7 +528,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
     ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
     ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
-    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(55, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L,
               *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
     ASSERT_EQ(
@@ -540,7 +540,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4,
               *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u,
+    ASSERT_EQ(55 + 55,
               *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
@@ -554,7 +554,7 @@ TEST_F(EngineTest, test_window_agg) {
               *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4 + 55.5,
               *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u + 55u,
+    ASSERT_EQ(55 + 55 + 55,
               *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L + 3L,
               *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
@@ -599,7 +599,7 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
     std::vector<int8_t*> output;
     int32_t ret = session.RunBatch(output, 100);
 
-    ASSERT_EQ(5, output.size());
+    ASSERT_EQ(5u, output.size());
 
     int8_t* output_333 = output[0];
     int8_t* output_4444 = output[1];
@@ -609,14 +609,14 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
     int8_t* output_22 = output[4];
 
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(5, output.size());
+    ASSERT_EQ(5u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
               *(reinterpret_cast<int32_t*>(output_1 + 2)));
     ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
     ASSERT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
     ASSERT_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
-    ASSERT_EQ(5u, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(5, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
@@ -624,7 +624,7 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
     ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
     ASSERT_EQ(1.1f + 2.2f, *(reinterpret_cast<float*>(output_22 + 7 + 4)));
     ASSERT_EQ(11.1 + 22.2, *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
-    ASSERT_EQ(5u + 5u,
+    ASSERT_EQ(5 + 5,
               *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
@@ -634,7 +634,7 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
     ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
     ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
     ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
-    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(55, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L,
               *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
 
@@ -644,7 +644,7 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
     ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4,
               *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u,
+    ASSERT_EQ(55 + 55,
               *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
@@ -656,7 +656,7 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
               *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4 + 55.5,
               *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u + 55u,
+    ASSERT_EQ(55 + 55 + 55,
               *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L + 3L,
               *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
@@ -698,13 +698,13 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 100);
 
-    ASSERT_EQ(2, output.size());
+    ASSERT_EQ(2u, output.size());
 
     int8_t* output_4444 = output[1];
     int8_t* output_aaa = output[0];
 
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, output.size());
+    ASSERT_EQ(2u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
               *(reinterpret_cast<int32_t*>(output_4444 + 2)));
@@ -712,7 +712,7 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4,
               *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u,
+    ASSERT_EQ(55 + 55,
               *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
@@ -724,7 +724,7 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
               *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4 + 55.5,
               *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u + 55u,
+    ASSERT_EQ(55 + 55 + 55,
               *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L + 3L,
               *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
@@ -767,13 +767,13 @@ TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
     std::vector<int8_t*> output;
     int32_t ret = session.RunBatch(output, 100);
 
-    ASSERT_EQ(2, output.size());
+    ASSERT_EQ(2u, output.size());
 
     int8_t* output_333 = output[0];
     int8_t* output_4444 = output[1];
 
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, output.size());
+    ASSERT_EQ(2u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
               *(reinterpret_cast<int32_t*>(output_4444 + 2)));
@@ -781,7 +781,7 @@ TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
     ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4,
               *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u,
+    ASSERT_EQ(55 + 55,
               *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
@@ -791,7 +791,7 @@ TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
     ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
     ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
     ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
-    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(55, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L,
               *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
     for (auto ptr : output) {
@@ -847,14 +847,14 @@ TEST_F(EngineTest, test_multi_windows_agg) {
     int8_t* output_aaa = output[0];
 
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(5, output.size());
+    ASSERT_EQ(5u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
               *(reinterpret_cast<int32_t*>(output_1 + 2)));
     ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
     ASSERT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
     ASSERT_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
-    ASSERT_EQ(5u, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(5, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
@@ -862,7 +862,7 @@ TEST_F(EngineTest, test_multi_windows_agg) {
     ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
     ASSERT_EQ(1.1f + 2.2f, *(reinterpret_cast<float*>(output_22 + 7 + 4)));
     ASSERT_EQ(11.1 + 22.2, *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
-    ASSERT_EQ(5u + 5u,
+    ASSERT_EQ(5 + 5,
               *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
@@ -872,7 +872,7 @@ TEST_F(EngineTest, test_multi_windows_agg) {
     ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
     ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
     ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
-    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(55, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L,
               *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
 
@@ -882,7 +882,7 @@ TEST_F(EngineTest, test_multi_windows_agg) {
     ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4,
               *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u,
+    ASSERT_EQ(55 + 55,
               *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
@@ -894,7 +894,7 @@ TEST_F(EngineTest, test_multi_windows_agg) {
               *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4 + 55.5,
               *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u + 55u,
+    ASSERT_EQ(55 + 55 + 55,
               *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L + 3L,
               *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
@@ -945,14 +945,14 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
     int8_t* output_aaa = output[0];
 
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(5, output.size());
+    ASSERT_EQ(5u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
               *(reinterpret_cast<int32_t*>(output_1 + 2)));
     ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
     ASSERT_FLOAT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
     ASSERT_DOUBLE_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
-    ASSERT_EQ(5u, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(5, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
@@ -962,7 +962,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
                     *(reinterpret_cast<float*>(output_22 + 7 + 4)));
     ASSERT_DOUBLE_EQ(11.1 + 22.2,
                      *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
-    ASSERT_EQ(5u + 5u,
+    ASSERT_EQ(5 + 5,
               *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
@@ -974,7 +974,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
                     *(reinterpret_cast<float*>(output_333 + 7 + 4)));
     ASSERT_DOUBLE_EQ(11.1 + 22.2 + 33.3,
                      *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
-    ASSERT_EQ(5u + 5u + 5u,
+    ASSERT_EQ(5 + 5 + 5,
               *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L + 3L,
               *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
@@ -986,7 +986,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
                     *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
     ASSERT_DOUBLE_EQ(22.2 + 33.3 + 44.4,
                      *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
-    ASSERT_EQ(5u + 5u + 5u,
+    ASSERT_EQ(5 + 5 + 5,
               *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(2L + 3L + 4L,
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
@@ -998,7 +998,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
                     *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
     ASSERT_DOUBLE_EQ(33.3 + 44.4 + 55.5,
                      *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
-    ASSERT_EQ(5u + 5u + 5u,
+    ASSERT_EQ(5 + 5 + 5,
               *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
     ASSERT_EQ(3L + 4L + 5L,
               *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
@@ -1050,14 +1050,14 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
         int8_t* output_aaa = output[4];
 
         ASSERT_EQ(0, ret);
-        ASSERT_EQ(5, output.size());
+        ASSERT_EQ(5u, output.size());
 
         ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
                   *(reinterpret_cast<int32_t*>(output_1 + 2)));
         ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
         ASSERT_FLOAT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
         ASSERT_DOUBLE_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 +
-        4))); ASSERT_EQ(5u, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4
+        4))); ASSERT_EQ(5, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4
         + 8))); ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 +
         4 + 8 + 2)));
 
@@ -1068,7 +1068,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
                         *(reinterpret_cast<float*>(output_22 + 7 + 4)));
         ASSERT_DOUBLE_EQ(11.1 + 22.2,
                          *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
-        ASSERT_EQ(5u + 5u,
+        ASSERT_EQ(5 + 5,
                   *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
         ASSERT_EQ(1L + 2L,
                   *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 +
@@ -1082,7 +1082,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
         ASSERT_DOUBLE_EQ(11.1 + 22.2 + 33.3,
                          *(reinterpret_cast<double*>(output_333 + 7 + 4 +
                          4)));
-        ASSERT_EQ(5u + 5u + 5u,
+        ASSERT_EQ(5 + 5 + 5,
                   *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
         ASSERT_EQ(1L + 2L + 3L,
                   *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 +
@@ -1096,7 +1096,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
         ASSERT_DOUBLE_EQ(22.2 + 33.3 + 44.4,
                          *(reinterpret_cast<double*>(output_4444 + 7 + 4 +
                          4)));
-        ASSERT_EQ(5u + 5u + 5u,
+        ASSERT_EQ(5 + 5 + 5,
                   *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
         ASSERT_EQ(2L + 3L + 4L,
                   *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 +
@@ -1110,7 +1110,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
         ASSERT_DOUBLE_EQ(33.3 + 44.4 + 55.5,
                          *(reinterpret_cast<double*>(output_aaa + 7 + 4 +
                          4)));
-        ASSERT_EQ(5u + 5u + 5u,
+        ASSERT_EQ(5 + 5 + 5,
                   *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
         ASSERT_EQ(3L + 4L + 5L,
                   *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 +
@@ -1156,7 +1156,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(5, output.size());
+    ASSERT_EQ(5u, output.size());
 
     // pk:0 ts:2
     int8_t* output_22 = output[0];
@@ -1170,14 +1170,14 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     int8_t* output_aaa = output[4];
 
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(5, output.size());
+    ASSERT_EQ(5u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
               *(reinterpret_cast<int32_t*>(output_1 + 2)));
     ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
     ASSERT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
     ASSERT_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
-    ASSERT_EQ(5u, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(5, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
@@ -1185,7 +1185,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
     ASSERT_EQ(1.1f + 2.2f, *(reinterpret_cast<float*>(output_22 + 7 + 4)));
     ASSERT_EQ(11.1 + 22.2, *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
-    ASSERT_EQ(5u + 5u,
+    ASSERT_EQ(5 + 5,
               *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
@@ -1195,7 +1195,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
     ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
     ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
-    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(55, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L,
               *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
 
@@ -1205,7 +1205,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4,
               *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u,
+    ASSERT_EQ(55 + 55,
               *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
@@ -1215,7 +1215,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     ASSERT_EQ(5, *(reinterpret_cast<int32_t*>(output_aaa + 7)));
     ASSERT_EQ(5.5f, *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
     ASSERT_EQ(55.5, *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
-    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(55, *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
     ASSERT_EQ(3L,
               *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
     for (auto ptr : output) {
@@ -1258,7 +1258,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     std::vector<int8_t*> output;
     int32_t ret = session.RunBatch(output, 10);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(5, output.size());
+    ASSERT_EQ(5u, output.size());
 
     // pk:0 ts:1
     int8_t* output_1 = output[0];
@@ -1274,14 +1274,14 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     int8_t* output_aaa = output[4];
 
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(5, output.size());
+    ASSERT_EQ(5u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
               *(reinterpret_cast<int32_t*>(output_1 + 2)));
     ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
     ASSERT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
     ASSERT_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
-    ASSERT_EQ(5u, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(5, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
@@ -1289,7 +1289,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
     ASSERT_EQ(1.1f + 2.2f, *(reinterpret_cast<float*>(output_22 + 7 + 4)));
     ASSERT_EQ(11.1 + 22.2, *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
-    ASSERT_EQ(5u + 5u,
+    ASSERT_EQ(5 + 5,
               *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
@@ -1299,7 +1299,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
     ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
     ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
-    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(55, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L,
               *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
 
@@ -1309,7 +1309,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
     ASSERT_EQ(33.3 + 44.4,
               *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
-    ASSERT_EQ(55u + 55u,
+    ASSERT_EQ(55 + 55,
               *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
@@ -1319,7 +1319,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     ASSERT_EQ(5, *(reinterpret_cast<int32_t*>(output_aaa + 7)));
     ASSERT_EQ(5.5f, *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
     ASSERT_EQ(55.5, *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
-    ASSERT_EQ(55u, *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(55, *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
     ASSERT_EQ(3L,
               *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
     for (auto ptr : output) {

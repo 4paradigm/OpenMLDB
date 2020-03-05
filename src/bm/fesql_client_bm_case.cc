@@ -92,25 +92,6 @@ static bool init_tbl(::fesql::sdk::DBMSSdk *dbms_sdk,
     }
     return true;
 }
-static bool repeated_insert_tbl(::fesql::sdk::TabletSdk *tablet_sdk,
-                                const std::string &db_name,
-                                const std::string &insert_sql,
-                                int32_t record_size) {
-    DLOG(INFO) << ("Running inserts ...\n");
-    int32_t fail = 0;
-    for (int i = 0; i < record_size; ++i) {
-        ::fesql::sdk::Status status;
-        tablet_sdk->SyncInsert(db_name, insert_sql, status);
-        if (0 != status.code) {
-            fail++;
-            LOG(WARNING)
-                << ("Could not insert 'tbl' table in the 'test' "
-                    "database!\n");
-        }
-    }
-    DLOG(INFO) << "Insert tbl, fail cnt: " << fail;
-    return true;
-}
 
 static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
                               bool is_batch_mode, std::string select_sql,

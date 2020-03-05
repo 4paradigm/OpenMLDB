@@ -141,7 +141,7 @@ TEST_P(TabletSdkTest, test_normal) {
             ASSERT_EQ("col3", rs->GetColumnName(2));
             ASSERT_EQ("col4", rs->GetColumnName(3));
             ASSERT_EQ("col5", rs->GetColumnName(4));
-            ASSERT_EQ(1, rs->GetRowCnt());
+            ASSERT_EQ(1u, rs->GetRowCnt());
             std::unique_ptr<ResultSetIterator> it = rs->Iterator();
             ASSERT_TRUE(it->HasNext());
             it->Next();
@@ -153,7 +153,7 @@ TEST_P(TabletSdkTest, test_normal) {
             {
                 int16_t val = 0;
                 ASSERT_TRUE(it->GetInt16(1, &val));
-                ASSERT_EQ(val, 2u);
+                ASSERT_EQ(val, 2);
             }
             {
                 float val = 0;
@@ -185,7 +185,7 @@ TEST_P(TabletSdkTest, test_normal) {
             ASSERT_EQ(2u, rs->GetColumnCnt());
             ASSERT_EQ("col1", rs->GetColumnName(0));
             ASSERT_EQ("col5", rs->GetColumnName(1));
-            ASSERT_EQ(1, rs->GetRowCnt());
+            ASSERT_EQ(1u, rs->GetRowCnt());
             std::unique_ptr<ResultSetIterator> it = rs->Iterator();
             ASSERT_TRUE(it->HasNext());
             it->Next();
@@ -536,7 +536,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
                 char* val = NULL;
                 uint32_t size = 0;
                 ASSERT_TRUE(it->GetString(5, &val, &size));
-                ASSERT_EQ(size, 5);
+                ASSERT_EQ(size, 5u);
                 std::string str(val, 5);
                 ASSERT_EQ(str, "hello");
             }

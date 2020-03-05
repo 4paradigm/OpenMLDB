@@ -59,7 +59,7 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
     ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
     node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
     // validate project list based on current row
-    ASSERT_EQ(10u, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(10, limit_ptr->GetLimitCnt());
     ASSERT_EQ(node::kPlanTypeProject,
               limit_ptr->GetChildren().at(0)->GetType());
 
@@ -117,7 +117,7 @@ TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
     ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
     node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
     // validate project list based on current row
-    ASSERT_EQ(10u, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(10, limit_ptr->GetLimitCnt());
     ASSERT_EQ(node::kPlanTypeProject,
               limit_ptr->GetChildren().at(0)->GetType());
 
@@ -186,7 +186,7 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
     ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
     node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
     // validate project list based on current row
-    ASSERT_EQ(10u, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(10, limit_ptr->GetLimitCnt());
     ASSERT_EQ(node::kPlanTypeProject,
               limit_ptr->GetChildren().at(0)->GetType());
 
@@ -278,7 +278,7 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
     node::LimitPlanNode *limit_ptr = (node::LimitPlanNode *)plan_ptr;
 
     // validate project list based on current row
-    ASSERT_EQ(10u, limit_ptr->GetLimitCnt());
+    ASSERT_EQ(10, limit_ptr->GetLimitCnt());
     ASSERT_EQ(node::kPlanTypeProject,
               limit_ptr->GetChildren().at(0)->GetType());
 
@@ -289,7 +289,7 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
 
     const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping =
         project_plan_node->pos_mapping_;
-    ASSERT_EQ(9, pos_mapping.size());
+    ASSERT_EQ(9u, pos_mapping.size());
     ASSERT_EQ(std::make_pair(1u, 0u), pos_mapping[0]);
     ASSERT_EQ(std::make_pair(2u, 0u), pos_mapping[1]);
     ASSERT_EQ(std::make_pair(2u, 1u), pos_mapping[2]);
@@ -337,7 +337,7 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
         {
             node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
                 project_list->GetProjects()[0]);
-            ASSERT_EQ(0, project->GetPos());
+            ASSERT_EQ(0u, project->GetPos());
         }
         // validate w1_col3_sum pos 0
         {
@@ -606,7 +606,7 @@ TEST_F(PlannerTest, FunDefIfElsePlanTest) {
     ASSERT_TRUE(nullptr != plan->fn_def_);
     ASSERT_TRUE(nullptr != plan->fn_def_->header_);
     ASSERT_TRUE(nullptr != plan->fn_def_->block_);
-    ASSERT_EQ(3, plan->fn_def_->block_->children.size());
+    ASSERT_EQ(3u, plan->fn_def_->block_->children.size());
     ASSERT_EQ(node::kFnAssignStmt,
               plan->fn_def_->block_->children[0]->GetType());
     ASSERT_EQ(node::kFnAssignStmt,
@@ -678,7 +678,7 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
     ASSERT_TRUE(nullptr != plan->fn_def_);
     ASSERT_TRUE(nullptr != plan->fn_def_->header_);
     ASSERT_TRUE(nullptr != plan->fn_def_->block_);
-    ASSERT_EQ(2, plan->fn_def_->block_->children.size());
+    ASSERT_EQ(2u, plan->fn_def_->block_->children.size());
     ASSERT_EQ(node::kFnIfElseBlock,
               plan->fn_def_->block_->children[0]->GetType());
     ASSERT_EQ(node::kFnReturnStmt,
@@ -692,9 +692,9 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
             ASSERT_EQ(node::kExprBinary,
                       block->if_block_->if_node->expression_->GetExprType());
             // c = x+y
-            ASSERT_EQ(1, block->if_block_->block_->children.size());
+            ASSERT_EQ(1u, block->if_block_->block_->children.size());
         }
-        ASSERT_EQ(1, block->elif_blocks_.size());
+        ASSERT_EQ(1u, block->elif_blocks_.size());
 
         {
             // elif block check: elif y>1
@@ -703,7 +703,7 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
                 dynamic_cast<node::FnElifBlock *>(block->elif_blocks_[0]);
             ASSERT_EQ(node::kExprBinary,
                       elif_block->elif_node_->expression_->GetExprType());
-            ASSERT_EQ(1, elif_block->block_->children.size());
+            ASSERT_EQ(1u, elif_block->block_->children.size());
             ASSERT_EQ(node::kFnIfElseBlock,
                       elif_block->block_->children[0]->GetType());
             // check if elif else block
@@ -718,7 +718,7 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
                         node::kExprBinary,
                         block->if_block_->if_node->expression_->GetExprType());
                     // c = x-y
-                    ASSERT_EQ(2, block->if_block_->block_->children.size());
+                    ASSERT_EQ(2u, block->if_block_->block_->children.size());
                     ASSERT_EQ(node::kFnAssignStmt,
                               block->if_block_->block_->children[0]->GetType());
                     ASSERT_TRUE(dynamic_cast<node::FnAssignNode *>(
@@ -730,7 +730,7 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
                                      block->if_block_->block_->children[1])
                                      ->IsSSA());
                 }
-                ASSERT_EQ(1, block->elif_blocks_.size());
+                ASSERT_EQ(1u, block->elif_blocks_.size());
                 // check elif x-y<0
                 //          c = y-x
                 {
@@ -742,19 +742,19 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
                     ASSERT_EQ(
                         node::kExprBinary,
                         elif_block->elif_node_->expression_->GetExprType());
-                    ASSERT_EQ(1, elif_block->block_->children.size());
+                    ASSERT_EQ(1u, elif_block->block_->children.size());
                     ASSERT_EQ(node::kFnAssignStmt,
                               elif_block->block_->children[0]->GetType());
                 }
                 // check c = 9999
-                ASSERT_EQ(1, block->else_block_->block_->children.size());
+                ASSERT_EQ(1u, block->else_block_->block_->children.size());
                 ASSERT_EQ(node::kFnAssignStmt,
                           block->else_block_->block_->children[0]->GetType());
             }
         }
         // else block check
         {
-            ASSERT_EQ(1, block->else_block_->block_->children.size());
+            ASSERT_EQ(1u, block->else_block_->block_->children.size());
             ASSERT_EQ(node::kFnIfElseBlock,
                       block->else_block_->block_->children[0]->GetType());
         }
@@ -810,7 +810,7 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
     ASSERT_TRUE(nullptr != plan->fn_def_);
     ASSERT_TRUE(nullptr != plan->fn_def_->header_);
     ASSERT_TRUE(nullptr != plan->fn_def_->block_);
-    ASSERT_EQ(3, plan->fn_def_->block_->children.size());
+    ASSERT_EQ(3u, plan->fn_def_->block_->children.size());
 
     // validate udf plan
     ASSERT_EQ(node::kFnAssignStmt,
@@ -821,7 +821,7 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
     {
         node::FnForInBlock *for_block = dynamic_cast<node::FnForInBlock *>(
             plan->fn_def_->block_->children[1]);
-        ASSERT_EQ(1, for_block->block_->children.size());
+        ASSERT_EQ(1u, for_block->block_->children.size());
         ASSERT_EQ(node::kFnIfElseBlock,
                   for_block->block_->children[0]->GetType());
     }

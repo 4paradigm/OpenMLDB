@@ -22,16 +22,16 @@ TEST_F(BMBaseTest, Int16_Repeater) {
     {
         IntRepeater<int16_t> repeater;
         repeater.Range(0, 100, 1);
-        ASSERT_EQ(repeater.GetValue(), 0u);
-        ASSERT_EQ(repeater.GetValue(), 1u);
-        ASSERT_EQ(repeater.GetValue(), 2u);
+        ASSERT_EQ(repeater.GetValue(), 0);
+        ASSERT_EQ(repeater.GetValue(), 1);
+        ASSERT_EQ(repeater.GetValue(), 2);
     }
     {
         IntRepeater<int16_t> repeater;
         repeater.Range(0, 100, 20);
-        ASSERT_EQ(repeater.GetValue(), 0u);
-        ASSERT_EQ(repeater.GetValue(), 20u);
-        ASSERT_EQ(repeater.GetValue(), 40u);
+        ASSERT_EQ(repeater.GetValue(), 0);
+        ASSERT_EQ(repeater.GetValue(), 20);
+        ASSERT_EQ(repeater.GetValue(), 40);
     }
 }
 

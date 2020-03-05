@@ -167,7 +167,6 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     ::fesql::node::PlanNodeList trees;
     ret = planner.CreatePlanTree(list, trees, status);
     ASSERT_EQ(0, ret);
-    ::fesql::node::ProjectPlanNode* plan_ptr = nullptr;
     std::cout << *(trees[0]);
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(trees);
     // Create the add1 function entry and insert this entry into module M.  The
@@ -176,7 +175,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(4, schema.size());
+    ASSERT_EQ(4u, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -194,13 +193,13 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     BuildBuf(&buf, &size);
     int8_t* output = NULL;
     int32_t ret2 = decode(buf, size, &output);
-    ASSERT_EQ(ret2, 0u);
+    ASSERT_EQ(ret2, 0);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
-    ASSERT_EQ(out_size, 27);
-    ASSERT_EQ(32, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(out_size, 27u);
+    ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(1.0, *reinterpret_cast<double*>(output + 11));
-    ASSERT_EQ(21, *reinterpret_cast<uint8_t*>(output + 19));
-    ASSERT_EQ(22, *reinterpret_cast<uint8_t*>(output + 20));
+    ASSERT_EQ(21u, *reinterpret_cast<uint8_t*>(output + 19));
+    ASSERT_EQ(22u, *reinterpret_cast<uint8_t*>(output + 20));
     std::string str(reinterpret_cast<char*>(output + 21), 1);
     ASSERT_EQ("1", str);
     std::string str2(reinterpret_cast<char*>(output + 22), 5);
@@ -235,7 +234,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     std::vector<::fesql::type::ColumnDef> schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(2, schema.size());
+    ASSERT_EQ(2u, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -253,11 +252,11 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     BuildBuf(&buf, &size);
     int8_t* output = NULL;
     int32_t ret2 = decode(buf, size, &output);
-    ASSERT_EQ(ret2, 0u);
+    ASSERT_EQ(ret2, 0);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
-    ASSERT_EQ(out_size, 13);
-    ASSERT_EQ(65, *reinterpret_cast<uint32_t*>(output + 7));
-    ASSERT_EQ(12, *reinterpret_cast<uint8_t*>(output + 11));
+    ASSERT_EQ(out_size, 13u);
+    ASSERT_EQ(65u, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(12u, *reinterpret_cast<uint8_t*>(output + 11));
     std::string str(reinterpret_cast<char*>(output + 12), 1);
     ASSERT_EQ("1", str);
     free(buf);
@@ -308,9 +307,9 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     BuildBuf(&ptr, &size);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, size, &output);
-    ASSERT_EQ(ret2, 0u);
-    ASSERT_EQ(11, *reinterpret_cast<uint32_t*>(output + 2));
-    ASSERT_EQ(32, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(ret2, 0);
+    ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
     free(ptr);
 }
 
@@ -362,9 +361,9 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     BuildBuf(&ptr, &size);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, size, &output);
-    ASSERT_EQ(ret2, 0u);
-    ASSERT_EQ(11, *reinterpret_cast<uint32_t*>(output + 2));
-    ASSERT_EQ(33, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(ret2, 0);
+    ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(33u, *reinterpret_cast<uint32_t*>(output + 7));
     free(ptr);
 }
 
@@ -531,17 +530,11 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
 
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
-    auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
-
-    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
-
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(ptr, 0, &output);
-    ASSERT_EQ(1 + 11 + 111 + 1111 + 11111,
+    ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
               *reinterpret_cast<float*>(output + 7 + 4));
@@ -549,7 +542,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
               *reinterpret_cast<double*>(output + 7 + 4 + 4));
     ASSERT_EQ(2 + 22 + 222 + 2222 + 22222,
               *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 8));
-    ASSERT_EQ(5 + 55 + 555 + 5555 + 55555,
+    ASSERT_EQ(5L + 55L + 555L + 5555L + 55555L,
               *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
     free(ptr);
 }
@@ -609,13 +602,13 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, 0, &output);
-    ASSERT_EQ(ret2, 0u);
-    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output + 2));
-    ASSERT_EQ(1, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(ret2, 0);
+    ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(1u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(3.1f, *reinterpret_cast<float*>(output + 7 + 4));
     ASSERT_EQ(4.1, *reinterpret_cast<double*>(output + 7 + 4 + 4));
     ASSERT_EQ(2, *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 8));
-    ASSERT_EQ(5, *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
+    ASSERT_EQ(5L, *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
     free(ptr);
 }
 TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
@@ -675,13 +668,13 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, 0, &output);
-    ASSERT_EQ(ret2, 0u);
-    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output + 2));
-    ASSERT_EQ(11111, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(ret2, 0);
+    ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(33333.1f, *reinterpret_cast<float*>(output + 7 + 4));
     ASSERT_EQ(44444.1, *reinterpret_cast<double*>(output + 7 + 4 + 4));
     ASSERT_EQ(22222, *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 8));
-    ASSERT_EQ(55555, *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
+    ASSERT_EQ(55555L, *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
     free(ptr);
 }
 
@@ -764,10 +757,10 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, 0, &output);
-    ASSERT_EQ(ret2, 0u);
+    ASSERT_EQ(ret2, 0);
     //    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output +
     //    2));
-    ASSERT_EQ(7 + 4 + 4 + 4, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(7u + 4u + 4u + 4u, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(3.1f, *reinterpret_cast<float*>(output + 7));
     ASSERT_EQ(11, *reinterpret_cast<int32_t*>(output + 7 + 4));
     ASSERT_EQ(3, *reinterpret_cast<int32_t*>(output + 7 + 4 + 4));
