@@ -103,7 +103,7 @@ void PrintSQLVector(std::ostream &output, const std::string &tab,
     PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
 }
 
-void SelectStmt::PrintSQLNodeList(std::ostream &output, const std::string& tab,
+void SelectStmt::PrintSQLNodeList(std::ostream &output, const std::string &tab,
                                   SQLNodeList *list, const std::string &name,
                                   bool last_item) const {
     if (nullptr == list) {
@@ -310,13 +310,11 @@ void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNodeList(output, tab, select_list_, "select_list", last_child);
     output << "\n";
-    PrintSQLNodeList(output, tab, tableref_list_, "tableref_list",
-                   last_child);
+    PrintSQLNodeList(output, tab, tableref_list_, "tableref_list", last_child);
     output << "\n";
     last_child = true;
     PrintSQLNodeList(output, tab, window_list_, "window_list", last_child);
 }
-
 
 // Return the node type name
 // param type
@@ -607,7 +605,9 @@ void ExprListNode::Print(std::ostream &output,
     }
     const std::string tab = org_tab + INDENT + SPACE_ED;
     auto iter = children.cbegin();
+    int32_t id = 0;
     (*iter)->Print(output, org_tab);
+    iter++;
     for (; iter != children.cend(); iter++) {
         output << "\n";
         (*iter)->Print(output, org_tab);

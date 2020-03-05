@@ -90,6 +90,47 @@ INSTANTIATE_TEST_CASE_P(
         "PRECEDING AND CURRENT ROW) limit 10;",
         "SELECT COUNT(*) FROM t1;"));
 
+
+INSTANTIATE_TEST_CASE_P(
+    SqlWhereParse, SqlParserTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 where COL1+COL2;",
+        "SELECT COL1 FROM t1 where COL1;",
+        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20;",
+        "SELECT COL1 FROM t1 where COL1 > 10;"
+        ));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlGroupParse, SqlParserTest,
+    testing::Values(
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
+        "SELECT COL1 FROM t1 group by COL1+COL2;",
+        "SELECT COL1 FROM t1 group by COL1;",
+        "SELECT COL1 FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT COL1 FROM t1 group by COL1, COL2;",
+        "SELECT COL1 FROM t1 group by COL1;"
+    ));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlHavingParse, SqlParserTest,
+    testing::Values(
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having sum(COL1) > 0;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having col1sum > 0;",
+        "SELECT COL1 FROM t1 having COL1+COL2;",
+        "SELECT COL1 FROM t1 having COL1;",
+        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
+        "SELECT COL1 FROM t1 HAVING COL1 > 10;"
+    ));
+INSTANTIATE_TEST_CASE_P(
+    SqlWhereGroupHavingParse, SqlParserTest,
+    testing::Values(
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col1sum > 0 limit 10;"
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col1sum > 0;"
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having sum(COL1) > 0;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having col1sum > 0;"
+    ));
 INSTANTIATE_TEST_CASE_P(
     UDFParse, SqlParserTest,
     testing::Values(
