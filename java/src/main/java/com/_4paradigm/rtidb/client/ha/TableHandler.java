@@ -36,6 +36,7 @@ public class TableHandler {
                 }
                 ncd.setTsCol(cd.getIsTsCol());
                 ncd.setType(ColumnType.valueFrom(cd.getType()));
+                ncd.setDataType(cd.getDataType());
                 schema.add(ncd);
                 if (cd.getAddTsIdx()) {
                     List<Integer> indexList = new ArrayList<Integer>();
