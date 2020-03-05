@@ -212,7 +212,6 @@ LEAVE	{ return LEAVE; }
 LEFT	{ return LEFT; }
 LIKE	{ return LIKE; }
 LIST    { return LIST; }
-LOAD	{ return LOAD; }
 LIMIT	{ return LIMIT; }
 LINES	{ return LINES; }
 LOAD	{ return LOAD; }
@@ -265,7 +264,6 @@ REAL	{ return REAL; }
 REFERENCES	{ return REFERENCES; }
 REGEXP|RLIKE	{ return REGEXP; }
 RELEASE	{ return RELEASE; }
-REIDNENTIFIER	{ return REIDNENTIFIER; }
 REPEAT	{ return REPEAT; }
 REPLACE	{ return REPLACE; }
 REQUIRE	{ return REQUIRE; }
@@ -284,7 +282,6 @@ SET	{ return SET; }
 SHOW	{ return SHOW; }
 INT2|SMALLINT	{ return SMALLINT; }
 SOME	{ return SOME; }
-SOIDNENTIFIER	{ return SOIDNENTIFIER; }
 SPATIAL	{ return SPATIAL; }
 SPECIFIC	{ return SPECIFIC; }
 SQL	{ return SQL; }
@@ -451,10 +448,10 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
                           return FUN_IDENTIFIER; }
 
 [A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
-                          return IDNENTIFIER; }
+                          return SQL_IDENTIFIER; }
 `[^`/\\.\n]+`           { yylval->strval = strdup(yytext+1);
                           yylval->strval[yyleng-2] = 0;
-                          return IDNENTIFIER; }
+                          return SQL_IDENTIFIER; }
 
 `[^`\n]*$               { yyerror("unterminated quoted name %s", yytext); }
 

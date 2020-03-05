@@ -61,7 +61,6 @@ typedef void* yyscan_t;
 }
 
 /* names and literal values */
-%token <strval> IDNENTIFIER
 %token <strval> STRING
 %token <intval> INTNUM
 %token <intval> DAYNUM
@@ -74,6 +73,7 @@ typedef void* yyscan_t;
 /* user @abc names */
 
 %token <strval> USERVAR
+%token <strval> SQL_IDENTIFIER
 %token <strval> FUN_IDENTIFIER
 
 /* operators and precedence levels */
@@ -872,12 +872,12 @@ projection:	expr
 			{
 				$$ = node_manager->MakeResTargetNode($1, "");
 			}
-			|expr IDNENTIFIER
+			|expr SQL_IDENTIFIER
 			{
         		$$ = node_manager->MakeResTargetNode($1, $2);
 				free($2);
     		}
-    		| expr AS IDNENTIFIER
+    		| expr AS SQL_IDENTIFIER
     		{
     			$$ = node_manager->MakeResTargetNode($1, $3);
     			free($3);
@@ -891,7 +891,7 @@ projection:	expr
 
 over_clause: OVER window_specification
 				{ $$ = $2; }
-			| OVER IDNENTIFIER
+			| OVER SQL_IDENTIFIER
 				{
 				    $$ = node_manager->MakeWindowDefNode($2);
 				    free($2);
@@ -1104,7 +1104,7 @@ window_definition_list:
 	;
 
 window_definition:
-		IDNENTIFIER AS window_specification
+		SQL_IDENTIFIER AS window_specification
 		{
 		    ((::fesql::node::WindowDefNode*)$3)->SetName($1);
 			free($1);
@@ -1120,7 +1120,7 @@ window_specification: '(' opt_existing_window_name opt_partition_clause
 		;
 
 opt_existing_window_name:
-						IDNENTIFIER { $$ = $1; }
+						SQL_IDENTIFIER { $$ = $1; }
 						| /*EMPTY*/		{ $$ = NULL; }
 
                         ;
@@ -1232,26 +1232,26 @@ column_ref:
  *===========================================================*/
 
 database_name:
-	IDNENTIFIER
+	SQL_IDENTIFIER
 	;
 
 group_name:
-	IDNENTIFIER
+	SQL_IDENTIFIER
 	;
 
 table_name:
-	IDNENTIFIER
+	SQL_IDENTIFIER
 	;
 column_name:
-    IDNENTIFIER
+    SQL_IDENTIFIER
   ;
 
 relation_name:
-    IDNENTIFIER
+    SQL_IDENTIFIER
   ;
 
 function_name:
-    IDNENTIFIER
+    SQL_IDENTIFIER
     |FUN_IDENTIFIER
   ;
 
