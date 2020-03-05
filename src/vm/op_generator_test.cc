@@ -85,7 +85,7 @@ void AssertOpGen(fesql::type::TableDef& table_def, OpVector* op,  // NOLINT
         parser.parse(sql, parser_trees, &manager, base_status);
         ASSERT_EQ(0, base_status.code);
         planner.CreatePlanTree(parser_trees, plan_trees, base_status);
-        std::cout << base_status.msg ;
+        std::cout << base_status.msg;
         ASSERT_EQ(0, base_status.code);
         std::cout.flush();
     }

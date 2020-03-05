@@ -603,7 +603,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, 0, &output);
     ASSERT_EQ(ret2, 0);
-    ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
+              *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(1u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(3.1f, *reinterpret_cast<float*>(output + 7 + 4));
     ASSERT_EQ(4.1, *reinterpret_cast<double*>(output + 7 + 4 + 4));
@@ -669,7 +670,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, 0, &output);
     ASSERT_EQ(ret2, 0);
-    ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u, *reinterpret_cast<uint32_t*>(output + 2));
+    ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
+              *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(33333.1f, *reinterpret_cast<float*>(output + 7 + 4));
     ASSERT_EQ(44444.1, *reinterpret_cast<double*>(output + 7 + 4 + 4));

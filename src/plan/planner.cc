@@ -19,14 +19,17 @@ namespace plan {
 int Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
                                   PlanNode **plan_tree, Status &status) {
     const node::SelectStmt *root = (const node::SelectStmt *)select_tree;
-    if (nullptr == root->GetTableRefList() || root->GetTableRefList()->GetList().empty()) {
+    if (nullptr == root->GetTableRefList() ||
+        root->GetTableRefList()->GetList().empty()) {
         status.msg =
-            "can not create select plan node with null or empty table references";
+            "can not create select plan node with null or empty table "
+            "references";
         status.code = common::kSQLError;
         return status.code;
     }
 
-    const node::NodePointVector &table_ref_list = root->GetTableRefList()->GetList();
+    const node::NodePointVector &table_ref_list =
+        root->GetTableRefList()->GetList();
     std::vector<node::PlanNode *> relation_nodes;
     for (node::SQLNode *node : table_ref_list) {
         if (node::kTable != node->GetType()) {
