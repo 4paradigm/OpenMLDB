@@ -65,7 +65,7 @@ int64_t parse_string(const char *src, char *dest, int64_t len, int quote_type) {
 %}
 
 space [ \t]
-newline [\n\r]+
+newlines [\n\r]+
 non_newline [^\n\r]
 comment ("#"{non_newline}*)
 indent {space}*
@@ -354,8 +354,8 @@ ZEROFILL	{ return ZEROFILL; }
     }
 
 
-<FUN>{newline} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINE;}
-<FUN_INDENT>{newline} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINE;}
+<FUN>{newlines} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINES;}
+<FUN_INDENT>{newlines} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINES;}
 
 <FUN_INDENT>{indent} {
         int space_cnt = 0;
