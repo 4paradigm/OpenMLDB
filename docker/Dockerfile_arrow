@@ -1,0 +1,3 @@
+FROM develop-registry.4pd.io/fesql_build_base_llvm:1.0
+ADD install_arrow.sh /depends/
+RUN cd /depends && source /opt/rh/devtoolset-8/enable && bash install_arrow.sh

@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <string>
 #include "proto/type.pb.h"
-#include "storage/type_ir_builder.h"
+#include "storage/type_native_fn.h"
 namespace fesql {
 namespace udf {
 namespace v1 {
@@ -40,6 +40,7 @@ template <class V>
 V next_iterator(int8_t *input);
 
 }  // namespace v1
+
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi);   // NOLINT

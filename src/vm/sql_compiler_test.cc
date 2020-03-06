@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
+#include "vm/sql_compiler.h"
 #include <memory>
 #include <utility>
-#include "vm/sql_compiler.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -34,7 +34,7 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "vm/table_mgr.h"
+#include "tablet/tablet_catalog.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -44,63 +44,56 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace vm {
 
-class TableMgrImpl : public TableMgr {
- public:
-    explicit TableMgrImpl(std::shared_ptr<TableStatus> status)
-        : status_(status) {}
-    ~TableMgrImpl() {}
-    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
-                                             const std::string&) {
-        return status_;
-    }
-    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
-                                             const uint32_t) {
-        return status_;
-    }
-
- private:
-    std::shared_ptr<TableStatus> status_;
-};
-
 class SQLCompilerTest : public ::testing::Test {};
 
 TEST_F(SQLCompilerTest, test_normal) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    status->table_def.set_name("t1");
+    type::TableDef table_def;
+    table_def.set_name("t1");
+    table_def.set_catalog("db");
     {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
+        ::fesql::type::ColumnDef* column = table_def.add_columns();
         column->set_type(::fesql::type::kInt32);
         column->set_name("col1");
     }
     {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
+        ::fesql::type::ColumnDef* column = table_def.add_columns();
         column->set_type(::fesql::type::kInt16);
         column->set_name("col2");
     }
     {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
+        ::fesql::type::ColumnDef* column = table_def.add_columns();
         column->set_type(::fesql::type::kFloat);
         column->set_name("col3");
     }
 
     {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
+        ::fesql::type::ColumnDef* column = table_def.add_columns();
         column->set_type(::fesql::type::kDouble);
         column->set_name("col4");
     }
 
     {
-        ::fesql::type::ColumnDef* column = status->table_def.add_columns();
+        ::fesql::type::ColumnDef* column = table_def.add_columns();
         column->set_type(::fesql::type::kInt64);
         column->set_name("col15");
     }
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
+    ASSERT_TRUE(catalog->Init());
+    std::shared_ptr<tablet::TabletTableHandler> handler(
+        new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
+                                       table_def.catalog(), table_def.indexes(),
+                                       table));
+    ASSERT_TRUE(handler->Init());
+    ASSERT_TRUE(catalog->AddTable(handler));
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
-    TableMgrImpl table_mgr(status);
-    SQLCompiler sql_compiler(&table_mgr);
+    SQLCompiler sql_compiler(catalog);
     SQLContext sql_context;
     sql_context.sql = sql;
+    sql_context.db = "db";
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);

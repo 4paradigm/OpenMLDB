@@ -20,16 +20,18 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include "base/status.h"
+#include "vm/catalog.h"
 #include "llvm/IR/Module.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 #include "vm/op.h"
-#include "vm/table_mgr.h"
 
 namespace fesql {
 namespace vm {
 using ::fesql::base::Status;  // NOLINT
+
 struct OpVector {
     std::string sql;
     // TOD(wangtaize) add free logic
@@ -38,7 +40,7 @@ struct OpVector {
 
 class OpGenerator {
  public:
-    explicit OpGenerator(TableMgr* table_mgr);
+    explicit OpGenerator(const std::shared_ptr<Catalog>& catalog);
     ~OpGenerator();
 
     bool Gen(const ::fesql::node::PlanNodeList& trees, const std::string& db,
@@ -58,9 +60,10 @@ class OpGenerator {
     bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
                     const std::string& db, ::llvm::Module* module, OpNode** op,
                     Status& status);  // NOLINT
+
     bool GenConstProject(const ::fesql::node::ProjectListPlanNode* node,
-                         ::llvm::Module* module, OpNode** op,
-                         Status& status);  // NOLINT
+                         ::llvm::Module* module, OpNode** op, Status& status); // NOLINT
+
     bool GenScan(const ::fesql::node::ScanPlanNode* node, const std::string& db,
                  ::llvm::Module* module, OpNode** op,
                  Status& status);  // NOLINT
@@ -68,6 +71,7 @@ class OpGenerator {
     bool GenLimit(const ::fesql::node::LimitPlanNode* node,
                   const std::string& db, ::llvm::Module* module, OpNode** op,
                   Status& status);  // NOLINT
+
     bool GenMerge(const ::fesql::node::MergePlanNode* node,
                   const std::vector<OpNode*> children, ::llvm::Module* module,
                   OpNode** op,
@@ -81,7 +85,7 @@ class OpGenerator {
                      Status& status);                      // NOLINT
 
  private:
-    TableMgr* table_mgr_;
+    const std::shared_ptr<Catalog> catalog_;
 };
 
 }  // namespace vm

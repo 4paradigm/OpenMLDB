@@ -508,7 +508,6 @@ bool TransformTableDef(const std::string &table_name,
                 column->set_name(column_def->GetColumnName());
                 column->set_is_not_null(column_def->GetIsNotNull());
                 column_names.insert(column_def->GetColumnName());
-                fesql::type::Type c_type;
                 switch (column_def->GetColumnType()) {
                     case node::kBool:
                         column->set_type(type::Type::kBool);
@@ -600,6 +599,8 @@ std::string GenerateName(const std::string prefix, int id) {
         prefix + "_" + std::to_string(id) + "_" + std::to_string(t);
     return name;
 }
+
+
 
 }  // namespace  plan
 }  // namespace fesql

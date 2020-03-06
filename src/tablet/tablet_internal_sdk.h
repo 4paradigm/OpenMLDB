@@ -30,7 +30,8 @@ class TabletInternalSDK {
     explicit TabletInternalSDK(const std::string& endpoint);
     ~TabletInternalSDK();
     bool Init();
-    void CreateTable(CreateTableRequest* request, common::Status& status);  // NOLINT
+    void CreateTable(CreateTableRequest* request,
+                     common::Status& status);  // NOLINT
 
  private:
     std::string endpoint_;

@@ -362,7 +362,7 @@ ZEROFILL	{ return ZEROFILL; }
 
 <FUN_INDENT>{indent} {
         int space_cnt = 0;
-        for(int i=0; i < strlen(yytext); i++) {
+        for(uint32_t i=0; i < strlen(yytext); i++) {
             if (yytext[i] == '\t') {
                 space_cnt += 4;
             } else {

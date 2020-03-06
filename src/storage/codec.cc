@@ -16,36 +16,12 @@
  */
 
 #include "storage/codec.h"
-#include <unordered_map>
 #include <utility>
 #include "glog/logging.h"
-#include "storage/type_ir_builder.h"
+#include "storage/type_native_fn.h"
 
 namespace fesql {
 namespace storage {
-
-#define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
-
-static const std::unordered_map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
-    {::fesql::type::kBool, sizeof(bool)},
-    {::fesql::type::kInt16, sizeof(int16_t)},
-    {::fesql::type::kInt32, sizeof(int32_t)},
-    {::fesql::type::kFloat, sizeof(float)},
-    {::fesql::type::kInt64, sizeof(int64_t)},
-    {::fesql::type::kTimestamp, sizeof(int64_t)},
-    {::fesql::type::kDouble, sizeof(double)}};
-
-static inline uint8_t GetAddrLength(uint32_t size) {
-    if (size <= UINT8_MAX) {
-        return 1;
-    } else if (size <= UINT16_MAX) {
-        return 2;
-    } else if (size <= UINT24_MAX) {
-        return 3;
-    } else {
-        return 4;
-    }
-}
 
 RowBuilder::RowBuilder(const Schema& schema)
     : schema_(schema),

@@ -265,6 +265,7 @@ class ExprNode : public SQLNode {
  private:
     ExprType expr_type_;
 };
+
 class FnNode : public SQLNode {
  public:
     FnNode() : SQLNode(kFn, 0, 0), indent(0) {}
@@ -273,6 +274,7 @@ class FnNode : public SQLNode {
  public:
     int32_t indent;
 };
+
 class FnNodeList : public FnNode {
  public:
     FnNodeList() : FnNode(kFnList) {}
@@ -319,9 +321,9 @@ class TableNode : public SQLNode {
           org_table_name_(name),
           alias_table_name_(alias) {}
 
-    std::string GetOrgTableName() const { return org_table_name_; }
+    const std::string& GetOrgTableName() const { return org_table_name_; }
 
-    std::string GetAliasTableName() const { return alias_table_name_; }
+    const std::string& GetAliasTableName() const { return alias_table_name_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -627,6 +629,7 @@ class ConstNode : public ExprNode {
         double vdouble;
     } val_;
 };
+
 class ColumnRefNode : public ExprNode {
  public:
     ColumnRefNode()
@@ -677,6 +680,7 @@ class ResTarget : public SQLNode {
     ExprNode *val_;    /* the value expression to compute or assign */
     NodePointVector indirection_; /* subscripts, field names, and '*', or NIL */
 };
+
 class SelectStmt : public SQLNode {
  public:
     SelectStmt()
@@ -724,6 +728,7 @@ class SelectStmt : public SQLNode {
     NodePointVector tableref_list_ptr_;
     NodePointVector window_list_ptr_;
 };
+
 class ColumnDefNode : public SQLNode {
  public:
     ColumnDefNode()

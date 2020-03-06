@@ -18,57 +18,61 @@
 #ifndef SRC_VM_OP_H_
 #define SRC_VM_OP_H_
 
-#include <storage/window.h>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <set>
+#include <memory>
 #include "proto/type.pb.h"
+#include "storage/window.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace vm {
 
-enum OpType {
-    kOpProject = 1,
-    kOpScan,
-    kOpLimit,
-    kOpMerge,
-};
+enum OpType { kOpProject = 1, kOpScan, kOpLimit, kOpMerge };
 
 struct OpNode {
     virtual ~OpNode() {}
     OpType type;
     uint32_t idx;
-    std::vector<::fesql::type::ColumnDef> output_schema;
+    vm::Schema output_schema;
     std::vector<OpNode*> children;
 };
 
 struct ScanOp : public OpNode {
     ~ScanOp() {}
     std::string db;
-    uint32_t tid;
-    uint32_t pid;
+    std::shared_ptr<TableHandler> table_handler;
     uint32_t limit;
-    std::vector<::fesql::type::ColumnDef> input_schema;
 };
 
 // TODO(chenjing): WindowOp
 struct ScanInfo {
-    std::set<std::pair<fesql::type::Type, uint32_t >> keys;
-    std::pair<fesql::type::Type, uint32_t > order;
+    std::vector<ColInfo> keys;
+    ColInfo order;
     std::string index_name;
     // todo(chenjing): start and end parse
     int64_t start_offset;
     int64_t end_offset;
     bool has_order;
     bool is_range_between;
+
+    bool FindKey(const type::Type& type, uint32_t pos) {
+        for (uint32_t i = 0; i < keys.size(); i++) {
+            const ColInfo& col = keys.at(i);
+            if (col.pos == pos && type == col.type) {
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 struct ProjectOp : public OpNode {
     ~ProjectOp() {}
     std::string db;
-    uint32_t tid;
-    uint32_t pid;
+    std::shared_ptr<TableHandler> table_handler;
     uint32_t scan_limit;
     int8_t* fn;
     std::string fn_name;
@@ -83,7 +87,7 @@ struct LimitOp : public OpNode {
 
 struct MergeOp : public OpNode {
     int8_t* fn;
-    std::vector<std::pair<uint32_t , uint32_t >> pos_mapping;
+    std::vector<std::pair<uint32_t, uint32_t>> pos_mapping;
 };
 
 }  // namespace vm

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "storage/type_ir_builder.h"
+#include "storage/type_native_fn.h"
 #include <string>
 #include <utility>
 #include "glog/logging.h"
@@ -196,7 +196,8 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
         }
         default: {
             LOG(WARNING) << "cannot get col for type "
-                         << ::fesql::type::Type_Name(type);
+                         << ::fesql::type::Type_Name(type)
+                         << " type id " << type_id;
             return -2;
         }
     }

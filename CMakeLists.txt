@@ -12,7 +12,9 @@ set(FESQL_VERSION_BUG 0)
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 #set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
+
 set(COMMON_LIBS glog gflags unwind lzma)
+set(g_libs glog gflags unwind lzma)
 
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -34,16 +36,21 @@ if (COVERAGE_ENABLE)
     endif()
 endif()
 
+set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc 
+    brotlicommon
+    thrift lz4 z zstd double-conversion boost_filesystem snappy)
 llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
 add_definitions('-g')
 add_definitions('-Wall')
-add_definitions('-std=c++11')
+add_definitions('-std=c++14')
 add_definitions(${LLVM_DEFINITIONS})
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib64)
 add_subdirectory(src)
+#TODO add flag
+add_subdirectory(experiments)
 
 if (COVERAGE_ENABLE)
     if(CMAKE_COMPILER_IS_GNUCXX)

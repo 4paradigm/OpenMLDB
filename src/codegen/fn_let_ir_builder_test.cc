@@ -38,7 +38,6 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "storage/codec.h"
-#include "storage/type_ir_builder.h"
 #include "storage/window.h"
 #include "udf/udf.h"
 
@@ -156,8 +155,8 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
         (::fesql::node::ProjectListPlanNode*)(trees[0]->GetChildren()[0]);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
-    std::vector<::fesql::type::ColumnDef> schema;
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(4, schema.size());
@@ -216,8 +215,8 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
         (::fesql::node::ProjectListPlanNode*)(trees[0]->GetChildren()[0]);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
-    std::vector<::fesql::type::ColumnDef> schema;
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(2, schema.size());
@@ -270,8 +269,8 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     auto m = make_unique<Module>("test_project", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
-    std::vector<::fesql::type::ColumnDef> schema;
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(1u, schema.size());
@@ -323,8 +322,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
-    std::vector<::fesql::type::ColumnDef> schema;
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(1u, schema.size());
@@ -470,6 +469,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
     *buf = reinterpret_cast<int8_t*>(w);
 }
 
+
 TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     std::string sql =
         "SELECT "
@@ -503,8 +503,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
-    std::vector<::fesql::type::ColumnDef> schema;
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5u, schema.size());
@@ -527,8 +527,11 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> window;
     BuildWindow(window, &ptr);
+    LOG(INFO) << "input ptr " << ptr;
+
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, 0, &output);
+    ASSERT_EQ(0, ret2);
     ASSERT_EQ(1 + 11 + 111 + 1111 + 11111,
               *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
@@ -541,6 +544,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
               *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
     free(ptr);
 }
+
 TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     std::string sql =
         "SELECT "
@@ -573,8 +577,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
-    std::vector<::fesql::type::ColumnDef> schema;
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5u, schema.size());
@@ -641,8 +645,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::fesql::udf::RegisterUDFToModule(m.get());
-    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
-    std::vector<::fesql::type::ColumnDef> schema;
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5u, schema.size());
@@ -730,8 +734,8 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
 
-    RowFnLetIRBuilder ir_builder(&table_, m.get(), false);
-    std::vector<::fesql::type::ColumnDef> schema;
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    vm::Schema schema;
     bool ok = ir_builder.Build("test_at_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
     LOG(INFO) << "fn let ir build ok";

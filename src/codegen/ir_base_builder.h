@@ -47,6 +47,7 @@ bool SchemaType2DataType(const ::fesql::type::Type type,
                          ::fesql::node::DataType* output);
 bool DataType2SchemaType(const ::fesql::node::DataType type,
                          ::fesql::type::Type* output);
+
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
 

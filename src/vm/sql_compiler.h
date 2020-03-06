@@ -25,14 +25,15 @@
 #include "llvm/IR/Module.h"
 #include "parser/parser.h"
 #include "proto/common.pb.h"
+#include "vm/catalog.h"
 #include "vm/jit.h"
 #include "vm/op_generator.h"
-#include "vm/table_mgr.h"
 
 namespace fesql {
 namespace vm {
 
 using fesql::base::Status;
+
 struct SQLContext {
     // the sql content
     std::string sql;
@@ -43,24 +44,31 @@ struct SQLContext {
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
-    std::vector<::fesql::type::ColumnDef> schema;
+    Schema schema;
     uint32_t row_size;
+    std::string ir;
 };
 
 class SQLCompiler {
  public:
-    explicit SQLCompiler(TableMgr* table_mgr);
+    explicit SQLCompiler(const std::shared_ptr<Catalog>& cl,
+                         bool keep_ir = false);
 
     ~SQLCompiler();
 
-    bool Compile(SQLContext& ctx, Status& status);  // NOLINT
+    bool Compile(SQLContext& ctx,  // NOLINT
+                 Status& status);  // NOLINT
+
+ private:
+    void KeepIR(SQLContext& ctx, llvm::Module* m); // NOLINT
 
  private:
     bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT
                ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT
 
  private:
-    TableMgr* table_mgr_;
+    const std::shared_ptr<Catalog> cl_;
+    bool keep_ir_;
 };
 
 }  // namespace vm

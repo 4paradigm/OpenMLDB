@@ -35,7 +35,8 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "plan/planner.h"
-#include "vm/table_mgr.h"
+#include "tablet/tablet_catalog.h"
+#include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -45,34 +46,13 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace vm {
 
-class TableMgrImpl : public TableMgr {
- public:
-    explicit TableMgrImpl(std::shared_ptr<TableStatus> status)
-        : status_(status) {}
-    ~TableMgrImpl() {}
-    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
-                                             const std::string&) {
-        return status_;
-    }
-    std::shared_ptr<TableStatus> GetTableDef(const std::string&,
-                                             const uint32_t) {
-        return status_;
-    }
-
- private:
-    std::shared_ptr<TableStatus> status_;
-};
-
-void AssertOpGen(fesql::type::TableDef& table_def, OpVector* op,  // NOLINT
+void AssertOpGen(const fesql::type::TableDef& table_def,
+                 OpVector* op,  // NOLINT
                  const std::string& sql, const Status& exp_status) {
-    std::shared_ptr<TableStatus> status(new TableStatus());
-    status->table_def = table_def;
-    std::unique_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, status->table_def));
-    ASSERT_TRUE(table->Init());
-    status->table = std::move(table);
-    TableMgrImpl table_mgr(status);
-    OpGenerator generator(&table_mgr);
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    auto catalog = BuildCommonCatalog(table_def, table);
+    OpGenerator generator(catalog);
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::node::NodeManager manager;
@@ -98,6 +78,7 @@ void AssertOpGen(fesql::type::TableDef& table_def, OpVector* op,  // NOLINT
 }
 void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
     table_def.set_name("t1");
+    table_def.set_catalog("db");
     {
         ::fesql::type::ColumnDef* column = table_def.add_columns();
         column->set_type(::fesql::type::kInt32);
@@ -192,11 +173,11 @@ TEST_F(OpGeneratorTest, test_windowp_project) {
         ASSERT_EQ(kOpProject, op.ops[1]->type);
         ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[1]);
         ASSERT_TRUE(project_op->window_agg);
-        ASSERT_EQ(::fesql::type::kInt16, project_op->w.keys.cbegin()->first);
-        ASSERT_EQ(1, project_op->w.keys.cbegin()->second);
+        ASSERT_EQ(::fesql::type::kInt16, project_op->w.keys.cbegin()->type);
+        ASSERT_EQ(1, project_op->w.keys.cbegin()->pos);
 
-        ASSERT_EQ(::fesql::type::kInt64, project_op->w.order.first);
-        ASSERT_EQ(4, project_op->w.order.second);
+        ASSERT_EQ(::fesql::type::kInt64, project_op->w.order.type);
+        ASSERT_EQ(4, project_op->w.order.pos);
         ASSERT_TRUE(project_op->w.is_range_between);
         ASSERT_EQ(-86400000 * 2, project_op->w.start_offset);
         ASSERT_EQ(-1000, project_op->w.end_offset);
@@ -251,11 +232,10 @@ TEST_F(OpGeneratorTest, test_multi_windowp_project) {
             ASSERT_TRUE(project_op->window_agg);
             ASSERT_EQ("index1", project_op->w.index_name);
             ASSERT_EQ(1L, project_op->w.keys.size());
-            ASSERT_EQ(::fesql::type::kInt16,
-                      project_op->w.keys.cbegin()->first);
-            ASSERT_EQ(1, project_op->w.keys.cbegin()->second);
-            ASSERT_EQ(::fesql::type::kInt64, project_op->w.order.first);
-            ASSERT_EQ(4, project_op->w.order.second);
+            ASSERT_EQ(::fesql::type::kInt16, project_op->w.keys.cbegin()->type);
+            ASSERT_EQ(1, project_op->w.keys.cbegin()->pos);
+            ASSERT_EQ(::fesql::type::kInt64, project_op->w.order.type);
+            ASSERT_EQ(4, project_op->w.order.pos);
             ASSERT_TRUE(project_op->w.is_range_between);
             ASSERT_EQ(-86400000, project_op->w.start_offset);
             ASSERT_EQ(-1000, project_op->w.end_offset);
@@ -265,11 +245,10 @@ TEST_F(OpGeneratorTest, test_multi_windowp_project) {
             ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op.ops[2]);
             ASSERT_TRUE(project_op->window_agg);
             ASSERT_EQ("index2", project_op->w.index_name);
-            ASSERT_EQ(::fesql::type::kInt32,
-                      project_op->w.keys.cbegin()->first);
-            ASSERT_EQ(0, project_op->w.keys.cbegin()->second);
-            ASSERT_EQ(::fesql::type::kInt64, project_op->w.order.first);
-            ASSERT_EQ(4, project_op->w.order.second);
+            ASSERT_EQ(::fesql::type::kInt32, project_op->w.keys.cbegin()->type);
+            ASSERT_EQ(0, project_op->w.keys.cbegin()->pos);
+            ASSERT_EQ(::fesql::type::kInt64, project_op->w.order.type);
+            ASSERT_EQ(4, project_op->w.order.pos);
             ASSERT_TRUE(project_op->w.is_range_between);
             ASSERT_EQ(-86400000 * 2, project_op->w.start_offset);
             ASSERT_EQ(-1000, project_op->w.end_offset);
@@ -281,14 +260,14 @@ TEST_F(OpGeneratorTest, test_multi_windowp_project) {
             ASSERT_EQ(2u, merge_op->children.size());
             ASSERT_EQ(kOpProject, merge_op->children[0]->type);
             ASSERT_EQ(kOpProject, merge_op->children[1]->type);
-            ASSERT_EQ(merge_op->output_schema[0].name(), "w1_col1_sum");
-            ASSERT_EQ(merge_op->output_schema[1].name(), "w2_col2_sum");
-            ASSERT_EQ(merge_op->output_schema[2].name(), "w1_col3_sum");
-            ASSERT_EQ(merge_op->output_schema[3].name(), "w2_col4_sum");
-            ASSERT_EQ(merge_op->output_schema[4].name(), "w2_col1_sum");
-            ASSERT_EQ(merge_op->output_schema[5].name(), "w1_col2_sum");
-            ASSERT_EQ(merge_op->output_schema[6].name(), "w2_col3_sum");
-            ASSERT_EQ(merge_op->output_schema[7].name(), "w2_col4_sum");
+            ASSERT_EQ(merge_op->output_schema.Get(0).name(), "w1_col1_sum");
+            ASSERT_EQ(merge_op->output_schema.Get(1).name(), "w2_col2_sum");
+            ASSERT_EQ(merge_op->output_schema.Get(2).name(), "w1_col3_sum");
+            ASSERT_EQ(merge_op->output_schema.Get(3).name(), "w2_col4_sum");
+            ASSERT_EQ(merge_op->output_schema.Get(4).name(), "w2_col1_sum");
+            ASSERT_EQ(merge_op->output_schema.Get(5).name(), "w1_col2_sum");
+            ASSERT_EQ(merge_op->output_schema.Get(6).name(), "w2_col3_sum");
+            ASSERT_EQ(merge_op->output_schema.Get(7).name(), "w2_col4_sum");
         }
     }
 }

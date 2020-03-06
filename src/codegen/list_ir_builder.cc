@@ -73,6 +73,7 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
     }
     return true;
 }
+
 bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
                                   base::Status& status) {
     if (nullptr == list) {

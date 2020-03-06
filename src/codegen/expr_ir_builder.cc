@@ -16,44 +16,50 @@
  */
 
 #include "codegen/expr_ir_builder.h"
+
 #include <string>
 #include <vector>
+#include "codegen/buf_ir_builder.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/list_ir_builder.h"
 #include "codegen/type_ir_builder.h"
+#include "codegen/window_ir_builder.h"
 #include "glog/logging.h"
 #include "proto/common.pb.h"
 
 namespace fesql {
 namespace codegen {
+
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
       row_mode_(true),
       row_ptr_name_(""),
       variable_ir_builder_(block, scope_var),
-      buf_ir_builder_(nullptr),
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
-      module_(block->getModule()) {}
+      module_(block->getModule()),
+      row_ir_builder_(),
+      window_ir_builder_() {}
 
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                             BufNativeIRBuilder* buf_ir_builder,
-                             const bool row_mode,
+                             const vm::Schema& schema, const bool row_mode,
                              const std::string& row_ptr_name,
                              const std::string& row_size_name,
                              ::llvm::Module* module)
     : block_(block),
       sv_(scope_var),
+      schema_(schema),
       row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
       row_size_name_(row_size_name),
       variable_ir_builder_(block, scope_var),
-      buf_ir_builder_(buf_ir_builder),
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
-      module_(module) {}
+      module_(module),
+      row_ir_builder_(new BufNativeIRBuilder(schema, block, scope_var)),
+      window_ir_builder_(new MemoryWindowDecodeIRBuilder(schema, block)) {}
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
@@ -84,6 +90,8 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         status.code = common::kCodegenError;
         return false;
     }
+    DLOG(INFO) << "expr node type "
+               << fesql::node::ExprTypeName(node->GetExprType());
     ::llvm::IRBuilder<> builder(block_);
     switch (node->GetExprType()) {
         case ::fesql::node::kExprColumnRef: {
@@ -133,6 +141,7 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprId: {
             ::fesql::node::ExprIdNode* id_node =
                 (::fesql::node::ExprIdNode*)node;
+            DLOG(INFO) << "id node name " << id_node->GetName();
             ::llvm::Value* ptr = NULL;
             if (!variable_ir_builder_.LoadValue(id_node->GetName(), &ptr,
                                                 status) ||
@@ -260,6 +269,7 @@ bool ExprIRBuilder::BuildStructExpr(const ::fesql::node::StructExpr* node,
     *output = (::llvm::Value*)llvm_struct;
     return true;
 }
+
 bool ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
                                    ::llvm::Value** output,
                                    base::Status& status) {  // NOLINT
@@ -308,13 +318,14 @@ bool ExprIRBuilder::BuildColumnItem(const std::string& col,
     bool ok = variable_ir_builder_.LoadValue(col, &value, status);
     if (!ok) {
         // TODO(wangtaize) buf ir builder add build get field ptr
-        ok = buf_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
+        ok = row_ir_builder_->BuildGetField(col, row_ptr, row_size, &value);
         if (!ok || value == NULL) {
             status.msg = "fail to find column " + col;
             status.code = common::kCodegenError;
             LOG(WARNING) << status.msg;
             return false;
         }
+
         ok = variable_ir_builder_.StoreValue(col, value, status);
         if (ok) {
             *output = value;
@@ -357,8 +368,9 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
 
     ::llvm::Value* value = NULL;
     DLOG(INFO) << "get table column " << col;
-    // NOT reuse for list
-    ok = buf_ir_builder_->BuildGetCol(col, row_ptr, &value);
+    // NOT reuse for iterator
+    ok = window_ir_builder_->BuildGetCol(col, row_ptr, &value);
+
     if (!ok || value == NULL) {
         status.msg = "fail to find column " + col;
         status.code = common::kCodegenError;

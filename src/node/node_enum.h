@@ -181,8 +181,10 @@ enum PlanType {
     kScanTypeIndexScan,
 };
 
-}  // namespace node
+// batch plan node type
+enum BatchPlanNodeType { kBatchDataset, kBatchPartition, kBatchMap };
 
+}  // namespace node
 }  // namespace fesql
 
 #endif  // SRC_NODE_NODE_ENUM_H_

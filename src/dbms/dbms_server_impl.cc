@@ -135,6 +135,7 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
         // TODO(chenjing): pid setting
         create_table_request.add_pids(0);
         *(create_table_request.mutable_table()) = request->table();
+        create_table_request.mutable_table()->set_catalog(request->db_name());
         tablet_sdk->CreateTable(&create_table_request, create_table_status);
         if (0 != create_table_status.code()) {
             ::fesql::common::Status* status = response->mutable_status();
@@ -233,7 +234,7 @@ void DBMSServerImpl::AddDatabase(RpcController* ctr,
     ::fesql::common::Status* status = response->mutable_status();
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
-    DLOG(INFO) << "create database " << request->name() << " done";
+    LOG(INFO) << "create database " << request->name() << " done";
 }
 
 void DBMSServerImpl::IsExistDatabase(RpcController* ctr,

@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_STORAGE_TYPE_IR_BUILDER_H_
-#define SRC_STORAGE_TYPE_IR_BUILDER_H_
+#ifndef SRC_STORAGE_TYPE_NATIVE_FN_H_
+#define SRC_STORAGE_TYPE_NATIVE_FN_H_
 
 #include <stdint.h>
 #include <cstddef>
@@ -186,4 +186,4 @@ void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
 
 }  // namespace storage
 }  // namespace fesql
-#endif  // SRC_STORAGE_TYPE_IR_BUILDER_H_
+#endif  // SRC_STORAGE_TYPE_NATIVE_FN_H_
