@@ -312,7 +312,11 @@ GeneralResult RtidbClient::Init(const std::string& zk_cluster, const std::string
     zk_table_data_path_ = zk_path + "/table/table_data";
     RefreshNodeList();
     RefreshTable();
-    zk_client_->WatchChildren(zk_path + "/notify", boost::bind(&RtidbClient::DoFresh, this, _1));
+    bool ok = zk_client_->WatchChildren(zk_path + "/table/notify", boost::bind(&RtidbClient::DoFresh, this, _1));
+    if (!ok) {
+        zk_client_->CloseZK();
+        zk_client_.reset();
+    }
     return result;
 }
 
