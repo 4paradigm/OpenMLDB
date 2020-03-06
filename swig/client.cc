@@ -111,11 +111,7 @@ void encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schem
                 }
                 break;
             case rtidb::type::kVarchar:
-                if (value_vec[i].size() > 0) {
-                    rb.AppendString(value_vec[i].data(), value_vec[i].size());
-                } else {
-                    rb.AppendNULL();
-                }
+                rb.AppendString(value_vec[i].data(), value_vec[i].size());
                 break;
             case rtidb::type::kDate:
                 rb.AppendNULL();
@@ -130,7 +126,7 @@ void encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schem
     return;
 }
 
-void encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, std::string& value, std::vector<std::string>& value_vec) {
+void decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, std::string& value, std::vector<std::string>& value_vec) {
     rtidb::base::RowView rv(schema, reinterpret_cast<int8_t*>(&value[0]), value.size());
     for (int32_t i = 0; i < schema.size(); i++) {
         std::string col = "";
@@ -277,7 +273,7 @@ void RtidbClient::RefreshTable() {
                 if (meta.is_leader() && meta.is_alive()) {
                     handler->partition[id].leader = meta.endpoint();
                 } else {
-                    handler->partition[id].follower.insert(meta.endpoint());
+                    handler->partition[id].follower.push_back(meta.endpoint());
                 }
             }
             id++;
@@ -346,7 +342,7 @@ QueryResult RtidbClient::Query(const std::string& name, struct ReadOption& ro) {
             continue;
         }
         std::vector<std::string> value_vec;
-        encode(*th->columns, value, value_vec);
+        decode(*th->columns, value, value_vec);
         std::map<std::string, GetColumn> value_map;
         for (int32_t i = 0; i < th->columns->size(); i++) {
             GetColumn col;
@@ -465,8 +461,52 @@ GeneralResult RtidbClient::Delete(const std::string& name, const std::map<std::s
     return result;
 }
 
-GeneralResult RtidbClient::Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> value, const WriteOption& wo) {
+GeneralResult RtidbClient::Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> values, const WriteOption& wo) {
     GeneralResult result;
+    std::shared_ptr<TableHandler> th;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = tables_.find(name);
+        if (iter == tables_.end()) {
+            result.SetError(-1, "table not found");
+            return result;
+        }
+        th = iter->second;
+    }
+    std::string err_msg;
+    auto tablet = GetTabletClient(th->partition[0].leader, err_msg);
+    if (tablet == NULL) {
+        result.SetError(-1, err_msg);
+        return result;
+    }
+    std::string value;
+    uint64_t ts;
+    bool ok = tablet->Get(th->table_info->tid(), 0, condition.begin()->second, 0, "", "", value, ts, err_msg);
+    if (!ok) {
+        result.SetError(-1, err_msg);
+        return result;
+    }
+    std::vector<std::string> value_vec;
+    decode(*th->columns, value, value_vec);
+    std::uint32_t string_length = 0;
+    for (int32_t i = 0; i < th->columns->size(); i++) {
+        auto name = th->columns->Get(i).name();
+        auto iter = values.find(name);
+        if (iter != values.end()) {
+            value_vec[i] = iter->second;
+            string_length += iter->second.size();
+        } else {
+            string_length += value_vec[i].size();
+        }
+    }
+    value.clear();
+    value.resize(string_length);
+    encode(*(th->columns), value_vec, value);
+    ok = tablet->Put(th->table_info->tid(), 0, "", 0, value);
+    if (!ok) {
+        result.SetError(-1, "put error");
+        return result;
+    }
     return result;
 }
 

@@ -69,7 +69,7 @@ struct ReadOption {
 
 struct PartitionInfo {
     std::string leader;
-    std::set<std::string> follower;
+    std::vector<std::string> follower;
 };
 
 struct TableHandler {
@@ -79,17 +79,15 @@ struct TableHandler {
 };
 
 class RtidbClient {
+public:
+    RtidbClient();
+    ~RtidbClient();
+    GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path);
+    QueryResult Query(const std::string& name, struct ReadOption& ro);
+    GeneralResult Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
+    GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
+    GeneralResult Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> values, const WriteOption& wo);
 private:
-    std::shared_ptr<rtidb::zk::ZkClient> zk_client_;
-    std::shared_ptr<rtidb::client::NsClient> client_;
-    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>> tablets_;
-    std::mutex mu_;
-    std::string zk_cluster_;
-    std::string zk_path_;
-    std::string zk_table_data_path_;
-    std::string zk_table_notify_path_;
-    std::map<std::string, std::shared_ptr<TableHandler>> tables_;
-
     std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint, std::string& msg);
     void CheckZkClient();
     void UpdateEndpoint(const std::set<std::string>& alive_endpoints);
@@ -100,13 +98,14 @@ private:
         RefreshTable();
     }
 
-public:
-    RtidbClient();
-    ~RtidbClient();
-    GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path);
-    QueryResult Query(const std::string& name, struct ReadOption& ro);
-    GeneralResult Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
-    GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
-    GeneralResult Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> value, const WriteOption& wo);
-
+private:
+    std::shared_ptr<rtidb::zk::ZkClient> zk_client_;
+    std::shared_ptr<rtidb::client::NsClient> client_;
+    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>> tablets_;
+    std::mutex mu_;
+    std::string zk_cluster_;
+    std::string zk_path_;
+    std::string zk_table_data_path_;
+    std::string zk_table_notify_path_;
+    std::map<std::string, std::shared_ptr<TableHandler>> tables_;
 };
