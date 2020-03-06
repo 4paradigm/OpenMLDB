@@ -55,6 +55,21 @@ inline const std::string CmdTypeName(const CmdType &type) {
     }
 }
 
+inline const std::string JoinTypeName(const JoinType &type) {
+    switch (type) {
+        case kJoinTypeFull:
+            return "FullJoin";
+        case kJoinTypeLeft:
+            return "LeftJoin";
+        case kJoinTypeRight:
+            return "RightJoin";
+        case kJoinTypeInner:
+            return "InnerJoin";
+        default: {
+            return "Unknow";
+        }
+    }
+}
 inline const std::string ExprOpTypeName(const FnOperator &op) {
     switch (op) {
         case kFnOpAdd:
@@ -319,15 +334,16 @@ class LimitNode : public SQLNode {
  private:
     int limit_cnt_;
 };
-class TableNode : public SQLNode {
+class TableRefNode : public SQLNode {
  public:
-    TableNode()
-        : SQLNode(kTable, 0, 0), org_table_name_(""), alias_table_name_("") {}
+    TableRefNode() : SQLNode(kTable, 0, 0) {}
+};
+class TableNode : public TableRefNode {
+ public:
+    TableNode() : TableRefNode(), org_table_name_(""), alias_table_name_("") {}
 
     TableNode(const std::string &name, const std::string &alias)
-        : SQLNode(kTable, 0, 0),
-          org_table_name_(name),
-          alias_table_name_(alias) {}
+        : TableRefNode(), org_table_name_(name), alias_table_name_(alias) {}
 
     std::string GetOrgTableName() const { return org_table_name_; }
 
@@ -338,6 +354,22 @@ class TableNode : public SQLNode {
  private:
     std::string org_table_name_;
     std::string alias_table_name_;
+};
+
+class JoinNode : public TableRefNode {
+ public:
+    JoinNode(const TableRefNode *left, const TableRefNode *right,
+             const JoinType join_type, const ExprNode *condition)
+        : TableRefNode(),
+          left_(left),
+          right_(right),
+          join_type_(join_type),
+          condition_(condition) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const TableRefNode *left_;
+    const TableRefNode *right_;
+    const JoinType join_type_;
+    const ExprNode *condition_;
 };
 class OrderByNode : public SQLNode {
  public:
@@ -355,6 +387,7 @@ class OrderByNode : public SQLNode {
     SQLNodeType sort_type_;
     SQLNode *order_by_;
 };
+
 class FrameBound : public SQLNode {
  public:
     FrameBound()

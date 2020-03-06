@@ -68,15 +68,16 @@ class NodeManager {
     PlanNode *MakeCrossProductNode(PlanNode *left, PlanNode *right);
     // Make SQLxxx Node
     SQLNode *MakeSQLNode(const SQLNodeType &type);
-    SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr,
-                                SQLNodeList *tableref_list_ptr,
-                                ExprNode *where_expr,
-                                ExprListNode *group_expr_list,
-                                ExprNode *having_expr,
-                                ExprListNode* order_expr_list,
-                                SQLNodeList *window_list_ptr,
-                                SQLNode *limit_ptr);
-    SQLNode *MakeTableNode(const std::string &name, const std::string &alias);
+    SQLNode *MakeSelectStmtNode(
+        SQLNodeList *select_list_ptr, SQLNodeList *tableref_list_ptr,
+        ExprNode *where_expr, ExprListNode *group_expr_list,
+        ExprNode *having_expr, ExprListNode *order_expr_list,
+        SQLNodeList *window_list_ptr, SQLNode *limit_ptr);
+    TableRefNode *MakeTableNode(const std::string &name,
+                                const std::string &alias);
+    TableRefNode *MakeJoinNode(const TableRefNode *left,
+                               const TableRefNode *right, const JoinType type,
+                               const ExprNode *condition);
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
                            const SQLNode *over);
     SQLNode *MakeWindowDefNode(const std::string &name);
@@ -122,7 +123,7 @@ class NodeManager {
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
                                  FnOperator op);
     ExprNode *MakeUnaryExprNode(ExprNode *left, FnOperator op);
-    ExprNode *MakeFnIdNode(const std::string &name);
+    ExprNode *MakeExprIdNode(const std::string &name);
     // Make Fn Node
     ExprNode *MakeConstNode(int value);
     ExprNode *MakeConstNode(int64_t value, DataType unit);

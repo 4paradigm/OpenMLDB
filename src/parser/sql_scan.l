@@ -182,6 +182,7 @@ FORCE	{ return FORCE; }
 FOREIGN	{ return FOREIGN; }
 FROM	{ return FROM; }
 FULLTEXT	{ return FULLTEXT; }
+FULL        { return FULL; }
 GRANT	{ return GRANT; }
 GROUP	{ return GROUP; }
 HAVING	{ return HAVING; }

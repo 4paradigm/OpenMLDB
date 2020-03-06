@@ -53,6 +53,8 @@ typedef void* yyscan_t;
 	::fesql::node::SQLNode* node;
 	::fesql::node::FnNode* fnnode;
 	::fesql::node::ExprNode* expr;
+	::fesql::node::TableRefNode* table_ref;
+	::fesql::node::JoinType join_type;
 	::fesql::node::DataType type;
 	::fesql::node::TypeNode* typenode;
 	::fesql::node::FnNodeList* fnlist;
@@ -189,6 +191,7 @@ typedef void* yyscan_t;
 %token FOLLOWING
 %token FROM
 %token FULLTEXT
+%token FULL
 %token GRANT
 %token GROUP
 %token HAVING
@@ -358,6 +361,7 @@ typedef void* yyscan_t;
 
  /* udf */
 %type <type> types
+%type <join_type> join_type
 %type <typenode> complex_types
 %type <fnnode> grammar line_list
 			   fun_def_block fn_header_indent_op  func_stmt
@@ -366,21 +370,19 @@ typedef void* yyscan_t;
                for_in_stmt
 %type<fnlist> plist stmt_block func_stmts
 
-%type <expr> var expr primary_time column_ref call_expr expr_const frame_expr
+%type <expr> var expr primary_time column_ref call_expr expr_const frame_expr join_condition
  /* select stmt */
 %type <node>  sql_stmt stmt select_stmt
               opt_all_clause
-              table_factor table_reference
               projection
-
               opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
               limit_clause
-
+%type <table_ref> table_reference join_clause table_factor
  /* insert table */
 %type<node> insert_stmt
 %type<exprlist> insert_expr_list column_ref_list opt_partition_clause
-				sort_clause opt_sort_clause expr_list group_expr
+				sort_clause opt_sort_clause expr_list group_expr sql_id_list
 %type<expr> insert_expr where_expr having_expr
 
  /* create table */
@@ -400,6 +402,7 @@ typedef void* yyscan_t;
                function_name
                opt_existing_window_name
                database_name table_name group_name file_path
+               join_outer
 
 %type <intval> opt_window_exclusion_clause
 
@@ -625,7 +628,7 @@ primary_time:
         $$ = node_manager->MakeConstNode($1, fesql::node::kSecond);
     }
 var: FUN_IDENTIFIER {
-        $$ = node_manager->MakeFnIdNode($1);
+        $$ = node_manager->MakeExprIdNode($1);
      };
 
 sql_stmt: stmt ';' {
@@ -898,17 +901,28 @@ over_clause: OVER window_specification
 				{ $$ = NULL; }
 		;
 
-table_references:    table_reference { $$ = node_manager->MakeNodeList($1); }
-    |  table_references ',' table_reference
-    {
-     	$$ = $1;
-        $$->PushBack($3);
-    }
-    ;
+table_references:
+		table_reference
+		{
+			$$ = node_manager->MakeNodeList($1);
+		}
+    	|  table_references ',' table_reference
+    	{
+     		$$ = $1;
+        	$$->PushBack($3);
+    	}
+    	;
 
-table_reference:  table_factor
-;
-
+table_reference:
+			table_factor
+			{
+				$$ = $1;
+			}
+			|join_clause
+			{
+				$$ = $1;
+			}
+			;
 
 table_factor:
   relation_factor
@@ -926,10 +940,60 @@ table_factor:
 
   ;
 relation_factor:
-    relation_name
-    { $$ = $1; }
+    	relation_name
+    	{
+    		$$ = $1;
+    	}
+    	;
 
+join_clause:
+		'(' join_clause ')'
+		{
+			$$ = $2;
+		}
+		| table_reference JOIN join_type table_reference join_condition
+		{
+			$$ = node_manager->MakeJoinNode($1, $4, $3, $5);
+		}
+		;
 
+join_type:
+		FULL join_outer
+		{
+			$$ = fesql::node::kJoinTypeFull;
+		}
+		|LEFT join_outer
+		{
+			$$ = fesql::node::kJoinTypeLeft;
+		}
+		|RIGHT join_outer
+		{
+			$$ = fesql::node::kJoinTypeRight;
+		}
+		|INNER
+		{
+			$$ = fesql::node::kJoinTypeInner;
+		}
+
+join_outer:
+		OUTER {
+			$$ = NULL;
+		}
+		|/*EMPTY*/
+		{
+			$$ = NULL;
+		}
+		;
+join_condition:
+		ON expr
+		{
+			$$ = $2;
+		}
+		| USING '(' sql_id_list ')'
+		{
+			$$ = $3;
+		}
+		;
 /**** expressions ****/
 expr_list:
     expr
@@ -942,6 +1006,17 @@ expr_list:
         $$->AddChild($3);
     }
   	;
+sql_id_list:
+	SQL_IDENTIFIER
+	{
+		$$ = node_manager->MakeExprList(node_manager->MakeExprIdNode($1));
+	}
+	| sql_id_list ',' SQL_IDENTIFIER
+	{
+		$$ = $1;
+		$$->AddChild(node_manager->MakeExprIdNode($3));
+	}
+	;
 
 expr:
 	 column_ref   	{ $$ = $1; }

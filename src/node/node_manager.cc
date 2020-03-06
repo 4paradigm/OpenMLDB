@@ -43,23 +43,31 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
 }
 
 SQLNode *NodeManager::MakeSelectStmtNode(
-    SQLNodeList *select_list, SQLNodeList *tableref_list,
-    ExprNode *where_expr, ExprListNode *group_expr_list, ExprNode *having_expr,
-    ExprListNode* order_expr_list,
-    SQLNodeList *window_list, SQLNode *limit_ptr) {
+    SQLNodeList *select_list, SQLNodeList *tableref_list, ExprNode *where_expr,
+    ExprListNode *group_expr_list, ExprNode *having_expr,
+    ExprListNode *order_expr_list, SQLNodeList *window_list,
+    SQLNode *limit_ptr) {
     SelectStmt *node_ptr =
         new SelectStmt(select_list, tableref_list, where_expr, group_expr_list,
                        having_expr, order_expr_list, window_list, limit_ptr);
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeTableNode(const std::string &name,
-                                    const std::string &alias) {
-    TableNode *node_ptr = new TableNode(name, alias);
-
-    return RegisterNode(node_ptr);
+TableRefNode *NodeManager::MakeTableNode(const std::string &name,
+                                         const std::string &alias) {
+    TableRefNode *node_ptr = new TableNode(name, alias);
+    RegisterNode(node_ptr);
+    return node_ptr;
 }
 
+TableRefNode *NodeManager::MakeJoinNode(const TableRefNode *left,
+                                        const TableRefNode *right,
+                                        const JoinType type,
+                                        const ExprNode *condition) {
+    TableRefNode *node_ptr = new JoinNode(left, right, type, condition);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
 SQLNode *NodeManager::MakeResTargetNode(ExprNode *node,
                                         const std::string &name) {
     ResTarget *node_ptr = new ResTarget(name, node);
@@ -191,7 +199,7 @@ ExprNode *NodeManager::MakeConstNode() {
     return RegisterNode(node_ptr);
 }
 
-ExprNode *NodeManager::MakeFnIdNode(const std::string &name) {
+ExprNode *NodeManager::MakeExprIdNode(const std::string &name) {
     ::fesql::node::ExprNode *id_node = new ::fesql::node::ExprIdNode(name);
     return RegisterNode(id_node);
 }
@@ -371,7 +379,7 @@ FnNode *NodeManager::MakeAssignNode(const std::string &name,
 FnNode *NodeManager::MakeAssignNode(const std::string &name,
                                     ExprNode *expression, const FnOperator op) {
     ::fesql::node::FnAssignNode *fn_assign = new fesql::node::FnAssignNode(
-        name, MakeBinaryExprNode(MakeFnIdNode(name), expression, op));
+        name, MakeBinaryExprNode(MakeExprIdNode(name), expression, op));
 
     return RegisterNode(fn_assign);
 }

@@ -146,6 +146,12 @@ enum FnOperator {
     kFnOpNone
 };
 
+enum JoinType {
+    kJoinTypeFull,
+    kJoinTypeLeft,
+    kJoinTypeRight,
+    kJoinTypeInner
+};
 enum CmdType {
     kCmdCreateGroup,
     kCmdCreateDatabase,
