@@ -799,5 +799,16 @@ void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNode(output, tab, right_, "right", true);
 }
+void UnionStmt::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, is_all_ ? "ALL UNION" : "DISTINCT UNION",
+               "union_type", false);
+    output << "\n";
+    PrintSQLNode(output, tab, left_, "left", false);
+    output << "\n";
+    PrintSQLNode(output, tab, right_, "right", true);
+}
 }  // namespace node
 }  // namespace fesql

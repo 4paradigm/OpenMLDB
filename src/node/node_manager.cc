@@ -53,6 +53,12 @@ SQLNode *NodeManager::MakeSelectStmtNode(
     return RegisterNode(node_ptr);
 }
 
+SQLNode *NodeManager::MakeUnionStmtNode(SQLNode *left, SQLNode *right,
+                                        bool is_all) {
+    UnionStmt *node_ptr = new UnionStmt(left, right, is_all);
+    return RegisterNode(node_ptr);
+}
+
 TableRefNode *NodeManager::MakeTableNode(const std::string &name,
                                          const std::string &alias) {
     TableRefNode *node_ptr = new TableNode(name, alias);

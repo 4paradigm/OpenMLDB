@@ -372,7 +372,7 @@ typedef void* yyscan_t;
 
 %type <expr> var expr primary_time column_ref call_expr expr_const frame_expr join_condition
  /* select stmt */
-%type <node>  sql_stmt stmt select_stmt
+%type <node>  sql_stmt stmt select_stmt union_stmt
               opt_all_clause
               projection
               opt_frame_clause frame_bound frame_extent
@@ -665,6 +665,10 @@ select_stmt:
             {
                 $$ = node_manager->MakeSelectStmtNode($3, $5, $6, $7, $8, $9, $10, $11);
             }
+            | union_stmt
+            {
+            	$$ = $1;
+            }
     		;
 
 
@@ -951,9 +955,23 @@ join_clause:
 		{
 			$$ = $2;
 		}
-		| table_reference JOIN join_type table_reference join_condition
+		| table_reference join_type JOIN table_reference join_condition
 		{
-			$$ = node_manager->MakeJoinNode($1, $4, $3, $5);
+			$$ = node_manager->MakeJoinNode($1, $4, $2, $5);
+		}
+		;
+union_stmt:
+		select_stmt UNION select_stmt
+		{
+			$$ = node_manager->MakeUnionStmtNode($1, $3, false);
+		}
+		|select_stmt DISTINCT select_stmt
+		{
+			$$ = node_manager->MakeUnionStmtNode($1, $3, false);
+		}
+		| select_stmt UNION ALL select_stmt
+		{
+			$$ = node_manager->MakeUnionStmtNode($1, $4, true);
 		}
 		;
 
@@ -974,6 +992,7 @@ join_type:
 		{
 			$$ = fesql::node::kJoinTypeInner;
 		}
+		;
 
 join_outer:
 		OUTER {

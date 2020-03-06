@@ -138,6 +138,30 @@ INSTANTIATE_TEST_CASE_P(
         "sum(COL1) > 0;",
         "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
         "col1sum > 0;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlJoinParse, SqlParserTest,
+    testing::Values("SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
+                    "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2;",
+                    "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
+                    "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlUnionParse, SqlParserTest,
+    testing::Values(
+        "SELECT * FROM t1 UNION SELECT * FROM t2;",
+        "SELECT * FROM t1 UNION ALL SELECT * FROM t2;",
+        "SELECT * FROM t1 UNION ALL SELECT * FROM t2 UNION SELECT * FROM t3;",
+        "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2 UNION ALL SELECT * "
+        "FROM t3 UNION SELECT * FROM t4;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0 order by COL1+COL2 limit 10 UNION ALL "
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
+        "sum(COL1) > 0;",
+        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 UNION "
+        "SELECT * FROM t3 inner join t4 on t3.col1 = t4.col2 UNION "
+        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;"));
+
 INSTANTIATE_TEST_CASE_P(
     UDFParse, SqlParserTest,
     testing::Values(

@@ -24,6 +24,7 @@ const char INDENT[] = " \t";
 enum SQLNodeType {
     // SQL
     kSelectStmt = 0,
+    kUnionStmt,
     kCreateStmt,
     kInsertStmt,
     kCmdStmt,
@@ -151,6 +152,11 @@ enum JoinType {
     kJoinTypeLeft,
     kJoinTypeRight,
     kJoinTypeInner
+};
+
+enum UnoinType {
+    kUnionTypeDistinct,
+    kUnionTypeAll
 };
 enum CmdType {
     kCmdCreateGroup,
