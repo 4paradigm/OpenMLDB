@@ -448,7 +448,7 @@ fn_header_indent_op:
 
 
 stmt_block:
-        func_stmts NEWLINES FUNDEFEND NEWLINES {
+        func_stmts NEWLINES FUNDEFEND {
             emit("enter stmt block");
             $$ = $1;
         }
