@@ -164,6 +164,28 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;"));
 
 INSTANTIATE_TEST_CASE_P(
+    SqlSubQueryParse, SqlParserTest,
+    testing::Values(
+        "SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;",
+        "select * from (select * from t1 where col1>0);",
+        "SELECT LastName,FirstName, Title, Salary FROM Employees AS T1 "
+        "WHERE Salary >=(SELECT Avg(Salary) "
+        "FROM Employees WHERE T1.Title = Employees.Title) Order by Title;",
+        "select * from \n"
+        "    (select * from stu where grade = 7) s\n"
+        "left join \n"
+        "    (select * from sco where subject = \"math\") t\n"
+        "on s.id = t.stu_id\n"
+        "union\n"
+        "select * from \n"
+        "    (select * from stu where grade = 7) s\n"
+        "right join \n"
+        "    (select * from sco where subject = \"math\") t\n"
+        "on s.id = t.stu_id;",
+        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;"));
+
+
+INSTANTIATE_TEST_CASE_P(
     UDFParse, SqlParserTest,
     testing::Values(
         // simple udf

@@ -73,14 +73,18 @@ class NodeManager {
         ExprNode *where_expr, ExprListNode *group_expr_list,
         ExprNode *having_expr, ExprListNode *order_expr_list,
         SQLNodeList *window_list_ptr, SQLNode *limit_ptr);
-    SQLNode *MakeUnionStmtNode(SQLNode* left, SQLNode* right, bool is_all);
+    SQLNode *MakeUnionStmtNode(SQLNode *left, SQLNode *right, bool is_all);
     TableRefNode *MakeTableNode(const std::string &name,
                                 const std::string &alias);
     TableRefNode *MakeJoinNode(const TableRefNode *left,
                                const TableRefNode *right, const JoinType type,
-                               const ExprNode *condition);
+                               const ExprNode *condition,
+                               const std::string alias);
+    TableRefNode *MakeSubQueryTableNode(const ExprNode *sub_query,
+                                        const std::string &alias);
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
                            const SQLNode *over);
+    ExprNode *MakeSubQueryExprNode(const SQLNode *query);
     SQLNode *MakeWindowDefNode(const std::string &name);
     SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprListNode *orders,
                                SQLNode *frame);

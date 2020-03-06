@@ -69,8 +69,17 @@ TableRefNode *NodeManager::MakeTableNode(const std::string &name,
 TableRefNode *NodeManager::MakeJoinNode(const TableRefNode *left,
                                         const TableRefNode *right,
                                         const JoinType type,
-                                        const ExprNode *condition) {
-    TableRefNode *node_ptr = new JoinNode(left, right, type, condition);
+                                        const ExprNode *condition,
+                                        const std::string alias) {
+    TableRefNode *node_ptr = new JoinNode(left, right, type, condition, alias);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+
+TableRefNode *NodeManager::MakeSubQueryTableNode(const ExprNode *sub_query,
+                                                 const std::string &alias) {
+    TableRefNode *node_ptr = new SubQueryTableNode(
+        dynamic_cast<const SubQueryExpr *>(sub_query), alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -610,6 +619,12 @@ InsertPlanNode *NodeManager::MakeInsertPlanNode(const InsertStmt *node) {
 }
 FuncDefPlanNode *NodeManager::MakeFuncPlanNode(const FnNodeFnDef *node) {
     node::FuncDefPlanNode *node_ptr = new FuncDefPlanNode(node);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+ExprNode *NodeManager::MakeSubQueryExprNode(const SQLNode *query) {
+    node::ExprNode *node_ptr =
+        new SubQueryExpr(dynamic_cast<const SelectStmt *>(query));
     RegisterNode(node_ptr);
     return node_ptr;
 }

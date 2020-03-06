@@ -370,7 +370,9 @@ typedef void* yyscan_t;
                for_in_stmt
 %type<fnlist> plist stmt_block func_stmts
 
-%type <expr> var expr primary_time column_ref call_expr expr_const frame_expr join_condition
+%type <expr> 	var primary_time  expr_const
+				sql_call_expr column_ref frame_expr join_condition
+				fun_expr sql_expr sub_query_expr
  /* select stmt */
 %type <node>  sql_stmt stmt select_stmt union_stmt
               opt_all_clause
@@ -378,11 +380,13 @@ typedef void* yyscan_t;
               opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
               limit_clause
-%type <table_ref> table_reference join_clause table_factor
+%type <table_ref> table_reference join_clause table_factor sub_query_clause
  /* insert table */
 %type<node> insert_stmt
 %type<exprlist> insert_expr_list column_ref_list opt_partition_clause
-				sort_clause opt_sort_clause expr_list group_expr sql_id_list
+				sort_clause opt_sort_clause  group_expr sql_id_list
+				sql_expr_list fun_expr_list
+
 %type<expr> insert_expr where_expr having_expr
 
  /* create table */
@@ -506,7 +510,7 @@ func_stmt:
          }
          ;
 
-fn_header :
+fn_header:
    		DEF FUN_IDENTIFIER'(' plist ')' ':' types {
 			$$ = node_manager->MakeFnHeaderNode($2, $4, node_manager->MakeTypeNode($7));
    		};
@@ -515,35 +519,35 @@ fn_header :
    		};
 
 assign_stmt:
-		FUN_IDENTIFIER ASSIGN expr {
+		FUN_IDENTIFIER ASSIGN fun_expr {
             $$ = node_manager->MakeAssignNode($1, $3);
         }
-        |FUN_IDENTIFIER ADD_ASSIGN expr {
+        |FUN_IDENTIFIER ADD_ASSIGN fun_expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpAdd);
         }
-        |FUN_IDENTIFIER MINUS_ASSIGN expr {
+        |FUN_IDENTIFIER MINUS_ASSIGN fun_expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpMinus);
         }
-        |FUN_IDENTIFIER MULTI_ASSIGN expr {
+        |FUN_IDENTIFIER MULTI_ASSIGN fun_expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpMulti);
         }
-        |FUN_IDENTIFIER FDIV_ASSIGN expr {
+        |FUN_IDENTIFIER FDIV_ASSIGN fun_expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpFDiv);
         }
         ;
 
 return_stmt:
-		RETURN expr {
+		RETURN fun_expr {
             $$ = node_manager->MakeReturnStmtNode($2);
         };
 
 if_stmt:
-		IF expr {
+		IF fun_expr {
 			$$ = node_manager->MakeIfStmtNode($2);
 		};
 
 elif_stmt:
-		ELSEIF expr {
+		ELSEIF fun_expr {
 			$$ = node_manager->MakeElifStmtNode($2);
 		};
 
@@ -554,7 +558,7 @@ else_stmt:
 		;
 
 for_in_stmt:
-		FOR FUN_IDENTIFIER IN expr {
+		FOR FUN_IDENTIFIER IN fun_expr {
 			$$ = node_manager->MakeForInStmtNode($2, $4);
 		}
 		;
@@ -873,16 +877,16 @@ select_projection_list: projection {
     }
     ;
 
-projection:	expr
+projection:	sql_expr
 			{
 				$$ = node_manager->MakeResTargetNode($1, "");
 			}
-			|expr SQL_IDENTIFIER
+			|sql_expr SQL_IDENTIFIER
 			{
         		$$ = node_manager->MakeResTargetNode($1, $2);
 				free($2);
     		}
-    		| expr AS SQL_IDENTIFIER
+    		| sql_expr AS SQL_IDENTIFIER
     		{
     			$$ = node_manager->MakeResTargetNode($1, $3);
     			free($3);
@@ -926,6 +930,17 @@ table_reference:
 			{
 				$$ = $1;
 			}
+			|sub_query_clause
+			{
+				$$ = $1;
+			}
+			;
+
+sub_query_expr:
+			'(' select_stmt ')'
+			{
+				$$ = node_manager->MakeSubQueryExprNode($2);
+			}
 			;
 
 table_factor:
@@ -950,6 +965,18 @@ relation_factor:
     	}
     	;
 
+sub_query_clause:
+		sub_query_expr {
+			$$ = node_manager->MakeSubQueryTableNode($1, "");
+		}
+		| sub_query_expr relation_name {
+			$$ = node_manager->MakeSubQueryTableNode($1, $2);
+		}
+		| sub_query_expr AS relation_name {
+			$$ = node_manager->MakeSubQueryTableNode($1, $3);
+		}
+		;
+
 join_clause:
 		'(' join_clause ')'
 		{
@@ -957,7 +984,15 @@ join_clause:
 		}
 		| table_reference join_type JOIN table_reference join_condition
 		{
-			$$ = node_manager->MakeJoinNode($1, $4, $2, $5);
+			$$ = node_manager->MakeJoinNode($1, $4, $2, $5, "");
+		}
+		| table_reference join_type JOIN table_reference join_condition relation_name
+		{
+			$$ = node_manager->MakeJoinNode($1, $4, $2, $5, $6);
+		}
+		| table_reference join_type JOIN table_reference join_condition AS relation_name
+		{
+			$$ = node_manager->MakeJoinNode($1, $4, $2, $5, $7);
 		}
 		;
 union_stmt:
@@ -1004,7 +1039,7 @@ join_outer:
 		}
 		;
 join_condition:
-		ON expr
+		ON sql_expr
 		{
 			$$ = $2;
 		}
@@ -1014,17 +1049,30 @@ join_condition:
 		}
 		;
 /**** expressions ****/
-expr_list:
-    expr
+fun_expr_list:
+    fun_expr
     {
       $$ = node_manager->MakeExprList($1);
     }
-  	| expr_list ',' expr
+  	| fun_expr_list ',' fun_expr
     {
         $$ = $1;
         $$->AddChild($3);
     }
   	;
+
+/**** expressions ****/
+sql_expr_list:
+	sql_expr
+	{
+	  $$ = node_manager->MakeExprList($1);
+	}
+	| sql_expr_list ',' sql_expr
+	{
+		$$ = $1;
+		$$->AddChild($3);
+	}
+	;
 sql_id_list:
 	SQL_IDENTIFIER
 	{
@@ -1037,78 +1085,161 @@ sql_id_list:
 	}
 	;
 
-expr:
-	 column_ref   	{ $$ = $1; }
-     | call_expr  	{ $$ = $1; }
+
+fun_expr:
+	 var   	{ $$ = $1; }
      | expr_const 	{ $$ = $1; }
-     | var			{ $$ = $1; }
-     | expr '+' expr
+     | function_name '(' ')'  	{
+     	$$ = node_manager->MakeFuncNode($1, NULL, NULL);
+     }
+     | function_name '(' fun_expr_list ')'
+     {
+     	$$ = node_manager->MakeFuncNode($1, $3, NULL);
+     }
+     | fun_expr '+' fun_expr
      {
      	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAdd);
      }
-     | expr '-' expr
+     | fun_expr '-' fun_expr
      {
      	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMinus);
      }
-     | expr '*' expr
+     | fun_expr '*' fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMulti);
      }
-     | expr '/' expr
+     | fun_expr '/' fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpFDiv);
      }
-     | expr '%' expr
+     | fun_expr '%' fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
      }
-     | expr '>' expr
+     | fun_expr '>' fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpGt);
      }
-     | expr '<' expr
+     | fun_expr '<' fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLt);
      }
-     | expr LESS_EQUALS expr
+     | fun_expr LESS_EQUALS fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLe);
      }
-     | expr EQUALS expr
+     | fun_expr EQUALS fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpEq);
      }
-     | expr NOT_EQUALS expr
+     | fun_expr NOT_EQUALS fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpNeq);
      }
-     | expr GREATER_EQUALS expr
+     | fun_expr GREATER_EQUALS fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpGe);
      }
-     | expr ANDOP expr
+     | fun_expr ANDOP fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAnd);
      }
-     | expr OR expr
+     | fun_expr OR fun_expr
      {
         $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpOr);
      }
-     | expr '[' expr ']'
+     | fun_expr '[' fun_expr ']'
 	 {
 	 	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAt);
 	 }
-     | '!' expr
+     | '!' fun_expr
      {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
      }
-     | NOT expr
+     | NOT fun_expr
      {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
      }
-     | '(' expr ')'
+     | '(' fun_expr ')'
      {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpBracket);
+     }
+     ;
+
+sql_expr:
+     column_ref			{ $$ = $1; }
+     | expr_const 	{ $$ = $1; }
+     | sql_call_expr  	{ $$ = $1; }
+     | sql_expr '+' sql_expr
+     {
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAdd);
+     }
+     | sql_expr '-' sql_expr
+     {
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMinus);
+     }
+     | sql_expr '*' sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMulti);
+     }
+     | sql_expr '/' sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpFDiv);
+     }
+     | sql_expr '%' sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpMod);
+     }
+     | sql_expr '>' sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpGt);
+     }
+     | sql_expr '<' sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLt);
+     }
+     | sql_expr LESS_EQUALS sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLe);
+     }
+     | sql_expr EQUALS sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpEq);
+     }
+     | sql_expr NOT_EQUALS sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpNeq);
+     }
+     | sql_expr GREATER_EQUALS sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpGe);
+     }
+     | sql_expr ANDOP sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAnd);
+     }
+     | sql_expr OR sql_expr
+     {
+        $$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpOr);
+     }
+     | sql_expr '[' sql_expr ']'
+	 {
+	 	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAt);
+	 }
+     | '!' sql_expr
+     {
+        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
+     }
+     | NOT sql_expr
+     {
+        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
+     }
+     | '(' sql_expr ')'
+     {
+        $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpBracket);
+     }
+     | sub_query_expr {
+     	$$ = $1;
      }
      ;
 
@@ -1128,7 +1259,7 @@ expr_const:
         { $$ = (node_manager->MakeConstNode()); }
   	;
 
-call_expr:
+sql_call_expr:
     function_name '(' '*' ')' over_clause
     {
           if (strcasecmp($1, "count") != 0)
@@ -1141,14 +1272,14 @@ call_expr:
             $$ = node_manager->MakeFuncNode($1, NULL, $5);
           }
     }
-    | function_name '(' expr_list ')' over_clause
+    | function_name '(' sql_expr_list ')' over_clause
     {
         $$ = node_manager->MakeFuncNode($1, $3, $5);
     }
     ;
 
 where_expr:
-			WHERE expr
+			WHERE sql_expr
 			{
 				$$ = $2;
 			}
@@ -1158,7 +1289,7 @@ where_expr:
 			}
 			;
 group_expr:
-			GROUP BY expr_list
+			GROUP BY sql_expr_list
 			{
 				$$ = $3;
 			}
@@ -1168,7 +1299,7 @@ group_expr:
 			}
 
 having_expr:
-			HAVING expr
+			HAVING sql_expr
 			{
 				$$ = $2;
 			}
@@ -1241,7 +1372,7 @@ opt_sort_clause:
 		    ;
 
 sort_clause:
-			ORDER BY expr_list { $$ = $3; }
+			ORDER BY sql_expr_list { $$ = $3; }
 		    ;
 /*===========================================================
  *

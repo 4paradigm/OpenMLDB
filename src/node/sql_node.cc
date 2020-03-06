@@ -810,5 +810,12 @@ void UnionStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNode(output, tab, right_, "right", true);
 }
+void SubQueryExpr::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, sub_query, "query", false);
+}
 }  // namespace node
 }  // namespace fesql

@@ -139,6 +139,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "all";
         case kExprStruct:
             return "struct";
+        case kExprSubQuery:
+            return "subquery";
         case kExprUnknow:
             return "unknow";
         default:
@@ -406,14 +408,18 @@ class LimitNode : public SQLNode {
 };
 class TableRefNode : public SQLNode {
  public:
-    TableRefNode() : SQLNode(kTable, 0, 0) {}
+    TableRefNode(std::string alias_table_name)
+        : SQLNode(kTable, 0, 0), alias_table_name_(alias_table_name) {}
+
+ protected:
+    std::string alias_table_name_;
 };
 class TableNode : public TableRefNode {
  public:
-    TableNode() : TableRefNode(), org_table_name_(""), alias_table_name_("") {}
+    TableNode() : TableRefNode(""), org_table_name_("") {}
 
     TableNode(const std::string &name, const std::string &alias)
-        : TableRefNode(), org_table_name_(name), alias_table_name_(alias) {}
+        : TableRefNode(alias), org_table_name_(name) {}
 
     std::string GetOrgTableName() const { return org_table_name_; }
 
@@ -423,14 +429,16 @@ class TableNode : public TableRefNode {
 
  private:
     std::string org_table_name_;
-    std::string alias_table_name_;
 };
+
+
 
 class JoinNode : public TableRefNode {
  public:
     JoinNode(const TableRefNode *left, const TableRefNode *right,
-             const JoinType join_type, const ExprNode *condition)
-        : TableRefNode(),
+             const JoinType join_type, const ExprNode *condition,
+             const std::string &alias)
+        : TableRefNode(alias),
           left_(left),
           right_(right),
           join_type_(join_type),
@@ -612,6 +620,24 @@ class CallExprNode : public ExprNode {
     const WindowDefNode *over_;
     const ExprListNode *args_;
 };
+
+class SubQueryExpr : public ExprNode {
+ public:
+    SubQueryExpr(const SelectStmt *query)
+        : ExprNode(kExprSubQuery), sub_query(query) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+    const SQLNode *sub_query;
+};
+
+class SubQueryTableNode : public TableRefNode {
+ public:
+    SubQueryTableNode(const SubQueryExpr *sub_query,
+                      const std::string &alias)
+        : TableRefNode(alias), sub_query_(sub_query) {}
+    const SubQueryExpr *sub_query_;
+};
+
 class BinaryExpr : public ExprNode {
  public:
     BinaryExpr() : ExprNode(kExprBinary) {}
