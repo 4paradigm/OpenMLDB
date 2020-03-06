@@ -150,6 +150,7 @@ INSTANTIATE_TEST_CASE_P(
     SqlUnionParse, SqlParserTest,
     testing::Values(
         "SELECT * FROM t1 UNION SELECT * FROM t2;",
+        "SELECT * FROM t1 UNION DISTINCT SELECT * FROM t2;",
         "SELECT * FROM t1 UNION ALL SELECT * FROM t2;",
         "SELECT * FROM t1 UNION ALL SELECT * FROM t2 UNION SELECT * FROM t3;",
         "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2 UNION ALL SELECT * "

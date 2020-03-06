@@ -965,9 +965,9 @@ union_stmt:
 		{
 			$$ = node_manager->MakeUnionStmtNode($1, $3, false);
 		}
-		|select_stmt DISTINCT select_stmt
+		|select_stmt UNION DISTINCT select_stmt
 		{
-			$$ = node_manager->MakeUnionStmtNode($1, $3, false);
+			$$ = node_manager->MakeUnionStmtNode($1, $4, false);
 		}
 		| select_stmt UNION ALL select_stmt
 		{
