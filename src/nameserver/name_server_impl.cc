@@ -2178,20 +2178,20 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         }
     }
     ::rtidb::api::TableMeta table_meta;
-    for (uint32_t i = 0; i < columns.size(); i++) {
-        if (columns[i].add_ts_idx) {
-            table_meta.add_dimensions(columns[i].name);
-        }
-    }
     std::string schema;
-    ::rtidb::base::SchemaCodec codec;
-    bool codec_ok = codec.Encode(columns, schema);
-    if (!codec_ok) {
-        return false;
-    }
-
     if (table_info->has_table_type() && table_info->table_type() == ::rtidb::type::kRelational) {
         table_meta.set_table_type(::rtidb::type::kRelational);
+    } else {
+        for (uint32_t i = 0; i < columns.size(); i++) {
+            if (columns[i].add_ts_idx) {
+                table_meta.add_dimensions(columns[i].name);
+            }
+        }
+        ::rtidb::base::SchemaCodec codec;
+        bool codec_ok = codec.Encode(columns, schema);
+        if (!codec_ok) {
+            return false;
+        }
     }
     table_meta.set_name(table_info->name());
     table_meta.set_tid(table_info->tid());
@@ -3568,12 +3568,14 @@ void NameServerImpl::CreateTable(RpcController* controller,
         cur_term = term_;
     }
     std::vector<::rtidb::base::ColumnDesc> columns;
-    if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
-        response->set_code(315);
-        response->set_msg("convert column desc failed");
-        PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", 
-                table_info->name().c_str(), tid);
-        return;
+    if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
+        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
+            response->set_code(315);
+            response->set_msg("convert column desc failed");
+            PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", 
+                    table_info->name().c_str(), tid);
+            return;
+        }
     }
 
     if (request->has_zone_info() && request->has_task_info() && request->task_info().IsInitialized()) {

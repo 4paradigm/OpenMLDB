@@ -1059,7 +1059,11 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::rtidb::cl
     }
     if (tables[0].column_desc_v1_size() > 0) {
         if (tables[0].added_column_desc_size() == 0) {
-            ::rtidb::base::PrintSchema(tables[0].column_desc_v1());
+            if (!tables[0].has_table_type() || tables[0].table_type() == ::rtidb::type::kTimeSeries) {
+                ::rtidb::base::PrintSchema(tables[0].column_desc_v1());
+            } else {
+                ::rtidb::base::PrintSchema(tables[0].column_desc_v1(), ::rtidb::type::kRelational); 
+            }
         } else {
             ::rtidb::base::PrintSchema(tables[0]);
         }

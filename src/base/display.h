@@ -14,13 +14,42 @@
 #include "tprinter.h"
 #include "base/schema_codec.h"
 #include "storage/segment.h"
+#include "proto/type.pb.h"
 
 DECLARE_uint32(max_col_display_length);
 
 namespace rtidb {
 namespace base {
 
-static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field) {
+static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
+    switch(data_type) {
+        case ::rtidb::type::kBool:
+            return "bool";
+        case ::rtidb::type::kSmallInt:
+            return "smallInt";
+        case ::rtidb::type::kInt:
+            return "int";
+        case ::rtidb::type::kBigInt:
+            return "bigInt";
+        case ::rtidb::type::kFloat:
+            return "float";
+        case ::rtidb::type::kDouble:
+            return "double";
+        case ::rtidb::type::kVarchar:
+            return "varchar";
+        case ::rtidb::type::kDate:
+            return "date";
+        case ::rtidb::type::kTimestamp:
+            return "timestamp";
+        case ::rtidb::type::kBlob:
+            return "blob";
+        default:
+            return "";
+    }
+}
+
+static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field, 
+        ::rtidb::type::TableType table_type) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("name");
@@ -32,11 +61,19 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common
         row.clear();
         row.push_back(std::to_string(idx));
         row.push_back(column_desc.name());
-        row.push_back(column_desc.type());
+        if (table_type == ::rtidb::type::kTimeSeries) {
+            row.push_back(column_desc.type());
+        } else {
+            row.push_back(DataTypeToStr(column_desc.data_type())); 
+        }
         tp.AddRow(row);
         idx++;
     }
     tp.Print(true);
+}
+
+static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field) {
+    return PrintSchema(column_desc_field, ::rtidb::type::kTimeSeries);
 }
 
 static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
@@ -55,7 +92,11 @@ static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
             row.clear();
             row.push_back(std::to_string(idx));
             row.push_back(column_desc.name());
-            row.push_back(column_desc.type());
+            if (!table_info.has_table_type() || table_info.table_type() == ::rtidb::type::kTimeSeries) {
+                row.push_back(column_desc.type());
+            } else {
+                row.push_back(DataTypeToStr(column_desc.data_type()));
+            }
             tp.AddRow(row);
             idx++;
         }
