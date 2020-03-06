@@ -131,7 +131,10 @@ class RTIDBClient:
     v = dict()
     for k in condition_columns:
       v.update({k:str(condition_columns[k])})
-    return self.__client.Delete(table_name, v)
+    resp = self.__client.Delete(table_name, v)
+    if resp.code != 0:
+      raise Exception(resp.code, resp.msg)
+    return true
 
   def traverse(self, table_name: str):
     return RtidbResult([{}])
