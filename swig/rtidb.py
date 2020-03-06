@@ -7,24 +7,18 @@ def __return_None(x):
   return None
 def __return_EmptyStr(x):
   return str()
-type_map = {0:str,1:float,2:int,3:int,4:float,5:__return_None,6:int,7:int,8:int,9:str,
-10:int,11:int,12:bool,100:str(),200:__return_None}
+type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,100:__return_None};
 '''
-    kString = 0,
-    kFloat = 1,
-    kInt32 = 2,
-    kInt64 = 3,
-    kDouble = 4,
-    kNull = 5,
-    kUInt32 = 6,
-    kUInt64 = 7,
-    kTimestamp = 8,
-    kDate = 9,
-    kInt16 = 10,
-    kUInt16 = 11,
-    kBool = 12,
-    kEmptyString = 100,
-    kUnknown = 200
+  kBool = 1,
+  kInt16 = 2,
+  kInt32 = 3,
+  kInt64 = 4,
+  kFloat = 5,
+  kDouble = 6,
+  kVarchar = 7,
+  kDate = 8,
+  kTimestamp = 9,
+  kVoid = 100
 '''
 
 class WriteOption:
@@ -120,10 +114,11 @@ class RTIDBClient:
     if resp.code != 0:
       raise Exception(resp.code, resp.msg)
     result = dict()
-    for k in resp.values:
-      if k == None:
-        continue
-      result.update({k: type_map[resp[k].type](resp[k].buffer)})
+    for mm in resp.values:
+        if mm == None:
+          continue
+        for k in mm:
+          result.update({k: type_map[mm[k].type](mm[k].buffer)})
     
     return RtidbResult([result])
 
@@ -131,7 +126,7 @@ class RTIDBClient:
     return RtidbResult([{}])
 
   def delete(self, table_name: str, condition_columns: map):
-    if (condition_columns.size < 1):
+    if (len(condition_columns) < 1):
       raise Exception("empty map")
     v = dict()
     for k in condition_columns:

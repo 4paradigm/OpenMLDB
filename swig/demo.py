@@ -9,7 +9,11 @@ nsc = rtidb.RTIDBClient("172.27.128.37:6181", "/issue-5")
 print("begin put============================")
 data = {"card":"card3","mcc":"mcc3", "p_biz_date":3}
 nsc.put("test1", data, None)
+print("begin delete============================")
+delete = {"card":"card3"}
+nsc.delete("test1", delete)
 print("begin query============================")
+nsc.put("test1", data, None)
 ro = rtidb.ReadOption()
 ro.index.update({"card":"card3"})
 resp = nsc.query("test1", ro)

@@ -28,9 +28,13 @@ struct GetColumn {
 struct QueryResult {
     int code;
     std::string msg;
-    std::map<std::string, GetColumn> values;
+    std::vector<std::map<std::string, GetColumn>> values;
     QueryResult():code(0), msg() {
     };
+    void SetError(int err_code, const std::string& err_msg) {
+        code = err_code;
+        msg = err_msg;
+    }
 };
 
 struct GeneralResult {
@@ -39,7 +43,7 @@ struct GeneralResult {
     GeneralResult():code(0), msg() {}
     GeneralResult(int err_num):code(err_num), msg() {};
     GeneralResult(int err_num, const std::string error_msg):code(err_num), msg(error_msg) {};
-    void SetError(int err_num, const std::string error_msg) {
+    void SetError(int err_num, const std::string& error_msg) {
         code = err_num;
         msg = error_msg;
     }
