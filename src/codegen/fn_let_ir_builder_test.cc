@@ -530,10 +530,16 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
 
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
+
+    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
+    int32_t ret2 = decode(ptr, 0, &output);
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
