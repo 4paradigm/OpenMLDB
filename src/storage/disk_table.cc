@@ -241,7 +241,7 @@ bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsi
 bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
     rocksdb::WriteBatch batch;
     auto it = column_key_map_.find(idx);
-    if (it != column_key_map_.end()) {
+    if (it != column_key_map_.end() && !it->second->column_idx.empty()) {
         if (it->second->column_idx.size() == 1) {
             std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX);
             std::string combine_key2 = CombineKeyTs(pk, 0);
