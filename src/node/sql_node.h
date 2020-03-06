@@ -408,7 +408,7 @@ class LimitNode : public SQLNode {
 };
 class TableRefNode : public SQLNode {
  public:
-    TableRefNode(std::string alias_table_name)
+    explicit TableRefNode(std::string alias_table_name)
         : SQLNode(kTable, 0, 0), alias_table_name_(alias_table_name) {}
 
  protected:
@@ -623,7 +623,7 @@ class CallExprNode : public ExprNode {
 
 class SubQueryExpr : public ExprNode {
  public:
-    SubQueryExpr(const SelectStmt *query)
+    explicit SubQueryExpr(const SelectStmt *query)
         : ExprNode(kExprSubQuery), sub_query(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
