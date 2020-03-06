@@ -2,7 +2,7 @@ package com._4paradigm.rtidb.client.ut;
 
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.schema.*;
-import com._4paradigm.rtidb.type.Type.DataType;
+import com._4paradigm.rtidb.client.type.DataType;
 import org.joda.time.DateTime;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -398,7 +398,7 @@ public class RowCodecTest {
             {
                 ColumnDesc col1 = new ColumnDesc();
                 col1.setName("col1");
-                col1.setDataType(DataType.kInt16);
+                col1.setDataType(DataType.kSmallInt);
                 schema.add(col1);
             }
             {
@@ -437,13 +437,13 @@ public class RowCodecTest {
             {
                 ColumnDesc col1 = new ColumnDesc();
                 col1.setName("col1");
-                col1.setDataType(DataType.kInt32);
+                col1.setDataType(DataType.kInt);
                 schema.add(col1);
             }
             {
                 ColumnDesc col2 = new ColumnDesc();
                 col2.setName("col2");
-                col2.setDataType(DataType.kInt16);
+                col2.setDataType(DataType.kSmallInt);
                 schema.add(col2);
             }
             {
@@ -461,7 +461,7 @@ public class RowCodecTest {
             {
                 ColumnDesc col5 = new ColumnDesc();
                 col5.setName("col5");
-                col5.setDataType(DataType.kInt64);
+                col5.setDataType(DataType.kBigInt);
                 schema.add(col5);
             }
             RowBuilder builder = new RowBuilder(schema);
@@ -493,7 +493,7 @@ public class RowCodecTest {
                 ColumnDesc col = new ColumnDesc();
                 col.setName("col" + i);
                 if (i % 3 == 0) {
-                    col.setDataType(DataType.kInt16);
+                    col.setDataType(DataType.kSmallInt);
                 } else if (i % 3 == 1) {
                     col.setDataType(DataType.kDouble);
                 } else {
@@ -548,7 +548,7 @@ public class RowCodecTest {
                 ColumnDesc col = new ColumnDesc();
                 col.setName("col" + i);
                 if (i % 3 == 0) {
-                    col.setDataType(DataType.kInt16);
+                    col.setDataType(DataType.kSmallInt);
                 } else if (i % 3 == 1) {
                     col.setDataType(DataType.kDouble);
                 } else {
@@ -618,7 +618,7 @@ public class RowCodecTest {
                 ColumnDesc col = new ColumnDesc();
                 col.setName("col" + i);
                 if (i % 2 == 0) {
-                    col.setDataType(DataType.kInt16);
+                    col.setDataType(DataType.kSmallInt);
                 } else {
                     col.setDataType(DataType.kVarchar);
                 }
@@ -697,7 +697,7 @@ public class RowCodecTest {
                     {
                         ColumnDesc col = new ColumnDesc();
                         col.setName("col" + i + 2);
-                        col.setDataType(DataType.kInt64);
+                        col.setDataType(DataType.kBigInt);
                         schema.add(col);
                     }
                     {

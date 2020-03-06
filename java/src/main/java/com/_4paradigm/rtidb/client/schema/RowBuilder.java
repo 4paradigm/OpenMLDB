@@ -1,7 +1,7 @@
 package com._4paradigm.rtidb.client.schema;
 
 import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.type.Type.DataType;
+import com._4paradigm.rtidb.client.type.DataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,7 +137,7 @@ public class RowBuilder {
     }
 
     public boolean appendInt32(int val) {
-        if (!check(DataType.kInt32)) {
+        if (!check(DataType.kInt)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -147,7 +147,7 @@ public class RowBuilder {
     }
 
     public boolean appendInt16(short val) {
-        if (!check(DataType.kInt16)) {
+        if (!check(DataType.kSmallInt)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -167,7 +167,7 @@ public class RowBuilder {
     }
 
     public boolean appendInt64(long val) {
-        if (!check(DataType.kInt64)) {
+        if (!check(DataType.kBigInt)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));

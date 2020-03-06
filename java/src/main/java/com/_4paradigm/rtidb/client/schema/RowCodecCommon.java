@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.schema;
 
-import com._4paradigm.rtidb.type.Type;
+
+import com._4paradigm.rtidb.client.type.DataType;
 
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -17,15 +18,15 @@ public class RowCodecCommon {
     public static final long UINT24_MAX = (1 << 24) - 1;
     public static final long UINT32_MAX = (1 << 32) - 1;
 
-    public static final Map<Type.DataType, Integer> TYPE_SIZE_MAP = new HashMap<>();
+    public static final Map<DataType, Integer> TYPE_SIZE_MAP = new HashMap<>();
     static {
-        TYPE_SIZE_MAP.put(Type.DataType.kBool, 1);
-        TYPE_SIZE_MAP.put(Type.DataType.kInt16, 2);
-        TYPE_SIZE_MAP.put(Type.DataType.kInt32, 4);
-        TYPE_SIZE_MAP.put(Type.DataType.kFloat, 4);
-        TYPE_SIZE_MAP.put(Type.DataType.kInt64, 8);
-        TYPE_SIZE_MAP.put(Type.DataType.kTimestamp, 8);
-        TYPE_SIZE_MAP.put(Type.DataType.kDouble, 8);
+        TYPE_SIZE_MAP.put(DataType.kBool, 1);
+        TYPE_SIZE_MAP.put(DataType.kSmallInt, 2);
+        TYPE_SIZE_MAP.put(DataType.kInt, 4);
+        TYPE_SIZE_MAP.put(DataType.kFloat, 4);
+        TYPE_SIZE_MAP.put(DataType.kBigInt, 8);
+        TYPE_SIZE_MAP.put(DataType.kTimestamp, 8);
+        TYPE_SIZE_MAP.put(DataType.kDouble, 8);
     }
 
     public static int getBitMapSize(int size) {

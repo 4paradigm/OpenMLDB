@@ -1,7 +1,7 @@
 package com._4paradigm.rtidb.client.schema;
 
 import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.type.Type.DataType;
+import com._4paradigm.rtidb.client.type.DataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -140,7 +140,7 @@ public class RowView {
     }
 
     public Integer getInt32(int idx) throws TabletException {
-        return (Integer) getValue(row, idx, DataType.kInt32);
+        return (Integer) getValue(row, idx, DataType.kInt);
     }
 
     public Long getTimestamp(int idx) throws TabletException {
@@ -148,11 +148,11 @@ public class RowView {
     }
 
     public Long getInt64(int idx) throws TabletException {
-        return (Long) getValue(row, idx, DataType.kInt64);
+        return (Long) getValue(row, idx, DataType.kBigInt);
     }
 
     public Short getInt16(int idx) throws TabletException {
-        return (Short) getValue(row, idx, DataType.kInt16);
+        return (Short) getValue(row, idx, DataType.kSmallInt);
     }
 
     public Float getFloat(int idx) throws TabletException {
@@ -163,16 +163,16 @@ public class RowView {
         return (Double) getValue(row, idx, DataType.kDouble);
     }
 
-    public Object getInteger(ByteBuffer row, int idx, DataType type) throws TabletException {
+    public Object getIntegersNum(ByteBuffer row, int idx, DataType type) throws TabletException {
         switch (type) {
-            case kInt16: {
+            case kSmallInt: {
                 return (Short) getValue(row, idx, type);
             }
-            case kInt32: {
+            case kInt: {
                 return (Integer) getValue(row, idx, type);
             }
             case kTimestamp:
-            case kInt64: {
+            case kBigInt: {
                 return (Long) getValue(row, idx, type);
             }
             default:
@@ -210,14 +210,14 @@ public class RowView {
                 }
                 break;
             }
-            case kInt16:
+            case kSmallInt:
                 val = row.getShort(offset);
                 break;
-            case kInt32:
+            case kInt:
                 val = row.getInt(offset);
                 break;
             case kTimestamp:
-            case kInt64:
+            case kBigInt:
                 val = row.getLong(offset);
                 break;
             case kFloat:

@@ -2,7 +2,9 @@ package com._4paradigm.rtidb.client.ha;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
+import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
+import com._4paradigm.rtidb.type.Type;
 
 import java.util.*;
 
@@ -29,14 +31,19 @@ public class TableHandler {
                 com._4paradigm.rtidb.common.Common.ColumnDesc cd = tableInfo.getColumnDescV1(i);
                 ColumnDesc ncd = new ColumnDesc();
                 ncd.setName(cd.getName());
-                ncd.setAddTsIndex(cd.getAddTsIdx());
-                if (cd.getIsTsCol()) {
-                    hasTsCol = true;
-                    tsPos.put(cd.getName(), i);
+                if (!tableInfo.hasTableType() ||
+                        tableInfo.getTableType() == Type.TableType.kTimeSeries) {
+                    ncd.setAddTsIndex(cd.getAddTsIdx());
+                    if (cd.getIsTsCol()) {
+                        hasTsCol = true;
+                        tsPos.put(cd.getName(), i);
+                    }
+                    ncd.setTsCol(cd.getIsTsCol());
+                    ncd.setType(ColumnType.valueFrom(cd.getType()));
+                } else {
+                    ncd.setDataType(DataType.valueFrom(cd.getDataType()));
+                    ncd.setNotNull(cd.getNotNull());
                 }
-                ncd.setTsCol(cd.getIsTsCol());
-                ncd.setType(ColumnType.valueFrom(cd.getType()));
-                ncd.setDataType(cd.getDataType());
                 schema.add(ncd);
                 if (cd.getAddTsIdx()) {
                     List<Integer> indexList = new ArrayList<Integer>();
