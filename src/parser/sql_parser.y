@@ -106,7 +106,7 @@ typedef void* yyscan_t;
 
 
 %token <intval> I32
-%token <strval> NEWLINE
+%token <strval> NEWLINES
 %token <intval> INDENT
 %token <strval> DEF
 
@@ -399,7 +399,6 @@ typedef void* yyscan_t;
                column_name
                function_name
                opt_existing_window_name
-               NEWLINES
                database_name table_name group_name file_path
 
 %type <intval> opt_window_exclusion_clause
@@ -416,7 +415,7 @@ grammar :
 
 
 line_list:
-	fun_def_block {
+		fun_def_block {
             trees.push_back($1);
         }
         | sql_stmt {
@@ -433,8 +432,7 @@ line_list:
         | line_list NEWLINES {$$ = $1;}
         | NEWLINES line_list {$$ = $2;}
         ;
-NEWLINES: NEWLINE {}
-	| NEWLINES NEWLINE {}
+
 fun_def_block : fn_header_indent_op NEWLINES stmt_block {
             $$ = node_manager->MakeFnDefNode($1, $3);
         }
@@ -450,7 +448,7 @@ fn_header_indent_op:
 
 
 stmt_block:
-        func_stmts NEWLINES FUNDEFEND {
+        func_stmts NEWLINES FUNDEFEND NEWLINES {
             emit("enter stmt block");
             $$ = $1;
         }

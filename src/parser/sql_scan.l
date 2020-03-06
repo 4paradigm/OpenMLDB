@@ -65,7 +65,7 @@ int64_t parse_string(const char *src, char *dest, int64_t len, int quote_type) {
 %}
 
 space [ \t]
-newline [\n\r]
+newline [\n\r]+
 non_newline [^\n\r]
 comment ("#"{non_newline}*)
 indent {space}*
