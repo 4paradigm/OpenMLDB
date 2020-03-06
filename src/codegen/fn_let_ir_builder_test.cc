@@ -540,6 +540,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(ptr, 0, &output);
+    ASSERT_EQ(0, ret2);
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
