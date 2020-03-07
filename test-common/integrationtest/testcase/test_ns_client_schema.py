@@ -106,9 +106,9 @@ class TestSchema(TestCaseBase):
         self.assertEqual(column_key[2], ["2", "mcc", "mcc", "ts2", "100min"])
 
         rs = self.ns_deleteindex(self.ns_leader, name, "card")
-        self.assertIn('Fail to delete index')
+        self.assertIn('Fail to delete index', rs)
         rs = self.ns_deleteindex(self.ns_leader, name, "mcc")
-        self.assertIn('delete index ok')
+        self.assertIn('delete index ok', rs)
 
         (schema, column_key) = self.ns_showschema(self.ns_leader, name)
         self.assertEqual(len(schema), 5)
@@ -147,9 +147,9 @@ class TestSchema(TestCaseBase):
         self.assertEqual(column_key[1], ["1", "mcc", "mcc", "ts1", "14400min"])
 
         rs = self.ns_deleteindex(self.ns_leader, name, "card")
-        self.assertIn('Fail to delete index')
+        self.assertIn('Fail to delete index', rs)
         rs = self.ns_deleteindex(self.ns_leader, name, "mcc")
-        self.assertIn('delete index ok')
+        self.assertIn('delete index ok', rs)
 
         (schema, column_key) = self.ns_showschema(self.ns_leader, name)
         self.assertEqual(len(schema), 4)
