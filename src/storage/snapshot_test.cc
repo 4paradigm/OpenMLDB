@@ -967,12 +967,6 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
     ASSERT_EQ(51, manifest.offset());
     ASSERT_EQ(49, manifest.count());
     ASSERT_EQ(7, manifest.term());
-    // check entry
-    FILE* fd = fopen(snapshot_name, "rb");
-    ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
-    std::string buffer;
-
 }
 
 TEST_F(SnapshotTest, MakeSnapshotLatest) {
