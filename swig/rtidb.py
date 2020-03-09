@@ -20,6 +20,7 @@ type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,100:__ret
   kTimestamp = 9,
   kVoid = 100
 '''
+NoneToken="None#*@!"
 
 class WriteOption:
   def __init__(self, updateIfExist = True, updateIfEqual = True):
@@ -76,6 +77,8 @@ class RTIDBClient:
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
     value = dict();
     for k in columns:
+      if columns[k] == None:
+        value.update({k: NoneToken})
       value.update({k: str(columns[k])})
     ok = self.__client.Put(table_name, value, _wo)
     if ok.code != 0:
@@ -118,7 +121,10 @@ class RTIDBClient:
         if mm == None:
           continue
         for k in mm:
-          result.update({k: type_map[mm[k].type](mm[k].buffer)})
+          if (mm[k] == NoneToken):
+            result.update({k:None})
+          else:
+            result.update({k: type_map[mm[k].type](mm[k].buffer)})
     
     return RtidbResult([result])
 

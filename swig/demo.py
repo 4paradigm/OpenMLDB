@@ -53,3 +53,16 @@ resp = nsc.traverse("test1")
 print("size ", resp.count())
 for l in resp:
   print(l)
+
+print("begin None put============================")
+data = {"card":"cardn","mcc":None, "p_biz_date":3}
+nsc.put("test1", data, None)
+
+print("begin query============================")
+ro = rtidb.ReadOption()
+ro.index.update({"card":"cardn"})
+resp = nsc.query("test1", ro)
+print("size ", resp.count())
+for l in resp:
+  for k in l:
+    print(k, l[k])
