@@ -43,14 +43,13 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
 }
 
 SQLNode *NodeManager::MakeSelectStmtNode(
-    bool is_distinct,
-    SQLNodeList *select_list, SQLNodeList *tableref_list, ExprNode *where_expr,
-    ExprListNode *group_expr_list, ExprNode *having_expr,
+    bool is_distinct, SQLNodeList *select_list, SQLNodeList *tableref_list,
+    ExprNode *where_expr, ExprListNode *group_expr_list, ExprNode *having_expr,
     ExprListNode *order_expr_list, SQLNodeList *window_list,
     SQLNode *limit_ptr) {
-    SelectStmt *node_ptr =
-        new SelectStmt(is_distinct, select_list, tableref_list, where_expr, group_expr_list,
-                       having_expr, order_expr_list, window_list, limit_ptr);
+    SelectStmt *node_ptr = new SelectStmt(
+        is_distinct, select_list, tableref_list, where_expr, group_expr_list,
+        having_expr, order_expr_list, window_list, limit_ptr);
     return RegisterNode(node_ptr);
 }
 
@@ -346,8 +345,14 @@ PlanNode *NodeManager::MakeMultiPlanNode(const PlanType &type) {
     return node_ptr;
 }
 
-PlanNode *NodeManager::MakeTablePlanNode(TableNode *node) {
+PlanNode *NodeManager::MakeTablePlanNode(const TableNode *node) {
     PlanNode *node_ptr = new TablePlanNode("", node->GetOrgTableName());
+    return RegisterNode(node_ptr);
+}
+
+PlanNode *NodeManager::MakeRenamePlanNode(PlanNode *node,
+                                          std::string alias_name) {
+    PlanNode *node_ptr = new RenamePlanNode(node, alias_name);
     return RegisterNode(node_ptr);
 }
 
@@ -363,10 +368,8 @@ WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
     RegisterNode(node_ptr);
     return node_ptr;
 }
-ProjectListNode *NodeManager::MakeProjectListPlanNode(
-    const std::string &table_name, WindowPlanNode *w_ptr) {
-    ProjectListNode *node_ptr =
-        new ProjectListNode(table_name, w_ptr, w_ptr != nullptr);
+ProjectListNode *NodeManager::MakeProjectListPlanNode(WindowPlanNode *w_ptr) {
+    ProjectListNode *node_ptr = new ProjectListNode(w_ptr, w_ptr != nullptr);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -536,14 +539,14 @@ SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
     }
 }
 
-DatasetNode* NodeManager::MakeDataset(const std::string& table) {
-    DatasetNode* db = new DatasetNode(table);
+DatasetNode *NodeManager::MakeDataset(const std::string &table) {
+    DatasetNode *db = new DatasetNode(table);
     batch_plan_node_list_.push_back(db);
     return db;
 }
 
-MapNode* NodeManager::MakeMapNode(const NodePointVector& nodes) {
-    MapNode* mn = new MapNode(nodes);
+MapNode *NodeManager::MakeMapNode(const NodePointVector &nodes) {
+    MapNode *mn = new MapNode(nodes);
     batch_plan_node_list_.push_back(mn);
     return mn;
 }
@@ -580,7 +583,9 @@ FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
     RegisterNode(node_ptr);
     return node_ptr;
 }
-PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type, ExprNode* condition) {
+PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right,
+                                    JoinType join_type,
+                                    const ExprNode *condition) {
     node::JoinPlanNode *node_ptr =
         new JoinPlanNode(left, right, join_type, condition);
     return RegisterNode(node_ptr);
@@ -595,10 +600,11 @@ PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node,
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeProjectPlanNode(
-    PlanNode *node, const PlanNodeList &projection_list,
+    PlanNode *node, const std::string &table,
+    const PlanNodeList &projection_list,
     const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping) {
     node::ProjectPlanNode *node_ptr =
-        new ProjectPlanNode(node, projection_list, pos_mapping);
+        new ProjectPlanNode(node, table, projection_list, pos_mapping);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {

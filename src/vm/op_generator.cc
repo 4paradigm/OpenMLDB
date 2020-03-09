@@ -238,14 +238,14 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectPlanNode* node,
     if (node->project_list_vec_.size() == 1) {
         return GenProjectListOp(dynamic_cast<::fesql::node::ProjectListNode*>(
                                     node->project_list_vec_[0]),
-                                db, module, op, status);
+                                db, node->table_, module, op, status);
     } else {
         std::vector<OpNode*> children;
         for (auto project_list : node->project_list_vec_) {
             OpNode* project_list_op = nullptr;
             if (!GenProjectListOp(
                     dynamic_cast<::fesql::node::ProjectListNode*>(project_list),
-                    db, module, &project_list_op, status)) {
+                    db, node->table_, module, &project_list_op, status)) {
                 return false;
             }
             children.push_back(project_list_op);
@@ -267,6 +267,7 @@ bool OpGenerator::GenProject(const ::fesql::node::ProjectPlanNode* node,
 }
 bool OpGenerator::GenProjectListOp(const ::fesql::node::ProjectListNode* node,
                                    const std::string& db,
+                                   const std::string& table,
                                    ::llvm::Module* module, OpNode** op,
                                    Status& status) {
     if (node == NULL || module == NULL || nullptr == op) {
@@ -275,11 +276,10 @@ bool OpGenerator::GenProjectListOp(const ::fesql::node::ProjectListNode* node,
         LOG(WARNING) << status.msg;
         return false;
     }
-    std::shared_ptr<TableHandler> table_handler =
-        catalog_->GetTable(db, node->GetTable());
+    std::shared_ptr<TableHandler> table_handler = catalog_->GetTable(db, table);
     if (!table_handler) {
         status.code = common::kTableNotFound;
-        status.msg = "fail to find table " + node->GetTable();
+        status.msg = "fail to find table " + table;
         LOG(WARNING) << status.msg;
         return false;
     }

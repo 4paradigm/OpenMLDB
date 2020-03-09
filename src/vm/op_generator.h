@@ -18,14 +18,14 @@
 #ifndef SRC_VM_OP_GENERATOR_H_
 #define SRC_VM_OP_GENERATOR_H_
 
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 #include "base/status.h"
-#include "vm/catalog.h"
 #include "llvm/IR/Module.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "vm/catalog.h"
 #include "vm/op.h"
 
 namespace fesql {
@@ -61,11 +61,11 @@ class OpGenerator {
                     const std::string& db, ::llvm::Module* module, OpNode** op,
                     Status& status);  // NOLINT
     bool GenProjectListOp(const ::fesql::node::ProjectListNode* node,
-                          const std::string& db, ::llvm::Module* module,
-                          OpNode** op,
+                          const std::string& db, const std::string& table,
+                          ::llvm::Module* module, OpNode** op,
                           Status& status);  // NOLINT
-    bool GenScan(const ::fesql::node::TablePlanNode* node, const std::string& db,
-                 ::llvm::Module* module, OpNode** op,
+    bool GenScan(const ::fesql::node::TablePlanNode* node,
+                 const std::string& db, ::llvm::Module* module, OpNode** op,
                  Status& status);  // NOLINT
 
     bool GenLimit(const ::fesql::node::LimitPlanNode* node,

@@ -32,6 +32,8 @@ enum SQLNodeType {
     kType,
     kResTarget,
     kTable,
+    kJoin,
+    kSubQuery,
     kWindowFunc,
     kWindowDef,
     kFrameBound,
@@ -188,6 +190,7 @@ enum PlanType {
     kPlanTypeSort,
     kPlanTypeDistinct,
     kPlanTypeProject,
+    kPlanTypeRename,
 
     kProjectList,
     kPlanTypeWindow,

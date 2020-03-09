@@ -85,6 +85,12 @@ class MultiChildPlanNode : public PlanNode {
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
 };
 
+class RenamePlanNode : public UnaryPlanNode {
+ public:
+    RenamePlanNode(PlanNode *node, const std::string table_name)
+        : UnaryPlanNode(node, kPlanTypeRename), table_(table_name) {}
+    const std::string table_;
+};
 class TablePlanNode : public LeafPlanNode {
  public:
     explicit TablePlanNode(const std::string &db, const std::string &table)
@@ -102,7 +108,7 @@ class DistinctPlanNode : public UnaryPlanNode {
 class JoinPlanNode : public BinaryPlanNode {
  public:
     JoinPlanNode(PlanNode *left, PlanNode *right, JoinType join_type,
-                 ExprNode *expression)
+                 const ExprNode *expression)
         : BinaryPlanNode(kPlanTypeJoin, left, right),
           join_type_(join_type),
           condition_(expression) {}
@@ -237,11 +243,9 @@ class ProjectListNode : public LeafPlanNode {
           is_window_agg_(false),
           scan_limit_(0L),
           projects({}) {}
-    ProjectListNode(const std::string &table_name, const WindowPlanNode *w_ptr,
-                    const bool is_window_agg)
+    ProjectListNode(const WindowPlanNode *w_ptr, const bool is_window_agg)
         : LeafPlanNode(kProjectList),
           w_ptr_(w_ptr),
-          table_name_(table_name),
           is_window_agg_(is_window_agg),
           scan_limit_(0L),
           projects({}) {}
@@ -255,14 +259,11 @@ class ProjectListNode : public LeafPlanNode {
 
     const bool IsWindowAgg() const { return is_window_agg_; }
 
-    const std::string GetTable() const { return table_name_; }
-
     void SetScanLimit(int scan_limit) { scan_limit_ = scan_limit; }
     const uint64_t GetScanLimit() const { return scan_limit_; }
 
  private:
     const WindowPlanNode *w_ptr_;
-    const std::string table_name_;
     bool is_window_agg_;
     uint64_t scan_limit_;
     PlanNodeList projects;
@@ -271,12 +272,15 @@ class ProjectListNode : public LeafPlanNode {
 class ProjectPlanNode : public UnaryPlanNode {
  public:
     explicit ProjectPlanNode(
-        PlanNode *node, const PlanNodeList &project_list_vec,
+        PlanNode *node, const std::string &table,
+        const PlanNodeList &project_list_vec,
         const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping)
         : UnaryPlanNode(node, kPlanTypeProject),
+          table_(table),
           project_list_vec_(project_list_vec),
           pos_mapping_(pos_mapping) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string table_;
     const PlanNodeList project_list_vec_;
     const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
 };

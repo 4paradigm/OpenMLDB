@@ -60,14 +60,14 @@ class NodeManager {
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
-    ProjectListNode *MakeProjectListPlanNode(const std::string &table_name,
-                                             WindowPlanNode *w);
+    ProjectListNode *MakeProjectListPlanNode(WindowPlanNode *w);
     FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
                                        const ExprNode *condition);
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
                                  node::ExprNode *expression);
-    PlanNode *MakeTablePlanNode(TableNode *node);
-    PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type, ExprNode* condition);
+    PlanNode *MakeTablePlanNode(const TableNode *node);
+    PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
+                           const ExprNode *condition);
     // Make SQLxxx Node
     SQLNode *MakeSQLNode(const SQLNodeType &type);
     SQLNode *MakeSelectStmtNode(bool is_distinct, SQLNodeList *select_list_ptr,
@@ -188,7 +188,8 @@ class NodeManager {
     PlanNode *MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list);
 
     PlanNode *MakeProjectPlanNode(
-        PlanNode *node, const PlanNodeList &project_list,
+        PlanNode *node, const std::string &table,
+        const PlanNodeList &project_list,
         const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping);
 
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
@@ -201,6 +202,8 @@ class NodeManager {
     InsertPlanNode *MakeInsertPlanNode(const InsertStmt *node);
 
     FuncDefPlanNode *MakeFuncPlanNode(const FnNodeFnDef *node);
+
+    PlanNode *MakeRenamePlanNode(PlanNode *node, const std::string alias_name);
 
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {

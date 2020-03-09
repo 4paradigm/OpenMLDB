@@ -410,18 +410,16 @@ class LimitNode : public SQLNode {
 };
 class TableRefNode : public SQLNode {
  public:
-    explicit TableRefNode(std::string alias_table_name)
-        : SQLNode(kTable, 0, 0), alias_table_name_(alias_table_name) {}
-
- protected:
-    std::string alias_table_name_;
+    explicit TableRefNode(SQLNodeType sql_type, std::string alias_table_name)
+        : SQLNode(sql_type, 0, 0), alias_table_name_(alias_table_name) {}
+    const std::string alias_table_name_;
 };
 class TableNode : public TableRefNode {
  public:
-    TableNode() : TableRefNode(""), org_table_name_("") {}
+    TableNode() : TableRefNode(kTable, ""), org_table_name_("") {}
 
     TableNode(const std::string &name, const std::string &alias)
-        : TableRefNode(alias), org_table_name_(name) {}
+        : TableRefNode(kTable, alias), org_table_name_(name) {}
 
     const std::string& GetOrgTableName() const { return org_table_name_; }
 
@@ -440,7 +438,7 @@ class JoinNode : public TableRefNode {
     JoinNode(const TableRefNode *left, const TableRefNode *right,
              const JoinType join_type, const ExprNode *condition,
              const std::string &alias)
-        : TableRefNode(alias),
+        : TableRefNode(kJoin, alias),
           left_(left),
           right_(right),
           join_type_(join_type),
@@ -629,14 +627,14 @@ class SubQueryExpr : public ExprNode {
         : ExprNode(kExprSubQuery), sub_query(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    const SQLNode *sub_query;
+    const SelectStmt *sub_query;
 };
 
 class SubQueryTableNode : public TableRefNode {
  public:
     SubQueryTableNode(const SubQueryExpr *sub_query,
                       const std::string &alias)
-        : TableRefNode(alias), sub_query_(sub_query) {}
+        : TableRefNode(kSubQuery, alias), sub_query_(sub_query) {}
     const SubQueryExpr *sub_query_;
 };
 

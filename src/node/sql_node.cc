@@ -346,6 +346,12 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kTable:
             output = "kTable";
             break;
+        case kJoin:
+            output = "kJoin";
+            break;
+        case kSubQuery:
+            output = "kSubQuery";
+            break;
         case kColumnDesc:
             output = "kColumnDesc";
             break;

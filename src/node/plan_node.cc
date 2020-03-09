@@ -192,7 +192,9 @@ void ProjectPlanNode::Print(std::ostream &output,
                             const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintPlanVector(output, org_tab + "\t", project_list_vec_, "project_plan",
+    PrintValue(output, org_tab + "\t", table_, "table", false);
+    output << "\n";
+    PrintPlanVector(output, org_tab + "\t", project_list_vec_, "project_list_vec",
                     true);
 }
 void LimitPlanNode::Print(std::ostream &output,

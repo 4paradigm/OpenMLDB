@@ -40,11 +40,13 @@ class Planner {
  protected:
     void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
-    int CreateSelectStmtPlan(const node::SQLNode *root, PlanNode **plan_tree,
+    bool CreateSelectStmtPlan(const node::SQLNode *root, PlanNode **plan_tree,
                              Status &status);  // NOLINT (runtime/references)
     void CreateCreateTablePlan(const node::SQLNode *root,
                                node::PlanNode **output,
                                Status &status);  // NOLINT (runtime/references)
+    bool CreateTableReferencePlanNode(const node::SQLNode *root,
+                                      node::PlanNode **output, Status &status);
     void CreateProjectPlanNode(const node::SQLNode *root, const uint32_t pos,
                                node::ProjectNode **output,
                                Status &status);  // NOLINT (runtime/references)
@@ -62,7 +64,7 @@ class Planner {
                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
     std::string MakeTableName(
-        const std::vector<node::PlanNode *> &relation_nodes) const;
+        const PlanNode* node) const;
 };
 
 class SimplePlanner : public Planner {
@@ -72,8 +74,6 @@ class SimplePlanner : public Planner {
                        PlanNodeList &plan_trees,
                        Status &status);  // NOLINT (runtime/references)
 };
-
-
 
 // TODO(chenjing): move to executor module
 bool TransformTableDef(const std::string &table_name,
