@@ -96,7 +96,7 @@ class TablePlanNode : public LeafPlanNode {
 
 class DistinctPlanNode : public UnaryPlanNode {
  public:
-    DistinctPlanNode(PlanNode* node): UnaryPlanNode(kPlanTypeDistinct,node)
+    DistinctPlanNode(PlanNode *node) : UnaryPlanNode(node, kPlanTypeDistinct) {}
 };
 
 class JoinPlanNode : public BinaryPlanNode {

@@ -580,9 +580,9 @@ FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
     RegisterNode(node_ptr);
     return node_ptr;
 }
-PlanNode *NodeManager::MakeCrossProductNode(PlanNode *left, PlanNode *right) {
+PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type, ExprNode* condition) {
     node::JoinPlanNode *node_ptr =
-        new JoinPlanNode(left, right, kJoinTypeFull, nullptr);
+        new JoinPlanNode(left, right, join_type, condition);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {

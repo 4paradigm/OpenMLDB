@@ -67,7 +67,7 @@ class NodeManager {
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
                                  node::ExprNode *expression);
     PlanNode *MakeTablePlanNode(TableNode *node);
-    PlanNode *MakeCrossProductNode(PlanNode *left, PlanNode *right);
+    PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type, ExprNode* condition);
     // Make SQLxxx Node
     SQLNode *MakeSQLNode(const SQLNodeType &type);
     SQLNode *MakeSelectStmtNode(bool is_distinct, SQLNodeList *select_list_ptr,

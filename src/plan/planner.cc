@@ -54,7 +54,7 @@ int Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
     iter++;
     // cross product if there are multi tables
     for (; iter != relation_nodes.cend(); iter++) {
-        current_node = node_manager_->MakeCrossProductNode(current_node, *iter);
+        current_node = node_manager_->MakeJoinNode(current_node, *iter, node::JoinType::kJoinTypeFull, nullptr);
     }
 
     // where condition
