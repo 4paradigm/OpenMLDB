@@ -194,7 +194,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(rows);
+    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
@@ -286,7 +286,7 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(rows);
+    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void StoreData(::fesql::storage::Table* table, int8_t* rows) {
