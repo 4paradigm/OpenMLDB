@@ -43,12 +43,13 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
 }
 
 SQLNode *NodeManager::MakeSelectStmtNode(
+    bool is_distinct,
     SQLNodeList *select_list, SQLNodeList *tableref_list, ExprNode *where_expr,
     ExprListNode *group_expr_list, ExprNode *having_expr,
     ExprListNode *order_expr_list, SQLNodeList *window_list,
     SQLNode *limit_ptr) {
     SelectStmt *node_ptr =
-        new SelectStmt(select_list, tableref_list, where_expr, group_expr_list,
+        new SelectStmt(is_distinct, select_list, tableref_list, where_expr, group_expr_list,
                        having_expr, order_expr_list, window_list, limit_ptr);
     return RegisterNode(node_ptr);
 }
@@ -345,8 +346,8 @@ PlanNode *NodeManager::MakeMultiPlanNode(const PlanType &type) {
     return node_ptr;
 }
 
-PlanNode *NodeManager::MakeRelationNode(TableNode *node) {
-    PlanNode *node_ptr = new RelationNode("", node->GetOrgTableName());
+PlanNode *NodeManager::MakeTablePlanNode(TableNode *node) {
+    PlanNode *node_ptr = new TablePlanNode("", node->GetOrgTableName());
     return RegisterNode(node_ptr);
 }
 
@@ -580,8 +581,8 @@ FnForInBlock *NodeManager::MakeForInBlock(FnForInNode *for_in_node,
     return node_ptr;
 }
 PlanNode *NodeManager::MakeCrossProductNode(PlanNode *left, PlanNode *right) {
-    node::CrossProductPlanNode *node_ptr =
-        new CrossProductPlanNode(left, right);
+    node::JoinPlanNode *node_ptr =
+        new JoinPlanNode(left, right, kJoinTypeFull, nullptr);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {

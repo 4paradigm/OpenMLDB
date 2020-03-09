@@ -298,6 +298,9 @@ void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     bool last_child = false;
+    PrintValue(output, tab, distinct_opt_ ? "true" : "false", "distinct_opt",
+               last_child);
+    output << "\n";
     PrintSQLNode(output, tab, where_clause_ptr_, "where_expr", last_child);
     output << "\n";
     PrintSQLNode(output, tab, group_clause_ptr_, "group_expr_list", last_child);

@@ -39,7 +39,7 @@ int Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
             return status.code;
         }
         node::TableNode *table_node = dynamic_cast<node::TableNode *>(node);
-        relation_nodes.push_back(node_manager_->MakeRelationNode(table_node));
+        relation_nodes.push_back(node_manager_->MakeTablePlanNode(table_node));
     }
 
     std::string table_name = MakeTableName(relation_nodes);
@@ -460,12 +460,12 @@ std::string Planner::MakeTableName(
     const std::vector<node::PlanNode *> &relation_nodes) const {
     // from tables
     auto iter = relation_nodes.cbegin();
-    std::string table_name = dynamic_cast<node::RelationNode *>(*iter)->table_;
+    std::string table_name = dynamic_cast<node::TablePlanNode *>(*iter)->table_;
     iter++;
     // cross product if there are multi tables
     for (; iter != relation_nodes.cend(); iter++) {
         table_name.append("_").append(
-            dynamic_cast<node::RelationNode *>(*iter)->table_);
+            dynamic_cast<node::TablePlanNode *>(*iter)->table_);
     }
     return table_name;
 }

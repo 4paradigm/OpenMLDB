@@ -91,6 +91,17 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COUNT(*) FROM t1;"));
 
 INSTANTIATE_TEST_CASE_P(
+    SqlDistinctParse, SqlParserTest,
+    testing::Values(
+        "SELECT distinct COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
+        "SELECT DISTINCT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
+        "SELECT DISTINCT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "SELECT DISTINCT COUNT(*) FROM t1;",
+        "SELECT distinct COL1 FROM t1 where COL1+COL2;",
+        "SELECT DISTINCT COL1 FROM t1 where COL1 > 10;"));
+INSTANTIATE_TEST_CASE_P(
     SqlWhereParse, SqlParserTest,
     testing::Values(
         "SELECT COL1 FROM t1 where COL1+COL2;",
@@ -100,8 +111,28 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 FROM t1 where COL1 > 10;"));
 
 INSTANTIATE_TEST_CASE_P(
+    SqlLikeParse, SqlParserTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 where COL like \"%abc\";",
+        "SELECT COL1 FROM t1 where COL1 like '%123';",
+        "SELECT COL1 FROM t1 where COL not like \"%abc\";",
+        "SELECT COL1 FROM t1 where COL1 not like '%123';",
+        "SELECT COL1 FROM t1 where COL1 not like 10;",
+        "SELECT COL1 FROM t1 where COL1 like 10;"
+        ));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlInParse, SqlParserTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 where COL in (1, 2, 3, 4, 5);",
+        "SELECT COL1 FROM t1 where COL1 in (\"abc\", \"xyz\", \"test\");",
+        "SELECT COL1 FROM t1 where COL1 not in (1,2,3,4,5);"));
+
+INSTANTIATE_TEST_CASE_P(
     SqlGroupParse, SqlParserTest,
     testing::Values(
+        "SELECT distinct sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
         "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
         "SELECT COL1 FROM t1 group by COL1+COL2;",
         "SELECT COL1 FROM t1 group by COL1;",
@@ -127,13 +158,13 @@ INSTANTIATE_TEST_CASE_P(
     SqlWhereGroupHavingOrderParse, SqlParserTest,
     testing::Values(
         "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;"
+        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
         "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0 order by COL1 limit 10;"
+        "COL2 having col1sum > 0 order by COL1 limit 10;",
         "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0 limit 10;"
+        "COL2 having col1sum > 0 limit 10;",
         "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
-        "COL2 having col1sum > 0;"
+        "COL2 having col1sum > 0;",
         "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
         "sum(COL1) > 0;",
         "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
@@ -171,6 +202,18 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT LastName,FirstName, Title, Salary FROM Employees AS T1 "
         "WHERE Salary >=(SELECT Avg(Salary) "
         "FROM Employees WHERE T1.Title = Employees.Title) Order by Title;",
+        "select * from \n"
+        "    (select * from stu where grade = 7) s\n"
+        "left join \n"
+        "    (select * from sco where subject = \"math\") t\n"
+        "on s.id = t.stu_id\n"
+        "union\n"
+        "select distinct * from \n"
+        "    (select distinct * from stu where grade = 7) s\n"
+        "right join \n"
+        "    (select distinct * from sco where subject = \"math\") t\n"
+        "on s.id = t.stu_id;",
+        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;",
         "select * from \n"
         "    (select * from stu where grade = 7) s\n"
         "left join \n"

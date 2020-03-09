@@ -85,26 +85,35 @@ class MultiChildPlanNode : public PlanNode {
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
 };
 
-class RelationNode : public LeafPlanNode {
+class TablePlanNode : public LeafPlanNode {
  public:
-    explicit RelationNode(const std::string &db, const std::string &table)
-        : LeafPlanNode(kPlanTypeRelation), db_(db), table_(table) {}
+    explicit TablePlanNode(const std::string &db, const std::string &table)
+        : LeafPlanNode(kPlanTypeTable), db_(db), table_(table) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
     const std::string db_;
     const std::string table_;
 };
 
+class DistinctPlanNode : public UnaryPlanNode {
+ public:
+    DistinctPlanNode(PlanNode* node): UnaryPlanNode(kPlanTypeDistinct,node)
+};
+
 class JoinPlanNode : public BinaryPlanNode {
  public:
-    JoinPlanNode(PlanNode *left, PlanNode *right, ExprNode *expression)
-        : BinaryPlanNode(kPlanTypeJoin, left, right), condition_(expression) {}
+    JoinPlanNode(PlanNode *left, PlanNode *right, JoinType join_type,
+                 ExprNode *expression)
+        : BinaryPlanNode(kPlanTypeJoin, left, right),
+          join_type_(join_type),
+          condition_(expression) {}
+    const JoinType join_type_;
     const ExprNode *condition_;
 };
 
 class UnionPlanNode : public BinaryPlanNode {
  public:
     UnionPlanNode(PlanNode *left, PlanNode *right, bool is_all)
-        : BinaryPlanNode(kPlanTypeJoin, left, right), is_all(true) {}
+        : BinaryPlanNode(kPlanTypeJoin, left, right), is_all(is_all) {}
     const bool is_all;
 };
 

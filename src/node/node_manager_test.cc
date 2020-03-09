@@ -26,11 +26,11 @@ TEST_F(NodeManagerTest, MakeSQLNode) {
     manager->MakeSQLNode(node::kOrderBy);
     manager->MakeSQLNode(node::kLimit);
 
-    manager->MakeRelationNode(
+    manager->MakeTablePlanNode(
         dynamic_cast<TableNode *>(manager->MakeTableNode("", "t1")));
-    manager->MakeRelationNode(
+    manager->MakeTablePlanNode(
         dynamic_cast<TableNode *>(manager->MakeTableNode("", "t2")));
-    manager->MakeRelationNode(
+    manager->MakeTablePlanNode(
         dynamic_cast<TableNode *>(manager->MakeTableNode("", "t3")));
 
     ASSERT_EQ(6, manager->GetParserNodeListSize());

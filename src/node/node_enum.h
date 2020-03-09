@@ -144,6 +144,7 @@ enum FnOperator {
     kFnOpGe,
     kFnOpDot,
     kFnOpAt,
+    kFnOpLike,
     kFnOpBracket,
     kFnOpNone
 };
@@ -181,10 +182,11 @@ enum PlanType {
     kPlanTypeSelect,
     kPlanTypeLimit,
     kPlanTypeFilter,
-    kPlanTypeRelation,
+    kPlanTypeTable,
     kPlanTypeJoin,
     kPlanTypeUnion,
     kPlanTypeSort,
+    kPlanTypeDistinct,
     kPlanTypeProject,
 
     kProjectList,

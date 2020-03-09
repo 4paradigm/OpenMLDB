@@ -64,7 +64,7 @@ class OpGenerator {
                           const std::string& db, ::llvm::Module* module,
                           OpNode** op,
                           Status& status);  // NOLINT
-    bool GenScan(const ::fesql::node::RelationNode* node, const std::string& db,
+    bool GenScan(const ::fesql::node::TablePlanNode* node, const std::string& db,
                  ::llvm::Module* module, OpNode** op,
                  Status& status);  // NOLINT
 

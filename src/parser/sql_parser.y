@@ -375,7 +375,6 @@ typedef void* yyscan_t;
 				fun_expr sql_expr sub_query_expr
  /* select stmt */
 %type <node>  sql_stmt stmt select_stmt union_stmt
-              opt_all_clause
               projection
               opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
@@ -392,7 +391,7 @@ typedef void* yyscan_t;
  /* create table */
 %type <node>  create_stmt column_desc column_index_item column_index_key
 %type <node>  cmd_stmt
-%type <flag>  op_not_null op_if_not_exist
+%type <flag>  op_not_null op_if_not_exist opt_distinct_clause
 %type <list>  column_desc_list column_index_item_list
 
 %type <list> opt_target_list
@@ -664,10 +663,10 @@ stmt:   select_stmt
 
 
 select_stmt:
-			SELECT opt_all_clause opt_target_list FROM table_references
+			SELECT opt_distinct_clause opt_target_list FROM table_references
 			where_expr group_expr having_expr opt_sort_clause window_clause limit_clause
             {
-                $$ = node_manager->MakeSelectStmtNode($3, $5, $6, $7, $8, $9, $10, $11);
+                $$ = node_manager->MakeSelectStmtNode($2, $3, $5, $6, $7, $8, $9, $10, $11);
             }
             | union_stmt
             {
@@ -852,9 +851,15 @@ op_not_null:    NOT NULLX
                 }
                 ;
 
-opt_all_clause:
-        ALL										{ $$ = NULL;}
-        | /*EMPTY*/								{ $$ = NULL; }
+opt_distinct_clause:
+        DISTINCT
+        {
+        	$$ = true;
+        }
+        | /*EMPTY*/
+        {
+        	$$ = false;
+        }
     ;
 
 
@@ -1233,6 +1238,27 @@ sql_expr:
      | NOT sql_expr
      {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpNot);
+     }
+     | sql_expr LIKE sql_expr
+     {
+     	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpLike);
+     }
+     | sql_expr NOT LIKE sql_expr
+     {
+     	$$ = node_manager->MakeUnaryExprNode(
+     		node_manager->MakeBinaryExprNode($1, $4, ::fesql::node::kFnOpLike),
+     		::fesql::node::kFnOpNot);
+
+     }
+     | sql_expr IN '(' sql_expr_list ')'
+     {
+     	$$ = node_manager->MakeBinaryExprNode($1, $4, ::fesql::node::kFnOpLike);
+     }
+     | sql_expr NOT IN '(' sql_expr_list ')'
+     {
+     	$$ = node_manager->MakeUnaryExprNode(
+     		node_manager->MakeBinaryExprNode($1, $5, ::fesql::node::kFnOpLike),
+     		::fesql::node::kFnOpNot);
      }
      | '(' sql_expr ')'
      {

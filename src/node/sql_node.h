@@ -106,6 +106,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "[]";
         case kFnOpDot:
             return ".";
+        case kFnOpLike:
+            return "LIKE";
         case kFnOpBracket:
             return "()";
         case kFnOpNone:
@@ -312,12 +314,12 @@ class FnNodeList : public FnNode {
 
 class SelectStmt : public SQLNode {
  public:
-    SelectStmt(SQLNodeList *select_list, SQLNodeList *tableref_list,
+    SelectStmt(bool is_distinct, SQLNodeList *select_list, SQLNodeList *tableref_list,
                ExprNode *where_expr, ExprListNode *group_expr_list,
                ExprNode *having_expr, ExprListNode *order_expr_list,
                SQLNodeList *window_list, SQLNode *limit_ptr)
         : SQLNode(kSelectStmt, 0, 0),
-          distinct_opt_(0),
+          distinct_opt_(is_distinct),
           where_clause_ptr_(where_expr),
           group_clause_ptr_(group_expr_list),
           having_clause_ptr_(having_expr),
@@ -350,7 +352,7 @@ class SelectStmt : public SQLNode {
     // Print
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    const int distinct_opt_;
+    const bool distinct_opt_;
     const ExprNode *where_clause_ptr_;
     const ExprListNode *group_clause_ptr_;
     const ExprNode *having_clause_ptr_;

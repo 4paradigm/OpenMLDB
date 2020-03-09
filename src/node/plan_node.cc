@@ -81,14 +81,30 @@ std::string NameOfPlanNodeType(const PlanType &type) {
     switch (type) {
         case kPlanTypeSelect:
             return std::string("kSelectPlan");
+        case kPlanTypeCmd:
+            return "kCmdPlan";
+        case kPlanTypeCreate:
+            return "kCreatePlan";
+        case kPlanTypeInsert:
+            return "kInsertPlan";
         case kPlanTypeScan:
-            return std::string("kScan");
+            return std::string("kScanPlan");
         case kPlanTypeLimit:
-            return std::string("kLimit");
+            return std::string("kLimitPlan");
+        case kPlanTypeFilter:
+            return "kFilter";
         case kPlanTypeProject:
             return std::string("kProjectPlan");
-        case kPlanTypeRelation:
-            return std::string("kRelation");
+        case kPlanTypeTable:
+            return std::string("kTablePlan");
+        case kPlanTypeJoin:
+            return "kJoinPlan";
+        case kPlanTypeUnion:
+            return "kUnionPlan";
+        case kPlanTypeSort:
+            return "kSortPlan";
+        case kPlanTypeDistinct:
+            return "kDistinctPlan";
         case kProjectList:
             return std::string("kProjectList");
         case kProjectNode:
@@ -185,7 +201,7 @@ void LimitPlanNode::Print(std::ostream &output,
     output << "\n";
     PrintValue(output, org_tab, std::to_string(limit_cnt_), "limit_cnt", true);
 }
-void RelationNode::Print(std::ostream &output,
+void TablePlanNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";

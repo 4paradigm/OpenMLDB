@@ -66,15 +66,18 @@ class NodeManager {
                                        const ExprNode *condition);
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
                                  node::ExprNode *expression);
-    PlanNode *MakeRelationNode(TableNode *node);
+    PlanNode *MakeTablePlanNode(TableNode *node);
     PlanNode *MakeCrossProductNode(PlanNode *left, PlanNode *right);
     // Make SQLxxx Node
     SQLNode *MakeSQLNode(const SQLNodeType &type);
-    SQLNode *MakeSelectStmtNode(
-        SQLNodeList *select_list_ptr, SQLNodeList *tableref_list_ptr,
-        ExprNode *where_expr, ExprListNode *group_expr_list,
-        ExprNode *having_expr, ExprListNode *order_expr_list,
-        SQLNodeList *window_list_ptr, SQLNode *limit_ptr);
+    SQLNode *MakeSelectStmtNode(bool is_distinct, SQLNodeList *select_list_ptr,
+                                SQLNodeList *tableref_list_ptr,
+                                ExprNode *where_expr,
+                                ExprListNode *group_expr_list,
+                                ExprNode *having_expr,
+                                ExprListNode *order_expr_list,
+                                SQLNodeList *window_list_ptr,
+                                SQLNode *limit_ptr);
     SQLNode *MakeUnionStmtNode(SQLNode *left, SQLNode *right, bool is_all);
     TableRefNode *MakeTableNode(const std::string &name,
                                 const std::string &alias);

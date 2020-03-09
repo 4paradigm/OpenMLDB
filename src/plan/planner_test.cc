@@ -82,9 +82,9 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
 
     plan_ptr = project_plan_node->GetChildren()[0];
     // validate limit 10
-    ASSERT_EQ(node::kPlanTypeRelation, plan_ptr->GetType());
-    node::RelationNode *relation_node =
-        reinterpret_cast<node::RelationNode *>(plan_ptr);
+    ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
+    node::TablePlanNode *relation_node =
+        reinterpret_cast<node::TablePlanNode *>(plan_ptr);
     ASSERT_EQ("t1", relation_node->table_);
     delete planner_ptr;
 }
@@ -148,9 +148,9 @@ TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
     ASSERT_TRUE(project_list->IsWindowAgg());
 
     plan_ptr = plan_ptr->GetChildren()[0];
-    ASSERT_EQ(node::kPlanTypeRelation, plan_ptr->GetType());
-    node::RelationNode *relation_node =
-        reinterpret_cast<node::RelationNode *>(plan_ptr);
+    ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
+    node::TablePlanNode *relation_node =
+        reinterpret_cast<node::TablePlanNode *>(plan_ptr);
     ASSERT_EQ("t", relation_node->table_);
     delete planner_ptr;
 }
@@ -222,9 +222,9 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
     ASSERT_TRUE(project_list->IsWindowAgg());
 
     plan_ptr = plan_ptr->GetChildren()[0];
-    ASSERT_EQ(node::kPlanTypeRelation, plan_ptr->GetType());
-    node::RelationNode *relation_node =
-        reinterpret_cast<node::RelationNode *>(plan_ptr);
+    ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
+    node::TablePlanNode *relation_node =
+        reinterpret_cast<node::TablePlanNode *>(plan_ptr);
     ASSERT_EQ("t1", relation_node->table_);
     delete planner_ptr;
 }
@@ -394,9 +394,9 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
     }
 
     plan_ptr = plan_ptr->GetChildren()[0];
-    ASSERT_EQ(node::kPlanTypeRelation, plan_ptr->GetType());
-    node::RelationNode *relation_node =
-        reinterpret_cast<node::RelationNode *>(plan_ptr);
+    ASSERT_EQ(node::kPlanTypeTable, plan_ptr->GetType());
+    node::TablePlanNode *relation_node =
+        reinterpret_cast<node::TablePlanNode *>(plan_ptr);
     ASSERT_EQ("t1", relation_node->table_);
     delete planner_ptr;
 }

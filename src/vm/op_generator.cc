@@ -149,9 +149,9 @@ bool OpGenerator::RoutingNode(
             GenLimit(limit_node, db, module, &cur_op, status);
             break;
         }
-        case ::fesql::node::kPlanTypeRelation: {
-            const ::fesql::node::RelationNode* relation_node =
-                (const ::fesql::node::RelationNode*)node;
+        case ::fesql::node::kPlanTypeTable: {
+            const ::fesql::node::TablePlanNode* relation_node =
+                (const ::fesql::node::TablePlanNode*)node;
             GenScan(relation_node, db, module, &cur_op, status);
             break;
         }
@@ -187,7 +187,7 @@ bool OpGenerator::RoutingNode(
     }
     return cur_op;
 }
-bool OpGenerator::GenScan(const ::fesql::node::RelationNode* node,
+bool OpGenerator::GenScan(const ::fesql::node::TablePlanNode* node,
                           const std::string& db, ::llvm::Module* module,
                           OpNode** op,
                           Status& status) {  // NOLINT
