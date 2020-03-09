@@ -21,39 +21,25 @@
 #include <vector>
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
+#include "storage/codec.h"
 
 namespace fesql {
 namespace codegen {
 
-#define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
-
-static const uint8_t VERSION_LENGTH = 2;
-static const uint8_t SIZE_LENGTH = 4;
-static const uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
-static const std::map<::fesql::type::Type, uint8_t> TYPE_SIZE_MAP = {
-    {::fesql::type::kBool, sizeof(bool)},
-    {::fesql::type::kInt16, sizeof(int16_t)},
-    {::fesql::type::kInt32, sizeof(int32_t)},
-    {::fesql::type::kFloat, sizeof(float)},
-    {::fesql::type::kInt64, sizeof(int64_t)},
-    {::fesql::type::kDouble, sizeof(double)}};
-
-BufNativeIRBuilder::BufNativeIRBuilder(::fesql::type::TableDef* table,
+BufNativeIRBuilder::BufNativeIRBuilder(const vm::Schema& schema,
                                        ::llvm::BasicBlock* block,
                                        ScopeVar* scope_var)
-    : table_(table),
-      block_(block),
-      sv_(scope_var),
-      variable_ir_builder_(block, scope_var),
-      types_() {
-    uint32_t offset = HEADER_LENGTH + BitMapSize(table_->columns_size());
+    : schema_(schema), block_(block), sv_(scope_var),
+variable_ir_builder_(block, scope_var),
+ types_() {
+    uint32_t offset = storage::GetStartOffset(schema_.size());
     uint32_t string_field_cnt = 0;
-    for (int32_t i = 0; i < table_->columns_size(); i++) {
-        const ::fesql::type::ColumnDef& column = table_->columns(i);
+    for (int32_t i = 0; i < schema_.size(); i++) {
+        const ::fesql::type::ColumnDef& column = schema_.Get(i);
         fesql::node::DataType data_type;
         if (!SchemaType2DataType(column.type(), &data_type)) {
             LOG(WARNING) << "fail to convert schema type to data type " +
-                                fesql::type::Type_Name(column.type());
+                             fesql::type::Type_Name(column.type());
             return;
         }
         if (data_type == ::fesql::node::kVarchar) {
@@ -63,8 +49,8 @@ BufNativeIRBuilder::BufNativeIRBuilder(::fesql::type::TableDef* table,
                 std::make_pair(string_field_cnt, string_field_cnt));
             string_field_cnt += 1;
         } else {
-            auto it = TYPE_SIZE_MAP.find(column.type());
-            if (it == TYPE_SIZE_MAP.end()) {
+            auto it = storage::TYPE_SIZE_MAP.find(column.type());
+            if (it == storage::TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << "fail to find column type "
                              << ::fesql::type::Type_Name(column.type());
             } else {
@@ -95,7 +81,7 @@ bool BufNativeIRBuilder::BuildGetFiledOffset(const std::string& name,
     }
     Types::iterator it = types_.find(name);
     if (it == types_.end()) {
-        LOG(WARNING) << "no column " << name << " in table " << table_->name();
+        LOG(WARNING) << "no column " << name << " in schema";
         return false;
     }
     // TODO(wangtaize) support null check
@@ -103,6 +89,7 @@ bool BufNativeIRBuilder::BuildGetFiledOffset(const std::string& name,
     *offset = it->second.second;
     return true;
 }
+
 bool BufNativeIRBuilder::BuildGetField(const std::string& name,
                                        ::llvm::Value* row_ptr,
                                        ::llvm::Value* row_size,
@@ -252,172 +239,9 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t offset,
     return true;
 }
 
-bool BufNativeIRBuilder::BuildGetCol(const std::string& name,
-                                     ::llvm::Value* window_ptr,
-                                     ::llvm::Value** output) {
-    if (window_ptr == NULL || output == NULL) {
-        LOG(WARNING) << "input args have null";
-        return false;
-    }
-
-    Types::iterator it = types_.find(name);
-    if (it == types_.end()) {
-        LOG(WARNING) << "no column " << name << " in table " << table_->name();
-        return false;
-    }
-    // TODO(wangtaize) support null check
-    ::fesql::node::DataType& fe_type = it->second.first;
-    ::llvm::IRBuilder<> builder(block_);
-    uint32_t offset = it->second.second;
-    switch (fe_type) {
-        case ::fesql::node::kInt16:
-        case ::fesql::node::kInt32:
-        case ::fesql::node::kInt64:
-        case ::fesql::node::kFloat:
-        case ::fesql::node::kDouble: {
-            return BuildGetPrimaryCol("fesql_storage_get_col", window_ptr,
-                                      offset, fe_type, output);
-        }
-        case ::fesql::node::kVarchar: {
-            uint32_t next_offset = 0;
-            auto nit = next_str_pos_.find(offset);
-            if (nit != next_str_pos_.end()) {
-                next_offset = nit->second;
-            }
-            DLOG(INFO) << "get string with offset " << offset << " next offset "
-                       << next_offset << " for col " << name;
-            return BuildGetStringCol(offset, next_offset, fe_type, window_ptr,
-                                     output);
-        }
-        default: {
-            return false;
-        }
-    }
-}
-bool BufNativeIRBuilder::BuildGetPrimaryCol(const std::string& fn_name,
-                                            ::llvm::Value* row_ptr,
-                                            uint32_t offset,
-                                            fesql::node::DataType type,
-                                            ::llvm::Value** output) {
-    if (row_ptr == NULL || output == NULL) {
-        LOG(WARNING) << "input args have null ptr";
-        return false;
-    }
-    ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Type* i8_ty = builder.getInt8Ty();
-    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Type* i32_ty = builder.getInt32Ty();
-
-    ::llvm::Type* list_ref_type = NULL;
-    bool ok = GetLLVMListType(block_->getModule(), type, &list_ref_type);
-    if (!ok) {
-        LOG(WARNING) << "fail to get list type";
-        return false;
-    }
-    uint32_t col_iterator_size;
-    ok = GetLLVMColumnSize(type, &col_iterator_size);
-    if (!ok) {
-        LOG(WARNING) << "fail to get col list size";
-    }
-    // alloca memory on stack for col list
-    ::llvm::ArrayType* array_type =
-        ::llvm::ArrayType::get(i8_ty, col_iterator_size);
-    ::llvm::Value* col_iter = builder.CreateAlloca(array_type);
-    // alloca memory on stack
-    ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
-    ::llvm::Value* data_ptr_ptr =
-        builder.CreateStructGEP(list_ref_type, list_ref, 0);
-    data_ptr_ptr = builder.CreatePointerCast(
-        data_ptr_ptr, col_iter->getType()->getPointerTo());
-    builder.CreateStore(col_iter, data_ptr_ptr, false);
-    col_iter = builder.CreatePointerCast(col_iter, i8_ptr_ty);
-
-    ::llvm::Value* val_offset = builder.getInt32(offset);
-    ::fesql::type::Type schema_type;
-    if (!DataType2SchemaType(type, &schema_type)) {
-        LOG(WARNING) << "fail to convert data type to schema type: "
-                     << node::DataTypeName(type);
-        return false;
-    }
-    ::llvm::Value* val_type_id =
-        builder.getInt32(static_cast<int32_t>(schema_type));
-
-    ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        fn_name, i32_ty, i8_ptr_ty, i32_ty, i32_ty, i8_ptr_ty);
-    builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
-                                   row_ptr, val_offset, val_type_id, col_iter});
-    *output = list_ref;
-    return true;
-}
-bool BufNativeIRBuilder::BuildGetStringCol(uint32_t offset,
-                                           uint32_t next_str_field_offset,
-                                           fesql::node::DataType type,
-                                           ::llvm::Value* window_ptr,
-                                           ::llvm::Value** output) {
-    if (window_ptr == NULL || output == NULL) {
-        LOG(WARNING) << "input args have null ptr";
-        return false;
-    }
-
-    ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Type* i8_ty = builder.getInt8Ty();
-    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Type* i32_ty = builder.getInt32Ty();
-
-    ::llvm::Type* list_ref_type = NULL;
-    bool ok = GetLLVMListType(block_->getModule(), type, &list_ref_type);
-    if (!ok) {
-        LOG(WARNING) << "fail to get list type";
-        return false;
-    }
-    uint32_t col_iterator_size;
-    ok = GetLLVMColumnSize(type, &col_iterator_size);
-    if (!ok) {
-        LOG(WARNING) << "fail to get col list size";
-    }
-    // alloca memory on stack for col list
-    ::llvm::ArrayType* array_type =
-        ::llvm::ArrayType::get(i8_ty, col_iterator_size);
-    ::llvm::Value* col_iter = builder.CreateAlloca(array_type);
-
-    // alloca memory on stack
-    ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
-
-    ::llvm::Value* data_ptr_ptr =
-        builder.CreateStructGEP(list_ref_type, list_ref, 0);
-    data_ptr_ptr = builder.CreatePointerCast(
-        data_ptr_ptr, col_iter->getType()->getPointerTo());
-    builder.CreateStore(col_iter, data_ptr_ptr, false);
-    col_iter = builder.CreatePointerCast(col_iter, i8_ptr_ty);
-
-    // get str field declear
-    ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
-        "fesql_storage_get_str_col", i32_ty, i8_ptr_ty, i32_ty, i32_ty, i32_ty,
-        i32_ty, i8_ptr_ty);
-
-    ::llvm::Value* str_offset = builder.getInt32(offset);
-    ::llvm::Value* next_str_offset = builder.getInt32(next_str_field_offset);
-    ::fesql::type::Type schema_type;
-    if (!DataType2SchemaType(type, &schema_type)) {
-        LOG(WARNING) << "fail to convert data type to schema type: "
-                     << node::DataTypeName(type);
-        return false;
-    }
-    ::llvm::Value* val_type_id =
-        builder.getInt32(static_cast<int32_t>(schema_type));
-    // get the data ptr
-    // TODO(wangtaize) add status check
-    builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{
-                                   window_ptr, str_offset, next_str_offset,
-                                   builder.getInt32(str_field_start_offset_),
-                                   val_type_id, col_iter});
-    *output = list_ref;
-    return true;
-}
 
 BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
-    const std::map<uint32_t, ::llvm::Value*>* outputs,
-    const std::vector<::fesql::type::ColumnDef>* schema,
+    const std::map<uint32_t, ::llvm::Value*>* outputs, const vm::Schema& schema,
     ::llvm::BasicBlock* block)
     : outputs_(outputs),
       schema_(schema),
@@ -425,15 +249,15 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
       offset_vec_(),
       str_field_cnt_(0),
       block_(block) {
-    str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema_->size());
-    for (uint32_t idx = 0; idx < schema_->size(); idx++) {
-        const ::fesql::type::ColumnDef& column = schema_->at(idx);
+    str_field_start_offset_ = storage::GetStartOffset(schema_.size());
+    for (int32_t idx = 0; idx < schema_.size(); idx++) {
+        const ::fesql::type::ColumnDef& column = schema_.Get(idx);
         if (column.type() == ::fesql::type::kVarchar) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
-            auto it = TYPE_SIZE_MAP.find(column.type());
-            if (it == TYPE_SIZE_MAP.end()) {
+            auto it = storage::TYPE_SIZE_MAP.find(column.type());
+            if (it == storage::TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                              << " is not supported";
             } else {
@@ -471,7 +295,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     builder.CreateStore(i8_ptr, output_ptr, false);
     // encode all field to buf
     // append header
-    ok = AppendHeader(i8_ptr, row_size, builder.getInt32(schema_->size()));
+    ok = AppendHeader(i8_ptr, row_size, builder.getInt32(schema_.size()));
 
     if (!ok) {
         return false;
@@ -479,8 +303,8 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
 
     ::llvm::Value* str_body_offset = NULL;
     ::llvm::Value* str_addr_space_val = NULL;
-    for (uint32_t idx = 0; idx < schema_->size(); idx++) {
-        const ::fesql::type::ColumnDef& column = schema_->at(idx);
+    for (int32_t idx = 0; idx < schema_.size(); idx++) {
+        const ::fesql::type::ColumnDef& column = schema_.Get(idx);
         // TODO(wangtaize) null check
         ::llvm::Value* val = outputs_->at(idx);
         switch (column.type()) {
@@ -536,6 +360,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     }
     return true;
 }
+
 bool BufNativeEncoderIRBuilder::AppendString(
     ::llvm::Value* i8_ptr, ::llvm::Value* buf_size, ::llvm::Value* str_val,
     ::llvm::Value* str_addr_space, ::llvm::Value* str_body_offset,
@@ -652,7 +477,7 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
     }
 
     ::llvm::IRBuilder<> builder(block_);
-    if (str_field_cnt_ <= 0 || schema_->size() == 0) {
+    if (str_field_cnt_ <= 0 || schema_.size() == 0) {
         *output_ptr = builder.getInt32(str_field_start_offset_);
         return true;
     }
@@ -666,8 +491,8 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
     }
     // build get string length and call native functon
     ::llvm::Type* size_ty = builder.getInt32Ty();
-    for (uint32_t idx = 0; idx < schema_->size(); ++idx) {
-        const ::fesql::type::ColumnDef& column = schema_->at(idx);
+    for (int32_t idx = 0; idx < schema_.size(); ++idx) {
+        const ::fesql::type::ColumnDef& column = schema_.Get(idx);
         DLOG(INFO) << "output column " << column.name() << " " << idx;
         if (column.type() == ::fesql::type::kVarchar) {
             ::llvm::Value* fe_str = outputs_->at(idx);

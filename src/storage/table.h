@@ -16,20 +16,20 @@
 #include "base/iterator.h"
 #include "storage/codec.h"
 #include "storage/segment.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace storage {
 
-using ::fesql::base::Iterator;
 using ::fesql::type::IndexDef;
 using ::fesql::type::TableDef;
 
 static constexpr uint32_t SEG_CNT = 8;
 
-class TableIterator {
+class TableIterator : public vm::Iterator {
  public:
     TableIterator() = default;
-    explicit TableIterator(Iterator<uint64_t, DataBlock*>* ts_it);
+    explicit TableIterator(base::Iterator<uint64_t, DataBlock*>* ts_it);
     TableIterator(Segment** segments, uint32_t seg_cnt);
     ~TableIterator();
     void Seek(uint64_t time);
@@ -39,9 +39,9 @@ class TableIterator {
     void Next();
     void NextTs();
     void NextTsInPks();
-    Slice GetValue() const;
-    uint64_t GetKey() const;
-    Slice GetPK() const;
+    const Slice GetValue();
+    const uint64_t GetKey();
+    const Slice GetPK();
     void SeekToFirst();
 
  private:
@@ -51,8 +51,8 @@ class TableIterator {
     Segment** segments_ = NULL;
     uint32_t seg_cnt_ = 0;
     uint32_t seg_idx_ = 0;
-    Iterator<Slice, void*>* pk_it_ = NULL;
-    Iterator<uint64_t, DataBlock*>* ts_it_ = NULL;
+    base::Iterator<Slice, void*>* pk_it_ = NULL;
+    base::Iterator<uint64_t, DataBlock*>* ts_it_ = NULL;
 };
 
 class Table {
@@ -69,8 +69,10 @@ class Table {
 
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
                                                const uint64_t ts);
+
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk,
                                                const std::string& index_name);
+
     std::unique_ptr<TableIterator> NewIterator(const std::string& pk);
 
     std::unique_ptr<TableIterator> NewTraverseIterator(
@@ -96,6 +98,12 @@ class Table {
     const std::map<std::string, IndexSt>& GetIndexMap() const {
         return index_map_;
     }
+
+    inline const TableDef& GetTableDef() { return table_def_; }
+
+    inline Segment*** GetSegments() { return segments_; }
+
+    inline uint32_t GetSegCnt() { return seg_cnt_; }
 
  private:
     std::unique_ptr<TableIterator> NewIndexIterator(const std::string& pk,

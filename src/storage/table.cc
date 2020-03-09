@@ -149,8 +149,8 @@ bool Table::Put(const char* row, uint32_t size) {
     return true;
 }
 
-std::unique_ptr<TableIterator> Table::NewIndexIterator(
-    const std::string& pk, const uint32_t index) {
+std::unique_ptr<TableIterator> Table::NewIndexIterator(const std::string& pk,
+                                                       const uint32_t index) {
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
         seg_idx = ::fesql::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
@@ -208,7 +208,7 @@ std::unique_ptr<TableIterator> Table::NewTraverseIterator() {
 
 // Iterator
 
-TableIterator::TableIterator(Iterator<uint64_t, DataBlock*>* ts_it)
+TableIterator::TableIterator(base::Iterator<uint64_t, DataBlock*>* ts_it)
     : ts_it_(ts_it) {}
 
 TableIterator::TableIterator(Segment** segments, uint32_t seg_cnt)
@@ -325,15 +325,15 @@ void TableIterator::Next() {
     }
 }
 
-Slice TableIterator::GetValue() const {
+const Slice TableIterator::GetValue() {
     return Slice(
         ts_it_->GetValue()->data,
         RowView::GetSize(reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
 }
 
-uint64_t TableIterator::GetKey() const { return ts_it_->GetKey(); }
+const uint64_t TableIterator::GetKey() { return ts_it_->GetKey(); }
 
-Slice TableIterator::GetPK() const {
+const Slice TableIterator::GetPK() {
     if (pk_it_ == NULL) {
         return Slice();
     }

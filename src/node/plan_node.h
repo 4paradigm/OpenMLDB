@@ -19,6 +19,7 @@
 #include "node/node_enum.h"
 namespace fesql {
 namespace node {
+
 std::string NameOfPlanNodeType(const PlanType &type);
 
 class PlanNode {
@@ -270,38 +271,6 @@ class ProjectPlanNode : public UnaryPlanNode {
     const PlanNodeList project_list_vec_;
     const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
 };
-//
-// class MergePlanNode : public MultiChildPlanNode {
-// public:
-//    explicit MergePlanNode(uint32_t columns_size)
-//        : MultiChildPlanNode(kPlanTypeMerge) {
-//        pos_mapping_.resize(columns_size);
-//    }
-//    ~MergePlanNode() {}
-//
-//    bool AddChild(PlanNode *node) {
-//        children_.push_back(node);
-//        uint32_t project_list_idx = children_.size() - 1;
-//        ProjectListNode *project_list = dynamic_cast<ProjectListNode *>(node);
-//        for (uint32_t i = 0; i < project_list->GetProjects().size(); ++i) {
-//            ProjectNode *project =
-//                dynamic_cast<ProjectNode *>(project_list->GetProjects()[i]);
-//            uint32_t dis_pos = project->GetPos();
-//            if (dis_pos >= pos_mapping_.size()) {
-//                pos_mapping_.resize(dis_pos + 1);
-//            }
-//            pos_mapping_[dis_pos] = std::make_pair(project_list_idx, i);
-//        }
-//        return true;
-//    }
-//
-//    const std::vector<std::pair<uint32_t, uint32_t>> &GetPosMapping() const {
-//        return pos_mapping_;
-//    }
-//
-// private:
-//    std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
-//};
 
 class CreatePlanNode : public LeafPlanNode {
  public:

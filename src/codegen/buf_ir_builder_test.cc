@@ -22,7 +22,12 @@
 #include <vector>
 #include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
+#include "storage/codec.h"
+#include "storage/type_native_fn.h"
+#include "storage/window.h"
+
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -36,9 +41,6 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-#include "storage/codec.h"
-#include "storage/type_ir_builder.h"
-#include "storage/window.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -85,6 +87,7 @@ T PrintList(int8_t* input) {
     std::cout << "]";
     return sum;
 }
+
 int16_t PrintListInt16(int8_t* input) { return PrintList<int16_t>(input); }
 int32_t PrintListInt32(int8_t* input) { return PrintList<int32_t>(input); }
 int64_t PrintListInt64(int8_t* input) { return PrintList<int64_t>(input); }
@@ -133,46 +136,40 @@ class BufIRBuilderTest : public ::testing::Test {
 void RunEncode(int8_t** output_ptr) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
-    std::vector<::fesql::type::ColumnDef> schema;
     {
-        ::fesql::type::ColumnDef column;
-        column.set_type(::fesql::type::kInt16);
-        column.set_name("col1");
-        schema.push_back(column);
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt16);
+        column->set_name("col1");
     }
 
     {
-        ::fesql::type::ColumnDef column;
-        column.set_type(::fesql::type::kInt32);
-        column.set_name("col2");
-        schema.push_back(column);
-    }
-    {
-        ::fesql::type::ColumnDef column;
-        column.set_type(::fesql::type::kFloat);
-        column.set_name("col3");
-        schema.push_back(column);
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt32);
+        column->set_name("col2");
     }
 
     {
-        ::fesql::type::ColumnDef column;
-        column.set_type(::fesql::type::kDouble);
-        column.set_name("col4");
-        schema.push_back(column);
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kFloat);
+        column->set_name("col3");
     }
 
     {
-        ::fesql::type::ColumnDef column;
-        column.set_type(::fesql::type::kInt64);
-        column.set_name("col5");
-        schema.push_back(column);
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kDouble);
+        column->set_name("col4");
     }
 
     {
-        ::fesql::type::ColumnDef column;
-        column.set_type(::fesql::type::kVarchar);
-        column.set_name("col6");
-        schema.push_back(column);
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kInt64);
+        column->set_name("col5");
+    }
+
+    {
+        ::fesql::type::ColumnDef* column = table.add_columns();
+        column->set_type(::fesql::type::kVarchar);
+        column->set_name("col6");
     }
 
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -201,7 +198,7 @@ void RunEncode(int8_t** output_ptr) {
     bool ok = GetConstFeString(hello, entry_block, &string_ref);
     ASSERT_TRUE(ok);
     outputs.insert(std::make_pair(5, string_ref));
-    BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, &schema,
+    BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, table.columns(),
                                                   entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
@@ -292,7 +289,7 @@ void RunCaseV1(T expected, const ::fesql::type::Type& type,
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
     sv.Enter("enter row scope");
-    BufNativeIRBuilder buf_builder(&table, entry_block, &sv);
+    BufNativeIRBuilder buf_builder(table.columns(), entry_block, &sv);
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
@@ -442,7 +439,7 @@ void RunColCase(T expected, const ::fesql::type::Type& type,
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
     sv.Enter("enter row scope");
-    BufNativeIRBuilder buf_builder(&table, entry_block, &sv);
+    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;

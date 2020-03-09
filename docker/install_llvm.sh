@@ -38,3 +38,4 @@ else
     touch llvm_succ
 fi
 
+#cd ${WORK_DIR} && rm -rf ${DEPS_SOURCE}

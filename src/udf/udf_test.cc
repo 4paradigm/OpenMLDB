@@ -63,7 +63,7 @@ class UDFTest : public ::testing::Test {
 };
 
 TEST_F(UDFTest, UDF_sum_test) {
-    ListV<storage::Row> window(rows);
+    ListV<storage::Row> window(&rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
@@ -127,7 +127,7 @@ TEST_F(UDFTest, UDF_sum_test) {
 }
 
 TEST_F(UDFTest, UDF_max_test) {
-    ListV<storage::Row> impl(rows);
+    ListV<storage::Row> impl(&rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
@@ -191,7 +191,7 @@ TEST_F(UDFTest, UDF_max_test) {
 }
 
 TEST_F(UDFTest, UDF_min_test) {
-    ListV<fesql::storage::Row> impl(rows);
+    ListV<fesql::storage::Row> impl(&rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
@@ -254,7 +254,7 @@ TEST_F(UDFTest, UDF_min_test) {
     }
 }
 TEST_F(UDFTest, GetColTest) {
-    ListV<fesql::storage::Row> impl(rows);
+    ListV<fesql::storage::Row> impl(&rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     for (int i = 0; i < 10; ++i) {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
@@ -278,7 +278,7 @@ TEST_F(UDFTest, GetColTest) {
 }
 
 TEST_F(UDFTest, GetColHeapTest) {
-    ListV<fesql::storage::Row> impl(rows);
+    ListV<fesql::storage::Row> impl(&rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     for (int i = 0; i < 10000; ++i) {
         int8_t buf[size];  // NOLINT

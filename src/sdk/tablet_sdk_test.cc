@@ -33,7 +33,7 @@ using namespace llvm::orc;  // NOLINT
 namespace fesql {
 namespace sdk {
 enum EngineRunMode { RUN, RUNBATCH, RUNONE };
-class TabletSdkTest :public ::testing::TestWithParam<EngineRunMode> {
+class TabletSdkTest : public ::testing::TestWithParam<EngineRunMode> {
  public:
     TabletSdkTest() {
         base_tablet_port_ = 8300;
@@ -70,6 +70,7 @@ TEST_P(TabletSdkTest, test_normal) {
     req.add_pids(0);
     req.set_db("db1");
     type::TableDef* table_def = req.mutable_table();
+    table_def->set_catalog("db1");
     table_def->set_name("t1");
     {
         ::fesql::type::ColumnDef* column = table_def->add_columns();
@@ -1546,8 +1547,6 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
                 ASSERT_TRUE(it->GetInt32(4, &val));
                 ASSERT_EQ(val, 5);
             }
-
-
 
             it->Next();
             {

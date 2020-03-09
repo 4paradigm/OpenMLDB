@@ -18,24 +18,29 @@
 #ifndef SRC_CODEGEN_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_EXPR_IR_BUILDER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "base/status.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/predicate_expr_ir_builder.h"
+#include "codegen/row_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "codegen/variable_ir_builder.h"
+#include "codegen/window_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 
 namespace fesql {
 namespace codegen {
+
 class ExprIRBuilder {
  public:
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
+
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                  BufNativeIRBuilder* buf_ir_builder, const bool row_mode,
+                  const vm::Schema& schema, const bool row_mode,
                   const std::string& row_ptr_name,
                   const std::string& row_size_name, ::llvm::Module* module);
 
@@ -76,15 +81,17 @@ class ExprIRBuilder {
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
+    vm::Schema schema_;
     bool row_mode_;
     std::string row_ptr_name_;
     std::string row_size_name_;
     VariableIRBuilder variable_ir_builder_;
-    BufNativeIRBuilder* buf_ir_builder_;
     // TODO(chenjing): remove following ir builder member
     ArithmeticIRBuilder arithmetic_ir_builder_;
     PredicateIRBuilder predicate_ir_builder_;
     ::llvm::Module* module_;
+    std::unique_ptr<RowDecodeIRBuilder> row_ir_builder_;
+    std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
 };
 }  // namespace codegen
 }  // namespace fesql

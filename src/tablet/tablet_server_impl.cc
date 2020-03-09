@@ -27,14 +27,19 @@
 namespace fesql {
 namespace tablet {
 
-TabletServerImpl::TabletServerImpl() : slock_(), tables_(), engine_() {}
+TabletServerImpl::TabletServerImpl() : slock_(), engine_(), catalog_() {}
 
 TabletServerImpl::~TabletServerImpl() {}
 
 bool TabletServerImpl::Init() {
-    engine_ = std::move(std::unique_ptr<vm::Engine>(
-        new vm::Engine(dynamic_cast<vm::TableMgr*>(this))));
-    DLOG(INFO) << "init tablet ok";
+    catalog_ = std::shared_ptr<TabletCatalog>(new TabletCatalog());
+    bool ok = catalog_->Init();
+    if (!ok) {
+        LOG(WARNING) << "fail to init catalog ";
+        return false;
+    }
+    engine_ = std::move(std::unique_ptr<vm::Engine>(new vm::Engine(catalog_)));
+    LOG(INFO) << "init tablet ok";
     return true;
 }
 
@@ -57,14 +62,9 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
     }
 
     for (int32_t i = 0; i < request->pids_size(); ++i) {
-        std::shared_ptr<vm::TableStatus> table_status(new vm::TableStatus(
-            request->tid(), request->pids(i), request->db(), request->table()));
-
-        std::unique_ptr<storage::Table> table(new storage::Table(
+        std::shared_ptr<storage::Table> table(new storage::Table(
             request->tid(), request->pids(i), request->table()));
-
         bool ok = table->Init();
-
         if (!ok) {
             LOG(WARNING) << "fail to init table storage for table "
                          << request->table().name();
@@ -72,20 +72,20 @@ void TabletServerImpl::CreateTable(RpcController* ctrl,
             status->set_msg("fail to init table storage");
             return;
         }
-
-        table_status->table = std::move(table);
-        ok = AddTableLocked(table_status);
+        ok = AddTableLocked(table);
         if (!ok) {
-            LOG(WARNING) << "table with name " << table_status->table_def.name()
+            LOG(WARNING) << "table with name " << request->table().name()
                          << " exists";
             status->set_code(common::kTableExists);
             status->set_msg("table exist");
             return;
         }
+        // TODO(wangtaize) just one partition
+        break;
     }
     status->set_code(common::kOk);
     DLOG(INFO) << "create table with name " << request->table().name()
-              << " done";
+               << " done";
 }
 
 void TabletServerImpl::Insert(RpcController* ctrl, const InsertRequest* request,
@@ -97,19 +97,17 @@ void TabletServerImpl::Insert(RpcController* ctrl, const InsertRequest* request,
         status->set_msg("db or table name is empty");
         return;
     }
+    std::shared_ptr<TabletTableHandler> handler =
+        GetTableLocked(request->db(), request->table());
 
-    std::shared_ptr<vm::TableStatus> table =
-        GetTableDef(request->db(), request->table());
-
-    if (!table) {
+    if (!handler) {
         status->set_code(common::kTableNotFound);
         status->set_msg("table is not found");
         return;
     }
 
-    DLOG(INFO) << "put key " << request->key() << " value "
-               << base::DebugString(request->row());
-    bool ok = table->table->Put(request->row().c_str(), request->row().size());
+    bool ok =
+        handler->GetTable()->Put(request->row().c_str(), request->row().size());
     if (!ok) {
         status->set_code(common::kTablePutFailed);
         status->set_msg("fail to put row");
@@ -118,91 +116,6 @@ void TabletServerImpl::Insert(RpcController* ctrl, const InsertRequest* request,
         return;
     }
     status->set_code(common::kOk);
-}
-
-bool TabletServerImpl::AddTableLocked(std::shared_ptr<vm::TableStatus>& table) {
-    std::lock_guard<base::SpinMutex> lock(slock_);
-    return AddTableUnLocked(table);
-}
-
-bool TabletServerImpl::AddTableUnLocked(
-    std::shared_ptr<vm::TableStatus>& table) {
-    Partition& partition = tables_[table->db][table->tid];
-    Partition::iterator it = partition.find(table->pid);
-    if (it != partition.end()) {
-        return false;
-    }
-    table_names_[table->db].insert(
-        std::make_pair(table->table_def.name(), table->tid));
-    partition.insert(std::make_pair(table->pid, table));
-    return true;
-}
-
-std::shared_ptr<vm::TableStatus> TabletServerImpl::GetTableUnLocked(
-    const std::string& db, uint32_t tid, uint32_t pid) {
-    Tables::iterator it = tables_.find(db);
-    if (it == tables_.end()) {
-        return std::shared_ptr<vm::TableStatus>();
-    }
-
-    Table::iterator tit = it->second.find(tid);
-    if (tit == it->second.end()) {
-        return std::shared_ptr<vm::TableStatus>();
-    }
-
-    Partition::iterator pit = tit->second.find(pid);
-    if (pit == tit->second.end()) {
-        return std::shared_ptr<vm::TableStatus>();
-    }
-
-    return pit->second;
-}
-
-std::shared_ptr<vm::TableStatus> TabletServerImpl::GetTableLocked(
-    const std::string& db, uint32_t tid, uint32_t pid) {
-    std::lock_guard<base::SpinMutex> lock(slock_);
-    return GetTableUnLocked(db, tid, pid);
-}
-
-std::shared_ptr<vm::TableStatus> TabletServerImpl::GetTableDefUnLocked(
-    const std::string& db, uint32_t tid) {
-    Tables::iterator tit = tables_.find(db);
-    if (tit == tables_.end()) {
-        return std::shared_ptr<vm::TableStatus>();
-    }
-
-    Table::iterator pit = tit->second.find(tid);
-    if (pit == tit->second.end()) {
-        return std::shared_ptr<vm::TableStatus>();
-    }
-
-    if (pit->second.size() <= 0) {
-        return std::shared_ptr<vm::TableStatus>();
-    }
-    return pit->second.begin()->second;
-}
-
-std::shared_ptr<vm::TableStatus> TabletServerImpl::GetTableDef(
-    const std::string& db, uint32_t tid) {
-    std::lock_guard<base::SpinMutex> lock(slock_);
-    return GetTableDefUnLocked(db, tid);
-}
-
-std::shared_ptr<vm::TableStatus> TabletServerImpl::GetTableDef(
-    const std::string& db, const std::string& name) {
-    std::lock_guard<base::SpinMutex> lock(slock_);
-    TableNames::iterator it = table_names_.find(db);
-    if (it == table_names_.end()) {
-        return std::shared_ptr<vm::TableStatus>();
-    }
-
-    std::map<std::string, uint32_t>::iterator iit = it->second.find(name);
-    if (iit == it->second.end()) {
-        return std::shared_ptr<vm::TableStatus>();
-    }
-
-    uint32_t tid = iit->second;
-    return GetTableDefUnLocked(db, tid);
 }
 
 void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
@@ -245,32 +158,24 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         response->add_result_set(ptr, *reinterpret_cast<uint32_t*>(ptr + 2));
         free(ptr);
     }
-    // TODO(wangtaize) opt the schema
-    std::vector<::fesql::type::ColumnDef>::const_iterator sit =
-        session.GetSchema().begin();
-    for (; sit != session.GetSchema().end(); ++sit) {
-        ::fesql::type::ColumnDef* column = response->add_schema();
-        column->CopyFrom(*sit);
-    }
+    response->mutable_schema()->CopyFrom(session.GetSchema());
     status->set_code(common::kOk);
 }
+
 void TabletServerImpl::GetTableSchema(RpcController* ctrl,
                                       const GetTablesSchemaRequest* request,
                                       GetTableSchemaReponse* response,
                                       Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<vm::TableStatus> table =
-        GetTableDef(request->db(), request->name());
-
     ::fesql::common::Status* status = response->mutable_status();
-    if (!table) {
-        status->set_msg("Fail to get table schema");
-        status->set_code(common::kBadRequest);
+    std::shared_ptr<TabletTableHandler> handler =
+        GetTableLocked(request->db(), request->name());
+    if (!handler) {
+        status->set_code(common::kTableNotFound);
+        status->set_msg("table is not found");
         return;
     }
-    *(response->mutable_schema()) = table.get()->table_def;
-//    DLOG(INFO) << response->schema().name();
-    return;
+    response->mutable_schema()->CopyFrom(handler->GetTable()->GetTableDef());
 }
 
 }  // namespace tablet

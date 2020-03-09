@@ -5,6 +5,7 @@
 //
 
 #pragma once
+#include <stdint.h>
 
 namespace fesql {
 namespace base {

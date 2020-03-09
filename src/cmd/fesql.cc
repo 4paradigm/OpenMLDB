@@ -522,6 +522,7 @@ int main(int argc, char *argv[]) {
         ::fesql::cmd::StartTablet(argc, argv);
     } else if (FLAGS_role == "client") {
         ::fesql::cmd::StartClient(argv);
+    } else if (FLAGS_role == "csv") {
     } else {
         std::cout << "Start failed! FLAGS_role must be tablet, client, dbms"
                   << std::endl;

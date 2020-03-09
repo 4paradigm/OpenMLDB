@@ -3,5 +3,5 @@
 # compile_in_docker.sh
 
 ln -sf /depends/thirdparty thirdparty
-source /opt/rh/devtoolset-8/enable && bash tools/compile.sh
+source /opt/rh/devtoolset-7/enable && bash tools/compile.sh
 

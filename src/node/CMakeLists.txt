@@ -9,7 +9,6 @@ target_link_libraries(node_manager_test fesql_node ${COMMON_LIBS} gtest pthread)
 add_test(node_manager_test node_manager_test --gtest_output=xml:${CMAKE_BINARY_DIR}/node_manager_test.xml)
 list(APPEND test_list node_manager_test)
 
-
 add_executable(sql_node_test sql_node_test.cc)
 target_link_libraries(sql_node_test fesql_node ${COMMON_LIBS} gtest pthread)
 add_test(sql_node_test sql_node_test --gtest_output=xml:${CMAKE_BINARY_DIR}/sql_node_test.xml)

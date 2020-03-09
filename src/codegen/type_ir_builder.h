@@ -18,10 +18,12 @@
 #ifndef SRC_CODEGEN_TYPE_IR_BUILDER_H_
 #define SRC_CODEGEN_TYPE_IR_BUILDER_H_
 
-#include <node/node_enum.h>
 #include <string>
 #include <vector>
+#include "node/node_enum.h"
+#include "storage/codec.h"
 #include "codegen/ir_base_builder.h"
+
 namespace fesql {
 namespace codegen {
 
@@ -34,6 +36,11 @@ struct String {
     int32_t size;
     char* data;
 };
+
+struct Timestamp {
+    int64_t ts;
+};
+
 
 inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
                                             ::llvm::Module* m,  // NOLINT
@@ -101,9 +108,7 @@ inline const bool ConvertFeSQLType2LLVMType(const node::TypeNode* data_type,
     return true;
 }
 
-struct Timestamp {
-    int64_t ts;
-};
+
 
 }  // namespace codegen
 }  // namespace fesql

@@ -5,11 +5,11 @@ include_directories(${INCLUDE_DIRECTORIES}
 add_library(fesql_dbms STATIC dbms_server_impl.cc)
 add_dependencies(fesql_dbms fesql_proto)
 
-add_executable(fesql_server_dbms_test dbms_server_impl_test.cc)
-target_link_libraries(fesql_server_dbms_test fesql_dbms fesql_tablet
+add_executable(dbms_server_test dbms_server_impl_test.cc)
+target_link_libraries(dbms_server_test fesql_dbms fesql_tablet
     fesql_storage fesql_vm fesql_parser fesql_planner fesql_codegen
     fesql_proto fesql_udf fesql_node
     brpc protobuf gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread)
-add_test(fesql_server_dbms_test fesql_server_dbms_test --gtest_output=xml:${CMAKE_BINARY_DIR}/fesql_server_dbms_test.xml)
-list(APPEND test_list fesql_server_dbms_test)
+add_test(dbms_server_test dbms_server_test --gtest_output=xml:${CMAKE_BINARY_DIR}/dbms_server_test.xml)
+list(APPEND test_list dbms_server_test)
 

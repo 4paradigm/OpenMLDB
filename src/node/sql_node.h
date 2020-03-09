@@ -421,9 +421,9 @@ class TableNode : public TableRefNode {
     TableNode(const std::string &name, const std::string &alias)
         : TableRefNode(alias), org_table_name_(name) {}
 
-    std::string GetOrgTableName() const { return org_table_name_; }
+    const std::string& GetOrgTableName() const { return org_table_name_; }
 
-    std::string GetAliasTableName() const { return alias_table_name_; }
+    const std::string& GetAliasTableName() const { return alias_table_name_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 

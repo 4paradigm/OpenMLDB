@@ -23,20 +23,21 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "codegen/row_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "codegen/variable_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/type.pb.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace codegen {
 
-class BufNativeEncoderIRBuilder {
+class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
  public:
-    BufNativeEncoderIRBuilder(
-        const std::map<uint32_t, ::llvm::Value*>* outputs,
-        const std::vector<::fesql::type::ColumnDef>* schema,
-        ::llvm::BasicBlock* block);
+    BufNativeEncoderIRBuilder(const std::map<uint32_t, ::llvm::Value*>* outputs,
+                              const vm::Schema& schema,
+                              ::llvm::BasicBlock* block);
 
     ~BufNativeEncoderIRBuilder();
 
@@ -59,24 +60,21 @@ class BufNativeEncoderIRBuilder {
 
  private:
     const std::map<uint32_t, ::llvm::Value*>* outputs_;
-    const std::vector<::fesql::type::ColumnDef>* schema_;
+    vm::Schema schema_;
     uint32_t str_field_start_offset_;
     std::vector<uint32_t> offset_vec_;
     uint32_t str_field_cnt_;
     ::llvm::BasicBlock* block_;
 };
 
-class BufNativeIRBuilder {
+class BufNativeIRBuilder : public RowDecodeIRBuilder {
  public:
-    BufNativeIRBuilder(::fesql::type::TableDef* table,
-                       ::llvm::BasicBlock* block, ScopeVar* scope_var);
+    BufNativeIRBuilder(const vm::Schema& schema, ::llvm::BasicBlock* block,
+                       ScopeVar* scope_var);
     ~BufNativeIRBuilder();
 
     bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
                        ::llvm::Value* row_size, ::llvm::Value** output);
-
-    bool BuildGetCol(const std::string& name, ::llvm::Value* window_ptr,
-                     ::llvm::Value** output);
 
     bool BuildGetFiledOffset(const std::string& name, uint32_t* offset,
                              ::fesql::node::DataType* fe_type);
@@ -89,6 +87,7 @@ class BufNativeIRBuilder {
     bool BuildGetPrimaryCol(const std::string& fn_name, ::llvm::Value* row_ptr,
                             uint32_t offset, fesql::node::DataType type,
                             ::llvm::Value** output);
+
     bool BuildGetStringField(uint32_t offset, uint32_t next_str_field_offset,
                              ::llvm::Value* row_ptr, ::llvm::Value* size,
                              ::llvm::Value** output);
@@ -98,7 +97,7 @@ class BufNativeIRBuilder {
                            ::llvm::Value** output);
 
  private:
-    ::fesql::type::TableDef* const table_;
+    vm::Schema schema_;
     ::llvm::BasicBlock* block_;
 
     ScopeVar* sv_;

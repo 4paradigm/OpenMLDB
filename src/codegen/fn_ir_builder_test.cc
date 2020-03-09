@@ -237,7 +237,7 @@ TEST_F(FnIRBuilderTest, test_list_at_pos) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListV<int32_t> list(&vec);
     fesql::storage::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(test, 1, &list_ref,
@@ -263,7 +263,7 @@ TEST_F(FnIRBuilderTest, test_for_in_sum) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListV<int32_t> list(&vec);
     fesql::storage::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
@@ -282,7 +282,7 @@ TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListV<int32_t> list(&vec);
     fesql::storage::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
@@ -311,7 +311,7 @@ TEST_F(FnIRBuilderTest, test_for_in_condition2_sum) {
         "end\n";
 
     std::vector<int32_t> vec = {-4, -2, 1, 3, 5, 7, 9};
-    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListV<int32_t> list(&vec);
     fesql::storage::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
@@ -333,7 +333,7 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_add_assign) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListV<int32_t> list(&vec);
     fesql::storage::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
@@ -350,7 +350,7 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_minus_assign) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListV<int32_t> list(&vec);
     fesql::storage::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
@@ -368,7 +368,7 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_multi_assign) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListV<int32_t> list(&vec);
     fesql::storage::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
@@ -386,7 +386,7 @@ TEST_F(FnIRBuilderTest, test_for_in_sum_fdiv_assign) {
         "end";
 
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    fesql::storage::ListV<int32_t> list(vec);
+    fesql::storage::ListV<int32_t> list(&vec);
     fesql::storage::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<double, fesql::storage::ListRef *, int32_t>(
