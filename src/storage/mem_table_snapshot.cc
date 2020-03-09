@@ -373,6 +373,13 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
         has_error = true;
     }
 
+    // get deleted index
+    std::set<uint32_t> deleted_index;
+    for (const auto& it : table->GetColumnMap()) {
+        if (it.second->status != ::rtidb::storage::IndexStat::kReady) {
+            deleted_index.insert(it.first);
+        }
+    }
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
@@ -417,7 +424,8 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
                     std::string combined_key = entry.dimensions(pos).key() + "|" + 
                             std::to_string(entry.dimensions(pos).idx());
                     auto iter = deleted_keys_.find(combined_key);
-                    if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
+                    if ((iter != deleted_keys_.end() && cur_offset <= iter->second) || 
+                            deleted_index.count(entry.dimensions(pos).idx())) {
                         deleted_pos_set.insert(pos);
                     }
                 }

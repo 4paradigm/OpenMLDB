@@ -474,6 +474,125 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
 
 }
 
+TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
+    std::string snapshot_dir = FLAGS_db_root_path + "/4_2/snapshot";
+    std::string binlog_dir = FLAGS_db_root_path + "/4_2/binlog";
+
+    ::rtidb::base::MkdirRecur(snapshot_dir);
+    {
+        std::string snapshot1 = "20200309.sdb";
+        std::string full_path = snapshot_dir + "/" + snapshot1;
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::Writer writer(wf);
+        {
+            ::rtidb::api::LogEntry entry;
+            entry.set_ts(9527);
+            entry.set_value("test1");
+            entry.set_log_index(1);
+            ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+            d1->set_key("card0");
+            d1->set_idx(0);
+            ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+            d2->set_key("merchant0");
+            d2->set_idx(1);
+            std::string val;
+            bool ok = entry.SerializeToString(&val);
+            ASSERT_TRUE(ok);
+            Slice sval(val.c_str(), val.size());
+            Status status = writer.AddRecord(sval);
+            ASSERT_TRUE(status.ok());
+        }
+        {
+            ::rtidb::api::LogEntry entry;
+            entry.set_ts(9528);
+            entry.set_value("test2");
+            entry.set_log_index(2);
+            ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+            d1->set_key("card0");
+            d1->set_idx(0);
+            ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+            d2->set_key("merchant0");
+            d2->set_idx(1);
+            std::string val;
+            bool ok = entry.SerializeToString(&val);
+            ASSERT_TRUE(ok);
+            Slice sval(val.c_str(), val.size());
+            Status status = writer.AddRecord(sval);
+            ASSERT_TRUE(status.ok());
+        }
+    }
+
+    {
+        std::string snapshot1 = "20200310.sdb.tmp";
+        std::string full_path = snapshot_dir + "/" + snapshot1;
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::Writer writer(wf);
+        ::rtidb::api::LogEntry entry;
+        entry.set_pk("test1");
+        entry.set_ts(9527);
+        entry.set_value("test1");
+        std::string val;
+        bool ok = entry.SerializeToString(&val);
+        ASSERT_TRUE(ok);
+        Slice sval(val.c_str(), val.size());
+        Status status = writer.AddRecord(sval);
+        ASSERT_TRUE(status.ok());
+        entry.set_pk("test1");
+        entry.set_ts(9528);
+        entry.set_value("test2");
+        ok = entry.SerializeToString(&val);
+        ASSERT_TRUE(ok);
+        Slice sval2(val.c_str(), val.size());
+        status = writer.AddRecord(sval2);
+        ASSERT_TRUE(status.ok());
+    }
+
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("card", 0));
+    mapping.insert(std::make_pair("merchant", 1));
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 2, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    table->Init();
+    table->DeleteIndex("merchant");
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    MemTableSnapshot snapshot(4, 2, log_part, FLAGS_db_root_path);
+    ASSERT_TRUE(snapshot.Init());
+    int ret = snapshot.GenManifest("20200309.sdb", 4, 2, 5);
+    ASSERT_EQ(0, ret);
+    uint64_t snapshot_offset = 0;
+    uint64_t latest_offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
+    Binlog binlog(log_part, binlog_dir);
+    binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
+    ASSERT_EQ(2, latest_offset);
+    {
+        Ticket ticket;
+        TableIterator* it = table->NewIterator(0, "card0", ticket);
+        it->Seek(9528);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(9528, it->GetKey());
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
+        ASSERT_EQ("test2", value2_str);
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(9527, it->GetKey());
+        std::string value3_str(it->GetValue().data(), it->GetValue().size());
+        ASSERT_EQ("test1", value3_str);
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+    {
+        Ticket ticket;
+        TableIterator* it = table->NewIterator(1, "merchant0", ticket);
+        ASSERT_TRUE(it==NULL);
+    }
+    ASSERT_EQ(2, table->GetRecordCnt());
+    ASSERT_EQ(2, table->GetRecordIdxCnt());
+}
+
 
 TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::string snapshot_dir = FLAGS_db_root_path + "/2_2/snapshot";
@@ -708,6 +827,152 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     ASSERT_EQ(59, manifest.offset());
     ASSERT_EQ(46, manifest.count());
     ASSERT_EQ(7, manifest.term());
+}
+
+TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    MemTableSnapshot snapshot(1, 3, log_part, FLAGS_db_root_path);
+    snapshot.Init();
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("card", 0));
+    mapping.insert(std::make_pair("merchant", 1));
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 1, 3, 8, mapping, 2, ::rtidb::api::TTLType::kAbsoluteTime);
+    table->Init();
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+    std::string log_path = FLAGS_db_root_path + "/1_3/binlog/";
+    std::string snapshot_path = FLAGS_db_root_path + "/1_3/snapshot/";
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset++);
+    int count = 0;
+    for (; count < 10; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        entry.set_value("value");
+        entry.set_term(5);
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card"+std::to_string(count));
+        d1->set_idx(0);
+        ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+        d2->set_key("merchant"+std::to_string(count));
+        d2->set_idx(1);
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
+    for (; count < 30; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card"+std::to_string(count));
+        d1->set_idx(0);
+        ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+        d2->set_key("merchant"+std::to_string(count));
+        d2->set_idx(1);
+        entry.set_term(6);
+        if (count == 20) {
+            // set one timeout key
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
+        } else {
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        }
+        entry.set_value("value");
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+    uint64_t offset_value;
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
+    ASSERT_EQ(0, ret);
+    std::vector<std::string> vec;
+    ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2, vec.size());
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(log_path, vec);
+    ASSERT_EQ(2, vec.size());
+
+    std::string full_path = snapshot_path + "MANIFEST";
+    ::rtidb::api::Manifest manifest;
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+    ASSERT_EQ(30, manifest.offset());
+    ASSERT_EQ(29, manifest.count());
+    ASSERT_EQ(6, manifest.term());
+    for (; count < 50; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card"+std::to_string(count));
+        d1->set_idx(0);
+        ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+        d2->set_key("merchant"+std::to_string(count));
+        d2->set_idx(1);
+        entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        entry.set_value("value");
+        entry.set_term(7);
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        entry.set_method_type(::rtidb::api::MethodType::kDelete);
+        ::rtidb::api::Dimension* dimension = entry.add_dimensions();
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card9");
+        d1->set_idx(0);
+        ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+        d2->set_key("merchant9");
+        d2->set_idx(1);
+        entry.set_term(5);
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+    
+    table->DeleteIndex("merchant");
+
+    ret = snapshot.MakeSnapshot(table, offset_value, 0);
+    ASSERT_EQ(0, ret);
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2, vec.size());
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(log_path, vec);
+    ASSERT_EQ(2, vec.size());
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+
+    ASSERT_EQ(51, manifest.offset());
+    ASSERT_EQ(49, manifest.count());
+    ASSERT_EQ(7, manifest.term());
+    // check entry
+    FILE* fd = fopen(snapshot_name, "rb");
+    ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    std::string buffer;
+
 }
 
 TEST_F(SnapshotTest, MakeSnapshotLatest) {
