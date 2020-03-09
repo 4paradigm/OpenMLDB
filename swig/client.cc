@@ -55,7 +55,8 @@ static int ConvertColumnDesc(
 }
 
 
-int encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, const std::vector<std::string>& value_vec, std::string& buffer) {
+int encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema,
+        const std::vector<std::string>& value_vec, std::string& buffer) {
     rtidb::base::RowBuilder rb(schema);
     uint32_t total_size = rb.CalTotalLength(buffer.size());
     buffer.resize(total_size);
@@ -117,7 +118,8 @@ int encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema
     return 0;
 }
 
-void decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, std::string& value, std::vector<std::string>& value_vec) {
+void decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, std::string& value,
+        std::vector<std::string>& value_vec) {
     rtidb::base::RowView rv(schema, reinterpret_cast<int8_t*>(&value[0]), value.size());
     for (int32_t i = 0; i < schema.size(); i++) {
         std::string col = "";
@@ -462,7 +464,8 @@ GeneralResult RtidbClient::Delete(const std::string& name, const std::map<std::s
     return result;
 }
 
-GeneralResult RtidbClient::Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> values, const WriteOption& wo) {
+GeneralResult RtidbClient::Update(const std::string& name, const std::map<std::string, std::string>& condition,
+        const std::map<std::string, std::string> values, const WriteOption& wo) {
     GeneralResult result;
     std::shared_ptr<TableHandler> th;
     {
