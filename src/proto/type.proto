@@ -16,3 +16,16 @@ enum DataType {
     kTimestamp = 9;
     kVoid = 100;
 }
+
+enum TableType {
+    kTimeSeries = 1; 
+    kRelational = 2;
+}
+
+enum IndexType {
+    kUnique = 1; // uinque index
+    kNoUinque = 2;
+    kPrimaryKey = 3; 
+    kAutoGen = 4;  // auto gen primary key
+    kIncrement = 5; // auto gen increment id primary key
+}

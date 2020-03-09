@@ -27,6 +27,20 @@ enum TableStat {
     kSnapshotPaused
 };
 
+enum IndexStat {
+    kReady = 0,
+    kWaiting,
+    kDeleting,
+    kDeleted
+};
+
+struct ColumnKey {
+    ColumnKey() : status(IndexStat::kReady) {}
+    ~ColumnKey() = default;
+    std::atomic<IndexStat> status;
+    std::vector<uint32_t> column_idx;
+};
+
 class Table {
 
 public:
@@ -164,8 +178,12 @@ public:
         return ts_mapping_;
     }
 
-    inline std::map<uint32_t, std::vector<uint32_t>>& GetColumnMap() {
+    inline std::map<uint32_t, std::shared_ptr<ColumnKey>>& GetColumnMap() {
         return column_key_map_;
+    }
+
+    inline bool IsIndexDeleted(uint32_t idx) {
+        return column_key_map_.count(idx) && column_key_map_[idx]->status.load(std::memory_order_relaxed);
     }
 
     inline void SetTTLType(const ::rtidb::api::TTLType& type) {
@@ -182,10 +200,10 @@ public:
 
     TTLDesc GetTTL(uint32_t index) {
         auto pos = column_key_map_.find(index);
-        if (pos != column_key_map_.end() && !pos->second.empty()) {
-            if (pos->second.front() < abs_ttl_vec_.size()) {
-                return TTLDesc(abs_ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed)/(60*1000),
-                    lat_ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed));
+        if (pos != column_key_map_.end() && !pos->second->column_idx.empty()) {
+            if (pos->second->column_idx.front() < abs_ttl_vec_.size()) {
+                return TTLDesc(abs_ttl_vec_[pos->second->column_idx.front()]->load(std::memory_order_relaxed)/(60*1000),
+                    lat_ttl_vec_[pos->second->column_idx.front()]->load(std::memory_order_relaxed));
             }
         }
         return TTLDesc(abs_ttl_.load(std::memory_order_relaxed)/(60*1000),
@@ -241,7 +259,7 @@ protected:
     std::string schema_;
     std::map<std::string, uint32_t> mapping_;
     std::map<std::string, uint8_t> ts_mapping_;
-    std::map<uint32_t, std::vector<uint32_t>> column_key_map_;
+    std::map<uint32_t, std::shared_ptr<ColumnKey>> column_key_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> abs_ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_abs_ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> lat_ttl_vec_;

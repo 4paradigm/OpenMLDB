@@ -315,6 +315,57 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
     ASSERT_EQ(view.GetInt16(20, &val), -1);
 }
 
+TEST_F(CodecTest, ManyCol) {
+    std::vector<int> num_vec = {10, 20, 50, 100, 1000, 10000, 100000};
+    for (auto col_num : num_vec) {
+        ::rtidb::api::TableMeta def;
+        for (int i = 0; i < col_num; i++) {
+            ::rtidb::common::ColumnDesc* col = def.add_column_desc();
+            col->set_name("col" + std::to_string(i + 1));
+            col->set_data_type(::rtidb::type::kVarchar);
+            col = def.add_column_desc();
+            col->set_name("col" + std::to_string(i + 2));
+            col->set_data_type(::rtidb::type::kInt64);
+            col = def.add_column_desc();
+            col->set_name("col" + std::to_string(i + 3));
+            col->set_data_type(::rtidb::type::kDouble);
+        }
+        RowBuilder builder(def.column_desc());
+        uint32_t size = builder.CalTotalLength(10 * col_num);
+        uint64_t base = 1000000000;
+        uint64_t ts = 1576811755000;
+        std::string row;
+        row.resize(size);
+        row.clear();
+        row.resize(size);
+        builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+        for (int idx = 0; idx < col_num; idx++) {
+            ASSERT_TRUE(
+                builder.AppendString(std::to_string(base + idx).c_str(), 10));
+            ASSERT_TRUE(builder.AppendInt64(ts + idx));
+            ASSERT_TRUE(builder.AppendDouble(1.3));
+        }
+        RowView view(def.column_desc(), reinterpret_cast<int8_t*>(&(row[0])), size);
+        for (int idx = 0; idx < col_num; idx++) {
+            char* ch = NULL;
+            uint32_t length = 0;
+            int ret = view.GetString(idx * 3, &ch, &length);
+            ASSERT_EQ(ret, 0);
+            std::string str(ch, length);
+            ASSERT_STREQ(str.c_str(), std::to_string(base + idx).c_str());
+            int64_t val = 0;
+            ret = view.GetInt64(idx * 3 + 1, &val);
+            ASSERT_EQ(ret, 0);
+            ASSERT_EQ(val, ts + idx);
+            double d = 0.0;
+            ret = view.GetDouble(idx * 3 + 2, &d);
+            ASSERT_EQ(ret, 0);
+            ASSERT_DOUBLE_EQ(d, 1.3);
+        }
+    }
+}
+
+
 }
 }
 

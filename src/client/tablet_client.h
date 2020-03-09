@@ -19,6 +19,7 @@ namespace rtidb {
 const uint32_t INVALID_TID = UINT32_MAX;
 namespace client {
 using ::rtidb::api::TaskInfo;
+using ::rtidb::type::TableType;
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 class TabletClient {
@@ -160,7 +161,10 @@ public:
     bool GetTableSchema(uint32_t tid, uint32_t pid, ::rtidb::api::TableMeta& table_meta);
 
     bool DropTable(uint32_t id, uint32_t pid,
-                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
+            std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
+
+    bool DropTable(uint32_t id, uint32_t pid, TableType table_type,
+            std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
@@ -238,6 +242,8 @@ public:
 
     bool SetMode(bool mode);
 
+    bool DeleteIndex(uint32_t tid, const std::string& idx_name);
+    
 private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> client_;

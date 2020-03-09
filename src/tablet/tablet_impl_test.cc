@@ -23,6 +23,7 @@
 #include "log/log_reader.h"
 #include "base/file_util.h"
 #include "base/strings.h"
+#include "proto/type.pb.h"
 
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
@@ -537,6 +538,223 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         ASSERT_STREQ("91", kv_it->GetValue().ToString().c_str());
         kv_it->Next();
         ASSERT_TRUE(kv_it->Valid());
+    }
+}
+
+TEST_F(TabletImplTest, MultiGetRelationalTable) {
+    TabletImpl tablet;
+    tablet.Init();
+    uint32_t id = counter++;
+    std::vector<::rtidb::base::ColumnDesc> columns;
+    ::rtidb::base::ColumnDesc desc1;
+    desc1.type = ::rtidb::base::ColType::kString;
+    desc1.name = "pk";
+    desc1.add_ts_idx = false;
+    columns.push_back(desc1);
+
+    ::rtidb::base::ColumnDesc desc2;
+    desc2.type = ::rtidb::base::ColType::kString;
+    desc2.name = "amt";
+    desc2.add_ts_idx = true;
+    columns.push_back(desc2);
+
+    ::rtidb::base::ColumnDesc desc3;
+    desc3.type = ::rtidb::base::ColType::kInt32;
+    desc3.name = "apprv_cde";
+    desc3.add_ts_idx = false;
+    columns.push_back(desc3);
+
+    ::rtidb::base::SchemaCodec codec;
+    std::string buffer;
+    codec.Encode(columns, buffer);
+    ::rtidb::api::CreateTableRequest request;
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_table_type(::rtidb::type::kRelational);
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta->set_schema(buffer);
+    for (uint32_t i = 0; i < columns.size(); i++) {
+        if (columns[i].add_ts_idx) {
+            table_meta->add_dimensions(columns[i].name);
+        }
+    }
+    ::rtidb::api::CreateTableResponse response;
+    MockClosure closure;
+    tablet.CreateTable(NULL, &request, &response, &closure);
+    ASSERT_EQ(0, response.code());
+
+    // put
+    for (int i = 0; i < 5; i++) {
+        std::vector<std::string> input;
+        input.push_back("test" + std::to_string(i));
+        input.push_back("abcd" + std::to_string(i));
+        input.push_back("1212"+ std::to_string(i));
+        std::string value;
+        std::vector<std::pair<std::string, uint32_t>> dimensions;
+        MultiDimensionEncode(columns, input, dimensions, value);
+        ::rtidb::api::PutRequest request;
+        request.set_value(value);
+        request.set_tid(id);
+        request.set_pid(1);
+        for (size_t i = 0; i < dimensions.size(); i++) {
+            ::rtidb::api::Dimension* d = request.add_dimensions();
+            d->set_key(dimensions[i].first);
+            d->set_idx(dimensions[i].second);
+        }
+        ::rtidb::api::PutResponse response;
+        MockClosure closure;
+        tablet.Put(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get
+    ::rtidb::api::GetRequest get_request;
+    ::rtidb::api::GetResponse get_response;
+    get_request.set_tid(id);
+    get_request.set_pid(1);
+    get_request.set_key("abcd2");
+    get_request.set_idx_name("amt");
+
+    tablet.Get(NULL, &get_request, &get_response, &closure);
+    ASSERT_EQ(0, get_response.code());
+    std::string value(get_response.value());
+    std::vector<std::string> vec;
+    MultiDimensionDecode(value, vec, columns.size());
+    ASSERT_EQ(3, vec.size());
+    ASSERT_STREQ("test2", vec[0].c_str());
+    ASSERT_STREQ("abcd2", vec[1].c_str());
+    ASSERT_STREQ("12122", vec[2].c_str());
+    //drop table
+    {
+        MockClosure closure;
+        ::rtidb::api::DropTableRequest dr;
+        dr.set_table_type(::rtidb::type::kRelational);
+        dr.set_tid(id);
+        dr.set_pid(1);
+        ::rtidb::api::DropTableResponse drs;
+        tablet.DropTable(NULL, &dr, &drs, &closure);
+        ASSERT_EQ(0, drs.code());
+    }
+    // table not found
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(1);
+        request.set_pid(0);
+        request.set_key("test");
+        request.set_ts(0);
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(100, response.code());
+    }
+}
+
+TEST_F(TabletImplTest, GetRelationalTable) {
+    TabletImpl tablet;
+    tablet.Init();
+    // table not found
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(1);
+        request.set_pid(0);
+        request.set_key("test");
+        request.set_ts(0);
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(100, response.code());
+    }
+    // create table
+    uint32_t id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_table_type(::rtidb::type::kRelational);
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_wal(true);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // key not found
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test");
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(109, response.code());
+    }
+    // put some key
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("key1");
+        prequest.set_value("value1");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        MockClosure closure;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("key2");
+        prequest.set_value("value2");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        MockClosure closure;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("key1");
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ("value1", response.value());
+        request.set_key("key2");
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ("value2", response.value());
+    }
+    //drop table
+    {
+        MockClosure closure;
+        ::rtidb::api::DropTableRequest dr;
+        dr.set_table_type(::rtidb::type::kRelational);
+        dr.set_tid(id);
+        dr.set_pid(1);
+        ::rtidb::api::DropTableResponse drs;
+        tablet.DropTable(NULL, &dr, &drs, &closure);
+        ASSERT_EQ(0, drs.code());
+    }
+    // table not found
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(1);
+        request.set_pid(0);
+        request.set_key("test");
+        request.set_ts(0);
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(100, response.code());
     }
 }
 
@@ -1231,15 +1449,49 @@ TEST_F(TabletImplTest, MultiGet) {
     get_request.set_idx_name("amt");
 
     tablet.Get(NULL, &get_request, &get_response, &closure);
-      ASSERT_EQ(0, get_response.code());
-      ASSERT_EQ(1100, get_response.ts());
+    ASSERT_EQ(0, get_response.code());
+    ASSERT_EQ(1100, get_response.ts());
     std::string value(get_response.value());
     std::vector<std::string> vec;
     MultiDimensionDecode(value, vec, columns.size());
-      ASSERT_EQ(3, vec.size());
+    ASSERT_EQ(3, vec.size());
     ASSERT_STREQ("test2", vec[0].c_str());
     ASSERT_STREQ("abcd2", vec[1].c_str());
     ASSERT_STREQ("12122", vec[2].c_str());
+    
+    // delete index
+    ::rtidb::api::DeleteIndexRequest deleteindex_request;
+    ::rtidb::api::GeneralResponse deleteindex_response;
+    // delete first index should fail
+    deleteindex_request.set_idx_name("pk");
+    deleteindex_request.set_tid(id);
+    tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
+    ASSERT_EQ(601, deleteindex_response.code());
+    // delete other index
+    deleteindex_request.set_idx_name("amt");
+    deleteindex_request.set_tid(id);
+    tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
+    ASSERT_EQ(0, deleteindex_response.code());
+
+    // get index not found
+    get_request.set_tid(id);
+    get_request.set_pid(1);
+    get_request.set_key("abcd2");
+    get_request.set_ts(1100);
+    get_request.set_idx_name("amt");
+    tablet.Get(NULL, &get_request, &get_response, &closure);
+    ASSERT_EQ(108, get_response.code());
+
+    // scan index not found
+    ::rtidb::api::ScanRequest scan_request;
+    ::rtidb::api::ScanResponse scan_response;
+    scan_request.set_tid(id);
+    scan_request.set_pid(1);
+    scan_request.set_pk("abcd2");
+    scan_request.set_st(1100);
+    scan_request.set_idx_name("amt");
+    tablet.Scan(NULL, &scan_request, &scan_response, &closure);
+    ASSERT_EQ(108, scan_response.code());
 }
 
 TEST_F(TabletImplTest, TTL) {

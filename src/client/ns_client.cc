@@ -713,6 +713,17 @@ bool NsClient::AddIndex(const std::string& table_name, const std::string& idx_na
         return true;
     }
     return false;
+}    
+
+bool NsClient::DeleteIndex(const std::string& table_name, const std::string & idx_name, std::string& msg) {
+    ::rtidb::nameserver::DeleteIndexRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_table_name(table_name);
+    request.set_idx_name(idx_name);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DeleteIndex, &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    int code = response.code();
+    return ok && code == 0;
 }
 
 }

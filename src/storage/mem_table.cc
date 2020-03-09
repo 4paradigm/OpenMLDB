@@ -101,9 +101,9 @@ bool MemTable::Init() {
         Segment** seg_arr = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             if (column_key_map_.find(i) != column_key_map_.end()) {
-                seg_arr[j] = new Segment(key_entry_max_height_, column_key_map_[i]);
+                seg_arr[j] = new Segment(key_entry_max_height_, column_key_map_[i]->column_idx);
                 PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u", 
-                            i, j, key_entry_max_height_, column_key_map_[i].size());
+                            i, j, key_entry_max_height_, column_key_map_[i]->column_idx.size());
             } else {
                 seg_arr[j] = new Segment(key_entry_max_height_);
                 PDLOG(INFO, "init %u, %u segment. height %u", 
@@ -195,13 +195,13 @@ bool MemTable::Put(const Dimensions& dimensions,
     uint32_t real_ref_cnt = 0;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         auto pos = column_key_map_.find(iter->idx());
-        if (pos == column_key_map_.end()) {
+        if (pos == column_key_map_.end() || pos->second->status.load(std::memory_order_relaxed)) {
             PDLOG(WARNING, "can not found dimension idx %u. tid %u pid %u", 
                             iter->idx(), id_, pid_);
             return false;
         }
         bool has_ts = false;
-        for (auto ts_idx : pos->second) {
+        for (auto ts_idx : pos->second->column_idx) {
             for (auto it = ts_dimemsions.begin(); it != ts_dimemsions.end(); it++) {
                 if (it->idx() == ts_idx) {
                     real_ref_cnt++;
@@ -269,10 +269,10 @@ uint64_t MemTable::Release() {
     }
     uint64_t total_cnt = 0;
     for (uint32_t i = 0; i < segments_.size(); i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            if (segments_[i] != NULL) {
+        if (segments_[i] != NULL) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
                 total_cnt += segments_[i][j]->Release();
-            } 
+            }
         }
     }
     segment_released_ = true;
@@ -300,8 +300,24 @@ void MemTable::SchedGc() {
             auto pos = column_key_map_.find(i);
             if (pos == column_key_map_.end()) {
                 continue;
+            } else if (pos->second->status.load(std::memory_order_relaxed) == IndexStat::kWaiting) {
+                pos->second->status.store(IndexStat::kDeleting);
+            } else if(pos->second->status.load(std::memory_order_relaxed) == IndexStat::kDeleting) {
+                if (segments_[i] != NULL) {
+                    for (uint32_t k = 0; k < seg_cnt_; i++) {
+                        if (segments_[i][k] != NULL) {
+                            segments_[i][k]->ReleaseAndCount(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                            delete segments_[i][k];
+                            segments_[i][k] = NULL;
+                        }
+                    }
+                }
+                delete[] segments_[i];
+                segments_[i] = NULL;
+                pos->second->status.store(IndexStat::kDeleted);
+                continue;
             }
-            for (auto ts_idx : pos->second) {
+            for (auto ts_idx : pos->second->column_idx) {
                 if (ts_idx >= abs_ttl_vec_.size()) {
                     continue;
                 }
@@ -399,7 +415,7 @@ inline bool MemTable::CheckLatest(const LogEntry& entry, const std::map<uint32_t
         for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); ++iter) {
             auto pos = column_key_map_.find(iter->idx());
             if (pos != column_key_map_.end()) {
-                for (auto ts_idx : pos->second) {
+                for (auto ts_idx : pos->second->column_idx) {
                     auto inner_pos = ts_dimemsions_map.find(ts_idx);
                     if (inner_pos == ts_dimemsions_map.end()) {
                         continue;
@@ -488,6 +504,10 @@ int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
     if (index >= idx_cnt_) {
         return -1;
     }
+    auto iter = column_key_map_.find(index);
+    if (iter != column_key_map_.end() && iter->second->status.load(std::memory_order_relaxed)) {
+        return -1;
+    }
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
         seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
@@ -495,8 +515,8 @@ int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
     Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];
     auto pos = column_key_map_.find(index);
-    if (pos != column_key_map_.end() && !pos->second.empty()) {
-        return segment->GetCount(spk, pos->second.front(), count);
+    if (pos != column_key_map_.end() && !pos->second->status.load(std::memory_order_relaxed) && !pos->second->column_idx.empty()) {
+        return segment->GetCount(spk, pos->second->column_idx.front(), count);
     } 
     return segment->GetCount(spk, count);
 }
@@ -507,8 +527,9 @@ int MemTable::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, u
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
         return -1;
     }
-    if (std::find(column_map_iter->second.cbegin(), column_map_iter->second.cend(), ts_idx) 
-                == column_map_iter->second.cend()) {
+    if (column_map_iter->second->status.load(std::memory_order_relaxed) || std::find(column_map_iter->second->column_idx.cbegin(),
+                column_map_iter->second->column_idx.cend(), ts_idx)
+                == column_map_iter->second->column_idx.cend()) {
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", 
                     ts_idx, index, id_, pid_);
         return -1;
@@ -533,8 +554,14 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
         return NULL;
     }
     auto column_map_iter = column_key_map_.find(index);
-    if (column_map_iter != column_key_map_.end() && !column_map_iter->second.empty()) {
-        return NewIterator(index, column_map_iter->second.front(), pk, ticket);
+    if (column_map_iter != column_key_map_.end()) {
+        if(column_map_iter->second->status.load(std::memory_order_relaxed)) {
+            PDLOG(WARNING, "invalid idx %u, the max idx cnt %u, segment size %u", 
+                            index, idx_cnt_, segments_.size());
+            return NULL;
+        } else if (!column_map_iter->second->column_idx.empty()) {
+            return NewIterator(index, column_map_iter->second->column_idx.front(), pk, ticket);
+        }
     } 
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
@@ -547,12 +574,12 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
 
 TableIterator* MemTable::NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) {
     auto column_map_iter = column_key_map_.find(index);
-    if (column_map_iter == column_key_map_.end()) {
+    if (column_map_iter == column_key_map_.end() || column_map_iter->second->status.load(std::memory_order_relaxed)) {
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
         return NULL;
     }
-    if (std::find(column_map_iter->second.cbegin(), column_map_iter->second.cend(), ts_idx) 
-                == column_map_iter->second.cend()) {
+    if (std::find(column_map_iter->second->column_idx.cbegin(), column_map_iter->second->column_idx.cend(), ts_idx) 
+                == column_map_iter->second->column_idx.cend()) {
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
         return NULL;
     }
@@ -567,9 +594,11 @@ TableIterator* MemTable::NewIterator(uint32_t index, int32_t ts_idx, const std::
 
 uint64_t MemTable::GetRecordIdxByteSize() {
     uint64_t record_idx_byte_size = 0;
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            record_idx_byte_size += segments_[i][j]->GetIdxByteSize(); 
+    for (uint32_t i = 0; i < segments_.size(); i++) {
+        if (segments_[i]!=NULL) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                record_idx_byte_size += segments_[i][j]->GetIdxByteSize(); 
+            }
         }
     }
     return record_idx_byte_size;
@@ -577,9 +606,11 @@ uint64_t MemTable::GetRecordIdxByteSize() {
 
 uint64_t MemTable::GetRecordIdxCnt() {
     uint64_t record_idx_cnt = 0;
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            record_idx_cnt += segments_[i][j]->GetIdxCnt(); 
+    for (const auto& iter : column_key_map_) {
+        if (!iter.second->status.load(std::memory_order_relaxed)) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                record_idx_cnt += segments_[iter.first][j]->GetIdxCnt(); 
+            }
         }
     }
     return record_idx_cnt;
@@ -587,9 +618,11 @@ uint64_t MemTable::GetRecordIdxCnt() {
 
 uint64_t MemTable::GetRecordPkCnt() {
     uint64_t record_pk_cnt = 0;
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            record_pk_cnt += segments_[i][j]->GetPkCnt(); 
+    for (const auto& iter : column_key_map_) {
+        if (!iter.second->status.load(std::memory_order_relaxed)) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                record_pk_cnt += segments_[iter.first][j]->GetPkCnt(); 
+            }
         }
     }
     return record_pk_cnt;
@@ -602,6 +635,10 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (idx >= idx_cnt_ || idx >= segments_.size()) {
         return false;
     }
+    auto column_key_iter = column_key_map_.find(idx);
+    if (column_key_iter != column_key_map_.end() && column_key_iter->second->status.load(std::memory_order_relaxed)) {
+        return false;
+    }
     uint64_t* data_array = new uint64_t[seg_cnt_];
     for (uint32_t i = 0; i < seg_cnt_; i++) {
         data_array[i] = segments_[idx][i]->GetIdxCnt();
@@ -611,10 +648,23 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     return true;
 }
 
+bool MemTable::DeleteIndex(std::string idx_name) {
+    auto iter = mapping_.find(idx_name);
+    if (iter->second == 0) {
+        return false;
+    }
+    auto column_key_iter = column_key_map_.find(iter->second);
+    if (column_key_iter != column_key_map_.end() && 
+            !column_key_iter->second->status.load(std::memory_order_relaxed)) {
+        column_key_iter->second->status.store(IndexStat::kWaiting);
+    }
+    return true;
+}
+
 TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
     auto pos = column_key_map_.find(index);
-    if (pos != column_key_map_.end() && !pos->second.empty()) {
-        return NewTraverseIterator(index, pos->second.front());
+    if (pos != column_key_map_.end() && !pos->second->status.load(std::memory_order_relaxed) && !pos->second->column_idx.empty()) {
+        return NewTraverseIterator(index, pos->second->column_idx.front());
     }
     uint64_t expire_time = 0;
     uint64_t expire_cnt = 0;
@@ -630,12 +680,12 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index, uint32_t ts_index) 
         return NULL;
     }
     auto column_map_iter = column_key_map_.find(index);
-    if (column_map_iter == column_key_map_.end()) {
+    if (column_map_iter == column_key_map_.end() || column_map_iter->second->status.load(std::memory_order_relaxed)) {
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
         return NULL;
     }
-    if (std::find(column_map_iter->second.cbegin(), column_map_iter->second.cend(), ts_index) 
-                == column_map_iter->second.cend()) {
+    if (std::find(column_map_iter->second->column_idx.cbegin(), column_map_iter->second->column_idx.cend(), ts_index) 
+                == column_map_iter->second->column_idx.cend()) {
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", ts_index, index, id_, pid_);
         return NULL;
     }
@@ -659,7 +709,6 @@ MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t 
         ts_idx_ = idx;
     }
 }
-
 
 MemTableTraverseIterator::~MemTableTraverseIterator() {
     if (pk_it_ != NULL) delete pk_it_;

@@ -235,6 +235,10 @@ int SetDimensionData(const std::map<std::string, std::string>& raw_data,
     uint32_t dimension_idx = 0;
     std::set<std::string> index_name_set;
     for (const auto& column_key : column_key_field) {
+        if (column_key.flag() != 0) {
+            dimension_idx++;
+            continue;
+        }
         std::string index_name = column_key.index_name();
         if (index_name_set.find(index_name) != index_name_set.end()) {
             continue;
@@ -978,7 +982,7 @@ void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts, ::rtid
             return;
         }
     }
-	uint32_t concurrency = 0;
+    uint32_t concurrency = 0;
     if (parts.size() > 3) {
         try {
             if (boost::lexical_cast<int32_t>(parts[3]) <= 0) {
@@ -1514,7 +1518,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         } else {
             std::cout<<"count format error: key does not exist!"<<std::endl;
             return;
-        }	   
+        }       
         iter = parameter_map.find("index_name");
         if (iter != parameter_map.end()) {
             index_name = iter->second;
@@ -1855,16 +1859,20 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     if (tables[0].column_desc_v1_size() > 0) {
         uint64_t ts = 0;
         uint32_t start_index = 0;
-        if (!HasIsTsCol(tables[0].column_desc_v1())) {
-            try {
-                ts = boost::lexical_cast<uint64_t>(parts[2]);
-            } catch (std::exception const& e) {
-                printf("Invalid args. ts %s should be unsigned int\n", parts[2].c_str());
-                return;
-            } 
-            start_index = 3;
-        } else {
+        if (tables[0].has_table_type() && tables[0].table_type() == ::rtidb::type::TableType::kRelational) {
             start_index = 2;
+        } else {
+            if (!HasIsTsCol(tables[0].column_desc_v1())) {
+                try {
+                    ts = boost::lexical_cast<uint64_t>(parts[2]);
+                } catch (std::exception const& e) {
+                    printf("Invalid args. ts %s should be unsigned int\n", parts[2].c_str());
+                    return;
+                } 
+                start_index = 3;
+            } else {
+                start_index = 2;
+            }
         }
         google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> column_desc_list_1 = tables[0].column_desc_v1();
         google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> column_desc_list_2 = tables[0].added_column_desc();
@@ -2153,8 +2161,18 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         name_map.insert(std::make_pair(table_info.column_desc(idx).name(), cur_type));
         ::rtidb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc_v1();
         column_desc->CopyFrom(table_info.column_desc(idx));
+        if (cur_type == "smallint") {
+            column_desc->set_type("int16");
+        } else if (cur_type == "int") {
+            column_desc->set_type("int32");
+        } else if (cur_type == "bigint") {
+            column_desc->set_type("int64");
+        } else if (cur_type == "blob" || cur_type == "varchar") {
+            column_desc->set_type("string");
+        }
     }
-    if (table_info.column_key_size() == 0) {
+    if (table_info.column_key_size() == 0
+            && (!table_info.has_table_type() || table_info.table_type() != "Relational")) {
         if (ts_col_set.size() > 1) {
             printf("column_key should be set when has two or more ts columns\n");
             return -1;
@@ -2217,6 +2235,22 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
             }
             ::rtidb::common::ColumnKey* column_key = ns_table_info.add_column_key();
             column_key->CopyFrom(table_info.column_key(idx));
+        }
+    }
+    if (table_info.has_table_type() && table_info.table_type() == "Relational") {
+        ns_table_info.set_table_type(::rtidb::type::TableType::kRelational);
+        ns_table_info.set_storage_mode(::rtidb::common::kSSD);
+        ns_table_info.set_replica_num(1);
+        ns_table_info.set_partition_num(1);
+        ns_table_info.clear_column_key();
+        index_set.clear();
+        for (int idx = 0; idx < table_info.index_size(); idx++) {
+            ::rtidb::common::ColumnKey* column_key = ns_table_info.add_column_key();
+            column_key->set_index_name(table_info.index(idx).index_name());
+            for (int inner = 0; inner < table_info.index(idx).col_name_size(); inner++) {
+                column_key->add_col_name(table_info.index(idx).col_name(inner));
+            }
+            index_set.insert(table_info.index(idx).index_name());
         }
     }
     if (index_set.empty() && table_info.column_desc_size() > 0) {
@@ -2350,6 +2384,11 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     type_set.insert("date");
     type_set.insert("int16");
     type_set.insert("uint16");
+    type_set.insert("smallint");
+    type_set.insert("int");
+    type_set.insert("bigint");
+    type_set.insert("varchar");
+    type_set.insert("blob");
     ::rtidb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
         if (GenTableInfo(parts[1], type_set, ns_table_info) < 0) {
@@ -2539,6 +2578,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("removerepcluster - remove remote replica cluste \n");
         printf("switchmode - switch cluster mode\n");
         printf("synctable - synctable from leader cluster to replica cluster\n");
+        printf("deleteindx - delete index of specified table");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -2740,6 +2780,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("desc: add new index to table\n");
             printf("usage: addindex table_name index_name\n");
             printf("ex: addindex test card\n");
+        } else if (parts[1] == "deleteindex") {
+            printf("desc: delete index of specified index\n");
+            printf("usage: deleteindex table_name index_name");
+            printf("usage: deleteindex test index0");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -2822,13 +2866,13 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts, ::rt
         std::cout << "Fail to get table partition. error msg: " << msg << std::endl;
         return;
     }
-	std::string value;
-	google::protobuf::TextFormat::PrintToString(table_partition, &value);
-	std::string file_name = name + "_" + parts[2] + ".txt";
+    std::string value;
+    google::protobuf::TextFormat::PrintToString(table_partition, &value);
+    std::string file_name = name + "_" + parts[2] + ".txt";
     FILE* fd_write = fopen(file_name.c_str(), "w");
     if (fd_write == NULL) {
         PDLOG(WARNING, "fail to open file %s", file_name.c_str());
-		std::cout << "fail to open file" << file_name << std::endl;
+        std::cout << "fail to open file" << file_name << std::endl;
         return;
     }
     bool io_error = false;
@@ -2841,9 +2885,9 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts, ::rt
         io_error = true;
     }
     fclose(fd_write);
-	if (!io_error) {
-		std::cout << "get table partition ok" << std::endl;
-	}
+    if (!io_error) {
+        std::cout << "get table partition ok" << std::endl;
+    }
 }
 
 void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -2965,6 +3009,21 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
         tp.AddRow(row);
     }
     tp.Print(true);
+}
+
+void HandleNSClientDeleteIndex(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    ::rtidb::nameserver::GeneralResponse response;
+    if (parts.size() != 3) {
+        std::cout << "Bad format" << std::endl;
+        std::cout << "usage: deleteindex table_name index_name" << std::endl;
+        return;
+    }
+    std::string msg;
+    if (!client->DeleteIndex(parts[1], parts[2], msg)) {
+        std::cout << "Fail to delete index. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "delete index ok" << std::endl;
 }
 
 void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
@@ -4162,7 +4221,7 @@ void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::T
             } else {
                 std::cout<<"count format error: key does not exist!"<<std::endl;
                 return;
-            }	   
+            }       
             iter = parameter_map.find("index_name");
             if (iter != parameter_map.end()) {
                 index_name = iter->second;
@@ -4327,7 +4386,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
             } else {
                 std::cout<<"sget format error: key does not exist!"<<std::endl;
                 return;
-            }	   
+            }       
             iter = parameter_map.find("index_name");
             if (iter != parameter_map.end()) {
                 index_name = iter->second;
@@ -4451,7 +4510,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
             } else {
                 std::cout<<"sscan format error: key does not exist!"<<std::endl;
                 return;
-            }	   
+            }       
             iter = parameter_map.find("index_name");
             if (iter != parameter_map.end()) {
                 index_name = iter->second;
@@ -4486,8 +4545,8 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
             pid = boost::lexical_cast<uint32_t>(parts[2]);
             key = parts[3];
             index_name = parts[4];
-            st = boost::lexical_cast<uint64_t>(parts[5]);	
-            et = boost::lexical_cast<uint64_t>(parts[6]);	
+            st = boost::lexical_cast<uint64_t>(parts[5]);    
+            et = boost::lexical_cast<uint64_t>(parts[6]);    
         }
     } catch (std::exception const& e) {
         std::cout << "Invalid args. tid pid should be uint32_t, st and et should be uint64_t, limit should be uint32" << std::endl;
@@ -4832,7 +4891,7 @@ void StartNsClient() {
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
         } else {
-	        char *line = ::rtidb::base::linenoise(display_prefix.c_str());
+            char *line = ::rtidb::base::linenoise(display_prefix.c_str());
             if (line == NULL) {
                 return;
             }
@@ -4928,6 +4987,8 @@ void StartNsClient() {
            HandleNSClientSyncTable(parts, &client); 
         } else if (parts[0] == "addindex") {
            HandleNSClientAddIndex(parts, &client); 
+        } else if (parts[0] == "deleteindex") {
+            HandleNSClientDeleteIndex(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

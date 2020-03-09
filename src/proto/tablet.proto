@@ -1,4 +1,5 @@
 import "common.proto";
+import "type.proto";
 package rtidb.api;
 
 option cc_generic_services = true;
@@ -27,13 +28,6 @@ enum TableState {
 enum TabletState {
     kTabletOffline = 1;
     kTabletHealthy = 10;
-}
-
-enum TableType {
-    // KV table 
-    kKVTable = 1;
-    // Time Series table
-    kTSTable = 2;
 }
 
 enum TTLType {
@@ -334,6 +328,7 @@ message TableMeta {
     optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
     optional TTLDesc ttl_desc = 19;
+    optional rtidb.type.TableType table_type = 20;
 }
 
 message CreateTableRequest {
@@ -359,6 +354,7 @@ message DropTableRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
     optional TaskInfo task_info = 3;
+    optional rtidb.type.TableType table_type = 4;
 }
 
 message DropTableResponse {
@@ -630,6 +626,11 @@ message DisConnectZKRequest {}
 message HttpRequest { }
 message HttpResponse { }
 
+message DeleteIndexRequest {
+    optional uint32 tid = 1;
+    optional string idx_name = 2;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -680,4 +681,5 @@ service TabletServer {
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
     rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
     rpc AddIndex(AddIndexRequest) returns(GeneralResponse);
+    rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
 }

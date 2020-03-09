@@ -9,7 +9,9 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.ReadOption;
 import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.client.schema.WriteOption;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
@@ -285,6 +287,46 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public RelationalIterator traverse(String tableName, ReadOption ro) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tableName);
+        if (th == null) {
+            throw new TabletException("no table with name " + tableName);
+        }
+        //TODO
+        return new RelationalIterator();
+    }
+
+    @Override
+    public RelationalIterator batchQuery(String tableName, ReadOption ro) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tableName);
+        if (th == null) {
+            throw new TabletException("no table with name " + tableName);
+        }
+        //TODO
+        return new RelationalIterator();
+    }
+
+    @Override
+    public RelationalIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tableName);
+        if (th == null) {
+            throw new TabletException("no table with name " + tableName);
+        }
+        String idxName = "";
+        String idxValue = "";
+        Iterator<Map.Entry<String, Object>> iter = ro.getIndex().entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<String, Object> entry = iter.next();
+            idxName = entry.getKey();
+            idxValue = entry.getValue().toString();
+            break;
+        }
+        idxValue = validateKey(idxValue);
+        int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
+        return queryRelationTable(th.getTableInfo().getTid(), pid, idxValue, idxName, null, th);
+    }
+
+    @Override
     public Object[] getRow(String tname, String key, long time, Tablet.GetType type) throws TimeoutException, TabletException {
         return getRow(tname, key, null, time, null, type);
     }
@@ -319,6 +361,44 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
         }
         return key;
+    }
+
+    private RelationalIterator queryRelationTable(int tid, int pid, String key, String idxName, Tablet.GetType type,
+                                                  TableHandler th) throws TabletException {
+        key = validateKey(key);
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
+
+        builder.setTid(tid);
+        builder.setPid(pid);
+        builder.setKey(key);
+        if (type != null) builder.setType(type);
+        if (idxName != null && !idxName.isEmpty()) {
+            builder.setIdxName(idxName);
+        }
+        Tablet.GetRequest request = builder.build();
+        Tablet.GetResponse response = ts.get(request);
+        ByteString bs = null;
+        if (response != null && response.getCode() == 0) {
+            if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+                byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
+                bs = ByteString.copyFrom(uncompressed);
+            } else {
+                bs = response.getValue();
+            }
+        } else if (response != null && response.getCode() != 0) {
+            return new RelationalIterator();
+        }
+        RelationalIterator it = new RelationalIterator(bs, th);
+//        it.setCount(response.getCount());
+//        if (th.getTableInfo().hasCompressType()) {
+//            it.setCompressType(th.getTableInfo().getCompressType());
+//        }
+        return it;
     }
 
     private ByteString get(int tid, int pid, String key, String idxName, long time, String tsName, Tablet.GetType type,
@@ -527,6 +607,26 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException(response.getCode(), response.getMsg());
         }
         throw new TabletException("rtidb internal server error");
+    }
+
+    @Override
+    public boolean delete(String tableName, Map<String, Object> conditionColumns) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tableName);
+        if (th == null) {
+            throw new TabletException("no table with name " + tableName);
+        }
+        String idxName = "";
+        String idxValue = "";
+        Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<String, Object> entry = iter.next();
+            idxName = entry.getKey();
+            idxValue = entry.getValue().toString();
+            break;
+        }
+        idxValue = validateKey(idxValue);
+        int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
+        return delete(th.getTableInfo().getTid(), pid, idxValue, idxName, th);
     }
 
     @Override
@@ -890,9 +990,82 @@ public class TableSyncClientImpl implements TableSyncClient {
         return ret;
     }
 
+    private boolean putRelationTable(String name, Object[] row) throws TabletException {
+        boolean handleNull = client.getConfig().isHandleNull();
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
+        ByteBuffer buffer = null;
+        if (row.length == th.getSchema().size()) {
+            buffer = RowCodec.encode(row, th.getSchema());
+        } else {
+            List<ColumnDesc> columnDescs = th.getSchemaMap().get(row.length);
+            if (columnDescs == null) {
+                throw new TabletException("no schema for column count " + row.length);
+            }
+            int modifyTimes = row.length - th.getSchema().size();
+            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+                modifyTimes = th.getSchemaMap().size();
+            }
+            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
+        }
+        Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, handleNull);
+        Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
+        boolean ret = true;
+        while (it.hasNext()) {
+            Map.Entry<Integer, List<Tablet.Dimension>> entry = it.next();
+            ret = ret && putRelationTable(th.getTableInfo().getTid(), entry.getKey(),
+                    entry.getValue(), buffer, th);
+        }
+        return ret;
+    }
 
     private boolean put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException {
         return put(tid, pid, key, time, null, null, ByteBuffer.wrap(bytes), th);
+    }
+
+    private boolean putRelationTable(int tid, int pid, List<Tablet.Dimension> ds, ByteBuffer row, TableHandler th) throws TabletException {
+        if (ds == null || ds.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
+        PartitionHandler ph = th.getHandler(pid);
+        if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+            byte[] data = row.array();
+            byte[] compressed = Compress.snappyCompress(data);
+            if (compressed == null) {
+                throw new TabletException("snappy compress error");
+            }
+            ByteBuffer buffer = ByteBuffer.wrap(compressed);
+            row = buffer;
+        }
+        TabletServer tablet = ph.getLeader();
+        if (tablet == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
+        builder.setPid(pid);
+        builder.setTid(tid);
+        if (ds != null) {
+            for (Tablet.Dimension dim : ds) {
+                builder.addDimensions(dim);
+            }
+        }
+        row.rewind();
+        builder.setValue(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
+
+        Tablet.PutRequest request = builder.build();
+        Tablet.PutResponse response = tablet.put(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        }
+        if (response != null) {
+            throw new TabletException(response.getCode(), response.getMsg());
+        }
+        return false;
     }
 
     private boolean put(int tid, int pid,
@@ -974,6 +1147,84 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
         return put(tname, 0, arrayRow, tsDimensions);
+    }
+
+    @Override
+    public boolean put(String tname, Map<String, Object> row, WriteOption wo) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
+        Object[] arrayRow = null;
+        if (wo.isUpdateIfEqual() && wo.isUpdateIfExist()) {
+            if (row.size() > th.getSchema().size() && th.getSchemaMap().size() > 0) {
+                int columnSize = row.size();
+                if (row.size() > th.getSchema().size() + th.getSchemaMap().size()) {
+                    columnSize = th.getSchema().size() + th.getSchemaMap().size();
+                }
+                arrayRow = new Object[columnSize];
+                List<ColumnDesc> schema = th.getSchemaMap().get(columnSize);
+                for (int i = 0; i < schema.size(); i++) {
+                    arrayRow[i] = row.get(schema.get(i).getName());
+                }
+            } else {
+                arrayRow = new Object[th.getSchema().size()];
+                for (int i = 0; i < th.getSchema().size(); i++) {
+                    arrayRow[i] = row.get(th.getSchema().get(i).getName());
+                }
+            }
+        }
+        return putRelationTable(tname, arrayRow);
+    }
+
+    @Override
+    public boolean update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo) 
+            throws TimeoutException, TabletException{
+        TableHandler th = client.getHandler(tableName);
+        if (th == null) {
+            throw new TabletException("no table with name " + tableName);
+        }
+        String idxName = "";
+        String idxValue = "";
+        Iterator<Map.Entry<String, Object>> iter = conditionColumns.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<String, Object> entry = iter.next();
+            idxName = entry.getKey();
+            idxValue = entry.getValue().toString();
+            break;
+        }
+        idxValue = validateKey(idxValue);
+        Map<String, Object> index = new HashMap<>();
+        index.put(idxName, idxValue);
+        ReadOption ro = new ReadOption(index, null, null, 1);
+        RelationalIterator kvIterator = query(tableName, ro);
+        if (!kvIterator.valid()) {
+            throw new TabletException("KvIterator is invalid " + tableName);
+        }
+        Map<String, Object> objectMap = new HashMap<>();
+        while (kvIterator.valid()) {
+            objectMap = kvIterator.getDecodedValue();
+            break;
+        }
+        Map<String, Object> updateMap = updateInternel(objectMap, valueColumns, th);
+
+        return put(tableName, updateMap, wo);
+    }
+
+    public Map<String, Object> updateInternel(Map<String, Object> inMap, Map<String, Object> valueColumns, TableHandler th) {
+        Map<String, Object> map = new HashMap<>();
+        for (int i = 0; i < th.getSchema().size(); i++) {
+            String colName = th.getSchema().get(i).getName();
+            if (valueColumns.containsKey(colName)) {
+                map.put(colName, valueColumns.get(colName));
+            } else {
+                map.put(colName, inMap.get(colName));
+            }
+        }
+        return map;
     }
 
     @Override

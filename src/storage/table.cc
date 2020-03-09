@@ -17,8 +17,8 @@ bool Table::CheckTsValid(uint32_t index, int32_t ts_idx) {
     if (column_map_iter == column_key_map_.end()) {
         return false;
     }
-    if (std::find(column_map_iter->second.cbegin(), column_map_iter->second.cend(), ts_idx)
-                == column_map_iter->second.cend()) {
+    if (std::find(column_map_iter->second->column_idx.cbegin(), column_map_iter->second->column_idx.cend(), ts_idx)
+                == column_map_iter->second->column_idx.cend()) {
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", 
                     ts_idx, index, id_, pid_);
         return false;
@@ -76,10 +76,10 @@ int Table::InitColumnDesc() {
                     continue;
                 }
                 if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
-                    column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
+                    column_key_map_.insert(std::make_pair(cur_key_idx, std::make_shared<ColumnKey>()));
                 }
                 if (ts_mapping_.size() == 1) {
-                    column_key_map_[cur_key_idx].push_back(ts_mapping_.begin()->second);
+                    column_key_map_[cur_key_idx]->column_idx.push_back(ts_mapping_.begin()->second);
                     continue;
                 }
                 for (const auto &ts_name : column_key.ts_name()) {
@@ -89,9 +89,9 @@ int Table::InitColumnDesc() {
                               ts_name.c_str(), id_, pid_);
                         return -1;
                     }
-                    if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(),
-                                  ts_iter->second) == column_key_map_[cur_key_idx].end()) {
-                        column_key_map_[cur_key_idx].push_back(ts_iter->second);
+                    if (std::find(column_key_map_[cur_key_idx]->column_idx.begin(), column_key_map_[cur_key_idx]->column_idx.end(),
+                                  ts_iter->second) == column_key_map_[cur_key_idx]->column_idx.end()) {
+                        column_key_map_[cur_key_idx]->column_idx.push_back(ts_iter->second);
                     }
                 }
             }
@@ -100,12 +100,12 @@ int Table::InitColumnDesc() {
                 for (const auto &kv : mapping_) {
                     uint32_t cur_key_idx = kv.second;
                     if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
-                        column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
+                        column_key_map_.insert(std::make_pair(cur_key_idx, std::make_shared<ColumnKey>()));
                     }
                     uint32_t cur_ts_idx = ts_mapping_.begin()->second;
-                    if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(),
-                                  cur_ts_idx) == column_key_map_[cur_key_idx].end()) {
-                        column_key_map_[cur_key_idx].push_back(cur_ts_idx);
+                    if (std::find(column_key_map_[cur_key_idx]->column_idx.begin(), column_key_map_[cur_key_idx]->column_idx.end(),
+                                  cur_ts_idx) == column_key_map_[cur_key_idx]->column_idx.end()) {
+                        column_key_map_[cur_key_idx]->column_idx.push_back(cur_ts_idx);
                     }
                 }
             }
@@ -125,6 +125,11 @@ int Table::InitColumnDesc() {
     if (mapping_.empty()) {
         mapping_.insert(std::make_pair("idx0", 0));
         PDLOG(INFO, "no index specified with default");
+    }
+    if (column_key_map_.empty()) {
+        for (const auto& iter : mapping_) {
+            column_key_map_.insert(std::make_pair(iter.second, std::make_shared<ColumnKey>()));
+        }
     }
     return 0;
 }

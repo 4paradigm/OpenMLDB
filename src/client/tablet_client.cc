@@ -751,14 +751,21 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     return kv_it;
 }
 
+bool TabletClient::DropTable(uint32_t id, uint32_t pid, 
+        std::shared_ptr<TaskInfo> task_info) {
+    return DropTable(id, pid, ::rtidb::type::kTimeSeries, task_info);
+}
 
-
-bool TabletClient::DropTable(uint32_t id, uint32_t pid, std::shared_ptr<TaskInfo> task_info) {
+bool TabletClient::DropTable(uint32_t id, uint32_t pid, 
+        TableType table_type, std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::DropTableRequest request;
     request.set_tid(id);
     request.set_pid(pid);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    if (table_type == ::rtidb::type::kRelational) {
+        request.set_table_type(::rtidb::type::kRelational);
     }
     ::rtidb::api::DropTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DropTable,
@@ -1130,6 +1137,18 @@ bool TabletClient::GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, ui
             pid_offset.insert(std::make_pair(part.pid(), part.offset()));
         }
         tid_pid_offset.insert(std::make_pair(tid, pid_offset));
+    }
+    return true;
+}
+
+bool TabletClient::DeleteIndex(uint32_t tid, const std::string& idx_name) {
+    ::rtidb::api::DeleteIndexRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_idx_name(idx_name);
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::DeleteIndex, &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
     }
     return true;
 }

@@ -140,6 +140,8 @@ public:
 
     bool AddIndex(const std::string& table_name, const std::string& idx_name, std::string& msg);
 
+    bool DeleteIndex(const std::string& table_name, const std::string & idx_name, std::string& msg);
+
 private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;
