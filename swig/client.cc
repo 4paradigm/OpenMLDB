@@ -62,56 +62,87 @@ void encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schem
         switch (schema.Get(i).data_type()) {
             case rtidb::type::kInt32:
                 if (value_vec[i].size() > 0) {
-                    rb.AppendInt32(boost::lexical_cast<int32_t>(value_vec[i]));
+                    try {
+                        rb.AppendInt32(boost::lexical_cast<int32_t>(value_vec[i]));
+                    } catch(boost::bad_lexical_cast &) {
+                        rb.AppendNULL();
+                    }
                 } else {
                     rb.AppendNULL();
                 }
                 break;
             case rtidb::type::kTimestamp:
                 if (value_vec[i].size() > 0) {
-                    rb.AppendTimestamp(boost::lexical_cast<int64_t>(value_vec[i]));
+                    try {
+                        rb.AppendTimestamp(boost::lexical_cast<int64_t>(value_vec[i]));
+                    } catch(boost::bad_lexical_cast &) {
+                        rb.AppendNULL();
+                    }
                 } else {
                     rb.AppendNULL();
                 }
                 break;
             case rtidb::type::kInt64:
-
                 if (value_vec[i].size() > 0) {
-                    rb.AppendInt64(boost::lexical_cast<int64_t>(value_vec[i]));
+                    try {
+                        rb.AppendInt64(boost::lexical_cast<int64_t>(value_vec[i]));
+                    } catch(boost::bad_lexical_cast &) {
+                        rb.AppendNULL();
+                    }
                 } else {
                     rb.AppendNULL();
                 }
                 break;
             case rtidb::type::kBool:
                 if (value_vec[i].size() > 0) {
-                    rb.AppendBool(boost::lexical_cast<bool>(value_vec[i]));
+                    try {
+                        rb.AppendBool(boost::lexical_cast<bool>(value_vec[i]));
+                    } catch(boost::bad_lexical_cast &) {
+                        rb.AppendNULL();
+                    }
                 } else {
                     rb.AppendNULL();
                 }
                 break;
             case rtidb::type::kFloat:
                 if (value_vec[i].size() > 0) {
-                    rb.AppendFloat(boost::lexical_cast<float>(value_vec[i]));
+                    try {
+                        rb.AppendFloat(boost::lexical_cast<float>(value_vec[i]));
+                    } catch(boost::bad_lexical_cast &) {
+                        rb.AppendNULL();
+                    }
                 } else {
                     rb.AppendNULL();
                 }
                 break;
             case rtidb::type::kInt16:
                 if (value_vec[i].size() > 0) {
-                    rb.AppendInt16(boost::lexical_cast<int16_t>(value_vec[i]));
+                    try {
+                        rb.AppendInt16(boost::lexical_cast<int16_t>(value_vec[i]));
+                    } catch(boost::bad_lexical_cast &) {
+                        rb.AppendNULL();
+                    }
                 } else {
                     rb.AppendNULL();
                 }
                 break;
             case rtidb::type::kDouble:
                 if (value_vec[i].size() > 0) {
-                    rb.AppendDouble(boost::lexical_cast<double>(value_vec[i]));
+                    try {
+                        rb.AppendDouble(boost::lexical_cast<double>(value_vec[i]));
+                    } catch(boost::bad_lexical_cast &) {
+                        rb.AppendNULL();
+                    }
                 } else {
                     rb.AppendNULL();
                 }
                 break;
             case rtidb::type::kVarchar:
-                rb.AppendString(value_vec[i].data(), value_vec[i].size());
+                try {
+                    rb.AppendString(value_vec[i].data(), value_vec[i].size());
+                } catch(boost::bad_lexical_cast &) {
+                    rb.AppendNULL();
+                }
                 break;
             case rtidb::type::kDate:
                 rb.AppendNULL();
