@@ -174,7 +174,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(4u, schema.size());
+    ASSERT_EQ(4, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -233,7 +233,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(2u, schema.size());
+    ASSERT_EQ(2, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -286,7 +286,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(1u, schema.size());
+    ASSERT_EQ(1, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -338,7 +338,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(1u, schema.size());
+    ASSERT_EQ(1, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -518,7 +518,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(5u, schema.size());
+    ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -590,7 +590,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(5u, schema.size());
+    ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -657,7 +657,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     vm::Schema schema;
     bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(5u, schema.size());
+    ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
@@ -747,7 +747,7 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     bool ok = ir_builder.Build("test_at_fn", pp_node_ptr, schema);
     ASSERT_TRUE(ok);
     LOG(INFO) << "fn let ir build ok";
-    ASSERT_EQ(3u, schema.size());
+    ASSERT_EQ(3, schema.size());
     m->print(::llvm::errs(), NULL);
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
