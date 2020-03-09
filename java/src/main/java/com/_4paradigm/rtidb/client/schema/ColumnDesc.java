@@ -9,7 +9,7 @@ public class ColumnDesc {
 	private boolean addTsIndex;
 	private boolean tsCol;
 	private DataType dataType;
-	private boolean notNull;
+    private boolean notNull = true;
 
 	public ColumnDesc() {
 	}

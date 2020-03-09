@@ -3,7 +3,7 @@ package com._4paradigm.rtidb.client.impl;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.client.schema.RowView;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
@@ -13,6 +13,7 @@ import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class RelationalIterator {
 
@@ -27,11 +28,12 @@ public class RelationalIterator {
     private int count;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private TableHandler th;
+    private Set<String> colSet;
 
     public RelationalIterator() {
     }
 
-    public RelationalIterator(ByteString bs, TableHandler th) {
+    public RelationalIterator(ByteString bs, TableHandler th, Set<String> colSet) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
         this.offset = 0;
@@ -39,6 +41,7 @@ public class RelationalIterator {
         next();
         this.schema = th.getSchema();
         this.th = th;
+        this.colSet = colSet;
     }
 
 
@@ -72,13 +75,20 @@ public class RelationalIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        Object[] row;
-        if (th != null) {
-            row = new Object[schema.size() + th.getSchemaMap().size()];
+        RowView rowView;
+        if (compressType == NS.CompressType.kSnappy) {
+            byte[] data = new byte[slice.remaining()];
+            slice.get(data);
+            byte[] uncompressed = Compress.snappyUnCompress(data);
+            if (uncompressed == null) {
+                throw new TabletException("snappy uncompress error");
+            }
+            rowView = new RowView(th.getSchema(), ByteBuffer.wrap(uncompressed),
+                    ByteBuffer.wrap(uncompressed).array().length);
         } else {
-            row = new Object[schema.size()];
+            rowView = new RowView(th.getSchema(), slice, bs.size());
         }
-        return getDecodedValue(row, 0, row.length);
+        return getInternel(rowView);
     }
 
     public void next() {
@@ -100,24 +110,50 @@ public class RelationalIterator {
         slice.limit(bs.size());
     }
 
-    private Map<String, Object> getDecodedValue(Object[] row, int start, int length) throws TabletException {
+    private Map<String, Object> getInternel(RowView rowView) throws TabletException {
         Map<String, Object> map = new HashMap<>();
-        if (schema == null) {
-            throw new TabletException("get decoded value is not supported");
-        }
-        if (compressType == NS.CompressType.kSnappy) {
-            byte[] data = new byte[slice.remaining()];
-            slice.get(data);
-            byte[] uncompressed = Compress.snappyUnCompress(data);
-            if (uncompressed == null) {
-                throw new TabletException("snappy uncompress error");
-            }
-            RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
-        } else {
-            RowCodec.decode(slice, schema, row, start, length);
-        }
+        List<ColumnDesc> schema = th.getSchema();
+        Set<String> colSet = this.colSet;
         for (int i = 0; i < schema.size(); i++) {
-            map.put(schema.get(i).getName(), row[i]);
+            ColumnDesc columnDesc = schema.get(i);
+            if (colSet == null || colSet.isEmpty() || colSet.contains(columnDesc.getName())) {
+                switch (columnDesc.getDataType()) {
+                    case kBool:
+                        Boolean bool = rowView.getBool(i);
+                        map.put(columnDesc.getName(), bool);
+                        break;
+                    case kSmallInt:
+                        Short st = rowView.getInt16(i);
+                        map.put(columnDesc.getName(), st);
+                        break;
+                    case kInt:
+                        Integer itg = rowView.getInt32(i);
+                        map.put(columnDesc.getName(), itg);
+                        break;
+                    case kTimestamp:
+                        Long ts = rowView.getTimestamp(i);
+                        map.put(columnDesc.getName(), ts);
+                        break;
+                    case kBigInt:
+                        Long lg = rowView.getInt64(i);
+                        map.put(columnDesc.getName(), lg);
+                        break;
+                    case kFloat:
+                        Float ft = rowView.getFloat(i);
+                        map.put(columnDesc.getName(), ft);
+                        break;
+                    case kDouble:
+                        Double db = rowView.getDouble(i);
+                        map.put(columnDesc.getName(), db);
+                        break;
+                    case kVarchar:
+                        String str = rowView.getString(i);
+                        map.put(columnDesc.getName(), str);
+                        break;
+                    default:
+                        throw new TabletException("unsupported data type");
+                }
+            }
         }
         return map;
     }

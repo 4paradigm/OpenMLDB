@@ -131,7 +131,13 @@ public class TableHandler {
                 com._4paradigm.rtidb.common.Common.ColumnDesc cd = tableInfo.getAddedColumnDesc(i);
                 ColumnDesc ncd = new ColumnDesc();
                 ncd.setName(cd.getName());
-                ncd.setType(ColumnType.valueFrom(cd.getType()));
+                if (!tableInfo.hasTableType() ||
+                        tableInfo.getTableType() == Type.TableType.kTimeSeries) {
+                    ncd.setType(ColumnType.valueFrom(cd.getType()));
+                } else {
+                    ncd.setDataType(DataType.valueFrom(cd.getDataType()));
+                    ncd.setNotNull(cd.getNotNull());
+                }
                 tempList.add(ncd);
                 schemaMap.put(schemaSize + i + 1, new ArrayList<>(tempList));
             }

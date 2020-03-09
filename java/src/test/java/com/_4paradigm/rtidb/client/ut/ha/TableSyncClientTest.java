@@ -8,11 +8,9 @@ import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
+import com._4paradigm.rtidb.client.impl.RelationalIterator;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
-import com._4paradigm.rtidb.client.schema.ColumnType;
-import com._4paradigm.rtidb.client.schema.IndexDef;
-import com._4paradigm.rtidb.client.schema.RowCodec;
-import com._4paradigm.rtidb.client.schema.TableDesc;
+import com._4paradigm.rtidb.client.schema.*;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.client.type.IndexType;
 import com._4paradigm.rtidb.client.type.TableType;
@@ -31,10 +29,7 @@ import org.testng.annotations.Test;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableSyncClientTest extends TestCaseBase {
@@ -130,7 +125,7 @@ public class TableSyncClientTest extends TestCaseBase {
 
     private String createRelationalTable() {
         String name = String.valueOf(id.incrementAndGet());
-//        nsc.dropTable(name);
+        nsc.dropTable(name);
         TableDesc tableDesc = new TableDesc();
         tableDesc.setName(name);
         tableDesc.setTableType(TableType.kRelational);
@@ -501,102 +496,105 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(false);
         }
     }
-//    @Test
-//    public void testRelationalTable() {
-//        String name = "test1";
-//        try {
-//            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
-//            Assert.assertEquals(schema.size(), 3);
-//
-//            //put
-//            WriteOption wo = new WriteOption();
-//            Map<String, Object> data = new HashMap<String, Object>();
-//            data.put("card", "card0");
-//            data.put("mcc", "mcc0");
-//            data.put("p_biz_date", 2020);
-//
-//            boolean ok = tableSyncClient.put(name, data, wo);
-//            Assert.assertTrue(ok);
-//
-//            data.clear();
-//            data.put("card", "card1");
-//            data.put("mcc", "mcc1");
-//            data.put("p_biz_date", 2021);
-//            tableSyncClient.put(name, data, wo);
-//
-//            //query
-//            Map<String, Object> index = new HashMap<>();
-//            index.put("card", "card0");
-//            ReadOption ro = new ReadOption(index, null, null, 1);
-//            RelationalIterator it = tableSyncClient.query(name, ro);
-//            Assert.assertTrue(it.valid());
-//
-//            Map<String, Object> queryMap = it.getDecodedValue();
-//            Assert.assertEquals(queryMap.size(), 3);
-//            Assert.assertEquals(queryMap.get("card"), "card0");
-//            Assert.assertEquals(queryMap.get("mcc"), "mcc0");
-//            Assert.assertEquals(queryMap.get("p_biz_date"), 2020);
-//
-//            Map<String, Object> index2 = new HashMap<>();
-//            index2.put("card", "card1");
-//            ro = new ReadOption(index2, null, null, 1);
-//            it = tableSyncClient.query(name, ro);
-//            Assert.assertTrue(it.valid());
-//
-//            queryMap = it.getDecodedValue();
-//            Assert.assertEquals(queryMap.size(), 3);
-//            Assert.assertEquals(queryMap.get("card"), "card1");
-//            Assert.assertEquals(queryMap.get("mcc"), "mcc1");
-//            Assert.assertEquals(queryMap.get("p_biz_date"), 2021);
-//
-//            //update
-//            Map<String, Object> conditionColumns = new HashMap<>();
-//            conditionColumns.put("card", "card0");
-//            Map<String, Object> valueColumns = new HashMap<>();
-//            valueColumns.put("p_biz_date", 3020);
-//            ok = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
-//            Assert.assertTrue(ok);
-//
-//            ro = new ReadOption(index, null, null, 1);
-//            it = tableSyncClient.query(name, ro);
-//            Assert.assertTrue(it.valid());
-//
-//            queryMap = it.getDecodedValue();
-//            Assert.assertEquals(queryMap.size(), 3);
-//            Assert.assertEquals(queryMap.get("card"), "card0");
-//            Assert.assertEquals(queryMap.get("mcc"), "mcc0");
-//            Assert.assertEquals(queryMap.get("p_biz_date"), 3020);
-//
-//            Map<String, Object> conditionColumns2 = new HashMap<>();
-//            conditionColumns2.put("card", "card1");
-//            Map<String, Object> valueColumns2 = new HashMap<>();
-//            valueColumns2.put("mcc", "mcc1_1");
-//            ok = tableSyncClient.update(name, conditionColumns2, valueColumns2, wo);
-//            Assert.assertTrue(ok);
-//
-//            ro = new ReadOption(index2, null, null, 1);
-//            it = tableSyncClient.query(name, ro);
-//            Assert.assertTrue(it.valid());
-//
-//            queryMap = it.getDecodedValue();
-//            Assert.assertEquals(queryMap.size(), 3);
-//            Assert.assertEquals(queryMap.get("card"), "card1");
-//            Assert.assertEquals(queryMap.get("mcc"), "mcc1_1");
-//            Assert.assertEquals(queryMap.get("p_biz_date"), 2021);
-//
-//            //delete
-//            ok = tableSyncClient.delete(name, conditionColumns2);
-//            Assert.assertTrue(ok);
-//            it = tableSyncClient.query(name, ro);
-//            Assert.assertFalse(it.valid());
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            Assert.assertTrue(false);
-//        } finally {
-//            nsc.dropTable(name);
-//        }
-//    }
+
+    @Test
+    public void testRelationalTable() {
+        String name = createRelationalTable();
+        try {
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 3);
+
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("id", 11l);
+            data.put("attribute", "a1");
+            data.put("image", "i1");
+
+            boolean ok = tableSyncClient.put(name, data, wo);
+            Assert.assertTrue(ok);
+
+            data.clear();
+            data.put("id", 12l);
+            data.put("attribute", "a2");
+            data.put("image", "i2");
+            tableSyncClient.put(name, data, wo);
+
+            //query
+            Map<String, Object> index = new HashMap<>();
+            index.put("id", 11l);
+            Set<String> colSet = new HashSet<>();
+            colSet.add("id");
+            colSet.add("image");
+            ReadOption ro = new ReadOption(index, null, colSet, 1);
+            RelationalIterator it = tableSyncClient.query(name, ro);
+            Assert.assertTrue(it.valid());
+
+            Map<String, Object> queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.size(), 2);
+            Assert.assertEquals(queryMap.get("id"), 11l);
+            Assert.assertEquals(queryMap.get("image"), "i1");
+
+            Map<String, Object> index2 = new HashMap<>();
+            index2.put("id", 12l);
+            ro = new ReadOption(index2, null, null, 1);
+            it = tableSyncClient.query(name, ro);
+            Assert.assertTrue(it.valid());
+
+            queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.size(), 3);
+            Assert.assertEquals(queryMap.get("id"), 12l);
+            Assert.assertEquals(queryMap.get("attribute"), "a2");
+            Assert.assertEquals(queryMap.get("image"), "i2");
+
+            //update
+            Map<String, Object> conditionColumns = new HashMap<>();
+            conditionColumns.put("id", 11l);
+            Map<String, Object> valueColumns = new HashMap<>();
+            valueColumns.put("image", "i3");
+            ok = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
+            Assert.assertTrue(ok);
+
+            ro = new ReadOption(index, null, null, 1);
+            it = tableSyncClient.query(name, ro);
+            Assert.assertTrue(it.valid());
+
+            queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.size(), 3);
+            Assert.assertEquals(queryMap.get("id"), 11l);
+            Assert.assertEquals(queryMap.get("attribute"), "a1");
+            Assert.assertEquals(queryMap.get("image"), "i3");
+
+            Map<String, Object> conditionColumns2 = new HashMap<>();
+            conditionColumns2.put("id", 12l);
+            Map<String, Object> valueColumns2 = new HashMap<>();
+            valueColumns2.put("attribute", "a3");
+            ok = tableSyncClient.update(name, conditionColumns2, valueColumns2, wo);
+            Assert.assertTrue(ok);
+
+            ro = new ReadOption(index2, null, null, 1);
+            it = tableSyncClient.query(name, ro);
+            Assert.assertTrue(it.valid());
+
+            queryMap = it.getDecodedValue();
+            Assert.assertEquals(queryMap.size(), 3);
+            Assert.assertEquals(queryMap.get("id"), 12l);
+            Assert.assertEquals(queryMap.get("attribute"), "a3");
+            Assert.assertEquals(queryMap.get("image"), "i2");
+
+            //delete
+            ok = tableSyncClient.delete(name, conditionColumns2);
+            Assert.assertTrue(ok);
+            it = tableSyncClient.query(name, ro);
+            Assert.assertFalse(it.valid());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
 
 
     @Test
