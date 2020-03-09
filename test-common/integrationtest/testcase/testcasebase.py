@@ -659,6 +659,10 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'showtable {}'.format(table)
         return self.run_client(endpoint, cmd, 'ns_client')
 
+    def ns_deleteindex(self, endpoint, table_name, index_name):
+        cmd = 'deleteindex {} {}'.format(table_name, index_name)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
     @staticmethod
     def get_table_meta(nodepath, tid, pid):
         table_meta = {}
