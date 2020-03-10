@@ -15,31 +15,6 @@
 namespace fesql {
 namespace node {
 
-SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
-    switch (type) {
-        case kExpr:
-            return RegisterNode(new ExprNode(kExprUnknow));
-        case kResTarget:
-            return RegisterNode(new ResTarget());
-        case kTable:
-            return RegisterNode(new TableNode());
-        case kWindowDef:
-            return RegisterNode(new WindowDefNode());
-        case kFrameBound:
-            return RegisterNode(new FrameBound());
-        case kFrames:
-            return RegisterNode(new FrameNode());
-        case kConst:
-            return RegisterNode(new ConstNode());
-
-        case kLimit:
-            return RegisterNode(new LimitNode(0));
-        default:
-            LOG(WARNING) << "can not make sql node with type "
-                         << NameOfSQLNodeType(type);
-            return RegisterNode(new SQLNode(kUnknow, 0, 0));
-    }
-}
 
 SQLNode *NodeManager::MakeSelectStmtNode(
     bool is_distinct, SQLNodeList *select_list, SQLNodeList *tableref_list,

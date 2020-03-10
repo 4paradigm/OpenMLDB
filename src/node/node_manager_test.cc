@@ -22,9 +22,9 @@ class NodeManagerTest : public ::testing::Test {
 
 TEST_F(NodeManagerTest, MakeSQLNode) {
     NodeManager *manager = new NodeManager();
-    manager->MakeSQLNode(node::kSelectStmt);
-    manager->MakeSQLNode(node::kOrderBy);
-    manager->MakeSQLNode(node::kLimit);
+    manager->MakeTableNode("", "table1");
+    manager->MakeTableNode("", "table2");
+    manager->MakeLimitNode(10);
 
     manager->MakeTablePlanNode(
         dynamic_cast<TableNode *>(manager->MakeTableNode("", "t1")));

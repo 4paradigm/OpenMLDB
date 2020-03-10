@@ -69,7 +69,6 @@ class NodeManager {
     PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
                            const ExprNode *condition);
     // Make SQLxxx Node
-    SQLNode *MakeSQLNode(const SQLNodeType &type);
     SQLNode *MakeSelectStmtNode(bool is_distinct, SQLNodeList *select_list_ptr,
                                 SQLNodeList *tableref_list_ptr,
                                 ExprNode *where_expr,
