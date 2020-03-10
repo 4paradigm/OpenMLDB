@@ -133,21 +133,21 @@ public class TableSyncClientTest extends TestCaseBase {
         {
             com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
             col.setName("id");
-            col.setDataType(DataType.kBigInt);
+            col.setDataType(DataType.BigInt);
             col.setNotNull(true);
             list.add(col);
         }
         {
             com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
             col.setName("attribute");
-            col.setDataType(DataType.kVarchar);
+            col.setDataType(DataType.Varchar);
             col.setNotNull(true);
             list.add(col);
         }
         {
             com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
             col.setName("image");
-            col.setDataType(DataType.kVarchar);
+            col.setDataType(DataType.Varchar);
             col.setNotNull(true);
             list.add(col);
         }
@@ -489,11 +489,14 @@ public class TableSyncClientTest extends TestCaseBase {
 
     @Test
     public void testCreateRelationalTable() {
+        String name = "";
         try {
-            String name = createRelationalTable();
+            name = createRelationalTable();
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
         }
     }
 

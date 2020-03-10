@@ -4,38 +4,38 @@ import com._4paradigm.rtidb.type.Type;
 
 public enum DataType {
 
-    kBool,
-    kSmallInt,//int16
-    kInt,   //int32
-    kBigInt,  //int64
-    kFloat,
-    kDouble,
-    kVarchar, //string
-    kDate,
-    kTimestamp,
-    kBlob;
+    Bool,
+    SmallInt,//int16
+    Int,   //int32
+    BigInt,  //int64
+    Float,
+    Double,
+    Varchar, //string
+    Date,
+    Timestamp,
+    Blob;
 
     public static Type.DataType valueFrom(DataType dataType) {
         switch (dataType) {
-            case kBool:
+            case Bool:
                 return Type.DataType.kBool;
-            case kSmallInt:
+            case SmallInt:
                 return Type.DataType.kSmallInt;
-            case kInt:
+            case Int:
                 return Type.DataType.kInt;
-            case kBigInt:
+            case BigInt:
                 return Type.DataType.kBigInt;
-            case kFloat:
+            case Float:
                 return Type.DataType.kFloat;
-            case kDouble:
+            case Double:
                 return Type.DataType.kDouble;
-            case kVarchar:
+            case Varchar:
                 return Type.DataType.kVarchar;
-            case kDate:
+            case Date:
                 return Type.DataType.kDate;
-            case kTimestamp:
+            case Timestamp:
                 return Type.DataType.kTimestamp;
-            case kBlob:
+            case Blob:
                 return Type.DataType.kBlob;
             default:
                 throw new RuntimeException("not supported type with" + dataType);
@@ -45,25 +45,25 @@ public enum DataType {
     public static DataType valueFrom(Type.DataType dataType) {
         switch (dataType) {
             case kBool:
-                return kBool;
+                return Bool;
             case kSmallInt:
-                return kSmallInt;
+                return SmallInt;
             case kInt:
-                return kInt;
+                return Int;
             case kBigInt:
-                return kBigInt;
+                return BigInt;
             case kFloat:
-                return kFloat;
+                return Float;
             case kDouble:
-                return kDouble;
+                return Double;
             case kVarchar:
-                return kVarchar;
+                return Varchar;
             case kDate:
-                return kDate;
+                return Date;
             case kTimestamp:
-                return kTimestamp;
+                return Timestamp;
             case kBlob:
-                return kBlob;
+                return Blob;
             default:
                 throw new RuntimeException("not supported type with" + dataType);
         }
