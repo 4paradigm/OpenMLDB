@@ -41,20 +41,12 @@ struct GeneralResult {
     int code;
     std::string msg;
     GeneralResult():code(0), msg() {}
-    GeneralResult(int err_num):code(err_num), msg() {};
-    GeneralResult(int err_num, const std::string error_msg):code(err_num), msg(error_msg) {};
+    GeneralResult(int err_num):code(err_num), msg() {}
+    GeneralResult(int err_num, const std::string error_msg):code(err_num), msg(error_msg) {}
     void SetError(int err_num, const std::string& error_msg) {
         code = err_num;
         msg = error_msg;
     }
-};
-
-struct ShowTableResult {
-    int code;
-    std::string msg;
-    std::vector<std::string> tables;
-    ShowTableResult():code(0), msg(), tables() {
-    };
 };
 
 struct ReadOption {

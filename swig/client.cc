@@ -9,7 +9,7 @@
 #endif
 #include <snappy.h>
 
-#define NoneToken "None#*@!"
+#define NONETOKEN "None#*@!"
 
 const std::map<std::string, rtidb::type::DataType> NameToDataType = {
         {"string", rtidb::type::DataType::kVarchar},
@@ -55,132 +55,112 @@ static int ConvertColumnDesc(
 }
 
 
-int encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema,
-        const std::vector<std::string>& value_vec, std::string& buffer) {
+int Encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema,
+        const std::vector<std::string>& value_vec, std::string& buffer, uint32_t string_length) {
+    if (value_vec.size() != schema.size()) {
+        return -1;
+    }
     rtidb::base::RowBuilder rb(schema);
-    uint32_t total_size = rb.CalTotalLength(buffer.size());
+    uint32_t total_size = rb.CalTotalLength(string_length);
     buffer.resize(total_size);
     rb.SetBuffer(reinterpret_cast<int8_t*>(&buffer[0]), total_size);
     for (int32_t i = 0; i < schema.size(); i++) {
-        if (value_vec[i] == NoneToken) {
+        if (value_vec[i] == NONETOKEN) {
             rb.AppendNULL();
             continue;
         }
         auto type = schema.Get(i).data_type();
-        if (type == rtidb::type::kInt32) {
-            try {
+        try {
+            if (type == rtidb::type::kInt32) {
                 rb.AppendInt32(boost::lexical_cast<int32_t>(value_vec[i]));
-            } catch(boost::bad_lexical_cast &) {
-                return -1;
-            }
-        } else if (type == rtidb::type::kTimestamp) {
-            try {
+            } else if (type == rtidb::type::kTimestamp) {
                 rb.AppendTimestamp(boost::lexical_cast<int64_t>(value_vec[i]));
-            } catch (boost::bad_lexical_cast &) {
-                return -1;
-            }
-        } else if (type == rtidb::type::kInt64) {
-            try {
+            } else if (type == rtidb::type::kInt64) {
                 rb.AppendInt64(boost::lexical_cast<int64_t>(value_vec[i]));
-            } catch (boost::bad_lexical_cast &) {
-                return -1;
-            }
-        } else if (type == rtidb::type::kBool) {
-            try {
+            } else if (type == rtidb::type::kBool) {
                 rb.AppendBool(boost::lexical_cast<bool>(value_vec[i]));
-            } catch (boost::bad_lexical_cast &) {
-                return -1;
-            }
-        } else if (type == rtidb::type::kFloat) {
-            try {
+            } else if (type == rtidb::type::kFloat) {
                 rb.AppendFloat(boost::lexical_cast<float>(value_vec[i]));
-            } catch (boost::bad_lexical_cast &) {
-                return -1;
-            }
-        } else if (type == rtidb::type::kInt16) {
-            try {
+            } else if (type == rtidb::type::kInt16) {
                 rb.AppendInt16(boost::lexical_cast<int16_t>(value_vec[i]));
-            } catch (boost::bad_lexical_cast &) {
-                return -1;
-            }
-        } else if (type == rtidb::type::kDouble) {
-            try {
+            } else if (type == rtidb::type::kDouble) {
                 rb.AppendDouble(boost::lexical_cast<double>(value_vec[i]));
-            } catch (boost::bad_lexical_cast &) {
+            } else if (type == rtidb::type::kVarchar) {
+                rb.AppendString(value_vec[i].data(), value_vec[i].size());
+            } else f (type == rtidb::type::kDate) {
                 rb.AppendNULL();
+            } else {
+                returtn - 1;
             }
-        } else if (type == rtidb::type::kVarchar) {
-            rb.AppendString(value_vec[i].data(), value_vec[i].size());
-        } else {
-            rb.AppendNULL();
+        } catch (boost::bad_lexical_cast &) {
+            return -1;
         }
     }
     return 0;
 }
 
-void decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, std::string& value,
+void Decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, std::string& value,
         std::vector<std::string>& value_vec) {
     rtidb::base::RowView rv(schema, reinterpret_cast<int8_t*>(&value[0]), value.size());
     for (int32_t i = 0; i < schema.size(); i++) {
+        if (rv.IsNULL(i)) {
+            value_vec.push_back(NONETOKEN);
+            continue;
+        }
         std::string col = "";
         auto type = schema.Get(i).data_type();
         if (type == rtidb::type::kInt32) {
             int32_t val;
             int ret = rv.GetInt32(i, &val);
             if (ret == 0) {
-                col = boost::lexical_cast<std::string>(val);
+                col = std::to_string(val)
             }
         } else if (type == rtidb::type::kTimestamp) {
             int64_t val;
             int ret = rv.GetTimestamp(i, &val);
             if (ret == 0) {
-                col = boost::lexical_cast<std::string>(val);
+                col = std::to_string(val)
             }
         } else if (type == rtidb::type::kInt64) {
             int64_t val;
             int ret = rv.GetInt64(i, &val);
             if (ret == 0) {
-                col = boost::lexical_cast<std::string>(val);
+                col = std::to_string(val)
             }
         } else if (type == rtidb::type::kBool) {
             bool val;
             int ret = rv.GetBool(i, &val);
             if (ret == 0) {
-                col = boost::lexical_cast<std::string>(val);
+                col = std::to_string(val)
             }
         } else if (type == rtidb::type::kFloat) {
             float val;
             int ret = rv.GetFloat(i, &val);
             if (ret == 0) {
-                col = boost::lexical_cast<std::string>(val);
+                col = std::to_string(val)
             }
         } else if (type == rtidb::type::kInt16) {
             int16_t val;
             int ret = rv.GetInt16(i, &val);
             if (ret == 0) {
-                col = boost::lexical_cast<std::string>(val);
+                col = std::to_string(val)
             }
         } else if (type == rtidb::type::kDouble) {
             double val;
             int ret = rv.GetDouble(i, &val);
             if (ret == 0) {
-                col = boost::lexical_cast<std::string>(val);
+                col = std::to_string(val)
             }
         } else if (type == rtidb::type::kVarchar) {
-            if (rv.IsNULL(i)) {
-                col = NoneToken;
-            } else {
-                char *ch = NULL;
-                uint32_t length = 0;
-                int ret = rv.GetString(i, &ch, &length);
-                if (ret == 0) {
-                    col.assign(ch, length);
-                }
+            char *ch = NULL;
+            uint32_t length = 0;
+            int ret = rv.GetString(i, &ch, &length);
+            if (ret == 0) {
+                col.assign(ch, length);
             }
         }
         value_vec.push_back(col);
     }
-    return;
 }
 
 RtidbClient::RtidbClient():zk_client_(), client_(), tablets_(), mu_(), zk_cluster_(), zk_path_(), tables_() {
@@ -199,12 +179,15 @@ void RtidbClient::CheckZkClient() {
 }
 
 void RtidbClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
-    std::lock_guard<std::mutex> mx(mu_);
-    decltype(tablets_) old_tablets = tablets_;
+    decltype(tablets_) old_tablets;
     decltype(tablets_) new_tablets;
+    {
+        std::lock_guard<std::mutex> mx(mu_);
+        old_tablets = tablets_;
+    }
     for (const auto& endpoint : alive_endpoints) {
-        auto iter = tablets_.find(endpoint);
-        if (iter == tablets_.end()) {
+        auto iter = old_tablets.find(endpoint);
+        if (iter == old_tablets.end()) {
             std::shared_ptr<rtidb::client::TabletClient> tablet = std::make_shared<rtidb::client::TabletClient>(endpoint);
             if (tablet->Init() != 0) {
                 std::cerr << endpoint << " initial failed!" << std::endl;
@@ -215,8 +198,8 @@ void RtidbClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
             new_tablets.insert(std::make_pair(endpoint, iter->second));
         }
     }
-
-    old_tablets.clear();
+    std::lock_guard<std::mutex> mx(mu_);
+    tablets_.clear();
     tablets_ = new_tablets;
 }
 
@@ -241,8 +224,6 @@ void RtidbClient::RefreshTable() {
         }
     }
 
-    std::lock_guard<std::mutex> mx(mu_);
-    decltype(tables_) old_tables = tables_;
     decltype(tables_) new_tables;
     for (const auto& table_name : table_vec) {
         std::string value;
@@ -279,9 +260,8 @@ void RtidbClient::RefreshTable() {
         handler->columns = columns;
         new_tables.insert(std::make_pair(table_name, handler));
     }
-    old_tables.clear();
+    std::lock_guard<std::mutex> mx(mu_);
     tables_ = new_tables;
-    return;
 }
 
 GeneralResult RtidbClient::Init(const std::string& zk_cluster, const std::string& zk_path) {
@@ -339,7 +319,7 @@ QueryResult RtidbClient::Query(const std::string& name, struct ReadOption& ro) {
             continue;
         }
         std::vector<std::string> value_vec;
-        decode(*th->columns, value, value_vec);
+        Decode(*th->columns, value, value_vec);
         std::map<std::string, GetColumn> value_map;
         for (int32_t i = 0; i < th->columns->size(); i++) {
             GetColumn col;
@@ -397,25 +377,19 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
     }
     std::vector<std::string> value_vec;
     std::uint32_t string_length = 0;
-    std::map<std::string, std::string> raw_value;
     for (auto& column : *(th->columns)) {
         auto iter = value.find(column.name());
         if (iter == value.end()) {
             value_vec.push_back("");
         } else {
             value_vec.push_back(iter->second);
-            if ((column.data_type() == rtidb::type::kVarchar) && (iter->second != NoneToken)) {
-                    string_length += iter->second.size();
+            if ((column.data_type() == rtidb::type::kVarchar) && (iter->second != NONETOKEN)) {
+                string_length += iter->second.size();
             }
-        }
-        auto set_iter = keys_column.find(column.name());
-        if (set_iter != keys_column.end()) {
-            raw_value.insert(std::make_pair(column.name(), iter->second));
         }
     }
     std::string buffer;
-    buffer.resize(string_length);
-    int code = encode(*(th->columns), value_vec, buffer);
+    int code = encode(*(th->columns), value_vec, buffer, string_length);
     if (code != 0) {
         result.SetError(code, "encode error");
         return result;
@@ -467,54 +441,6 @@ GeneralResult RtidbClient::Delete(const std::string& name, const std::map<std::s
 GeneralResult RtidbClient::Update(const std::string& name, const std::map<std::string, std::string>& condition,
         const std::map<std::string, std::string> values, const WriteOption& wo) {
     GeneralResult result;
-    std::shared_ptr<TableHandler> th;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto iter = tables_.find(name);
-        if (iter == tables_.end()) {
-            result.SetError(-1, "table not found");
-            return result;
-        }
-        th = iter->second;
-    }
-    std::string err_msg;
-    auto tablet = GetTabletClient(th->partition[0].leader, err_msg);
-    if (tablet == NULL) {
-        result.SetError(-1, err_msg);
-        return result;
-    }
-    std::string value;
-    uint64_t ts;
-    bool ok = tablet->Get(th->table_info->tid(), 0, condition.begin()->second, 0, "", "", value, ts, err_msg);
-    if (!ok) {
-        result.SetError(-1, err_msg);
-        return result;
-    }
-    std::vector<std::string> value_vec;
-    decode(*th->columns, value, value_vec);
-    std::uint32_t string_length = 0;
-    for (int32_t i = 0; i < th->columns->size(); i++) {
-        auto name = th->columns->Get(i).name();
-        auto iter = values.find(name);
-        if (iter != values.end()) {
-            value_vec[i] = iter->second;
-            if ((th->columns->Get(i).data_type() == rtidb::type::kVarchar) && (iter->second != NoneToken)) {
-                string_length += iter->second.size();
-            }
-        }
-    }
-    value.clear();
-    value.resize(string_length);
-    int code = encode(*(th->columns), value_vec, value);
-    if (code != 0) {
-        result.SetError(code, "encode error");
-        return result;
-    }
-    ok = tablet->Put(th->table_info->tid(), 0, "", 0, value);
-    if (!ok) {
-        result.SetError(-1, "put error");
-        return result;
-    }
     return result;
 }
 

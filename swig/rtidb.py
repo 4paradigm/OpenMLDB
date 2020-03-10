@@ -1,8 +1,10 @@
-kSubkeyLt = 2
-kSubkeyLe = 3
-kSubKeyEq = 1
-kSubKeyGt = 4
-kSubKeyGe = 5
+import enum
+class CompareOP(enum.IntEnum):
+  EQ = enum.auto()
+  LT = enum.auto()
+  LE = enum.auto()
+  GT = enum.auto()
+  GE = enum.auto()
 def __return_None(x):
   return None
 def __return_EmptyStr(x):
@@ -20,7 +22,7 @@ type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,100:__ret
   kTimestamp = 9,
   kVoid = 100
 '''
-NoneToken="None#*@!"
+NONETOKEN="None#*@!"
 
 class WriteOption:
   def __init__(self, updateIfExist = True, updateIfEqual = True):
@@ -78,7 +80,7 @@ class RTIDBClient:
     value = dict();
     for k in columns:
       if columns[k] == None:
-        value.update({k: NoneToken})
+        value.update({k: NONETOKEN})
       value.update({k: str(columns[k])})
     ok = self.__client.Put(table_name, value, _wo)
     if ok.code != 0:
@@ -121,7 +123,7 @@ class RTIDBClient:
         if mm == None:
           continue
         for k in mm:
-          if (mm[k] == NoneToken):
+          if (mm[k] == NONETOKEN):
             result.update({k:None})
           else:
             result.update({k: type_map[mm[k].type](mm[k].buffer)})
