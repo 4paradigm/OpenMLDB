@@ -398,19 +398,19 @@ public class RowCodecTest {
             {
                 ColumnDesc col1 = new ColumnDesc();
                 col1.setName("col1");
-                col1.setDataType(DataType.kSmallInt);
+                col1.setDataType(DataType.SmallInt);
                 schema.add(col1);
             }
             {
                 ColumnDesc col2 = new ColumnDesc();
                 col2.setName("col2");
-                col2.setDataType(DataType.kBool);
+                col2.setDataType(DataType.Bool);
                 schema.add(col2);
             }
             {
                 ColumnDesc col3 = new ColumnDesc();
                 col3.setName("col3");
-                col3.setDataType(DataType.kVarchar);
+                col3.setDataType(DataType.Varchar);
                 schema.add(col3);
             }
             RowBuilder builder = new RowBuilder(schema);
@@ -437,31 +437,31 @@ public class RowCodecTest {
             {
                 ColumnDesc col1 = new ColumnDesc();
                 col1.setName("col1");
-                col1.setDataType(DataType.kInt);
+                col1.setDataType(DataType.Int);
                 schema.add(col1);
             }
             {
                 ColumnDesc col2 = new ColumnDesc();
                 col2.setName("col2");
-                col2.setDataType(DataType.kSmallInt);
+                col2.setDataType(DataType.SmallInt);
                 schema.add(col2);
             }
             {
                 ColumnDesc col3 = new ColumnDesc();
                 col3.setName("col3");
-                col3.setDataType(DataType.kFloat);
+                col3.setDataType(DataType.Float);
                 schema.add(col3);
             }
             {
                 ColumnDesc col4 = new ColumnDesc();
                 col4.setName("col4");
-                col4.setDataType(DataType.kDouble);
+                col4.setDataType(DataType.Double);
                 schema.add(col4);
             }
             {
                 ColumnDesc col5 = new ColumnDesc();
                 col5.setName("col5");
-                col5.setDataType(DataType.kBigInt);
+                col5.setDataType(DataType.BigInt);
                 schema.add(col5);
             }
             RowBuilder builder = new RowBuilder(schema);
@@ -493,11 +493,11 @@ public class RowCodecTest {
                 ColumnDesc col = new ColumnDesc();
                 col.setName("col" + i);
                 if (i % 3 == 0) {
-                    col.setDataType(DataType.kSmallInt);
+                    col.setDataType(DataType.SmallInt);
                 } else if (i % 3 == 1) {
-                    col.setDataType(DataType.kDouble);
+                    col.setDataType(DataType.Double);
                 } else {
-                    col.setDataType(DataType.kVarchar);
+                    col.setDataType(DataType.Varchar);
                 }
                 schema.add(col);
             }
@@ -548,11 +548,11 @@ public class RowCodecTest {
                 ColumnDesc col = new ColumnDesc();
                 col.setName("col" + i);
                 if (i % 3 == 0) {
-                    col.setDataType(DataType.kSmallInt);
+                    col.setDataType(DataType.SmallInt);
                 } else if (i % 3 == 1) {
-                    col.setDataType(DataType.kDouble);
+                    col.setDataType(DataType.Double);
                 } else {
-                    col.setDataType(DataType.kVarchar);
+                    col.setDataType(DataType.Varchar);
                 }
                 schema.add(col);
             }
@@ -618,9 +618,9 @@ public class RowCodecTest {
                 ColumnDesc col = new ColumnDesc();
                 col.setName("col" + i);
                 if (i % 2 == 0) {
-                    col.setDataType(DataType.kSmallInt);
+                    col.setDataType(DataType.SmallInt);
                 } else {
-                    col.setDataType(DataType.kVarchar);
+                    col.setDataType(DataType.Varchar);
                 }
                 schema.add(col);
             }
@@ -691,19 +691,19 @@ public class RowCodecTest {
                     {
                         ColumnDesc col = new ColumnDesc();
                         col.setName("col" + i + 1);
-                        col.setDataType(DataType.kVarchar);
+                        col.setDataType(DataType.Varchar);
                         schema.add(col);
                     }
                     {
                         ColumnDesc col = new ColumnDesc();
                         col.setName("col" + i + 2);
-                        col.setDataType(DataType.kBigInt);
+                        col.setDataType(DataType.BigInt);
                         schema.add(col);
                     }
                     {
                         ColumnDesc col = new ColumnDesc();
                         col.setName("col" + i + 3);
-                        col.setDataType(DataType.kDouble);
+                        col.setDataType(DataType.Double);
                         schema.add(col);
                     }
                 }

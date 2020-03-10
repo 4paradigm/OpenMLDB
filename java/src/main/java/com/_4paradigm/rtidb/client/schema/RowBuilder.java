@@ -1,7 +1,10 @@
 package com._4paradigm.rtidb.client.schema;
 
 import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.type.DataType;
+import com._4paradigm.rtidb.client.type.IndexType;
+import com._4paradigm.rtidb.common.Common;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +32,7 @@ public class RowBuilder {
         this.schema = schema;
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
-            if (column.getDataType() == DataType.kVarchar) {
+            if (column.getDataType() == DataType.Varchar) {
                 offset_vec.add(str_field_cnt);
                 str_field_cnt++;
             } else {
@@ -90,7 +93,7 @@ public class RowBuilder {
         if (column.getDataType() != type) {
             return false;
         }
-        if (column.getDataType() != DataType.kVarchar) {
+        if (column.getDataType() != DataType.Varchar) {
             if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                 return false;
             }
@@ -103,7 +106,7 @@ public class RowBuilder {
         byte bt = buf.get(index);
         buf.put(index, (byte) (bt | (1 << (cnt & 0x07))));
         ColumnDesc column = schema.get(cnt);
-        if (column.getDataType() == DataType.kVarchar) {
+        if (column.getDataType() == DataType.Varchar) {
             index = str_field_start_offset + str_addr_length * offset_vec.get(cnt);
             buf.position(index);
             if (str_addr_length == 1) {
@@ -123,7 +126,7 @@ public class RowBuilder {
     }
 
     public boolean appendBool(boolean val) {
-        if (!check(DataType.kBool)) {
+        if (!check(DataType.Bool)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -137,7 +140,7 @@ public class RowBuilder {
     }
 
     public boolean appendInt32(int val) {
-        if (!check(DataType.kInt)) {
+        if (!check(DataType.Int)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -147,7 +150,7 @@ public class RowBuilder {
     }
 
     public boolean appendInt16(short val) {
-        if (!check(DataType.kSmallInt)) {
+        if (!check(DataType.SmallInt)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -157,7 +160,7 @@ public class RowBuilder {
     }
 
     public boolean appendTimestamp(long val) {
-        if (!check(DataType.kTimestamp)) {
+        if (!check(DataType.Timestamp)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -167,7 +170,7 @@ public class RowBuilder {
     }
 
     public boolean appendInt64(long val) {
-        if (!check(DataType.kBigInt)) {
+        if (!check(DataType.BigInt)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -177,7 +180,7 @@ public class RowBuilder {
     }
 
     public boolean appendFloat(float val) {
-        if (!check(DataType.kFloat)) {
+        if (!check(DataType.Float)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -187,7 +190,7 @@ public class RowBuilder {
     }
 
     public boolean appendDouble(double val) {
-        if (!check(DataType.kDouble)) {
+        if (!check(DataType.Double)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -198,7 +201,7 @@ public class RowBuilder {
 
     public boolean appendString(String val) {
         int length = val.length();
-        if (val == null || !check(DataType.kVarchar)) {
+        if (val == null || !check(DataType.Varchar)) {
             return false;
         }
         if (str_offset + length > size) {
@@ -224,5 +227,115 @@ public class RowBuilder {
         str_offset += length;
         cnt++;
         return true;
+    }
+
+    public static ByteBuffer putEncode(Object[] row, List<ColumnDesc> schema) throws TabletException {
+        int strLength = calStrLength(row, schema);
+        RowBuilder builder = new RowBuilder(schema);
+        int size = builder.calTotalLength(strLength);
+        ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+        buffer = builder.setBuffer(buffer, size);
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
+            if (columnDesc.isNotNull() && row[i] == null) {
+                throw new TabletException("col " + columnDesc.getName() + " should not be null");
+            } else if (row[i] == null) {
+                builder.appendNULL();
+                continue;
+            }
+            switch (columnDesc.getDataType()) {
+                case Varchar:
+                    boolean ok = builder.appendString((String) row[i]);
+                    if (!ok) {
+                        throw new TabletException("append string error");
+                    }
+                    break;
+                case Bool:
+                    ok = builder.appendBool((Boolean) row[i]);
+                    if (!ok) {
+                        throw new TabletException("append boolean error");
+                    }
+                    break;
+                case SmallInt:
+                    ok = builder.appendInt16((Short) row[i]);
+                    if (!ok) {
+                        throw new TabletException("append smallInt error");
+                    }
+                    break;
+                case Int:
+                    ok = builder.appendInt32((Integer) row[i]);
+                    if (!ok) {
+                        throw new TabletException("append int error");
+                    }
+                    break;
+                case Timestamp:
+                    ok = builder.appendTimestamp((Long) row[i]);
+                    if (!ok) {
+                        throw new TabletException("append timestamp error");
+                    }
+                    break;
+                case BigInt:
+                    ok = builder.appendInt64((Long) row[i]);
+                    if (!ok) {
+                        throw new TabletException("append bigInt error");
+                    }
+                    break;
+                case Float:
+                    ok = builder.appendFloat((Float) row[i]);
+                    if (!ok) {
+                        throw new TabletException("append float error");
+                    }
+                    break;
+                case Double:
+                    ok = builder.appendDouble((Double) row[i]);
+                    if (!ok) {
+                        throw new TabletException("append double error");
+                    }
+                    break;
+                default:
+                    throw new TabletException("unsupported data type");
+            }
+        }
+        return buffer;
+    }
+
+    private static int calStrLength(Object[] row, List<ColumnDesc> schema) {
+        int strLength = 0;
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
+            if (columnDesc.getDataType().equals(DataType.Varchar)) {
+                if (!columnDesc.isNotNull() && row[i] == null) {
+                    continue;
+                }
+                strLength += ((String) row[i]).length();
+            }
+        }
+        return strLength;
+    }
+
+    public static String getPrimaryKey(Object[] row, List<Common.ColumnKey> columnKeyList, List<ColumnDesc> schema) {
+        String pkColName = "";
+        for (int i = 0; i < columnKeyList.size(); i++) {
+            Common.ColumnKey columnKey = columnKeyList.get(i);
+            if (columnKey.hasIndexType() &&
+                    columnKey.getIndexType() == IndexType.valueFrom(IndexType.kPrimaryKey)) {
+                pkColName = columnKey.getIndexName();
+            }
+        }
+        String pk = "";
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
+            if (columnDesc.getName().equals(pkColName)) {
+                if (row[i] == null) {
+                    pk = RTIDBClientConfig.NULL_STRING;
+                } else {
+                    pk = String.valueOf(row[i]);
+                }
+                if (pk.isEmpty()) {
+                    pk = RTIDBClientConfig.EMPTY_STRING;
+                }
+            }
+        }
+        return pk;
     }
 }

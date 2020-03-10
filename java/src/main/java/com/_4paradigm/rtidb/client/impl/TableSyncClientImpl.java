@@ -9,9 +9,6 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.*;
-import com._4paradigm.rtidb.client.type.DataType;
-import com._4paradigm.rtidb.client.type.IndexType;
-import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
@@ -21,7 +18,6 @@ import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 
@@ -1004,7 +1000,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         List<ColumnDesc> schema;
         if (row.length == th.getSchema().size()) {
             schema = th.getSchema();
-            buffer = putEncode(row, th.getSchema());
+            buffer = RowBuilder.putEncode(row, th.getSchema());
         } else {
             schema = th.getSchemaMap().get(row.length);
             if (schema == null) {
@@ -1014,116 +1010,11 @@ public class TableSyncClientImpl implements TableSyncClient {
             if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
                 modifyTimes = th.getSchemaMap().size();
             }
-            buffer = putEncode(row, schema);
+            buffer = RowBuilder.putEncode(row, schema);
         }
-        String pk = getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
+        String pk = RowBuilder.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
         int pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
         return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
-    }
-
-    private String getPrimaryKey(Object[] row, List<Common.ColumnKey> columnKeyList, List<ColumnDesc> schema) {
-        String pkColName = "";
-        for (int i = 0; i < columnKeyList.size(); i++) {
-            Common.ColumnKey columnKey = columnKeyList.get(i);
-            if (columnKey.hasIndexType() &&
-                    columnKey.getIndexType() == IndexType.valueFrom(IndexType.kPrimaryKey)) {
-                pkColName = columnKey.getIndexName();
-            }
-        }
-        String pk = "";
-        for (int i = 0; i < schema.size(); i++) {
-            ColumnDesc columnDesc = schema.get(i);
-            if (columnDesc.getName().equals(pkColName)) {
-                if (row[i] == null) {
-                    pk = RTIDBClientConfig.NULL_STRING;
-                } else {
-                    pk = String.valueOf(row[i]);
-                }
-                if (pk.isEmpty()) {
-                    pk = RTIDBClientConfig.EMPTY_STRING;
-                }
-            }
-        }
-        return pk;
-    }
-
-    private ByteBuffer putEncode(Object[] row, List<ColumnDesc> schema) throws TabletException {
-        int strLength = calStrLength(row, schema);
-        RowBuilder builder = new RowBuilder(schema);
-        int size = builder.calTotalLength(strLength);
-        ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
-        buffer = builder.setBuffer(buffer, size);
-        for (int i = 0; i < schema.size(); i++) {
-            ColumnDesc columnDesc = schema.get(i);
-            if (columnDesc.isNotNull() && row[i] == null) {
-                throw new TabletException("col " + columnDesc.getName() + " should not be null");
-            } else if (row[i] == null) {
-                builder.appendNULL();
-                continue;
-            }
-            switch (columnDesc.getDataType()) {
-                case kVarchar:
-                    boolean ok = builder.appendString((String) row[i]);
-                    if (!ok) {
-                        throw new TabletException("append string error");
-                    }
-                    break;
-                case kBool:
-                    ok = builder.appendBool((Boolean) row[i]);
-                    if (!ok) {
-                        throw new TabletException("append boolean error");
-                    }
-                    break;
-                case kSmallInt:
-                    ok = builder.appendInt16((Short) row[i]);
-                    if (!ok) {
-                        throw new TabletException("append smallInt error");
-                    }
-                    break;
-                case kInt:
-                    ok = builder.appendInt32((Integer) row[i]);
-                    if (!ok) {
-                        throw new TabletException("append int error");
-                    }
-                    break;
-                case kTimestamp:
-                case kBigInt:
-                    ok = builder.appendInt64((Long) row[i]);
-                    if (!ok) {
-                        throw new TabletException("append bigInt error");
-                    }
-                    break;
-                case kFloat:
-                    ok = builder.appendFloat((Float) row[i]);
-                    if (!ok) {
-                        throw new TabletException("append float error");
-                    }
-                    break;
-                case kDouble:
-                    ok = builder.appendDouble((Double) row[i]);
-                    if (!ok) {
-                        throw new TabletException("append double error");
-                    }
-                    break;
-                default:
-                    throw new TabletException("unsupported data type");
-            }
-        }
-        return buffer;
-    }
-
-    private int calStrLength(Object[] row, List<ColumnDesc> schema) {
-        int strLength = 0;
-        for (int i = 0; i < schema.size(); i++) {
-            ColumnDesc columnDesc = schema.get(i);
-            if (columnDesc.getDataType().equals(DataType.kVarchar)) {
-                if (!columnDesc.isNotNull() && row[i] == null) {
-                    continue;
-                }
-                strLength += ((String) row[i]).length();
-            }
-        }
-        return strLength;
     }
 
     private boolean put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException {

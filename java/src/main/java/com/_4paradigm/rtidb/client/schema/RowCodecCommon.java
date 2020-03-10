@@ -20,13 +20,13 @@ public class RowCodecCommon {
 
     public static final Map<DataType, Integer> TYPE_SIZE_MAP = new HashMap<>();
     static {
-        TYPE_SIZE_MAP.put(DataType.kBool, 1);
-        TYPE_SIZE_MAP.put(DataType.kSmallInt, 2);
-        TYPE_SIZE_MAP.put(DataType.kInt, 4);
-        TYPE_SIZE_MAP.put(DataType.kFloat, 4);
-        TYPE_SIZE_MAP.put(DataType.kBigInt, 8);
-        TYPE_SIZE_MAP.put(DataType.kTimestamp, 8);
-        TYPE_SIZE_MAP.put(DataType.kDouble, 8);
+        TYPE_SIZE_MAP.put(DataType.Bool, 1);
+        TYPE_SIZE_MAP.put(DataType.SmallInt, 2);
+        TYPE_SIZE_MAP.put(DataType.Int, 4);
+        TYPE_SIZE_MAP.put(DataType.Float, 4);
+        TYPE_SIZE_MAP.put(DataType.BigInt, 8);
+        TYPE_SIZE_MAP.put(DataType.Timestamp, 8);
+        TYPE_SIZE_MAP.put(DataType.Double, 8);
     }
 
     public static int getBitMapSize(int size) {

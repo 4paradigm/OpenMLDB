@@ -118,35 +118,35 @@ public class RelationalIterator {
             ColumnDesc columnDesc = schema.get(i);
             if (colSet == null || colSet.isEmpty() || colSet.contains(columnDesc.getName())) {
                 switch (columnDesc.getDataType()) {
-                    case kBool:
+                    case Bool:
                         Boolean bool = rowView.getBool(i);
                         map.put(columnDesc.getName(), bool);
                         break;
-                    case kSmallInt:
+                    case SmallInt:
                         Short st = rowView.getInt16(i);
                         map.put(columnDesc.getName(), st);
                         break;
-                    case kInt:
+                    case Int:
                         Integer itg = rowView.getInt32(i);
                         map.put(columnDesc.getName(), itg);
                         break;
-                    case kTimestamp:
+                    case Timestamp:
                         Long ts = rowView.getTimestamp(i);
                         map.put(columnDesc.getName(), ts);
                         break;
-                    case kBigInt:
+                    case BigInt:
                         Long lg = rowView.getInt64(i);
                         map.put(columnDesc.getName(), lg);
                         break;
-                    case kFloat:
+                    case Float:
                         Float ft = rowView.getFloat(i);
                         map.put(columnDesc.getName(), ft);
                         break;
-                    case kDouble:
+                    case Double:
                         Double db = rowView.getDouble(i);
                         map.put(columnDesc.getName(), db);
                         break;
-                    case kVarchar:
+                    case Varchar:
                         String str = rowView.getString(i);
                         map.put(columnDesc.getName(), str);
                         break;
