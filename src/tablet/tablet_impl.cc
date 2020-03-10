@@ -4185,12 +4185,23 @@ void TabletImpl::DeleteIndex(RpcController* controller,
             return;
         }
         for (const auto& kv: tables) {
+            std::string root_path;
             MemTable* mem_table = dynamic_cast<MemTable*>(kv.second.get());
             if (!mem_table->DeleteIndex(request->idx_name())) {
                 response->set_code(::rtidb::base::ReturnCode::INDEX_DELETE_FAILED);
                 response->set_msg("delete index fail!");
                 return;
             }
+            bool ok = ChooseDBRootPath(request->tid(), kv.second.get()->GetPid(), kv.second.get()->GetStorageMode(), root_path);
+            if (!ok) {
+                response->set_code(::rtidb::base::ReturnCode::FAIL_TO_GET_DB_ROOT_PATH);
+                response->set_msg("fail to get table db root path");
+                PDLOG(WARNING, "table db path is not found. tid %u, pid %u", request->tid(), kv.second.get()->GetPid());
+                break;
+            }
+            std::string db_path = root_path + "/" + std::to_string(request->tid()) + 
+                "_" + std::to_string(kv.second.get()->GetPid());
+            WriteTableMeta(db_path, &kv.second.get()->GetTableMeta());
         }
     }
     PDLOG(INFO, "delete index : tid[%u] index[%s]", request->tid(), request->idx_name());

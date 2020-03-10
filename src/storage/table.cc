@@ -94,9 +94,6 @@ int Table::InitColumnDesc() {
                         column_key_map_[cur_key_idx]->column_idx.push_back(ts_iter->second);
                     }
                 }
-                if (column_key.flag()) {
-                    column_key_map_[cur_key_idx]->status = ::rtidb::storage::kDeleted;
-                }
             }
         } else {
             if (!ts_mapping_.empty()) {
@@ -132,6 +129,23 @@ int Table::InitColumnDesc() {
     if (column_key_map_.empty()) {
         for (const auto& iter : mapping_) {
             column_key_map_.insert(std::make_pair(iter.second, std::make_shared<ColumnKey>()));
+        }
+
+    }
+    int i = 0;
+    for (const auto &column_key : table_meta_.column_key()) {
+        if (column_key.flag()) {
+            column_key_map_[i]->status = ::rtidb::storage::kDeleted;
+        }
+        ++i;
+    }
+    if (table_meta_.column_key_size() == 0) {
+        for (const auto &column_desc : table_meta_.column_desc()) {
+            if (column_desc.add_ts_idx()) {
+                rtidb::common::ColumnKey *column_key = table_meta_.add_column_key();
+                column_key->add_col_name(column_desc.name());
+                column_key->set_index_name(column_desc.name());
+            }
         }
     }
     return 0;

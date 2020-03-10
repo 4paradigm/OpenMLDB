@@ -2888,7 +2888,96 @@ TEST_F(TabletImplTest, Recover) {
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, srp.count());
     }
+}
 
+TEST_F(TabletImplTest, LoadWithDeletedKey) {
+    uint32_t id = counter++;
+    MockClosure closure;
+    ::rtidb::api::TableMeta table_meta_test;
+    {
+        TabletImpl tablet;
+        tablet.Init();
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        table_meta->set_seg_cnt(128);
+        table_meta->set_term(1024);
+
+        ::rtidb::common::ColumnDesc* column_desc1 = table_meta->add_column_desc();
+        column_desc1->set_name("card");
+        column_desc1->set_type("string");
+        column_desc1->set_add_ts_idx(true);
+        ::rtidb::common::ColumnDesc* column_desc2 = table_meta->add_column_desc();
+        column_desc2->set_name("mcc");
+        column_desc2->set_type("string");
+        column_desc2->set_add_ts_idx(true);
+
+        table_meta->add_replicas("127.0.0.1:9527");
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        for (int i = 0; i < 5; i++) {
+            ::rtidb::api::PutRequest request;
+            request.set_time(1100);
+            request.set_value("test");
+            request.set_tid(id);
+            request.set_pid(1);
+            ::rtidb::api::Dimension *d1 = request.add_dimensions();
+            d1->set_idx(0);
+            d1->set_key("card"+std::to_string(i));
+            ::rtidb::api::Dimension *d2 = request.add_dimensions();
+            d2->set_idx(1);
+            d2->set_key("mcc"+std::to_string(i));
+            ::rtidb::api::PutResponse response;
+            MockClosure closure;
+            tablet.Put(NULL, &request, &response, &closure);
+            ASSERT_EQ(0, response.code());
+        }
+        ::rtidb::api::DeleteIndexRequest deleteindex_request;
+        ::rtidb::api::GeneralResponse deleteindex_response;
+        // delete first index should fail
+        deleteindex_request.set_idx_name("mcc");
+        deleteindex_request.set_tid(id);
+        tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
+        ASSERT_EQ(0, deleteindex_response.code());
+    }
+    // load
+    {
+        TabletImpl tablet;
+        tablet.Init();
+        ::rtidb::api::LoadTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        ::rtidb::api::GeneralResponse response;
+        MockClosure closure;
+        tablet.LoadTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+        sleep(1);
+        ::rtidb::api::ScanRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(1);
+        sr.set_pk("mcc0");
+        sr.set_idx_name("mcc");
+        sr.set_st(1200);
+        sr.set_et(1000);
+        ::rtidb::api::ScanResponse srp;
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(108, srp.code());
+        sr.set_pk("card0");
+        sr.set_idx_name("card");
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(srp.count(), 1);
+    }
 }
 
 TEST_F(TabletImplTest, Load_with_incomplete_binlog) {

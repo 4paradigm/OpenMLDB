@@ -174,6 +174,10 @@ bool MemTable::Put(uint64_t time,
                                      value.length());
     Dimensions::const_iterator it = dimensions.begin();
     for (;it != dimensions.end(); ++it) {
+        if (column_key_map_[it->idx()]->status.load(std::memory_order_relaxed)) {
+            block->dim_cnt_down --;
+            continue;
+        }
         Slice spk(it->key());
         bool ok = Put(spk, time, block, it->idx());
         // decr the data block dimension count
@@ -322,6 +326,8 @@ void MemTable::SchedGc() {
                 delete[] segments_[i];
                 segments_[i] = NULL;
                 pos->second->status.store(IndexStat::kDeleted);
+                continue;
+            } else if (pos->second->status.load(std::memory_order_relaxed) == IndexStat::kDeleted) {
                 continue;
             }
             for (auto ts_idx : pos->second->column_idx) {
