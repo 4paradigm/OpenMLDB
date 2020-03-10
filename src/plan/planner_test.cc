@@ -20,7 +20,7 @@ using fesql::node::PlanNode;
 using fesql::node::SQLNode;
 using fesql::node::SQLNodeList;
 // TODO(chenjing): add ut: 检查SQL的语法树节点预期 2019.10.23
-class PlannerTest : public ::testing::Test {
+class PlannerTest : public ::testing::TestWithParam<std::string> {
  public:
     PlannerTest() {
         manager_ = new NodeManager();
@@ -36,6 +36,106 @@ class PlannerTest : public ::testing::Test {
     parser::FeSQLParser *parser_;
     NodeManager *manager_;
 };
+
+
+
+INSTANTIATE_TEST_CASE_P(
+    SqlExprPlanner, PlannerTest,
+    testing::Values(
+        "SELECT COL1 FROM t1;", "SELECT COL1 as c1 FROM t1;",
+        "SELECT COL1 c1 FROM t1;", "SELECT t1.COL1 FROM t1;",
+        "SELECT t1.COL1 as c1 FROM t1;", "SELECT t1.COL1 c1 FROM t1;",
+        "SELECT t1.COL1 c1 FROM t1 limit 10;", "SELECT * FROM t1;",
+        "SELECT COUNT(*) FROM t1;", "SELECT COUNT(COL1) FROM t1;",
+        "SELECT TRIM(COL1) FROM t1;", "SELECT trim(COL1) as trim_col1 FROM t1;",
+        "SELECT MIN(COL1) FROM t1;", "SELECT min(COL1) FROM t1;",
+        "SELECT MAX(COL1) FROM t1;", "SELECT max(COL1) as max_col1 FROM t1;",
+        "SELECT SUM(COL1) FROM t1;", "SELECT sum(COL1) as sum_col1 FROM t1;",
+        "SELECT COL1, COL2, `TS`, AVG(AMT) OVER w, SUM(AMT) OVER w FROM t \n"
+        "WINDOW w AS (PARTITION BY COL2\n"
+        "              ORDER BY `TS` ROWS BETWEEN UNBOUNDED PRECEDING AND "
+        "UNBOUNDED FOLLOWING);",
+        "SELECT COL1, trim(COL2), `TS`, AVG(AMT) OVER w, SUM(AMT) OVER w FROM "
+        "t \n"
+        "WINDOW w AS (PARTITION BY COL2\n"
+        "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "FOLLOWING);",
+        "SELECT COL1, SUM(AMT) OVER w as w_amt_sum FROM t \n"
+        "WINDOW w AS (PARTITION BY COL2\n"
+        "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "FOLLOWING);",
+        "SELECT COL1 + COL2 as col12 FROM t1;",
+        "SELECT COL1 - COL2 as col12 FROM t1;",
+        "SELECT COL1 * COL2 as col12 FROM t1;",
+        "SELECT COL1 / COL2 as col12 FROM t1;",
+        "SELECT COL1 % COL2 as col12 FROM t1;",
+        "SELECT COL1 = COL2 as col12 FROM t1;",
+        "SELECT COL1 == COL2 as col12 FROM t1;",
+        "SELECT COL1 < COL2 as col12 FROM t1;",
+        "SELECT COL1 > COL2 as col12 FROM t1;",
+        "SELECT COL1 <= COL2 as col12 FROM t1;",
+        "SELECT COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 && COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 and COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 || COL1 != COL2 as col12 FROM t1;",
+        "SELECT COL1 >= COL2 or COL1 != COL2 as col12 FROM t1;",
+        "SELECT !(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;",
+
+        "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "SELECT COUNT(*) FROM t1;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlWherePlan, PlannerTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 where COL1+COL2;",
+        "SELECT COL1 FROM t1 where COL1;",
+        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20;",
+        "SELECT COL1 FROM t1 where COL1 > 10;"));
+INSTANTIATE_TEST_CASE_P(
+    SqlLikePlan, PlannerTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 where COL like \"%abc\";",
+        "SELECT COL1 FROM t1 where COL1 like '%123';",
+        "SELECT COL1 FROM t1 where COL not like \"%abc\";",
+        "SELECT COL1 FROM t1 where COL1 not like '%123';",
+        "SELECT COL1 FROM t1 where COL1 not like 10;",
+        "SELECT COL1 FROM t1 where COL1 like 10;"
+    ));
+//INSTANTIATE_TEST_CASE_P(
+//    SqlDistinctPlan, PlannerTest,
+//    testing::Values(
+//        "SELECT distinct COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
+//        "SELECT DISTINCT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
+//        "SELECT DISTINCT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+//        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
+//        "PRECEDING AND CURRENT ROW) limit 10;",
+//        "SELECT DISTINCT COUNT(*) FROM t1;",
+//        "SELECT distinct COL1 FROM t1 where COL1+COL2;",
+//        "SELECT DISTINCT COL1 FROM t1 where COL1 > 10;"));
+TEST_P(PlannerTest, PlannerSucessTest) {
+    std::string sqlstr = GetParam();
+    std::cout << sqlstr << std::endl;
+
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
+
+    if (0 != status.code) {
+        std::cout << status.msg << std::endl;
+    }
+    ASSERT_EQ(0, ret);
+    //    ASSERT_EQ(1, trees.size());
+//    std::cout << *(trees.front()) << std::endl;
+    Planner *planner_ptr = new SimplePlanner(manager_);
+    node::PlanNodeList plan_trees;
+    ASSERT_EQ(0, planner_ptr->CreatePlanTree(trees, plan_trees, status));
+    ASSERT_EQ(1u, plan_trees.size());
+    std::cout << *(plan_trees.front()) << std::endl;
+}
 
 TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
     node::NodePointVector list;
@@ -53,7 +153,7 @@ TEST_F(PlannerTest, SimplePlannerCreatePlanTest) {
     PlanNode *plan_ptr = plan_trees.front();
     std::cout << *(plan_ptr) << std::endl;
     //     validate select plan
-    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
     plan_ptr = plan_ptr->GetChildren()[0];
 
     ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
@@ -111,7 +211,7 @@ TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
 
     std::cout << *plan_ptr << std::endl;
     // validate select plan
-    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
     plan_ptr = plan_ptr->GetChildren()[0];
     // validate limit node
     ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
@@ -180,7 +280,7 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
 
     std::cout << *plan_ptr << std::endl;
     // validate select plan
-    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
     plan_ptr = plan_ptr->GetChildren()[0];
     // validate limit node
     ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
@@ -270,7 +370,7 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
 
     std::cout << *plan_ptr << std::endl;
     // validate select plan
-    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
     plan_ptr = plan_ptr->GetChildren()[0];
 
     // validate limit node
@@ -554,7 +654,7 @@ TEST_F(PlannerTest, FunDefAndSelectPlanTest) {
     std::cout << *plan_ptr << std::endl;
     // validate select plan
 
-    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
     node::LimitPlanNode *limit_plan =
@@ -618,7 +718,7 @@ TEST_F(PlannerTest, FunDefIfElsePlanTest) {
     plan_ptr = trees[1];
     ASSERT_TRUE(NULL != plan_ptr);
     std::cout << *plan_ptr << std::endl;
-    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
     node::LimitPlanNode *limit_plan =
@@ -763,7 +863,7 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
     plan_ptr = trees[1];
     ASSERT_TRUE(NULL != plan_ptr);
     std::cout << *plan_ptr << std::endl;
-    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
     node::LimitPlanNode *limit_plan =
@@ -829,7 +929,7 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
     plan_ptr = trees[1];
     ASSERT_TRUE(NULL != plan_ptr);
     std::cout << *plan_ptr << std::endl;
-    ASSERT_EQ(node::kPlanTypeSelect, plan_ptr->GetType());
+    ASSERT_EQ(node::kPlanTypeQuery, plan_ptr->GetType());
     plan_ptr = plan_ptr->GetChildren()[0];
     ASSERT_EQ(node::kPlanTypeLimit, plan_ptr->GetType());
     node::LimitPlanNode *limit_plan =

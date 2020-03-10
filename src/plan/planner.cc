@@ -470,7 +470,7 @@ std::string Planner::MakeTableName(const PlanNode *node) const {
             std::default_random_engine e;
             return std::string("join_table_").append(std::to_string(e()));
         }
-        case node::kPlanTypeSelect: {
+        case node::kPlanTypeQuery: {
             std::default_random_engine e;
             return std::string("query_table_").append(std::to_string(e()));
         }

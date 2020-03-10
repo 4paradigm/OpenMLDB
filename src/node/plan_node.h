@@ -38,7 +38,7 @@ class PlanNode {
     friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
 
     virtual void Print(std::ostream &output, const std::string &tab) const;
-
+    virtual void PrintChildren(std::ostream &output, const std::string &tab) const;
  protected:
     PlanType type_;
     std::vector<PlanNode *> children_;
@@ -51,6 +51,7 @@ class LeafPlanNode : public PlanNode {
     explicit LeafPlanNode(PlanType type) : PlanNode(type) {}
     ~LeafPlanNode() {}
     virtual bool AddChild(PlanNode *node);
+    virtual void PrintChildren(std::ostream &output, const std::string &tab) const;
 };
 
 class UnaryPlanNode : public PlanNode {
@@ -62,6 +63,7 @@ class UnaryPlanNode : public PlanNode {
     ~UnaryPlanNode() {}
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual void PrintChildren(std::ostream &output, const std::string &tab) const;
 };
 
 class BinaryPlanNode : public PlanNode {
@@ -75,6 +77,7 @@ class BinaryPlanNode : public PlanNode {
     ~BinaryPlanNode() {}
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual void PrintChildren(std::ostream &output, const std::string &tab) const;
 };
 
 class MultiChildPlanNode : public PlanNode {
@@ -83,6 +86,7 @@ class MultiChildPlanNode : public PlanNode {
     ~MultiChildPlanNode() {}
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual void PrintChildren(std::ostream &output, const std::string &tab) const;
 };
 
 class RenamePlanNode : public UnaryPlanNode {
@@ -146,18 +150,19 @@ class GroupPlanNode : public UnaryPlanNode {
     const ExprListNode *by_list_;
 };
 
-class SelectPlanNode : public UnaryPlanNode {
+class QueryPlanNode : public UnaryPlanNode {
  public:
-    explicit SelectPlanNode(PlanNode *node)
-        : UnaryPlanNode(node, kPlanTypeSelect) {}
-    ~SelectPlanNode() {}
+    explicit QueryPlanNode(PlanNode *node)
+        : UnaryPlanNode(node, kPlanTypeQuery) {}
+    ~QueryPlanNode() {}
 };
 
 class FilterPlanNode : public UnaryPlanNode {
  public:
     FilterPlanNode(PlanNode *node, const ExprNode *condition)
-        : UnaryPlanNode(node, kPlanTypeScan), condition_(condition) {}
+        : UnaryPlanNode(node, kPlanTypeFilter), condition_(condition) {}
     ~FilterPlanNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
     const ExprNode *condition_;
 };
 

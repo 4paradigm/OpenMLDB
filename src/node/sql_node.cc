@@ -259,7 +259,7 @@ void CallExprNode::Print(std::ostream &output,
 }
 const std::string CallExprNode::GetExprString() const {
     std::string str = function_name_;
-    str.append(args_->GetExprString());
+    str.append(nullptr == args_ ? "()" : args_->GetExprString());
 
     if (nullptr != over_) {
         str.append("over ").append(over_->GetName());
@@ -578,9 +578,13 @@ void BinaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
 }
 const std::string BinaryExpr::GetExprString() const {
     std::string str = "";
-    str.append(children[0]->GetExprString())
+    str.append("")
+        .append(children[0]->GetExprString())
+        .append(" ")
         .append(ExprOpTypeName(op_))
-        .append(children[1]->GetExprString());
+        .append(" ")
+        .append(children[1]->GetExprString())
+        .append("");
     return str;
 }
 void UnaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
@@ -590,8 +594,13 @@ void UnaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSQLVector(output, tab, children, ExprOpTypeName(op_), true);
 }
 const std::string UnaryExpr::GetExprString() const {
-    std::string str = ExprOpTypeName(op_);
-    str.append(children[0]->GetExprString());
+    std::string str = "";
+    if (op_ == kFnOpBracket) {
+        str.append("(").append(children[0]->GetExprString()).append(")");
+        return str;
+    }
+    str.append(ExprOpTypeName(op_)).append(" ")
+        .append(children[0]->GetExprString());
     return str;
 }
 void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -628,6 +637,7 @@ const std::string ExprListNode::GetExprString() const {
         std::string str = "(";
         auto iter = children.cbegin();
         str.append((*iter)->GetExprString());
+        iter++;
         for (; iter != children.cend(); iter++) {
             str.append(",");
             str.append((*iter)->GetExprString());

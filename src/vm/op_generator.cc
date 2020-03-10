@@ -57,9 +57,9 @@ bool OpGenerator::Gen(const ::fesql::node::PlanNodeList& trees,
                 }
                 break;
             }
-            case ::fesql::node::kPlanTypeSelect: {
-                const ::fesql::node::SelectPlanNode* select_plan =
-                    dynamic_cast<const ::fesql::node::SelectPlanNode*>(node);
+            case ::fesql::node::kPlanTypeQuery: {
+                const ::fesql::node::QueryPlanNode* select_plan =
+                    dynamic_cast<const ::fesql::node::QueryPlanNode*>(node);
                 bool ok = GenSQL(select_plan, db, module, ops, status);
                 if (!ok) {
                     return false;
@@ -75,7 +75,7 @@ bool OpGenerator::Gen(const ::fesql::node::PlanNodeList& trees,
     return true;
 }
 
-bool OpGenerator::GenSQL(const ::fesql::node::SelectPlanNode* tree,
+bool OpGenerator::GenSQL(const ::fesql::node::QueryPlanNode* tree,
                          const std::string& db, ::llvm::Module* module,
                          OpVector* ops, base::Status& status) {
     if (module == NULL || ops == NULL || tree == NULL) {

@@ -52,7 +52,7 @@ class OpGenerator {
                   const ::fesql::node::FuncDefPlanNode* plan,
                   base::Status& status);  // NOLINT
 
-    bool GenSQL(const ::fesql::node::SelectPlanNode* node,
+    bool GenSQL(const ::fesql::node::QueryPlanNode* node,
                 const std::string& db, ::llvm::Module* module,
                 OpVector* ops,          // NOLINT
                 base::Status& status);  // NOLINT

@@ -177,11 +177,10 @@ enum CmdType {
 enum PlanType {
     kPlanTypeCmd,
     kPlanTypeFuncDef,
-    kPlanTypeQuery,
     kPlanTypeCreate,
     kPlanTypeInsert,
     kPlanTypeScan,
-    kPlanTypeSelect,
+    kPlanTypeQuery,
     kPlanTypeLimit,
     kPlanTypeFilter,
     kPlanTypeTable,

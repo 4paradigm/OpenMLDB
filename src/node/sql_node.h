@@ -73,17 +73,17 @@ inline const std::string JoinTypeName(const JoinType &type) {
 inline const std::string ExprOpTypeName(const FnOperator &op) {
     switch (op) {
         case kFnOpAdd:
-            return "ADD";
+            return "+";
         case kFnOpMinus:
-            return "Minus";
+            return "-";
         case kFnOpMulti:
-            return "MULTI";
+            return "*";
         case kFnOpDiv:
             return "DIV";
         case kFnOpFDiv:
-            return "FDIV";
+            return "/";
         case kFnOpMod:
-            return "MOD";
+            return "%";
         case kFnOpAnd:
             return "AND";
         case kFnOpOr:
@@ -91,17 +91,17 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
         case kFnOpNot:
             return "NOT";
         case kFnOpEq:
-            return "EQ";
+            return "=";
         case kFnOpNeq:
-            return "NEQ";
+            return "!=";
         case kFnOpGt:
-            return "GT";
+            return ">";
         case kFnOpGe:
-            return "GE";
+            return ">=";
         case kFnOpLt:
-            return "LT";
+            return "<";
         case kFnOpLe:
-            return "LE";
+            return "<=";
         case kFnOpAt:
             return "[]";
         case kFnOpDot:

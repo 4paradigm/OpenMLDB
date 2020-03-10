@@ -591,7 +591,7 @@ PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right,
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {
-    node::SelectPlanNode *select_plan_ptr = new SelectPlanNode(node);
+    node::QueryPlanNode *select_plan_ptr = new QueryPlanNode(node);
     return RegisterNode(select_plan_ptr);
 }
 PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node,
