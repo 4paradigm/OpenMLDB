@@ -10,10 +10,7 @@ import com.google.protobuf.ByteString;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class RelationalIterator {
 
@@ -28,7 +25,7 @@ public class RelationalIterator {
     private int count;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private TableHandler th;
-    private Set<String> colSet;
+    private Map<Integer, ColumnDesc> idxDescMap = new HashMap<>();
 
     public RelationalIterator() {
     }
@@ -41,7 +38,13 @@ public class RelationalIterator {
         next();
         this.schema = th.getSchema();
         this.th = th;
-        this.colSet = colSet;
+
+        for (int i = 0; i < this.getSchema().size(); i++) {
+            ColumnDesc columnDesc = this.getSchema().get(i);
+            if (colSet == null || colSet.isEmpty() || colSet.contains(columnDesc.getName())) {
+                this.idxDescMap.put(i, columnDesc);
+            }
+        }
     }
 
 
@@ -112,47 +115,46 @@ public class RelationalIterator {
 
     private Map<String, Object> getInternel(RowView rowView) throws TabletException {
         Map<String, Object> map = new HashMap<>();
-        List<ColumnDesc> schema = th.getSchema();
-        Set<String> colSet = this.colSet;
-        for (int i = 0; i < schema.size(); i++) {
-            ColumnDesc columnDesc = schema.get(i);
-            if (colSet == null || colSet.isEmpty() || colSet.contains(columnDesc.getName())) {
-                switch (columnDesc.getDataType()) {
-                    case Bool:
-                        Boolean bool = rowView.getBool(i);
-                        map.put(columnDesc.getName(), bool);
-                        break;
-                    case SmallInt:
-                        Short st = rowView.getInt16(i);
-                        map.put(columnDesc.getName(), st);
-                        break;
-                    case Int:
-                        Integer itg = rowView.getInt32(i);
-                        map.put(columnDesc.getName(), itg);
-                        break;
-                    case Timestamp:
-                        Long ts = rowView.getTimestamp(i);
-                        map.put(columnDesc.getName(), ts);
-                        break;
-                    case BigInt:
-                        Long lg = rowView.getInt64(i);
-                        map.put(columnDesc.getName(), lg);
-                        break;
-                    case Float:
-                        Float ft = rowView.getFloat(i);
-                        map.put(columnDesc.getName(), ft);
-                        break;
-                    case Double:
-                        Double db = rowView.getDouble(i);
-                        map.put(columnDesc.getName(), db);
-                        break;
-                    case Varchar:
-                        String str = rowView.getString(i);
-                        map.put(columnDesc.getName(), str);
-                        break;
-                    default:
-                        throw new TabletException("unsupported data type");
-                }
+        Iterator<Map.Entry<Integer, ColumnDesc>> iter = this.idxDescMap.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<Integer, ColumnDesc> next = iter.next();
+            int i = next.getKey();
+            ColumnDesc columnDesc = next.getValue();
+            switch (columnDesc.getDataType()) {
+                case Bool:
+                    Boolean bool = rowView.getBool(i);
+                    map.put(columnDesc.getName(), bool);
+                    break;
+                case SmallInt:
+                    Short st = rowView.getInt16(i);
+                    map.put(columnDesc.getName(), st);
+                    break;
+                case Int:
+                    Integer itg = rowView.getInt32(i);
+                    map.put(columnDesc.getName(), itg);
+                    break;
+                case Timestamp:
+                    Long ts = rowView.getTimestamp(i);
+                    map.put(columnDesc.getName(), ts);
+                    break;
+                case BigInt:
+                    Long lg = rowView.getInt64(i);
+                    map.put(columnDesc.getName(), lg);
+                    break;
+                case Float:
+                    Float ft = rowView.getFloat(i);
+                    map.put(columnDesc.getName(), ft);
+                    break;
+                case Double:
+                    Double db = rowView.getDouble(i);
+                    map.put(columnDesc.getName(), db);
+                    break;
+                case Varchar:
+                    String str = rowView.getString(i);
+                    map.put(columnDesc.getName(), str);
+                    break;
+                default:
+                    throw new TabletException("unsupported data type");
             }
         }
         return map;

@@ -1000,19 +1000,15 @@ public class TableSyncClientImpl implements TableSyncClient {
         List<ColumnDesc> schema;
         if (row.length == th.getSchema().size()) {
             schema = th.getSchema();
-            buffer = RowBuilder.putEncode(row, th.getSchema());
+            buffer = RowBuilder.encode(row, th.getSchema());
         } else {
             schema = th.getSchemaMap().get(row.length);
             if (schema == null) {
                 throw new TabletException("no schema for column count " + row.length);
             }
-            int modifyTimes = row.length - th.getSchema().size();
-            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
-                modifyTimes = th.getSchemaMap().size();
-            }
-            buffer = RowBuilder.putEncode(row, schema);
+            buffer = RowBuilder.encode(row, schema);
         }
-        String pk = RowBuilder.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
+        String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
         int pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
         return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
     }

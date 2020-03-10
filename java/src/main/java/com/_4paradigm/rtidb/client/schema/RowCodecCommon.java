@@ -1,10 +1,14 @@
 package com._4paradigm.rtidb.client.schema;
 
 
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.type.DataType;
+import com._4paradigm.rtidb.client.type.IndexType;
+import com._4paradigm.rtidb.common.Common;
 
 import java.nio.charset.Charset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class RowCodecCommon {
@@ -47,5 +51,45 @@ public class RowCodecCommon {
         } else {
             return 4;
         }
+    }
+
+    public static int calStrLength(Object[] row, List<ColumnDesc> schema) {
+        int strLength = 0;
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
+            if (columnDesc.getDataType().equals(DataType.Varchar)) {
+                if (!columnDesc.isNotNull() && row[i] == null) {
+                    continue;
+                }
+                strLength += ((String) row[i]).length();
+            }
+        }
+        return strLength;
+    }
+
+    public static String getPrimaryKey(Object[] row, List<Common.ColumnKey> columnKeyList, List<ColumnDesc> schema) {
+        String pkColName = "";
+        for (int i = 0; i < columnKeyList.size(); i++) {
+            Common.ColumnKey columnKey = columnKeyList.get(i);
+            if (columnKey.hasIndexType() &&
+                    columnKey.getIndexType() == IndexType.valueFrom(IndexType.kPrimaryKey)) {
+                pkColName = columnKey.getIndexName();
+            }
+        }
+        String pk = "";
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
+            if (columnDesc.getName().equals(pkColName)) {
+                if (row[i] == null) {
+                    pk = RTIDBClientConfig.NULL_STRING;
+                } else {
+                    pk = String.valueOf(row[i]);
+                }
+                if (pk.isEmpty()) {
+                    pk = RTIDBClientConfig.EMPTY_STRING;
+                }
+            }
+        }
+        return pk;
     }
 }
