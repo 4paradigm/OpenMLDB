@@ -87,10 +87,10 @@ int Encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema
                 rb.AppendDouble(boost::lexical_cast<double>(value_vec[i]));
             } else if (type == rtidb::type::kVarchar) {
                 rb.AppendString(value_vec[i].data(), value_vec[i].size());
-            } else f (type == rtidb::type::kDate) {
+            } else if (type == rtidb::type::kDate) {
                 rb.AppendNULL();
             } else {
-                returtn - 1;
+                return -1;
             }
         } catch (boost::bad_lexical_cast &) {
             return -1;
@@ -113,43 +113,43 @@ void Decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schem
             int32_t val;
             int ret = rv.GetInt32(i, &val);
             if (ret == 0) {
-                col = std::to_string(val)
+                col = std::to_string(val);
             }
         } else if (type == rtidb::type::kTimestamp) {
             int64_t val;
             int ret = rv.GetTimestamp(i, &val);
             if (ret == 0) {
-                col = std::to_string(val)
+                col = std::to_string(val);
             }
         } else if (type == rtidb::type::kInt64) {
             int64_t val;
             int ret = rv.GetInt64(i, &val);
             if (ret == 0) {
-                col = std::to_string(val)
+                col = std::to_string(val);
             }
         } else if (type == rtidb::type::kBool) {
             bool val;
             int ret = rv.GetBool(i, &val);
             if (ret == 0) {
-                col = std::to_string(val)
+                col = std::to_string(val);
             }
         } else if (type == rtidb::type::kFloat) {
             float val;
             int ret = rv.GetFloat(i, &val);
             if (ret == 0) {
-                col = std::to_string(val)
+                col = std::to_string(val);
             }
         } else if (type == rtidb::type::kInt16) {
             int16_t val;
             int ret = rv.GetInt16(i, &val);
             if (ret == 0) {
-                col = std::to_string(val)
+                col = std::to_string(val);
             }
         } else if (type == rtidb::type::kDouble) {
             double val;
             int ret = rv.GetDouble(i, &val);
             if (ret == 0) {
-                col = std::to_string(val)
+                col = std::to_string(val);
             }
         } else if (type == rtidb::type::kVarchar) {
             char *ch = NULL;
@@ -333,10 +333,12 @@ QueryResult RtidbClient::Query(const std::string& name, struct ReadOption& ro) {
 }
 
 std::shared_ptr<rtidb::client::TabletClient> RtidbClient::GetTabletClient(const std::string& endpoint, std::string& msg) {
-    std::lock_guard<std::mutex> mx(mu_);
-    auto iter = tablets_.find(endpoint);
-    if (iter != tablets_.end()) {
-        return iter->second;
+    {
+        std::lock_guard<std::mutex> mx(mu_);
+        auto iter = tablets_.find(endpoint);
+        if (iter != tablets_.end()) {
+            return iter->second;
+        }
     }
     std::shared_ptr<rtidb::client::TabletClient> tablet = std::make_shared<rtidb::client::TabletClient>(endpoint);
     int code = tablet->Init();
@@ -344,7 +346,10 @@ std::shared_ptr<rtidb::client::TabletClient> RtidbClient::GetTabletClient(const 
         msg = "failed init table client";
         return NULL;
     }
-    tablets_.insert(std::make_pair(endpoint, tablet));
+    {
+        std::lock_guard<std::mutex> mx(mu_);
+        tablets_.insert(std::make_pair(endpoint, tablet));
+    }
     return tablet;
 }
 
@@ -361,10 +366,6 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
         th = iter->second;
     }
 
-    if (value.size() != th->columns->size()) {
-        result.SetError(-1, "value size not equal columns size");
-        return result;
-    }
     std::set<std::string> keys_column;
     for (auto& key : th->table_info->column_key()) {
         for (auto &col : key.col_name()) {
@@ -379,8 +380,14 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
     std::uint32_t string_length = 0;
     for (auto& column : *(th->columns)) {
         auto iter = value.find(column.name());
+        auto set_iter = keys_column.find(column.name());
         if (iter == value.end()) {
+            if (set_iter == keys_column.end()) {
+                std::string err_msg = "miss column " + column.name();
+                result.SetError(-1, err_msg);
+            }
             value_vec.push_back("");
+            // TODO: add else to auto gen key columm
         } else {
             value_vec.push_back(iter->second);
             if ((column.data_type() == rtidb::type::kVarchar) && (iter->second != NONETOKEN)) {
@@ -389,7 +396,7 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
         }
     }
     std::string buffer;
-    int code = encode(*(th->columns), value_vec, buffer, string_length);
+    int code = Encode(*(th->columns), value_vec, buffer, string_length);
     if (code != 0) {
         result.SetError(code, "encode error");
         return result;

@@ -118,6 +118,7 @@ class RTIDBClient:
     resp = self.__client.Query(table_name, ro)
     if resp.code != 0:
       raise Exception(resp.code, resp.msg)
+    resultList = list()
     result = dict()
     for mm in resp.values:
         if mm == None:
@@ -127,8 +128,8 @@ class RTIDBClient:
             result.update({k:None})
           else:
             result.update({k: type_map[mm[k].type](mm[k].buffer)})
-    
-    return RtidbResult([result])
+        resultList.append(result)
+    return RtidbResult(resultList)
 
   def batch_query(self, table_name: str, read_options: ReadOptions):
     return RtidbResult([{}])
