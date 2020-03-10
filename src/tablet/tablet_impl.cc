@@ -175,7 +175,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         const ::rtidb::api::UpdateTTLRequest* request,
         ::rtidb::api::UpdateTTLResponse* response,
         Closure* done) {
-    brpc::ClosureGuard done_guard(done);         
+    brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
 
     if (!table) {
@@ -424,7 +424,7 @@ void TabletImpl::Get(RpcController* controller,
         int ts_index = -1;
         if (request->has_idx_name() && request->idx_name().size() > 0) {
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end()) {
+            if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
                 response->set_code(108);
@@ -1084,7 +1084,7 @@ void TabletImpl::Scan(RpcController* controller,
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end()) {
+        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
             response->set_code(108);
@@ -1177,7 +1177,7 @@ void TabletImpl::Count(RpcController* controller,
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end()) {
+        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
             response->set_code(108);
@@ -1289,7 +1289,7 @@ void TabletImpl::Traverse(RpcController* controller,
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end()) {
+        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
             response->set_code(108);
@@ -1443,7 +1443,7 @@ void TabletImpl::Delete(RpcController* controller,
         uint32_t idx = 0;
         if (request->has_idx_name() && request->idx_name().size() > 0) {
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end()) {
+            if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
                 response->set_code(108);
@@ -4205,6 +4205,40 @@ void TabletImpl::AlignTable(RpcController* controller,
         return;
     }
     // replicator.GetLogPart().Get
+}
+
+void TabletImpl::DeleteIndex(RpcController* controller,
+        const ::rtidb::api::DeleteIndexRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::map<uint32_t, std::shared_ptr<Table>> tables;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        auto iter = tables_.find(request->tid());
+        if (iter == tables_.end()) {
+            response->set_code(100);
+            response->set_msg("table is not exist");
+            return;
+        }
+        tables = iter->second;
+        if (tables.begin()->second->GetStorageMode() != ::rtidb::common::kMemory) {
+            response->set_code(701);
+            response->set_msg("only support mem_table");
+            return;
+        }
+        for (const auto& kv: tables) {
+            MemTable* mem_table = dynamic_cast<MemTable*>(kv.second.get());
+            if (!mem_table->DeleteIndex(request->idx_name())) {
+                response->set_code(601);
+                response->set_msg("delete index fail!");
+                return;
+            }
+        }
+    }
+    PDLOG(INFO, "delete index : tid[%u] index[%s]", request->tid(), request->idx_name());
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 }

@@ -116,7 +116,7 @@ public:
     ::rtidb::api::CompressType GetCompressType();
 
     inline uint64_t GetRecordByteSize() const {
-        return record_byte_size_.load(std::memory_order_relaxed);    
+        return record_byte_size_.load(std::memory_order_relaxed);
     }
 
     virtual uint64_t GetRecordCnt() const override {
@@ -158,6 +158,8 @@ public:
     inline uint32_t GetKeyEntryHeight() {
         return key_entry_max_height_;
     }
+
+    bool DeleteIndex(std::string idx_name);
 
 private:
 

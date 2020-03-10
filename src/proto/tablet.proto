@@ -620,6 +620,11 @@ message DisConnectZKRequest {}
 message HttpRequest { }
 message HttpResponse { }
 
+message DeleteIndexRequest {
+    optional uint32 tid = 1;
+    optional string idx_name = 2;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -669,4 +674,5 @@ service TabletServer {
     rpc UpdateTableMetaForAddField (UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
     rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
+    rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
 }

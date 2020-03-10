@@ -32,6 +32,7 @@ message ColumnKey {
     repeated string col_name = 2;
     repeated string ts_name = 3;
     optional rtidb.type.IndexType index_type = 4;
+    optional uint32 flag = 5 [default=0];
 }
 
 enum StorageMode {
