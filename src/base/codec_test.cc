@@ -325,7 +325,7 @@ TEST_F(CodecTest, ManyCol) {
             col->set_data_type(::rtidb::type::kVarchar);
             col = def.add_column_desc();
             col->set_name("col" + std::to_string(i + 2));
-            col->set_data_type(::rtidb::type::kInt64);
+            col->set_data_type(::rtidb::type::kBigInt);
             col = def.add_column_desc();
             col->set_name("col" + std::to_string(i + 3));
             col->set_data_type(::rtidb::type::kDouble);
