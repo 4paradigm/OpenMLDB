@@ -434,13 +434,11 @@ GeneralResult RtidbClient::Delete(const std::string& name, const std::map<std::s
         result.SetError(-1, msg);
         return result;
     }
-    for (auto& iter : values) {
-        bool ok = tablet->Delete(th->table_info->tid(), 0, iter.second, iter.first, msg);
-        if (!ok) {
-            result.SetError(1, msg);
-            return result;
-        }
-        msg.clear();
+    auto iter = values.begin();
+    bool ok = tablet->Delete(th->table_info->tid(), 0, iter.second, iter.first, msg);
+    if (!ok) {
+        result.SetError(1, msg);
+        return result;
     }
     return result;
 }

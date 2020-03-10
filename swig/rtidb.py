@@ -135,8 +135,8 @@ class RTIDBClient:
     return RtidbResult([{}])
 
   def delete(self, table_name: str, condition_columns: map):
-    if (len(condition_columns) < 1):
-      raise Exception("empty map")
+    if (len(condition_columns) != 1):
+      raise Exception("keys size not 1")
     v = dict()
     for k in condition_columns:
       v.update({k:str(condition_columns[k])})
