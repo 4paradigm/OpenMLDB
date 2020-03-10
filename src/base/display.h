@@ -21,30 +21,25 @@ DECLARE_uint32(max_col_display_length);
 namespace rtidb {
 namespace base {
 
+static const std::unordered_map<::rtidb::type::DataType, std::string> DATA_TYPE_STR_MAP = {
+    {::rtidb::type::kBool, "bool"},
+    {::rtidb::type::kSmallInt, "smallInt"},
+    {::rtidb::type::kInt, "int"},
+    {::rtidb::type::kBigInt, "bigInt"},
+    {::rtidb::type::kFloat, "float"},
+    {::rtidb::type::kDouble, "double"},
+    {::rtidb::type::kTimestamp, "timestamp"},
+    {::rtidb::type::kDate, "date"},
+    {::rtidb::type::kVarchar, "varchar"},
+    {::rtidb::type::kBlob, "blob"}
+};
+
 static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
-    switch(data_type) {
-        case ::rtidb::type::kBool:
-            return "bool";
-        case ::rtidb::type::kSmallInt:
-            return "smallInt";
-        case ::rtidb::type::kInt:
-            return "int";
-        case ::rtidb::type::kBigInt:
-            return "bigInt";
-        case ::rtidb::type::kFloat:
-            return "float";
-        case ::rtidb::type::kDouble:
-            return "double";
-        case ::rtidb::type::kVarchar:
-            return "varchar";
-        case ::rtidb::type::kDate:
-            return "date";
-        case ::rtidb::type::kTimestamp:
-            return "timestamp";
-        case ::rtidb::type::kBlob:
-            return "blob";
-        default:
-            return "";
+    const auto& iter = DATA_TYPE_STR_MAP.find(data_type);
+    if (iter == DATA_TYPE_STR_MAP.end()) {
+        return "-";
+    } else {
+        return iter->second;
     }
 }
 
