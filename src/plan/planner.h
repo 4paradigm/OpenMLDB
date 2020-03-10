@@ -41,12 +41,13 @@ class Planner {
     void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
     bool CreateSelectStmtPlan(const node::SQLNode *root, PlanNode **plan_tree,
-                             Status &status);  // NOLINT (runtime/references)
+                              Status &status);  // NOLINT (runtime/references)
     void CreateCreateTablePlan(const node::SQLNode *root,
                                node::PlanNode **output,
                                Status &status);  // NOLINT (runtime/references)
-    bool CreateTableReferencePlanNode(const node::SQLNode *root,
-                                      node::PlanNode **output, Status &status);
+    bool CreateTableReferencePlanNode(
+        const node::SQLNode *root, node::PlanNode **output,
+        Status &status);  // NOLINT (runtime/references)
     void CreateProjectPlanNode(const node::SQLNode *root, const uint32_t pos,
                                node::ProjectNode **output,
                                Status &status);  // NOLINT (runtime/references)
@@ -63,8 +64,7 @@ class Planner {
     int64_t CreateFrameOffset(const node::FrameBound *bound,
                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
-    std::string MakeTableName(
-        const PlanNode* node) const;
+    std::string MakeTableName(const PlanNode *node) const;
 };
 
 class SimplePlanner : public Planner {

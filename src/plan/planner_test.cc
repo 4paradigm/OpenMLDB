@@ -37,8 +37,6 @@ class PlannerTest : public ::testing::TestWithParam<std::string> {
     NodeManager *manager_;
 };
 
-
-
 INSTANTIATE_TEST_CASE_P(
     SqlExprPlanner, PlannerTest,
     testing::Values(
@@ -97,14 +95,12 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 FROM t1 where COL1 > 10;"));
 INSTANTIATE_TEST_CASE_P(
     SqlLikePlan, PlannerTest,
-    testing::Values(
-        "SELECT COL1 FROM t1 where COL like \"%abc\";",
-        "SELECT COL1 FROM t1 where COL1 like '%123';",
-        "SELECT COL1 FROM t1 where COL not like \"%abc\";",
-        "SELECT COL1 FROM t1 where COL1 not like '%123';",
-        "SELECT COL1 FROM t1 where COL1 not like 10;",
-        "SELECT COL1 FROM t1 where COL1 like 10;"
-    ));
+    testing::Values("SELECT COL1 FROM t1 where COL like \"%abc\";",
+                    "SELECT COL1 FROM t1 where COL1 like '%123';",
+                    "SELECT COL1 FROM t1 where COL not like \"%abc\";",
+                    "SELECT COL1 FROM t1 where COL1 not like '%123';",
+                    "SELECT COL1 FROM t1 where COL1 not like 10;",
+                    "SELECT COL1 FROM t1 where COL1 like 10;"));
 INSTANTIATE_TEST_CASE_P(
     SqlInPlan, PlannerTest,
     testing::Values(
@@ -115,7 +111,8 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SqlGroupPlan, PlannerTest,
     testing::Values(
-        "SELECT distinct sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "SELECT distinct sum(COL1) as col1sum, * FROM t1 where col2 > 10 group "
+        "by COL1, "
         "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
         "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
         "SELECT COL1 FROM t1 group by COL1+COL2;",
@@ -163,28 +160,27 @@ INSTANTIATE_TEST_CASE_P(
                     "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
                     "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;"));
 
-//INSTANTIATE_TEST_CASE_P(
+// INSTANTIATE_TEST_CASE_P(
 //    SqlUnionPlan, PlannerTest,
 //    testing::Values(
 //        "SELECT * FROM t1 UNION SELECT * FROM t2;",
 //        "SELECT * FROM t1 UNION DISTINCT SELECT * FROM t2;",
 //        "SELECT * FROM t1 UNION ALL SELECT * FROM t2;",
 //        "SELECT * FROM t1 UNION ALL SELECT * FROM t2 UNION SELECT * FROM t3;",
-//        "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2 UNION ALL SELECT * "
-//        "FROM t3 UNION SELECT * FROM t4;",
-//        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
-//        "COL2 having col1sum > 0 order by COL1+COL2 limit 10 UNION ALL "
-//        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
-//        "sum(COL1) > 0;",
-//        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 UNION "
-//        "SELECT * FROM t3 inner join t4 on t3.col1 = t4.col2 UNION "
-//        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;"));
-//INSTANTIATE_TEST_CASE_P(
+//        "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2 UNION ALL SELECT *
+//        " "FROM t3 UNION SELECT * FROM t4;", "SELECT sum(COL1) as col1sum, *
+//        FROM t1 where col2 > 10 group by COL1, " "COL2 having col1sum > 0
+//        order by COL1+COL2 limit 10 UNION ALL " "SELECT sum(COL1) as col1sum,
+//        * FROM t1 group by COL1, COL2 having " "sum(COL1) > 0;", "SELECT *
+//        FROM t1 inner join t2 on t1.col1 = t2.col2 UNION " "SELECT * FROM t3
+//        inner join t4 on t3.col1 = t4.col2 UNION " "SELECT * FROM t5 inner
+//        join t6 on t5.col1 = t6.col2;"));
+// INSTANTIATE_TEST_CASE_P(
 //    SqlDistinctPlan, PlannerTest,
 //    testing::Values(
 //        "SELECT distinct COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
-//        "SELECT DISTINCT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
-//        "SELECT DISTINCT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+//        "SELECT DISTINCT sum(COL1) as col1sum, * FROM t1 group by COL1,
+//        COL2;", "SELECT DISTINCT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
 //        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
 //        "PRECEDING AND CURRENT ROW) limit 10;",
 //        "SELECT DISTINCT COUNT(*) FROM t1;",
@@ -203,7 +199,7 @@ TEST_P(PlannerTest, PlannerSucessTest) {
     }
     ASSERT_EQ(0, ret);
     //    ASSERT_EQ(1, trees.size());
-//    std::cout << *(trees.front()) << std::endl;
+    //    std::cout << *(trees.front()) << std::endl;
     Planner *planner_ptr = new SimplePlanner(manager_);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(trees, plan_trees, status));

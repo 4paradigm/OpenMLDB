@@ -153,8 +153,8 @@ bool Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
 
     // having
     if (nullptr != root->having_clause_ptr_) {
-        current_node = node_manager_->MakeFilterPlanNode(current_node,
-                                                       root->having_clause_ptr_);
+        current_node = node_manager_->MakeFilterPlanNode(
+            current_node, root->having_clause_ptr_);
     }
     // order
     if (nullptr != root->order_clause_ptr_) {

@@ -112,14 +112,12 @@ INSTANTIATE_TEST_CASE_P(
 
 INSTANTIATE_TEST_CASE_P(
     SqlLikeParse, SqlParserTest,
-    testing::Values(
-        "SELECT COL1 FROM t1 where COL like \"%abc\";",
-        "SELECT COL1 FROM t1 where COL1 like '%123';",
-        "SELECT COL1 FROM t1 where COL not like \"%abc\";",
-        "SELECT COL1 FROM t1 where COL1 not like '%123';",
-        "SELECT COL1 FROM t1 where COL1 not like 10;",
-        "SELECT COL1 FROM t1 where COL1 like 10;"
-        ));
+    testing::Values("SELECT COL1 FROM t1 where COL like \"%abc\";",
+                    "SELECT COL1 FROM t1 where COL1 like '%123';",
+                    "SELECT COL1 FROM t1 where COL not like \"%abc\";",
+                    "SELECT COL1 FROM t1 where COL1 not like '%123';",
+                    "SELECT COL1 FROM t1 where COL1 not like 10;",
+                    "SELECT COL1 FROM t1 where COL1 like 10;"));
 
 INSTANTIATE_TEST_CASE_P(
     SqlInParse, SqlParserTest,
@@ -131,7 +129,8 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SqlGroupParse, SqlParserTest,
     testing::Values(
-        "SELECT distinct sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "SELECT distinct sum(COL1) as col1sum, * FROM t1 where col2 > 10 group "
+        "by COL1, "
         "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
         "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
         "SELECT COL1 FROM t1 group by COL1+COL2;",
@@ -226,7 +225,6 @@ INSTANTIATE_TEST_CASE_P(
         "    (select * from sco where subject = \"math\") t\n"
         "on s.id = t.stu_id;",
         "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;"));
-
 
 INSTANTIATE_TEST_CASE_P(
     UDFParse, SqlParserTest,

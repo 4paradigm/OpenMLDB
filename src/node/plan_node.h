@@ -38,7 +38,9 @@ class PlanNode {
     friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
 
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    virtual void PrintChildren(std::ostream &output, const std::string &tab) const;
+    virtual void PrintChildren(std::ostream &output,
+                               const std::string &tab) const;
+
  protected:
     PlanType type_;
     std::vector<PlanNode *> children_;
@@ -51,7 +53,8 @@ class LeafPlanNode : public PlanNode {
     explicit LeafPlanNode(PlanType type) : PlanNode(type) {}
     ~LeafPlanNode() {}
     virtual bool AddChild(PlanNode *node);
-    virtual void PrintChildren(std::ostream &output, const std::string &tab) const;
+    virtual void PrintChildren(std::ostream &output,
+                               const std::string &tab) const;
 };
 
 class UnaryPlanNode : public PlanNode {
@@ -63,7 +66,8 @@ class UnaryPlanNode : public PlanNode {
     ~UnaryPlanNode() {}
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual void PrintChildren(std::ostream &output, const std::string &tab) const;
+    virtual void PrintChildren(std::ostream &output,
+                               const std::string &tab) const;
 };
 
 class BinaryPlanNode : public PlanNode {
@@ -77,7 +81,8 @@ class BinaryPlanNode : public PlanNode {
     ~BinaryPlanNode() {}
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual void PrintChildren(std::ostream &output, const std::string &tab) const;
+    virtual void PrintChildren(std::ostream &output,
+                               const std::string &tab) const;
 };
 
 class MultiChildPlanNode : public PlanNode {
@@ -86,7 +91,8 @@ class MultiChildPlanNode : public PlanNode {
     ~MultiChildPlanNode() {}
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual void PrintChildren(std::ostream &output, const std::string &tab) const;
+    virtual void PrintChildren(std::ostream &output,
+                               const std::string &tab) const;
 };
 
 class RenamePlanNode : public UnaryPlanNode {
@@ -97,7 +103,7 @@ class RenamePlanNode : public UnaryPlanNode {
 };
 class TablePlanNode : public LeafPlanNode {
  public:
-    explicit TablePlanNode(const std::string &db, const std::string &table)
+    TablePlanNode(const std::string &db, const std::string &table)
         : LeafPlanNode(kPlanTypeTable), db_(db), table_(table) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
     const std::string db_;
@@ -106,7 +112,8 @@ class TablePlanNode : public LeafPlanNode {
 
 class DistinctPlanNode : public UnaryPlanNode {
  public:
-    DistinctPlanNode(PlanNode *node) : UnaryPlanNode(node, kPlanTypeDistinct) {}
+    explicit DistinctPlanNode(PlanNode *node)
+        : UnaryPlanNode(node, kPlanTypeDistinct) {}
 };
 
 class JoinPlanNode : public BinaryPlanNode {
@@ -137,11 +144,10 @@ class CrossProductPlanNode : public BinaryPlanNode {
 
 class SortPlanNode : public UnaryPlanNode {
  public:
-    SortPlanNode(PlanNode *node, const OrderByNode* order_list)
-        : UnaryPlanNode(node, kPlanTypeSort),
-          order_list_(order_list) {}
+    SortPlanNode(PlanNode *node, const OrderByNode *order_list)
+        : UnaryPlanNode(node, kPlanTypeSort), order_list_(order_list) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    const OrderByNode* order_list_;
+    const OrderByNode *order_list_;
 };
 
 class GroupPlanNode : public UnaryPlanNode {
