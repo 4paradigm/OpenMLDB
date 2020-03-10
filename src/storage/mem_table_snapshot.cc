@@ -185,6 +185,12 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::a
     std::string buffer;
     ::rtidb::api::LogEntry entry;
     bool has_error = false;
+    std::set<uint32_t> deleted_index;
+    for (const auto& it : table->GetColumnMap()) {
+        if (it.second->status == ::rtidb::storage::IndexStat::kDeleted) {
+            deleted_index.insert(it.first);
+        }
+    }
     while (true) {
         ::rtidb::base::Slice record;
         ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
@@ -213,7 +219,8 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::a
             for (int pos = 0; pos < entry.dimensions_size(); pos++) {
                 std::string combined_key = entry.dimensions(pos).key() + "|" + 
                         std::to_string(entry.dimensions(pos).idx());
-                if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
+                if (deleted_keys_.find(combined_key) != deleted_keys_.end()|| 
+                        deleted_index.count(entry.dimensions(pos).idx())) {
                     deleted_pos_set.insert(pos);
                 }
             }
@@ -376,7 +383,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     // get deleted index
     std::set<uint32_t> deleted_index;
     for (const auto& it : table->GetColumnMap()) {
-        if (it.second->status != ::rtidb::storage::IndexStat::kReady) {
+        if (it.second->status == ::rtidb::storage::IndexStat::kDeleted) {
             deleted_index.insert(it.first);
         }
     }

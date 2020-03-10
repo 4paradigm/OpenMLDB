@@ -5,7 +5,7 @@
 // Date 2017-09-05
 //
 
-#include "base/return_code.h"
+#include "base/status.h"
 #include "nameserver/name_server_impl.h"
 #include <gflags/gflags.h>
 #include "timer.h"
