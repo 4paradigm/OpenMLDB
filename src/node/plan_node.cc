@@ -15,7 +15,8 @@ namespace node {
 void PlanNode::Print(std::ostream &output, const std::string &tab) const {
     output << tab << SPACE_ST << "[" << node::NameOfPlanNodeType(type_) << "]";
 }
-void PlanNode::PrintChildren(std::ostream &output, const std::string &tab) const {
+void PlanNode::PrintChildren(std::ostream &output,
+                             const std::string &tab) const {
     output << "";
 }
 
@@ -42,7 +43,6 @@ void UnaryPlanNode::Print(std::ostream &output,
     PlanNode::Print(output, org_tab);
     output << "\n";
     PrintChildren(output, org_tab);
-
 }
 void UnaryPlanNode::PrintChildren(std::ostream &output,
                                   const std::string &tab) const {
@@ -67,10 +67,10 @@ void BinaryPlanNode::Print(std::ostream &output,
 }
 
 void BinaryPlanNode::PrintChildren(std::ostream &output,
-                                 const std::string &tab) const {
-    PrintPlanNode(output, tab, children_[0], "left", true);
+                                   const std::string &tab) const {
+    PrintPlanNode(output, tab + INDENT, children_[0], "", true);
     output << "\n";
-    PrintPlanNode(output, tab, children_[1], "right", true);
+    PrintPlanNode(output, tab + INDENT, children_[1], "", true);
 }
 
 bool MultiChildPlanNode::AddChild(PlanNode *node) {
@@ -83,11 +83,10 @@ void MultiChildPlanNode::Print(std::ostream &output,
     PlanNode::Print(output, org_tab);
     output << "\n";
     PrintChildren(output, org_tab);
-
 }
 
 void MultiChildPlanNode::PrintChildren(std::ostream &output,
-                                   const std::string &tab) const {
+                                       const std::string &tab) const {
     PrintPlanVector(output, tab + INDENT, children_, "children", true);
 }
 
@@ -124,6 +123,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kUnionPlan";
         case kPlanTypeSort:
             return "kSortPlan";
+        case kPlanTypeGroup:
+            return "kGroupPlan";
         case kPlanTypeDistinct:
             return "kDistinctPlan";
         case kProjectList:
@@ -255,5 +256,50 @@ void WindowPlanNode::Print(std::ostream &output,
     PrintValue(output, org_tab, name, "window_name", true);
 }
 
+void SortPlanNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    std::string tab = org_tab + INDENT;
+    PrintValue(output, tab,
+               nullptr == order_list_ ? "()" : order_list_->GetExprString(),
+               "order_by", true);
+    output << "\n";
+    PrintChildren(output, org_tab);
+}
+void GroupPlanNode::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    std::string tab = org_tab + INDENT;
+    PrintValue(output, tab,
+               nullptr == by_list_ ? "()" : by_list_->GetExprString(),
+               "group_by", true);
+    output << "\n";
+    PrintChildren(output, org_tab);
+}
+void JoinPlanNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    std::string tab = org_tab + INDENT;
+    PrintValue(output, tab, JoinTypeName(join_type_), "type", true);
+    output << "\n";
+    PrintValue(output, tab,
+               nullptr == condition_ ? "" : condition_->GetExprString(),
+               "condition", true);
+    output << "\n";
+    PrintChildren(output, org_tab);
+}
+void UnionPlanNode::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    std::string tab = org_tab + INDENT;
+    PrintValue(output, tab, is_all ? "ALL" : "DISTINCT",
+        "", false);
+    output << "\n";
+    PrintChildren(output, org_tab);
+}
 }  // namespace node
 }  // namespace fesql

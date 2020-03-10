@@ -105,6 +105,80 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 FROM t1 where COL1 not like 10;",
         "SELECT COL1 FROM t1 where COL1 like 10;"
     ));
+INSTANTIATE_TEST_CASE_P(
+    SqlInPlan, PlannerTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 where COL in (1, 2, 3, 4, 5);",
+        "SELECT COL1 FROM t1 where COL1 in (\"abc\", \"xyz\", \"test\");",
+        "SELECT COL1 FROM t1 where COL1 not in (1,2,3,4,5);"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlGroupPlan, PlannerTest,
+    testing::Values(
+        "SELECT distinct sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
+        "SELECT COL1 FROM t1 group by COL1+COL2;",
+        "SELECT COL1 FROM t1 group by COL1;",
+        "SELECT COL1 FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT COL1 FROM t1 group by COL1, COL2;",
+        "SELECT COL1 FROM t1 group by COL1;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlHavingPlan, PlannerTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 having COL1+COL2;",
+        "SELECT COL1 FROM t1 having COL1;",
+        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
+        "SELECT COL1 FROM t1 HAVING COL1 > 10;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlOrderPlan, PlannerTest,
+    testing::Values("SELECT COL1 FROM t1 order by COL1 + COL2 - COL3;",
+                    "SELECT COL1 FROM t1 order by COL1, COL2, COL3;",
+                    "SELECT COL1 FROM t1 order by COL1, COL2;",
+                    "SELECT COL1 FROM t1 order by COL1;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlWhereGroupHavingOrderPlan, PlannerTest,
+    testing::Values(
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0 order by COL1 limit 10;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0 limit 10;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
+        "sum(COL1) > 0;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
+        "col1sum > 0;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlJoinPlan, PlannerTest,
+    testing::Values("SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
+                    "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2;",
+                    "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
+                    "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;"));
+
+//INSTANTIATE_TEST_CASE_P(
+//    SqlUnionPlan, PlannerTest,
+//    testing::Values(
+//        "SELECT * FROM t1 UNION SELECT * FROM t2;",
+//        "SELECT * FROM t1 UNION DISTINCT SELECT * FROM t2;",
+//        "SELECT * FROM t1 UNION ALL SELECT * FROM t2;",
+//        "SELECT * FROM t1 UNION ALL SELECT * FROM t2 UNION SELECT * FROM t3;",
+//        "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2 UNION ALL SELECT * "
+//        "FROM t3 UNION SELECT * FROM t4;",
+//        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+//        "COL2 having col1sum > 0 order by COL1+COL2 limit 10 UNION ALL "
+//        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
+//        "sum(COL1) > 0;",
+//        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 UNION "
+//        "SELECT * FROM t3 inner join t4 on t3.col1 = t4.col2 UNION "
+//        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;"));
 //INSTANTIATE_TEST_CASE_P(
 //    SqlDistinctPlan, PlannerTest,
 //    testing::Values(

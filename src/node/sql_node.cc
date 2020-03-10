@@ -218,10 +218,16 @@ void OrderByNode::Print(std::ostream &output,
     const std::string tab = org_tab + INDENT + SPACE_ED;
 
     output << "\n";
-    PrintValue(output, tab, NameOfSQLNodeType(sort_type_), "sort_type", false);
+    PrintValue(output, tab, is_asc_ ? "ASC" : "DESC", "sort_type", false);
 
     output << "\n";
     PrintSQLNode(output, tab, order_by_, "order_by", true);
+}
+const std::string OrderByNode::GetExprString() const {
+    std::string str = "";
+    str.append(nullptr == order_by_ ? "()" : order_by_->GetExprString());
+    str.append(is_asc_ ? " ASC" : " DESC");
+    return str;
 }
 
 void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -349,6 +355,8 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kJoin:
             output = "kJoin";
             break;
+        case kUnionStmt:
+            output = "kUnion";
         case kSubQuery:
             output = "kSubQuery";
             break;
@@ -387,9 +395,6 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kConst:
             output = "kConst";
-            break;
-        case kOrderBy:
-            output = "kOrderBy";
             break;
         case kLimit:
             output = "kLimit";
@@ -599,7 +604,8 @@ const std::string UnaryExpr::GetExprString() const {
         str.append("(").append(children[0]->GetExprString()).append(")");
         return str;
     }
-    str.append(ExprOpTypeName(op_)).append(" ")
+    str.append(ExprOpTypeName(op_))
+        .append(" ")
         .append(children[0]->GetExprString());
     return str;
 }

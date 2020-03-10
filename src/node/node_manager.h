@@ -75,7 +75,7 @@ class NodeManager {
                                 ExprNode *where_expr,
                                 ExprListNode *group_expr_list,
                                 ExprNode *having_expr,
-                                ExprListNode *order_expr_list,
+                                ExprNode *order_expr_list,
                                 SQLNodeList *window_list_ptr,
                                 SQLNode *limit_ptr);
     SQLNode *MakeUnionStmtNode(SQLNode *left, SQLNode *right, bool is_all);
@@ -91,9 +91,9 @@ class NodeManager {
                            const SQLNode *over);
     ExprNode *MakeSubQueryExprNode(const SQLNode *query);
     SQLNode *MakeWindowDefNode(const std::string &name);
-    SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprListNode *orders,
+    SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame);
-    SQLNode *MakeOrderByNode(SQLNode *node_ptr);
+    ExprNode *MakeOrderByNode(ExprListNode *node_ptr, const bool is_asc);
     SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);
     SQLNode *MakeFrameBound(SQLNodeType bound_type);
     SQLNode *MakeFrameBound(SQLNodeType bound_type, ExprNode *offset);
@@ -204,6 +204,8 @@ class NodeManager {
     FuncDefPlanNode *MakeFuncPlanNode(const FnNodeFnDef *node);
 
     PlanNode *MakeRenamePlanNode(PlanNode *node, const std::string alias_name);
+
+    PlanNode *MakeSortPlanNode(PlanNode *node, const OrderByNode *order_list);
 
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {

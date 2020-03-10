@@ -31,8 +31,7 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
             return RegisterNode(new FrameNode());
         case kConst:
             return RegisterNode(new ConstNode());
-        case kOrderBy:
-            return RegisterNode(new OrderByNode(nullptr));
+
         case kLimit:
             return RegisterNode(new LimitNode(0));
         default:
@@ -45,11 +44,11 @@ SQLNode *NodeManager::MakeSQLNode(const SQLNodeType &type) {
 SQLNode *NodeManager::MakeSelectStmtNode(
     bool is_distinct, SQLNodeList *select_list, SQLNodeList *tableref_list,
     ExprNode *where_expr, ExprListNode *group_expr_list, ExprNode *having_expr,
-    ExprListNode *order_expr_list, SQLNodeList *window_list,
-    SQLNode *limit_ptr) {
+    ExprNode *order_expr_list, SQLNodeList *window_list, SQLNode *limit_ptr) {
     SelectStmt *node_ptr = new SelectStmt(
         is_distinct, select_list, tableref_list, where_expr, group_expr_list,
-        having_expr, order_expr_list, window_list, limit_ptr);
+        having_expr, dynamic_cast<OrderByNode *>(order_expr_list), window_list,
+        limit_ptr);
     return RegisterNode(node_ptr);
 }
 
@@ -95,21 +94,36 @@ SQLNode *NodeManager::MakeLimitNode(int count) {
 }
 
 SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
-                                        ExprListNode *orders, SQLNode *frame) {
+                                        ExprNode *orders, SQLNode *frame) {
     WindowDefNode *node_ptr = new WindowDefNode();
-    for (auto expr : orders->children) {
-        switch (expr->GetExprType()) {
-            case kExprColumnRef:
-                node_ptr->GetOrders().push_back(
-                    dynamic_cast<ColumnRefNode *>(expr)->GetColumnName());
-                break;
-            default: {
-                LOG(WARNING) << "fail to create window node with invalid expr";
-                delete node_ptr;
-                return nullptr;
+    if (nullptr != orders) {
+        if (node::kExprOrder != orders->GetExprType()) {
+            LOG(WARNING)
+                << "fail to create window node with invalid order type " +
+                       NameOfSQLNodeType(orders->GetType());
+            delete node_ptr;
+            return nullptr;
+        }
+        auto expr_list = dynamic_cast<OrderByNode *>(orders)->order_by_;
+        for (auto expr : expr_list->children) {
+            switch (expr->GetExprType()) {
+                case kExprColumnRef:
+                    // TODO(chenjing): window 支持未来窗口
+                    node_ptr->GetOrders().push_back(
+                        dynamic_cast<const ColumnRefNode *>(expr)
+                            ->GetColumnName());
+                    break;
+                    // TODO(chenjing): 支持复杂表达式作为order列
+                default: {
+                    LOG(WARNING)
+                        << "fail to create window node with invalid expr";
+                    delete node_ptr;
+                    return nullptr;
+                }
             }
         }
     }
+
     for (auto expr : partitions->children) {
         switch (expr->GetExprType()) {
             case kExprColumnRef:
@@ -158,8 +172,8 @@ SQLNode *NodeManager::MakeRowsFrameNode(SQLNode *node_ptr) {
     return node_ptr;
 }
 
-SQLNode *NodeManager::MakeOrderByNode(SQLNode *order) {
-    OrderByNode *node_ptr = new OrderByNode(order);
+ExprNode *NodeManager::MakeOrderByNode(ExprListNode *order, const bool is_asc) {
+    OrderByNode *node_ptr = new OrderByNode(order, true);
     return RegisterNode(node_ptr);
 }
 
@@ -646,6 +660,11 @@ ExprNode *NodeManager::MakeSubQueryExprNode(const SQLNode *query) {
         new SubQueryExpr(dynamic_cast<const SelectStmt *>(query));
     RegisterNode(node_ptr);
     return node_ptr;
+}
+PlanNode *NodeManager::MakeSortPlanNode(PlanNode *node,
+                                        const OrderByNode *order_list) {
+    node::SortPlanNode *node_ptr = new SortPlanNode(node, order_list);
+    return RegisterNode(node_ptr);
 }
 
 }  // namespace node

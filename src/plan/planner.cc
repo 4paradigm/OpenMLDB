@@ -150,7 +150,18 @@ bool Planner::CreateSelectStmtPlan(const node::SQLNode *select_tree,
 
     current_node = node_manager_->MakeProjectPlanNode(
         current_node, table_name, project_list_vec2, pos_mapping);
-    // set limit
+
+    // having
+    if (nullptr != root->having_clause_ptr_) {
+        current_node = node_manager_->MakeFilterPlanNode(current_node,
+                                                       root->having_clause_ptr_);
+    }
+    // order
+    if (nullptr != root->order_clause_ptr_) {
+        current_node = node_manager_->MakeSortPlanNode(current_node,
+                                                       root->order_clause_ptr_);
+    }
+    // limit
     if (nullptr != root->GetLimit()) {
         const node::LimitNode *limit_ptr = (node::LimitNode *)root->GetLimit();
         current_node = node_manager_->MakeLimitPlanNode(
@@ -475,9 +486,9 @@ std::string Planner::MakeTableName(const PlanNode *node) const {
             return std::string("query_table_").append(std::to_string(e()));
         }
         default: {
-            LOG(WARNING)
-                << "fail to get or generate table name for given plan node type "
-                << node::NameOfPlanNodeType(node->GetType());
+            LOG(WARNING) << "fail to get or generate table name for given plan "
+                            "node type "
+                         << node::NameOfPlanNodeType(node->GetType());
             return "";
         }
     }

@@ -143,6 +143,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "struct";
         case kExprSubQuery:
             return "subquery";
+        case kExprOrder:
+            return "order";
         case kExprUnknow:
             return "unknow";
         default:
@@ -311,13 +313,24 @@ class FnNodeList : public FnNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     std::vector<FnNode *> children;
 };
+class OrderByNode : public ExprNode {
+ public:
+    explicit OrderByNode(ExprListNode *order, bool is_asc)
+        : ExprNode(kExprOrder), is_asc_(is_asc), order_by_(order) {}
+    ~OrderByNode() {}
 
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    const bool is_asc_;
+    const ExprListNode *order_by_;
+};
 class SelectStmt : public SQLNode {
  public:
-    SelectStmt(bool is_distinct, SQLNodeList *select_list, SQLNodeList *tableref_list,
-               ExprNode *where_expr, ExprListNode *group_expr_list,
-               ExprNode *having_expr, ExprListNode *order_expr_list,
-               SQLNodeList *window_list, SQLNode *limit_ptr)
+    SelectStmt(bool is_distinct, SQLNodeList *select_list,
+               SQLNodeList *tableref_list, ExprNode *where_expr,
+               ExprListNode *group_expr_list, ExprNode *having_expr,
+               OrderByNode *order_expr_list, SQLNodeList *window_list,
+               SQLNode *limit_ptr)
         : SQLNode(kSelectStmt, 0, 0),
           distinct_opt_(is_distinct),
           where_clause_ptr_(where_expr),
@@ -356,7 +369,7 @@ class SelectStmt : public SQLNode {
     const ExprNode *where_clause_ptr_;
     const ExprListNode *group_clause_ptr_;
     const ExprNode *having_clause_ptr_;
-    const SQLNode *order_clause_ptr_;
+    const OrderByNode *order_clause_ptr_;
     const SQLNode *limit_ptr_;
 
  private:
@@ -421,17 +434,15 @@ class TableNode : public TableRefNode {
     TableNode(const std::string &name, const std::string &alias)
         : TableRefNode(kTable, alias), org_table_name_(name) {}
 
-    const std::string& GetOrgTableName() const { return org_table_name_; }
+    const std::string &GetOrgTableName() const { return org_table_name_; }
 
-    const std::string& GetAliasTableName() const { return alias_table_name_; }
+    const std::string &GetAliasTableName() const { return alias_table_name_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     std::string org_table_name_;
 };
-
-
 
 class JoinNode : public TableRefNode {
  public:
@@ -448,23 +459,6 @@ class JoinNode : public TableRefNode {
     const TableRefNode *right_;
     const JoinType join_type_;
     const ExprNode *condition_;
-};
-
-class OrderByNode : public SQLNode {
- public:
-    explicit OrderByNode(SQLNode *order)
-        : SQLNode(kOrderBy, 0, 0), sort_type_(kDesc), order_by_(order) {}
-    ~OrderByNode() {}
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-
-    SQLNodeType GetSortType() const { return sort_type_; }
-    SQLNode *GetOrderBy() const { return order_by_; }
-    void SetOrderBy(SQLNode *order_by) { order_by_ = order_by; }
-
- private:
-    SQLNodeType sort_type_;
-    SQLNode *order_by_;
 };
 
 class FrameBound : public SQLNode {
@@ -508,6 +502,7 @@ class FrameBound : public SQLNode {
     SQLNodeType bound_type_;
     ExprNode *offset_;
 };
+
 class FrameNode : public SQLNode {
  public:
     FrameNode()
@@ -632,8 +627,7 @@ class SubQueryExpr : public ExprNode {
 
 class SubQueryTableNode : public TableRefNode {
  public:
-    SubQueryTableNode(const SubQueryExpr *sub_query,
-                      const std::string &alias)
+    SubQueryTableNode(const SubQueryExpr *sub_query, const std::string &alias)
         : TableRefNode(kSubQuery, alias), sub_query_(sub_query) {}
     const SubQueryExpr *sub_query_;
 };

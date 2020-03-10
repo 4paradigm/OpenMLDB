@@ -47,10 +47,8 @@ enum SQLNodeType {
     kName,
     kConst,
     kLimit,
-    kOrderBy,
 
-    kDesc,
-    kAsc,
+
 
     kFrameRange,
     kFrameRows,
@@ -96,6 +94,7 @@ enum ExprType {
     kExprAll,
     kExprStruct,
     kExprSubQuery,
+    kExprOrder,
     kExprUnknow = 9999
 };
 // typedef fesql::type::Type DataType;
@@ -187,6 +186,7 @@ enum PlanType {
     kPlanTypeJoin,
     kPlanTypeUnion,
     kPlanTypeSort,
+    kPlanTypeGroup,
     kPlanTypeDistinct,
     kPlanTypeProject,
     kPlanTypeRename,

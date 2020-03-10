@@ -373,6 +373,7 @@ typedef void* yyscan_t;
 %type <expr> 	var primary_time  expr_const
 				sql_call_expr column_ref frame_expr join_condition
 				fun_expr sql_expr sub_query_expr
+				sort_clause opt_sort_clause
  /* select stmt */
 %type <node>  sql_stmt stmt select_stmt union_stmt
               projection
@@ -383,7 +384,7 @@ typedef void* yyscan_t;
  /* insert table */
 %type<node> insert_stmt
 %type<exprlist> insert_expr_list column_ref_list opt_partition_clause
-				sort_clause opt_sort_clause  group_expr sql_id_list
+				group_expr sql_id_list
 				sql_expr_list fun_expr_list
 
 %type<expr> insert_expr where_expr having_expr
@@ -1393,12 +1394,23 @@ limit_clause:
  *===========================================================*/
 
 opt_sort_clause:
-			sort_clause								{ $$ = $1;}
+			sort_clause								{ $$ = $1; }
 			| /*EMPTY*/								{ $$ = NULL; }
 		    ;
 
 sort_clause:
-			ORDER BY sql_expr_list { $$ = $3; }
+			ORDER BY sql_expr_list
+			{
+				$$ = node_manager->MakeOrderByNode($3, true);
+			}
+			|ORDER BY sql_expr_list ASC
+			{
+				$$ = node_manager->MakeOrderByNode($3, true);
+			}
+			|ORDER BY sql_expr_list  DESC
+			{
+				$$ = node_manager->MakeOrderByNode($3, false);
+			}
 		    ;
 /*===========================================================
  *

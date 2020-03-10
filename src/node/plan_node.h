@@ -116,6 +116,7 @@ class JoinPlanNode : public BinaryPlanNode {
         : BinaryPlanNode(kPlanTypeJoin, left, right),
           join_type_(join_type),
           condition_(expression) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
     const JoinType join_type_;
     const ExprNode *condition_;
 };
@@ -124,6 +125,7 @@ class UnionPlanNode : public BinaryPlanNode {
  public:
     UnionPlanNode(PlanNode *left, PlanNode *right, bool is_all)
         : BinaryPlanNode(kPlanTypeJoin, left, right), is_all(is_all) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
     const bool is_all;
 };
 
@@ -135,18 +137,18 @@ class CrossProductPlanNode : public BinaryPlanNode {
 
 class SortPlanNode : public UnaryPlanNode {
  public:
-    SortPlanNode(PlanNode *node, bool is_asc, PlanNodeList *order_list)
+    SortPlanNode(PlanNode *node, const OrderByNode* order_list)
         : UnaryPlanNode(node, kPlanTypeSort),
-          is_asc_(is_asc),
           order_list_(order_list) {}
-    const bool is_asc_;
-    PlanNodeList *order_list_;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const OrderByNode* order_list_;
 };
 
 class GroupPlanNode : public UnaryPlanNode {
  public:
     GroupPlanNode(PlanNode *node, const ExprListNode *by_list)
-        : UnaryPlanNode(node, kPlanTypeSort), by_list_(by_list) {}
+        : UnaryPlanNode(node, kPlanTypeGroup), by_list_(by_list) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
     const ExprListNode *by_list_;
 };
 
