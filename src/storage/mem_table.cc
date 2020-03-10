@@ -96,18 +96,25 @@ bool MemTable::Init() {
             key_entry_max_height_ = FLAGS_absolute_default_skiplist_height;
         }
     }
-
     for (uint32_t i = 0; i < idx_cnt_; i++) {
-        Segment** seg_arr = new Segment*[seg_cnt_];
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            if (column_key_map_.find(i) != column_key_map_.end()) {
-                seg_arr[j] = new Segment(key_entry_max_height_, column_key_map_[i]->column_idx);
-                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u", 
-                            i, j, key_entry_max_height_, column_key_map_[i]->column_idx.size());
+        Segment** seg_arr = NULL;
+        const auto& it = column_key_map_.find(i);
+        if (it != column_key_map_.end()) {
+            if (it->second->status != ::rtidb::storage::kDeleted) {
+                seg_arr = new Segment*[seg_cnt_];
+                for (uint32_t j = 0; j < seg_cnt_; j++) {
+                    seg_arr[j] = new Segment(key_entry_max_height_, column_key_map_[i]->column_idx);
+                    PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u", 
+                        i, j, key_entry_max_height_, column_key_map_[i]->column_idx.size());
+                }
             } else {
+                PDLOG(INFO, "init deleted %u segment.", i);
+            }
+        } else {
+            seg_arr = new Segment*[seg_cnt_];
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(key_entry_max_height_);
-                PDLOG(INFO, "init %u, %u segment. height %u", 
-                            i, j, key_entry_max_height_);
+                PDLOG(INFO, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
             }
         }
         segments_.push_back(seg_arr);
@@ -658,6 +665,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
             !column_key_iter->second->status.load(std::memory_order_relaxed)) {
         column_key_iter->second->status.store(IndexStat::kWaiting);
     }
+    table_meta_.mutable_column_key(iter->second)->set_flag(1);
     return true;
 }
 

@@ -94,6 +94,9 @@ int Table::InitColumnDesc() {
                         column_key_map_[cur_key_idx]->column_idx.push_back(ts_iter->second);
                     }
                 }
+                if (column_key.flag()) {
+                    column_key_map_[cur_key_idx]->status = ::rtidb::storage::kDeleted;
+                }
             }
         } else {
             if (!ts_mapping_.empty()) {
