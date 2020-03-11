@@ -671,7 +671,9 @@ bool MemTable::DeleteIndex(std::string idx_name) {
             !column_key_iter->second->status.load(std::memory_order_relaxed)) {
         column_key_iter->second->status.store(IndexStat::kWaiting);
     }
-    table_meta_.mutable_column_key(iter->second)->set_flag(1);
+    if (iter->second<table_meta_.column_key_size()) {
+        table_meta_.mutable_column_key(iter->second)->set_flag(1);
+    }
     return true;
 }
 
