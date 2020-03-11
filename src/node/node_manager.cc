@@ -652,6 +652,11 @@ PlanNode *NodeManager::MakeDistinctPlanNode(PlanNode *node) {
     node::DistinctPlanNode *node_ptr = new DistinctPlanNode(node);
     return RegisterNode(node_ptr);
 }
+SQLNode *NodeManager::MakeExplainNode(const QueryNode *query,
+                                      ExplainType explain_type) {
+    node::ExplainNode *node_ptr = new ExplainNode(query, explain_type);
+    return RegisterNode(node_ptr);
+}
 
 }  // namespace node
 }  // namespace fesql

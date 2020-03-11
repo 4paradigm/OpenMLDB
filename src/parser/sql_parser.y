@@ -229,6 +229,7 @@ typedef void* yyscan_t;
 %token LOCALTIME
 %token LOCALTIMESTAMP
 %token LOCK
+%token LOGICAL
 %token LONG
 %token LONGBLOB
 %token LONGTEXT
@@ -660,6 +661,14 @@ stmt:   query_clause
         |cmd_stmt
         {
         	$$ = $1;
+        }
+        |EXPLAIN LOGICAL query_clause
+        {
+        	$$ = node_manager->MakeExplainNode($3, fesql::node::kExplainLogical);
+        }
+        |EXPLAIN query_clause
+        {
+        	$$ = node_manager->MakeExplainNode($2, fesql::node::kExplainPhysical);
         }
         ;
 

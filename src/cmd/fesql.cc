@@ -312,7 +312,6 @@ void HandleSQLScript(
     {
         fesql::node::NodeManager node_manager;
         fesql::parser::FeSQLParser parser;
-        fesql::plan::SimplePlanner planner(&node_manager);
         fesql::base::Status sql_status;
 
         // TODO(chenjing): init with db
@@ -367,6 +366,16 @@ void HandleSQLScript(
                     return;
                 }
                 std::cout << "Insert success" << std::endl;
+                return;
+            }
+            case fesql::node::kExplainSmt: {
+                fesql::plan::SimplePlanner planner(&node_manager);
+                fesql::node::PlanNodeList plan_trees;
+                fesql::node::NodePointVector parser_trees;
+                if (!planner.CreatePlanTree(parser_trees, plan_trees, sql_status)) {
+                    return;
+                }
+                std::cout << "Logical plan: \n" << plan_trees[0];
                 return;
             }
             case fesql::node::kFnList:

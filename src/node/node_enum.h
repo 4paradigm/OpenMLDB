@@ -26,6 +26,7 @@ enum SQLNodeType {
     kCreateStmt,
     kInsertStmt,
     kCmdStmt,
+    kExplainSmt,
     kExpr,
     kType,
     kResTarget,
@@ -178,7 +179,10 @@ enum CmdType {
     kCmdDropTable,
     kCmdExit
 };
-
+enum ExplainType {
+    kExplainLogical,
+    kExplainPhysical,
+};
 enum PlanType {
     kPlanTypeCmd,
     kPlanTypeFuncDef,

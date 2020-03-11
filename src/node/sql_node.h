@@ -55,6 +55,18 @@ inline const std::string CmdTypeName(const CmdType &type) {
     }
 }
 
+inline const std::string ExplainTypeName(const ExplainType &type) {
+    switch (type) {
+        case kExplainLogical:
+            return "logical";
+        case kExplainPhysical:
+            return "physical";
+        default: {
+            return "Unknow";
+        }
+    }
+}
+
 inline const std::string JoinTypeName(const JoinType &type) {
     switch (type) {
         case kJoinTypeFull:
@@ -393,7 +405,6 @@ class JoinNode : public TableRefNode {
     const ExprNode *condition_;
 };
 
-
 class OrderByNode : public ExprNode {
  public:
     explicit OrderByNode(ExprListNode *order, bool is_asc)
@@ -408,10 +419,10 @@ class OrderByNode : public ExprNode {
 class SelectQueryNode : public QueryNode {
  public:
     SelectQueryNode(bool is_distinct, SQLNodeList *select_list,
-               SQLNodeList *tableref_list, ExprNode *where_expr,
-               ExprListNode *group_expr_list, ExprNode *having_expr,
-               OrderByNode *order_expr_list, SQLNodeList *window_list,
-               SQLNode *limit_ptr)
+                    SQLNodeList *tableref_list, ExprNode *where_expr,
+                    ExprListNode *group_expr_list, ExprNode *having_expr,
+                    OrderByNode *order_expr_list, SQLNodeList *window_list,
+                    SQLNode *limit_ptr)
         : QueryNode(kQuerySelect),
           distinct_opt_(is_distinct),
           where_clause_ptr_(where_expr),
@@ -465,10 +476,7 @@ class SelectQueryNode : public QueryNode {
 class UnionQueryNode : public QueryNode {
  public:
     UnionQueryNode(const QueryNode *left, const QueryNode *right, bool is_all)
-        : QueryNode(kQueryUnion),
-          left_(left),
-          right_(right),
-          is_all_(is_all) {}
+        : QueryNode(kQueryUnion), left_(left), right_(right), is_all_(is_all) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     const QueryNode *left_;
     const QueryNode *right_;
@@ -487,7 +495,6 @@ class NameNode : public SQLNode {
  private:
     std::string name_;
 };
-
 
 class LimitNode : public SQLNode {
  public:
@@ -1068,6 +1075,15 @@ class CmdNode : public SQLNode {
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
+};
+
+class ExplainNode : public SQLNode {
+ public:
+    explicit ExplainNode(const QueryNode *query, node::ExplainType type)
+        : SQLNode(kExplainSmt, 0, 0), type_(type), query_(query) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const node::ExplainType type_;
+    const node::QueryNode *query_;
 };
 
 class FnParaNode : public FnNode {

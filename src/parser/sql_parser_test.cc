@@ -427,6 +427,13 @@ INSTANTIATE_TEST_CASE_P(SQLCmdParserTest, SqlParserTest,
                                         "CREATE TABLE \"schema.sql\";",
                                         "CREATE GROUP group1;", "DESC t1;",
                                         "SHOW TABLES;", "SHOW DATABASES;"));
+INSTANTIATE_TEST_CASE_P(
+    SQLExplainParserTest, SqlParserTest,
+    testing::Values(
+        "explain SELECT * FROM t1 WHERE COL1 > (select "
+        "avg(COL1) from t1) limit 10;",
+        "explain logical SELECT * FROM t1 WHERE COL1 > (select "
+                    "avg(COL1) from t1) limit 10;"));
 
 INSTANTIATE_TEST_CASE_P(
     SQLAndUDFParse, SqlParserTest,

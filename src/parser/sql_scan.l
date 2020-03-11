@@ -216,6 +216,7 @@ LIST    { return LIST; }
 LIMIT	{ return LIMIT; }
 LINES	{ return LINES; }
 LOAD	{ return LOAD; }
+LOGICAL { return LOGICAL; }
 LOCALTIME	{ return LOCALTIME; }
 LOCALTIMESTAMP	{ return LOCALTIMESTAMP; }
 LOCK	{ return LOCK; }
