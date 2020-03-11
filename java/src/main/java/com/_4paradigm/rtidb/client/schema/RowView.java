@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class RowView {
 
@@ -308,44 +307,5 @@ public class RowView {
         row.position(str_offset);
         row.get(arr, 0, len);
         return new String(arr, RowCodecCommon.CHARSET);
-    }
-
-    public static void decode(RowView rowView, int index, ColumnDesc columnDesc, Map<String, Object> map) throws TabletException {
-        switch (columnDesc.getDataType()) {
-            case Bool:
-                Boolean bool = rowView.getBool(index);
-                map.put(columnDesc.getName(), bool);
-                break;
-            case SmallInt:
-                Short st = rowView.getInt16(index);
-                map.put(columnDesc.getName(), st);
-                break;
-            case Int:
-                Integer itg = rowView.getInt32(index);
-                map.put(columnDesc.getName(), itg);
-                break;
-            case Timestamp:
-                Long ts = rowView.getTimestamp(index);
-                map.put(columnDesc.getName(), ts);
-                break;
-            case BigInt:
-                Long lg = rowView.getInt64(index);
-                map.put(columnDesc.getName(), lg);
-                break;
-            case Float:
-                Float ft = rowView.getFloat(index);
-                map.put(columnDesc.getName(), ft);
-                break;
-            case Double:
-                Double db = rowView.getDouble(index);
-                map.put(columnDesc.getName(), db);
-                break;
-            case Varchar:
-                String str = rowView.getString(index);
-                map.put(columnDesc.getName(), str);
-                break;
-            default:
-                throw new TabletException("unsupported data type");
-        }
     }
 }

@@ -91,10 +91,11 @@ public class RelationalIterator {
             }
             rowView.reset(ByteBuffer.wrap(uncompressed),
                     ByteBuffer.wrap(uncompressed).array().length);
+            return getInternel(rowView, ByteBuffer.wrap(uncompressed));
         } else {
             rowView.reset(slice, bs.size());
+            return getInternel(rowView, slice);
         }
-        return getInternel(rowView);
     }
 
     public void next() {
@@ -116,12 +117,13 @@ public class RelationalIterator {
         slice.limit(bs.size());
     }
 
-    private Map<String, Object> getInternel(RowView rowView) throws TabletException {
+    private Map<String, Object> getInternel(RowView rowView, ByteBuffer row) throws TabletException {
         Map<String, Object> map = new HashMap<>();
         if (idxDescMap.isEmpty()) {
             for (int i = 0; i < this.getSchema().size(); i++) {
                 ColumnDesc columnDesc = this.getSchema().get(i);
-                RowView.decode(rowView, i, columnDesc, map);
+                Object value = rowView.getValue(row, i, columnDesc.getDataType());
+                map.put(columnDesc.getName(), value);
             }
         } else {
             Iterator<Map.Entry<Integer, ColumnDesc>> iter = this.idxDescMap.entrySet().iterator();
@@ -129,7 +131,8 @@ public class RelationalIterator {
                 Map.Entry<Integer, ColumnDesc> next = iter.next();
                 int index = next.getKey();
                 ColumnDesc columnDesc = next.getValue();
-                RowView.decode(rowView, index, columnDesc, map);
+                Object value = rowView.getValue(row, index, columnDesc.getDataType());
+                map.put(columnDesc.getName(), value);
             }
         }
         return map;
