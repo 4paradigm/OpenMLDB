@@ -1,7 +1,7 @@
 package com._4paradigm.rtidb.client.schema;
 
 import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.type.Type.DataType;
+import com._4paradigm.rtidb.client.type.DataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +29,7 @@ public class RowBuilder {
         this.schema = schema;
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
-            if (column.getDataType() == DataType.kVarchar) {
+            if (column.getDataType() == DataType.Varchar) {
                 offset_vec.add(str_field_cnt);
                 str_field_cnt++;
             } else {
@@ -90,7 +90,7 @@ public class RowBuilder {
         if (column.getDataType() != type) {
             return false;
         }
-        if (column.getDataType() != DataType.kVarchar) {
+        if (column.getDataType() != DataType.Varchar) {
             if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                 return false;
             }
@@ -103,7 +103,7 @@ public class RowBuilder {
         byte bt = buf.get(index);
         buf.put(index, (byte) (bt | (1 << (cnt & 0x07))));
         ColumnDesc column = schema.get(cnt);
-        if (column.getDataType() == DataType.kVarchar) {
+        if (column.getDataType() == DataType.Varchar) {
             index = str_field_start_offset + str_addr_length * offset_vec.get(cnt);
             buf.position(index);
             if (str_addr_length == 1) {
@@ -123,7 +123,7 @@ public class RowBuilder {
     }
 
     public boolean appendBool(boolean val) {
-        if (!check(DataType.kBool)) {
+        if (!check(DataType.Bool)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -137,7 +137,7 @@ public class RowBuilder {
     }
 
     public boolean appendInt32(int val) {
-        if (!check(DataType.kInt32)) {
+        if (!check(DataType.Int)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -147,7 +147,7 @@ public class RowBuilder {
     }
 
     public boolean appendInt16(short val) {
-        if (!check(DataType.kInt16)) {
+        if (!check(DataType.SmallInt)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -157,7 +157,7 @@ public class RowBuilder {
     }
 
     public boolean appendTimestamp(long val) {
-        if (!check(DataType.kTimestamp)) {
+        if (!check(DataType.Timestamp)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -167,7 +167,7 @@ public class RowBuilder {
     }
 
     public boolean appendInt64(long val) {
-        if (!check(DataType.kInt64)) {
+        if (!check(DataType.BigInt)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -177,7 +177,7 @@ public class RowBuilder {
     }
 
     public boolean appendFloat(float val) {
-        if (!check(DataType.kFloat)) {
+        if (!check(DataType.Float)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -187,7 +187,7 @@ public class RowBuilder {
     }
 
     public boolean appendDouble(double val) {
-        if (!check(DataType.kDouble)) {
+        if (!check(DataType.Double)) {
             return false;
         }
         buf.position(offset_vec.get(cnt));
@@ -198,7 +198,7 @@ public class RowBuilder {
 
     public boolean appendString(String val) {
         int length = val.length();
-        if (val == null || !check(DataType.kVarchar)) {
+        if (val == null || !check(DataType.Varchar)) {
             return false;
         }
         if (str_offset + length > size) {
@@ -224,5 +224,55 @@ public class RowBuilder {
         str_offset += length;
         cnt++;
         return true;
+    }
+
+    public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
+        int strLength = RowCodecCommon.calStrLength(row, schema);
+        RowBuilder builder = new RowBuilder(schema);
+        int size = builder.calTotalLength(strLength);
+        ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+        buffer = builder.setBuffer(buffer, size);
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
+            if (columnDesc.isNotNull() && row[i] == null) {
+                throw new TabletException("col " + columnDesc.getName() + " should not be null");
+            } else if (row[i] == null) {
+                builder.appendNULL();
+                continue;
+            }
+            boolean ok = false;
+            switch (columnDesc.getDataType()) {
+                case Varchar:
+                    ok = builder.appendString((String) row[i]);
+                    break;
+                case Bool:
+                    ok = builder.appendBool((Boolean) row[i]);
+                    break;
+                case SmallInt:
+                    ok = builder.appendInt16((Short) row[i]);
+                    break;
+                case Int:
+                    ok = builder.appendInt32((Integer) row[i]);
+                    break;
+                case Timestamp:
+                    ok = builder.appendTimestamp((Long) row[i]);
+                    break;
+                case BigInt:
+                    ok = builder.appendInt64((Long) row[i]);
+                    break;
+                case Float:
+                    ok = builder.appendFloat((Float) row[i]);
+                    break;
+                case Double:
+                    ok = builder.appendDouble((Double) row[i]);
+                    break;
+                default:
+                    throw new TabletException("unsupported data type");
+            }
+            if (!ok) {
+                throw new TabletException("append " + columnDesc.getDataType().toString() + " error");
+            }
+        }
+        return buffer;
     }
 }

@@ -1,5 +1,6 @@
 import "common.proto";
 import "tablet.proto";
+import "type.proto";
 package rtidb.nameserver;
 
 option cc_generic_services = true;
@@ -87,6 +88,7 @@ message TableInfo {
     optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 15;
     optional rtidb.api.TTLDesc ttl_desc = 16;
+    optional rtidb.type.TableType table_type = 17 [default = kTimeSeries];
 }
 
 message CreateTableRequest {

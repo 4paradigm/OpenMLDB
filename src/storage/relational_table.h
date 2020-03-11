@@ -106,6 +106,10 @@ public:
     inline std::map<std::string, uint32_t>& GetMapping() {
         return mapping_;
     }
+
+    inline ::rtidb::api::TableMeta& GetTableMeta() {
+        return table_meta_;
+    }
     
 private:
     ::rtidb::common::StorageMode storage_mode_;
