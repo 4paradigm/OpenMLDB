@@ -26,6 +26,7 @@ public class RelationalIterator {
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private TableHandler th;
     private Map<Integer, ColumnDesc> idxDescMap = new HashMap<>();
+    private RowView rowView;
 
     public RelationalIterator() {
     }
@@ -39,12 +40,15 @@ public class RelationalIterator {
         this.schema = th.getSchema();
         this.th = th;
 
-        for (int i = 0; i < this.getSchema().size(); i++) {
-            ColumnDesc columnDesc = this.getSchema().get(i);
-            if (colSet == null || colSet.isEmpty() || colSet.contains(columnDesc.getName())) {
-                this.idxDescMap.put(i, columnDesc);
+        if (colSet != null && !colSet.isEmpty()) {
+            for (int i = 0; i < this.getSchema().size(); i++) {
+                ColumnDesc columnDesc = this.getSchema().get(i);
+                if (colSet.contains(columnDesc.getName())) {
+                    this.idxDescMap.put(i, columnDesc);
+                }
             }
         }
+        rowView = new RowView(th.getSchema());
     }
 
 
@@ -78,7 +82,6 @@ public class RelationalIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        RowView rowView;
         if (compressType == NS.CompressType.kSnappy) {
             byte[] data = new byte[slice.remaining()];
             slice.get(data);
@@ -86,10 +89,10 @@ public class RelationalIterator {
             if (uncompressed == null) {
                 throw new TabletException("snappy uncompress error");
             }
-            rowView = new RowView(th.getSchema(), ByteBuffer.wrap(uncompressed),
+            rowView.reset(ByteBuffer.wrap(uncompressed),
                     ByteBuffer.wrap(uncompressed).array().length);
         } else {
-            rowView = new RowView(th.getSchema(), slice, bs.size());
+            rowView.reset(slice, bs.size());
         }
         return getInternel(rowView);
     }
@@ -115,46 +118,18 @@ public class RelationalIterator {
 
     private Map<String, Object> getInternel(RowView rowView) throws TabletException {
         Map<String, Object> map = new HashMap<>();
-        Iterator<Map.Entry<Integer, ColumnDesc>> iter = this.idxDescMap.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<Integer, ColumnDesc> next = iter.next();
-            int i = next.getKey();
-            ColumnDesc columnDesc = next.getValue();
-            switch (columnDesc.getDataType()) {
-                case Bool:
-                    Boolean bool = rowView.getBool(i);
-                    map.put(columnDesc.getName(), bool);
-                    break;
-                case SmallInt:
-                    Short st = rowView.getInt16(i);
-                    map.put(columnDesc.getName(), st);
-                    break;
-                case Int:
-                    Integer itg = rowView.getInt32(i);
-                    map.put(columnDesc.getName(), itg);
-                    break;
-                case Timestamp:
-                    Long ts = rowView.getTimestamp(i);
-                    map.put(columnDesc.getName(), ts);
-                    break;
-                case BigInt:
-                    Long lg = rowView.getInt64(i);
-                    map.put(columnDesc.getName(), lg);
-                    break;
-                case Float:
-                    Float ft = rowView.getFloat(i);
-                    map.put(columnDesc.getName(), ft);
-                    break;
-                case Double:
-                    Double db = rowView.getDouble(i);
-                    map.put(columnDesc.getName(), db);
-                    break;
-                case Varchar:
-                    String str = rowView.getString(i);
-                    map.put(columnDesc.getName(), str);
-                    break;
-                default:
-                    throw new TabletException("unsupported data type");
+        if (idxDescMap.isEmpty()) {
+            for (int i = 0; i < this.getSchema().size(); i++) {
+                ColumnDesc columnDesc = this.getSchema().get(i);
+                RowView.decode(rowView, i, columnDesc, map);
+            }
+        } else {
+            Iterator<Map.Entry<Integer, ColumnDesc>> iter = this.idxDescMap.entrySet().iterator();
+            while (iter.hasNext()) {
+                Map.Entry<Integer, ColumnDesc> next = iter.next();
+                int index = next.getKey();
+                ColumnDesc columnDesc = next.getValue();
+                RowView.decode(rowView, index, columnDesc, map);
             }
         }
         return map;
