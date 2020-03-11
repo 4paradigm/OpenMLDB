@@ -51,6 +51,7 @@ typedef void* yyscan_t;
 	int subtok;
 	bool flag;
 	::fesql::node::SQLNode* node;
+	::fesql::node::QueryNode* query_node;
 	::fesql::node::FnNode* fnnode;
 	::fesql::node::ExprNode* expr;
 	::fesql::node::TableRefNode* table_ref;
@@ -372,15 +373,16 @@ typedef void* yyscan_t;
 
 %type <expr> 	var primary_time  expr_const
 				sql_call_expr column_ref frame_expr join_condition
-				fun_expr sql_expr sub_query_expr
+				fun_expr sql_expr
 				sort_clause opt_sort_clause
  /* select stmt */
-%type <node>  sql_stmt stmt select_stmt union_stmt
+%type <node>  stmt
               projection
               opt_frame_clause frame_bound frame_extent
               window_definition window_specification over_clause
               limit_clause
-%type <table_ref> table_reference join_clause table_factor sub_query_clause
+%type<query_node> sql_stmt union_stmt select_stmt query_clause
+%type <table_ref> table_reference join_clause table_factor query_reference
  /* insert table */
 %type<node> insert_stmt
 %type<exprlist> insert_expr_list column_ref_list opt_partition_clause
@@ -643,7 +645,7 @@ sql_stmt: stmt ';' {
 
    /* statements: select statement */
 
-stmt:   select_stmt
+stmt:   query_clause
         {
             $$ = $1;
         }
@@ -662,6 +664,14 @@ stmt:   select_stmt
         ;
 
 
+query_clause:
+		select_stmt {
+			$$ = $1;
+		}
+		| union_stmt {
+			$$ = $1;
+		}
+		;
 
 select_stmt:
 			SELECT opt_distinct_clause opt_target_list FROM table_references
@@ -669,9 +679,9 @@ select_stmt:
             {
                 $$ = node_manager->MakeSelectStmtNode($2, $3, $5, $6, $7, $8, $9, $10, $11);
             }
-            | union_stmt
+            | '(' select_stmt ')'
             {
-            	$$ = $1;
+            	$$ = $2;
             }
     		;
 
@@ -936,18 +946,12 @@ table_reference:
 			{
 				$$ = $1;
 			}
-			|sub_query_clause
+			|query_reference
 			{
 				$$ = $1;
 			}
 			;
 
-sub_query_expr:
-			'(' select_stmt ')'
-			{
-				$$ = node_manager->MakeSubQueryExprNode($2);
-			}
-			;
 
 table_factor:
   relation_factor
@@ -971,24 +975,20 @@ relation_factor:
     	}
     	;
 
-sub_query_clause:
-		sub_query_expr {
-			$$ = node_manager->MakeSubQueryTableNode($1, "");
+query_reference:
+		'(' query_clause ')' {
+			$$ = node_manager->MakeSubQueryTableNode($2, "");
 		}
-		| sub_query_expr relation_name {
-			$$ = node_manager->MakeSubQueryTableNode($1, $2);
+		| '(' query_clause ')' relation_name {
+			$$ = node_manager->MakeSubQueryTableNode($2, $4);
 		}
-		| sub_query_expr AS relation_name {
-			$$ = node_manager->MakeSubQueryTableNode($1, $3);
+		| '(' query_clause ')' AS relation_name {
+			$$ = node_manager->MakeSubQueryTableNode($2, $5);
 		}
 		;
 
 join_clause:
-		'(' join_clause ')'
-		{
-			$$ = $2;
-		}
-		| table_reference join_type JOIN table_reference join_condition
+		table_reference join_type JOIN table_reference join_condition
 		{
 			$$ = node_manager->MakeJoinNode($1, $4, $2, $5, "");
 		}
@@ -1001,16 +1001,17 @@ join_clause:
 			$$ = node_manager->MakeJoinNode($1, $4, $2, $5, $7);
 		}
 		;
+
 union_stmt:
-		select_stmt UNION select_stmt
+		query_clause UNION query_clause
 		{
 			$$ = node_manager->MakeUnionStmtNode($1, $3, false);
 		}
-		|select_stmt UNION DISTINCT select_stmt
+		|query_clause UNION DISTINCT query_clause
 		{
 			$$ = node_manager->MakeUnionStmtNode($1, $4, false);
 		}
-		| select_stmt UNION ALL select_stmt
+		| query_clause UNION ALL query_clause
 		{
 			$$ = node_manager->MakeUnionStmtNode($1, $4, true);
 		}
@@ -1265,8 +1266,8 @@ sql_expr:
      {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpBracket);
      }
-     | sub_query_expr {
-     	$$ = $1;
+     | '(' query_clause ')' {
+     	$$ = node_manager->MakeSubQueryExprNode($2);
      }
      ;
 

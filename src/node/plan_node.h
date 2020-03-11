@@ -131,7 +131,7 @@ class JoinPlanNode : public BinaryPlanNode {
 class UnionPlanNode : public BinaryPlanNode {
  public:
     UnionPlanNode(PlanNode *left, PlanNode *right, bool is_all)
-        : BinaryPlanNode(kPlanTypeJoin, left, right), is_all(is_all) {}
+        : BinaryPlanNode(kPlanTypeUnion, left, right), is_all(is_all) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
     const bool is_all;
 };
@@ -163,6 +163,7 @@ class QueryPlanNode : public UnaryPlanNode {
     explicit QueryPlanNode(PlanNode *node)
         : UnaryPlanNode(node, kPlanTypeQuery) {}
     ~QueryPlanNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
 };
 
 class FilterPlanNode : public UnaryPlanNode {

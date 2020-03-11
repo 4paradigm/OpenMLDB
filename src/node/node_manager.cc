@@ -15,8 +15,7 @@
 namespace fesql {
 namespace node {
 
-
-SQLNode *NodeManager::MakeSelectStmtNode(
+QueryNode *NodeManager::MakeSelectStmtNode(
     bool is_distinct, SQLNodeList *select_list, SQLNodeList *tableref_list,
     ExprNode *where_expr, ExprListNode *group_expr_list, ExprNode *having_expr,
     ExprNode *order_expr_list, SQLNodeList *window_list, SQLNode *limit_ptr) {
@@ -24,13 +23,15 @@ SQLNode *NodeManager::MakeSelectStmtNode(
         is_distinct, select_list, tableref_list, where_expr, group_expr_list,
         having_expr, dynamic_cast<OrderByNode *>(order_expr_list), window_list,
         limit_ptr);
-    return RegisterNode(node_ptr);
+    RegisterNode(node_ptr);
+    return node_ptr;
 }
 
-SQLNode *NodeManager::MakeUnionStmtNode(SQLNode *left, SQLNode *right,
+QueryNode *NodeManager::MakeUnionStmtNode(QueryNode *left, QueryNode *right,
                                         bool is_all) {
     UnionStmt *node_ptr = new UnionStmt(left, right, is_all);
-    return RegisterNode(node_ptr);
+    RegisterNode(node_ptr);
+    return node_ptr;
 }
 
 TableRefNode *NodeManager::MakeTableNode(const std::string &name,
@@ -50,10 +51,9 @@ TableRefNode *NodeManager::MakeJoinNode(const TableRefNode *left,
     return node_ptr;
 }
 
-TableRefNode *NodeManager::MakeSubQueryTableNode(const ExprNode *sub_query,
+TableRefNode *NodeManager::MakeSubQueryTableNode(const QueryNode *sub_query,
                                                  const std::string &alias) {
-    TableRefNode *node_ptr = new SubQueryTableNode(
-        dynamic_cast<const SubQueryExpr *>(sub_query), alias);
+    TableRefNode *node_ptr = new SubQueryTableNode(sub_query, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -335,7 +335,7 @@ PlanNode *NodeManager::MakeMultiPlanNode(const PlanType &type) {
 }
 
 PlanNode *NodeManager::MakeTablePlanNode(const TableNode *node) {
-    PlanNode *node_ptr = new TablePlanNode("", node->GetOrgTableName());
+    PlanNode *node_ptr = new TablePlanNode("", node->org_table_name_);
     return RegisterNode(node_ptr);
 }
 
@@ -630,15 +630,24 @@ FuncDefPlanNode *NodeManager::MakeFuncPlanNode(const FnNodeFnDef *node) {
     RegisterNode(node_ptr);
     return node_ptr;
 }
-ExprNode *NodeManager::MakeSubQueryExprNode(const SQLNode *query) {
+ExprNode *NodeManager::MakeSubQueryExprNode(const QueryNode* query) {
     node::ExprNode *node_ptr =
-        new SubQueryExpr(dynamic_cast<const SelectStmt *>(query));
+        new SubQueryExpr(query);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 PlanNode *NodeManager::MakeSortPlanNode(PlanNode *node,
                                         const OrderByNode *order_list) {
     node::SortPlanNode *node_ptr = new SortPlanNode(node, order_list);
+    return RegisterNode(node_ptr);
+}
+PlanNode *NodeManager::MakeUnionPlanNode(PlanNode *left, PlanNode *right,
+                                         const bool is_all) {
+    node::UnionPlanNode *node_ptr = new UnionPlanNode(left, right, is_all);
+    return RegisterNode(node_ptr);
+}
+PlanNode *NodeManager::MakeDistinctPlanNode(PlanNode *node) {
+    node::DistinctPlanNode *node_ptr = new DistinctPlanNode(node);
     return RegisterNode(node_ptr);
 }
 

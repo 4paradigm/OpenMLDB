@@ -178,7 +178,7 @@ void PrintPlanNode(std::ostream &output, const std::string &org_tab,
                    const PlanNode *node_ptr, const std::string &item_name,
                    bool last_child) {
     if (!item_name.empty()) {
-        output << org_tab << SPACE_ST << item_name << ":";
+        output << org_tab << SPACE_ST << item_name << ":" << "\n";
     }
 
     if (nullptr == node_ptr) {
@@ -297,9 +297,15 @@ void UnionPlanNode::Print(std::ostream &output,
     output << "\n";
     std::string tab = org_tab + INDENT;
     PrintValue(output, tab, is_all ? "ALL" : "DISTINCT",
-        "", false);
+        "union_type", false);
     output << "\n";
     PrintChildren(output, org_tab);
+}
+void QueryPlanNode::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    PrintPlanNode(output, org_tab + INDENT, children_[0], "", true);
 }
 }  // namespace node
 }  // namespace fesql

@@ -140,6 +140,11 @@ void SQLNodeList::Print(std::ostream &output, const std::string &tab) const {
     PrintSQLVector(output, tab, list_, "list", true);
 }
 
+void QueryNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    output << ": " << QueryTypeName(query_type_);
+}
+
 const std::string AllNode::GetExprString() const {
     if (relation_name_.empty()) {
         return "*";
@@ -186,7 +191,7 @@ void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
 }
 
 void TableNode::Print(std::ostream &output, const std::string &org_tab) const {
-    SQLNode::Print(output, org_tab);
+    TableRefNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, org_table_name_, "table", false);
@@ -300,7 +305,7 @@ void ResTarget::Print(std::ostream &output, const std::string &org_tab) const {
 }
 
 void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
-    SQLNode::Print(output, org_tab);
+    QueryNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     bool last_child = false;
@@ -331,9 +336,6 @@ void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
 std::string NameOfSQLNodeType(const SQLNodeType &type) {
     std::string output;
     switch (type) {
-        case kSelectStmt:
-            output = "SELECT";
-            break;
         case kCreateStmt:
             output = "CREATE";
             break;
@@ -349,16 +351,11 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kResTarget:
             output = "kResTarget";
             break;
-        case kTable:
-            output = "kTable";
+        case kTableRef:
+            output = "kTableRef";
             break;
-        case kJoin:
-            output = "kJoin";
-            break;
-        case kUnionStmt:
-            output = "kUnion";
-        case kSubQuery:
-            output = "kSubQuery";
+        case kQuery:
+            output = "kQuery";
             break;
         case kColumnDesc:
             output = "kColumnDesc";
@@ -814,7 +811,7 @@ void TypeNode::Print(std::ostream &output, const std::string &org_tab) const {
 }
 
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
-    SQLNode::Print(output, org_tab);
+    TableRefNode::Print(output, org_tab);
 
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -825,7 +822,7 @@ void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSQLNode(output, tab, right_, "right", true);
 }
 void UnionStmt::Print(std::ostream &output, const std::string &org_tab) const {
-    SQLNode::Print(output, org_tab);
+    QueryNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, is_all_ ? "ALL UNION" : "DISTINCT UNION",
@@ -840,7 +837,20 @@ void SubQueryExpr::Print(std::ostream &output,
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSQLNode(output, tab, sub_query, "query", false);
+    PrintSQLNode(output, tab, sub_query, "query", true);
+}
+
+void TableRefNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    output << ": " << TableRefTypeName(ref_type_);
+}
+
+void SubQueryTableNode::Print(std::ostream &output, const std::string &org_tab) const {
+    TableRefNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, query_, "query", true);
 }
 }  // namespace node
 }  // namespace fesql

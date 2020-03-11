@@ -23,17 +23,14 @@ const char INDENT[] = " \t";
 
 enum SQLNodeType {
     // SQL
-    kSelectStmt = 0,
-    kUnionStmt,
     kCreateStmt,
     kInsertStmt,
     kCmdStmt,
     kExpr,
     kType,
     kResTarget,
-    kTable,
-    kJoin,
-    kSubQuery,
+    kTableRef,
+    kQuery,
     kWindowFunc,
     kWindowDef,
     kFrameBound,
@@ -47,8 +44,6 @@ enum SQLNodeType {
     kName,
     kConst,
     kLimit,
-
-
 
     kFrameRange,
     kFrameRows,
@@ -78,6 +73,17 @@ enum SQLNodeType {
     kUnknow
 };
 
+enum TableRefType {
+    kRefTable,
+    kRefQuery,
+    kRefJoin,
+};
+
+enum QueryType {
+    kQuerySelect,
+    kQuerySub,
+    kQueryUnion,
+};
 enum ExprType {
     kExprBinary,
     kExprUnary,

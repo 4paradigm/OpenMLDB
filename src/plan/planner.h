@@ -40,23 +40,27 @@ class Planner {
  protected:
     void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
-    bool CreateSelectStmtPlan(const node::SQLNode *root, PlanNode **plan_tree,
+    bool CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
                               Status &status);  // NOLINT (runtime/references)
-    void CreateCreateTablePlan(const node::SQLNode *root,
+    bool CreateSelectQueryPlan(const node::SelectStmt *root, PlanNode **plan_tree,
+                         Status &status);  // NOLINT (runtime/references)
+    bool CreateUnionQueryPlan(const node::UnionStmt *root, PlanNode **plan_tree,
+                               Status &status);  // NOLINT (runtime/references)
+    bool CreateCreateTablePlan(const node::SQLNode *root,
                                node::PlanNode **output,
                                Status &status);  // NOLINT (runtime/references)
     bool CreateTableReferencePlanNode(
-        const node::SQLNode *root, node::PlanNode **output,
+        const node::TableRefNode *root, node::PlanNode **output,
         Status &status);  // NOLINT (runtime/references)
     void CreateProjectPlanNode(const node::SQLNode *root, const uint32_t pos,
                                node::ProjectNode **output,
                                Status &status);  // NOLINT (runtime/references)
-    void CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
+    bool CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
                        Status &status);  // NOLINT (runtime/references)
-    void CreateInsertPlan(const SQLNode *root, node::PlanNode **output,
+    bool CreateInsertPlan(const SQLNode *root, node::PlanNode **output,
                           Status &status);  // NOLINT (runtime/references)
 
-    void CreateFuncDefPlan(const SQLNode *root, node::PlanNode **output,
+    bool CreateFuncDefPlan(const SQLNode *root, node::PlanNode **output,
                            Status &status);  // NOLINT (runtime/references)
     void CreateWindowPlanNode(node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,

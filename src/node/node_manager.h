@@ -69,7 +69,7 @@ class NodeManager {
     PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
                            const ExprNode *condition);
     // Make SQLxxx Node
-    SQLNode *MakeSelectStmtNode(bool is_distinct, SQLNodeList *select_list_ptr,
+    QueryNode *MakeSelectStmtNode(bool is_distinct, SQLNodeList *select_list_ptr,
                                 SQLNodeList *tableref_list_ptr,
                                 ExprNode *where_expr,
                                 ExprListNode *group_expr_list,
@@ -77,18 +77,18 @@ class NodeManager {
                                 ExprNode *order_expr_list,
                                 SQLNodeList *window_list_ptr,
                                 SQLNode *limit_ptr);
-    SQLNode *MakeUnionStmtNode(SQLNode *left, SQLNode *right, bool is_all);
+    QueryNode *MakeUnionStmtNode(QueryNode *left, QueryNode *right, bool is_all);
     TableRefNode *MakeTableNode(const std::string &name,
                                 const std::string &alias);
     TableRefNode *MakeJoinNode(const TableRefNode *left,
                                const TableRefNode *right, const JoinType type,
                                const ExprNode *condition,
                                const std::string alias);
-    TableRefNode *MakeSubQueryTableNode(const ExprNode *sub_query,
+    TableRefNode *MakeSubQueryTableNode(const QueryNode *sub_query,
                                         const std::string &alias);
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
                            const SQLNode *over);
-    ExprNode *MakeSubQueryExprNode(const SQLNode *query);
+    ExprNode *MakeSubQueryExprNode(const QueryNode *query);
     SQLNode *MakeWindowDefNode(const std::string &name);
     SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame);
@@ -205,6 +205,11 @@ class NodeManager {
     PlanNode *MakeRenamePlanNode(PlanNode *node, const std::string alias_name);
 
     PlanNode *MakeSortPlanNode(PlanNode *node, const OrderByNode *order_list);
+
+    PlanNode *MakeUnionPlanNode(PlanNode *left, PlanNode *right,
+                                const bool is_all);
+
+    PlanNode *MakeDistinctPlanNode(PlanNode *node);
 
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {
