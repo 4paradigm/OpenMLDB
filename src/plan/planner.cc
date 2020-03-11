@@ -28,14 +28,14 @@ bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
     switch (root->query_type_) {
         case node::kQuerySelect:
             if (!CreateSelectQueryPlan(
-                dynamic_cast<const node::SelectStmt *>(root), plan_tree,
+                dynamic_cast<const node::SelectQueryNode *>(root), plan_tree,
                 status)) {
                 return false;
             }
             break;
         case node::kQueryUnion:
             if (!CreateUnionQueryPlan(
-                dynamic_cast<const node::UnionStmt *>(root), plan_tree, status)) {
+                dynamic_cast<const node::UnionQueryNode *>(root), plan_tree, status)) {
                 return false;
             }
             break;
@@ -49,7 +49,7 @@ bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
     }
     return true;
 }
-bool Planner::CreateSelectQueryPlan(const node::SelectStmt *root,
+bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                                     PlanNode **plan_tree, Status &status) {
     if (nullptr == root->GetTableRefList() ||
         root->GetTableRefList()->GetList().empty()) {
@@ -225,7 +225,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectStmt *root,
     return true;
 }
 
-bool Planner::CreateUnionQueryPlan(const node::UnionStmt *root,
+bool Planner::CreateUnionQueryPlan(const node::UnionQueryNode *root,
                                    PlanNode **plan_tree, Status &status) {
     if (nullptr == root) {
         status.msg = "can not create query plan node with null query node";
@@ -622,8 +622,8 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
             break;
         }
         case node::kRefQuery: {
-            const node::SubQueryTableNode *sub_query_node =
-                dynamic_cast<const node::SubQueryTableNode *>(root);
+            const node::QueryRefNode *sub_query_node =
+                dynamic_cast<const node::QueryRefNode *>(root);
             if (!CreateQueryPlan(sub_query_node->query_, &plan_node, status)) {
                 return false;
             }

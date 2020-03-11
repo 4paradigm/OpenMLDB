@@ -99,7 +99,7 @@ enum ExprType {
     kExprRange,
     kExprAll,
     kExprStruct,
-    kExprSubQuery,
+    kExprQuery,
     kExprOrder,
     kExprUnknow = 9999
 };

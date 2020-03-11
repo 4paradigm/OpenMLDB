@@ -42,9 +42,9 @@ class Planner {
                            Status &status);  // NOLINT (runtime/references)
     bool CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
                               Status &status);  // NOLINT (runtime/references)
-    bool CreateSelectQueryPlan(const node::SelectStmt *root, PlanNode **plan_tree,
+    bool CreateSelectQueryPlan(const node::SelectQueryNode *root, PlanNode **plan_tree,
                          Status &status);  // NOLINT (runtime/references)
-    bool CreateUnionQueryPlan(const node::UnionStmt *root, PlanNode **plan_tree,
+    bool CreateUnionQueryPlan(const node::UnionQueryNode *root, PlanNode **plan_tree,
                                Status &status);  // NOLINT (runtime/references)
     bool CreateCreateTablePlan(const node::SQLNode *root,
                                node::PlanNode **output,

@@ -103,7 +103,7 @@ void PrintSQLVector(std::ostream &output, const std::string &tab,
     PrintSQLNode(output, space, vec[i], "" + std::to_string(i), true);
 }
 
-void SelectStmt::PrintSQLNodeList(std::ostream &output, const std::string &tab,
+void SelectQueryNode::PrintSQLNodeList(std::ostream &output, const std::string &tab,
                                   SQLNodeList *list, const std::string &name,
                                   bool last_item) const {
     if (nullptr == list) {
@@ -304,7 +304,7 @@ void ResTarget::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, name_, "name", true);
 }
 
-void SelectStmt::Print(std::ostream &output, const std::string &org_tab) const {
+void SelectQueryNode::Print(std::ostream &output, const std::string &org_tab) const {
     QueryNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -821,7 +821,7 @@ void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNode(output, tab, right_, "right", true);
 }
-void UnionStmt::Print(std::ostream &output, const std::string &org_tab) const {
+void UnionQueryNode::Print(std::ostream &output, const std::string &org_tab) const {
     QueryNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
@@ -832,12 +832,12 @@ void UnionStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLNode(output, tab, right_, "right", true);
 }
-void SubQueryExpr::Print(std::ostream &output,
+void QueryExpr::Print(std::ostream &output,
                          const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSQLNode(output, tab, sub_query, "query", true);
+    PrintSQLNode(output, tab, query_, "query", true);
 }
 
 void TableRefNode::Print(std::ostream &output,
@@ -846,7 +846,7 @@ void TableRefNode::Print(std::ostream &output,
     output << ": " << TableRefTypeName(ref_type_);
 }
 
-void SubQueryTableNode::Print(std::ostream &output, const std::string &org_tab) const {
+void QueryRefNode::Print(std::ostream &output, const std::string &org_tab) const {
     TableRefNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";

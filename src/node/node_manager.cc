@@ -15,21 +15,22 @@
 namespace fesql {
 namespace node {
 
-QueryNode *NodeManager::MakeSelectStmtNode(
-    bool is_distinct, SQLNodeList *select_list, SQLNodeList *tableref_list,
+QueryNode *NodeManager::MakeSelectQueryNode(
+    bool is_distinct, SQLNodeList *select_list_ptr, SQLNodeList *tableref_list_ptr,
     ExprNode *where_expr, ExprListNode *group_expr_list, ExprNode *having_expr,
-    ExprNode *order_expr_list, SQLNodeList *window_list, SQLNode *limit_ptr) {
-    SelectStmt *node_ptr = new SelectStmt(
-        is_distinct, select_list, tableref_list, where_expr, group_expr_list,
-        having_expr, dynamic_cast<OrderByNode *>(order_expr_list), window_list,
+    ExprNode *order_expr_list, SQLNodeList *window_list_ptr, SQLNode *limit_ptr) {
+    SelectQueryNode *node_ptr = new SelectQueryNode(
+        is_distinct, select_list_ptr, tableref_list_ptr, where_expr, group_expr_list,
+        having_expr, dynamic_cast<OrderByNode *>(order_expr_list),
+                            window_list_ptr,
         limit_ptr);
     RegisterNode(node_ptr);
     return node_ptr;
 }
 
-QueryNode *NodeManager::MakeUnionStmtNode(QueryNode *left, QueryNode *right,
+QueryNode *NodeManager::MakeUnionQueryNode(QueryNode *left, QueryNode *right,
                                         bool is_all) {
-    UnionStmt *node_ptr = new UnionStmt(left, right, is_all);
+    UnionQueryNode *node_ptr = new UnionQueryNode(left, right, is_all);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -51,9 +52,9 @@ TableRefNode *NodeManager::MakeJoinNode(const TableRefNode *left,
     return node_ptr;
 }
 
-TableRefNode *NodeManager::MakeSubQueryTableNode(const QueryNode *sub_query,
+TableRefNode *NodeManager::MakeQueryRefNode(const QueryNode *sub_query,
                                                  const std::string &alias) {
-    TableRefNode *node_ptr = new SubQueryTableNode(sub_query, alias);
+    TableRefNode *node_ptr = new QueryRefNode(sub_query, alias);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -630,9 +631,9 @@ FuncDefPlanNode *NodeManager::MakeFuncPlanNode(const FnNodeFnDef *node) {
     RegisterNode(node_ptr);
     return node_ptr;
 }
-ExprNode *NodeManager::MakeSubQueryExprNode(const QueryNode* query) {
+ExprNode *NodeManager::MakeQueryExprNode(const QueryNode* query) {
     node::ExprNode *node_ptr =
-        new SubQueryExpr(query);
+        new QueryExpr(query);
     RegisterNode(node_ptr);
     return node_ptr;
 }

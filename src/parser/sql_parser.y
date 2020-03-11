@@ -677,7 +677,7 @@ select_stmt:
 			SELECT opt_distinct_clause opt_target_list FROM table_references
 			where_expr group_expr having_expr opt_sort_clause window_clause limit_clause
             {
-                $$ = node_manager->MakeSelectStmtNode($2, $3, $5, $6, $7, $8, $9, $10, $11);
+                $$ = node_manager->MakeSelectQueryNode($2, $3, $5, $6, $7, $8, $9, $10, $11);
             }
             | '(' select_stmt ')'
             {
@@ -977,13 +977,13 @@ relation_factor:
 
 query_reference:
 		'(' query_clause ')' {
-			$$ = node_manager->MakeSubQueryTableNode($2, "");
+			$$ = node_manager->MakeQueryRefNode($2, "");
 		}
 		| '(' query_clause ')' relation_name {
-			$$ = node_manager->MakeSubQueryTableNode($2, $4);
+			$$ = node_manager->MakeQueryRefNode($2, $4);
 		}
 		| '(' query_clause ')' AS relation_name {
-			$$ = node_manager->MakeSubQueryTableNode($2, $5);
+			$$ = node_manager->MakeQueryRefNode($2, $5);
 		}
 		;
 
@@ -1005,15 +1005,15 @@ join_clause:
 union_stmt:
 		query_clause UNION query_clause
 		{
-			$$ = node_manager->MakeUnionStmtNode($1, $3, false);
+			$$ = node_manager->MakeUnionQueryNode($1, $3, false);
 		}
 		|query_clause UNION DISTINCT query_clause
 		{
-			$$ = node_manager->MakeUnionStmtNode($1, $4, false);
+			$$ = node_manager->MakeUnionQueryNode($1, $4, false);
 		}
 		| query_clause UNION ALL query_clause
 		{
-			$$ = node_manager->MakeUnionStmtNode($1, $4, true);
+			$$ = node_manager->MakeUnionQueryNode($1, $4, true);
 		}
 		;
 
@@ -1267,7 +1267,7 @@ sql_expr:
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpBracket);
      }
      | '(' query_clause ')' {
-     	$$ = node_manager->MakeSubQueryExprNode($2);
+     	$$ = node_manager->MakeQueryExprNode($2);
      }
      ;
 

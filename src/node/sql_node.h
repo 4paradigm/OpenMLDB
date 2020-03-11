@@ -166,8 +166,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "all";
         case kExprStruct:
             return "struct";
-        case kExprSubQuery:
-            return "subquery";
+        case kExprQuery:
+            return "query";
         case kExprOrder:
             return "order";
         case kExprUnknow:
@@ -368,9 +368,9 @@ class TableNode : public TableRefNode {
     const std::string org_table_name_;
 };
 
-class SubQueryTableNode : public TableRefNode {
+class QueryRefNode : public TableRefNode {
  public:
-    SubQueryTableNode(const QueryNode *query, const std::string &alias)
+    QueryRefNode(const QueryNode *query, const std::string &alias)
         : TableRefNode(kRefQuery, alias), query_(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     const QueryNode *query_;
@@ -405,9 +405,9 @@ class OrderByNode : public ExprNode {
     const bool is_asc_;
     const ExprListNode *order_by_;
 };
-class SelectStmt : public QueryNode {
+class SelectQueryNode : public QueryNode {
  public:
-    SelectStmt(bool is_distinct, SQLNodeList *select_list,
+    SelectQueryNode(bool is_distinct, SQLNodeList *select_list,
                SQLNodeList *tableref_list, ExprNode *where_expr,
                ExprListNode *group_expr_list, ExprNode *having_expr,
                OrderByNode *order_expr_list, SQLNodeList *window_list,
@@ -423,7 +423,7 @@ class SelectStmt : public QueryNode {
           tableref_list_(tableref_list),
           window_list_(window_list) {}
 
-    ~SelectStmt() {}
+    ~SelectQueryNode() {}
 
     // Getter and Setter
     const SQLNodeList *GetSelectList() const { return select_list_; }
@@ -462,9 +462,9 @@ class SelectStmt : public QueryNode {
                           bool last_item) const;
 };
 
-class UnionStmt : public QueryNode {
+class UnionQueryNode : public QueryNode {
  public:
-    UnionStmt(const QueryNode *left, const QueryNode *right, bool is_all)
+    UnionQueryNode(const QueryNode *left, const QueryNode *right, bool is_all)
         : QueryNode(kQueryUnion),
           left_(left),
           right_(right),
@@ -659,13 +659,13 @@ class CallExprNode : public ExprNode {
     const ExprListNode *args_;
 };
 
-class SubQueryExpr : public ExprNode {
+class QueryExpr : public ExprNode {
  public:
-    explicit SubQueryExpr(const QueryNode *query)
-        : ExprNode(kExprSubQuery), sub_query(query) {}
+    explicit QueryExpr(const QueryNode *query)
+        : ExprNode(kExprQuery), query_(query) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    const QueryNode *sub_query;
+    const QueryNode *query_;
 };
 
 class BinaryExpr : public ExprNode {
