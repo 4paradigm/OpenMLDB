@@ -147,7 +147,8 @@ struct RowViewResult {
         } else {
             rv->GetDouble(idx, &val);
         }
-        return van
+        return val;
+    }
 
     std::string GetString(uint32_t idx) {
         std::string col = "";
@@ -180,6 +181,7 @@ struct RowViewResult {
         }
         rv = std::make_shared<rtidb::base::RowView>(schema);
     }
+
     RowViewResult():code(0), msg(), index(0) {
     }
 };
