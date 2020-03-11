@@ -371,7 +371,6 @@ void HandleSQLScript(
             case fesql::node::kExplainSmt: {
                 fesql::plan::SimplePlanner planner(&node_manager);
                 fesql::node::PlanNodeList plan_trees;
-                fesql::node::NodePointVector parser_trees;
                 if (!planner.CreatePlanTree(parser_trees, plan_trees, sql_status)) {
                     return;
                 }
