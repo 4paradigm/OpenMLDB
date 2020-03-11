@@ -59,6 +59,31 @@ class RtidbResult:
       self.__index+=1
       return result
 
+class RtidbRawResult:
+  def __init__(self, resp):
+    self.__resp = resp
+  def next(self):
+    return self.__resp.next()
+  def GetString(self, index: int):
+    if self.__resp.IsNULL(index):
+      return None
+    return self.__resp.GetString(index)
+  def GetInt(self, index: int):
+    if self.__resp.IsNULL(index):
+      return None
+    return self.__resp.GetInt(index)
+  def GetFloat(self, index: int):
+    if self.__resp.IsNULL(index):
+      return None
+    return self.__resp.GetFloat_(index)
+  def IsNull(self, index: int):
+    if self.__resp.IsNULL(index):
+      return None
+    return self.__resp.IsNULL(idx)
+  def count(self):
+    return self.__resp.values.size()
+    
+
 from typing import List
 ReadOptions = List[ReadOption]
 defaultWriteOption = WriteOption()
@@ -130,6 +155,30 @@ class RTIDBClient:
             result.update({k: type_map[mm[k].type](mm[k].buffer)})
         resultList.append(result)
     return RtidbResult(resultList)
+
+  def queryRaw(self, table_name: str, read_option: ReadOption):
+    if (len(read_option.index) < 1):
+      raise Exception("must set index")
+    mid_map = dict()
+    for k in read_option.index:
+      mid_map.update({k: str(read_option.index[k])})
+    ro = interclient.ReadOption(mid_map)
+    for filter in read_option.read_filter:
+      mid_rf = interclient.ReadFilter()
+      mid_rf.column = filter.name
+      mid_rf.type = filter.type
+      mid_rf.value = str(filter.value)
+      ro.read_filter.append(mid_rf)
+    for col in read_option.col_set:
+      ro.col_set.append(col)
+    rv = self.__client.GetRowView(table_name)
+    if rv.code != 0:
+      raise Exception(rv.code, rv.msg)
+    resp = self.__client.QueryRaw(table_name, ro)
+    if resp.code != 0:
+      raise Exception(resp.code, resp.msg)
+    return RtidbRawResult(resp)
+
 
   def batch_query(self, table_name: str, read_options: ReadOptions):
     return RtidbResult([{}])

@@ -4,6 +4,7 @@
 #include "zk/zk_client.h"
 #include <string>
 #include <set>
+#include "base/codec.h"
 
 struct WriteOption {
     bool updateIfExist;
@@ -37,6 +38,18 @@ struct QueryResult {
     }
 };
 
+struct QueryRawResult {
+    int code;
+    std::string msg;
+    std::map<std::string, std::string> values;
+    QueryRawResult():code(0), msg() {
+    };
+    void SetError(int err_code, const std::string& err_msg) {
+        code = err_code;
+        msg = err_msg;
+    }
+};
+
 struct GeneralResult {
     int code;
     std::string msg;
@@ -57,6 +70,118 @@ struct ReadOption {
     ReadOption(const std::map<std::string, std::string>& indexs) {
         index.insert(indexs.begin(), indexs.end());
     };
+    ReadOption(): index(), read_filter(), col_set(), limit(0) {
+    }
+    ~ReadOption() {
+    }
+};
+
+struct RowViewResult {
+    int code;
+    std::string msg;
+    std::vector<std::string> values;
+    uint32_t index;
+    std::shared_ptr<rtidb::base::RowView> rv;
+    std::vector<rtidb::common::ColumnDesc> columns;
+
+    void SetError(int err_code, const std::string& err_msg) {
+        code = err_code;
+        msg = err_msg;
+    }
+
+    int16_t GetInt16(uint32_t idx) {
+        int16_t val;
+        rv->GetInt16(idx, &val);
+        return val;
+    }
+
+    int32_t GetInt32(uint32_t idx) {
+        int32_t val;
+        rv->GetInt32(idx, &val);
+        return val;
+    }
+
+    int64_t GetInt64(uint32_t idx) {
+        int64_t val;
+        rv->GetInt64(idx, &val);
+        return val;
+    }
+
+    int64_t GetInt(uint32_t idx) {
+        int64_t val;
+        auto type = columns[idx].data_type();
+        if (type == rtidb::type::kInt16) {
+            int16_t st_val;
+            rv->GetInt16(idx, &st_val);
+            val = st_val;
+        } else if (type == rtidb::type::kInt32) {
+            int32_t tt_val;
+            rv->GetInt32(idx, &tt_val);
+            val = tt_val;
+        } else {
+            int64_t val;
+            rv->GetInt64(idx, &val);
+        }
+        return val;
+    }
+
+    float GetFloat(uint32_t idx) {
+        float val;
+        rv->GetFloat(idx, &val);
+        return val;
+    }
+
+    double GetDouble(uint32_t idx) {
+        double val;
+        rv->GetDouble(idx, &val);
+        return val;
+    }
+
+    double GetFloat_(uint32_t idx) {
+        double val;
+        auto type = columns[idx].data_type();
+        if (type == rtidb::type::kFloat) {
+            float f_val;
+            rv->GetFloat(idx, &f_val);
+            val = f_val;
+        } else {
+            rv->GetDouble(idx, &val);
+        }
+        return van
+
+    std::string GetString(uint32_t idx) {
+        std::string col = "";
+        char *ch = NULL;
+        uint32_t length = 0;
+        int ret = rv->GetString(idx, &ch, &length);
+        if (ret == 0) {
+            col.assign(ch, length);
+        }
+        return col;
+    }
+
+    bool IsNULL(uint32_t idx) {
+        return rv->IsNULL(idx);
+    }
+
+    bool next() {
+        if (values.size() < 1 || index >= values.size()) {
+            return false;
+        }
+        uint32_t old_index = index;
+        index++;
+        return rv->Reset(reinterpret_cast<int8_t*>(&values[old_index][0]), values[old_index].size());
+    }
+
+    void SetRV(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema) {
+        columns.clear();
+        for (auto col : schema) {
+            columns.push_back(col);
+        }
+        rv = std::make_shared<rtidb::base::RowView>(schema);
+    }
+    RowViewResult():code(0), msg(), index(0) {
+    }
 };
 
 struct PartitionInfo {
@@ -76,9 +201,12 @@ public:
     ~RtidbClient();
     GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path);
     QueryResult Query(const std::string& name, struct ReadOption& ro);
+    RowViewResult QueryRaw(const std::string& name, struct ReadOption& ro);
     GeneralResult Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
     GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
     GeneralResult Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> values, const WriteOption& wo);
+    RowViewResult GetRowView(const std::string& name);
+
 private:
     std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint, std::string& msg);
     void CheckZkClient();

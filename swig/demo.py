@@ -26,6 +26,16 @@ print("size ", resp.count())
 for l in resp:
   for k in l:
     print(k, l[k])
+print("begin raw query============================")
+nsc.put("test1", data, None)
+ro = rtidb.ReadOption()
+ro.index.update({"card":"card3"})
+resp = nsc.queryRaw("test1", ro)
+print("raw size ", resp.count())
+while (resp.next()):
+    print(resp.GetString(0))
+    print(resp.GetString(1))
+    print(resp.GetInt(2))
 
 
 print("begin update============================")

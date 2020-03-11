@@ -1,6 +1,5 @@
 #include "client.h"
 #include "base/flat_array.h"
-#include "base/codec.h"
 #include <boost/lexical_cast.hpp>
 #include "base/hash.h"
 #include <boost/algorithm/string.hpp>
@@ -56,12 +55,13 @@ static int ConvertColumnDesc(
 
 
 int Encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema,
-        const std::vector<std::string>& value_vec, std::string& buffer, uint32_t string_length) {
+        const std::vector<std::string>& value_vec, uint32_t string_length, std::string& buffer) {
     if (value_vec.size() != schema.size()) {
         return -1;
     }
     rtidb::base::RowBuilder rb(schema);
     uint32_t total_size = rb.CalTotalLength(string_length);
+    buffer.clear();
     buffer.resize(total_size);
     rb.SetBuffer(reinterpret_cast<int8_t*>(&buffer[0]), total_size);
     for (int32_t i = 0; i < schema.size(); i++) {
@@ -99,9 +99,9 @@ int Encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema
     return 0;
 }
 
-void Decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, std::string& value,
+void Decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, const std::string& value,
         std::vector<std::string>& value_vec) {
-    rtidb::base::RowView rv(schema, reinterpret_cast<int8_t*>(&value[0]), value.size());
+    rtidb::base::RowView rv(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&value[0])), value.size());
     for (int32_t i = 0; i < schema.size(); i++) {
         if (rv.IsNULL(i)) {
             value_vec.push_back(NONETOKEN);
@@ -167,6 +167,22 @@ RtidbClient::RtidbClient():zk_client_(), client_(), tablets_(), mu_(), zk_cluste
 }
 
 RtidbClient::~RtidbClient() {
+}
+
+RowViewResult RtidbClient::GetRowView(const std::string &name) {
+    RowViewResult result;
+    std::shared_ptr<TableHandler> th;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = tables_.find(name);
+        if (iter == tables_.end()) {
+            result.SetError(-1, "table not found");
+            return result;
+        }
+        th = iter->second;
+    }
+    result.SetRV(*(th->columns));
+    return result;
 }
 
 void RtidbClient::CheckZkClient() {
@@ -332,6 +348,37 @@ QueryResult RtidbClient::Query(const std::string& name, struct ReadOption& ro) {
     return result;
 }
 
+RowViewResult RtidbClient::QueryRaw(const std::string& name, struct ReadOption& ro) {
+    RowViewResult result;
+    std::shared_ptr<TableHandler> th;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = tables_.find(name);
+        if (iter == tables_.end()) {
+            result.SetError(-1, "table not found");
+            return result;
+        }
+        th = iter->second;
+    }
+    std::string err_msg;
+    auto tablet = GetTabletClient(th->partition[0].leader, err_msg);
+    if (tablet == NULL) {
+        result.SetError(-1, err_msg);
+        return result;
+    }
+    for (const auto& iter : ro.index) {
+        std::string value;
+        uint64_t ts;
+        bool ok = tablet->Get(th->table_info->tid(), 0, iter.second, 0, "", "", value, ts, err_msg);
+        if (!ok) {
+            continue;
+        }
+        result.values.push_back(value);
+    }
+    result.SetRV(*th->columns);
+    return result;
+}
+
 std::shared_ptr<rtidb::client::TabletClient> RtidbClient::GetTabletClient(const std::string& endpoint, std::string& msg) {
     {
         std::lock_guard<std::mutex> mx(mu_);
@@ -387,7 +434,7 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
                 result.SetError(-1, err_msg);
             }
             value_vec.push_back("");
-            // TODO: add else to auto gen key columm
+            // TODO: add auto gen key columm
         } else {
             value_vec.push_back(iter->second);
             if ((column.data_type() == rtidb::type::kVarchar) && (iter->second != NONETOKEN)) {
@@ -396,7 +443,7 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
         }
     }
     std::string buffer;
-    int code = Encode(*(th->columns), value_vec, buffer, string_length);
+    int code = Encode(*(th->columns), value_vec, string_length, buffer);
     if (code != 0) {
         result.SetError(code, "encode error");
         return result;
@@ -435,7 +482,7 @@ GeneralResult RtidbClient::Delete(const std::string& name, const std::map<std::s
         return result;
     }
     auto iter = values.begin();
-    bool ok = tablet->Delete(th->table_info->tid(), 0, iter.second, iter.first, msg);
+    bool ok = tablet->Delete(th->table_info->tid(), 0, iter->second, iter->first, msg);
     if (!ok) {
         result.SetError(1, msg);
         return result;
