@@ -187,6 +187,39 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT DISTINCT COUNT(*) FROM t1;",
         "SELECT distinct COL1 FROM t1 where COL1+COL2;",
         "SELECT DISTINCT COL1 FROM t1 where COL1 > 10;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlSubQueryPlan, PlannerTest,
+    testing::Values(
+        "SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;",
+        "select * from (select * from t1 where col1>0);",
+        "SELECT LastName,FirstName, Title, Salary FROM Employees AS T1 "
+        "WHERE Salary >=(SELECT Avg(Salary) "
+        "FROM Employees WHERE T1.Title = Employees.Title) Order by Title;",
+        "select * from \n"
+        "    (select * from stu where grade = 7) s\n"
+        "left join \n"
+        "    (select * from sco where subject = \"math\") t\n"
+        "on s.id = t.stu_id\n"
+        "union\n"
+        "select distinct * from \n"
+        "    (select distinct * from stu where grade = 7) s\n"
+        "right join \n"
+        "    (select distinct * from sco where subject = \"math\") t\n"
+        "on s.id = t.stu_id;",
+        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;",
+        "select * from \n"
+        "    (select * from stu where grade = 7) s\n"
+        "left join \n"
+        "    (select * from sco where subject = \"math\") t\n"
+        "on s.id = t.stu_id\n"
+        "union\n"
+        "select * from \n"
+        "    (select * from stu where grade = 7) s\n"
+        "right join \n"
+        "    (select * from sco where subject = \"math\") t\n"
+        "on s.id = t.stu_id;",
+        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;"));
 TEST_P(PlannerTest, PlannerSucessTest) {
     std::string sqlstr = GetParam();
     std::cout << sqlstr << std::endl;
@@ -342,7 +375,8 @@ TEST_F(PlannerTest, SelectPlanWithMultiWindowProjectTest) {
     int ret = parser_->parse(sql, list, manager_, status);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, list.size());
-    //    std::cout << *(list[0]) << std::endl;
+    std::cout << sql << std::endl;
+    //        std::cout << *(list[0]) << std::endl;
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
     ASSERT_EQ(1u, trees.size());

@@ -99,6 +99,7 @@ class RenamePlanNode : public UnaryPlanNode {
  public:
     RenamePlanNode(PlanNode *node, const std::string table_name)
         : UnaryPlanNode(node, kPlanTypeRename), table_(table_name) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string table_;
 };
 class TablePlanNode : public LeafPlanNode {

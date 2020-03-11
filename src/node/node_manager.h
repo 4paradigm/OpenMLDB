@@ -170,7 +170,8 @@ class NodeManager {
     SQLNode *MakeCmdNode(node::CmdType cmd_type);
     SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
     // Make NodeList
-    SQLNode *MakeExplainNode(const QueryNode *query, node::ExplainType explain_type);
+    SQLNode *MakeExplainNode(const QueryNode *query,
+                             node::ExplainType explain_type);
     SQLNodeList *MakeNodeList(SQLNode *node_ptr);
     SQLNodeList *MakeNodeList();
 

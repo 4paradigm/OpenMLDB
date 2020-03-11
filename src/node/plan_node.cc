@@ -115,6 +115,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kFilterPlan";
         case kPlanTypeProject:
             return std::string("kProjectPlan");
+        case kPlanTypeRename:
+            return std::string("kPlanTypeRename");
         case kPlanTypeTable:
             return std::string("kTablePlan");
         case kPlanTypeJoin:
@@ -178,7 +180,8 @@ void PrintPlanNode(std::ostream &output, const std::string &org_tab,
                    const PlanNode *node_ptr, const std::string &item_name,
                    bool last_child) {
     if (!item_name.empty()) {
-        output << org_tab << SPACE_ST << item_name << ":" << "\n";
+        output << org_tab << SPACE_ST << item_name << ":"
+               << "\n";
     }
 
     if (nullptr == node_ptr) {
@@ -198,6 +201,7 @@ void ProjectListNode::Print(std::ostream &output,
         PrintPlanVector(output, org_tab + INDENT, projects,
                         "projects on table ", false);
     } else {
+        output << "\n";
         PrintPlanNode(output, org_tab + INDENT, (w_ptr_), "", false);
         output << "\n";
         PrintPlanVector(output, org_tab + INDENT, projects,
@@ -249,6 +253,14 @@ void TablePlanNode::Print(std::ostream &output,
 
     PrintValue(output, org_tab + "\t", table_, "table", true);
 }
+void RenamePlanNode::Print(std::ostream &output,
+                           const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    output << "\n";
+    PrintValue(output, org_tab + "\t", table_, "table", true);
+    output << "\n";
+    PrintChildren(output, org_tab);
+}
 void WindowPlanNode::Print(std::ostream &output,
                            const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
@@ -296,8 +308,7 @@ void UnionPlanNode::Print(std::ostream &output,
     PlanNode::Print(output, org_tab);
     output << "\n";
     std::string tab = org_tab + INDENT;
-    PrintValue(output, tab, is_all ? "ALL" : "DISTINCT",
-        "union_type", false);
+    PrintValue(output, tab, is_all ? "ALL" : "DISTINCT", "union_type", false);
     output << "\n";
     PrintChildren(output, org_tab);
 }
