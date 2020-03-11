@@ -66,18 +66,6 @@ public class RelationalIterator {
         return false;
     }
 
-    // no copy
-    private ByteBuffer getValue() {
-        if (compressType == NS.CompressType.kSnappy) {
-            byte[] data = new byte[slice.remaining()];
-            slice.get(data);
-            byte[] uncompressed = Compress.snappyUnCompress(data);
-            return ByteBuffer.wrap(uncompressed);
-        } else {
-            return slice;
-        }
-    }
-
     public Map<String, Object> getDecodedValue() throws TabletException {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
