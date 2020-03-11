@@ -69,15 +69,14 @@ class NodeManager {
     PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
                            const ExprNode *condition);
     // Make SQLxxx Node
-    QueryNode *MakeSelectQueryNode(bool is_distinct, SQLNodeList *select_list_ptr,
-                                SQLNodeList *tableref_list_ptr,
-                                ExprNode *where_expr,
-                                ExprListNode *group_expr_list,
-                                ExprNode *having_expr,
-                                ExprNode *order_expr_list,
-                                SQLNodeList *window_list_ptr,
-                                SQLNode *limit_ptr);
-    QueryNode *MakeUnionQueryNode(QueryNode *left, QueryNode *right, bool is_all);
+    QueryNode *MakeSelectQueryNode(
+        bool is_distinct, SQLNodeList *select_list_ptr,
+        SQLNodeList *tableref_list_ptr, ExprNode *where_expr,
+        ExprListNode *group_expr_list, ExprNode *having_expr,
+        ExprNode *order_expr_list, SQLNodeList *window_list_ptr,
+        SQLNode *limit_ptr);
+    QueryNode *MakeUnionQueryNode(QueryNode *left, QueryNode *right,
+                                  bool is_all);
     TableRefNode *MakeTableNode(const std::string &name,
                                 const std::string &alias);
     TableRefNode *MakeJoinNode(const TableRefNode *left,
@@ -85,7 +84,7 @@ class NodeManager {
                                const ExprNode *condition,
                                const std::string alias);
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
-                                        const std::string &alias);
+                                   const std::string &alias);
     ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
                            const SQLNode *over);
     ExprNode *MakeQueryExprNode(const QueryNode *query);

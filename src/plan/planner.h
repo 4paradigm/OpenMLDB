@@ -41,11 +41,13 @@ class Planner {
     void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
     bool CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
-                              Status &status);  // NOLINT (runtime/references)
-    bool CreateSelectQueryPlan(const node::SelectQueryNode *root, PlanNode **plan_tree,
                          Status &status);  // NOLINT (runtime/references)
-    bool CreateUnionQueryPlan(const node::UnionQueryNode *root, PlanNode **plan_tree,
+    bool CreateSelectQueryPlan(const node::SelectQueryNode *root,
+                               PlanNode **plan_tree,
                                Status &status);  // NOLINT (runtime/references)
+    bool CreateUnionQueryPlan(const node::UnionQueryNode *root,
+                              PlanNode **plan_tree,
+                              Status &status);  // NOLINT (runtime/references)
     bool CreateCreateTablePlan(const node::SQLNode *root,
                                node::PlanNode **output,
                                Status &status);  // NOLINT (runtime/references)

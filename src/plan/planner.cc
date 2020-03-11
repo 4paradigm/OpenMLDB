@@ -28,14 +28,15 @@ bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
     switch (root->query_type_) {
         case node::kQuerySelect:
             if (!CreateSelectQueryPlan(
-                dynamic_cast<const node::SelectQueryNode *>(root), plan_tree,
-                status)) {
+                    dynamic_cast<const node::SelectQueryNode *>(root),
+                    plan_tree, status)) {
                 return false;
             }
             break;
         case node::kQueryUnion:
             if (!CreateUnionQueryPlan(
-                dynamic_cast<const node::UnionQueryNode *>(root), plan_tree, status)) {
+                    dynamic_cast<const node::UnionQueryNode *>(root), plan_tree,
+                    status)) {
                 return false;
             }
             break;
@@ -236,20 +237,23 @@ bool Planner::CreateUnionQueryPlan(const node::UnionQueryNode *root,
 
     node::PlanNode *left_plan = nullptr;
     node::PlanNode *right_plan = nullptr;
-    if (!CreateQueryPlan(root->left_,&left_plan, status)) {
-        status.msg = "can not create union query plan left query: " + status.msg;
+    if (!CreateQueryPlan(root->left_, &left_plan, status)) {
+        status.msg =
+            "can not create union query plan left query: " + status.msg;
         status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
         return false;
     }
-    if (!CreateQueryPlan(root->right_,&right_plan, status)) {
-        status.msg = "can not create union query plan right query: " + status.msg;
+    if (!CreateQueryPlan(root->right_, &right_plan, status)) {
+        status.msg =
+            "can not create union query plan right query: " + status.msg;
         status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
         return false;
     }
 
-    *plan_tree = node_manager_->MakeUnionPlanNode(left_plan, right_plan, root->is_all_);
+    *plan_tree =
+        node_manager_->MakeUnionPlanNode(left_plan, right_plan, root->is_all_);
     return true;
 }
 
@@ -425,8 +429,9 @@ int SimplePlanner::CreatePlanTree(
         switch (parser_tree->GetType()) {
             case node::kQuery: {
                 PlanNode *select_plan = nullptr;
-                if (!CreateQueryPlan(dynamic_cast<node::QueryNode *>(parser_tree),
-                                &select_plan, status)) {
+                if (!CreateQueryPlan(
+                        dynamic_cast<node::QueryNode *>(parser_tree),
+                        &select_plan, status)) {
                     return status.code;
                 }
                 plan_trees.push_back(select_plan);
@@ -450,7 +455,7 @@ int SimplePlanner::CreatePlanTree(
             }
             case node::kInsertStmt: {
                 node::PlanNode *insert_plan = nullptr;
-                if (!CreateInsertPlan(parser_tree, &insert_plan, status)){
+                if (!CreateInsertPlan(parser_tree, &insert_plan, status)) {
                     return false;
                 }
                 plan_trees.push_back(insert_plan);
