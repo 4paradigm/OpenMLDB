@@ -370,7 +370,7 @@ void HandleSQLScript(
                 return;
             }
             case fesql::node::kFnList:
-            case fesql::node::kSelectStmt: {
+            case fesql::node::kQuery: {
                 if (!table_sdk) {
                     table_sdk =
                         ::fesql::sdk::CreateTabletSdk(FLAGS_tablet_endpoint);
