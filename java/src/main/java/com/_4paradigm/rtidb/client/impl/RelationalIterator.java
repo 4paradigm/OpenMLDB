@@ -79,10 +79,10 @@ public class RelationalIterator {
             }
             rowView.reset(ByteBuffer.wrap(uncompressed),
                     ByteBuffer.wrap(uncompressed).array().length);
-            return getInternel(rowView, ByteBuffer.wrap(uncompressed));
+            return getInternel(ByteBuffer.wrap(uncompressed));
         } else {
             rowView.reset(slice, bs.size());
-            return getInternel(rowView, slice);
+            return getInternel(slice);
         }
     }
 
@@ -105,7 +105,7 @@ public class RelationalIterator {
         slice.limit(bs.size());
     }
 
-    private Map<String, Object> getInternel(RowView rowView, ByteBuffer row) throws TabletException {
+    private Map<String, Object> getInternel(ByteBuffer row) throws TabletException {
         Map<String, Object> map = new HashMap<>();
         if (idxDescMap.isEmpty()) {
             for (int i = 0; i < this.getSchema().size(); i++) {
