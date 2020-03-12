@@ -40,6 +40,7 @@
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <random>
+#include "proto/type.pb.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -69,6 +70,27 @@ DECLARE_uint32(absolute_default_skiplist_height);
 DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
+
+static const std::unordered_map<std::string, ::rtidb::type::DataType>  DATA_TYPE_MAP = {
+    {"bool", ::rtidb::type::kBool}, 
+    {"smallint", ::rtidb::type::kSmallInt},
+    {"int", ::rtidb::type::kInt},
+    {"bigint", ::rtidb::type::kBigInt},
+    {"float", ::rtidb::type::kFloat},
+    {"double", ::rtidb::type::kDouble},
+    {"varchar", ::rtidb::type::kVarchar},
+    {"date", ::rtidb::type::kDate},
+    {"timestamp", ::rtidb::type::kTimestamp},
+    {"blob", ::rtidb::type::kBlob}
+};
+
+static const std::unordered_map<std::string, ::rtidb::type::IndexType> INDEX_TYPE_MAP = {
+    {"unique", ::rtidb::type::kUnique},
+    {"nounique", ::rtidb::type::kNoUinque},
+    {"primarykey", ::rtidb::type::kPrimaryKey},
+    {"autogen", ::rtidb::type::kAutoGen},
+    {"increment", ::rtidb::type::kIncrement}
+};
 
 void SetupLog() {
     // Config log 
@@ -2108,9 +2130,16 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
         std::string cur_type = table_info.column_desc(idx).type();
         std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
-        if (type_set.find(cur_type) == type_set.end()) {
-            printf("type %s is invalid\n", table_info.column_desc(idx).type().c_str());
-            return -1;
+        if (table_info.has_table_type() && table_info.table_type() == "Relational") {
+            if (DATA_TYPE_MAP.find(cur_type) == DATA_TYPE_MAP.end()) {
+                printf("type %s is invalid\n", cur_type.c_str());
+                return -1;
+            }
+        } else {
+            if (type_set.find(cur_type) == type_set.end()) {
+                printf("type %s is invalid\n", table_info.column_desc(idx).type().c_str());
+                return -1;
+            }
         }
         if (table_info.column_desc(idx).name() == "" || 
                 name_map.find(table_info.column_desc(idx).name()) != name_map.end()) {
@@ -2151,15 +2180,8 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         name_map.insert(std::make_pair(table_info.column_desc(idx).name(), cur_type));
         ::rtidb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc_v1();
         column_desc->CopyFrom(table_info.column_desc(idx));
-        if (cur_type == "smallint") {
-            column_desc->set_type("int16");
-        } else if (cur_type == "int") {
-            column_desc->set_type("int32");
-        } else if (cur_type == "bigint") {
-            column_desc->set_type("int64");
-        } else if (cur_type == "blob" || cur_type == "varchar") {
-            column_desc->set_type("string");
-        }
+        const auto& tp_iter = DATA_TYPE_MAP.find(cur_type);
+        column_desc->set_data_type(tp_iter->second);
     }
     if (table_info.column_key_size() == 0
             && (!table_info.has_table_type() || table_info.table_type() != "Relational")) {
@@ -2240,6 +2262,14 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
             for (int inner = 0; inner < table_info.index(idx).col_name_size(); inner++) {
                 column_key->add_col_name(table_info.index(idx).col_name(inner));
             }
+            std::string idx_type = table_info.index(idx).index_type();
+            std::transform(idx_type.begin(), idx_type.end(), idx_type.begin(), ::tolower);
+            const auto& idx_iter = INDEX_TYPE_MAP.find(idx_type);
+            if (idx_iter == INDEX_TYPE_MAP.end()) {
+                printf("index type %s is invalid\n", idx_type.c_str());
+                return -1;
+            }
+            column_key->set_index_type(idx_iter->second);
             index_set.insert(table_info.index(idx).index_name());
         }
     }
@@ -2374,11 +2404,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     type_set.insert("date");
     type_set.insert("int16");
     type_set.insert("uint16");
-    type_set.insert("smallint");
-    type_set.insert("int");
-    type_set.insert("bigint");
-    type_set.insert("varchar");
-    type_set.insert("blob");
     ::rtidb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
         if (GenTableInfo(parts[1], type_set, ns_table_info) < 0) {
