@@ -1,14 +1,25 @@
 import enum
+from . import interclient
+from typing import List
+
+
+
+ReadOptions = List[ReadOption]
+defaultWriteOption = WriteOption()
+
 class CompareOP(enum.IntEnum):
   EQ = enum.auto()
   LT = enum.auto()
   LE = enum.auto()
   GT = enum.auto()
   GE = enum.auto()
+
 def __return_None(x):
   return None
+
 def __return_EmptyStr(x):
   return str()
+
 type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,100:__return_None};
 '''
   kBool = 1,
@@ -22,6 +33,7 @@ type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,100:__ret
   kTimestamp = 9,
   kVoid = 100
 '''
+
 NONETOKEN="None#*@!"
 
 class WriteOption:
@@ -41,8 +53,6 @@ class ReadOption:
     self.read_filter = []
     self.col_set = set()
 
-from . import interclient
-
 class RtidbResult:
   def __init__(self, data):
     self.__data = data
@@ -56,10 +66,6 @@ class RtidbResult:
     else:
       raise StopIteration
 
-
-from typing import List
-ReadOptions = List[ReadOption]
-defaultWriteOption = WriteOption()
 class RTIDBClient:
   def __init__(self, zk_cluster: str, zk_path: str):
     self.__client = interclient.RtidbClient()

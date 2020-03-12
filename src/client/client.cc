@@ -155,7 +155,7 @@ GeneralResult RtidbClient::Init(const std::string& zk_cluster, const std::string
 }
 
 
-RowViewResult RtidbClient::Query(const std::string& name, struct ReadOption& ro) {
+RowViewResult RtidbClient::Query(const std::string& name, const struct ReadOption& ro) {
     RowViewResult result;
     std::shared_ptr<TableHandler> th;
     {

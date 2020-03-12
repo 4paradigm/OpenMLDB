@@ -8,6 +8,7 @@
 #include "base/schema_codec.h"
 
 struct WriteOption {
+
     WriteOption() {
         updateIfEqual = true;
         updateIfEqual = true;
@@ -29,50 +30,56 @@ struct GetColumn {
 };
 
 struct QueryRawResult {
-    int code;
-    std::string msg;
-    std::map<std::string, std::string> values;
+
     QueryRawResult():code(0), msg() {
-    };
+    }
+
     void SetError(int err_code, const std::string& err_msg) {
         code = err_code;
         msg = err_msg;
     }
+
+    int code;
+    std::string msg;
+    std::map<std::string, std::string> values;
+
 };
 
 struct GeneralResult {
-    int code;
-    std::string msg;
     GeneralResult():code(0), msg() {}
+
     GeneralResult(int err_num):code(err_num), msg() {}
+
     GeneralResult(int err_num, const std::string error_msg):code(err_num), msg(error_msg) {}
+
     void SetError(int err_num, const std::string& error_msg) {
         code = err_num;
         msg = error_msg;
     }
+
+    int code;
+    std::string msg;
 };
 
 struct ReadOption {
+
+    ReadOption(const std::map<std::string, std::string>& indexs) {
+        index.insert(indexs.begin(), indexs.end());
+    };
+
+    ReadOption(): index(), read_filter(), col_set(), limit(0) {
+    }
+
+    ~ReadOption() {
+    }
+
     std::map<std::string, std::string> index;
     std::vector<ReadFilter> read_filter;
     std::set<std::string> col_set;
     uint64_t limit;
-    ReadOption(const std::map<std::string, std::string>& indexs) {
-        index.insert(indexs.begin(), indexs.end());
-    };
-    ReadOption(): index(), read_filter(), col_set(), limit(0) {
-    }
-    ~ReadOption() {
-    }
 };
 
 struct RowViewResult {
-    int code;
-    std::string msg;
-    std::vector<std::string> values;
-    uint32_t index;
-    std::shared_ptr<rtidb::base::RowView> rv;
-    std::vector<rtidb::common::ColumnDesc> columns;
 
     void SetError(int err_code, const std::string& err_msg) {
         code = err_code;
@@ -237,6 +244,13 @@ struct RowViewResult {
 
     RowViewResult():code(0), msg(), index(0) {
     }
+
+    int code;
+    std::string msg;
+    std::vector<std::string> values;
+    uint32_t index;
+    std::shared_ptr<rtidb::base::RowView> rv;
+    std::vector<rtidb::common::ColumnDesc> columns;
 };
 
 struct PartitionInfo {
@@ -255,7 +269,7 @@ public:
     RtidbClient();
     ~RtidbClient();
     GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path);
-    RowViewResult Query(const std::string& name, struct ReadOption& ro);
+    RowViewResult Query(const std::string& name, const struct ReadOption& ro);
     GeneralResult Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
     GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
     GeneralResult Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> values, const WriteOption& wo);
