@@ -41,7 +41,7 @@ class ReadOption:
     self.read_filter = []
     self.col_set = set()
 
-import interclient
+from . import interclient
 
 class RtidbResult:
   def __init__(self, data):
