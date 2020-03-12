@@ -8,12 +8,13 @@
 #include "base/schema_codec.h"
 
 struct WriteOption {
-    bool updateIfExist;
-    bool updateIfEqual;
     WriteOption() {
         updateIfEqual = true;
         updateIfEqual = true;
     }
+
+    bool updateIfExist;
+    bool updateIfEqual;
 };
 
 struct ReadFilter {
@@ -25,18 +26,6 @@ struct ReadFilter {
 struct GetColumn {
     uint8_t type;
     std::string buffer;
-};
-
-struct QueryResult {
-    int code;
-    std::string msg;
-    std::vector<std::map<std::string, GetColumn>> values;
-    QueryResult():code(0), msg() {
-    };
-    void SetError(int err_code, const std::string& err_msg) {
-        code = err_code;
-        msg = err_msg;
-    }
 };
 
 struct QueryRawResult {
@@ -109,7 +98,7 @@ struct RowViewResult {
     }
 
     int64_t GetInt(uint32_t idx) {
-        int64_t val;
+        int64_t val = 0;
         auto type = columns[idx].data_type();
         if (type == rtidb::type::kInt16) {
             int16_t st_val;
@@ -138,7 +127,7 @@ struct RowViewResult {
         return val;
     }
 
-    double GetFloat_(uint32_t idx) {
+    double GetFloatNum(uint32_t idx) {
         double val;
         auto type = columns[idx].data_type();
         if (type == rtidb::type::kFloat) {
@@ -175,6 +164,69 @@ struct RowViewResult {
         return rv->Reset(reinterpret_cast<int8_t*>(&values[old_index][0]), values[old_index].size());
     }
 
+    std::map<std::string, std::string> DecodeData() {
+        std::map<std::string, std::string> result;
+        for (int64_t i = 0; i < columns.size(); i++) {
+            std::string col_name = columns[i].name();
+            if (rv->IsNULL(i)) {
+                result.insert(std::make_pair(col_name, rtidb::base::NONETOKEN));
+            }
+            std::string col = "";
+            auto type = columns[i].data_type();
+            if (type == rtidb::type::kInt32) {
+                int32_t val;
+                int ret = rv->GetInt32(i, &val);
+                if (ret == 0) {
+                    col = std::to_string(val);
+                }
+            } else if (type == rtidb::type::kTimestamp) {
+                int64_t val;
+                int ret = rv->GetTimestamp(i, &val);
+                if (ret == 0) {
+                    col = std::to_string(val);
+                }
+            } else if (type == rtidb::type::kInt64) {
+                int64_t val;
+                int ret = rv->GetInt64(i, &val);
+                if (ret == 0) {
+                    col = std::to_string(val);
+                }
+            } else if (type == rtidb::type::kBool) {
+                bool val;
+                int ret = rv->GetBool(i, &val);
+                if (ret == 0) {
+                    col = std::to_string(val);
+                }
+            } else if (type == rtidb::type::kFloat) {
+                float val;
+                int ret = rv->GetFloat(i, &val);
+                if (ret == 0) {
+                    col = std::to_string(val);
+                }
+            } else if (type == rtidb::type::kInt16) {
+                int16_t val;
+                int ret = rv->GetInt16(i, &val);
+                if (ret == 0) {
+                    col = std::to_string(val);
+                }
+            } else if (type == rtidb::type::kDouble) {
+                double val;
+                int ret = rv->GetDouble(i, &val);
+                if (ret == 0) {
+                    col = std::to_string(val);
+                }
+            } else if (type == rtidb::type::kVarchar) {
+                char *ch = NULL;
+                uint32_t length = 0;
+                int ret = rv->GetString(i, &ch, &length);
+                if (ret == 0) {
+                    col.assign(ch, length);
+                }
+            }
+            result.insert(std::make_pair(col_name, col));
+        }
+        return result;
+    }
     void SetRV(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema) {
         columns.clear();
         for (auto col : schema) {
@@ -203,8 +255,7 @@ public:
     RtidbClient();
     ~RtidbClient();
     GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path);
-    QueryResult Query(const std::string& name, struct ReadOption& ro);
-    RowViewResult QueryRaw(const std::string& name, struct ReadOption& ro);
+    RowViewResult Query(const std::string& name, struct ReadOption& ro);
     GeneralResult Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
     GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
     GeneralResult Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> values, const WriteOption& wo);

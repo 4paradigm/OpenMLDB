@@ -154,46 +154,8 @@ GeneralResult RtidbClient::Init(const std::string& zk_cluster, const std::string
     return result;
 }
 
-QueryResult RtidbClient::Query(const std::string& name, struct ReadOption& ro) {
-    QueryResult result;
-    std::shared_ptr<TableHandler> th;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto iter = tables_.find(name);
-        if (iter == tables_.end()) {
-            result.SetError(-1, "table not found");
-            return result;
-        }
-        th = iter->second;
-    }
-    std::string err_msg;
-    auto tablet = GetTabletClient(th->partition[0].leader, err_msg);
-    if (tablet == NULL) {
-        result.SetError(-1, err_msg);
-        return result;
-    }
-    for (const auto& iter : ro.index) {
-        std::string value;
-        uint64_t ts;
-        bool ok = tablet->Get(th->table_info->tid(), 0, iter.second, 0, "", "", value, ts, err_msg);
-        if (!ok) {
-            continue;
-        }
-        std::vector<std::string> value_vec;
-        rtidb::base::RowSchemaCodec::Decode(*th->columns, value, value_vec);
-        std::map<std::string, GetColumn> value_map;
-        for (int32_t i = 0; i < th->columns->size(); i++) {
-            GetColumn col;
-            col.type = th->columns->Get(i).data_type();
-            col.buffer = value_vec[i];
-            value_map.insert(std::make_pair(th->columns->Get(i).name(), col));
-        }
-        result.values.push_back(value_map);
-    }
-    return result;
-}
 
-RowViewResult RtidbClient::QueryRaw(const std::string& name, struct ReadOption& ro) {
+RowViewResult RtidbClient::Query(const std::string& name, struct ReadOption& ro) {
     RowViewResult result;
     std::shared_ptr<TableHandler> th;
     {

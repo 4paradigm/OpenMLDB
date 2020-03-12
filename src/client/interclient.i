@@ -5,7 +5,7 @@
 %include "std_map.i"
 %include "std_set.i"
 %{
-#include "client.h"
+#include "client/client.h"
 %}
 namespace std {
    %template(VectorString) vector<string>;
@@ -13,7 +13,7 @@ namespace std {
    %template(SetString) set<string>;
 }
 
-%include "client.h"
+%include "client/client.h"
 namespace std {
         %template(VectorReadFilter) vector<ReadFilter>;
         %template(MapStringColumn) map<string, GetColumn>;

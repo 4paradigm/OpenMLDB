@@ -33,6 +33,10 @@ message("LOG_FILE_PATH_ENABLE option is ${LOG_FILE_PATH_ENABLE}")
 if (LOG_FILE_PATH_ENABLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILE__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"' -Wno-builtin-macro-redefined")
 endif()
+if(POLICY CMP0086)
+  cmake_policy(SET CMP0086 NEW)
+endif()
+
 
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
