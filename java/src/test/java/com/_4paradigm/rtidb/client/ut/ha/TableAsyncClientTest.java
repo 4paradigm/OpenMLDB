@@ -16,6 +16,7 @@ import org.testng.annotations.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -840,6 +841,18 @@ public class TableAsyncClientTest extends TestCaseBase {
         }
     }
 
+    @Test
+    public void testNoTsPut() throws TabletException, ExecutionException, InterruptedException {
+        String name = createSchemaTable();
+        Map<String, Object> row = new HashMap<>();
+        row.put("card", "card1");
+        row.put("mcc", "cc1");
+        row.put("amt", 1.0d);
+
+        PutFuture pf = tableAsyncClient.put(name, row);
+        Assert.assertTrue(pf.get());
+
+    }
 
     @Test
     public void testMultiTTLOr() {

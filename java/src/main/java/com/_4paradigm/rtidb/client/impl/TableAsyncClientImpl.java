@@ -167,8 +167,12 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         } else {
             arrayRow = new Object[th.getSchema().size()];
         }
+        long ts = 0;
         TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
-        return put(name, 0, arrayRow, tsDimensions);
+        if (tsDimensions.size() <= 0) {
+            ts = System.currentTimeMillis();
+        }
+        return put(name, ts, arrayRow, tsDimensions);
     }
 
     @Override

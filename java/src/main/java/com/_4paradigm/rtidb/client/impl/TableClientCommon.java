@@ -32,11 +32,13 @@ public class TableClientCommon {
         } else {
             schema = th.getSchema();
         }
+        boolean hasTsCol = false;
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
             Object colValue = row.get(columnDesc.getName());
             arrayRow[i] = colValue;
             if (columnDesc.isTsCol()) {
+                hasTsCol = true;
                 int curTsIndex = tsIndex;
                 tsIndex++;
                 if (colValue == null) {
@@ -59,7 +61,7 @@ public class TableClientCommon {
                 }
             }
         }
-        if (tsDimensions.isEmpty()) {
+        if (hasTsCol && tsDimensions.isEmpty()) {
             throw new TabletException("no ts column");
         }
     }
