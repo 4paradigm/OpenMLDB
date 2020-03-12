@@ -2,11 +2,6 @@ import enum
 from . import interclient
 from typing import List
 
-
-
-ReadOptions = List[ReadOption]
-defaultWriteOption = WriteOption()
-
 class CompareOP(enum.IntEnum):
   EQ = enum.auto()
   LT = enum.auto()
@@ -65,6 +60,9 @@ class RtidbResult:
       return self.__data.DecodeData()
     else:
       raise StopIteration
+
+ReadOptions = List[ReadOption]
+defaultWriteOption = WriteOption()
 
 class RTIDBClient:
   def __init__(self, zk_cluster: str, zk_path: str):
