@@ -45,6 +45,7 @@ bool FileReceiver::Init() {
         return false;
     }
     file_ = file;
+    block_id_ = 0;
     return true;
 }
 
