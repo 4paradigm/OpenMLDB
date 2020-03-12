@@ -5,6 +5,7 @@
 #include <string>
 #include <set>
 #include "base/codec.h"
+#include "base/schema_codec.h"
 
 struct WriteOption {
     bool updateIfExist;

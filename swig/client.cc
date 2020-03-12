@@ -1,6 +1,5 @@
 #include "client.h"
 #include "base/flat_array.h"
-#include <boost/lexical_cast.hpp>
 #include "base/hash.h"
 #include <boost/algorithm/string.hpp>
 #ifdef DISALLOW_COPY_AND_ASSIGN
@@ -8,160 +7,6 @@
 #endif
 #include <snappy.h>
 
-#define NONETOKEN "None#*@!"
-
-const std::map<std::string, rtidb::type::DataType> NameToDataType = {
-        {"string", rtidb::type::DataType::kVarchar},
-        {"int16", rtidb::type::DataType::kInt16},
-        {"int32", rtidb::type::DataType::kInt32},
-        {"int64", rtidb::type::DataType::kInt64},
-        {"float", rtidb::type::DataType::kFloat},
-        {"double", rtidb::type::DataType::kDouble},
-        {"date", rtidb::type::DataType::kDate},
-        {"timestamp", rtidb::type::DataType::kTimestamp}
-};
-
-static int ConvertColumnDesc(
-        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
-        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& columns,
-        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& added_column_field) {
-    columns.Clear();
-    for (const auto& cur_column_desc : column_desc_field) {
-        rtidb::common::ColumnDesc* column_desc = columns.Add();
-        column_desc->CopyFrom(cur_column_desc);
-        if (!cur_column_desc.has_data_type()) {
-            auto iter = NameToDataType.find(cur_column_desc.type());
-            if (iter == NameToDataType.end()) {
-                column_desc->set_data_type(rtidb::type::DataType::kVoid);
-            } else {
-                column_desc->set_data_type(iter->second);
-            }
-        }
-    }
-    for (const auto& cur_column_desc : added_column_field) {
-        rtidb::common::ColumnDesc* column_desc = columns.Add();
-        column_desc->CopyFrom(cur_column_desc);
-        if (!cur_column_desc.has_data_type()) {
-            auto iter = NameToDataType.find(cur_column_desc.type());
-            if (iter == NameToDataType.end()) {
-                column_desc->set_data_type(rtidb::type::DataType::kVoid);
-            } else {
-                column_desc->set_data_type(iter->second);
-            }
-        }
-    }
-    return 0;
-}
-
-
-int Encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema,
-        const std::vector<std::string>& value_vec, uint32_t string_length, std::string& buffer) {
-    if (value_vec.size() != schema.size()) {
-        return -1;
-    }
-    rtidb::base::RowBuilder rb(schema);
-    uint32_t total_size = rb.CalTotalLength(string_length);
-    buffer.clear();
-    buffer.resize(total_size);
-    rb.SetBuffer(reinterpret_cast<int8_t*>(&buffer[0]), total_size);
-    for (int32_t i = 0; i < schema.size(); i++) {
-        if (value_vec[i] == NONETOKEN) {
-            rb.AppendNULL();
-            continue;
-        }
-        auto type = schema.Get(i).data_type();
-        try {
-            if (type == rtidb::type::kInt32) {
-                rb.AppendInt32(boost::lexical_cast<int32_t>(value_vec[i]));
-            } else if (type == rtidb::type::kTimestamp) {
-                rb.AppendTimestamp(boost::lexical_cast<int64_t>(value_vec[i]));
-            } else if (type == rtidb::type::kInt64) {
-                rb.AppendInt64(boost::lexical_cast<int64_t>(value_vec[i]));
-            } else if (type == rtidb::type::kBool) {
-                rb.AppendBool(boost::lexical_cast<bool>(value_vec[i]));
-            } else if (type == rtidb::type::kFloat) {
-                rb.AppendFloat(boost::lexical_cast<float>(value_vec[i]));
-            } else if (type == rtidb::type::kInt16) {
-                rb.AppendInt16(boost::lexical_cast<int16_t>(value_vec[i]));
-            } else if (type == rtidb::type::kDouble) {
-                rb.AppendDouble(boost::lexical_cast<double>(value_vec[i]));
-            } else if (type == rtidb::type::kVarchar) {
-                rb.AppendString(value_vec[i].data(), value_vec[i].size());
-            } else if (type == rtidb::type::kDate) {
-                rb.AppendNULL();
-            } else {
-                return -1;
-            }
-        } catch (boost::bad_lexical_cast &) {
-            return -1;
-        }
-    }
-    return 0;
-}
-
-void Decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, const std::string& value,
-        std::vector<std::string>& value_vec) {
-    rtidb::base::RowView rv(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&value[0])), value.size());
-    for (int32_t i = 0; i < schema.size(); i++) {
-        if (rv.IsNULL(i)) {
-            value_vec.push_back(NONETOKEN);
-            continue;
-        }
-        std::string col = "";
-        auto type = schema.Get(i).data_type();
-        if (type == rtidb::type::kInt32) {
-            int32_t val;
-            int ret = rv.GetInt32(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kTimestamp) {
-            int64_t val;
-            int ret = rv.GetTimestamp(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kInt64) {
-            int64_t val;
-            int ret = rv.GetInt64(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kBool) {
-            bool val;
-            int ret = rv.GetBool(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kFloat) {
-            float val;
-            int ret = rv.GetFloat(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kInt16) {
-            int16_t val;
-            int ret = rv.GetInt16(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kDouble) {
-            double val;
-            int ret = rv.GetDouble(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kVarchar) {
-            char *ch = NULL;
-            uint32_t length = 0;
-            int ret = rv.GetString(i, &ch, &length);
-            if (ret == 0) {
-                col.assign(ch, length);
-            }
-        }
-        value_vec.push_back(col);
-    }
-}
 
 RtidbClient::RtidbClient():zk_client_(), client_(), tablets_(), mu_(), zk_cluster_(), zk_path_(), tables_() {
 }
@@ -258,7 +103,7 @@ void RtidbClient::RefreshTable() {
         }
         std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
         columns = std::make_shared<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>();
-        ConvertColumnDesc(table_info->column_desc_v1(), *columns, table_info->added_column_desc());
+        rtidb::base::RowSchemaCodec::ConvertColumnDesc(table_info->column_desc_v1(), *columns, table_info->added_column_desc());
         std::shared_ptr<TableHandler> handler = std::make_shared<TableHandler>();
         handler->partition.resize(table_info->partition_num());
         int id = 0;
@@ -335,7 +180,7 @@ QueryResult RtidbClient::Query(const std::string& name, struct ReadOption& ro) {
             continue;
         }
         std::vector<std::string> value_vec;
-        Decode(*th->columns, value, value_vec);
+        rtidb::base::RowSchemaCodec::Decode(*th->columns, value, value_vec);
         std::map<std::string, GetColumn> value_map;
         for (int32_t i = 0; i < th->columns->size(); i++) {
             GetColumn col;
@@ -437,13 +282,13 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
             // TODO: add auto gen key columm
         } else {
             value_vec.push_back(iter->second);
-            if ((column.data_type() == rtidb::type::kVarchar) && (iter->second != NONETOKEN)) {
+            if ((column.data_type() == rtidb::type::kVarchar) && (iter->second != rtidb::base::NONETOKEN)) {
                 string_length += iter->second.size();
             }
         }
     }
     std::string buffer;
-    int code = Encode(*(th->columns), value_vec, string_length, buffer);
+    int code = rtidb::base::RowSchemaCodec::Encode(*(th->columns), value_vec, string_length, buffer);
     if (code != 0) {
         result.SetError(code, "encode error");
         return result;
