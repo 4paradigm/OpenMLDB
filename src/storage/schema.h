@@ -77,13 +77,13 @@ public:
         status_.store(status, std::memory_order_relaxed);
     }
     IndexStatus GetStatus() { 
-        return (IndexStatus)status_.load(std::memory_order_relaxed);
+        return status_.load(std::memory_order_relaxed);
     }
 
 private:
     std::string name_;
     uint32_t index_id_;
-	std::atomic<uint32_t> status_;
+    std::atomic<IndexStatus> status_;
     ::rtidb::type::IndexType type_;
     std::vector<::rtidb::common::ColumnDesc> column_;
     std::vector<uint32_t> ts_column_;
