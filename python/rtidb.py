@@ -9,13 +9,13 @@ class CompareOP(enum.IntEnum):
   GT = enum.auto()
   GE = enum.auto()
 
-def __return_None(x):
+def return_None(x):
   return None
 
-def __return_EmptyStr(x):
+def return_EmptyStr(x):
   return str()
 
-type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,100:__return_None};
+type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,100:return_None};
 '''
   kBool = 1,
   kInt16 = 2,
@@ -51,13 +51,27 @@ class ReadOption:
 class RtidbResult:
   def __init__(self, data):
     self.__data = data
+    self.__type_to_func = {1:self.__data.GetBool, 
+      2:self.__data.GetInt16, 3:self.__data.GetInt32, 
+      4:self.__data.GetInt64, 5:self.__data.GetFloat, 
+      6:self.__data.GetDouble, 7:self.__data.GetString,
+      8:return_None, 9:return_None, 100:return_None}
+    names = self.__data.GetColumnsName()
+    self.__names = [x for x in names]
   def __iter__(self):
     return self
   def count(self):
     return self.__data.ValueSize()
   def __next__(self):
     if self.__data.next():
-      return self.__data.DecodeData()
+      result = dict()
+      for idx in range(len(self.__names)):
+        type = self.__data.GetColumnType(idx)
+        if self.__data.IsNULL(idx):
+          result.update({self.__names[idx]: None})
+        else:
+          result.update({self.__names[idx]: self.__type_to_func[type](idx)})
+      return result
     else:
       raise StopIteration
 

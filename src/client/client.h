@@ -65,6 +65,11 @@ public:
         msg_ = err_msg;
     }
 
+    bool GetBool(uint32_t idx) {
+        bool val;
+        rv_->GetBool(idx, &val);
+        return val;
+    }
     int16_t GetInt16(uint32_t idx) {
         int16_t val;
         rv_->GetInt16(idx, &val);
@@ -84,6 +89,34 @@ public:
     }
 
     int64_t GetInt(uint32_t idx);
+
+    uint64_t GetSchemaSize() {
+        if (!initialed_) {
+            return 0;
+        }
+        return columns_->size();
+    }
+
+    int32_t GetColumnType(int32_t idx) {
+        if (!initialed_) {
+            return -1;
+        }
+        if (idx >= columns_->size()) {
+            return -1;
+        }
+        return columns_->Get(idx).data_type();
+    }
+
+    std::vector<std::string> GetColumnsName() {
+        std::vector<std::string> result;
+        if (!initialed_) {
+            return result;
+        }
+        for (int i = 0; i < columns_->size(); i++) {
+            result.push_back(columns_->Get(i).name());
+        }
+        return result;
+    }
 
     float GetFloat(uint32_t idx) {
         float val;
@@ -144,7 +177,7 @@ public:
         rv_ = std::make_shared<rtidb::base::RowView>(*columns_);
     }
 
-    QueryResult():code_(0), msg_(), index_(0), rv_(), columns_() {
+    QueryResult():code_(0), msg_(), index_(0), rv_(), columns_(), initialed_(false) {
         values_ = std::make_shared<std::vector<std::shared_ptr<std::string>>>();
     }
 
@@ -165,6 +198,7 @@ private:
     std::shared_ptr<std::vector<std::shared_ptr<std::string>>> values_;
     std::shared_ptr<rtidb::base::RowView> rv_;
     std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> columns_;
+    bool initialed_;
 };
 
 struct PartitionInfo {

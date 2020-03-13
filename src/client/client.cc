@@ -92,6 +92,7 @@ std::map<std::string, std::string> QueryResult::DecodeData() {
     }
     return result;
 }
+
 RtidbClient::RtidbClient():zk_client_(), client_(), tablets_(), mu_(), zk_cluster_(), zk_path_(), tables_(), task_thread_pool_(1), zk_keep_alive_check_(15000) {
 }
 
