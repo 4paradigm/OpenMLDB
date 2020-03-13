@@ -16,8 +16,6 @@ namespace std {
 %include "client/client.h"
 namespace std {
         %template(VectorReadFilter) vector<ReadFilter>;
-        %template(MapStringColumn) map<string, GetColumn>;
-        %template(VectorMap) vector<map<string, GetColumn>>;
 }
 %include "client/ns_client.h"
 %include "base/schema_codec.h"

@@ -54,7 +54,7 @@ class RtidbResult:
   def __iter__(self):
     return self
   def count(self):
-    return self.__data.values.size()
+    return self.__data.ValueSize()
   def __next__(self):
     if self.__data.next():
       return self.__data.DecodeData()
@@ -123,7 +123,7 @@ class RTIDBClient:
     return RtidbResult(resp)
 
   def batch_query(self, table_name: str, read_options: ReadOptions):
-    return RtidbResult(interclient.RowViewResult())
+    return RtidbResult(interclient.QueryResult())
 
   def delete(self, table_name: str, condition_columns: map):
     if (len(condition_columns) != 1):
@@ -137,4 +137,4 @@ class RTIDBClient:
     return true
 
   def traverse(self, table_name: str):
-    return RtidbResult(interclient.RowViewResult())
+    return RtidbResult(interclient.QueryResult())

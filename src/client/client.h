@@ -24,27 +24,6 @@ struct ReadFilter {
     std::string value;
 };
 
-struct GetColumn {
-    uint8_t type;
-    std::string buffer;
-};
-
-struct QueryRawResult {
-
-    QueryRawResult():code(0), msg() {
-    }
-
-    void SetError(int err_code, const std::string& err_msg) {
-        code = err_code;
-        msg = err_msg;
-    }
-
-    int code;
-    std::string msg;
-    std::map<std::string, std::string> values;
-
-};
-
 struct GeneralResult {
     GeneralResult():code(0), msg() {}
 
@@ -79,8 +58,8 @@ struct ReadOption {
     uint64_t limit;
 };
 
-struct RowViewResult {
-
+class QueryResult {
+public:
     void SetError(int err_code, const std::string& err_msg) {
         code = err_code;
         msg = err_msg;
@@ -88,61 +67,45 @@ struct RowViewResult {
 
     int16_t GetInt16(uint32_t idx) {
         int16_t val;
-        rv->GetInt16(idx, &val);
+        rv_->GetInt16(idx, &val);
         return val;
     }
 
     int32_t GetInt32(uint32_t idx) {
         int32_t val;
-        rv->GetInt32(idx, &val);
+        rv_->GetInt32(idx, &val);
         return val;
     }
 
     int64_t GetInt64(uint32_t idx) {
         int64_t val;
-        rv->GetInt64(idx, &val);
+        rv_->GetInt64(idx, &val);
         return val;
     }
 
-    int64_t GetInt(uint32_t idx) {
-        int64_t val = 0;
-        auto type = columns[idx].data_type();
-        if (type == rtidb::type::kInt16) {
-            int16_t st_val;
-            rv->GetInt16(idx, &st_val);
-            val = st_val;
-        } else if (type == rtidb::type::kInt32) {
-            int32_t tt_val;
-            rv->GetInt32(idx, &tt_val);
-            val = tt_val;
-        } else {
-            int64_t val;
-            rv->GetInt64(idx, &val);
-        }
-        return val;
-    }
+    int64_t GetInt(uint32_t idx);
 
     float GetFloat(uint32_t idx) {
         float val;
-        rv->GetFloat(idx, &val);
+        rv_->GetFloat(idx, &val);
         return val;
     }
 
     double GetDouble(uint32_t idx) {
         double val;
-        rv->GetDouble(idx, &val);
+        rv_->GetDouble(idx, &val);
         return val;
     }
 
     double GetFloatNum(uint32_t idx) {
         double val;
-        auto type = columns[idx].data_type();
+        auto type = columns_->Get(idx).data_type();
         if (type == rtidb::type::kFloat) {
             float f_val;
-            rv->GetFloat(idx, &f_val);
+            rv_->GetFloat(idx, &f_val);
             val = f_val;
         } else {
-            rv->GetDouble(idx, &val);
+            rv_->GetDouble(idx, &val);
         }
         return val;
     }
@@ -151,7 +114,7 @@ struct RowViewResult {
         std::string col = "";
         char *ch = NULL;
         uint32_t length = 0;
-        int ret = rv->GetString(idx, &ch, &length);
+        int ret = rv_->GetString(idx, &ch, &length);
         if (ret == 0) {
             col.assign(ch, length);
         }
@@ -159,98 +122,49 @@ struct RowViewResult {
     }
 
     bool IsNULL(uint32_t idx) {
-        return rv->IsNULL(idx);
+        return rv_->IsNULL(idx);
     }
 
     bool next() {
-        if (values.size() < 1 || index >= values.size()) {
+        int size = values_->size();
+        if (size < 1 || index >= size) {
             return false;
         }
         uint32_t old_index = index;
         index++;
-        return rv->Reset(reinterpret_cast<int8_t*>(&values[old_index][0]), values[old_index].size());
+        return rv_->Reset(reinterpret_cast<int8_t*>(&((*(*values_)[old_index])[0])), (*values_)[old_index]->size());
     }
 
-    std::map<std::string, std::string> DecodeData() {
-        std::map<std::string, std::string> result;
-        for (int64_t i = 0; i < columns.size(); i++) {
-            std::string col_name = columns[i].name();
-            if (rv->IsNULL(i)) {
-                result.insert(std::make_pair(col_name, rtidb::base::NONETOKEN));
-            }
-            std::string col = "";
-            auto type = columns[i].data_type();
-            if (type == rtidb::type::kInt32) {
-                int32_t val;
-                int ret = rv->GetInt32(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kTimestamp) {
-                int64_t val;
-                int ret = rv->GetTimestamp(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kInt64) {
-                int64_t val;
-                int ret = rv->GetInt64(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kBool) {
-                bool val;
-                int ret = rv->GetBool(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kFloat) {
-                float val;
-                int ret = rv->GetFloat(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kInt16) {
-                int16_t val;
-                int ret = rv->GetInt16(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kDouble) {
-                double val;
-                int ret = rv->GetDouble(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kVarchar) {
-                char *ch = NULL;
-                uint32_t length = 0;
-                int ret = rv->GetString(i, &ch, &length);
-                if (ret == 0) {
-                    col.assign(ch, length);
-                }
-            }
-            result.insert(std::make_pair(col_name, col));
-        }
-        return result;
-    }
-    void SetRV(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema) {
-        columns.clear();
-        for (auto col : schema) {
-            columns.push_back(col);
-        }
-        rv = std::make_shared<rtidb::base::RowView>(schema);
+    uint64_t ValueSize() {
+        return values_->size();
     }
 
-    RowViewResult():code(0), msg(), index(0) {
+    void SetRV(std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>& schema) {
+        columns_ = schema;
+        rv_ = std::make_shared<rtidb::base::RowView>(*columns_);
     }
 
+    QueryResult():code(0), msg(), index(0), rv_(), columns_() {
+        values_ = std::make_shared<std::vector<std::shared_ptr<std::string>>>();
+    }
+
+    ~QueryResult() {
+    }
+
+    std::map<std::string, std::string> DecodeData();
+
+    void AddValue(std::shared_ptr<std::string>& value) {
+        std::cout << *value << std::endl;
+        values_->push_back(value);
+    }
+public:
     int code;
     std::string msg;
-    std::vector<std::string> values;
-    uint32_t index;
-    std::shared_ptr<rtidb::base::RowView> rv;
-    std::vector<rtidb::common::ColumnDesc> columns;
+private:
+    int index;
+    std::shared_ptr<std::vector<std::shared_ptr<std::string>>> values_;
+    std::shared_ptr<rtidb::base::RowView> rv_;
+    std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> columns_;
 };
 
 struct PartitionInfo {
@@ -269,11 +183,10 @@ public:
     RtidbClient();
     ~RtidbClient();
     GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path);
-    RowViewResult Query(const std::string& name, const struct ReadOption& ro);
+    QueryResult Query(const std::string& name, const struct ReadOption& ro);
     GeneralResult Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
     GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
     GeneralResult Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> values, const WriteOption& wo);
-    RowViewResult GetRowView(const std::string& name);
 
 private:
     std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint, std::string& msg);
@@ -294,6 +207,5 @@ private:
     std::string zk_cluster_;
     std::string zk_path_;
     std::string zk_table_data_path_;
-    std::string zk_table_notify_path_;
     std::map<std::string, std::shared_ptr<TableHandler>> tables_;
 };

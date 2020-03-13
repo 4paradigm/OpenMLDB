@@ -6,28 +6,96 @@
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
 #include <snappy.h>
+#include <memory>
 
 
+
+
+int64_t QueryResult::GetInt(uint32_t idx) {
+    int64_t val = 0;
+    auto type = columns_->Get(idx).data_type();
+    if (type == rtidb::type::kInt16) {
+        int16_t st_val;
+        rv_->GetInt16(idx, &st_val);
+        val = st_val;
+    } else if (type == rtidb::type::kInt32) {
+        int32_t tt_val;
+        rv_->GetInt32(idx, &tt_val);
+        val = tt_val;
+    } else {
+        int64_t val;
+        rv_->GetInt64(idx, &val);
+    }
+    return val;
+}
+
+std::map<std::string, std::string> QueryResult::DecodeData() {
+    std::map<std::string, std::string> result;
+    for (int i = 0; i < columns_->size(); i++) {
+        std::string col_name = columns_->Get(i).name();
+        if (rv_->IsNULL(i)) {
+            result.insert(std::make_pair(col_name, rtidb::base::NONETOKEN));
+        }
+        std::string col = "";
+        auto type = columns_->Get(i).data_type();
+        if (type == rtidb::type::kInt32) {
+            int32_t val;
+            int ret = rv_->GetInt32(i, &val);
+            if (ret == 0) {
+                col = std::to_string(val);
+            }
+        } else if (type == rtidb::type::kTimestamp) {
+            int64_t val;
+            int ret = rv_->GetTimestamp(i, &val);
+            if (ret == 0) {
+                col = std::to_string(val);
+            }
+        } else if (type == rtidb::type::kInt64) {
+            int64_t val;
+            int ret = rv_->GetInt64(i, &val);
+            if (ret == 0) {
+                col = std::to_string(val);
+            }
+        } else if (type == rtidb::type::kBool) {
+            bool val;
+            int ret = rv_->GetBool(i, &val);
+            if (ret == 0) {
+                col = std::to_string(val);
+            }
+        } else if (type == rtidb::type::kFloat) {
+            float val;
+            int ret = rv_->GetFloat(i, &val);
+            if (ret == 0) {
+                col = std::to_string(val);
+            }
+        } else if (type == rtidb::type::kInt16) {
+            int16_t val;
+            int ret = rv_->GetInt16(i, &val);
+            if (ret == 0) {
+                col = std::to_string(val);
+            }
+        } else if (type == rtidb::type::kDouble) {
+            double val;
+            int ret = rv_->GetDouble(i, &val);
+            if (ret == 0) {
+                col = std::to_string(val);
+            }
+        } else if (type == rtidb::type::kVarchar) {
+            char *ch = NULL;
+            uint32_t length = 0;
+            int ret = rv_->GetString(i, &ch, &length);
+            if (ret == 0) {
+                col.assign(ch, length);
+            }
+        }
+        result.insert(std::make_pair(col_name, col));
+    }
+    return result;
+}
 RtidbClient::RtidbClient():zk_client_(), client_(), tablets_(), mu_(), zk_cluster_(), zk_path_(), tables_() {
 }
 
 RtidbClient::~RtidbClient() {
-}
-
-RowViewResult RtidbClient::GetRowView(const std::string &name) {
-    RowViewResult result;
-    std::shared_ptr<TableHandler> th;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto iter = tables_.find(name);
-        if (iter == tables_.end()) {
-            result.SetError(-1, "table not found");
-            return result;
-        }
-        th = iter->second;
-    }
-    result.SetRV(*(th->columns));
-    return result;
 }
 
 void RtidbClient::CheckZkClient() {
@@ -155,8 +223,8 @@ GeneralResult RtidbClient::Init(const std::string& zk_cluster, const std::string
 }
 
 
-RowViewResult RtidbClient::Query(const std::string& name, const struct ReadOption& ro) {
-    RowViewResult result;
+QueryResult RtidbClient::Query(const std::string& name, const struct ReadOption& ro) {
+    QueryResult result;
     std::shared_ptr<TableHandler> th;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -173,16 +241,15 @@ RowViewResult RtidbClient::Query(const std::string& name, const struct ReadOptio
         result.SetError(-1, err_msg);
         return result;
     }
-    for (const auto& iter : ro.index) {
-        std::string value;
-        uint64_t ts;
-        bool ok = tablet->Get(th->table_info->tid(), 0, iter.second, 0, "", "", value, ts, err_msg);
-        if (!ok) {
-            continue;
-        }
-        result.values.push_back(value);
+    std::shared_ptr<std::string> value = std::make_shared<std::string>();
+    uint64_t ts;
+    bool ok = tablet->Get(th->table_info->tid(), 0, ro.index.begin()->second, 0, "", "", *value, ts, err_msg);
+    if (!ok) {
+        result.SetError(-1, err_msg);
+        return result;
     }
-    result.SetRV(*th->columns);
+    result.AddValue(value);
+    result.SetRV(th->columns);
     return result;
 }
 
