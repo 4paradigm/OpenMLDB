@@ -513,6 +513,82 @@ void TabletImpl::Get(RpcController* controller,
     }
 }
 
+void TabletImpl::Update(RpcController* controller,
+        const ::rtidb::api::UpdateRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (follower_.load(std::memory_order_relaxed)) {
+        response->set_code(453);
+        response->set_msg("is follower cluster");
+        done->Run();
+        return;
+    }
+    std::shared_ptr<RelationalTable> r_table;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        r_table = GetRelationalTableUnLock(request->tid(), request->pid());
+        if (!r_table) {
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(100);
+            response->set_msg("table is not exist");
+            return;
+        }
+    }
+    const Schema& schema = r_table->GetTableMeta().column_desc();
+
+    const ::rtidb::api::Columns& cd_columns = request->condition_columns();
+    std::map<std::string, ::rtidb::type::DataType> cd_type_map;
+    std::map<std::string, int> cd_idx_map;
+    for (int i = 0; i < cd_columns.name_size(); i++) {
+        cd_type_map.insert(std::make_pair(cd_columns.name(i), ::rtidb::type::kBool));
+        cd_idx_map.insert(std::make_pair(cd_columns.name(i), i));
+    }
+
+    const ::rtidb::api::Columns& col_columns = request->value_columns();
+    std::map<std::string, ::rtidb::type::DataType> col_type_map;
+    std::map<std::string, int> col_idx_map;
+    for (int i = 0; i < col_columns.name_size(); i++) {
+        col_type_map.insert(std::make_pair(col_columns.name(i), ::rtidb::type::kBool));
+        col_idx_map.insert(std::make_pair(col_columns.name(i), i));
+    }
+
+    for (int i = 0; i < schema.size(); i++) {
+        const auto& idx_iter = cd_type_map.find(schema.Get(i).name());
+        if (idx_iter != cd_type_map.end()) {
+            cd_type_map[idx_iter->first] =  schema.Get(i).data_type(); 
+        }
+        const auto& col_iter = col_type_map.find(schema.Get(i).name());
+        if (col_iter != col_type_map.end()) {
+            col_type_map[col_iter->first] = schema.Get(i).data_type();
+        }
+    }
+    Schema condition_schema;
+    for (int i = 0; i < cd_columns.name_size(); i++) {
+        ::rtidb::common::ColumnDesc* col = condition_schema.Add();
+        col->set_name(cd_columns.name(i));
+        col->set_data_type(cd_type_map.find(cd_columns.name(i))->second);
+    }
+    Schema value_schema;
+    for (int i = 0; i < col_columns.name_size(); i++) {
+        ::rtidb::common::ColumnDesc* col = value_schema.Add();
+        col->set_name(col_columns.name(i));
+        col->set_data_type(col_type_map.find(col_columns.name(i))->second);
+    }
+
+    std::string cd_value = cd_columns.value();
+    std::string col_value = col_columns.value(); 
+
+    bool ok = r_table->Update(cd_idx_map, col_idx_map, schema, condition_schema, value_schema, 
+            cd_value, col_value);
+    if (!ok) {
+        response->set_code(138);
+        response->set_msg("update failed");
+        PDLOG(WARNING, "update failed. tid %u, pid %u", request->tid(), request->pid());
+        return;
+    }
+}
+
 void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,

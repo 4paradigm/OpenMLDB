@@ -25,8 +25,10 @@
 #include "storage/table.h"
 #include <boost/lexical_cast.hpp>
 #include "timer.h"
+#include "base/codec.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
 namespace rtidb {
 namespace storage {
@@ -68,6 +70,9 @@ public:
     bool Get(uint32_t idx, const std::string& pk, std::string& value);
 
     bool Delete(const std::string& pk, uint32_t idx);
+        
+    bool Update(std::map<std::string, int>& cd_idx_map, std::map<std::string, int>& col_idx_map, const Schema& schema, const Schema& condition_schema, const Schema& value_schema, 
+            const std::string& cd_value, const std::string& col_value); 
 
     inline ::rtidb::common::StorageMode GetStorageMode() const {
         return storage_mode_;

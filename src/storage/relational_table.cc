@@ -253,5 +253,169 @@ bool RelationalTable::Get(uint32_t idx, const std::string& pk,
     }
 }
 
+bool RelationalTable::Update(std::map<std::string, int>& cd_idx_map, std::map<std::string, int>& col_idx_map,  
+        const Schema& schema, const Schema& condition_schema, const Schema& value_schema, 
+        const std::string& cd_value, const std::string& col_value) {
+    uint32_t cd_value_size = cd_value.length();
+    std::string cd_value_r = cd_value;
+    ::rtidb::base::RowView cd_view(condition_schema, reinterpret_cast<int8_t*>(&(cd_value_r[0])), cd_value_size);
+    ::rtidb::type::DataType pk_data_type;
+    std::string pk;
+    for (int i = 0; i < condition_schema.size(); i++) {
+        pk_data_type = condition_schema.Get(i).data_type();
+        switch(pk_data_type) {
+            case ::rtidb::type::kSmallInt:
+            { 
+                int16_t val1 = 0;
+                cd_view.GetInt16(i, &val1);
+                pk = std::to_string(val1);
+                break;
+            }
+            case ::rtidb::type::kInt:
+            { 
+                int32_t val2 = 0;
+                cd_view.GetInt32(i, &val2);
+                pk = std::to_string(val2);
+                break;
+            }
+            case ::rtidb::type::kBigInt:
+            {  
+                int64_t val3 = 0;
+                cd_view.GetInt64(i, &val3);
+                pk = std::to_string(val3);
+                break;
+            }
+            case ::rtidb::type::kVarchar:
+            {
+                char* ch = NULL;
+                uint32_t length = 0;
+                cd_view.GetString(i, &ch, &length);
+                pk.assign(ch, length);
+                break;
+            }
+            default:
+            {
+                PDLOG(WARNING, "unsupported data type %s", 
+                    rtidb::type::DataType_Name(pk_data_type).c_str());
+                return false;
+            }
+                //TODO: other data type
+        }
+        break;
+    }
+    
+    std::string value;
+    bool ok = Get(0, pk, value);
+    if (!ok) {
+        PDLOG(WARNING, "update table tid %u pid %u failed", id_, pid_);
+        return false;
+    }
+    ::rtidb::base::RowView row_view(schema, reinterpret_cast<int8_t*>(&(value[0])), value.length());
+    uint32_t col_value_size = col_value.length();
+    std::string col_value_r = col_value;
+    ::rtidb::base::RowView value_view(value_schema, reinterpret_cast<int8_t*>(&(col_value_r[0])), col_value_size);
+    uint32_t string_length = 0; 
+    for (int i = 0; i < schema.size(); i++) {
+        if (schema.Get(i).data_type() == rtidb::type::kVarchar) {
+            const auto& col_iter = col_idx_map.find(schema.Get(i).name());
+            if (col_iter != col_idx_map.end()) {
+                char* ch = NULL;
+                uint32_t length = 0;
+                value_view.GetString(col_iter->second, &ch, &length);
+                string_length += length;
+            } else {
+                char* ch = NULL;
+                uint32_t length = 0;
+                row_view.GetString(i, &ch, &length);
+                string_length += length;
+            }
+        }
+    }
+    ::rtidb::base::RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(string_length);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < schema.size(); i++) {
+        const auto& col_iter = col_idx_map.find(schema.Get(i).name());
+        if (schema.Get(i).data_type() == rtidb::type::kBool) {
+            bool val = true;
+            if (col_iter != col_idx_map.end()) {
+                value_view.GetBool(col_iter->second, &val);
+            } else {
+                row_view.GetBool(i, &val);
+            }
+            builder.AppendBool(val);
+        } else if (schema.Get(i).data_type() == rtidb::type::kSmallInt) {
+            int16_t val = 0;
+            if (col_iter != col_idx_map.end()) {
+                value_view.GetInt16(col_iter->second, &val);
+            } else {
+                row_view.GetInt16(i, &val);
+            }
+            builder.AppendInt16(val);
+        } else if (schema.Get(i).data_type() == rtidb::type::kInt) {
+            int32_t val = 0;
+            if (col_iter != col_idx_map.end()) {
+                value_view.GetInt32(col_iter->second, &val);
+            } else {
+                row_view.GetInt32(i, &val);
+            }
+            builder.AppendInt32(val);
+        } else if (schema.Get(i).data_type() == rtidb::type::kBigInt) {
+            int64_t val = 0;
+            if (col_iter != col_idx_map.end()) {
+                value_view.GetInt64(col_iter->second, &val);
+            } else {
+                row_view.GetInt64(i, &val);
+            }
+            builder.AppendInt64(val);
+        } else if (schema.Get(i).data_type() == rtidb::type::kTimestamp) {
+            int64_t val = 0;
+            if (col_iter != col_idx_map.end()) {
+                value_view.GetTimestamp(col_iter->second, &val);
+            } else {
+                row_view.GetTimestamp(i, &val);
+            }
+            builder.AppendTimestamp(val);
+        } else if (schema.Get(i).data_type() == rtidb::type::kFloat) {
+            float val = 0.0;
+            if (col_iter != col_idx_map.end()) {
+                value_view.GetFloat(col_iter->second, &val);
+            } else {
+                row_view.GetFloat(i, &val);
+            }
+            builder.AppendFloat(val);
+        } else if (schema.Get(i).data_type() == rtidb::type::kDouble) {
+            double val = 0.0;
+            if (col_iter != col_idx_map.end()) {
+                value_view.GetDouble(col_iter->second, &val);
+            } else {
+                row_view.GetDouble(i, &val);
+            }
+            builder.AppendDouble(val);
+        } else if (schema.Get(i).data_type() == rtidb::type::kVarchar) {
+            char* ch = NULL;
+            uint32_t length = 0;
+            if (col_iter != col_idx_map.end()) {
+                value_view.GetString(col_iter->second, &ch, &length);
+            } else {
+                row_view.GetString(i, &ch, &length);
+            }
+            builder.AppendString(ch, length);
+        } else {
+            PDLOG(WARNING, "unsupported data type %s", 
+                    rtidb::type::DataType_Name(schema.Get(i).data_type()).c_str());
+            return false;
+        }
+    }
+    ok = Put(pk, row.c_str(), row.length());
+    if (!ok) {
+        PDLOG(WARNING, "update table tid %u pid %u failed", id_, pid_);
+        return false;
+    }
+    return true;
+}
+
 }
 }

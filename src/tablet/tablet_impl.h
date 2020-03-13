@@ -61,6 +61,11 @@ public:
 
     bool RegisterZK();
 
+    void Update(RpcController* controller,
+            const ::rtidb::api::UpdateRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void Put(RpcController* controller,
              const ::rtidb::api::PutRequest* request,
              ::rtidb::api::PutResponse* response,
