@@ -851,7 +851,8 @@ public class TableAsyncClientTest extends TestCaseBase {
 
         PutFuture pf = tableAsyncClient.put(name, row);
         Assert.assertTrue(pf.get());
-
+        pf = tableAsyncClient.put(name, new Object[] {"card2", "cc2", 2.0d});
+        Assert.assertTrue(pf.get());
     }
 
     @Test

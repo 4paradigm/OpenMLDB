@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
 import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
@@ -1635,6 +1636,18 @@ public class TableSyncClientTest extends TestCaseBase {
         } finally {
             nsc.dropTable(name);
         }
+    }
+    @Test
+    public void testNoTsPut() throws TabletException, ExecutionException, InterruptedException, TimeoutException {
+        String name = createSchemaTable();
+        Map<String, Object> row = new HashMap<>();
+        row.put("card", "card1");
+        row.put("mcc", "cc1");
+        row.put("amt", 1.0d);
+        boolean ok = tableSyncClient.put(name, row);
+        Assert.assertTrue(ok);
+        ok = tableSyncClient.put(name, new Object[] {"card2", "cc2", 2.0d});
+        Assert.assertTrue(ok);
     }
 
     @Test

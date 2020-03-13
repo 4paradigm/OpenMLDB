@@ -83,12 +83,14 @@ public class TableClientCommon {
             schema = th.getSchema();
         }
         List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
+        boolean hasTsCol = false;
         int tsIndex = 0;
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
             Object colValue = row[i];
             if (columnDesc.isTsCol()) {
                 int curTsIndex = tsIndex;
+                hasTsCol = true;
                 tsIndex++;
                 if (colValue == null) {
                     continue;
@@ -110,7 +112,7 @@ public class TableClientCommon {
                 }
             }
         }
-        if (tsDimensions.isEmpty()) {
+        if (hasTsCol && tsDimensions.isEmpty()) {
             throw new TabletException("no ts column");
         }
         return tsDimensions;
