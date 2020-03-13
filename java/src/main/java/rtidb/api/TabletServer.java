@@ -1,13 +1,13 @@
 package rtidb.api;
 
-import java.util.concurrent.Future;
-
 import com._4paradigm.rtidb.tablet.Tablet;
-
 import io.brpc.client.RpcCallback;
+
+import java.util.concurrent.Future;
 
 public interface TabletServer {
 
+    Tablet.GeneralResponse update(Tablet.UpdateRequest request);
     Tablet.PutResponse put(Tablet.PutRequest request);
     Tablet.GetResponse get(Tablet.GetRequest request);
     Tablet.ScanResponse scan(Tablet.ScanRequest request);

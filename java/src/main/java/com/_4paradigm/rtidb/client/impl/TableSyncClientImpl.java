@@ -1161,12 +1161,93 @@ public class TableSyncClientImpl implements TableSyncClient {
         return putRelationTable(tname, arrayRow);
     }
 
+    private boolean updateRequest(TableHandler th, int pid, List<String> conditionNameList, List<String> valueNameList,
+                                  ByteBuffer conditionBuffer, ByteBuffer valueBuffer) throws TabletException {
+        PartitionHandler ph = th.getHandler(pid);
+        if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+            byte[] data = conditionBuffer.array();
+            byte[] compressed = Compress.snappyCompress(data);
+            if (compressed == null) {
+                throw new TabletException("snappy compress error");
+            }
+            conditionBuffer = ByteBuffer.wrap(compressed);
+
+            byte[] data2 = valueBuffer.array();
+            byte[] compressed2 = Compress.snappyCompress(data2);
+            if (compressed2 == null) {
+                throw new TabletException("snappy compress error");
+            }
+            valueBuffer = ByteBuffer.wrap(compressed2);
+        }
+        TabletServer tablet = ph.getLeader();
+        int tid = th.getTableInfo().getTid();
+        if (tablet == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.UpdateRequest.Builder builder = Tablet.UpdateRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(pid);
+        {
+            Tablet.Columns.Builder conditionBuilder = Tablet.Columns.newBuilder();
+            for (String indexName : conditionNameList) {
+                conditionBuilder.addName(indexName);
+            }
+            conditionBuffer.rewind();
+            conditionBuilder.setValue(ByteBufferNoCopy.wrap(conditionBuffer.asReadOnlyBuffer()));
+            builder.setConditionColumns(conditionBuilder.build());
+        }
+        {
+            Tablet.Columns.Builder valueBuilder = Tablet.Columns.newBuilder();
+            for (String colName : valueNameList) {
+                valueBuilder.addName(colName);
+            }
+            valueBuffer.rewind();
+            valueBuilder.setValue(ByteBufferNoCopy.wrap(valueBuffer.asReadOnlyBuffer()));
+            builder.setValueColumns(valueBuilder.build());
+        }
+        Tablet.UpdateRequest request = builder.build();
+        Tablet.GeneralResponse response = tablet.update(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        }
+        if (response != null) {
+            throw new TabletException(response.getCode(), response.getMsg());
+        }
+        return false;
+    }
+
+    private ByteBuffer updateInternel(Map<String, Object> columns, List<ColumnDesc> schema,
+                                      List<String> nameList) throws TabletException {
+        List<ColumnDesc> newSchema = new ArrayList<>();
+        Object[] array = new Object[columns.size()];
+        int cIdx = 0;
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
+            String colName = columnDesc.getName();
+            if (columns.containsKey(colName)) {
+                array[cIdx++] = columns.get(colName);
+                newSchema.add(columnDesc);
+            }
+        }
+        ByteBuffer buffer = RowBuilder.encode(array, newSchema);
+        for (ColumnDesc desc : newSchema) {
+            nameList.add(desc.getName());
+        }
+        return buffer;
+    }
+
     @Override
     public boolean update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo)
             throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tableName);
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
+        }
+        if (conditionColumns == null) {
+            throw new TabletException("conditionColumns is null");
+        }
+        if (valueColumns == null) {
+            throw new TabletException("valueColumns is null");
         }
         String idxName = "";
         String idxValue = "";
@@ -1178,34 +1259,14 @@ public class TableSyncClientImpl implements TableSyncClient {
             break;
         }
         idxValue = validateKey(idxValue);
-        Map<String, Object> index = new HashMap<>();
-        index.put(idxName, idxValue);
-        ReadOption ro = new ReadOption(index, null, null, 1);
-        RelationalIterator kvIterator = query(tableName, ro);
-        if (!kvIterator.valid()) {
-            throw new TabletException("KvIterator is invalid " + tableName);
-        }
-        Map<String, Object> objectMap = new HashMap<>();
-        while (kvIterator.valid()) {
-            objectMap = kvIterator.getDecodedValue();
-            break;
-        }
-        Map<String, Object> updateMap = updateInternel(objectMap, valueColumns, th);
+        int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
 
-        return put(tableName, updateMap, wo);
-    }
+        List<String> conditionNameList = new ArrayList<>();
+        ByteBuffer conditionBuffer = updateInternel(conditionColumns, th.getSchema(), conditionNameList);
+        List<String> valueNameList = new ArrayList<>();
+        ByteBuffer valueBuffer = updateInternel(valueColumns, th.getSchema(), valueNameList);
 
-    public Map<String, Object> updateInternel(Map<String, Object> inMap, Map<String, Object> valueColumns, TableHandler th) {
-        Map<String, Object> map = new HashMap<>();
-        for (int i = 0; i < th.getSchema().size(); i++) {
-            String colName = th.getSchema().get(i).getName();
-            if (valueColumns.containsKey(colName)) {
-                map.put(colName, valueColumns.get(colName));
-            } else {
-                map.put(colName, inMap.get(colName));
-            }
-        }
-        return map;
+        return updateRequest(th, pid, conditionNameList, valueNameList, conditionBuffer, valueBuffer);
     }
 
     @Override
