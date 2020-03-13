@@ -70,8 +70,15 @@ public:
     bool Get(uint32_t idx, const std::string& pk, std::string& value);
 
     bool Delete(const std::string& pk, uint32_t idx);
+
+    bool Update(const Schema& schema, const ::rtidb::api::Columns& cd_columns, 
+            const ::rtidb::api::Columns& col_columns);
+
+    void UpdateInternel(const Schema& schema, const ::rtidb::api::Columns& cd_columns, 
+            std::map<std::string, int>& cd_idx_map, 
+            Schema& condition_schema);
         
-    bool Update(std::map<std::string, int>& cd_idx_map, std::map<std::string, int>& col_idx_map, const Schema& schema, const Schema& condition_schema, const Schema& value_schema, 
+    bool UpdateDB(std::map<std::string, int>& cd_idx_map, std::map<std::string, int>& col_idx_map, const Schema& schema, const Schema& condition_schema, const Schema& value_schema, 
             const std::string& cd_value, const std::string& col_value); 
 
     inline ::rtidb::common::StorageMode GetStorageMode() const {

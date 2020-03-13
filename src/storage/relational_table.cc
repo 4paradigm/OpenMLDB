@@ -253,7 +253,43 @@ bool RelationalTable::Get(uint32_t idx, const std::string& pk,
     }
 }
 
-bool RelationalTable::Update(std::map<std::string, int>& cd_idx_map, std::map<std::string, int>& col_idx_map,  
+bool RelationalTable::Update(const Schema& schema, const ::rtidb::api::Columns& cd_columns, 
+        const ::rtidb::api::Columns& col_columns) {
+    std::string cd_value = cd_columns.value();
+    std::string col_value = col_columns.value(); 
+    std::map<std::string, int> cd_idx_map;
+    Schema condition_schema;
+    UpdateInternel(schema, cd_columns, cd_idx_map, condition_schema);
+    std::map<std::string, int> col_idx_map;
+    Schema value_schema;
+    UpdateInternel(schema, col_columns, col_idx_map, value_schema);
+    bool ok = UpdateDB(cd_idx_map, col_idx_map, schema, condition_schema, value_schema, 
+            cd_value, col_value);
+    return ok;
+}
+
+void RelationalTable::UpdateInternel(const Schema& schema, const ::rtidb::api::Columns& cd_columns, 
+        std::map<std::string, int>& cd_idx_map, 
+        Schema& condition_schema) {
+    std::map<std::string, ::rtidb::type::DataType> cd_type_map;
+    for (int i = 0; i < cd_columns.name_size(); i++) {
+        cd_type_map.insert(std::make_pair(cd_columns.name(i), ::rtidb::type::kBool));
+        cd_idx_map.insert(std::make_pair(cd_columns.name(i), i));
+    }
+    for (int i = 0; i < schema.size(); i++) {
+        const auto& idx_iter = cd_type_map.find(schema.Get(i).name());
+        if (idx_iter != cd_type_map.end()) {
+            cd_type_map[idx_iter->first] = schema.Get(i).data_type(); 
+        }
+    }
+    for (int i = 0; i < cd_columns.name_size(); i++) {
+        ::rtidb::common::ColumnDesc* col = condition_schema.Add();
+        col->set_name(cd_columns.name(i));
+        col->set_data_type(cd_type_map.find(cd_columns.name(i))->second);
+    }
+}
+
+bool RelationalTable::UpdateDB(std::map<std::string, int>& cd_idx_map, std::map<std::string, int>& col_idx_map,  
         const Schema& schema, const Schema& condition_schema, const Schema& value_schema, 
         const std::string& cd_value, const std::string& col_value) {
     uint32_t cd_value_size = cd_value.length();
