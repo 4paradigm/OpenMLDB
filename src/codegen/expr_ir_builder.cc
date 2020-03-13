@@ -159,7 +159,7 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                                    status);
         }
         case ::fesql::node::kExprUnary: {
-            return Build(node->children[0], output, status);
+            return Build(node->children_[0], output, status);
         }
         case ::fesql::node::kExprStruct: {
             return BuildStructExpr((fesql::node::StructExpr*)node, output,
@@ -189,9 +189,9 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     std::vector<::llvm::Value*> llvm_args;
     const fesql::node::ExprListNode* args = call_fn->GetArgs();
     std::vector<::fesql::node::ExprNode*>::const_iterator it =
-        args->children.cbegin();
+        args->children_.cbegin();
     std::vector<::fesql::node::TypeNode> generics_types;
-    for (; it != args->children.cend(); ++it) {
+    for (; it != args->children_.cend(); ++it) {
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
         ::llvm::Value* llvm_arg = NULL;
         // TODO(chenjing): remove out_name
@@ -225,7 +225,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         return false;
     }
 
-    if (args->children.size() != fn->arg_size()) {
+    if (args->children_.size() != fn->arg_size()) {
         status.msg = ("Incorrect arguments passed");
         status.code = (common::kCallMethodError);
         return false;
@@ -391,7 +391,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
         return false;
     }
 
-    if (node->children.size() != 1) {
+    if (node->children_.size() != 1) {
         status.code = common::kCodegenError;
         status.msg = "invalid unary expr node ";
         LOG(WARNING) << status.msg;
@@ -401,7 +401,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
     DLOG(INFO) << "build unary"
                << ::fesql::node::ExprTypeName(node->GetExprType());
     ::llvm::Value* left = NULL;
-    bool ok = Build(node->children[0], &left, status);
+    bool ok = Build(node->children_[0], &left, status);
     if (!ok) {
         status.code = common::kCodegenError;
         status.msg = "fail to build unary child";
@@ -422,7 +422,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         return false;
     }
 
-    if (node->children.size() != 2) {
+    if (node->children_.size() != 2) {
         status.code = common::kCodegenError;
         status.msg = "invalid binary expr node ";
         LOG(WARNING) << status.msg;
@@ -432,14 +432,14 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
     DLOG(INFO) << "build binary "
                << ::fesql::node::ExprOpTypeName(node->GetOp());
     ::llvm::Value* left = NULL;
-    bool ok = Build(node->children[0], &left, status);
+    bool ok = Build(node->children_[0], &left, status);
     if (!ok) {
         LOG(WARNING) << "fail to build left node: " << status.msg;
         return false;
     }
 
     ::llvm::Value* right = NULL;
-    ok = Build(node->children[1], &right, status);
+    ok = Build(node->children_[1], &right, status);
     if (!ok) {
         LOG(WARNING) << "fail to build right node" << status.msg;
         return false;

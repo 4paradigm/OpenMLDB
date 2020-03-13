@@ -83,7 +83,7 @@ SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
             return nullptr;
         }
         auto expr_list = dynamic_cast<OrderByNode *>(orders)->order_by_;
-        for (auto expr : expr_list->children) {
+        for (auto expr : expr_list->children_) {
             switch (expr->GetExprType()) {
                 case kExprColumnRef:
                     // TODO(chenjing): window 支持未来窗口
@@ -102,7 +102,7 @@ SQLNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions,
         }
     }
 
-    for (auto expr : partitions->children) {
+    for (auto expr : partitions->children_) {
         switch (expr->GetExprType()) {
             case kExprColumnRef:
                 node_ptr->GetPartitions().push_back(
@@ -151,7 +151,7 @@ SQLNode *NodeManager::MakeRowsFrameNode(SQLNode *node_ptr) {
 }
 
 ExprNode *NodeManager::MakeOrderByNode(ExprListNode *order, const bool is_asc) {
-    OrderByNode *node_ptr = new OrderByNode(order, true);
+    OrderByNode *node_ptr = new OrderByNode(order, is_asc);
     return RegisterNode(node_ptr);
 }
 
@@ -337,8 +337,8 @@ PlanNode *NodeManager::MakeMultiPlanNode(const PlanType &type) {
     return node_ptr;
 }
 
-PlanNode *NodeManager::MakeTablePlanNode(const TableNode *node) {
-    PlanNode *node_ptr = new TablePlanNode("", node->org_table_name_);
+PlanNode *NodeManager::MakeTablePlanNode(const std::string &table_name) {
+    PlanNode *node_ptr = new TablePlanNode("", table_name);
     return RegisterNode(node_ptr);
 }
 
@@ -506,11 +506,11 @@ SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
                                           const ExprListNode *columns_expr,
                                           const ExprListNode *values) {
     if (nullptr == columns_expr) {
-        InsertStmt *node_ptr = new InsertStmt(table_name, values->children);
+        InsertStmt *node_ptr = new InsertStmt(table_name, values->children_);
         return RegisterNode(node_ptr);
     } else {
         std::vector<std::string> column_names;
-        for (auto expr : columns_expr->children) {
+        for (auto expr : columns_expr->children_) {
             switch (expr->GetExprType()) {
                 case kExprColumnRef: {
                     ColumnRefNode *column_ref =
@@ -526,7 +526,7 @@ SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
             }
         }
         InsertStmt *node_ptr =
-            new InsertStmt(table_name, column_names, values->children);
+            new InsertStmt(table_name, column_names, values->children_);
         return RegisterNode(node_ptr);
     }
 }

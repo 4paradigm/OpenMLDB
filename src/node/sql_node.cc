@@ -15,6 +15,16 @@
 namespace fesql {
 namespace node {
 
+bool SQLEquals(const SQLNode *left, const SQLNode *right) {
+    return left == right ? true : nullptr == left ? false : left->Equals(right);
+}
+
+bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right) {
+    return left == right ? true : nullptr == left ? false : left->Equals(right);
+}
+bool ExprEquals(const ExprNode *left, const ExprNode *right) {
+    return left == right ? true : nullptr == left ? false : left->Equals(right);
+}
 void PrintSQLNode(std::ostream &output, const std::string &org_tab,
                   const SQLNode *node_ptr, const std::string &item_name,
                   bool last_child) {
@@ -138,13 +148,50 @@ void SQLNode::Print(std::ostream &output, const std::string &tab) const {
     output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type_) << "]";
 }
 
+bool SQLNode::Equals(const SQLNode *that) const {
+    if (this == that) {
+        return true;
+    }
+    if (nullptr == that || type_ != that->type_) {
+        return false;
+    }
+    return true;
+}
+
 void SQLNodeList::Print(std::ostream &output, const std::string &tab) const {
     PrintSQLVector(output, tab, list_, "list", true);
+}
+bool SQLNodeList::Equals(const SQLNodeList *that) const {
+    if (this == that) {
+        return true;
+    }
+    if (nullptr == that || this->list_.size() != that->list_.size()) {
+        return false;
+    }
+
+    auto iter1 = list_.cbegin();
+    auto iter2 = that->list_.cbegin();
+    while (iter1 != list_.cend()) {
+        if (!(*iter1)->Equals(*iter2)) {
+            return false;
+        }
+        iter1++;
+        iter2++;
+    }
+    return true;
 }
 
 void QueryNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     output << ": " << QueryTypeName(query_type_);
+}
+bool QueryNode::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+
+    const QueryNode *that = dynamic_cast<const QueryNode *>(node);
+    return this->query_type_ == that->query_type_;
 }
 
 const std::string AllNode::GetExprString() const {
@@ -153,6 +200,17 @@ const std::string AllNode::GetExprString() const {
     } else {
         return relation_name_ + ".*";
     }
+}
+bool AllNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const AllNode *that = dynamic_cast<const AllNode *>(node);
+    return this->relation_name_ == that->relation_name_ &&
+           ExprNode::Equals(node);
 }
 
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -184,12 +242,30 @@ const std::string ConstNode::GetExprString() const {
             return "unknow";
     }
 }
+bool ConstNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const ConstNode *that = dynamic_cast<const ConstNode *>(node);
+    return this->date_type_ == that->date_type_ &&
+           GetExprString() == that->GetExprString() && ExprNode::Equals(node);
+}
 
 void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, std::to_string(limit_cnt_), "limit_cnt", true);
+}
+bool LimitNode::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+    const LimitNode *that = dynamic_cast<const LimitNode *>(node);
+    return this->limit_cnt_ == that->limit_cnt_;
 }
 
 void TableNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -199,6 +275,14 @@ void TableNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, org_table_name_, "table", false);
     output << "\n";
     PrintValue(output, tab, alias_table_name_, "alias", true);
+}
+bool TableNode::Equals(const SQLNode *node) const {
+    if (!TableRefNode::Equals(node)) {
+        return false;
+    }
+
+    const TableNode *that = dynamic_cast<const TableNode *>(node);
+    return this->org_table_name_ == that->org_table_name_;
 }
 
 void ColumnRefNode::Print(std::ostream &output,
@@ -218,6 +302,17 @@ const std::string ColumnRefNode::GetExprString() const {
     str.append(column_name_);
     return str;
 }
+bool ColumnRefNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const ColumnRefNode *that = dynamic_cast<const ColumnRefNode *>(node);
+    return this->relation_name_ == that->relation_name_ &&
+           this->column_name_ == that->column_name_ && ExprNode::Equals(node);
+}
 
 void OrderByNode::Print(std::ostream &output,
                         const std::string &org_tab) const {
@@ -235,6 +330,13 @@ const std::string OrderByNode::GetExprString() const {
     str.append(nullptr == order_by_ ? "()" : order_by_->GetExprString());
     str.append(is_asc_ ? " ASC" : " DESC");
     return str;
+}
+bool OrderByNode::Equals(const ExprNode *node) const {
+    if (!ExprNode::Equals(node)) {
+        return false;
+    }
+    const OrderByNode *that = dynamic_cast<const OrderByNode *>(node);
+    return is_asc_ == that->is_asc_ && ExprEquals(order_by_, that->order_by_);
 }
 
 void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -258,6 +360,14 @@ void FrameNode::Print(std::ostream &output, const std::string &org_tab) const {
         PrintSQLNode(output, tab, end_, "end", true);
     }
 }
+bool FrameNode::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+    const FrameNode *that = dynamic_cast<const FrameNode *>(node);
+    return this->frame_type_ == that->frame_type_;
+    SQLEquals(this->start_, that->start_) && SQLEquals(this->end_, that->end_);
+}
 
 void CallExprNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
@@ -279,6 +389,19 @@ const std::string CallExprNode::GetExprString() const {
     }
     return str;
 }
+bool CallExprNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const CallExprNode *that = dynamic_cast<const CallExprNode *>(node);
+    return this->is_agg_ == that->is_agg_ &&
+           this->function_name_ == that->function_name_ &&
+           ExprEquals(this->args_, that->args_) &&
+           SQLEquals(this->over_, that->over_) && ExprNode::Equals(node);
+}
 
 void WindowDefNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
@@ -296,6 +419,16 @@ void WindowDefNode::Print(std::ostream &output,
     output << "\n";
     PrintSQLNode(output, tab, frame_ptr_, "frame", true);
 }
+bool WindowDefNode::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+    const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
+    return this->window_name_ == that->window_name_ &&
+           this->orders_ == that->orders_ &&
+           this->partitions_ == that->partitions_ &&
+           SQLEquals(this->frame_ptr_, that->frame_ptr_);
+}
 
 void ResTarget::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
@@ -304,6 +437,13 @@ void ResTarget::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSQLNode(output, tab, val_, "val", false);
     output << "\n";
     PrintValue(output, tab, name_, "name", true);
+}
+bool ResTarget::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+    const ResTarget *that = dynamic_cast<const ResTarget *>(node);
+    return this->name_ == that->name_ && ExprEquals(this->val_, that->val_);
 }
 
 void SelectQueryNode::Print(std::ostream &output,
@@ -331,6 +471,21 @@ void SelectQueryNode::Print(std::ostream &output,
     output << "\n";
     last_child = true;
     PrintSQLNodeList(output, tab, window_list_, "window_list", last_child);
+}
+bool SelectQueryNode::Equals(const SQLNode *node) const {
+    if (!QueryNode::Equals(node)) {
+        return false;
+    }
+    const SelectQueryNode *that = dynamic_cast<const SelectQueryNode *>(node);
+    return this->distinct_opt_ == that->distinct_opt_ &&
+           SQLListEquals(this->select_list_, that->select_list_) &&
+           SQLListEquals(this->tableref_list_, that->tableref_list_) &&
+           SQLListEquals(this->window_list_, that->window_list_) &&
+           SQLEquals(this->where_clause_ptr_, that->where_clause_ptr_) &&
+           SQLEquals(this->group_clause_ptr_, that->group_clause_ptr_) &&
+           SQLEquals(this->having_clause_ptr_, that->having_clause_ptr_) &&
+           ExprEquals(this->order_clause_ptr_, that->order_clause_ptr_) &&
+           SQLEquals(this->limit_ptr_, that->limit_ptr_);
 }
 
 // Return the node type name
@@ -459,7 +614,6 @@ std::ostream &operator<<(std::ostream &output, const SQLNode &thiz) {
     thiz.Print(output, "");
     return output;
 }
-
 std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz) {
     thiz.Print(output, "");
     return output;
@@ -490,7 +644,7 @@ WindowDefNode *WindowOfExpression(
                 func_node_ptr->GetArgs()->IsEmpty()) {
                 return nullptr;
             }
-            for (auto arg : func_node_ptr->GetArgs()->children) {
+            for (auto arg : func_node_ptr->GetArgs()->children_) {
                 WindowDefNode *ptr =
                     WindowOfExpression(windows, dynamic_cast<ExprNode *>(arg));
                 if (nullptr != ptr && nullptr != w_ptr) {
@@ -518,10 +672,6 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLVector(output, tab, column_desc_list_, "column_desc_list_", true);
     output << "\n";
-    //    if (nullptr != table_def_) {
-    //        PrintValue(output, tab, table_def_->DebugString() , "table def",
-    //        true);
-    //    }
 }
 
 void ColumnDefNode::Print(std::ostream &output,
@@ -590,35 +740,56 @@ void BinaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSQLVector(output, tab, children, ExprOpTypeName(op_), true);
+    PrintSQLVector(output, tab, children_, ExprOpTypeName(op_), true);
 }
 const std::string BinaryExpr::GetExprString() const {
     std::string str = "";
     str.append("")
-        .append(children[0]->GetExprString())
+        .append(children_[0]->GetExprString())
         .append(" ")
         .append(ExprOpTypeName(op_))
         .append(" ")
-        .append(children[1]->GetExprString())
+        .append(children_[1]->GetExprString())
         .append("");
     return str;
 }
+bool BinaryExpr::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const BinaryExpr *that = dynamic_cast<const BinaryExpr *>(node);
+    return this->op_ == that->op_ && ExprNode::Equals(node);
+}
+
 void UnaryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSQLVector(output, tab, children, ExprOpTypeName(op_), true);
+    PrintSQLVector(output, tab, children_, ExprOpTypeName(op_), true);
 }
 const std::string UnaryExpr::GetExprString() const {
     std::string str = "";
     if (op_ == kFnOpBracket) {
-        str.append("(").append(children[0]->GetExprString()).append(")");
+        str.append("(").append(children_[0]->GetExprString()).append(")");
         return str;
     }
     str.append(ExprOpTypeName(op_))
         .append(" ")
-        .append(children[0]->GetExprString());
+        .append(children_[0]->GetExprString());
     return str;
+}
+bool UnaryExpr::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const UnaryExpr *that = dynamic_cast<const UnaryExpr *>(node);
+    return this->op_ == that->op_ && ExprNode::Equals(node);
 }
 void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -627,35 +798,65 @@ void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, name_, "var", true);
 }
 const std::string ExprIdNode::GetExprString() const { return name_; }
+bool ExprIdNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const ExprIdNode *that = dynamic_cast<const ExprIdNode *>(node);
+    return this->name_ == that->name_;
+}
 
 void ExprNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << org_tab << SPACE_ST << "expr[" << ExprTypeName(expr_type_) << "]";
 }
 const std::string ExprNode::GetExprString() const { return ""; }
+bool ExprNode::Equals(const ExprNode *that) const {
+    if (this == that) {
+        return true;
+    }
+    if (nullptr == that || expr_type_ != that->expr_type_ ||
+        children_.size() != that->children_.size()) {
+        return false;
+    }
+
+    auto iter1 = children_.cbegin();
+    auto iter2 = that->children_.cbegin();
+    while (iter1 != children_.cend()) {
+        if (!(*iter1)->Equals(*iter2)) {
+            return false;
+        }
+        iter1++;
+        iter2++;
+    }
+    return true;
+}
 
 void ExprListNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
-    if (children.empty()) {
+    if (children_.empty()) {
         return;
     }
     const std::string tab = org_tab + INDENT + SPACE_ED;
-    auto iter = children.cbegin();
+    auto iter = children_.cbegin();
     (*iter)->Print(output, org_tab);
     iter++;
-    for (; iter != children.cend(); iter++) {
+    for (; iter != children_.cend(); iter++) {
         output << "\n";
         (*iter)->Print(output, org_tab);
     }
 }
 const std::string ExprListNode::GetExprString() const {
-    if (children.empty()) {
+    if (children_.empty()) {
         return "()";
     } else {
         std::string str = "(";
-        auto iter = children.cbegin();
+        auto iter = children_.cbegin();
         str.append((*iter)->GetExprString());
         iter++;
-        for (; iter != children.cend(); iter++) {
+        for (; iter != children_.cend(); iter++) {
             str.append(",");
             str.append((*iter)->GetExprString());
         }
@@ -823,6 +1024,14 @@ void TypeNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, GetName(), "type", true);
 }
+bool TypeNode::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+
+    const TypeNode *that = dynamic_cast<const TypeNode *>(node);
+    return this->base_ == that->base_ && this->generics_ == that->generics_;
+}
 
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     TableRefNode::Print(output, org_tab);
@@ -834,6 +1043,15 @@ void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSQLNode(output, tab, left_, "left", false);
     output << "\n";
     PrintSQLNode(output, tab, right_, "right", true);
+}
+bool JoinNode::Equals(const SQLNode *node) const {
+    if (!TableRefNode::Equals(node)) {
+        return false;
+    }
+    const JoinNode *that = dynamic_cast<const JoinNode *>(node);
+    return join_type_ == that->join_type_ &&
+           ExprEquals(condition_, that->condition_) &&
+           SQLEquals(this->left_, that->right_);
 }
 void UnionQueryNode::Print(std::ostream &output,
                            const std::string &org_tab) const {
@@ -847,17 +1065,47 @@ void UnionQueryNode::Print(std::ostream &output,
     output << "\n";
     PrintSQLNode(output, tab, right_, "right", true);
 }
+bool UnionQueryNode::Equals(const SQLNode *node) const {
+    if (!QueryNode::Equals(node)) {
+        return false;
+    }
+    const UnionQueryNode *that = dynamic_cast<const UnionQueryNode *>(node);
+    return this->is_all_ && that->is_all_ &&
+           SQLEquals(this->left_, that->right_);
+}
 void QueryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintSQLNode(output, tab, query_, "query", true);
 }
+bool QueryExpr::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const QueryExpr *that = dynamic_cast<const QueryExpr *>(node);
+    return SQLEquals(this->query_, that->query_) && ExprNode::Equals(node);
+}
+const std::string QueryExpr::GetExprString() const {
+    return "query expr";
+}
 
 void TableRefNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     output << ": " << TableRefTypeName(ref_type_);
+}
+bool TableRefNode::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+
+    const TableRefNode *that = dynamic_cast<const TableRefNode *>(node);
+    return this->ref_type_ == that->ref_type_ &&
+           this->alias_table_name_ == that->alias_table_name_;
 }
 
 void QueryRefNode::Print(std::ostream &output,
@@ -866,6 +1114,28 @@ void QueryRefNode::Print(std::ostream &output,
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintSQLNode(output, tab, query_, "query", true);
+}
+bool QueryRefNode::Equals(const SQLNode *node) const {
+    if (!TableRefNode::Equals(node)) {
+        return false;
+    }
+    const QueryRefNode *that = dynamic_cast<const QueryRefNode *>(node);
+    return SQLEquals(this->query_, that->query_);
+}
+bool FrameBound::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+    const FrameBound *that = dynamic_cast<const FrameBound *>(node);
+    return this->bound_type_ == that->bound_type_ &&
+           ExprEquals(this->offset_, that->offset_);
+}
+bool NameNode::Equals(const SQLNode *node) const {
+    if (!SQLNode::Equals(node)) {
+        return false;
+    }
+    const NameNode *that = dynamic_cast<const NameNode *>(node);
+    return this->name_ == that->name_;
 }
 }  // namespace node
 }  // namespace fesql

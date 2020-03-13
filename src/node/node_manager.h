@@ -65,7 +65,7 @@ class NodeManager {
                                        const ExprNode *condition);
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
                                  node::ExprNode *expression);
-    PlanNode *MakeTablePlanNode(const TableNode *node);
+    PlanNode *MakeTablePlanNode(const std::string &node);
     PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
                            const ExprNode *condition);
     // Make SQLxxx Node

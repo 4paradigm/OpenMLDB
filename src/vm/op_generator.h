@@ -27,6 +27,8 @@
 #include "node/sql_node.h"
 #include "vm/catalog.h"
 #include "vm/op.h"
+#include "base/graph.h"
+#include "vm/physical_op.h"
 
 namespace fesql {
 namespace vm {
@@ -52,8 +54,8 @@ class OpGenerator {
                   const ::fesql::node::FuncDefPlanNode* plan,
                   base::Status& status);  // NOLINT
 
-    bool GenSQL(const ::fesql::node::QueryPlanNode* node,
-                const std::string& db, ::llvm::Module* module,
+    bool GenSQL(const ::fesql::node::QueryPlanNode* node, const std::string& db,
+                ::llvm::Module* module,
                 OpVector* ops,          // NOLINT
                 base::Status& status);  // NOLINT
 

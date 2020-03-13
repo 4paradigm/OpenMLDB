@@ -41,8 +41,9 @@ class PlanNode {
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
 
+    virtual bool Equals(const PlanNode *that) const;
+    const PlanType type_;
  protected:
-    PlanType type_;
     std::vector<PlanNode *> children_;
 };
 
@@ -55,6 +56,7 @@ class LeafPlanNode : public PlanNode {
     virtual bool AddChild(PlanNode *node);
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
+    virtual bool Equals(const PlanNode *that) const;
 };
 
 class UnaryPlanNode : public PlanNode {
@@ -68,6 +70,7 @@ class UnaryPlanNode : public PlanNode {
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
+    virtual bool Equals(const PlanNode *that) const;
 };
 
 class BinaryPlanNode : public PlanNode {
@@ -83,6 +86,7 @@ class BinaryPlanNode : public PlanNode {
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
+    virtual bool Equals(const PlanNode *that) const;
 };
 
 class MultiChildPlanNode : public PlanNode {
@@ -93,6 +97,7 @@ class MultiChildPlanNode : public PlanNode {
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
+    virtual bool Equals(const PlanNode *that) const;
 };
 
 class RenamePlanNode : public UnaryPlanNode {
@@ -100,6 +105,8 @@ class RenamePlanNode : public UnaryPlanNode {
     RenamePlanNode(PlanNode *node, const std::string table_name)
         : UnaryPlanNode(node, kPlanTypeRename), table_(table_name) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const PlanNode *that) const;
+
     const std::string table_;
 };
 class TablePlanNode : public LeafPlanNode {
@@ -107,6 +114,7 @@ class TablePlanNode : public LeafPlanNode {
     TablePlanNode(const std::string &db, const std::string &table)
         : LeafPlanNode(kPlanTypeTable), db_(db), table_(table) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *that) const;
     const std::string db_;
     const std::string table_;
 };
@@ -125,6 +133,7 @@ class JoinPlanNode : public BinaryPlanNode {
           join_type_(join_type),
           condition_(expression) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *that) const;
     const JoinType join_type_;
     const ExprNode *condition_;
 };
@@ -134,6 +143,7 @@ class UnionPlanNode : public BinaryPlanNode {
     UnionPlanNode(PlanNode *left, PlanNode *right, bool is_all)
         : BinaryPlanNode(kPlanTypeUnion, left, right), is_all(is_all) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *that) const;
     const bool is_all;
 };
 
@@ -148,6 +158,7 @@ class SortPlanNode : public UnaryPlanNode {
     SortPlanNode(PlanNode *node, const OrderByNode *order_list)
         : UnaryPlanNode(node, kPlanTypeSort), order_list_(order_list) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *that) const;
     const OrderByNode *order_list_;
 };
 
@@ -156,6 +167,7 @@ class GroupPlanNode : public UnaryPlanNode {
     GroupPlanNode(PlanNode *node, const ExprListNode *by_list)
         : UnaryPlanNode(node, kPlanTypeGroup), by_list_(by_list) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *node) const;
     const ExprListNode *by_list_;
 };
 
@@ -165,6 +177,7 @@ class QueryPlanNode : public UnaryPlanNode {
         : UnaryPlanNode(node, kPlanTypeQuery) {}
     ~QueryPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *node) const;
 };
 
 class FilterPlanNode : public UnaryPlanNode {
@@ -173,6 +186,7 @@ class FilterPlanNode : public UnaryPlanNode {
         : UnaryPlanNode(node, kPlanTypeFilter), condition_(condition) {}
     ~FilterPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *node) const;
     const ExprNode *condition_;
 };
 
@@ -185,6 +199,8 @@ class LimitPlanNode : public UnaryPlanNode {
     const int GetLimitCnt() const { return limit_cnt_; }
     void SetLimitCnt(int limit_cnt) { limit_cnt_ = limit_cnt; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *node) const;
+
 
  private:
     int limit_cnt_;
@@ -204,7 +220,7 @@ class ProjectNode : public LeafPlanNode {
     const uint32_t GetPos() const { return pos_; }
     std::string GetName() const { return name_; }
     node::ExprNode *GetExpression() const { return expression_; }
-
+    virtual bool Equals(const PlanNode *node) const;
  private:
     uint32_t pos_;
     std::string name_;
@@ -239,6 +255,7 @@ class WindowPlanNode : public LeafPlanNode {
     const std::string &GetName() const { return name; }
     void SetName(const std::string &name) { WindowPlanNode::name = name; }
     const int GetId() const { return id; }
+    virtual bool Equals(const PlanNode *node) const;
 
  private:
     int id;
@@ -276,6 +293,7 @@ class ProjectListNode : public LeafPlanNode {
 
     void SetScanLimit(int scan_limit) { scan_limit_ = scan_limit; }
     const uint64_t GetScanLimit() const { return scan_limit_; }
+    virtual bool Equals(const PlanNode *node) const;
 
  private:
     const WindowPlanNode *w_ptr_;
@@ -295,6 +313,8 @@ class ProjectPlanNode : public UnaryPlanNode {
           project_list_vec_(project_list_vec),
           pos_mapping_(pos_mapping) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const PlanNode *node) const;
+
     const std::string table_;
     const PlanNodeList project_list_vec_;
     const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
@@ -365,6 +385,8 @@ class FuncDefPlanNode : public LeafPlanNode {
     const FnNodeFnDef *fn_def_;
 };
 
+bool PlanEquals(const PlanNode * left, const PlanNode *right);
+bool PlanListEquals(const std::vector<PlanNode *> &list1, const std::vector<PlanNode *> &list2);
 void PrintPlanVector(std::ostream &output, const std::string &tab,
                      PlanNodeList vec, const std::string vector_name,
                      bool last_item);

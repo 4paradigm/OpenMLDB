@@ -26,14 +26,11 @@ TEST_F(NodeManagerTest, MakeSQLNode) {
     manager->MakeTableNode("", "table2");
     manager->MakeLimitNode(10);
 
-    manager->MakeTablePlanNode(
-        dynamic_cast<TableNode *>(manager->MakeTableNode("", "t1")));
-    manager->MakeTablePlanNode(
-        dynamic_cast<TableNode *>(manager->MakeTableNode("", "t2")));
-    manager->MakeTablePlanNode(
-        dynamic_cast<TableNode *>(manager->MakeTableNode("", "t3")));
+    manager->MakeTablePlanNode("t1");
+    manager->MakeTablePlanNode("t2");
+    manager->MakeTablePlanNode("t3");
 
-    ASSERT_EQ(6, manager->GetParserNodeListSize());
+    ASSERT_EQ(3, manager->GetParserNodeListSize());
     ASSERT_EQ(3, manager->GetPlanNodeListSize());
     delete manager;
 }
