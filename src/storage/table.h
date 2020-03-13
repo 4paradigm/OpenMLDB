@@ -12,6 +12,7 @@
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
 #include "storage/ticket.h"
+#include "storage/schema.h"
 
 namespace rtidb {
 namespace storage {
@@ -27,20 +28,6 @@ enum TableStat {
     kSnapshotPaused
 };
 
-enum IndexStat {
-    kReady = 0,
-    kWaiting,
-    kDeleting,
-    kDeleted
-};
-
-struct ColumnKey {
-    ColumnKey() : status(IndexStat::kReady) {}
-    ~ColumnKey() = default;
-    std::atomic<IndexStat> status;
-    std::vector<uint32_t> column_idx;
-};
-
 class Table {
 
 public:
@@ -48,21 +35,7 @@ public:
     Table(::rtidb::common::StorageMode storage_mode, const std::string& name, uint32_t id, uint32_t pid, 
             uint64_t ttl, bool is_leader, uint64_t ttl_offset,
             const std::map<std::string, uint32_t>& mapping, 
-            ::rtidb::api::TTLType ttl_type, ::rtidb::api::CompressType compress_type) :
-        storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
-        ttl_offset_(ttl_offset), is_leader_(is_leader),
-        mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {
-        ::rtidb::api::TTLDesc* ttl_desc = table_meta_.mutable_ttl_desc();
-        ttl_desc->set_ttl_type(ttl_type);
-        if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
-            ttl_desc->set_abs_ttl(ttl/(60*1000));
-            ttl_desc->set_lat_ttl(0);
-        } else {
-            ttl_desc->set_abs_ttl(0);
-            ttl_desc->set_lat_ttl(ttl/(60*1000));
-        }
-        last_make_snapshot_time_ = 0;
-    }
+            ::rtidb::api::TTLType ttl_type, ::rtidb::api::CompressType compress_type);
     virtual ~Table() {}
     virtual bool Init() = 0;
 
@@ -170,20 +143,20 @@ public:
         table_meta_.CopyFrom(table_meta);
     }
 
-    inline std::map<std::string, uint32_t>& GetMapping() {
-        return mapping_;
+    const std::vector<std::shared_ptr<IndexDef>>& GetAllIndex() {
+        return table_index_->GetAllIndex();
+    }
+
+    std::shared_ptr<IndexDef> GetIndex(const std::string& name) {
+        return table_index_->GetIndex(name);
+    }
+
+    std::shared_ptr<IndexDef> GetIndex(uint32_t idx) {
+        return table_index_->GetIndex(idx);
     }
 
     inline std::map<std::string, uint8_t>& GetTSMapping() {
         return ts_mapping_;
-    }
-
-    inline std::map<uint32_t, std::shared_ptr<ColumnKey>>& GetColumnMap() {
-        return column_key_map_;
-    }
-
-    inline bool IsIndexDeleted(uint32_t idx) {
-        return column_key_map_.count(idx) && column_key_map_[idx]->status.load(std::memory_order_relaxed);
     }
 
     inline void SetTTLType(const ::rtidb::api::TTLType& type) {
@@ -199,11 +172,12 @@ public:
     }
 
     TTLDesc GetTTL(uint32_t index) {
-        auto pos = column_key_map_.find(index);
-        if (pos != column_key_map_.end() && !pos->second->column_idx.empty()) {
-            if (pos->second->column_idx.front() < abs_ttl_vec_.size()) {
-                return TTLDesc(abs_ttl_vec_[pos->second->column_idx.front()]->load(std::memory_order_relaxed)/(60*1000),
-                    lat_ttl_vec_[pos->second->column_idx.front()]->load(std::memory_order_relaxed));
+        auto index_def = GetIndex(index);
+        if (index_def) {
+            auto ts_vec = index_def->GetTsColumn();
+            if (!ts_vec.empty() && ts_vec.front() < abs_ttl_vec_.size()) {
+                return TTLDesc(abs_ttl_vec_[ts_vec.front()]->load(std::memory_order_relaxed)/(60*1000),
+                    lat_ttl_vec_[ts_vec.front()]->load(std::memory_order_relaxed));
             }
         }
         return TTLDesc(abs_ttl_.load(std::memory_order_relaxed)/(60*1000),
@@ -257,9 +231,8 @@ protected:
     bool is_leader_;
     std::atomic<uint32_t> table_status_;
     std::string schema_;
-    std::map<std::string, uint32_t> mapping_;
     std::map<std::string, uint8_t> ts_mapping_;
-    std::map<uint32_t, std::shared_ptr<ColumnKey>> column_key_map_;
+    std::shared_ptr<TableIndex> table_index_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> abs_ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_abs_ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> lat_ttl_vec_;

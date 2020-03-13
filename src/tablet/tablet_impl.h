@@ -38,6 +38,7 @@ using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
 using ::rtidb::zk::ZkClient;
 using ::rtidb::base::SpinMutex;
+using ::rtidb::storage::IndexDef;
 
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 

@@ -19,6 +19,7 @@
 #include "storage/ticket.h"
 #include "storage/iterator.h"
 #include "proto/tablet.pb.h"
+#include "storage/schema.h"
 
 namespace rtidb {
 namespace storage {
@@ -29,35 +30,6 @@ using ::rtidb::base::Slice;
 
 class Segment;
 class Ticket;
-
-struct TTLDesc {
-    TTLDesc() = default;
-    
-    TTLDesc(const uint64_t abs, const uint64_t lat) : abs_ttl(abs), lat_ttl(lat) {}
-
-    inline bool HasExpire(const ::rtidb::api::TTLType& ttl_type) const {
-        switch(ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: return abs_ttl != 0;
-            case ::rtidb::api::TTLType::kLatestTime: return lat_ttl != 0;
-            case ::rtidb::api::TTLType::kAbsAndLat: return abs_ttl != 0 && lat_ttl != 0;
-            case ::rtidb::api::TTLType::kAbsOrLat: return abs_ttl != 0 || lat_ttl != 0;
-            default: return false;
-        }
-    }
-
-    inline std::string ToString(const ::rtidb::api::TTLType& ttl_type) const {
-        switch(ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: return std::to_string(abs_ttl)+"min";
-            case ::rtidb::api::TTLType::kLatestTime: return std::to_string(lat_ttl);
-            case ::rtidb::api::TTLType::kAbsAndLat: return std::to_string(abs_ttl)+"min&&" +std::to_string(lat_ttl);
-            case ::rtidb::api::TTLType::kAbsOrLat: return std::to_string(abs_ttl)+"min||" +std::to_string(lat_ttl);
-            default: return "";
-        }
-    }
-
-    uint64_t abs_ttl;
-    uint64_t lat_ttl;
-};
 
 struct DataBlock {
     // dimension count down

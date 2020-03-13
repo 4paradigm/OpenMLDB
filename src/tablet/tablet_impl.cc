@@ -423,15 +423,15 @@ void TabletImpl::Get(RpcController* controller,
         uint32_t index = 0;
         int ts_index = -1;
         if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
+            std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+            if (!index_def || !index_def->IsReady()) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
                 response->set_code(108);
                 response->set_msg("idx name not found");
                 return;
             }
-            index = iit->second;
+            index = index_def->GetId();
         }
         if (request->has_ts_name() && request->ts_name().size() > 0) {
             auto iter = table->GetTSMapping().find(request->ts_name());
@@ -1039,15 +1039,15 @@ void TabletImpl::Scan(RpcController* controller,
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
+        std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+        if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
             response->set_code(108);
             response->set_msg("idx name not found");
             return;
         }
-        index = iit->second;
+        index = index_def->GetId();
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = table->GetTSMapping().find(request->ts_name());
@@ -1132,15 +1132,15 @@ void TabletImpl::Count(RpcController* controller,
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
+        std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+        if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
             response->set_code(108);
             response->set_msg("idx name not found");
             return;
         }
-        index = iit->second;
+        index = index_def->GetId();
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = table->GetTSMapping().find(request->ts_name());
@@ -1244,15 +1244,15 @@ void TabletImpl::Traverse(RpcController* controller,
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
+        std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+        if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
             response->set_code(108);
             response->set_msg("idx name not found");
             return;
         }
-        index = iit->second;
+        index = index_def->GetId();
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = table->GetTSMapping().find(request->ts_name());
@@ -1398,15 +1398,15 @@ void TabletImpl::Delete(RpcController* controller,
         }
         uint32_t idx = 0;
         if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
+            std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+            if (!index_def || !index_def->IsReady()) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
                 response->set_code(108);
                 response->set_msg("idx name not found");
                 return;
             }
-            idx = iit->second;
+            idx = index_def->GetId();
         }
         if (table->Delete(request->key(), idx)) {
             response->set_code(0);
@@ -1864,12 +1864,13 @@ void TabletImpl::GetTableStatus(RpcController* controller,
                     status->set_record_pk_cnt(mem_table->GetRecordPkCnt());
                     status->set_skiplist_height(mem_table->GetKeyEntryHeight());
                     uint64_t record_idx_cnt = 0;
-                    for (auto iit = table->GetMapping().begin(); iit != table->GetMapping().end(); ++iit) {
+                    auto indexs = table->GetAllIndex();
+                    for (const auto& index_def : indexs) {
                         ::rtidb::api::TsIdxStatus* ts_idx_status = status->add_ts_idx_status();
-                        ts_idx_status->set_idx_name(iit->first);
+                        ts_idx_status->set_idx_name(index_def->GetName());
                         uint64_t* stats = NULL;
                         uint32_t size = 0;
-                        bool ok = mem_table->GetRecordIdxCnt(iit->second, &stats, &size);
+                        bool ok = mem_table->GetRecordIdxCnt(index_def->GetId(), &stats, &size);
                         if (ok) {
                             for (uint32_t i = 0; i < size; i++) {
                                 ts_idx_status->add_seg_cnts(stats[i]); 
