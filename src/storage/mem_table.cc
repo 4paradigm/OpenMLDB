@@ -102,7 +102,8 @@ bool MemTable::Init() {
         if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "init failed, index %u is not exist. tid %u pid %u",
                         i, id_, pid_);
-            return false;
+            segments_.push_back(NULL);
+            continue;
         }
         const std::vector<uint32_t> ts_vec =  index_def->GetTsColumn();
         Segment** seg_arr = new Segment*[seg_cnt_];
@@ -585,7 +586,7 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
 TableIterator* MemTable::NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) {
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
-        PDLOG(WARNING, "index %d not found in table, tid %u pid %u", index, id_, pid_);
+        PDLOG(WARNING, "index %u not found in table, tid %u pid %u", index, id_, pid_);
         return NULL;
     }
     const std::vector<uint32_t> ts_vec = index_def->GetTsColumn();
@@ -619,7 +620,7 @@ uint64_t MemTable::GetRecordIdxCnt() {
     uint64_t record_idx_cnt = 0;
     const std::vector<std::shared_ptr<IndexDef>> indexs = GetAllIndex();
     for (const auto& index_def : indexs) {
-        if (index_def->IsReady()) {
+        if (index_def->IsReady() && index_def->GetId() < segments_.size()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 record_idx_cnt += segments_[index_def->GetId()][j]->GetIdxCnt(); 
             }
@@ -632,7 +633,7 @@ uint64_t MemTable::GetRecordPkCnt() {
     uint64_t record_pk_cnt = 0;
     const std::vector<std::shared_ptr<IndexDef>> index_vec = GetAllIndex();
     for (const auto& index_def : index_vec) {
-        if (index_def->IsReady()) {
+        if (index_def->IsReady() && index_def->GetId() < segments_.size()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 record_pk_cnt += segments_[index_def->GetId()][j]->GetPkCnt(); 
             }

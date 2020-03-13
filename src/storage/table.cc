@@ -42,7 +42,7 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string& name,
 
 bool Table::CheckTsValid(uint32_t index, int32_t ts_idx) {
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
-    if (!index_def) {
+    if (!index_def || !index_def->IsReady()) {
         return false;
     }
     auto ts_vec = index_def->GetTsColumn();

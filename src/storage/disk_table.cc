@@ -270,10 +270,6 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, 
         uint64_t ts, uint32_t ts_idx, std::string& value) {
-    if (idx >= idx_cnt_) {
-        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
-        return false;
-    }
     std::shared_ptr<IndexDef> index_def = GetIndex(idx);
     if (!index_def) {
         PDLOG(WARNING, "index %u not found in table tid %u pid %u", idx, id_, pid_);
@@ -303,14 +299,15 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk,
 }
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value) {
-    if (idx >= idx_cnt_) {
-        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
-        return false;
-    }
     rocksdb::Slice spk ;
     std::shared_ptr<IndexDef> index_def = GetIndex(idx);
-    if (index_def && index_def->GetTsColumn().size() > 1) {
-        std::string combine_key = CombineKeyTs(pk, ts, index_def->GetTsColumn()[0]);
+    if (!index_def) {
+        PDLOG(WARNING, "index %u not found in table, tid %u pid %u", idx, id_, pid_);
+        return false;
+    }
+    auto ts_vec = index_def->GetTsColumn();
+    if (ts_vec.size() > 1) {
+        std::string combine_key = CombineKeyTs(pk, ts, ts_vec.front());
         spk = rocksdb::Slice(combine_key);
     } else {
         std::string combine_key = CombineKeyTs(pk, ts);

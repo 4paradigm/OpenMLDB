@@ -173,7 +173,7 @@ public:
 
     TTLDesc GetTTL(uint32_t index) {
         auto index_def = GetIndex(index);
-        if (index_def) {
+        if (index_def && index_def->IsReady()) {
             auto ts_vec = index_def->GetTsColumn();
             if (!ts_vec.empty() && ts_vec.front() < abs_ttl_vec_.size()) {
                 return TTLDesc(abs_ttl_vec_[ts_vec.front()]->load(std::memory_order_relaxed)/(60*1000),
