@@ -554,6 +554,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Map<String, Object> conditionColumns = new HashMap<>();
             conditionColumns.put("id", 11l);
             Map<String, Object> valueColumns = new HashMap<>();
+            valueColumns.put("attribute", "a3");
             valueColumns.put("image", "i3");
             ok = tableSyncClient.update(name, conditionColumns, valueColumns, wo);
             Assert.assertTrue(ok);
@@ -565,7 +566,7 @@ public class TableSyncClientTest extends TestCaseBase {
             queryMap = it.getDecodedValue();
             Assert.assertEquals(queryMap.size(), 3);
             Assert.assertEquals(queryMap.get("id"), 11l);
-            Assert.assertEquals(queryMap.get("attribute"), "a1");
+            Assert.assertEquals(queryMap.get("attribute"), "a3");
             Assert.assertEquals(queryMap.get("image"), "i3");
 
             Map<String, Object> conditionColumns2 = new HashMap<>();
