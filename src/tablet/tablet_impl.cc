@@ -4233,11 +4233,15 @@ void TabletImpl::DeleteIndex(RpcController* controller,
             if (!mem_table->DeleteIndex(request->idx_name())) {
                 response->set_code(601);
                 response->set_msg("delete index fail!");
+                PDLOG(WARNING, "delete index %s failed. tid %u pid %u", 
+                        request->idx_name().c_str(), request->tid(), kv.first);
                 return;
             }
+            PDLOG(INFO, "delete index %s success. tid %u pid %u", 
+                    request->idx_name().c_str(), request->tid(), kv.first);
         }
     }
-    PDLOG(INFO, "delete index : tid[%u] index[%s]", request->tid(), request->idx_name());
+    PDLOG(INFO, "delete index %s success. tid %u", request->idx_name().c_str(), request->tid());
     response->set_code(0);
     response->set_msg("ok");
 }

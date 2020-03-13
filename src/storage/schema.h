@@ -62,8 +62,8 @@ enum IndexStatus {
 
 class IndexDef {
 public:
-	IndexDef(const std::string& name, uint32_t id);
-	~IndexDef();
+    IndexDef(const std::string& name, uint32_t id);
+    ~IndexDef();
     const std::string& GetName() { return name_; }
     const std::vector<uint32_t>& GetTsColumn() { return ts_column_; }
     void SetTsColumn(const std::vector<uint32_t>& ts_vec) {
