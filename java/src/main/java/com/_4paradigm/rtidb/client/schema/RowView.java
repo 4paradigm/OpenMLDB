@@ -1,7 +1,7 @@
 package com._4paradigm.rtidb.client.schema;
 
 import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.type.Type.DataType;
+import com._4paradigm.rtidb.client.type.DataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +21,7 @@ public class RowView {
     private int str_addr_length = 0;
     private List<Integer> offset_vec = new ArrayList<>();
     private boolean is_valid = false;
+
 
     public RowView(List<ColumnDesc> schema) {
         this.schema = schema;
@@ -53,7 +54,7 @@ public class RowView {
         str_field_start_offset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
-            if (column.getDataType() == DataType.kVarchar) {
+            if (column.getDataType() == DataType.Varchar) {
                 offset_vec.add(string_field_cnt);
                 string_field_cnt++;
             } else {
@@ -70,7 +71,7 @@ public class RowView {
         return true;
     }
 
-    private boolean reset(ByteBuffer row, int size) {
+    public boolean reset(ByteBuffer row, int size) {
         if (schema.size() == 0 || row == null || size <= RowCodecCommon.HEADER_LENGTH ||
                 row.getInt(RowCodecCommon.VERSION_LENGTH) != size) {
             is_valid = false;
@@ -136,43 +137,43 @@ public class RowView {
     }
 
     public Boolean getBool(int idx) throws TabletException {
-        return (Boolean) getValue(row, idx, DataType.kBool);
+        return (Boolean) getValue(row, idx, DataType.Bool);
     }
 
     public Integer getInt32(int idx) throws TabletException {
-        return (Integer) getValue(row, idx, DataType.kInt32);
+        return (Integer) getValue(row, idx, DataType.Int);
     }
 
     public Long getTimestamp(int idx) throws TabletException {
-        return (Long) getValue(row, idx, DataType.kTimestamp);
+        return (Long) getValue(row, idx, DataType.Timestamp);
     }
 
     public Long getInt64(int idx) throws TabletException {
-        return (Long) getValue(row, idx, DataType.kInt64);
+        return (Long) getValue(row, idx, DataType.BigInt);
     }
 
     public Short getInt16(int idx) throws TabletException {
-        return (Short) getValue(row, idx, DataType.kInt16);
+        return (Short) getValue(row, idx, DataType.SmallInt);
     }
 
     public Float getFloat(int idx) throws TabletException {
-        return (Float) getValue(row, idx, DataType.kFloat);
+        return (Float) getValue(row, idx, DataType.Float);
     }
 
     public Double getDouble(int idx) throws TabletException {
-        return (Double) getValue(row, idx, DataType.kDouble);
+        return (Double) getValue(row, idx, DataType.Double);
     }
 
-    public Object getInteger(ByteBuffer row, int idx, DataType type) throws TabletException {
+    public Object getIntegersNum(ByteBuffer row, int idx, DataType type) throws TabletException {
         switch (type) {
-            case kInt16: {
+            case SmallInt: {
                 return (Short) getValue(row, idx, type);
             }
-            case kInt32: {
+            case Int: {
                 return (Integer) getValue(row, idx, type);
             }
-            case kTimestamp:
-            case kInt64: {
+            case Timestamp:
+            case BigInt: {
                 return (Long) getValue(row, idx, type);
             }
             default:
@@ -201,7 +202,7 @@ public class RowView {
         Object val = null;
         int offset = offset_vec.get(idx);
         switch (type) {
-            case kBool: {
+            case Bool: {
                 int v = row.get(offset);
                 if (v == 1) {
                     val = true;
@@ -210,23 +211,23 @@ public class RowView {
                 }
                 break;
             }
-            case kInt16:
+            case SmallInt:
                 val = row.getShort(offset);
                 break;
-            case kInt32:
+            case Int:
                 val = row.getInt(offset);
                 break;
-            case kTimestamp:
-            case kInt64:
+            case Timestamp:
+            case BigInt:
                 val = row.getLong(offset);
                 break;
-            case kFloat:
+            case Float:
                 val = row.getFloat(offset);
                 break;
-            case kDouble:
+            case Double:
                 val = row.getDouble(offset);
                 break;
-            case kVarchar:
+            case Varchar:
                 int field_offset = offset;
                 int next_str_field_offset = 0;
                 if (field_offset < string_field_cnt - 1) {
@@ -241,7 +242,7 @@ public class RowView {
     }
 
     public String getString(int idx) throws TabletException {
-        return (String) getValue(row, idx, DataType.kVarchar);
+        return (String) getValue(row, idx, DataType.Varchar);
     }
 
     public String getStrField(ByteBuffer row, int field_offset,

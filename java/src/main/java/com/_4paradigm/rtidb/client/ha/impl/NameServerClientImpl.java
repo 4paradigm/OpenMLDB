@@ -3,7 +3,13 @@ package com._4paradigm.rtidb.client.ha.impl;
 import com._4paradigm.rtidb.client.NameServerClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
+import com._4paradigm.rtidb.client.schema.IndexDef;
+import com._4paradigm.rtidb.client.schema.TableDesc;
+import com._4paradigm.rtidb.client.type.DataType;
+import com._4paradigm.rtidb.client.type.IndexType;
+import com._4paradigm.rtidb.client.type.TableType;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS.*;
 import io.brpc.client.*;
@@ -193,13 +199,56 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }, 1, TimeUnit.MINUTES);
     }
 
+
+    @Override
+    public boolean createTable(TableDesc tableDesc) {
+        TableInfo.Builder builder = TableInfo.newBuilder();
+        builder.setName(tableDesc.getName())
+                .setTableType(TableType.valueFrom(tableDesc.getTableType()))
+                .setPartitionNum(1)
+                .setReplicaNum(1)
+                .setStorageMode(Common.StorageMode.kHDD)
+                .setCompressType(CompressType.kNoCompress);
+        for (ColumnDesc col : tableDesc.getColumnDescList()) {
+            Common.ColumnDesc cd = Common.ColumnDesc.newBuilder()
+                    .setName(col.getName())
+                    .setDataType(DataType.valueFrom(col.getDataType()))
+                    .setNotNull(col.isNotNull())
+                    .build();
+            builder.addColumnDescV1(cd);
+        }
+        for (IndexDef index : tableDesc.getIndexs()) {
+            if (index.getIndexType() == IndexType.kPrimaryKey) {
+                Common.ColumnKey.Builder colKeyBuilder = Common.ColumnKey.newBuilder();
+                colKeyBuilder.setIndexName(index.getIndexName())
+                        .setIndexType(IndexType.valueFrom(index.getIndexType()));
+                for (String colName : index.getColNameList()) {
+                    colKeyBuilder.addColName(colName);
+                }
+                Common.ColumnKey columnKey = colKeyBuilder.build();
+                builder.addColumnKey(columnKey);
+            } else {
+                //TODO: other index type
+            }
+        }
+        TableInfo tableInfo = builder.build();
+        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
+        GeneralResponse response = ns.createTable(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        } else if (response != null) {
+            logger.warn("fail to create table for error {}", response.getMsg());
+        }
+        return false;
+    }
+
     @Override
     public boolean createTable(TableInfo tableInfo) {
         CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
         GeneralResponse response = ns.createTable(request);
         if (response != null && response.getCode() == 0) {
             return true;
-        } else if (response != null ) {
+        } else if (response != null) {
             logger.warn("fail to create table for error {}", response.getMsg());
         }
         return false;

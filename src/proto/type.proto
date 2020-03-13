@@ -6,15 +6,15 @@ option java_outer_classname = "Type";
 
 enum DataType {
     kBool = 1;
-    kInt16 = 2;
-    kInt32 = 3;
-    kInt64 = 4;
+    kSmallInt = 2;
+    kInt = 3;
+    kBigInt = 4;
     kFloat = 5;
     kDouble = 6;
     kVarchar = 7;
     kDate = 8;
     kTimestamp = 9;
-    kVoid = 100;
+    kBlob = 10;
 }
 
 enum TableType {

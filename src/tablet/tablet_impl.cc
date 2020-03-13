@@ -613,21 +613,65 @@ void TabletImpl::Put(RpcController* controller,
             }
         }
     } else {
-        bool ok = false;
-        if (request->dimensions_size() > 0) {
-            int32_t ret_code = CheckDimessionPut(request, r_table->GetIdxCnt());
-            if (ret_code != 0) {
-                response->set_code(115);
-                response->set_msg("invalid dimension parameter");
+        ::rtidb::api::TableMeta& table_meta = r_table->GetTableMeta();
+        std::string pk_col_name;
+        for (const ::rtidb::common::ColumnKey& column_key : table_meta.column_key()) {
+            if (column_key.index_type() == ::rtidb::type::kPrimaryKey) {
+                pk_col_name = column_key.index_name();
+            }
+            //TODO: other index type
+        }
+        const std::string& value = request->value();
+        uint32_t size = value.length();
+        const Schema& schema = table_meta.column_desc(); 
+        std::string row;
+        row.assign(value);
+        ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+        int index = 0;
+        ::rtidb::type::DataType data_type = ::rtidb::type::kVarchar;
+        std::string pk = "";
+        for (int i = 0; i < table_meta.column_desc_size(); i++) {
+            if (table_meta.column_desc(i).name() == pk_col_name) {
+                index = i;
+                data_type = table_meta.column_desc(i).data_type();
+                break;
+            }
+        }
+        switch(data_type) {
+            case ::rtidb::type::kSmallInt: {
+                int16_t val = 0;
+                view.GetInt16(index, &val);
+                pk = std::to_string(val);
+                break;
+            }
+            case ::rtidb::type::kInt: {
+                int32_t val = 0;
+                view.GetInt32(index, &val);
+                pk = std::to_string(val);
+                break;
+            }
+            case ::rtidb::type::kBigInt: { 
+                int64_t val = 0;
+                view.GetInt64(index, &val);
+                pk = std::to_string(val);
+                break;
+            }
+            case ::rtidb::type::kVarchar: {
+                char* ch = NULL;
+                uint32_t length = 0;
+                view.GetString(index, &ch, &length);
+                pk.assign(ch, length);
+                break;
+            } 
+            default: {
+                response->set_code(116);
+                response->set_msg("put failed");
                 done->Run();
                 return;
             }
-            ok = r_table->Put(request->value(), request->dimensions());
-        } else {
-            ok = r_table->Put(request->pk(), 
-                    request->value().c_str(),
-                    request->value().size());
+            //TODO: other data type
         }
+        bool ok = r_table->Put(pk, value.c_str(), value.size());
         if (!ok) {
             response->set_code(116);
             response->set_msg("put failed");
