@@ -118,8 +118,8 @@ class RTIDBClient:
     for col in read_option.col_set:
       ro.col_set.append(col)
     resp = self.__client.Query(table_name, ro)
-    if resp.code != 0:
-      raise Exception(resp.code, resp.msg)
+    if resp.code_ != 0:
+      raise Exception(resp.code_, resp.msg_)
     return RtidbResult(resp)
 
   def batch_query(self, table_name: str, read_options: ReadOptions):

@@ -10,12 +10,12 @@
 struct WriteOption {
 
     WriteOption() {
-        updateIfEqual = true;
-        updateIfEqual = true;
+        update_if_equal = true;
+        update_if_exist = true;
     }
 
-    bool updateIfExist;
-    bool updateIfEqual;
+    bool update_if_exist;
+    bool update_if_equal;
 };
 
 struct ReadFilter {
@@ -61,8 +61,8 @@ struct ReadOption {
 class QueryResult {
 public:
     void SetError(int err_code, const std::string& err_msg) {
-        code = err_code;
-        msg = err_msg;
+        code_ = err_code;
+        msg_ = err_msg;
     }
 
     int16_t GetInt16(uint32_t idx) {
@@ -127,11 +127,11 @@ public:
 
     bool next() {
         int size = values_->size();
-        if (size < 1 || index >= size) {
+        if (size < 1 || index_ >= size) {
             return false;
         }
-        uint32_t old_index = index;
-        index++;
+        uint32_t old_index = index_;
+        index_++;
         return rv_->Reset(reinterpret_cast<int8_t*>(&((*(*values_)[old_index])[0])), (*values_)[old_index]->size());
     }
 
@@ -144,7 +144,7 @@ public:
         rv_ = std::make_shared<rtidb::base::RowView>(*columns_);
     }
 
-    QueryResult():code(0), msg(), index(0), rv_(), columns_() {
+    QueryResult():code_(0), msg_(), index_(0), rv_(), columns_() {
         values_ = std::make_shared<std::vector<std::shared_ptr<std::string>>>();
     }
 
@@ -158,10 +158,10 @@ public:
         values_->push_back(value);
     }
 public:
-    int code;
-    std::string msg;
+    int code_;
+    std::string msg_;
 private:
-    int index;
+    int index_;
     std::shared_ptr<std::vector<std::shared_ptr<std::string>>> values_;
     std::shared_ptr<rtidb::base::RowView> rv_;
     std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> columns_;
