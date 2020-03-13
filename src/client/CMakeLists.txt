@@ -49,7 +49,7 @@ set_property(TARGET interclient PROPERTY SWIG_USE_TARGET_INCLUDE_DIRECTORIES ON)
 target_link_libraries(interclient snappy brpc protobuf gflags rt ssl crypto dl leveldb z common zookeeper_mt)
 set_property(TARGET interclient PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-add_custom_target(python_package ALL
+add_custom_target(python_package ALL DEPENDS interclient
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/rtidb.py ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/lib/_interclient.so ${CMAKE_BINARY_DIR}/python/${PROJECT_NAME}
