@@ -202,7 +202,7 @@ bool MemTable::Put(const Dimensions& dimensions,
     uint32_t real_ref_cnt = 0;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         std::shared_ptr<IndexDef> index_def = GetIndex(iter->idx());
-        if (!index_def || index_def->IsReady()) {
+        if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "can not found dimension idx %u. tid %u pid %u", 
                             iter->idx(), id_, pid_);
             return false;
@@ -649,7 +649,7 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
         return false;
     }
     std::shared_ptr<IndexDef> index_def = GetIndex(idx);
-    if (!index_def || index_def->IsReady()) {
+    if (!index_def || !index_def->IsReady()) {
         return false;
     }
     uint64_t* data_array = new uint64_t[seg_cnt_];
@@ -671,8 +671,9 @@ bool MemTable::DeleteIndex(std::string idx_name) {
     if (index_def->GetId() == 0) {
         PDLOG(WARNING, "index %s is primary key, cannot delete. tid %u pid %u", 
                 idx_name.c_str(), id_, pid_);
+        return false;
     }
-    if (index_def->IsReady()) {
+    if (!index_def->IsReady()) {
         PDLOG(WARNING, "index %s status is not ready. tid %u pid %u", 
                 idx_name.c_str(), id_, pid_);
         return false;
