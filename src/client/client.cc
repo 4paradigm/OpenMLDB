@@ -92,10 +92,11 @@ std::map<std::string, std::string> QueryResult::DecodeData() {
     }
     return result;
 }
-RtidbClient::RtidbClient():zk_client_(), client_(), tablets_(), mu_(), zk_cluster_(), zk_path_(), tables_() {
+RtidbClient::RtidbClient():zk_client_(), client_(), tablets_(), mu_(), zk_cluster_(), zk_path_(), tables_(), task_thread_pool_(1), zk_keep_alive_check_(15000) {
 }
 
 RtidbClient::~RtidbClient() {
+    task_thread_pool_.Stop(true);
 }
 
 void RtidbClient::CheckZkClient() {
@@ -105,6 +106,14 @@ void RtidbClient::CheckZkClient() {
             std::cout << "reconnect zk ok" << std::endl;
         }
     }
+    task_thread_pool_.DelayTask(zk_keep_alive_check_, boost::bind(&RtidbClient::CheckZkClient, this));
+}
+
+void RtidbClient::SetZkCheckInterval(int32_t interval) {
+    if (interval <= 1000) {
+        return;
+    }
+    zk_keep_alive_check_ = interval;
 }
 
 void RtidbClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
@@ -219,6 +228,7 @@ GeneralResult RtidbClient::Init(const std::string& zk_cluster, const std::string
         zk_client_->CloseZK();
         zk_client_.reset();
     }
+    task_thread_pool_.DelayTask(zk_keep_alive_check_, boost::bind(&RtidbClient::CheckZkClient, this));
     return result;
 }
 

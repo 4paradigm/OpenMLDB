@@ -187,6 +187,7 @@ public:
     GeneralResult Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
     GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
     GeneralResult Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> values, const WriteOption& wo);
+    void SetZkCheckInterval(int32_t interval);
 
 private:
     std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint, std::string& msg);
@@ -208,4 +209,6 @@ private:
     std::string zk_path_;
     std::string zk_table_data_path_;
     std::map<std::string, std::shared_ptr<TableHandler>> tables_;
+    baidu::common::ThreadPool task_thread_pool_;
+    int32_t zk_keep_alive_check_;
 };
