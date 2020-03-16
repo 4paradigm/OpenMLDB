@@ -173,6 +173,7 @@ public:
     }
 
     void SetRV(std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>& schema) {
+        initialed_ = true;
         columns_ = schema;
         rv_ = std::make_shared<rtidb::base::RowView>(*columns_);
     }
@@ -187,7 +188,6 @@ public:
     std::map<std::string, std::string> DecodeData();
 
     void AddValue(std::shared_ptr<std::string>& value) {
-        std::cout << *value << std::endl;
         values_->push_back(value);
     }
 public:
