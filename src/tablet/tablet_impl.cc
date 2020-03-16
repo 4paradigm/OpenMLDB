@@ -182,7 +182,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
     if (!table) {
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                 request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
@@ -205,13 +205,13 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         }
     }
     if (ttl_type != table->GetTTLType()) {
-        response->set_code(::rtidb::base::ReturnCode::TTL_TYPE_MISMATCH);
+        response->set_code(::rtidb::base::ReturnCode::kTtlTypeMismatch);
         response->set_msg("ttl type mismatch");
         PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
         return;
     }
     if (abs_ttl > FLAGS_absolute_ttl_max || lat_ttl > FLAGS_latest_ttl_max) {
-        response->set_code(::rtidb::base::ReturnCode::TTL_IS_GREATER_THAN_CONF_VALUE);
+        response->set_code(::rtidb::base::ReturnCode::kTtlIsGreaterThanConfValue);
         response->set_msg("ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) + ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max));
         PDLOG(WARNING, "ttl is greater than conf value. abs_ttl[%lu] lat_ttl[%lu] ttl_type[%s] max abs_ttl[%u] max lat_ttl[%u]", 
                         abs_ttl, abs_ttl, ::rtidb::api::TTLType_Name(ttl_type).c_str(), 
@@ -223,7 +223,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         if (iter == table->GetTSMapping().end()) {
             PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
                   request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TS_NAME_NOT_FOUND);
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
             response->set_msg("ts name not found");
             return;
         }
@@ -235,11 +235,11 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         PDLOG(INFO, "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu", request->tid(), request->pid(), abs_ttl, lat_ttl);
     } else {
         PDLOG(WARNING, "set ttl without ts name,  table tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TS_NAME_NOT_FOUND);
+        response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("set ttl need to specify ts column");
         return;
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -407,7 +407,7 @@ void TabletImpl::Get(RpcController* controller,
         r_table = GetRelationalTableUnLock(request->tid(), request->pid());
         if (!r_table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
             return;
         }
@@ -416,7 +416,7 @@ void TabletImpl::Get(RpcController* controller,
         if (table->GetTableStat() == ::rtidb::storage::kLoading) {
             PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                     request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_LOADING);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
             response->set_msg("table is loading");
             return;
         }
@@ -428,7 +428,7 @@ void TabletImpl::Get(RpcController* controller,
             if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::IDX_NAME_NOT_FOUND);
+                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
                 response->set_msg("idx name not found");
                 return;
             }
@@ -438,7 +438,7 @@ void TabletImpl::Get(RpcController* controller,
             auto iter = table->GetTSMapping().find(request->ts_name());
             if (iter == table->GetTSMapping().end()) {
                 PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(), request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::TS_NAME_NOT_FOUND);
+                response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
                 response->set_msg("ts name not found");
                 return;
             }
@@ -454,7 +454,7 @@ void TabletImpl::Get(RpcController* controller,
         }
 
         if (it == NULL) {
-            response->set_code(::rtidb::base::ReturnCode::TS_NAME_NOT_FOUND);
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
             response->set_msg("ts name not found");
             return;
         }
@@ -470,17 +470,17 @@ void TabletImpl::Get(RpcController* controller,
         response->set_code(code);
         switch(code) {
             case 1:
-                response->set_code(::rtidb::base::ReturnCode::KEY_NOT_FOUND);
+                response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
                 response->set_msg("key not found");
                 return;
             case 0:
                 return;
             case -1:
                 response->set_msg("invalid args");
-                response->set_code(::rtidb::base::ReturnCode::INVALID_PARAMETER);
+                response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
                 return;
             case -2:
-                response->set_code(::rtidb::base::ReturnCode::INVALID_PARAMETER);
+                response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
                 response->set_msg("st/et sub key type is invalid");
                 return;
             default:
@@ -496,7 +496,7 @@ void TabletImpl::Get(RpcController* controller,
             if (iit == r_table->GetMapping().end()) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::IDX_NAME_NOT_FOUND);
+                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
                 response->set_msg("idx name not found");
                 return;
             }
@@ -505,11 +505,11 @@ void TabletImpl::Get(RpcController* controller,
         */
         ok = r_table->Get(index, request->key(), *value);
         if (!ok) {
-            response->set_code(::rtidb::base::ReturnCode::KEY_NOT_FOUND);
+            response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
             response->set_msg("key not found");
             return;
         }
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
     }
 }
@@ -519,7 +519,7 @@ void TabletImpl::Put(RpcController* controller,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
     if (follower_.load(std::memory_order_relaxed)) {
-        response->set_code(::rtidb::base::ReturnCode::IS_FOLLOWER_CLUSTER);
+        response->set_code(::rtidb::base::ReturnCode::kIsFollowerCluster);
         response->set_msg("is follower cluster");
         done->Run();
         return;
@@ -531,7 +531,7 @@ void TabletImpl::Put(RpcController* controller,
         r_table = GetRelationalTableUnLock(request->tid(), request->pid());
         if (!r_table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
             done->Run();
             return;
@@ -539,14 +539,14 @@ void TabletImpl::Put(RpcController* controller,
     }
     if (table) {
         if (request->time() == 0 && request->ts_dimensions_size() == 0) {
-            response->set_code(::rtidb::base::ReturnCode::TS_MUST_BE_GREATER_THAN_ZERO);
+            response->set_code(::rtidb::base::ReturnCode::kTsMustBeGreaterThanZero);
             response->set_msg("ts must be greater than zero");
             done->Run();
             return;
         }
 
         if (!table->IsLeader()) {
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_FOLLOWER);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsFollower);
             response->set_msg("table is follower");
             done->Run();
             return;
@@ -554,7 +554,7 @@ void TabletImpl::Put(RpcController* controller,
         if (table->GetTableStat() == ::rtidb::storage::kLoading) {
             PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                     request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_LOADING);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
             response->set_msg("table is loading");
             done->Run();
             return;
@@ -563,7 +563,7 @@ void TabletImpl::Put(RpcController* controller,
         if (request->dimensions_size() > 0) {
             int32_t ret_code = CheckDimessionPut(request, table->GetIdxCnt());
             if (ret_code != 0) {
-                response->set_code(::rtidb::base::ReturnCode::INVALID_DIMENSION_PARAMETER);
+                response->set_code(::rtidb::base::ReturnCode::kInvalidDimensionParameter);
                 response->set_msg("invalid dimension parameter");
                 done->Run();
                 return;
@@ -580,12 +580,12 @@ void TabletImpl::Put(RpcController* controller,
                     request->value().size());
         }
         if (!ok) {
-            response->set_code(::rtidb::base::ReturnCode::PUT_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
             done->Run();
             return;
         }
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         std::shared_ptr<LogReplicator> replicator;
         do {
             replicator = GetReplicator(request->tid(), request->pid());
@@ -618,7 +618,7 @@ void TabletImpl::Put(RpcController* controller,
         if (request->dimensions_size() > 0) {
             int32_t ret_code = CheckDimessionPut(request, r_table->GetIdxCnt());
             if (ret_code != 0) {
-                response->set_code(::rtidb::base::ReturnCode::INVALID_DIMENSION_PARAMETER);
+                response->set_code(::rtidb::base::ReturnCode::kInvalidDimensionParameter);
                 response->set_msg("invalid dimension parameter");
                 done->Run();
                 return;
@@ -630,13 +630,13 @@ void TabletImpl::Put(RpcController* controller,
                     request->value().size());
         }
         if (!ok) {
-            response->set_code(::rtidb::base::ReturnCode::PUT_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
             done->Run();
             return;
         }
         done->Run();
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
     }
 }
 
@@ -1019,21 +1019,21 @@ void TabletImpl::Scan(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (request->st() < request->et()) {
-        response->set_code(::rtidb::base::ReturnCode::ST_LESS_THAN_ET);
+        response->set_code(::rtidb::base::ReturnCode::kStLessThanEt);
         response->set_msg("starttime less than endtime");
         return;
     }
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                 request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_LOADING);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
         response->set_msg("table is loading");
         return;
     }
@@ -1044,7 +1044,7 @@ void TabletImpl::Scan(RpcController* controller,
         if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::IDX_NAME_NOT_FOUND);
+            response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             return;
         }
@@ -1055,7 +1055,7 @@ void TabletImpl::Scan(RpcController* controller,
         if (iter == table->GetTSMapping().end()) {
             PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
                     request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TS_NAME_NOT_FOUND);
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
             response->set_msg("ts name not found");
             return;
         }
@@ -1072,7 +1072,7 @@ void TabletImpl::Scan(RpcController* controller,
         it = table->NewIterator(index, request->pk(), ticket);
     }
     if (it == NULL) {
-        response->set_code(::rtidb::base::ReturnCode::KEY_NOT_FOUND);
+        response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
         response->set_msg("key not found");
         return;
     }
@@ -1092,19 +1092,19 @@ void TabletImpl::Scan(RpcController* controller,
             return;
         case -1:
             response->set_msg("invalid args");
-            response->set_code(::rtidb::base::ReturnCode::INVALID_PARAMETER);
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             return;
         case -2:
             response->set_msg("st/et sub key type is invalid");
-            response->set_code(::rtidb::base::ReturnCode::INVALID_PARAMETER);
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             return;
         case -3:
-            response->set_code(::rtidb::base::ReturnCode::REACHE_THE_SCAN_MAX_BYTES_SIZE);
+            response->set_code(::rtidb::base::ReturnCode::kReacheTheScanMaxBytesSize);
             response->set_msg("reach the max scan byte size");
             return;
         case -4:
             response->set_msg("fail to encode data rows");
-            response->set_code(::rtidb::base::ReturnCode::FAIL_TO_UPDATE_TTL_FROM_TABLET);
+            response->set_code(::rtidb::base::ReturnCode::kFailToUpdateTtlFromTablet);
             return;
         default:
             return;
@@ -1119,14 +1119,14 @@ void TabletImpl::Count(RpcController* controller,
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                 request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_LOADING);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
         response->set_msg("table is loading");
         return;
     }
@@ -1137,7 +1137,7 @@ void TabletImpl::Count(RpcController* controller,
         if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::IDX_NAME_NOT_FOUND);
+            response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             return;
         }
@@ -1148,13 +1148,13 @@ void TabletImpl::Count(RpcController* controller,
         if (iter == table->GetTSMapping().end()) {
             PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
                     request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TS_NAME_NOT_FOUND);
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
             response->set_msg("ts name not found");
             return;
         }
         ts_index = iter->second;
         if (!table->CheckTsValid(index, ts_index)) {
-            response->set_code(::rtidb::base::ReturnCode::TS_NAME_NOT_FOUND);
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
             response->set_msg("ts name not found");
             return;
         }
@@ -1172,7 +1172,7 @@ void TabletImpl::Count(RpcController* controller,
                     count = 0;
                 }
             }
-            response->set_code(::rtidb::base::ReturnCode::OK);
+            response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
             response->set_count(count);
             return;
@@ -1186,7 +1186,7 @@ void TabletImpl::Count(RpcController* controller,
         it = table->NewIterator(index, request->key(), ticket);
     }
     if (it == NULL) {
-        response->set_code(::rtidb::base::ReturnCode::TS_NAME_NOT_FOUND);
+        response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("ts name not found");
         return;
     }
@@ -1204,19 +1204,19 @@ void TabletImpl::Count(RpcController* controller,
             return;
         case -1:
             response->set_msg("invalid args");
-            response->set_code(::rtidb::base::ReturnCode::INVALID_PARAMETER);
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             return;
         case -2:
             response->set_msg("st/et sub key type is invalid");
-            response->set_code(::rtidb::base::ReturnCode::INVALID_PARAMETER);
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             return;
         case -3:
-            response->set_code(::rtidb::base::ReturnCode::REACHE_THE_SCAN_MAX_BYTES_SIZE);
+            response->set_code(::rtidb::base::ReturnCode::kReacheTheScanMaxBytesSize);
             response->set_msg("reach the max scan byte size");
             return;
         case -4:
             response->set_msg("fail to encode data rows");
-            response->set_code(::rtidb::base::ReturnCode::FAIL_TO_UPDATE_TTL_FROM_TABLET);
+            response->set_code(::rtidb::base::ReturnCode::kFailToUpdateTtlFromTablet);
             return;
         default:
             return;
@@ -1231,14 +1231,14 @@ void TabletImpl::Traverse(RpcController* controller,
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                 request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_LOADING);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
         response->set_msg("table is loading");
         return;
     }
@@ -1249,7 +1249,7 @@ void TabletImpl::Traverse(RpcController* controller,
         if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::IDX_NAME_NOT_FOUND);
+            response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             return;
         }
@@ -1260,7 +1260,7 @@ void TabletImpl::Traverse(RpcController* controller,
         if (iter == table->GetTSMapping().end()) {
             PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
                     request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TS_NAME_NOT_FOUND);
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
             response->set_msg("ts name not found");
             return;
         }
@@ -1273,7 +1273,7 @@ void TabletImpl::Traverse(RpcController* controller,
         it = table->NewTraverseIterator(index);
     }
     if (it == NULL) {
-        response->set_code(::rtidb::base::ReturnCode::TS_NAME_NOT_FOUND);
+        response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("ts name not found, when create iterator");
         return;
     }
@@ -1354,7 +1354,7 @@ void TabletImpl::Traverse(RpcController* controller,
         }
     }
     PDLOG(DEBUG, "traverse count %d. last_pk %s last_time %lu", scount, last_pk.c_str(), last_time);
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_count(scount);
     response->set_pk(last_pk);
     response->set_ts(last_time);
@@ -1367,7 +1367,7 @@ void TabletImpl::Delete(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (follower_.load(std::memory_order_relaxed)) {
-        response->set_code(::rtidb::base::ReturnCode::IS_FOLLOWER_CLUSTER);
+        response->set_code(::rtidb::base::ReturnCode::kIsFollowerCluster);
         response->set_msg("is follower cluster");
         return;
     }
@@ -1378,7 +1378,7 @@ void TabletImpl::Delete(RpcController* controller,
         r_table = GetRelationalTableUnLock(request->tid(), request->pid());
         if (!r_table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
             return;
         }
@@ -1387,13 +1387,13 @@ void TabletImpl::Delete(RpcController* controller,
         if (!table->IsLeader()) {
             PDLOG(DEBUG, "table is follower. tid %u, pid %u", request->tid(),
                     request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_FOLLOWER);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsFollower);
             response->set_msg("table is follower");
             return;
         }
         if (table->GetTableStat() == ::rtidb::storage::kLoading) {
             PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_LOADING);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
             response->set_msg("table is loading");
             return;
         }
@@ -1403,18 +1403,18 @@ void TabletImpl::Delete(RpcController* controller,
             if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::IDX_NAME_NOT_FOUND);
+                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
                 response->set_msg("idx name not found");
                 return;
             }
             idx = iit->second;
         }
         if (table->Delete(request->key(), idx)) {
-            response->set_code(::rtidb::base::ReturnCode::OK);
+            response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
             PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s", request->tid(), request->pid(), request->key().c_str());
         } else {
-            response->set_code(::rtidb::base::ReturnCode::DELETE_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
             response->set_msg("delete failed");
             return;
         }
@@ -1446,7 +1446,7 @@ void TabletImpl::Delete(RpcController* controller,
             if (iit == table->GetMapping().end()) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::IDX_NAME_NOT_FOUND);
+                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
                 response->set_msg("idx name not found");
                 return;
             }
@@ -1454,11 +1454,11 @@ void TabletImpl::Delete(RpcController* controller,
         }
         */
         if (r_table->Delete(request->key(), idx)) {
-            response->set_code(::rtidb::base::ReturnCode::OK);
+            response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
             PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s", request->tid(), request->pid(), request->key().c_str());
         } else {
-            response->set_code(::rtidb::base::ReturnCode::DELETE_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kDeleteFailed);
             response->set_msg("delete failed");
             return;
         }
@@ -1474,20 +1474,20 @@ void TabletImpl::ChangeRole(RpcController* controller,
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     if (table->GetTableStat() != ::rtidb::storage::kNormal) {
         PDLOG(WARNING, "table state[%u] can not change role. tid[%u] pid[%u]", 
                 table->GetTableStat(), tid, pid);
-        response->set_code(::rtidb::base::ReturnCode::TABLE_STATUS_IS_NOT_KNORMAL);
+        response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
         response->set_msg("table status is not kNormal");
         return;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
-        response->set_code(::rtidb::base::ReturnCode::REPLICATOR_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
         response->set_msg("replicator is not exist");
         return;
     }
@@ -1504,7 +1504,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             if (table->IsLeader()) {
                 PDLOG(WARNING, "table is leader. tid[%u] pid[%u]", tid, pid);
-                response->set_code(::rtidb::base::ReturnCode::TABLE_IS_LEADER);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsLeader);
                 response->set_msg("table is leader");
                 return ;
             }
@@ -1526,7 +1526,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         if (!table->IsLeader()) {
             PDLOG(WARNING, "table is follower. tid[%u] pid[%u]", tid, pid);
-            response->set_code(::rtidb::base::ReturnCode::OK);
+            response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("table is follower");
             return;
         }
@@ -1535,7 +1535,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
         table->SetLeader(false);
         PDLOG(INFO, "change to follower. tid[%u] pid[%u]", tid, pid);
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -1557,19 +1557,19 @@ void TabletImpl::AddReplica(RpcController* controller,
         if (!table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                     request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
             break;
         }
         if (!table->IsLeader()) {
             PDLOG(WARNING, "table is follower. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_FOLLOWER);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsFollower);
             response->set_msg("table is follower");
             break;
         }
         std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
-            response->set_code(::rtidb::base::ReturnCode::REPLICATOR_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
             response->set_msg("replicator is not exist");
             PDLOG(WARNING,"replicator is not exist. tid %u, pid %u", request->tid(), request->pid());
             break;
@@ -1583,15 +1583,15 @@ void TabletImpl::AddReplica(RpcController* controller,
             ret = replicator->AddReplicateNode(vec);
         }
         if (ret == 0) {
-            response->set_code(::rtidb::base::ReturnCode::OK);
+            response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
         } else if (ret < 0) {
-            response->set_code(::rtidb::base::ReturnCode::FAIL_TO_ADD_REPLICA_ENDPOINT);
+            response->set_code(::rtidb::base::ReturnCode::kFailToAddReplicaEndpoint);
             PDLOG(WARNING, "fail to add replica endpoint. tid %u pid %u", request->tid(), request->pid());
             response->set_msg("fail to add replica endpoint");
             break;
         } else {
-            response->set_code(::rtidb::base::ReturnCode::REPLICA_ENDPOINT_ALREADY_EXISTS);
+            response->set_code(::rtidb::base::ReturnCode::kReplicaEndpointAlreadyExists);
             response->set_msg("replica endpoint already exists");
             PDLOG(WARNING, "replica endpoint already exists. tid %u pid %u", request->tid(), request->pid());
         }
@@ -1625,34 +1625,34 @@ void TabletImpl::DelReplica(RpcController* controller,
         if (!table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                     request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
             break;
         }
         if (!table->IsLeader()) {
             PDLOG(WARNING, "table is follower. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_FOLLOWER);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsFollower);
             response->set_msg("table is follower");
             break;
         }
         std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
-            response->set_code(::rtidb::base::ReturnCode::REPLICATOR_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
             response->set_msg("replicator is not exist");
             PDLOG(WARNING,"replicator is not exist. tid %u, pid %u", request->tid(), request->pid());
             break;
         }
         int ret = replicator->DelReplicateNode(request->endpoint());
         if (ret == 0) {
-            response->set_code(::rtidb::base::ReturnCode::OK);
+            response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
         } else if (ret < 0) {
-            response->set_code(::rtidb::base::ReturnCode::REPLICATOR_ROLE_IS_NOT_LEADER);
+            response->set_code(::rtidb::base::ReturnCode::kReplicatorRoleIsNotLeader);
             PDLOG(WARNING, "replicator role is not leader. table %u pid %u", request->tid(), request->pid());
             response->set_msg("replicator role is not leader");
             break;
         } else {
-            response->set_code(::rtidb::base::ReturnCode::OK);
+            response->set_code(::rtidb::base::ReturnCode::kOk);
             PDLOG(WARNING, "fail to del endpoint for table %u pid %u. replica does not exist", 
                     request->tid(), request->pid());
             response->set_msg("replica does not exist");
@@ -1678,34 +1678,34 @@ void TabletImpl::AppendEntries(RpcController* controller,
     if (!table) {
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                 request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     if (!follower_.load(std::memory_order_relaxed) && table->IsLeader()) {
         PDLOG(WARNING, "table is leader. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_LEADER);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsLeader);
         response->set_msg("table is leader");
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_LOADING);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
         response->set_msg("table is loading");
         PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
         return;
     }    
     std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
     if (!replicator) {
-        response->set_code(::rtidb::base::ReturnCode::REPLICATOR_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
         response->set_msg("replicator is not exist");
         return;
     }
     bool ok = replicator->AppendEntries(request, response);
     if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::FAIL_TO_APPEND_ENTRIES_TO_REPLICATOR);
+        response->set_code(::rtidb::base::ReturnCode::kFailToAppendEntriesToReplicator);
         response->set_msg("fail to append entries to replicator");
     } else {
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
     }
 }
@@ -1717,7 +1717,7 @@ void TabletImpl::GetTableSchema(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                 request->pid());
@@ -1725,7 +1725,7 @@ void TabletImpl::GetTableSchema(RpcController* controller,
     } else {
         response->set_schema(table->GetSchema());
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
     response->set_schema(table->GetSchema());
     response->mutable_table_meta()->CopyFrom(table->GetTableMeta());
@@ -1742,7 +1742,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         auto it = tables_.find(tid);
         if (it == tables_.end()) {
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table doesn`t exist");
             PDLOG(WARNING, "table tid %u doesn`t exist.", tid);
             return;
@@ -1786,7 +1786,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         ::rtidb::common::StorageMode mode = table_meta.storage_mode();
         bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
         if (!ok) {
-            response->set_code(::rtidb::base::ReturnCode::FAIL_TO_GET_DB_ROOT_PATH);
+            response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
             response->set_msg("fail to get db root path");
             PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
             return;
@@ -1795,19 +1795,19 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
             "_" + std::to_string(pid);
         if (!::rtidb::base::IsExists(db_path)) {
             PDLOG(WARNING, "table db path doesn`t exist. tid %u, pid %u", tid, pid);
-            response->set_code(::rtidb::base::ReturnCode::TABLE_DB_PATH_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kTableDbPathIsNotExist);
             response->set_msg("table db path is not exist");
             return;
         }
         UpdateTableMeta(db_path, &table_meta, true);
         if (WriteTableMeta(db_path, &table_meta) < 0) {
             PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
-            response->set_code(::rtidb::base::ReturnCode::WRITE_DATA_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kWriteDataFailed);
             response->set_msg("write data failed");
             return;
         }
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -1887,7 +1887,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             }
         }
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
 }
 
 void TabletImpl::SetExpire(RpcController* controller,
@@ -1898,7 +1898,7 @@ void TabletImpl::SetExpire(RpcController* controller,
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
@@ -1909,7 +1909,7 @@ void TabletImpl::SetExpire(RpcController* controller,
             PDLOG(INFO, "set table expire[%d]. tid[%u] pid[%u]", request->is_expire(), request->tid(), request->pid());
         }
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -1921,7 +1921,7 @@ void TabletImpl::SetTTLClock(RpcController* controller,
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
@@ -1935,7 +1935,7 @@ void TabletImpl::SetTTLClock(RpcController* controller,
                     request->timestamp(), cur_time, offset, request->tid(), request->pid());
         }
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -2047,7 +2047,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             std::shared_ptr<Snapshot> snapshot = GetSnapshotUnLock(tid, pid);
             if (!snapshot) {
-                response->set_code(::rtidb::base::ReturnCode::SNAPSHOT_IS_NOT_EXIST);
+                response->set_code(::rtidb::base::ReturnCode::kSnapshotIsNotExist);
                 response->set_msg("snapshot is not exist");
                 PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
                 break;
@@ -2055,12 +2055,12 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
             std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
-                response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist");
                 break;
             }
             if (table->GetTableStat() != ::rtidb::storage::kNormal) {
-                response->set_code(::rtidb::base::ReturnCode::TABLE_STATUS_IS_NOT_KNORMAL);
+                response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
                 response->set_msg("table status is not kNormal");
                 PDLOG(WARNING, "table state is %d, cannot make snapshot. %u, pid %u", 
                         table->GetTableStat(), tid, pid);
@@ -2072,7 +2072,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }    
         snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, offset, task_ptr));
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
     } while (0);
@@ -2154,7 +2154,7 @@ void TabletImpl::SendData(RpcController* controller,
     std::string db_root_path;
     bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
     if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::FAIL_TO_GET_DB_ROOT_PATH);
+        response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
         PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
         return;
@@ -2180,7 +2180,7 @@ void TabletImpl::SendData(RpcController* controller,
         if (request->block_id() == 0) {
             if (table) {
                 PDLOG(WARNING, "table already exists. tid %u, pid %u", tid, pid);
-                response->set_code(::rtidb::base::ReturnCode::TABLE_ALREADY_EXISTS);
+                response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
                 response->set_msg("table already exists");
                 return;
             }
@@ -2191,17 +2191,17 @@ void TabletImpl::SendData(RpcController* controller,
             }
             if (!iter->second->Init()) {
                 PDLOG(WARNING, "file receiver init failed. tid %u, pid %u, file_name %s", tid, pid, request->file_name().c_str());
-                response->set_code(::rtidb::base::ReturnCode::FILE_RECEIVER_INIT_FAILED);
+                response->set_code(::rtidb::base::ReturnCode::kFileReceiverInitFailed);
                 response->set_msg("file receiver init failed");
                 file_receiver_map_.erase(iter);
                 return;
             }
             PDLOG(INFO, "file receiver init ok. tid %u, pid %u, file_name %s", tid, pid, request->file_name().c_str());
-            response->set_code(::rtidb::base::ReturnCode::OK);
+            response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
         } else if (iter == file_receiver_map_.end()){
             PDLOG(WARNING, "cannot find receiver. tid %u, pid %u, file_name %s", tid, pid, request->file_name().c_str());
-            response->set_code(::rtidb::base::ReturnCode::CANNOT_FIND_RECEIVER);
+            response->set_code(::rtidb::base::ReturnCode::kCannotFindReceiver);
             response->set_msg("cannot find receiver");
             return;
         }
@@ -2209,33 +2209,33 @@ void TabletImpl::SendData(RpcController* controller,
     }
     if (!receiver) {
         PDLOG(WARNING, "cannot find receiver. tid %u, pid %u, file_name %s", tid, pid, request->file_name().c_str());
-        response->set_code(::rtidb::base::ReturnCode::CANNOT_FIND_RECEIVER);
+        response->set_code(::rtidb::base::ReturnCode::kCannotFindReceiver);
         response->set_msg("cannot find receiver");
         return;
     }
     if (receiver->GetBlockId() == request->block_id()) {
         response->set_msg("ok");
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         return;
     }
     if (request->block_id() != receiver->GetBlockId() + 1) {
         response->set_msg("block_id mismatch");
         PDLOG(WARNING, "block_id mismatch. tid %u, pid %u, file_name %s, request block_id %lu cur block_id %lu", 
                 tid, pid, request->file_name().c_str(), request->block_id(), receiver->GetBlockId());
-        response->set_code(::rtidb::base::ReturnCode::BLOCK_ID_MISMATCH);
+        response->set_code(::rtidb::base::ReturnCode::kBlock_idMismatch);
         return;
     }
     std::string data = cntl->request_attachment().to_string();
     if (data.length() != request->block_size()) {
         PDLOG(WARNING, "receive data error. tid %u, pid %u, file_name %s, expected length %u real length %u", 
                 tid, pid, request->file_name().c_str(), request->block_size(), data.length());
-        response->set_code(::rtidb::base::ReturnCode::RECEIVE_DATA_ERROR);
+        response->set_code(::rtidb::base::ReturnCode::kReceiveDataError);
         response->set_msg("receive data error");
         return;
     }
     if (receiver->WriteData(data, request->block_id()) < 0) {
         PDLOG(WARNING, "receiver write data failed. tid %u, pid %u, file_name %s", tid, pid, request->file_name().c_str());
-        response->set_code(::rtidb::base::ReturnCode::WRITE_DATA_FAILED);
+        response->set_code(::rtidb::base::ReturnCode::kWriteDataFailed);
         response->set_msg("write data failed");
         return;
     }
@@ -2245,7 +2245,7 @@ void TabletImpl::SendData(RpcController* controller,
         file_receiver_map_.erase(combine_key);
     }
     response->set_msg("ok");
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
 }
 
 void TabletImpl::SendSnapshot(RpcController* controller,
@@ -2271,19 +2271,19 @@ void TabletImpl::SendSnapshot(RpcController* controller,
             std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
-                response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist");
                 break;
             }
             if (!table->IsLeader()) {
                 PDLOG(WARNING, "table is follower. tid %u, pid %u", tid, pid);
-                response->set_code(::rtidb::base::ReturnCode::TABLE_IS_FOLLOWER);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsFollower);
                 response->set_msg("table is follower");
                 break;
             }
             if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
                 PDLOG(WARNING, "table status is not kSnapshotPaused. tid %u, pid %u", tid, pid);
-                response->set_code(::rtidb::base::ReturnCode::TABLE_STATUS_IS_NOT_KSNAPSHOTPAUSED);
+                response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKsnapshotpaused);
                 response->set_msg("table status is not kSnapshotPaused");
                 break;
             }
@@ -2292,7 +2292,7 @@ void TabletImpl::SendSnapshot(RpcController* controller,
         if (sync_snapshot_set_.find(sync_snapshot_key) != sync_snapshot_set_.end()) {
             PDLOG(WARNING, "snapshot is sending. tid %u pid %u endpoint %s", 
                     tid, pid, request->endpoint().c_str());
-            response->set_code(::rtidb::base::ReturnCode::SNAPSHOT_IS_SENDING);
+            response->set_code(::rtidb::base::ReturnCode::kSnapshotIsSending);
             response->set_msg("snapshot is sending");
             break;
         }
@@ -2302,7 +2302,7 @@ void TabletImpl::SendSnapshot(RpcController* controller,
         sync_snapshot_set_.insert(sync_snapshot_key);
         task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
                     request->endpoint(), tid, pid, request->remote_tid(), task_ptr));
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
     } while(0);
@@ -2411,7 +2411,7 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
             std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist");
                 break;
             }
@@ -2421,7 +2421,7 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
             } else if (table->GetTableStat() != ::rtidb::storage::kNormal) {
                 PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
                         table->GetTableStat(), request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::TABLE_STATUS_IS_NOT_KNORMAL);
+                response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
                 response->set_msg("table status is not kNormal");
                 break;
             } else {
@@ -2434,7 +2434,7 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
             std::lock_guard<std::mutex> lock(mu_);
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
         }
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
     } while(0);
@@ -2463,7 +2463,7 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
             std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist");
                 break;
             }
@@ -2474,7 +2474,7 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
             } else if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
                 PDLOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
                         table->GetTableStat(), request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::TABLE_STATUS_IS_NOT_KSNAPSHOTPAUSED);
+                response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKsnapshotpaused);
                 response->set_msg("table status is not kSnapshotPaused");
                 break;
             } else {
@@ -2487,7 +2487,7 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
         if (task_ptr) {       
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
         }
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
     } while(0);
@@ -2515,7 +2515,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         table_meta.CopyFrom(request->table_meta());
         std::string msg;
         if (CheckTableMeta(&table_meta, msg) != 0) {
-            response->set_code(::rtidb::base::ReturnCode::TABLE_META_IS_ILLEGAL);
+            response->set_code(::rtidb::base::ReturnCode::kTableMetaIsIllegal);
             response->set_msg(msg);
             break;
         }
@@ -2524,7 +2524,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         std::string root_path;
         bool ok = ChooseDBRootPath(tid, pid, table_meta.storage_mode(), root_path);
         if (!ok) {
-            response->set_code(::rtidb::base::ReturnCode::FAIL_TO_GET_DB_ROOT_PATH);
+            response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
             response->set_msg("fail to get table db root path");
             PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
             break;
@@ -2534,7 +2534,7 @@ void TabletImpl::LoadTable(RpcController* controller,
             "_" + std::to_string(pid);
         if (!::rtidb::base::IsExists(db_path)) {
             PDLOG(WARNING, "table db path is not exist. tid %u, pid %u, path %s", tid, pid, db_path.c_str());
-            response->set_code(::rtidb::base::ReturnCode::TABLE_DB_PATH_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kTableDbPathIsNotExist);
             response->set_msg("table db path is not exist");
             break;
         }
@@ -2542,7 +2542,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (table) {
             PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
-            response->set_code(::rtidb::base::ReturnCode::TABLE_ALREADY_EXISTS);
+            response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
             response->set_msg("table already exists");
             break;
         }
@@ -2550,14 +2550,14 @@ void TabletImpl::LoadTable(RpcController* controller,
         UpdateTableMeta(db_path, &table_meta);
         if (WriteTableMeta(db_path, &table_meta) < 0) {
             PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
-            response->set_code(::rtidb::base::ReturnCode::WRITE_DATA_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kWriteDataFailed);
             response->set_msg("write data failed");
             break;
         }
         if (table_meta.storage_mode() == rtidb::common::kMemory) {
             std::string msg;
             if (CreateTableInternal(&table_meta, msg) < 0) {
-                response->set_code(::rtidb::base::ReturnCode::CREATE_TABLE_FAILED);
+                response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
                 response->set_msg(msg.c_str());
                 break;
             }
@@ -2575,7 +2575,7 @@ void TabletImpl::LoadTable(RpcController* controller,
             PDLOG(INFO, "load table tid[%u] pid[%u] storage mode[%s]", 
                     tid, pid, ::rtidb::common::StorageMode_Name(table_meta.storage_mode()).c_str());
         }
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
     } while(0);
@@ -2896,7 +2896,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     uint32_t pid = table_meta->pid();
     if (!table_meta->has_table_type() || table_meta->table_type() == ::rtidb::type::kTimeSeries) {
         if (CheckTableMeta(table_meta, msg) != 0) {
-            response->set_code(::rtidb::base::ReturnCode::TABLE_META_IS_ILLEGAL);
+            response->set_code(::rtidb::base::ReturnCode::kTableMetaIsIllegal);
             response->set_msg(msg);
             PDLOG(WARNING, "check table_meta failed. tid[%u] pid[%u], err_msg[%s]", tid, pid, msg.c_str());
             return;
@@ -2910,7 +2910,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             if (snapshot) {
                 PDLOG(WARNING, "snapshot with tid[%u] and pid[%u] exists", tid, pid);
             }
-            response->set_code(::rtidb::base::ReturnCode::TABLE_ALREADY_EXISTS);
+            response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
             response->set_msg("table already exists");
             return;
         }
@@ -2922,7 +2922,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     bool ok = ChooseDBRootPath(tid, pid, table_meta->storage_mode(), db_root_path);
     if (!ok) {
         PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
-        response->set_code(::rtidb::base::ReturnCode::FAIL_TO_GET_DB_ROOT_PATH);
+        response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to find db root path");
         return;
     }
@@ -2931,28 +2931,28 @@ void TabletImpl::CreateTable(RpcController* controller,
 
     if (WriteTableMeta(table_db_path, table_meta) < 0) {
         PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
-        response->set_code(::rtidb::base::ReturnCode::WRITE_DATA_FAILED);
+        response->set_code(::rtidb::base::ReturnCode::kWriteDataFailed);
         response->set_msg("write data failed");
         return;
     }
     if (table_meta->has_table_type() && table_meta->table_type() == rtidb::type::kRelational) {
         std::string msg;
         if (CreateRelationalTableInternal(table_meta, msg) < 0) {
-            response->set_code(::rtidb::base::ReturnCode::CREATE_TABLE_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
             response->set_msg(msg.c_str());
             return;
         }
     } else if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::string msg;
         if (CreateDiskTableInternal(table_meta, false, msg) < 0) {
-            response->set_code(::rtidb::base::ReturnCode::CREATE_TABLE_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
             response->set_msg(msg.c_str());
             return;
         }
     } else {
         std::string msg;
         if (CreateTableInternal(table_meta, msg) < 0) {
-            response->set_code(::rtidb::base::ReturnCode::CREATE_TABLE_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
             response->set_msg(msg.c_str());
             return;
         }
@@ -2960,19 +2960,19 @@ void TabletImpl::CreateTable(RpcController* controller,
     if (!table_meta->has_table_type() || table_meta->table_type() == ::rtidb::type::kTimeSeries) {
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
-            response->set_code(::rtidb::base::ReturnCode::CREATE_TABLE_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
             response->set_msg("table is not exist");
             PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
             return; 
         }
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         if (!replicator) {
-            response->set_code(::rtidb::base::ReturnCode::CREATE_TABLE_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
             response->set_msg("replicator is not exist");
             PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
             return;
         }
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         table->SetTableStat(::rtidb::storage::kNormal);
         replicator->StartSyncing();
@@ -2986,7 +2986,7 @@ void TabletImpl::CreateTable(RpcController* controller,
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         std::shared_ptr<RelationalTable> table = GetRelationalTableUnLock(tid, pid);
         if (!table) {
-            response->set_code(::rtidb::base::ReturnCode::CREATE_TABLE_FAILED);
+            response->set_code(::rtidb::base::ReturnCode::kCreateTableFailed);
             response->set_msg("table is not exist");
             PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
             return; 
@@ -3010,7 +3010,7 @@ void TabletImpl::ExecuteGc(RpcController* controller,
         return;
     }
     gc_pool_.AddTask(boost::bind(&TabletImpl::GcTable, this, tid, pid, true));
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
     PDLOG(INFO, "ExecuteGc. tid %u pid %u", tid, pid);
 }
@@ -3025,21 +3025,21 @@ void TabletImpl::GetTableFollower(RpcController* controller,
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
         PDLOG(DEBUG, "table is not exist. tid %u pid %u", tid, pid);
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     if (!table->IsLeader()) {
         PDLOG(DEBUG, "table is follower. tid %u, pid %u", tid, pid);
         response->set_msg("table is follower");
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_FOLLOWER);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsFollower);
         return;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
         PDLOG(DEBUG, "replicator is not exist. tid %u pid %u", tid, pid);
         response->set_msg("replicator is not exist");
-        response->set_code(::rtidb::base::ReturnCode::REPLICATOR_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
         return;
     }
     response->set_offset(replicator->GetOffset());
@@ -3047,7 +3047,7 @@ void TabletImpl::GetTableFollower(RpcController* controller,
     replicator->GetReplicateInfo(info_map);
     if (info_map.empty()) {
         response->set_msg("has no follower");
-        response->set_code(::rtidb::base::ReturnCode::NO_FOLLOWER);
+        response->set_code(::rtidb::base::ReturnCode::kNoFollower);
     }
     for (const auto& kv : info_map) {
         ::rtidb::api::FollowerInfo* follower_info = response->add_follower_info();
@@ -3055,7 +3055,7 @@ void TabletImpl::GetTableFollower(RpcController* controller,
         follower_info->set_offset(kv.second);
     }
     response->set_msg("ok");
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
 }
 
 int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, rtidb::common::StorageMode sm, std::string& msg, uint64_t& term, uint64_t& offset) {
@@ -3131,7 +3131,7 @@ void TabletImpl::GetAllSnapshotOffset(RpcController* controller,
             partition->set_pid(pid);
         }
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
 }
 
 void TabletImpl::GetTermPair(RpcController* controller,
@@ -3153,7 +3153,7 @@ void TabletImpl::GetTermPair(RpcController* controller,
         mode = request->storage_mode();
     }
     if (!table) {
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_has_table(false);
         response->set_msg("table is not exist");
         std::string msg;
@@ -3170,11 +3170,11 @@ void TabletImpl::GetTermPair(RpcController* controller,
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
-        response->set_code(::rtidb::base::ReturnCode::REPLICATOR_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
         response->set_msg("replicator is not exist");
         return;
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
     response->set_has_table(true);
     if (table->IsLeader()) {
@@ -3200,7 +3200,7 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
     std::string db_root_path;
     bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
     if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::FAIL_TO_GET_DB_ROOT_PATH);
+        response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
         PDLOG(WARNING, "fail to get table db root path");
         return;
@@ -3213,7 +3213,7 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
             std::string recycle_bin_root_path;
             ok = ChooseRecycleBinRootPath(tid, pid, mode, recycle_bin_root_path);
             if (!ok) {
-                response->set_code(::rtidb::base::ReturnCode::FAIL_TO_GET_RECYCLE_ROOT_PATH);
+                response->set_code(::rtidb::base::ReturnCode::kFailToGetRecycleRootPath);
                 response->set_msg("fail to get recycle root path");
                 PDLOG(WARNING, "fail to get table recycle root path");
                 return;
@@ -3229,7 +3229,7 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
                     binlog_path.c_str(), tid, pid);
         }
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -3247,7 +3247,7 @@ void TabletImpl::CheckFile(RpcController* controller,
     }
     bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
     if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::FAIL_TO_GET_DB_ROOT_PATH);
+        response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
         PDLOG(WARNING, "fail to get table db root path");
         return;
@@ -3275,7 +3275,7 @@ void TabletImpl::CheckFile(RpcController* controller,
                 full_path.c_str(), size, request->size());
         return;
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -3292,7 +3292,7 @@ void TabletImpl::GetManifest(RpcController* controller,
     bool ok = ChooseDBRootPath(request->tid(), request->pid(), 
             mode, db_root_path);
     if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::FAIL_TO_GET_DB_ROOT_PATH);
+        response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
         PDLOG(WARNING, "fail to get table db root path");
         return;
@@ -3315,7 +3315,7 @@ void TabletImpl::GetManifest(RpcController* controller,
         PDLOG(INFO, "[%s] is not exist", manifest_file.c_str());
         manifest.set_offset(0);
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
     ::rtidb::api::Manifest* manifest_r = response->mutable_manifest();
     manifest_r->CopyFrom(manifest);
@@ -3578,13 +3578,13 @@ void TabletImpl::DropTable(RpcController* controller,
         if (!request->has_table_type() || request->table_type() == ::rtidb::type::kTimeSeries) {
             std::shared_ptr<Table> table = GetTable(tid, pid);
             if (!table) {
-                response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist");
                 break;
             } else {
                 if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
                     PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
-                    response->set_code(::rtidb::base::ReturnCode::TABLE_STATUS_IS_KMAKINGSNAPSHOT);
+                    response->set_code(::rtidb::base::ReturnCode::kTableStatusIsKmakingsnapshot);
                     response->set_msg("table status is kMakingSnapshot");
                     break;
                 }
@@ -3597,14 +3597,14 @@ void TabletImpl::DropTable(RpcController* controller,
                 table = GetRelationalTableUnLock(request->tid(), request->pid());
                 if (!table) {
                     PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-                    response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+                    response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                     response->set_msg("table is not exist");
                     break;
                 }
             }
             task_pool_.AddTask(boost::bind(&TabletImpl::DeleteRelationalTableInternal, this, tid, pid, task_ptr));
         }
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
     } while (0);
@@ -3626,7 +3626,7 @@ void TabletImpl::GetTaskStatus(RpcController* controller,
             task->CopyFrom(*task_info);
         }
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -3650,7 +3650,7 @@ void TabletImpl::DeleteOPTask(RpcController* controller,
         }
         task_map_.erase(iter);
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -3660,7 +3660,7 @@ void TabletImpl::ConnectZK(RpcController* controller,
             Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (zk_client_->Reconnect() && zk_client_->Register()) {
-        response->set_code(::rtidb::base::ReturnCode::OK);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         PDLOG(INFO, "connect zk ok"); 
         return;
@@ -3675,7 +3675,7 @@ void TabletImpl::DisConnectZK(RpcController* controller,
             Closure* done) {
     brpc::ClosureGuard done_guard(done);
     zk_client_->CloseZK();
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
     PDLOG(INFO, "disconnect zk ok"); 
     return;
@@ -3693,7 +3693,7 @@ void TabletImpl::SetConcurrency(RpcController* ctrl,
     }
 
     if (request->max_concurrency() < 0) {
-        response->set_code(::rtidb::base::ReturnCode::INVALID_CONCURRENCY);
+        response->set_code(::rtidb::base::ReturnCode::kInvalidConcurrency);
         response->set_msg("invalid concurrency " + request->max_concurrency());
         return;
     }
@@ -3705,7 +3705,7 @@ void TabletImpl::SetConcurrency(RpcController* ctrl,
         PDLOG(INFO, "update server api %s max concurrency to %d", request->key().c_str(), request->max_concurrency());
         server_->MaxConcurrencyOf(this, request->key()) = request->max_concurrency();
     }
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -4138,7 +4138,7 @@ void TabletImpl::SetMode(RpcController* controller,
     follower_.store(request->follower(), std::memory_order_relaxed);
     std::string mode = request->follower() == true ? "follower" : "normal";
     PDLOG(INFO, "set tablet mode %s", mode.c_str());
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
 }
 
 void TabletImpl::AlignTable(RpcController* controller,
@@ -4149,7 +4149,7 @@ void TabletImpl::AlignTable(RpcController* controller,
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
@@ -4157,7 +4157,7 @@ void TabletImpl::AlignTable(RpcController* controller,
     if (!replicator) {
         PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(),
               request->pid());
-        response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
@@ -4174,13 +4174,13 @@ void TabletImpl::DeleteIndex(RpcController* controller,
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         auto iter = tables_.find(request->tid());
         if (iter == tables_.end()) {
-            response->set_code(::rtidb::base::ReturnCode::TABLE_IS_NOT_EXIST);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
             return;
         }
         tables = iter->second;
         if (tables.begin()->second->GetStorageMode() != ::rtidb::common::kMemory) {
-            response->set_code(::rtidb::base::ReturnCode::OPERATOR_NOT_SUPPORT);
+            response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
             response->set_msg("only support mem_table");
             return;
         }
@@ -4188,13 +4188,13 @@ void TabletImpl::DeleteIndex(RpcController* controller,
             std::string root_path;
             MemTable* mem_table = dynamic_cast<MemTable*>(kv.second.get());
             if (!mem_table->DeleteIndex(request->idx_name())) {
-                response->set_code(::rtidb::base::ReturnCode::INDEX_DELETE_FAILED);
+                response->set_code(::rtidb::base::ReturnCode::kIndexDeleteFailed);
                 response->set_msg("delete index fail!");
                 return;
             }
             bool ok = ChooseDBRootPath(request->tid(), kv.second.get()->GetPid(), kv.second.get()->GetStorageMode(), root_path);
             if (!ok) {
-                response->set_code(::rtidb::base::ReturnCode::FAIL_TO_GET_DB_ROOT_PATH);
+                response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
                 response->set_msg("fail to get table db root path");
                 PDLOG(WARNING, "table db path is not found. tid %u, pid %u", request->tid(), kv.second.get()->GetPid());
                 break;
@@ -4205,7 +4205,7 @@ void TabletImpl::DeleteIndex(RpcController* controller,
         }
     }
     PDLOG(INFO, "delete index : tid[%u] index[%s]", request->tid(), request->idx_name());
-    response->set_code(::rtidb::base::ReturnCode::OK);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
