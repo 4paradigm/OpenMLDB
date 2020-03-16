@@ -12,14 +12,42 @@ using ::baidu::common::DEBUG;
 
 namespace rtidb {
 namespace storage {
+
+Table::Table() {
+    table_index_ = std::make_shared<TableIndex>();
+}
+
+Table::Table(::rtidb::common::StorageMode storage_mode, const std::string& name, uint32_t id, uint32_t pid,
+            uint64_t ttl, bool is_leader, uint64_t ttl_offset,
+            const std::map<std::string, uint32_t>& mapping,
+            ::rtidb::api::TTLType ttl_type, ::rtidb::api::CompressType compress_type) :
+        storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
+        ttl_offset_(ttl_offset), is_leader_(is_leader),
+        ttl_type_(ttl_type), compress_type_(compress_type) {
+    ::rtidb::api::TTLDesc* ttl_desc = table_meta_.mutable_ttl_desc();
+    ttl_desc->set_ttl_type(ttl_type);
+    if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
+        ttl_desc->set_abs_ttl(ttl/(60*1000));
+        ttl_desc->set_lat_ttl(0);
+    } else {
+        ttl_desc->set_abs_ttl(0);
+        ttl_desc->set_lat_ttl(ttl/(60*1000));
+    }
+    last_make_snapshot_time_ = 0;
+    table_index_ = std::make_shared<TableIndex>();
+    for (const auto& kv : mapping) {
+        table_index_->AddIndex(std::make_shared<IndexDef>(kv.first, kv.second));
+    }
+}
+
 bool Table::CheckTsValid(uint32_t index, int32_t ts_idx) {
-    auto column_map_iter = column_key_map_.find(index);
-    if (column_map_iter == column_key_map_.end()) {
+    std::shared_ptr<IndexDef> index_def = GetIndex(index);
+    if (!index_def || !index_def->IsReady()) {
         return false;
     }
-    if (std::find(column_map_iter->second->column_idx.cbegin(), column_map_iter->second->column_idx.cend(), ts_idx)
-                == column_map_iter->second->column_idx.cend()) {
-        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", 
+    auto ts_vec = index_def->GetTsColumn();
+    if (std::find(ts_vec.begin(), ts_vec.end(), ts_idx) == ts_vec.end()) {
+        PDLOG(WARNING, "ts index %u is not member of index %u, tid %u pid %u", 
                     ts_idx, index, id_, pid_);
         return false;
     }
@@ -32,7 +60,7 @@ int Table::InitColumnDesc() {
         uint32_t ts_idx = 0;
         for (const auto &column_desc : table_meta_.column_desc()) {
             if (column_desc.add_ts_idx()) {
-                mapping_.insert(std::make_pair(column_desc.name(), key_idx));
+                table_index_->AddIndex(std::make_shared<IndexDef>(column_desc.name(), key_idx));
                 key_idx++;
             } else if (column_desc.is_ts_col()) {
                 ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
@@ -57,79 +85,66 @@ int Table::InitColumnDesc() {
                 ts_idx++;
             }
         }
-        if (ts_mapping_.size() > 1 && !mapping_.empty()) {
-            mapping_.clear();
+        if (ts_mapping_.size() > 1) {
+            table_index_->ReSet();
         }
         if (table_meta_.column_key_size() > 0) {
-            mapping_.clear();
+            table_index_->ReSet();;
             key_idx = 0;
             for (const auto &column_key : table_meta_.column_key()) {
-                uint32_t cur_key_idx = key_idx;
                 std::string name = column_key.index_name();
-                auto it = mapping_.find(name);
-                if (it != mapping_.end()) {
+                if (table_index_->GetIndex(name)) {
                     return -1;
                 }
-                mapping_.insert(std::make_pair(name, key_idx));
+                table_index_->AddIndex(std::make_shared<IndexDef>(name, key_idx));
                 key_idx++;
                 if (ts_mapping_.empty()) {
                     continue;
                 }
-                if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
-                    column_key_map_.insert(std::make_pair(cur_key_idx, std::make_shared<ColumnKey>()));
-                }
+                std::vector<uint32_t> ts_vec;
                 if (ts_mapping_.size() == 1) {
-                    column_key_map_[cur_key_idx]->column_idx.push_back(ts_mapping_.begin()->second);
-                    continue;
-                }
-                for (const auto &ts_name : column_key.ts_name()) {
-                    auto ts_iter = ts_mapping_.find(ts_name);
-                    if (ts_iter == ts_mapping_.end()) {
-                        PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u",
-                              ts_name.c_str(), id_, pid_);
-                        return -1;
+                    ts_vec.push_back(ts_mapping_.begin()->second);
+                } else {
+                    for (const auto &ts_name : column_key.ts_name()) {
+                        auto ts_iter = ts_mapping_.find(ts_name);
+                        if (ts_iter == ts_mapping_.end()) {
+                            PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u",
+                                  ts_name.c_str(), id_, pid_);
+                            return -1;
+                        }
+                        if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) == ts_vec.end()) {
+                            ts_vec.push_back(ts_iter->second);
+                        }
                     }
-                    if (std::find(column_key_map_[cur_key_idx]->column_idx.begin(), column_key_map_[cur_key_idx]->column_idx.end(),
-                                  ts_iter->second) == column_key_map_[cur_key_idx]->column_idx.end()) {
-                        column_key_map_[cur_key_idx]->column_idx.push_back(ts_iter->second);
-                    }
                 }
+                table_index_->GetIndex(name)->SetTsColumn(ts_vec);
             }
         } else {
             if (!ts_mapping_.empty()) {
-                for (const auto &kv : mapping_) {
-                    uint32_t cur_key_idx = kv.second;
-                    if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
-                        column_key_map_.insert(std::make_pair(cur_key_idx, std::make_shared<ColumnKey>()));
-                    }
-                    uint32_t cur_ts_idx = ts_mapping_.begin()->second;
-                    if (std::find(column_key_map_[cur_key_idx]->column_idx.begin(), column_key_map_[cur_key_idx]->column_idx.end(),
-                                  cur_ts_idx) == column_key_map_[cur_key_idx]->column_idx.end()) {
-                        column_key_map_[cur_key_idx]->column_idx.push_back(cur_ts_idx);
-                    }
+                auto indexs = table_index_->GetAllIndex();
+                std::vector<uint32_t> ts_vec;
+                ts_vec.push_back(ts_mapping_.begin()->second);
+                for (auto &index_def : indexs) {
+                    index_def->SetTsColumn(ts_vec);
                 }
             }
         }
 
         if (ts_idx > UINT8_MAX) {
-            PDLOG(INFO, "failed create table because ts column more than %d, tid %u pid %u", UINT8_MAX + 1, id_, pid_);
+            PDLOG(WARNING, "failed create table because ts column more than %d, tid %u pid %u", UINT8_MAX + 1, id_, pid_);
         }
     } else {
         for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
-            mapping_.insert(std::make_pair(table_meta_.dimensions(i), (uint32_t) i));
+            table_index_->AddIndex(std::make_shared<IndexDef>(table_meta_.dimensions(i), (uint32_t)i));
             PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u",
                   table_meta_.dimensions(i).c_str(), i, table_meta_.name().c_str(), id_, pid_);
         }
     }
     // add default dimension
-    if (mapping_.empty()) {
-        mapping_.insert(std::make_pair("idx0", 0));
+    auto indexs = table_index_->GetAllIndex();
+    if (indexs.empty()) {
+        table_index_->AddIndex(std::make_shared<IndexDef>("idx0", 0));
         PDLOG(INFO, "no index specified with default");
-    }
-    if (column_key_map_.empty()) {
-        for (const auto& iter : mapping_) {
-            column_key_map_.insert(std::make_pair(iter.second, std::make_shared<ColumnKey>()));
-        }
     }
     return 0;
 }
@@ -195,7 +210,7 @@ bool Table::InitFromMeta() {
     }
     if (table_meta_.has_schema()) schema_ = table_meta_.schema();
     if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
-    idx_cnt_ = mapping_.size();
+    idx_cnt_ = table_index_->GetAllIndex().size();
     return true;
 }
 
