@@ -21,7 +21,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "sdk/base_struct.h"
+#include "sdk/base.h"
 
 namespace fesql {
 namespace sdk {
@@ -30,9 +30,7 @@ class ResultSetIterator {
  public:
     ResultSetIterator() {}
     virtual ~ResultSetIterator() {}
-
     virtual bool HasNext() = 0;
-
     virtual void Next() = 0;
     virtual bool GetInt16(uint32_t idx, int16_t* val) = 0;
     virtual bool GetInt32(uint32_t idx, int32_t* val) = 0;

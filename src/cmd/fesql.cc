@@ -30,7 +30,7 @@
 #include "base/linenoise.h"
 #include "base/strings.h"
 #include "brpc/server.h"
-#include "cmd/version.h"
+#include "version.h"
 #include "dbms/dbms_server_impl.h"
 #include "glog/logging.h"
 #include "llvm/Support/InitLLVM.h"

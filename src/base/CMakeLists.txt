@@ -21,3 +21,7 @@ add_executable(slice_test slice_test.cc)
 target_link_libraries(slice_test gflags gtest pthread)
 list(APPEND test_list slice_test)
 
+add_executable(schema_codec_test schema_codec_test.cc)
+target_link_libraries(schema_codec_test fesql_proto protobuf gflags gtest pthread)
+list(APPEND test_list schema_codec_test)
+

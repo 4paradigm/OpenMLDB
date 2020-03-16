@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "sdk/base_struct.h"
+#include "sdk/base.h"
 
 namespace fesql {
 namespace sdk {

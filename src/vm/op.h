@@ -32,6 +32,7 @@ namespace vm {
 
 enum OpType { kOpProject = 1, kOpScan, kOpLimit, kOpMerge };
 
+
 struct OpNode {
     virtual ~OpNode() {}
     OpType type;

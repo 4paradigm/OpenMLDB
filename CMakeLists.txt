@@ -10,7 +10,6 @@ set(FESQL_VERSION_MINOR 0)
 set(FESQL_VERSION_BUG 0)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
-#set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
 
 set(COMMON_LIBS glog gflags unwind lzma)
@@ -20,8 +19,8 @@ find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 configure_file (
-      "${PROJECT_SOURCE_DIR}/src/cmd/version.h.in"
-      "${PROJECT_SOURCE_DIR}/src/cmd/version.h"
+      "${PROJECT_SOURCE_DIR}/src/version.h.in"
+      "${PROJECT_SOURCE_DIR}/src/version.h"
 )
 
 option(TESTING_ENABLE "Enable Test" ON)
