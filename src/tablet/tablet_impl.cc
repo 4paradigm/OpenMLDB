@@ -424,15 +424,15 @@ void TabletImpl::Get(RpcController* controller,
         uint32_t index = 0;
         int ts_index = -1;
         if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
+            std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+            if (!index_def || !index_def->IsReady()) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
                 response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
                 response->set_msg("idx name not found");
                 return;
             }
-            index = iit->second;
+            index = index_def->GetId();
         }
         if (request->has_ts_name() && request->ts_name().size() > 0) {
             auto iter = table->GetTSMapping().find(request->ts_name());
@@ -614,21 +614,65 @@ void TabletImpl::Put(RpcController* controller,
             }
         }
     } else {
-        bool ok = false;
-        if (request->dimensions_size() > 0) {
-            int32_t ret_code = CheckDimessionPut(request, r_table->GetIdxCnt());
-            if (ret_code != 0) {
-                response->set_code(::rtidb::base::ReturnCode::kInvalidDimensionParameter);
-                response->set_msg("invalid dimension parameter");
+        ::rtidb::api::TableMeta& table_meta = r_table->GetTableMeta();
+        std::string pk_col_name;
+        for (const ::rtidb::common::ColumnKey& column_key : table_meta.column_key()) {
+            if (column_key.index_type() == ::rtidb::type::kPrimaryKey) {
+                pk_col_name = column_key.index_name();
+            }
+            //TODO: other index type
+        }
+        const std::string& value = request->value();
+        uint32_t size = value.length();
+        const Schema& schema = table_meta.column_desc(); 
+        std::string row;
+        row.assign(value);
+        ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+        int index = 0;
+        ::rtidb::type::DataType data_type = ::rtidb::type::kVarchar;
+        std::string pk = "";
+        for (int i = 0; i < table_meta.column_desc_size(); i++) {
+            if (table_meta.column_desc(i).name() == pk_col_name) {
+                index = i;
+                data_type = table_meta.column_desc(i).data_type();
+                break;
+            }
+        }
+        switch(data_type) {
+            case ::rtidb::type::kSmallInt: {
+                int16_t val = 0;
+                view.GetInt16(index, &val);
+                pk = std::to_string(val);
+                break;
+            }
+            case ::rtidb::type::kInt: {
+                int32_t val = 0;
+                view.GetInt32(index, &val);
+                pk = std::to_string(val);
+                break;
+            }
+            case ::rtidb::type::kBigInt: { 
+                int64_t val = 0;
+                view.GetInt64(index, &val);
+                pk = std::to_string(val);
+                break;
+            }
+            case ::rtidb::type::kVarchar: {
+                char* ch = NULL;
+                uint32_t length = 0;
+                view.GetString(index, &ch, &length);
+                pk.assign(ch, length);
+                break;
+            } 
+            default: {
+                response->set_code(::rtidb::base::ReturnCode::kPutFailed);
+                response->set_msg("put failed");
                 done->Run();
                 return;
             }
-            ok = r_table->Put(request->value(), request->dimensions());
-        } else {
-            ok = r_table->Put(request->pk(), 
-                    request->value().c_str(),
-                    request->value().size());
+            //TODO: other data type
         }
+        bool ok = r_table->Put(pk, value.c_str(), value.size());
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
@@ -1040,15 +1084,15 @@ void TabletImpl::Scan(RpcController* controller,
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
+        std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+        if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             return;
         }
-        index = iit->second;
+        index = index_def->GetId();
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = table->GetTSMapping().find(request->ts_name());
@@ -1133,15 +1177,15 @@ void TabletImpl::Count(RpcController* controller,
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
+        std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+        if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             return;
         }
-        index = iit->second;
+        index = index_def->GetId();
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = table->GetTSMapping().find(request->ts_name());
@@ -1245,15 +1289,15 @@ void TabletImpl::Traverse(RpcController* controller,
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
+        std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+        if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                     request->tid(), request->pid());
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             return;
         }
-        index = iit->second;
+        index = index_def->GetId();
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = table->GetTSMapping().find(request->ts_name());
@@ -1399,15 +1443,15 @@ void TabletImpl::Delete(RpcController* controller,
         }
         uint32_t idx = 0;
         if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end() || table->IsIndexDeleted(iit->second)) {
+            std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+            if (!index_def || !index_def->IsReady()) {
                 PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                         request->tid(), request->pid());
                 response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
                 response->set_msg("idx name not found");
                 return;
             }
-            idx = iit->second;
+            idx = index_def->GetId();
         }
         if (table->Delete(request->key(), idx)) {
             response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -1865,12 +1909,13 @@ void TabletImpl::GetTableStatus(RpcController* controller,
                     status->set_record_pk_cnt(mem_table->GetRecordPkCnt());
                     status->set_skiplist_height(mem_table->GetKeyEntryHeight());
                     uint64_t record_idx_cnt = 0;
-                    for (auto iit = table->GetMapping().begin(); iit != table->GetMapping().end(); ++iit) {
+                    auto indexs = table->GetAllIndex();
+                    for (const auto& index_def : indexs) {
                         ::rtidb::api::TsIdxStatus* ts_idx_status = status->add_ts_idx_status();
-                        ts_idx_status->set_idx_name(iit->first);
+                        ts_idx_status->set_idx_name(index_def->GetName());
                         uint64_t* stats = NULL;
                         uint32_t size = 0;
-                        bool ok = mem_table->GetRecordIdxCnt(iit->second, &stats, &size);
+                        bool ok = mem_table->GetRecordIdxCnt(index_def->GetId(), &stats, &size);
                         if (ok) {
                             for (uint32_t i = 0; i < size; i++) {
                                 ts_idx_status->add_seg_cnts(stats[i]); 
@@ -4190,8 +4235,11 @@ void TabletImpl::DeleteIndex(RpcController* controller,
             if (!mem_table->DeleteIndex(request->idx_name())) {
                 response->set_code(::rtidb::base::ReturnCode::kIndexDeleteFailed);
                 response->set_msg("delete index fail!");
+                PDLOG(WARNING, "delete index %s failed. tid %u pid %u", 
+                        request->idx_name().c_str(), request->tid(), kv.first);
                 return;
             }
+<<<<<<< HEAD
             bool ok = ChooseDBRootPath(request->tid(), kv.second.get()->GetPid(), kv.second.get()->GetStorageMode(), root_path);
             if (!ok) {
                 response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
@@ -4206,6 +4254,14 @@ void TabletImpl::DeleteIndex(RpcController* controller,
     }
     PDLOG(INFO, "delete index : tid[%u] index[%s]", request->tid(), request->idx_name());
     response->set_code(::rtidb::base::ReturnCode::kOk);
+=======
+            PDLOG(INFO, "delete index %s success. tid %u pid %u", 
+                    request->idx_name().c_str(), request->tid(), kv.first);
+        }
+    }
+    PDLOG(INFO, "delete index %s success. tid %u", request->idx_name().c_str(), request->tid());
+    response->set_code(0);
+>>>>>>> develop
     response->set_msg("ok");
 }
 

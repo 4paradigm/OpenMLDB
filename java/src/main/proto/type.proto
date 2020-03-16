@@ -6,18 +6,26 @@ option java_outer_classname = "Type";
 
 enum DataType {
     kBool = 1;
-    kInt16 = 2;
-    kInt32 = 3;
-    kInt64 = 4;
+    kSmallInt = 2;
+    kInt = 3;
+    kBigInt = 4;
     kFloat = 5;
     kDouble = 6;
     kVarchar = 7;
     kDate = 8;
     kTimestamp = 9;
-    kVoid = 100;
+    kBlob = 10;
 }
 
 enum TableType {
      kTimeSeries = 1;
      kRelational = 2;
+}
+
+enum IndexType {
+    kUnique = 1; // uinque index
+    kNoUinque = 2;
+    kPrimaryKey = 3;
+    kAutoGen = 4;  // auto gen primary key
+    kIncrement = 5; // auto gen increment id primary key
 }
