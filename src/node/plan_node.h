@@ -33,7 +33,6 @@ class PlanNode {
     PlanType GetType() const { return type_; }
 
     const std::vector<PlanNode *> &GetChildren() const { return children_; }
-
     int GetChildrenSize() const { return children_.size(); }
     friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
 
@@ -193,17 +192,14 @@ class FilterPlanNode : public UnaryPlanNode {
 
 class LimitPlanNode : public UnaryPlanNode {
  public:
-    LimitPlanNode(PlanNode *node, int limit_cnt)
+    LimitPlanNode(PlanNode *node, int32_t limit_cnt)
         : UnaryPlanNode(node, kPlanTypeLimit), limit_cnt_(limit_cnt) {}
 
     ~LimitPlanNode() {}
     const int GetLimitCnt() const { return limit_cnt_; }
-    void SetLimitCnt(int limit_cnt) { limit_cnt_ = limit_cnt; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const PlanNode *node) const;
-
- private:
-    int limit_cnt_;
+    const int32_t limit_cnt_;
 };
 
 class ProjectNode : public LeafPlanNode {
@@ -296,9 +292,9 @@ class ProjectListNode : public LeafPlanNode {
     const uint64_t GetScanLimit() const { return scan_limit_; }
     virtual bool Equals(const PlanNode *node) const;
 
- private:
+    const bool is_window_agg_;
     const WindowPlanNode *w_ptr_;
-    bool is_window_agg_;
+ private:
     uint64_t scan_limit_;
     PlanNodeList projects;
 };

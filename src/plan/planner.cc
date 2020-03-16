@@ -100,12 +100,8 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             current_node, *iter, node::JoinType::kJoinTypeFull, nullptr);
     }
 
+    // TODO(chenjing): 处理子查询
     std::string table_name = MakeTableName(current_node);
-    if (table_name.empty()) {
-        status.msg = "fail to create select query plan: can not get table name";
-        status.code = common::kCodegenError;
-        return false;
-    }
     // where condition
     if (nullptr != root->where_clause_ptr_) {
         current_node = node_manager_->MakeFilterPlanNode(
@@ -570,12 +566,10 @@ std::string Planner::MakeTableName(const PlanNode *node) const {
             return table_node->table_;
         }
         case node::kPlanTypeJoin: {
-            std::default_random_engine e;
-            return std::string("join_table_").append(std::to_string(e()));
+            return "";
         }
         case node::kPlanTypeQuery: {
-            std::default_random_engine e;
-            return std::string("query_table_").append(std::to_string(e()));
+            return "";
         }
         default: {
             LOG(WARNING) << "fail to get or generate table name for given plan "

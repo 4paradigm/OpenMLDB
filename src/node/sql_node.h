@@ -77,6 +77,8 @@ inline const std::string JoinTypeName(const JoinType &type) {
             return "RightJoin";
         case kJoinTypeInner:
             return "InnerJoin";
+        case kJoinTypeAppend:
+            return "kJoinTypeAppend";
         default: {
             return "Unknow";
         }

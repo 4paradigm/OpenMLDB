@@ -77,9 +77,8 @@ TEST_P(TransformTest, transform_logical_graph_test) {
         ASSERT_EQ(0, base_status.code);
         std::cout.flush();
     }
-    Transform transform;
     LogicalGraph graph;
-    transform.TransformLogicalTreeToLogicalGraph(
+    TransformLogicalTreeToLogicalGraph(
         dynamic_cast<node::PlanNode*>(plan_trees[0]), base_status, graph);
     graph.DfsVisit();
     ASSERT_EQ(param.second, graph.VertexSize());
