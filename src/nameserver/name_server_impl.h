@@ -324,6 +324,11 @@ public:
         GeneralResponse* response,
         Closure* done);
 
+    void DeleteIndex(RpcController* controller,
+        const DeleteIndexRequest* request,
+        GeneralResponse* response,
+        Closure* done);
+
     int SyncExistTable(const std::string& alias, const std::string& name,
         const std::vector<::rtidb::nameserver::TableInfo> tables_remote, 
         const ::rtidb::nameserver::TableInfo& table_info_local, 

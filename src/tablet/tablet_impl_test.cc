@@ -24,6 +24,7 @@
 #include "base/file_util.h"
 #include "base/strings.h"
 #include "proto/type.pb.h"
+#include "base/codec.h"
 
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
@@ -43,6 +44,7 @@ namespace rtidb {
 namespace tablet {
 
 using ::rtidb::api::TableStatus;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
 uint32_t counter = 10;
 const static ::rtidb::base::DefaultComparator scmp;
@@ -541,115 +543,6 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
     }
 }
 
-TEST_F(TabletImplTest, MultiGetRelationalTable) {
-    TabletImpl tablet;
-    tablet.Init();
-    uint32_t id = counter++;
-    std::vector<::rtidb::base::ColumnDesc> columns;
-    ::rtidb::base::ColumnDesc desc1;
-    desc1.type = ::rtidb::base::ColType::kString;
-    desc1.name = "pk";
-    desc1.add_ts_idx = false;
-    columns.push_back(desc1);
-
-    ::rtidb::base::ColumnDesc desc2;
-    desc2.type = ::rtidb::base::ColType::kString;
-    desc2.name = "amt";
-    desc2.add_ts_idx = true;
-    columns.push_back(desc2);
-
-    ::rtidb::base::ColumnDesc desc3;
-    desc3.type = ::rtidb::base::ColType::kInt32;
-    desc3.name = "apprv_cde";
-    desc3.add_ts_idx = false;
-    columns.push_back(desc3);
-
-    ::rtidb::base::SchemaCodec codec;
-    std::string buffer;
-    codec.Encode(columns, buffer);
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
-    table_meta->set_table_type(::rtidb::type::kRelational);
-    table_meta->set_name("t0");
-    table_meta->set_tid(id);
-    table_meta->set_pid(1);
-    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-    table_meta->set_schema(buffer);
-    for (uint32_t i = 0; i < columns.size(); i++) {
-        if (columns[i].add_ts_idx) {
-            table_meta->add_dimensions(columns[i].name);
-        }
-    }
-    ::rtidb::api::CreateTableResponse response;
-    MockClosure closure;
-    tablet.CreateTable(NULL, &request, &response, &closure);
-    ASSERT_EQ(0, response.code());
-
-    // put
-    for (int i = 0; i < 5; i++) {
-        std::vector<std::string> input;
-        input.push_back("test" + std::to_string(i));
-        input.push_back("abcd" + std::to_string(i));
-        input.push_back("1212"+ std::to_string(i));
-        std::string value;
-        std::vector<std::pair<std::string, uint32_t>> dimensions;
-        MultiDimensionEncode(columns, input, dimensions, value);
-        ::rtidb::api::PutRequest request;
-        request.set_value(value);
-        request.set_tid(id);
-        request.set_pid(1);
-        for (size_t i = 0; i < dimensions.size(); i++) {
-            ::rtidb::api::Dimension* d = request.add_dimensions();
-            d->set_key(dimensions[i].first);
-            d->set_idx(dimensions[i].second);
-        }
-        ::rtidb::api::PutResponse response;
-        MockClosure closure;
-        tablet.Put(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-    }
-    // get
-    ::rtidb::api::GetRequest get_request;
-    ::rtidb::api::GetResponse get_response;
-    get_request.set_tid(id);
-    get_request.set_pid(1);
-    get_request.set_key("abcd2");
-    get_request.set_idx_name("amt");
-
-    tablet.Get(NULL, &get_request, &get_response, &closure);
-    ASSERT_EQ(0, get_response.code());
-    std::string value(get_response.value());
-    std::vector<std::string> vec;
-    MultiDimensionDecode(value, vec, columns.size());
-    ASSERT_EQ(3, vec.size());
-    ASSERT_STREQ("test2", vec[0].c_str());
-    ASSERT_STREQ("abcd2", vec[1].c_str());
-    ASSERT_STREQ("12122", vec[2].c_str());
-    //drop table
-    {
-        MockClosure closure;
-        ::rtidb::api::DropTableRequest dr;
-        dr.set_table_type(::rtidb::type::kRelational);
-        dr.set_tid(id);
-        dr.set_pid(1);
-        ::rtidb::api::DropTableResponse drs;
-        tablet.DropTable(NULL, &dr, &drs, &closure);
-        ASSERT_EQ(0, drs.code());
-    }
-    // table not found
-    {
-        ::rtidb::api::GetRequest request;
-        request.set_tid(1);
-        request.set_pid(0);
-        request.set_key("test");
-        request.set_ts(0);
-        ::rtidb::api::GetResponse response;
-        MockClosure closure;
-        tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(100, response.code());
-    }
-}
-
 TEST_F(TabletImplTest, GetRelationalTable) {
     TabletImpl tablet;
     tablet.Init();
@@ -667,6 +560,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     }
     // create table
     uint32_t id = counter++;
+    Schema schema_t;
     {
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -676,6 +570,24 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         table_meta->set_pid(1);
         table_meta->set_wal(true);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        Schema* schema = table_meta->mutable_column_desc();
+        ::rtidb::common::ColumnDesc* col = schema->Add();
+        col->set_name("card");
+        col->set_data_type(::rtidb::type::kBigInt);
+        col = schema->Add();
+        col->set_name("mcc");
+        col->set_data_type(::rtidb::type::kVarchar);
+        col = schema->Add();
+        col->set_name("image");
+        col->set_data_type(::rtidb::type::kVarchar);
+        ::google::protobuf::RepeatedPtrField< ::rtidb::common::ColumnKey >* ck_list =
+            table_meta->mutable_column_key();
+        ::rtidb::common::ColumnKey* ck = ck_list->Add();
+        ck->set_index_name("card");
+        ck->add_col_name("card");
+        ck->set_index_type(::rtidb::type::kPrimaryKey);
+        schema_t = *schema;
+
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response,
@@ -694,45 +606,47 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         ASSERT_EQ(109, response.code());
     }
     // put some key
-    {
-        ::rtidb::api::PutRequest prequest;
-        prequest.set_pk("key1");
-        prequest.set_value("value1");
-        prequest.set_tid(id);
-        prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
-        MockClosure closure;
-        tablet.Put(NULL, &prequest, &presponse,
-                &closure);
-        ASSERT_EQ(0, presponse.code());
-    }
-    {
-        ::rtidb::api::PutRequest prequest;
-        prequest.set_pk("key2");
-        prequest.set_value("value2");
-        prequest.set_tid(id);
-        prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
-        MockClosure closure;
-        tablet.Put(NULL, &prequest, &presponse,
-                &closure);
-        ASSERT_EQ(0, presponse.code());
-    }
-    {
-        ::rtidb::api::GetRequest request;
-        request.set_tid(id);
-        request.set_pid(1);
-        request.set_key("key1");
-        ::rtidb::api::GetResponse response;
-        MockClosure closure;
-        tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-        ASSERT_EQ("value1", response.value());
-        request.set_key("key2");
-        tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-        ASSERT_EQ("value2", response.value());
-    }
+    ::rtidb::base::RowBuilder builder(schema_t);
+    uint32_t size = builder.CalTotalLength(10);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    ASSERT_TRUE(builder.AppendInt64(10l));
+    std::string str1 = "12345";
+    ASSERT_TRUE(builder.AppendString(str1.c_str(), str1.length()));
+    std::string str2 = "67890";
+    ASSERT_TRUE(builder.AppendString(str2.c_str(), str2.length()));
+
+    ::rtidb::api::PutRequest prequest;
+    prequest.set_value(row);
+    prequest.set_tid(id);
+    prequest.set_pid(1);
+    ::rtidb::api::PutResponse presponse;
+    MockClosure closure;
+    tablet.Put(NULL, &prequest, &presponse,
+            &closure);
+    ASSERT_EQ(0, presponse.code());
+    //get
+    ::rtidb::api::GetRequest request;
+    request.set_tid(id);
+    request.set_pid(1);
+    request.set_key("10");
+    ::rtidb::api::GetResponse response;
+    tablet.Get(NULL, &request, &response, &closure);
+    ASSERT_EQ(0, response.code());
+    std::string res = response.value();
+    ::rtidb::base::RowView view(schema_t, reinterpret_cast<int8_t*>(&(res[0])), size);
+    int64_t val = 0;
+    ASSERT_EQ(view.GetInt64(0, &val), 0);
+    ASSERT_EQ(val, 10l);
+    char* ch = NULL;
+    uint32_t length = 0;
+    ASSERT_EQ(view.GetString(1, &ch, &length), 0);
+    std::string str3(ch, length);
+    ASSERT_STREQ(str3.c_str(), std::string("12345").c_str());
+    ASSERT_EQ(view.GetString(2, &ch, &length), 0);
+    std::string str4(ch, length);
+    ASSERT_STREQ(str4.c_str(), std::string("67890").c_str());
     //drop table
     {
         MockClosure closure;
@@ -1449,15 +1363,49 @@ TEST_F(TabletImplTest, MultiGet) {
     get_request.set_idx_name("amt");
 
     tablet.Get(NULL, &get_request, &get_response, &closure);
-      ASSERT_EQ(0, get_response.code());
-      ASSERT_EQ(1100, get_response.ts());
+    ASSERT_EQ(0, get_response.code());
+    ASSERT_EQ(1100, get_response.ts());
     std::string value(get_response.value());
     std::vector<std::string> vec;
     MultiDimensionDecode(value, vec, columns.size());
-      ASSERT_EQ(3, vec.size());
+    ASSERT_EQ(3, vec.size());
     ASSERT_STREQ("test2", vec[0].c_str());
     ASSERT_STREQ("abcd2", vec[1].c_str());
     ASSERT_STREQ("12122", vec[2].c_str());
+    
+    // delete index
+    ::rtidb::api::DeleteIndexRequest deleteindex_request;
+    ::rtidb::api::GeneralResponse deleteindex_response;
+    // delete first index should fail
+    deleteindex_request.set_idx_name("pk");
+    deleteindex_request.set_tid(id);
+    tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
+    ASSERT_EQ(601, deleteindex_response.code());
+    // delete other index
+    deleteindex_request.set_idx_name("amt");
+    deleteindex_request.set_tid(id);
+    tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
+    ASSERT_EQ(0, deleteindex_response.code());
+
+    // get index not found
+    get_request.set_tid(id);
+    get_request.set_pid(1);
+    get_request.set_key("abcd2");
+    get_request.set_ts(1100);
+    get_request.set_idx_name("amt");
+    tablet.Get(NULL, &get_request, &get_response, &closure);
+    ASSERT_EQ(108, get_response.code());
+
+    // scan index not found
+    ::rtidb::api::ScanRequest scan_request;
+    ::rtidb::api::ScanResponse scan_response;
+    scan_request.set_tid(id);
+    scan_request.set_pid(1);
+    scan_request.set_pk("abcd2");
+    scan_request.set_st(1100);
+    scan_request.set_idx_name("amt");
+    tablet.Scan(NULL, &scan_request, &scan_response, &closure);
+    ASSERT_EQ(108, scan_response.code());
 }
 
 TEST_F(TabletImplTest, TTL) {

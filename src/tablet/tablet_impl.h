@@ -38,6 +38,8 @@ using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
 using ::rtidb::zk::ZkClient;
 using ::rtidb::base::SpinMutex;
+using ::rtidb::storage::IndexDef;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
@@ -252,6 +254,11 @@ public:
 
     void AlignTable(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void DeleteIndex(RpcController* controller,
+            const ::rtidb::api::DeleteIndexRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 

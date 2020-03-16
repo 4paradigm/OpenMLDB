@@ -1143,5 +1143,17 @@ bool TabletClient::GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, ui
     return true;
 }
 
+bool TabletClient::DeleteIndex(uint32_t tid, const std::string& idx_name) {
+    ::rtidb::api::DeleteIndexRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_idx_name(idx_name);
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::DeleteIndex, &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
 }
 }

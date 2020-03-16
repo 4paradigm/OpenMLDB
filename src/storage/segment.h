@@ -19,6 +19,7 @@
 #include "storage/ticket.h"
 #include "storage/iterator.h"
 #include "proto/tablet.pb.h"
+#include "storage/schema.h"
 
 namespace rtidb {
 namespace storage {
@@ -29,35 +30,6 @@ using ::rtidb::base::Slice;
 
 class Segment;
 class Ticket;
-
-struct TTLDesc {
-    TTLDesc() = default;
-    
-    TTLDesc(const uint64_t abs, const uint64_t lat) : abs_ttl(abs), lat_ttl(lat) {}
-
-    inline bool HasExpire(const ::rtidb::api::TTLType& ttl_type) const {
-        switch(ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: return abs_ttl != 0;
-            case ::rtidb::api::TTLType::kLatestTime: return lat_ttl != 0;
-            case ::rtidb::api::TTLType::kAbsAndLat: return abs_ttl != 0 && lat_ttl != 0;
-            case ::rtidb::api::TTLType::kAbsOrLat: return abs_ttl != 0 || lat_ttl != 0;
-            default: return false;
-        }
-    }
-
-    inline std::string ToString(const ::rtidb::api::TTLType& ttl_type) const {
-        switch(ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: return std::to_string(abs_ttl)+"min";
-            case ::rtidb::api::TTLType::kLatestTime: return std::to_string(lat_ttl);
-            case ::rtidb::api::TTLType::kAbsAndLat: return std::to_string(abs_ttl)+"min&&" +std::to_string(lat_ttl);
-            case ::rtidb::api::TTLType::kAbsOrLat: return std::to_string(abs_ttl)+"min||" +std::to_string(lat_ttl);
-            default: return "";
-        }
-    }
-
-    uint64_t abs_ttl;
-    uint64_t lat_ttl;
-};
 
 struct DataBlock {
     // dimension count down
@@ -251,6 +223,8 @@ public:
         gc_version_.fetch_add(1, std::memory_order_relaxed);
     }
 
+    void ReleaseAndCount(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+
 private:
     void FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
                   uint64_t& gc_idx_cnt, 
@@ -258,6 +232,10 @@ private:
                   uint64_t& gc_record_byte_size);
     void SplitList(KeyEntry* entry, uint64_t ts, 
                    ::rtidb::base::Node<uint64_t, DataBlock*>** node);
+
+    void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+    void FreeEntry(::rtidb::base::Node<Slice, void*>* entry_node, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+
 private:
     KeyEntries* entries_;
     // only Put need mutex

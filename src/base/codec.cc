@@ -30,10 +30,10 @@ namespace base {
 
 static const std::unordered_map<::rtidb::type::DataType, uint8_t> TYPE_SIZE_MAP = {
     {::rtidb::type::kBool, sizeof(bool)},
-    {::rtidb::type::kInt16, sizeof(int16_t)},
-    {::rtidb::type::kInt32, sizeof(int32_t)},
+    {::rtidb::type::kSmallInt, sizeof(int16_t)},
+    {::rtidb::type::kInt, sizeof(int32_t)},
     {::rtidb::type::kFloat, sizeof(float)},
-    {::rtidb::type::kInt64, sizeof(int64_t)},
+    {::rtidb::type::kBigInt, sizeof(int64_t)},
     {::rtidb::type::kTimestamp, sizeof(int64_t)},
     {::rtidb::type::kDouble, sizeof(double)}};
 
@@ -162,7 +162,7 @@ bool RowBuilder::AppendBool(bool val) {
 }
 
 bool RowBuilder::AppendInt32(int32_t val) {
-    if (!Check(::rtidb::type::kInt32)) return false;
+    if (!Check(::rtidb::type::kInt)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int32_t*>(ptr)) = val;
     cnt_++;
@@ -170,7 +170,7 @@ bool RowBuilder::AppendInt32(int32_t val) {
 }
 
 bool RowBuilder::AppendInt16(int16_t val) {
-    if (!Check(::rtidb::type::kInt16)) return false;
+    if (!Check(::rtidb::type::kSmallInt)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int16_t*>(ptr)) = val;
     cnt_++;
@@ -186,7 +186,7 @@ bool RowBuilder::AppendTimestamp(int64_t val) {
 }
 
 bool RowBuilder::AppendInt64(int64_t val) {
-    if (!Check(::rtidb::type::kInt64)) return false;
+    if (!Check(::rtidb::type::kBigInt)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
     cnt_++;
@@ -350,7 +350,7 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kInt32)) {
+    if (!CheckValid(idx, ::rtidb::type::kInt)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -380,7 +380,7 @@ int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kInt64)) {
+    if (!CheckValid(idx, ::rtidb::type::kBigInt)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -395,7 +395,7 @@ int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
     if (val == NULL) {
         return -1;
     }
-    if (!CheckValid(idx, ::rtidb::type::kInt16)) {
+    if (!CheckValid(idx, ::rtidb::type::kSmallInt)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
@@ -440,20 +440,20 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,
                             ::rtidb::type::DataType type, int64_t* val) {
     int32_t ret = 0;
     switch (type) {
-        case ::rtidb::type::kInt16: {
+        case ::rtidb::type::kSmallInt: {
             int16_t tmp_val = 0;
             ret = GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
             break;
         }
-        case ::rtidb::type::kInt32: {
+        case ::rtidb::type::kInt: {
             int32_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
             break;
         }
         case ::rtidb::type::kTimestamp:
-        case ::rtidb::type::kInt64: {
+        case ::rtidb::type::kBigInt: {
             int64_t tmp_val = 0;
             GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
@@ -494,14 +494,14 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx,
             }
             break;
         }
-        case ::rtidb::type::kInt16:
+        case ::rtidb::type::kSmallInt:
             *(reinterpret_cast<int16_t*>(val)) = v1::GetInt16Field(row, offset);
             break;
-        case ::rtidb::type::kInt32:
+        case ::rtidb::type::kInt:
             *(reinterpret_cast<int32_t*>(val)) = v1::GetInt32Field(row, offset);
             break;
         case ::rtidb::type::kTimestamp:
-        case ::rtidb::type::kInt64:
+        case ::rtidb::type::kBigInt:
             *(reinterpret_cast<int64_t*>(val)) = v1::GetInt64Field(row, offset);
             break;
         case ::rtidb::type::kFloat:
