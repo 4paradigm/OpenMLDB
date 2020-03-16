@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.schema;
 
 
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.client.type.IndexType;
@@ -53,13 +54,15 @@ public class RowCodecCommon {
         }
     }
 
-    public static int calStrLength(Object[] row, List<ColumnDesc> schema) {
+    public static int calStrLength(Object[] row, List<ColumnDesc> schema) throws TabletException {
         int strLength = 0;
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
             if (columnDesc.getDataType().equals(DataType.Varchar)) {
                 if (!columnDesc.isNotNull() && row[i] == null) {
                     continue;
+                } else if (columnDesc.isNotNull() && row[i] == null) {
+                    throw new TabletException("col " + columnDesc.getName() + " should not be null");
                 }
                 strLength += ((String) row[i]).length();
             }
