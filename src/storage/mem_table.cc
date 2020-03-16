@@ -337,8 +337,6 @@ void MemTable::SchedGc() {
         for (auto ts_idx : ts_vec) {
             if (ts_idx >= abs_ttl_vec_.size()) {
                 continue;
-            } else if (index_def->GetStatus() == IndexStatus::kDeleted) {
-                continue;
             }
             uint64_t expire_time = 0;
             uint64_t expire_cnt = 0;

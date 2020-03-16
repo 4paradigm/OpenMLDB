@@ -2793,6 +2793,13 @@ void NameServerImpl::ShowTable(RpcController* controller,
         }
         ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
         table_info->CopyFrom(*(kv.second));
+        table_info->clear_column_key();
+        for (const auto& column_key : kv.second->column_key()) {
+            if(!column_key.flag()) {
+                ::rtidb::common::ColumnKey* ck = table_info->add_column_key();
+                ck->CopyFrom(column_key);
+            }
+        }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");

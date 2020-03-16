@@ -11,14 +11,4 @@ public class Common {
         Charset charset = Charset.forName("utf-8");
         return charset.decode(buffer).toString();
     }
-
-    public static List<Common.ColumnKey> filterColumnKey(List<Common.ColumnKey> columnKeyList) {
-        List<Common.ColumnKey> result = new ArrayList<Common.ColumnKey>();
-        for(Common.ColumnKey ck : columnKeyList) {
-            if (ck.getFlag == 0) {
-                result.add(ck);
-            }
-        }
-        return result;
-    }
 }
