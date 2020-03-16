@@ -26,6 +26,7 @@
 #include <boost/lexical_cast.hpp>
 #include "timer.h"
 #include "base/codec.h"
+#include <mutex>
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
@@ -124,6 +125,7 @@ public:
     }
     
 private:
+    std::mutex mu_;
     ::rtidb::common::StorageMode storage_mode_;
     std::string name_;
     uint32_t id_;

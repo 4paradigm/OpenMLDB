@@ -271,7 +271,7 @@ bool RelationalTable::Update(const ::rtidb::api::Columns& cd_columns,
 void RelationalTable::UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
         std::map<std::string, int>& cd_idx_map, 
         Schema& condition_schema) {
-    Schema schema = table_meta_.column_desc();
+    const Schema& schema = table_meta_.column_desc();
     std::map<std::string, ::rtidb::type::DataType> cd_type_map;
     for (int i = 0; i < cd_columns.name_size(); i++) {
         cd_type_map.insert(std::make_pair(cd_columns.name(i), ::rtidb::type::kBool));
@@ -293,12 +293,13 @@ void RelationalTable::UpdateInternel(const ::rtidb::api::Columns& cd_columns,
 bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, const std::map<std::string, int>& col_idx_map,  
         const Schema& condition_schema, const Schema& value_schema, 
         const std::string& cd_value, const std::string& col_value) {
-    Schema schema = table_meta_.column_desc();
+    const Schema& schema = table_meta_.column_desc();
     uint32_t cd_value_size = cd_value.length();
     std::string cd_value_r = cd_value;
     ::rtidb::base::RowView cd_view(condition_schema, reinterpret_cast<int8_t*>(&(cd_value_r[0])), cd_value_size);
     ::rtidb::type::DataType pk_data_type;
     std::string pk;
+    //TODO if condition columns size is more than 1
     for (int i = 0; i < condition_schema.size(); i++) {
         pk_data_type = condition_schema.Get(i).data_type();
         switch(pk_data_type) {
@@ -341,11 +342,12 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
         }
         break;
     }
-    
+
+    std::lock_guard<std::mutex> lock(mu_);
     std::string value;
     bool ok = Get(0, pk, value);
     if (!ok) {
-        PDLOG(WARNING, "update table tid %u pid %u failed", id_, pid_);
+        PDLOG(WARNING, "get failed, update table tid %u pid %u failed", id_, pid_);
         return false;
     }
     ::rtidb::base::RowView row_view(schema, reinterpret_cast<int8_t*>(&(value[0])), value.length());
@@ -376,6 +378,13 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
     for (int i = 0; i < schema.size(); i++) {
         auto col_iter = col_idx_map.find(schema.Get(i).name());
+        if (schema.Get(i).not_null() && value_view.IsNULL(col_iter->second)) {
+           return false;
+           PDLOG(WARNING, "not_null is true but value is null ,update table tid %u pid %u failed", id_, pid_);
+        } else if (value_view.IsNULL(col_iter->second)) {
+           builder.AppendNULL(); 
+           continue;
+        }
         if (schema.Get(i).data_type() == rtidb::type::kBool) {
             bool val = true;
             if (col_iter != col_idx_map.end()) {
@@ -449,7 +458,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     }
     ok = Put(pk, row.c_str(), row.length());
     if (!ok) {
-        PDLOG(WARNING, "update table tid %u pid %u failed", id_, pid_);
+        PDLOG(WARNING, "put failed, update table tid %u pid %u failed", id_, pid_);
         return false;
     }
     return true;
