@@ -1238,11 +1238,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
         }
-        if (conditionColumns == null) {
-            throw new TabletException("conditionColumns is null");
+        if (conditionColumns == null || conditionColumns.isEmpty()) {
+            throw new TabletException("conditionColumns is null or empty");
         }
-        if (valueColumns == null) {
-            throw new TabletException("valueColumns is null");
+        if (valueColumns == null || valueColumns.isEmpty()) {
+            throw new TabletException("valueColumns is null or empty");
         }
         String idxName = "";
         String idxValue = "";
