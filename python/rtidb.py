@@ -44,7 +44,7 @@ class ReadFilter:
 
 class ReadOption:
   def __init__(self):
-    self.index = dict()
+    self.index = {}
     self.read_filter = []
     self.col_set = set()
 
@@ -64,7 +64,7 @@ class RtidbResult:
     return self.__data.ValueSize()
   def __next__(self):
     if self.__data.next():
-      result = dict()
+      result = {}
       for idx in range(len(self.__names)):
         type = self.__data.GetColumnType(idx)
         if self.__data.IsNULL(idx):
@@ -93,7 +93,7 @@ class RTIDBClient:
     if WriteOption != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
-    value = dict();
+    value = {}
     for k in columns:
       if columns[k] == None:
         value.update({k: NONETOKEN})
@@ -108,10 +108,10 @@ class RTIDBClient:
     if write_option != None:
       _wo.updateIfExist = defaultWriteOption.updateIfExist
       _wo.updateIfEqual = defaultWriteOption.updateIfEqual
-    cond = dict()
+    cond = {}
     for k in condition_columns:
       cond.update({k: str(condition_columns[k])})
-    v = dict()
+    v = {}
     for k in value_columns:
       v.update({k: str(value_columns[k])})
     return self.__client.Update(table_name, cond, v, _wo)
@@ -119,7 +119,7 @@ class RTIDBClient:
   def query(self, table_name: str, read_option: ReadOption):
     if (len(read_option.index) < 1):
       raise Exception("must set index")
-    mid_map = dict()
+    mid_map = {}
     for k in read_option.index:
       mid_map.update({k: str(read_option.index[k])})
     ro = interclient.ReadOption(mid_map)
@@ -142,7 +142,7 @@ class RTIDBClient:
   def delete(self, table_name: str, condition_columns: map):
     if (len(condition_columns) != 1):
       raise Exception("keys size not 1")
-    v = dict()
+    v = {}
     for k in condition_columns:
       v.update({k:str(condition_columns[k])})
     resp = self.__client.Delete(table_name, v)
