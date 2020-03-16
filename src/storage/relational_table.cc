@@ -235,7 +235,7 @@ bool RelationalTable::Delete(const std::string& pk, uint32_t idx) {
         return false;
     }
 }
-
+/**
 bool RelationalTable::Get(uint32_t idx, const std::string& pk, 
         std::string& value) {
     if (idx >= idx_cnt_) {
@@ -251,6 +251,29 @@ bool RelationalTable::Get(uint32_t idx, const std::string& pk,
     } else {
         return false;
     }
+}
+*/
+bool RelationalTable::Get(uint32_t idx, const std::string& pk, std::string& value) {
+    if (idx >= idx_cnt_) {
+        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+        return false;
+    }
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+    if (it == NULL) {
+        return false;
+    }
+    it->Seek(rocksdb::Slice(pk));
+    if (!it->Valid()) {
+        return false;
+    }
+    rocksdb::Slice it_value = it->value();
+    value.assign(it_value.data(), it_value.size());
+    return true;
 }
 
 bool RelationalTable::Update(const ::rtidb::api::Columns& cd_columns, 
@@ -378,12 +401,14 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
     for (int i = 0; i < schema.size(); i++) {
         auto col_iter = col_idx_map.find(schema.Get(i).name());
-        if (schema.Get(i).not_null() && value_view.IsNULL(col_iter->second)) {
-           return false;
-           PDLOG(WARNING, "not_null is true but value is null ,update table tid %u pid %u failed", id_, pid_);
-        } else if (value_view.IsNULL(col_iter->second)) {
-           builder.AppendNULL(); 
-           continue;
+        if (col_iter != col_idx_map.end()) {
+            if (schema.Get(i).not_null() && value_view.IsNULL(col_iter->second)) {
+                return false;
+                PDLOG(WARNING, "not_null is true but value is null ,update table tid %u pid %u failed", id_, pid_);
+            } else if (value_view.IsNULL(col_iter->second)) {
+                builder.AppendNULL(); 
+                continue;
+            }
         }
         if (schema.Get(i).data_type() == rtidb::type::kBool) {
             bool val = true;
