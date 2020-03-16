@@ -96,7 +96,11 @@ int Table::InitColumnDesc() {
                 if (table_index_->GetIndex(name)) {
                     return -1;
                 }
-                table_index_->AddIndex(std::make_shared<IndexDef>(name, key_idx));
+                if (column_key.flag()) {
+                    table_index_->AddIndex(std::make_shared<IndexDef>(name, key_idx, ::rtidb::storage::kDeleted));
+                } else {
+                    table_index_->AddIndex(std::make_shared<IndexDef>(name, key_idx, ::rtidb::storage::kReady));
+                }
                 key_idx++;
                 if (ts_mapping_.empty()) {
                     continue;
@@ -145,6 +149,15 @@ int Table::InitColumnDesc() {
     if (indexs.empty()) {
         table_index_->AddIndex(std::make_shared<IndexDef>("idx0", 0));
         PDLOG(INFO, "no index specified with default");
+    }
+    if (table_meta_.column_key_size() == 0) {
+        for (const auto &column_desc : table_meta_.column_desc()) {
+            if (column_desc.add_ts_idx()) {
+                rtidb::common::ColumnKey *column_key = table_meta_.add_column_key();
+                column_key->add_col_name(column_desc.name());
+                column_key->set_index_name(column_desc.name());
+            }
+        }
     }
     return 0;
 }
