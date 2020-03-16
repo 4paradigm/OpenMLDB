@@ -30,7 +30,7 @@ bool Transform::TransformLogicalTreeToLogicalGraph(
     std::stack<LogicalOp> stacks;
     LogicalOp op(node);
     graph.AddVertex(op);
-    stacks.push(node);
+    stacks.push(op);
     while (!stacks.empty()) {
         auto source = stacks.top();
         stacks.pop();
