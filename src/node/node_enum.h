@@ -205,12 +205,6 @@ enum PlanType {
     kProjectList,
     kPlanTypeWindow,
     kProjectNode,
-    kScalarFunction,
-    kOpExpr,
-    kAggFunction,
-    kAggWindowFunction,
-    kScanTypeSeqScan,
-    kScanTypeIndexScan,
     kUnknowPlan = 100,
 };
 

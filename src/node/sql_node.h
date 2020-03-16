@@ -1277,6 +1277,7 @@ class StructExpr : public ExprNode {
     FnNodeList *methods_;
 };
 
+std::string ExprString(const ExprNode* expr);
 bool SQLEquals(const SQLNode *left, const SQLNode *right);
 bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);

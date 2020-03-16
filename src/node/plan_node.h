@@ -268,15 +268,13 @@ class ProjectListNode : public LeafPlanNode {
  public:
     ProjectListNode()
         : LeafPlanNode(kProjectList),
-          w_ptr_(nullptr),
           is_window_agg_(false),
-          scan_limit_(0L),
+          w_ptr_(nullptr),
           projects({}) {}
     ProjectListNode(const WindowPlanNode *w_ptr, const bool is_window_agg)
         : LeafPlanNode(kProjectList),
-          w_ptr_(w_ptr),
           is_window_agg_(is_window_agg),
-          scan_limit_(0L),
+          w_ptr_(w_ptr),
           projects({}) {}
     ~ProjectListNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
@@ -288,14 +286,11 @@ class ProjectListNode : public LeafPlanNode {
 
     const bool IsWindowAgg() const { return is_window_agg_; }
 
-    void SetScanLimit(int scan_limit) { scan_limit_ = scan_limit; }
-    const uint64_t GetScanLimit() const { return scan_limit_; }
     virtual bool Equals(const PlanNode *node) const;
 
     const bool is_window_agg_;
     const WindowPlanNode *w_ptr_;
  private:
-    uint64_t scan_limit_;
     PlanNodeList projects;
 };
 

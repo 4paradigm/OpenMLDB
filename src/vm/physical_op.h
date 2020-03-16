@@ -66,17 +66,17 @@ class PhysicalOpNode {
  public:
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
         : type_(type), is_block_(is_block), is_lazy_(is_lazy) {}
-    virtual bool consume(){};
-    virtual bool produce(){};
+    virtual bool consume() { return true; };
+    virtual bool produce() { return true; };
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
     void AddConsumer(PhysicalOpNode *consumer) {
         consumers_.push_back(consumer);
     }
+    const PhysicalOpType type_;
     const bool is_block_;
     const bool is_lazy_;
-    const PhysicalOpType type_;
     vm::Schema output_schema;
 
  private:
@@ -265,6 +265,7 @@ class PhysicalFliterNode : public PhysicalOpNode {
     PhysicalFliterNode(PhysicalOpNode *node, const node::ExprNode *condition)
         : PhysicalOpNode(kPhysicalOpFilter, false, false),
           condition_(condition) {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprNode *condition_;
 };
 
@@ -277,14 +278,15 @@ class PhysicalLimitNode : public PhysicalUnaryNode {
     const int32_t limit_cnt;
 };
 
-class PhysicaRenameNode : public PhysicalUnaryNode {
+class PhysicalRenameNode : public PhysicalUnaryNode {
  public:
-    PhysicaRenameNode(PhysicalOpNode *node, const std::string &name)
+    PhysicalRenameNode(PhysicalOpNode *node, const std::string &name)
         : PhysicalUnaryNode(node, kPhysicalOpRename, false, false),
           name_(name) {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const std::string &name_;
 };
+
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_PHYSICAL_OP_H_

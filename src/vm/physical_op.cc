@@ -70,7 +70,7 @@ void PhysicalJoinNode::Print(std::ostream& output,
 void PhysicalSortNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << order_->GetExprString() << ")";
+    output << "(" << node::ExprString(order_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -78,6 +78,20 @@ void PhysicalLimitNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(limit=" << std::to_string(limit_cnt) << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+void PhysicalRenameNode::Print(std::ostream& output,
+                              const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(name=" << name_ << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+void PhysicalFliterNode::Print(std::ostream& output,
+                               const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(condition=" << node::ExprString(condition_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }

@@ -48,8 +48,9 @@ bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
     return true;
 }
 
-Transform::Transform(const std::shared_ptr<Catalog>& catalog)
-    : catalog_(catalog) {}
+Transform::Transform(const std::string& db,
+                     const std::shared_ptr<Catalog>& catalog)
+    : db_(db), catalog_(catalog) {}
 
 Transform::~Transform() {}
 
@@ -62,9 +63,9 @@ bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
         return false;
     }
     LogicalOp logical_op = LogicalOp(node);
-    auto map_iter = op_map.find(logical_op);
+    auto map_iter = op_map_.find(logical_op);
     // logical plan node already exist
-    if (map_iter != op_map.cend()) {
+    if (map_iter != op_map_.cend()) {
         *ouput = map_iter->second;
         return true;
     }
@@ -108,21 +109,30 @@ bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
                 status);
             break;
         case node::kPlanTypeTable:
-            ok = TransformScanOp(dynamic_cast<const ::fesql::node::TablePlanNode*>(node), &op,
-                                 status);
+            ok = TransformScanOp(
+                dynamic_cast<const ::fesql::node::TablePlanNode*>(node), &op,
+                status);
             break;
         case node::kPlanTypeQuery:
-            ok = TransformPhysicalPlan(dynamic_cast<const ::fesql::node::QueryPlanNode*>(node), &op,
-                                 status);
+            ok = TransformQueryPlan(
+                dynamic_cast<const ::fesql::node::QueryPlanNode*>(node), &op,
+                status);
             break;
         case node::kPlanTypeRename:
-            ok = TransformRenameOp(dynamic_cast<const ::fesql::node::RenamePlanNode*>(node), &op, status));
-
+            ok = TransformRenameOp(
+                dynamic_cast<const ::fesql::node::RenamePlanNode*>(node), &op,
+                status);
+        default: {
+            status.msg = "fail to transform physical plan: can't handle type " +
+                         node::NameOfPlanNodeType(node->type_);
+            status.code = common::kPlanError;
+            return false;
+        }
     }
     if (!ok) {
         return false;
     }
-    op_map[logical_op] = op;
+    op_map_[logical_op] = op;
     *ouput = op;
     return true;
 }
@@ -161,7 +171,6 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
          iter != node->project_list_vec_.cend(); iter++) {
         fesql::node::ProjectListNode* project_list =
             dynamic_cast<fesql::node::ProjectListNode*>(*iter);
-        PhysicalOpNode* op;
         if (project_list->is_window_agg_) {
             PhysicalOpNode* project_op;
             if (!TransformWindowProject(project_list, depend, &project_op,
@@ -321,7 +330,7 @@ bool Transform::TransformScanOp(const node::TablePlanNode* node,
         status.code = common::kPlanError;
         return false;
     }
-    *output = new PhysicalScanTableNode(catalog_->GetTable(node->db_, node->table_));
+    *output = new PhysicalScanTableNode(catalog_->GetTable(db_, node->table_));
     return true;
 }
 
@@ -344,8 +353,18 @@ bool Transform::TransformRenameOp(const node::RenamePlanNode* node,
     if (!TransformPhysicalPlan(node->GetChildren()[0], &left, status)) {
         return false;
     }
-    *output = new PhysicaRenameNode(left, node->table_);
+    *output = new PhysicalRenameNode(left, node->table_);
     return true;
+}
+bool Transform::TransformQueryPlan(const node::QueryPlanNode* node,
+                                   PhysicalOpNode** output,
+                                   base::Status& status) {
+    if (nullptr == node || nullptr == output) {
+        status.msg = "input node or output node is null";
+        status.code = common::kPlanError;
+        return false;
+    }
+    return TransformPhysicalPlan(node->GetChildren()[0], output, status);
 }
 
 }  // namespace vm

@@ -50,8 +50,8 @@ class PhysicalOpVertex {
     const bool Equals(const PhysicalOpVertex& that) const {
         return id_ == that.id_;
     }
-    const PhysicalOpNode* node_;
     const size_t id_;
+    const PhysicalOpNode* node_;
 };
 struct HashPhysicalOp {
     size_t operator()(const class PhysicalOpVertex& v) const {
@@ -71,7 +71,7 @@ typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
 
 class Transform {
  public:
-    Transform(const std::shared_ptr<Catalog>& catalog);
+    Transform(const std::string &db, const std::shared_ptr<Catalog>& catalog);
     virtual ~Transform();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
                                ::fesql::vm::PhysicalOpNode** ouput,
@@ -90,8 +90,9 @@ class Transform {
                                 PhysicalOpNode** output, base::Status& status);
 
  private:
+    const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
-    LogicalOpMap op_map;
+    LogicalOpMap op_map_;
 
     bool TransformJoinOp(const node::JoinPlanNode* node,
                          PhysicalOpNode** output, base::Status& status);
@@ -111,6 +112,8 @@ class Transform {
                          PhysicalOpNode** output, base::Status& status);
     bool TransformRenameOp(const node::RenamePlanNode* node,
                            PhysicalOpNode** output, base::Status& status);
+    bool TransformQueryPlan(const node::QueryPlanNode* node,
+                            PhysicalOpNode** output, base::Status& status);
 };
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         fesql::base::Status& status,  // NOLINT
