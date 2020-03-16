@@ -8461,7 +8461,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                 response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
                 response->set_msg("tablet is offline!");
-                PDLOG(WARNING, "tablet[%s] is offline!", kv.second->client_->GetEndpoint());
+                PDLOG(WARNING, "tablet[%s] is offline!", kv.second->client_->GetEndpoint().c_str());
                 return;
             }
             tablet_client_map.insert(std::make_pair(kv.second->client_->GetEndpoint(), kv.second->client_));
@@ -8476,7 +8476,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
                 response->set_code(::rtidb::base::ReturnCode::kTableHasANoAliveLeaderPartition);
                 response->set_msg("partition is not alive!");
                 PDLOG(WARNING, "partition[%s][%d] is not alive!", 
-                    table_info->table_partition(idx).partition_meta(meta_idx).endpoint(), 
+                    table_info->table_partition(idx).partition_meta(meta_idx).endpoint().c_str(), 
                     table_info->table_partition(idx).pid());
                 return;
             }
@@ -8495,7 +8495,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
     } else {
         table_info->mutable_column_desc_v1(idx)->set_add_ts_idx(false);
     }
-    PDLOG(INFO, "delete index : table[%s] index[%s]", request->table_name(), request->idx_name());
+    PDLOG(INFO, "delete index : table[%s] index[%s]", request->table_name().c_str(), request->idx_name().c_str());
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
