@@ -45,6 +45,33 @@ TEST_F(TableTest, Put) {
     delete table;
 }
 
+TEST_F(TableTest, MultiDimissionDelete) {
+    ::rtidb::api::TableMeta* table_meta = new ::rtidb::api::TableMeta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(110);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(5);
+    table_meta->set_seg_cnt(1);
+    ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+    desc->set_name("card");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_meta->add_column_desc();
+    desc->set_name("mcc");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_meta->add_column_desc();
+    desc->set_name("price");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    MemTable* table = new MemTable(*table_meta);
+    table->Init();
+    table->DeleteIndex("mcc");
+    table->SchedGc();
+    table->SchedGc();
+    table->SchedGc();
+}
+
 TEST_F(TableTest, MultiDimissionPut0) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));

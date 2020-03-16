@@ -318,7 +318,7 @@ void MemTable::SchedGc() {
             index_def->SetStatus(IndexStatus::kDeleting);
         } else if(index_def->GetStatus() == IndexStatus::kDeleting) {
             if (segments_[i] != NULL) {
-                for (uint32_t k = 0; k < seg_cnt_; i++) {
+                for (uint32_t k = 0; k < seg_cnt_; k++) {
                     if (segments_[i][k] != NULL) {
                         segments_[i][k]->ReleaseAndCount(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                         delete segments_[i][k];
