@@ -10,7 +10,7 @@ sh ${testpath}/setup.sh ${rtidbver}
 source ${testpath}/env.conf
 
 # start all servers
-python ${testpath}/setup.py -C=true
+python2 ${testpath}/setup.py -C=true
 
 # run integration test
 if [ $1 = 1 ]; then
@@ -25,8 +25,8 @@ else
     sed -i 's/cluster_mode\ \=.*/cluster_mode\ \=\ single/g' ${testconfpath}
 fi
 
-python ${testpath}/runall.py -R="${runlist}" -N="${norunlist}"
+python2 ${testpath}/runall.py -R="${runlist}" -N="${norunlist}"
 code=$?
 # teardown kill services
-python ${testpath}/setup.py -T=true
+python2 ${testpath}/setup.py -T=true
 exit $code
