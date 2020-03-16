@@ -8436,7 +8436,8 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             }
         } else {
             for (int i = 0; i < table_info->column_key_size(); i++) {
-                if (table_info->column_key(i).index_name() == request->idx_name()) {
+                if (table_info->column_key(i).index_name() == request->idx_name() &&
+                    !table_info->column_key(i).flag()) {
                     idx = i;
                     flag = false;
                     break;

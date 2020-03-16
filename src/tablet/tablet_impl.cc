@@ -4239,7 +4239,6 @@ void TabletImpl::DeleteIndex(RpcController* controller,
                         request->idx_name().c_str(), request->tid(), kv.first);
                 return;
             }
-<<<<<<< HEAD
             bool ok = ChooseDBRootPath(request->tid(), kv.second.get()->GetPid(), kv.second.get()->GetStorageMode(), root_path);
             if (!ok) {
                 response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
@@ -4250,18 +4249,12 @@ void TabletImpl::DeleteIndex(RpcController* controller,
             std::string db_path = root_path + "/" + std::to_string(request->tid()) + 
                 "_" + std::to_string(kv.second.get()->GetPid());
             WriteTableMeta(db_path, &kv.second.get()->GetTableMeta());
-        }
-    }
-    PDLOG(INFO, "delete index : tid[%u] index[%s]", request->tid(), request->idx_name());
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-=======
             PDLOG(INFO, "delete index %s success. tid %u pid %u", 
-                    request->idx_name().c_str(), request->tid(), kv.first);
+                            request->idx_name().c_str(), request->tid(), kv.first);
         }
     }
     PDLOG(INFO, "delete index %s success. tid %u", request->idx_name().c_str(), request->tid());
     response->set_code(0);
->>>>>>> develop
     response->set_msg("ok");
 }
 

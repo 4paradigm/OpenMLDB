@@ -106,16 +106,13 @@ bool MemTable::Init() {
         }
         const std::vector<uint32_t> ts_vec =  index_def->GetTsColumn();
         Segment** seg_arr = new Segment*[seg_cnt_];
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            if (!ts_vec.empty()) {
+        if (!ts_vec.empty()) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(key_entry_max_height_, ts_vec);
                 PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u", 
-                            i, j, key_entry_max_height_, ts_vec.size());
-            } else {
-                PDLOG(INFO, "init deleted %u segment.", i);
+                    i, j, key_entry_max_height_, ts_vec.size());
             }
         } else {
-            seg_arr = new Segment*[seg_cnt_];
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(key_entry_max_height_);
                 PDLOG(INFO, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
@@ -178,7 +175,8 @@ bool MemTable::Put(uint64_t time,
                                      value.length());
     Dimensions::const_iterator it = dimensions.begin();
     for (;it != dimensions.end(); ++it) {
-        if (column_key_map_[it->idx()]->status.load(std::memory_order_relaxed)) {
+        std::shared_ptr<IndexDef> index_def = GetIndex(it->idx());
+        if (!index_def || !index_def->IsReady()) {
             block->dim_cnt_down --;
             continue;
         }
@@ -337,7 +335,7 @@ void MemTable::SchedGc() {
         for (auto ts_idx : ts_vec) {
             if (ts_idx >= abs_ttl_vec_.size()) {
                 continue;
-            } else if (pos->second->status.load(std::memory_order_relaxed) == IndexStat::kDeleted) {
+            } else if (index_def->GetStatus() == IndexStatus::kDeleted) {
                 continue;
             }
             uint64_t expire_time = 0;
@@ -688,8 +686,8 @@ bool MemTable::DeleteIndex(std::string idx_name) {
                 idx_name.c_str(), id_, pid_);
         return false;
     }
-    if (iter->second<table_meta_.column_key_size()) {
-        table_meta_.mutable_column_key(iter->second)->set_flag(1);
+    if (index_def->GetId() <table_meta_.column_key_size()) {
+        table_meta_.mutable_column_key(index_def->GetId())->set_flag(1);
     }
     index_def->SetStatus(IndexStatus::kWaiting);
     return true;

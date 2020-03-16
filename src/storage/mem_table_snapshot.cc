@@ -186,9 +186,9 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::a
     ::rtidb::api::LogEntry entry;
     bool has_error = false;
     std::set<uint32_t> deleted_index;
-    for (const auto& it : table->GetColumnMap()) {
-        if (it.second->status == ::rtidb::storage::IndexStat::kDeleted) {
-            deleted_index.insert(it.first);
+    for (const auto& it : table->GetAllIndex()) {
+        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kDeleted) {
+            deleted_index.insert(it->GetId());
         }
     }
     while (true) {
@@ -382,9 +382,9 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
 
     // get deleted index
     std::set<uint32_t> deleted_index;
-    for (const auto& it : table->GetColumnMap()) {
-        if (it.second->status == ::rtidb::storage::IndexStat::kDeleted) {
-            deleted_index.insert(it.first);
+    for (const auto& it : table->GetAllIndex()) {
+        if (it->GetStatus() == ::rtidb::storage::IndexStatus::kDeleted) {
+            deleted_index.insert(it->GetId());
         }
     }
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
