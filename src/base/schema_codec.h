@@ -26,9 +26,9 @@ const std::string NONETOKEN = "None#*@!";
 
 const std::map<std::string, rtidb::type::DataType> NameToDataType = {
     {"string", rtidb::type::DataType::kVarchar},
-    {"int16", rtidb::type::DataType::kInt16},
-    {"int32", rtidb::type::DataType::kInt32},
-    {"int64", rtidb::type::DataType::kInt64},
+    {"int16", rtidb::type::DataType::kSmallInt},
+    {"int32", rtidb::type::DataType::kInt},
+    {"int64", rtidb::type::DataType::kBigInt},
     {"float", rtidb::type::DataType::kFloat},
     {"double", rtidb::type::DataType::kDouble},
     {"date", rtidb::type::DataType::kDate},
@@ -282,7 +282,7 @@ public:
             if (!cur_column_desc.has_data_type()) {
                 auto iter = NameToDataType.find(cur_column_desc.type());
                 if (iter == NameToDataType.end()) {
-                    column_desc->set_data_type(rtidb::type::DataType::kVoid);
+                    return -1;
                 } else {
                     column_desc->set_data_type(iter->second);
                 }
@@ -294,7 +294,7 @@ public:
             if (!cur_column_desc.has_data_type()) {
                 auto iter = NameToDataType.find(cur_column_desc.type());
                 if (iter == NameToDataType.end()) {
-                    column_desc->set_data_type(rtidb::type::DataType::kVoid);
+                    return -1;
                 } else {
                     column_desc->set_data_type(iter->second);
                 }
@@ -321,17 +321,17 @@ public:
             }
             auto type = schema.Get(i).data_type();
             try {
-                if (type == rtidb::type::kInt32) {
+                if (type == rtidb::type::kInt) {
                     rb.AppendInt32(boost::lexical_cast<int32_t>(value_vec[i]));
                 } else if (type == rtidb::type::kTimestamp) {
                     rb.AppendTimestamp(boost::lexical_cast<int64_t>(value_vec[i]));
-                } else if (type == rtidb::type::kInt64) {
+                } else if (type == rtidb::type::kBigInt) {
                     rb.AppendInt64(boost::lexical_cast<int64_t>(value_vec[i]));
                 } else if (type == rtidb::type::kBool) {
                     rb.AppendBool(boost::lexical_cast<bool>(value_vec[i]));
                 } else if (type == rtidb::type::kFloat) {
                     rb.AppendFloat(boost::lexical_cast<float>(value_vec[i]));
-                } else if (type == rtidb::type::kInt16) {
+                } else if (type == rtidb::type::kSmallInt) {
                     rb.AppendInt16(boost::lexical_cast<int16_t>(value_vec[i]));
                 } else if (type == rtidb::type::kDouble) {
                     rb.AppendDouble(boost::lexical_cast<double>(value_vec[i]));
@@ -359,7 +359,7 @@ public:
             }
             std::string col = "";
             auto type = schema.Get(i).data_type();
-            if (type == rtidb::type::kInt32) {
+            if (type == rtidb::type::kInt) {
                 int32_t val;
                 int ret = rv.GetInt32(i, &val);
                 if (ret == 0) {
@@ -371,7 +371,7 @@ public:
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
-            } else if (type == rtidb::type::kInt64) {
+            } else if (type == rtidb::type::kBigInt) {
                 int64_t val;
                 int ret = rv.GetInt64(i, &val);
                 if (ret == 0) {
@@ -389,7 +389,7 @@ public:
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
-            } else if (type == rtidb::type::kInt16) {
+            } else if (type == rtidb::type::kSmallInt) {
                 int16_t val;
                 int ret = rv.GetInt16(i, &val);
                 if (ret == 0) {

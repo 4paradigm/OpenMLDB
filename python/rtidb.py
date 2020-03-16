@@ -16,17 +16,18 @@ def return_EmptyStr(x):
   return str()
 
 type_map = {1:bool,2:int,3:int,4:int,5:float,6:float,7:str,8:int,9:int,100:return_None};
+# todo: current do not have blob type process function
 '''
   kBool = 1,
-  kInt16 = 2,
-  kInt32 = 3,
-  kInt64 = 4,
+  kSmallInt = 2,
+  kInt = 3,
+  kBigInt = 4,
   kFloat = 5,
   kDouble = 6,
   kVarchar = 7,
   kDate = 8,
   kTimestamp = 9,
-  kVoid = 100
+  kBlob = 10
 '''
 
 NONETOKEN="None#*@!"

@@ -14,11 +14,11 @@
 int64_t QueryResult::GetInt(uint32_t idx) {
     int64_t val = 0;
     auto type = columns_->Get(idx).data_type();
-    if (type == rtidb::type::kInt16) {
+    if (type == rtidb::type::kSmallInt) {
         int16_t st_val;
         rv_->GetInt16(idx, &st_val);
         val = st_val;
-    } else if (type == rtidb::type::kInt32) {
+    } else if (type == rtidb::type::kInt) {
         int32_t tt_val;
         rv_->GetInt32(idx, &tt_val);
         val = tt_val;
@@ -38,7 +38,7 @@ std::map<std::string, std::string> QueryResult::DecodeData() {
         }
         std::string col = "";
         auto type = columns_->Get(i).data_type();
-        if (type == rtidb::type::kInt32) {
+        if (type == rtidb::type::kInt) {
             int32_t val;
             int ret = rv_->GetInt32(i, &val);
             if (ret == 0) {
@@ -50,7 +50,7 @@ std::map<std::string, std::string> QueryResult::DecodeData() {
             if (ret == 0) {
                 col = std::to_string(val);
             }
-        } else if (type == rtidb::type::kInt64) {
+        } else if (type == rtidb::type::kBigInt) {
             int64_t val;
             int ret = rv_->GetInt64(i, &val);
             if (ret == 0) {
@@ -68,7 +68,7 @@ std::map<std::string, std::string> QueryResult::DecodeData() {
             if (ret == 0) {
                 col = std::to_string(val);
             }
-        } else if (type == rtidb::type::kInt16) {
+        } else if (type == rtidb::type::kSmallInt) {
             int16_t val;
             int ret = rv_->GetInt16(i, &val);
             if (ret == 0) {
@@ -81,6 +81,13 @@ std::map<std::string, std::string> QueryResult::DecodeData() {
                 col = std::to_string(val);
             }
         } else if (type == rtidb::type::kVarchar) {
+            char *ch = NULL;
+            uint32_t length = 0;
+            int ret = rv_->GetString(i, &ch, &length);
+            if (ret == 0) {
+                col.assign(ch, length);
+            }
+        } else if (type == rtidb::type::kBlob) {
             char *ch = NULL;
             uint32_t length = 0;
             int ret = rv_->GetString(i, &ch, &length);
@@ -181,7 +188,10 @@ void RtidbClient::RefreshTable() {
         }
         std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
         columns = std::make_shared<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>();
-        rtidb::base::RowSchemaCodec::ConvertColumnDesc(table_info->column_desc_v1(), *columns, table_info->added_column_desc());
+        int code = rtidb::base::RowSchemaCodec::ConvertColumnDesc(table_info->column_desc_v1(), *columns, table_info->added_column_desc());
+        if (code != 0) {
+            continue;
+        }
         std::shared_ptr<TableHandler> handler = std::make_shared<TableHandler>();
         handler->partition.resize(table_info->partition_num());
         int id = 0;
