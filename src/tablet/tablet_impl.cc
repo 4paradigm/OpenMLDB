@@ -521,7 +521,6 @@ void TabletImpl::Update(RpcController* controller,
     if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(453);
         response->set_msg("is follower cluster");
-        done->Run();
         return;
     }
     std::shared_ptr<RelationalTable> r_table;
@@ -535,14 +534,15 @@ void TabletImpl::Update(RpcController* controller,
             return;
         }
     }
-    const Schema& schema = r_table->GetTableMeta().column_desc();
-    bool ok = r_table->Update(schema, request->condition_columns(), request->value_columns());
+    bool ok = r_table->Update(request->condition_columns(), request->value_columns());
     if (!ok) {
         response->set_code(138);
         response->set_msg("update failed");
         PDLOG(WARNING, "update failed. tid %u, pid %u", request->tid(), request->pid());
         return;
     }
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 void TabletImpl::Put(RpcController* controller,
