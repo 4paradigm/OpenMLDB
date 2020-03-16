@@ -9,13 +9,14 @@
 
 #ifndef SRC_BASE_GRAPH_H_
 #define SRC_BASE_GRAPH_H_
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/depth_first_search.hpp>
-#include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/graph/graph_traits.hpp>
 #include <iostream>
 #include <unordered_map>
+#include <utility>
 #include <vector>
+#include "boost/graph/adjacency_list.hpp"
+#include "boost/graph/depth_first_search.hpp"
+#include "boost/graph/dijkstra_shortest_paths.hpp"
+#include "boost/graph/graph_traits.hpp"
 #include "glog/logging.h"
 
 namespace fesql {
@@ -30,8 +31,9 @@ struct Edge {
 template <class V>
 class Vertex {
  public:
-    Vertex(V node) : node_(node) {}
+    explicit Vertex(V node) : node_(node) {}
     ~Vertex() {}
+
  protected:
     V node_;
 };
@@ -53,18 +55,17 @@ template <typename V, typename H, typename E>
 class Graph {
  public:
     Graph() : num_(0) {}
-    bool IsExist(V& v);
-    int FindVertex(V& v);
+    bool IsExist(const V& v);
+    int FindVertex(const V& v);
     // function to add an edge to graph
-    bool AddEdge(V& v, V& w);
+    bool AddEdge(const V& v, const V& w);
 
-    int AddVertex(V& v);
+    int AddVertex(const V& v);
 
     bool DfsVisit();
     int VertexSize();
     // prints a Topological Sort of the complete graph
  private:
-
  private:
     int num_;
     std::unordered_map<V, int, H, E> map;
@@ -74,7 +75,7 @@ class Graph {
 };
 
 template <typename V, typename H, typename E>
-int Graph<V, H, E>::FindVertex(V& v) {
+int Graph<V, H, E>::FindVertex(const V& v) {
     typename std::unordered_map<V, int, H, E>::iterator iter = map.find(v);
     if (iter == map.cend()) {
         return -1;
@@ -85,7 +86,7 @@ int Graph<V, H, E>::FindVertex(V& v) {
 // add vertex into grapha if vertex not exist
 // return vertex id
 template <typename V, typename H, typename E>
-int Graph<V, H, E>::AddVertex(V& v) {
+int Graph<V, H, E>::AddVertex(const V& v) {
     int id = FindVertex(v);
     if (id >= 0) {
         DLOG(INFO) << "vertex already exist! id: " << id;
@@ -99,7 +100,7 @@ int Graph<V, H, E>::AddVertex(V& v) {
 }
 
 template <typename V, typename H, typename E>
-bool Graph<V, H, E>::AddEdge(V& source, V& target) {
+bool Graph<V, H, E>::AddEdge(const V& source, const V& target) {
     int s_id = FindVertex(source);
     if (-1 == s_id) {
         s_id = AddVertex(source);
@@ -120,7 +121,7 @@ bool Graph<V, H, E>::DfsVisit() {
     return true;
 }
 template <typename V, typename H, typename E>
-bool Graph<V, H, E>::IsExist(V& v) {
+bool Graph<V, H, E>::IsExist(const V& v) {
     return FindVertex(v) >= 1;
 }
 template <typename V, typename H, typename E>

@@ -17,7 +17,7 @@ namespace fesql {
 namespace vm {
 class LogicalOp {
  public:
-    LogicalOp(const node::PlanNode* node) : node_(node) {}
+    explicit LogicalOp(const node::PlanNode* node) : node_(node) {}
     const size_t Hash() const { return static_cast<size_t>(node_->GetType()); }
     const bool Equals(const LogicalOp& that) const {
         return node::PlanEquals(node_, that.node_);
@@ -48,8 +48,9 @@ class Transform {
     Transform();
     virtual ~Transform();
     bool TransformLogicalTreeToLogicalGraph(
-        const ::fesql::node::PlanNode* node, fesql::base::Status& status,
-        LogicalGraph& grash);  // NOLINT
+        const ::fesql::node::PlanNode* node,
+        fesql::base::Status& status,  // NOLINT
+        LogicalGraph& grash);         // NOLINT
 };
 }  // namespace vm
 }  // namespace fesql

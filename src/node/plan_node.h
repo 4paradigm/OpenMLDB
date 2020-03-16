@@ -43,6 +43,7 @@ class PlanNode {
 
     virtual bool Equals(const PlanNode *that) const;
     const PlanType type_;
+
  protected:
     std::vector<PlanNode *> children_;
 };
@@ -201,7 +202,6 @@ class LimitPlanNode : public UnaryPlanNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const PlanNode *node) const;
 
-
  private:
     int limit_cnt_;
 };
@@ -221,6 +221,7 @@ class ProjectNode : public LeafPlanNode {
     std::string GetName() const { return name_; }
     node::ExprNode *GetExpression() const { return expression_; }
     virtual bool Equals(const PlanNode *node) const;
+
  private:
     uint32_t pos_;
     std::string name_;
@@ -385,8 +386,9 @@ class FuncDefPlanNode : public LeafPlanNode {
     const FnNodeFnDef *fn_def_;
 };
 
-bool PlanEquals(const PlanNode * left, const PlanNode *right);
-bool PlanListEquals(const std::vector<PlanNode *> &list1, const std::vector<PlanNode *> &list2);
+bool PlanEquals(const PlanNode *left, const PlanNode *right);
+bool PlanListEquals(const std::vector<PlanNode *> &list1,
+                    const std::vector<PlanNode *> &list2);
 void PrintPlanVector(std::ostream &output, const std::string &tab,
                      PlanNodeList vec, const std::string vector_name,
                      bool last_item);

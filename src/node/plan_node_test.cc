@@ -67,8 +67,7 @@ TEST_F(PlanNodeTest, PlanNodeEqualsTest) {
     ASSERT_FALSE(filter1->Equals(filter3));
     ASSERT_FALSE(filter1->Equals(filter4));
 
-
-    //expr list
+    // expr list
     ExprListNode *expr_list1 = manager_->MakeExprList();
     expr_list1->AddChild(manager_->MakeColumnRefNode("col1", ""));
     expr_list1->AddChild(manager_->MakeColumnRefNode("col2", ""));
@@ -83,7 +82,6 @@ TEST_F(PlanNodeTest, PlanNodeEqualsTest) {
     ASSERT_TRUE(expr_list1->Equals(expr_list1));
     ASSERT_TRUE(expr_list1->Equals(expr_list2));
     ASSERT_FALSE(expr_list1->Equals(expr_list3));
-
 
     // order
     ExprNode *order1 = manager_->MakeOrderByNode(expr_list1, true);
@@ -120,7 +118,6 @@ TEST_F(PlanNodeTest, PlanNodeEqualsTest) {
     ASSERT_TRUE(group1->Equals(group2));
     ASSERT_FALSE(group1->Equals(group3));
     ASSERT_FALSE(group1->Equals(group4));
-
 
     // distinct
     PlanNode *distinct1 = manager_->MakeDistinctPlanNode(group1);

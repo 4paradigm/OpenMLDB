@@ -15,7 +15,7 @@ namespace base {
 
 class VertexNumber : public Vertex<int> {
  public:
-    VertexNumber(int num) : Vertex(num) {}
+    explicit VertexNumber(int num) : Vertex(num) {}
     ~VertexNumber() {}
     const size_t Hash() const { return static_cast<size_t>(node_ % 10); }
     const bool Equals(const VertexNumber& that) const {

@@ -7,13 +7,13 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/physical_op.h"
-#include "node/node_manager.h"
-#include "plan/planner.h"
-#include "parser/parser.h"
 #include <storage/table.h>
 #include <stack>
 #include "base/status.h"
 #include "gtest/gtest.h"
+#include "node/node_manager.h"
+#include "parser/parser.h"
+#include "plan/planner.h"
 #include "vm/test_base.h"
 namespace fesql {
 namespace vm {

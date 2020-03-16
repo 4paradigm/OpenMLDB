@@ -9,6 +9,7 @@
 #include "vm/transform.h"
 #include <stack>
 #include <utility>
+#include <string>
 #include "base/status.h"
 #include "gtest/gtest.h"
 #include "node/node_manager.h"
