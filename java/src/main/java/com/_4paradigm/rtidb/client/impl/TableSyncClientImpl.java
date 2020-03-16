@@ -1161,7 +1161,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return putRelationTable(tname, arrayRow);
     }
 
-    private boolean updateRequest(TableHandler th, int pid, List<String> conditionNameList, List<String> valueNameList,
+    private boolean updateRequest(TableHandler th, int pid, List<ColumnDesc> newCdSchema, List<ColumnDesc> newValueSchema,
                                   ByteBuffer conditionBuffer, ByteBuffer valueBuffer) throws TabletException {
         PartitionHandler ph = th.getHandler(pid);
         if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
@@ -1189,8 +1189,8 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setPid(pid);
         {
             Tablet.Columns.Builder conditionBuilder = Tablet.Columns.newBuilder();
-            for (String indexName : conditionNameList) {
-                conditionBuilder.addName(indexName);
+            for (ColumnDesc col : newCdSchema) {
+                conditionBuilder.addName(col.getName());
             }
             conditionBuffer.rewind();
             conditionBuilder.setValue(ByteBufferNoCopy.wrap(conditionBuffer.asReadOnlyBuffer()));
@@ -1198,8 +1198,8 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         {
             Tablet.Columns.Builder valueBuilder = Tablet.Columns.newBuilder();
-            for (String colName : valueNameList) {
-                valueBuilder.addName(colName);
+            for (ColumnDesc col : newValueSchema) {
+                valueBuilder.addName(col.getName());
             }
             valueBuffer.rewind();
             valueBuilder.setValue(ByteBufferNoCopy.wrap(valueBuffer.asReadOnlyBuffer()));
@@ -1216,10 +1216,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         return false;
     }
 
-    private ByteBuffer updateInternel(Map<String, Object> columns, List<ColumnDesc> schema,
-                                      List<String> nameList) throws TabletException {
+    private List<ColumnDesc> schemaWrapper(Map<String, Object> columns, List<ColumnDesc> schema,
+                                           Object[] array) {
         List<ColumnDesc> newSchema = new ArrayList<>();
-        Object[] array = new Object[columns.size()];
         int cIdx = 0;
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
@@ -1229,11 +1228,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                 newSchema.add(columnDesc);
             }
         }
-        ByteBuffer buffer = RowBuilder.encode(array, newSchema);
-        for (ColumnDesc desc : newSchema) {
-            nameList.add(desc.getName());
-        }
-        return buffer;
+        return newSchema;
     }
 
     @Override
@@ -1261,12 +1256,15 @@ public class TableSyncClientImpl implements TableSyncClient {
         idxValue = validateKey(idxValue);
         int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
 
-        List<String> conditionNameList = new ArrayList<>();
-        ByteBuffer conditionBuffer = updateInternel(conditionColumns, th.getSchema(), conditionNameList);
-        List<String> valueNameList = new ArrayList<>();
-        ByteBuffer valueBuffer = updateInternel(valueColumns, th.getSchema(), valueNameList);
+        Object[] cdArray = new Object[conditionColumns.size()];
+        List<ColumnDesc> newCdSchema = schemaWrapper(conditionColumns, th.getSchema(), cdArray);
+        ByteBuffer conditionBuffer = RowBuilder.encode(cdArray, newCdSchema);
 
-        return updateRequest(th, pid, conditionNameList, valueNameList, conditionBuffer, valueBuffer);
+        Object[] valueArray = new Object[valueColumns.size()];
+        List<ColumnDesc> newValueSchema = schemaWrapper(valueColumns, th.getSchema(), valueArray);
+        ByteBuffer valueBuffer = RowBuilder.encode(valueArray, newValueSchema);
+
+        return updateRequest(th, pid, newCdSchema, newValueSchema, conditionBuffer, valueBuffer);
     }
 
     @Override
