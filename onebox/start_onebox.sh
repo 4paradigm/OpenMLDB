@@ -4,15 +4,15 @@ ulimit -c unlimited
 # start_onebox.sh
 
 # first start zookeeper
-IP=127.0.0.1
+IP=172.27.128.37
 
-ZK_CLUSTER=$IP:6181
-NS1=$IP:9622
-NS2=$IP:9623
-NS3=$IP:9624
-TABLET1=$IP:9520
-TABLET2=$IP:9521
-TABLET3=$IP:9522
+ZK_CLUSTER=$IP:12200
+NS1=$IP:9222
+NS2=$IP:9223
+NS3=$IP:9224
+TABLET1=$IP:9420
+TABLET2=$IP:9421
+TABLET3=$IP:9422
 
 # start tablet0
 test -d tablet0-binlogs && rm -rf tablet0-binlogs
@@ -24,6 +24,7 @@ test -d recycle_ssd_bin0 && rm -rf recycle_ssd_bin0
 ../build/bin/rtidb --db_root_path=tablet0-binlogs \
                    --hdd_root_path=tablet0-hdd-binlogs \
                    --ssd_root_path=tablet0-ssd-binlogs \
+                   --make_snapshot_threshold_offset=0 \
                    --recycle_bin_root_path=recycle_bin0 \
                    --recycle_ssd_bin_root_path=recycle_ssd_bin0 \
                    --recycle_hdd_bin_root_path=recycle_hdd_bin0 \
@@ -45,6 +46,7 @@ test -d recycle_ssd_bin1 && rm -rf recycle_ssd_bin1
                    --hdd_root_path=tablet1-hdd-binlogs \
                    --ssd_root_path=tablet1-ssd-binlogs \
                    --recycle_bin_root_path=recycle_bin1 \
+                   --make_snapshot_threshold_offset=0 \
                    --recycle_ssd_bin_root_path=recycle_ssd-bin1 \
                    --recycle_hdd_bin_root_path=recycle_hdd-bin1 \
                    --endpoint=${TABLET2} --role=tablet \
@@ -66,6 +68,7 @@ test -d recycle_ssd_bin2 && rm -rf recycle_ssd_bin2
                    --ssd_root_path=tablet2-ssd-binlogs \
                    --recycle_bin_root_path=recycle_bin2 \
                    --recycle_ssd_bin_root_path=recycle_ssd_bin2 \
+                   --make_snapshot_threshold_offset=0 \
                    --recycle_hdd_bin_root_path=recycle_hdd_bin2 \
                    --endpoint=${TABLET3} --role=tablet \
                    --binlog_notify_on_put=true\

@@ -377,8 +377,8 @@ message SyncTableRequest {
 
 message AddIndexRequest {
     optional string name = 1;
-    optional string idx_name = 4;
-}    
+    optional rtidb.common.ColumnKey column_key = 2;
+}
 
 message DeleteIndexRequest {
     optional string table_name = 1;

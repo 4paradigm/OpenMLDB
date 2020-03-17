@@ -831,8 +831,9 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts, ::rtidb::clie
         std::cout << "Bad format for addindex! eg. addindex table_name index_name" << std::endl;
         return;
     }
+    ::rtidb::common::ColumnKey column_key;
     std::string msg;
-    bool ret = client->AddIndex(parts[1], parts[2], msg);
+    bool ret = client->AddIndex(parts[1], column_key, msg);
     if (!ret) {
         std::cout << "failed to addindex. error msg: " << msg << std::endl;
         return;

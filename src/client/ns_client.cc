@@ -701,11 +701,13 @@ bool NsClient::SwitchMode(const ::rtidb::nameserver::ServerMode mode, std::strin
     return false;
 }
 
-bool NsClient::AddIndex(const std::string& table_name, const std::string& idx_name, std::string& msg) {
+bool NsClient::AddIndex(const std::string& table_name, const ::rtidb::common::ColumnKey& column_key, 
+        std::string& msg) {
     ::rtidb::nameserver::AddIndexRequest request;
     ::rtidb::nameserver::GeneralResponse response;
+    ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
     request.set_name(table_name);
-    request.set_idx_name(idx_name);
+    cur_column_key->CopyFrom(column_key);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddIndex,
         &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();

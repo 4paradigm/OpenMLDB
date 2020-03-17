@@ -611,7 +611,7 @@ message CheckFileRequest {
 message AddIndexRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
-    optional string idx_name = 3;
+    optional rtidb.common.ColumnKey column_key = 3;
 }
 
 message SetModeRequest {

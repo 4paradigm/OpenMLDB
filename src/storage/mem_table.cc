@@ -686,7 +686,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
                 idx_name.c_str(), id_, pid_);
         return false;
     }
-    if ((uint32_t)index_def->GetId() <table_meta_.column_key_size()) {
+    if ((int32_t)index_def->GetId() < table_meta_.column_key_size()) {
         table_meta_.mutable_column_key(index_def->GetId())->set_flag(1);
     }
     index_def->SetStatus(IndexStatus::kWaiting);

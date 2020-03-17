@@ -4254,11 +4254,20 @@ void TabletImpl::DeleteIndex(RpcController* controller,
         }
     }
     PDLOG(INFO, "delete index %s success. tid %u", request->idx_name().c_str(), request->tid());
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
+void TabletImpl::AddIndex(RpcController* controller,
+        const ::rtidb::api::AddIndexRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    PDLOG(INFO, "add index %s ok. tid %u pid %u", 
+            request->column_key().index_name().c_str(), request->tid(), request->pid());
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}    
+
 }
 }
-
-
