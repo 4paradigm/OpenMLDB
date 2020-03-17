@@ -49,6 +49,10 @@ struct SQLContext {
     std::string ir;
 };
 
+void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
+                     ::llvm::orc::MangleAndInterner& mi);  // NOLINT
+
+
 class SQLCompiler {
  public:
     explicit SQLCompiler(const std::shared_ptr<Catalog>& cl,
@@ -61,7 +65,6 @@ class SQLCompiler {
 
  private:
     void KeepIR(SQLContext& ctx, llvm::Module* m); // NOLINT
-
  private:
     bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT
                ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT

@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 #include "glog/logging.h"
-#include "storage/window.h"
+#include "codec/window.h"
 
 namespace fesql {
 namespace codegen {
@@ -108,28 +108,28 @@ bool GetLLVMIteratorSize(const ::fesql::node::DataType& v_type,
 
     switch (v_type) {
         case ::fesql::node::kInt16: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int16_t>);
+            *size = sizeof(::fesql::codec::IteratorImpl<int16_t>);
             break;
         }
         case ::fesql::node::kInt32: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int32_t>);
+            *size = sizeof(::fesql::codec::IteratorImpl<int32_t>);
             break;
         }
         case ::fesql::node::kInt64: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int64_t>);
+            *size = sizeof(::fesql::codec::IteratorImpl<int64_t>);
             break;
         }
         case ::fesql::node::kDouble: {
-            *size = sizeof(::fesql::storage::IteratorImpl<double>);
+            *size = sizeof(::fesql::codec::IteratorImpl<double>);
             break;
         }
         case ::fesql::node::kFloat: {
-            *size = sizeof(::fesql::storage::IteratorImpl<float>);
+            *size = sizeof(::fesql::codec::IteratorImpl<float>);
             break;
         }
         case ::fesql::node::kVarchar: {
             *size = sizeof(
-                ::fesql::storage::IteratorImpl<fesql::storage::StringRef>);
+                ::fesql::codec::IteratorImpl<fesql::codec::StringRef>);
             break;
         }
         default: {
@@ -149,27 +149,27 @@ bool GetLLVMColumnSize(const ::fesql::node::DataType& v_type, uint32_t* size) {
 
     switch (v_type) {
         case ::fesql::node::kInt16: {
-            *size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
+            *size = sizeof(::fesql::codec::ColumnImpl<int16_t>);
             break;
         }
         case ::fesql::node::kInt32: {
-            *size = sizeof(::fesql::storage::ColumnImpl<int32_t>);
+            *size = sizeof(::fesql::codec::ColumnImpl<int32_t>);
             break;
         }
         case ::fesql::node::kInt64: {
-            *size = sizeof(::fesql::storage::ColumnImpl<int64_t>);
+            *size = sizeof(::fesql::codec::ColumnImpl<int64_t>);
             break;
         }
         case ::fesql::node::kDouble: {
-            *size = sizeof(::fesql::storage::ColumnImpl<double>);
+            *size = sizeof(::fesql::codec::ColumnImpl<double>);
             break;
         }
         case ::fesql::node::kFloat: {
-            *size = sizeof(::fesql::storage::ColumnImpl<float>);
+            *size = sizeof(::fesql::codec::ColumnImpl<float>);
             break;
         }
         case ::fesql::node::kVarchar: {
-            *size = sizeof(::fesql::storage::StringColumnImpl);
+            *size = sizeof(::fesql::codec::StringColumnImpl);
             break;
         }
         default: {

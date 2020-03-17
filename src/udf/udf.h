@@ -12,7 +12,8 @@
 #include <stdint.h>
 #include <string>
 #include "proto/type.pb.h"
-#include "storage/type_native_fn.h"
+#include "vm/jit.h"
+
 namespace fesql {
 namespace udf {
 namespace v1 {

@@ -23,7 +23,6 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "sdk/dbms_sdk.h"
-#include "storage/codec.h"
 #include "tablet/tablet_internal_sdk.h"
 #include "tablet/tablet_server_impl.h"
 

@@ -7,7 +7,6 @@
 
 #include "storage/segment.h"
 #include <mutex>  //NOLINT
-#include "storage/codec.h"
 
 namespace fesql {
 namespace storage {

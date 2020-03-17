@@ -28,7 +28,7 @@
 #include "brpc/channel.h"
 #include "glog/logging.h"
 #include "proto/tablet.pb.h"
-#include "storage/codec.h"
+#include "codec/row_codec.h"
 
 namespace fesql {
 namespace sdk {
@@ -57,13 +57,13 @@ class ResultSetIteratorImpl : public ResultSetIterator {
  private:
     uint32_t idx_;
     tablet::QueryResponse* response_;
-    std::unique_ptr<storage::RowView> row_view_;
+    std::unique_ptr<codec::RowView> row_view_;
 };
 
 ResultSetIteratorImpl::ResultSetIteratorImpl(tablet::QueryResponse* response)
     : idx_(0), response_(response) {
-    row_view_ = std::move(std::unique_ptr<storage::RowView>(
-        new storage::RowView(response_->schema())));
+    row_view_ = std::move(std::unique_ptr<codec::RowView>(
+        new codec::RowView(response_->schema())));
 }
 
 ResultSetIteratorImpl::~ResultSetIteratorImpl() {}
@@ -215,7 +215,7 @@ void TabletSdkImpl::SyncInsert(const Insert& insert, sdk::Status& status) {
         }
     }
 
-    storage::RowBuilder rbuilder(schema.columns());
+    codec::RowBuilder rbuilder(schema.columns());
     uint32_t row_size = rbuilder.CalTotalLength(string_length);
     std::string row;
     DLOG(INFO) << "row size: " << row_size << " str total leng"

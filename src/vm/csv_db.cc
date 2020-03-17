@@ -29,6 +29,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "vm/csv_catalog.h"
 #include "vm/engine.h"
+#include "codec/row_codec.h"
 
 DEFINE_string(format, "", "config the format of output, csv or nothing");
 DEFINE_string(db_dir, "", "config the dir of database");
@@ -49,7 +50,7 @@ void PrintRows(const Schema& schema, const std::vector<int8_t*>& rows) {
         t.add(column.name());
     }
     t.endOfRow();
-    storage::RowView row_decoder(schema);
+    codec::RowView row_decoder(schema);
     auto it = rows.begin();
     for (; it != rows.end(); ++it) {
         row_decoder.Reset(*it);

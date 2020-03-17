@@ -30,7 +30,6 @@
 #include "arrow/table.h"
 #include "arrow/type_fwd.h"
 #include "glog/logging.h"
-#include "storage/codec.h"
 
 namespace fesql {
 namespace vm {

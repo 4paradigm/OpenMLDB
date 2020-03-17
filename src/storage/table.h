@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 #include "base/iterator.h"
-#include "storage/codec.h"
+#include "codec/row_codec.h"
 #include "storage/segment.h"
 #include "vm/catalog.h"
 
@@ -116,7 +116,7 @@ class Table {
     uint32_t seg_cnt_ = SEG_CNT;
     Segment*** segments_ = NULL;
     TableDef table_def_;
-    RowView row_view_;
+    codec::RowView row_view_;
     std::map<std::string, IndexSt> index_map_;
 };
 

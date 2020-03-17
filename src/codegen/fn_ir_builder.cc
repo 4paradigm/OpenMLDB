@@ -18,6 +18,7 @@
 #include "codegen/fn_ir_builder.h"
 #include <stack>
 #include <string>
+#include "codegen/ir_base_builder.h"
 #include "codegen/block_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/variable_ir_builder.h"

@@ -20,7 +20,7 @@
 
 #include "sdk/result_set.h"
 #include "proto/tablet.pb.h"
-#include "storage/codec.h"
+#include "codec/row_codec.h"
 
 namespace fesql {
 namespace sdk {
@@ -60,7 +60,7 @@ class ResultSetImpl : public ResultSet {
     vm::Schema schema_;
     int32_t index_;
     int32_t size_;
-    std::unique_ptr<storage::RowView> row_view_;
+    std::unique_ptr<codec::RowView> row_view_;
 };
 
 }  // namespace sdk

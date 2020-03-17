@@ -21,8 +21,8 @@
 #include <vector>
 #include "base/strings.h"
 #include "codegen/buf_ir_builder.h"
-#include "storage/codec.h"
-#include "storage/window.h"
+#include "codec/row_codec.h"
+#include "codec/window.h"
 
 namespace fesql {
 namespace vm {
@@ -91,12 +91,12 @@ RunSession::~RunSession() {}
 
 int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();
-    std::vector<std::vector<storage::Row>> temp_buffers(op_size);
+    std::vector<std::vector<codec::Row>> temp_buffers(op_size);
     for (auto op : compile_info_->sql_ctx.ops.ops) {
         switch (op->type) {
             case kOpScan: {
                 ScanOp* scan_op = reinterpret_cast<ScanOp*>(op);
-                std::vector<storage::Row>& out_buffers =
+                std::vector<codec::Row>& out_buffers =
                     temp_buffers[scan_op->idx];
                 out_buffers.push_back(in_row);
                 break;
@@ -108,14 +108,14 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                 int32_t (*udf)(int8_t*, int32_t, int8_t**) =
                     (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
                 OpNode* prev = project_op->children[0];
-                std::unique_ptr<storage::RowView> row_view = std::move(
-                    std::unique_ptr<storage::RowView>(new storage::RowView(
+                std::unique_ptr<codec::RowView> row_view = std::move(
+                    std::unique_ptr<codec::RowView>(new codec::RowView(
                         project_op->table_handler->GetSchema())));
 
-                std::vector<::fesql::storage::Row>& in_buffers =
+                std::vector<::fesql::codec::Row>& in_buffers =
                     temp_buffers[prev->idx];
 
-                std::vector<::fesql::storage::Row>& out_buffers =
+                std::vector<::fesql::codec::Row>& out_buffers =
                     temp_buffers[project_op->idx];
 
                 if (project_op->window_agg) {
@@ -268,7 +268,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                             return 1;
                         }
                         std::unique_ptr<Iterator> it = window_it->GetValue();
-                        std::vector<::fesql::storage::Row> window;
+                        std::vector<::fesql::codec::Row> window;
                         if (project_op->w.has_order) {
                             it->Seek(ts);
                         } else {
@@ -284,14 +284,14 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                                 break;
                             }
                             base::Slice value = it->GetValue();
-                            ::fesql::storage::Row w_row;
+                            ::fesql::codec::Row w_row;
                             w_row.buf = reinterpret_cast<int8_t*>(
                                 const_cast<char*>(value.data()));
                             window.push_back(w_row);
                             window_it->Next();
                         }
-                        fesql::storage::ListV<Row> list(&window);
-                        fesql::storage::WindowImpl impl(list);
+                        fesql::codec::ListV<Row> list(&window);
+                        fesql::codec::WindowImpl impl(list);
                         uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl),
                                            row.size, &output);
                         if (ret != 0) {
@@ -299,7 +299,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                             return 1;
                         }
 
-                        out_buffers.push_back(::fesql::storage::Row{
+                        out_buffers.push_back(::fesql::codec::Row{
                             .buf = output, .size = output_size});
                     }
                 } else {
@@ -314,7 +314,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
                         }
-                        out_buffers.push_back(::fesql::storage::Row{
+                        out_buffers.push_back(::fesql::codec::Row{
                             .buf = output, .size = output_size});
                     }
                 }
@@ -338,9 +338,9 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                 // TODO(chenjing): limit optimized.
                 LimitOp* limit_op = reinterpret_cast<LimitOp*>(op);
                 OpNode* prev = limit_op->children[0];
-                std::vector<::fesql::storage::Row>& in_buffers =
+                std::vector<::fesql::codec::Row>& in_buffers =
                     temp_buffers[prev->idx];
-                std::vector<::fesql::storage::Row>& out_buffers =
+                std::vector<::fesql::codec::Row>& out_buffers =
                     temp_buffers[limit_op->idx];
                 uint32_t cnt = 0;
                 for (uint32_t i = 0; i < limit_op->limit; ++i) {
@@ -358,7 +358,7 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
 }
 int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();
-    std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
+    std::vector<std::vector<::fesql::codec::Row>> temp_buffers(op_size);
     for (auto op : compile_info_->sql_ctx.ops.ops) {
         switch (op->type) {
             case kOpScan: {
@@ -371,12 +371,12 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                 int32_t (*udf)(int8_t*, int32_t, int8_t**) =
                     (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
 
-                std::unique_ptr<storage::RowView> row_view = std::move(
-                    std::unique_ptr<storage::RowView>(new storage::RowView(
+                std::unique_ptr<codec::RowView> row_view = std::move(
+                    std::unique_ptr<codec::RowView>(new codec::RowView(
                         project_op->table_handler->GetSchema())));
 
                 // out buffers
-                std::vector<::fesql::storage::Row>& out_buffers =
+                std::vector<::fesql::codec::Row>& out_buffers =
                     temp_buffers[project_op->idx];
                 uint64_t min = limit > 0 ? limit : INT64_MAX;
                 if (project_op->scan_limit != 0 &&
@@ -402,7 +402,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                         wit->SeekToFirst();
                         while (wit->Valid()) {
                             base::Slice value = wit->GetValue();
-                            ::fesql::storage::Row row(
+                            ::fesql::codec::Row row(
                                 {.buf = reinterpret_cast<int8_t*>(
                                      const_cast<char*>(value.data())),
                                  .size = value.size()});
@@ -413,7 +413,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                         it->Next();
                         DLOG(INFO) << "buffer size: " << buffer.size();
                         // TODO(chenjing): decide window type
-                        ::fesql::storage::CurrentHistoryWindow window(
+                        ::fesql::codec::CurrentHistoryWindow window(
                             project_op->w.start_offset);
                         window.Reserve(buffer.size());
                         for (auto iter = buffer.rbegin();
@@ -422,14 +422,14 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                             int8_t* output = NULL;
                             size_t output_size = 0;
                             // handle window
-                            fesql::storage::WindowImpl impl(window);
+                            fesql::codec::WindowImpl impl(window);
                             uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl),
                                                0, &output);
                             if (ret != 0) {
                                 LOG(WARNING) << "fail to run udf " << ret;
                                 return 1;
                             }
-                            out_buffers.push_back(::fesql::storage::Row{
+                            out_buffers.push_back(::fesql::codec::Row{
                                 .buf = output, .size = output_size});
                             count++;
                         }
@@ -441,7 +441,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                     uint64_t count = 0;
                     while (it->Valid() && count++ < min) {
                         base::Slice value = it->GetValue();
-                        ::fesql::storage::Row row(
+                        ::fesql::codec::Row row(
                             {.buf = reinterpret_cast<int8_t*>(
                                  const_cast<char*>(value.data())),
                              .size = value.size()});
@@ -453,7 +453,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
                         }
-                        out_buffers.push_back(::fesql::storage::Row{
+                        out_buffers.push_back(::fesql::codec::Row{
                             .buf = output, .size = output_size});
                         it->Next();
                     }
@@ -476,9 +476,9 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                 // TODO(chenjing): limit optimized.
                 LimitOp* limit_op = reinterpret_cast<LimitOp*>(op);
                 OpNode* prev = limit_op->children[0];
-                std::vector<::fesql::storage::Row>& in_buffers =
+                std::vector<::fesql::codec::Row>& in_buffers =
                     temp_buffers[prev->idx];
-                std::vector<::fesql::storage::Row>& out_buffers =
+                std::vector<::fesql::codec::Row>& out_buffers =
                     temp_buffers[limit_op->idx];
                 uint32_t cnt = 0;
                 for (uint32_t i = 0; i < limit_op->limit; ++i) {
@@ -500,7 +500,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
 }
 int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();
-    std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
+    std::vector<std::vector<::fesql::codec::Row>> temp_buffers(op_size);
     for (auto op : compile_info_->sql_ctx.ops.ops) {
         switch (op->type) {
             case kOpScan: {
@@ -514,11 +514,11 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                     min = scan_op->limit;
                 }
                 uint32_t count = 0;
-                std::vector<::fesql::storage::Row>& out_buffers =
+                std::vector<::fesql::codec::Row>& out_buffers =
                     temp_buffers[scan_op->idx];
                 while (it->Valid() && count++ < min) {
                     base::Slice value = it->GetValue();
-                    out_buffers.push_back(::fesql::storage::Row{
+                    out_buffers.push_back(::fesql::codec::Row{
                         .buf = reinterpret_cast<int8_t*>(
                             const_cast<char*>(value.data())),
                         .size = value.size()});
@@ -532,14 +532,14 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                 int32_t (*udf)(int8_t*, int32_t, int8_t**) =
                     (int32_t(*)(int8_t*, int32_t, int8_t**))project_op->fn;
                 OpNode* prev = project_op->children[0];
-                std::unique_ptr<storage::RowView> row_view = std::move(
-                    std::unique_ptr<storage::RowView>(new storage::RowView(
+                std::unique_ptr<codec::RowView> row_view = std::move(
+                    std::unique_ptr<codec::RowView>(new codec::RowView(
                         project_op->table_handler->GetSchema())));
 
-                std::vector<::fesql::storage::Row>& in_buffers =
+                std::vector<::fesql::codec::Row>& in_buffers =
                     temp_buffers[prev->idx];
 
-                std::vector<::fesql::storage::Row>& out_buffers =
+                std::vector<::fesql::codec::Row>& out_buffers =
                     temp_buffers[project_op->idx];
 
                 if (project_op->window_agg) {
@@ -694,7 +694,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                             return 1;
                         }
                         auto single_window_it = window_it->GetValue();
-                        std::vector<::fesql::storage::Row> window;
+                        std::vector<::fesql::codec::Row> window;
                         if (project_op->w.has_order) {
                             single_window_it->Seek(ts);
                         } else {
@@ -710,20 +710,20 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                                 break;
                             }
                             base::Slice value = single_window_it->GetValue();
-                            storage::Row w_row;
+                            codec::Row w_row;
                             w_row.buf = reinterpret_cast<int8_t*>(
                                 const_cast<char*>(value.data()));
                             window.push_back(w_row);
                             single_window_it->Next();
                         }
-                        fesql::storage::WindowImpl impl(&window);
+                        fesql::codec::WindowImpl impl(&window);
                         uint32_t ret = udf(reinterpret_cast<int8_t*>(&impl),
                                            row.size, &output);
                         if (ret != 0) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
                         }
-                        out_buffers.push_back(::fesql::storage::Row{
+                        out_buffers.push_back(::fesql::codec::Row{
                             .buf = output, .size = output_size});
                     }
                 } else {
@@ -738,7 +738,7 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
                         }
-                        out_buffers.push_back(::fesql::storage::Row{
+                        out_buffers.push_back(::fesql::codec::Row{
                             .buf = output, .size = output_size});
                     }
                 }
@@ -762,9 +762,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                 // TODO(chenjing): limit optimized.
                 LimitOp* limit_op = reinterpret_cast<LimitOp*>(op);
                 OpNode* prev = limit_op->children[0];
-                std::vector<::fesql::storage::Row>& in_buffers =
+                std::vector<::fesql::codec::Row>& in_buffers =
                     temp_buffers[prev->idx];
-                std::vector<::fesql::storage::Row>& out_buffers =
+                std::vector<::fesql::codec::Row>& out_buffers =
                     temp_buffers[limit_op->idx];
                 uint32_t cnt = 0;
                 for (uint32_t i = 0; i < limit_op->limit; ++i) {

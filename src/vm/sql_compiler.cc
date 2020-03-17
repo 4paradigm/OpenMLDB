@@ -27,12 +27,66 @@
 #include "llvm/Support/raw_ostream.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "storage/type_native_fn.h"
+#include "codec/type_codec.h"
 #include "udf/udf.h"
 #include "vm/op_generator.h"
 
 namespace fesql {
 namespace vm {
+
+void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
+                     ::llvm::orc::MangleAndInterner& mi) {  // NOLINT
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "malloc",
+                                   (reinterpret_cast<void*>(&malloc)));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_int16_field",
+                                   reinterpret_cast<void*>(&codec::v1::GetInt16Field));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_int32_field",
+                                   reinterpret_cast<void*>(&codec::v1::GetInt32Field));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_int64_field",
+                                   reinterpret_cast<void*>(&codec::v1::GetInt64Field));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_float_field",
+                                   reinterpret_cast<void*>(&codec::v1::GetFloatField));
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_get_double_field",
+        reinterpret_cast<void*>(&codec::v1::GetDoubleField));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_str_addr_space",
+                                   reinterpret_cast<void*>(&codec::v1::GetAddrSpace));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_str_field",
+                                   reinterpret_cast<void*>(&codec::v1::GetStrField));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_col",
+                                   reinterpret_cast<void*>(&codec::v1::GetCol));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_str_col",
+                                   reinterpret_cast<void*>(&codec::v1::GetStrCol));
+
+    // encode
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_int16_field",
+                                   reinterpret_cast<void*>(&codec::v1::AppendInt16));
+
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_int32_field",
+                                   reinterpret_cast<void*>(&codec::v1::AppendInt32));
+
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_int64_field",
+                                   reinterpret_cast<void*>(&codec::v1::AppendInt64));
+
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_float_field",
+                                   reinterpret_cast<void*>(&codec::v1::AppendFloat));
+
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_double_field",
+                                   reinterpret_cast<void*>(&codec::v1::AppendDouble));
+
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_encode_string_field",
+                                   reinterpret_cast<void*>(&codec::v1::AppendString));
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_encode_calc_size",
+        reinterpret_cast<void*>(&codec::v1::CalcTotalLength));
+}
+
+void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {
+    ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
+                                      jit_ptr->getDataLayout());
+    InitCodecSymbol(jit_ptr->getMainJITDylib(), mi);
+}
+
 using ::fesql::base::Status;
 
 SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir)
@@ -99,7 +153,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
-    storage::InitCodecSymbol(ctx.jit.get());
+    InitCodecSymbol(ctx.jit.get());
     udf::InitUDFSymbol(ctx.jit.get());
     std::vector<OpNode*>::iterator it = ctx.ops.ops.begin();
     for (; it != ctx.ops.ops.end(); ++it) {

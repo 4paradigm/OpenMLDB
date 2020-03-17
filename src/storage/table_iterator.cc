@@ -21,7 +21,7 @@
 #include <string>
 #include <utility>
 #include "base/hash.h"
-#include "storage/codec.h"
+#include "codec/row_codec.h"
 
 namespace fesql {
 namespace storage {
@@ -44,7 +44,7 @@ void WindowInternalIterator::Next() { ts_it_->Next(); }
 const base::Slice WindowInternalIterator::GetValue() {
     return base::Slice(
         ts_it_->GetValue()->data,
-        RowView::GetSize(reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+        codec::RowView::GetSize(reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
 }
 
 const uint64_t WindowInternalIterator::GetKey() { return ts_it_->GetKey(); }
@@ -235,7 +235,7 @@ void FullTableIterator::Next() { GoToNext(); }
 const base::Slice FullTableIterator::GetValue() {
     return base::Slice(
         ts_it_->GetValue()->data,
-        RowView::GetSize(reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+        codec::RowView::GetSize(reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
 }
 
 }  // namespace storage

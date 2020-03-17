@@ -29,7 +29,7 @@ ResultSetImpl::~ResultSetImpl() {}
 
 bool ResultSetImpl::Init() {
     schema_ = response_->schema();
-    std::unique_ptr<storage::RowView> row_view(new storage::RowView(schema_));
+    std::unique_ptr<codec::RowView> row_view(new codec::RowView(schema_));
     row_view_ = std::move(row_view);
     return true;
 }

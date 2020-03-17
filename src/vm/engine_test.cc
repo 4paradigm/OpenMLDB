@@ -35,8 +35,8 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "storage/codec.h"
-#include "storage/window.h"
+#include "codec/row_codec.h"
+#include "codec/window.h"
 #include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
@@ -92,7 +92,7 @@ void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
 void BuildBuf(int8_t** buf, uint32_t* size) {
     ::fesql::type::TableDef table;
     BuildTableDef(table);
-    storage::RowBuilder builder(table.columns());
+    codec::RowBuilder builder(table.columns());
     uint32_t total_size = builder.CalTotalLength(2);
     int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
     builder.SetBuffer(ptr, total_size);
@@ -106,12 +106,12 @@ void BuildBuf(int8_t** buf, uint32_t* size) {
     *buf = ptr;
     *size = total_size;
 }
-void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
+void BuildWindow(std::vector<fesql::codec::Row>& rows,  // NOLINT
                  int8_t** buf) {
     ::fesql::type::TableDef table;
     BuildTableDef(table);
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "1";
         std::string str0 = "0";
         uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
@@ -125,10 +125,10 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(11.1);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "22";
         std::string str0 = "0";
         uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
@@ -141,10 +141,10 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(22.2);
         builder.AppendInt64(2);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "333";
         std::string str0 = "0";
         uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
@@ -157,10 +157,10 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(33.3);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "4444";
         std::string str0 = "0";
         uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
@@ -173,10 +173,10 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(44.4);
         builder.AppendInt64(2);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str =
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             "a";
@@ -191,19 +191,19 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(55.5);
         builder.AppendInt64(3);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(&rows);
+    ::fesql::codec::WindowImpl* w = new ::fesql::codec::WindowImpl(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
-void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
+void BuildWindowUnique(std::vector<fesql::codec::Row>& rows,  // NOLINT
                        int8_t** buf) {
     ::fesql::type::TableDef table;
     BuildTableDef(table);
 
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "1";
         std::string str0 = "0";
         uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
@@ -217,10 +217,10 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(11.1);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "22";
         std::string str0 = "0";
         uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
@@ -233,10 +233,10 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(22.2);
         builder.AppendInt64(2);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "333";
         std::string str0 = "0";
         uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
@@ -249,10 +249,10 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(33.3);
         builder.AppendInt64(3);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "4444";
         std::string str0 = "0";
         uint32_t total_size = builder.CalTotalLength(str.size() + str0.size());
@@ -265,10 +265,10 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(44.4);
         builder.AppendInt64(4);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str =
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             "a";
@@ -283,19 +283,19 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(55.5);
         builder.AppendInt64(5);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(&rows);
+    ::fesql::codec::WindowImpl* w = new ::fesql::codec::WindowImpl(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void StoreData(::fesql::storage::Table* table, int8_t* rows) {
-    ::fesql::storage::WindowImpl* window =
-        reinterpret_cast<::fesql::storage::WindowImpl*>(rows);
-    ::fesql::storage::WindowIteratorImpl* w =
-        new storage::WindowIteratorImpl(*window);
+    ::fesql::codec::WindowImpl* window =
+        reinterpret_cast<::fesql::codec::WindowImpl*>(rows);
+    ::fesql::codec::WindowIteratorImpl* w =
+        new codec::WindowIteratorImpl(*window);
     ASSERT_TRUE(w->Valid());
-    ::fesql::storage::Row row = w->Next();
+    ::fesql::codec::Row row = w->Next();
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
 
     ASSERT_TRUE(w->Valid());
@@ -367,9 +367,9 @@ TEST_P(EngineTest, test_normal) {
         *column_def = column;
     }
 
-    std::unique_ptr<storage::RowView> row_view =
-        std::move(std::unique_ptr<storage::RowView>(
-            new storage::RowView(output_schema.columns())));
+    std::unique_ptr<codec::RowView> row_view =
+        std::move(std::unique_ptr<codec::RowView>(
+            new codec::RowView(output_schema.columns())));
 
     row_view->Reset(output[0]);
     {
@@ -434,7 +434,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_TRUE(table->Init());
     auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
-    std::vector<fesql::storage::Row> windows;
+    std::vector<fesql::codec::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
 
@@ -556,7 +556,7 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
     ASSERT_TRUE(table->Init());
     auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
-    std::vector<fesql::storage::Row> windows;
+    std::vector<fesql::codec::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     const std::string sql =
@@ -653,7 +653,7 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     ASSERT_TRUE(table->Init());
     auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
-    std::vector<fesql::storage::Row> windows;
+    std::vector<fesql::codec::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     const std::string sql =
@@ -721,7 +721,7 @@ TEST_F(EngineTest, test_window_agg_with_limit_batch_run) {
     auto catalog = BuildCommonCatalog(table_def, table);
 
     int8_t* rows = NULL;
-    std::vector<fesql::storage::Row> windows;
+    std::vector<fesql::codec::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     const std::string sql =
@@ -793,7 +793,7 @@ TEST_F(EngineTest, test_multi_windows_agg) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    std::vector<fesql::storage::Row> windows;
+    std::vector<fesql::codec::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     auto catalog = BuildCommonCatalog(table_def, table);
@@ -888,7 +888,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    std::vector<fesql::storage::Row> windows;
+    std::vector<fesql::codec::Row> windows;
     BuildWindowUnique(windows, &rows);
     StoreData(table.get(), rows);
     auto catalog = BuildCommonCatalog(table_def, table);
@@ -991,7 +991,7 @@ TEST_F(EngineTest, test_window_agg_unique_partition_batch_run) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    std::vector<fesql::storage::Row> windows;
+    std::vector<fesql::codec::Row> windows;
     BuildWindowUnique(windows, &rows);
     StoreData(table.get(), rows);
     auto catalog = BuildCommonCatalog(table_def, table);
@@ -1102,7 +1102,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     ASSERT_TRUE(table->Init());
     auto catalog = BuildCommonCatalog(table_def, table);
     int8_t* rows = NULL;
-    std::vector<fesql::storage::Row> windows;
+    std::vector<fesql::codec::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     const std::string sql =
@@ -1201,7 +1201,7 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     ASSERT_TRUE(table->Init());
 
     int8_t* rows = NULL;
-    std::vector<fesql::storage::Row> windows;
+    std::vector<fesql::codec::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
     auto catalog = BuildCommonCatalog(table_def, table);

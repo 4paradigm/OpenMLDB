@@ -13,6 +13,7 @@ add_subdirectory(vm)
 add_subdirectory(tablet)
 add_subdirectory(bm)
 add_subdirectory(batch)
+add_subdirectory(codec)
 
 include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
@@ -22,5 +23,5 @@ add_library(fesql_flags STATIC flags.cc)
 add_executable(fesql cmd/fesql.cc)
 target_link_libraries(fesql fesql_dbms fesql_tablet fesql_sdk fesql_base
     fesql_flags
-    fesql_proto fesql_vm fesql_udf fesql_parser fesql_analyser fesql_planner
-    fesql_codegen fesql_node  fesql_storage brpc ${llvm_libs} ${COMMON_LIBS} leveldb protobuf z snappy ssl crypto dl pthread)
+    fesql_vm fesql_udf fesql_parser fesql_analyser fesql_planner
+    fesql_codegen fesql_node  fesql_storage fesql_codec fesql_proto brpc ${llvm_libs} ${COMMON_LIBS} leveldb protobuf z snappy ssl crypto dl pthread)

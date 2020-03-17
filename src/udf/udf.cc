@@ -12,19 +12,21 @@
 #include <vector>
 #include "codegen/ir_base_builder.h"
 #include "proto/type.pb.h"
-#include "storage/window.h"
+#include "codec/window.h"
+#include "codec/type_codec.h"
+
 namespace fesql {
 namespace udf {
 namespace v1 {
-using fesql::storage::ColumnImpl;
-using fesql::storage::IteratorImpl;
-using fesql::storage::IteratorRef;
-using fesql::storage::ListRef;
-using fesql::storage::ListV;
-using fesql::storage::Row;
-using fesql::storage::StringColumnImpl;
-using fesql::storage::StringRef;
-using fesql::storage::WindowIteratorImpl;
+using fesql::codec::ColumnImpl;
+using fesql::codec::IteratorImpl;
+using fesql::codec::IteratorRef;
+using fesql::codec::ListRef;
+using fesql::codec::ListV;
+using fesql::codec::Row;
+using fesql::codec::StringColumnImpl;
+using fesql::codec::StringRef;
+using fesql::codec::WindowIteratorImpl;
 
 template <class V>
 int32_t current_time() {
@@ -43,9 +45,9 @@ V sum_list(int8_t *input) {
     if (nullptr == input) {
         return result;
     }
-    ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::storage::ListV<V> *col =
-        (::fesql::storage::ListV<V> *)(list_ref->list);
+    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListV<V> *col =
+        (::fesql::codec::ListV<V> *)(list_ref->list);
     IteratorImpl<V> iter(*col);
     while (iter.Valid()) {
         result += iter.Next();
@@ -59,9 +61,9 @@ V max_list(int8_t *input) {
     if (nullptr == input) {
         return result;
     }
-    ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::storage::ListV<V> *col =
-        (::fesql::storage::ListV<V> *)(list_ref->list);
+    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListV<V> *col =
+        (::fesql::codec::ListV<V> *)(list_ref->list);
     IteratorImpl<V> iter(*col);
 
     if (iter.Valid()) {
@@ -82,9 +84,9 @@ V min_list(int8_t *input) {
     if (nullptr == input) {
         return result;
     }
-    ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::storage::ListV<V> *col =
-        (::fesql::storage::ListV<V> *)(list_ref->list);
+    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListV<V> *col =
+        (::fesql::codec::ListV<V> *)(list_ref->list);
     IteratorImpl<V> iter(*col);
 
     if (iter.Valid()) {
@@ -101,9 +103,9 @@ V min_list(int8_t *input) {
 
 template <class V>
 V at_list(int8_t *input, int32_t pos) {
-    ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::storage::ListV<V> *list =
-        (::fesql::storage::ListV<V> *)(list_ref->list);
+    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListV<V> *list =
+        (::fesql::codec::ListV<V> *)(list_ref->list);
     return list->At(pos);
 }
 
@@ -112,13 +114,13 @@ bool iterator_list(int8_t *input, int8_t *output) {
     if (nullptr == input || nullptr == output) {
         return false;
     }
-    ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::storage::IteratorRef *iterator_ref =
-        (::fesql::storage::IteratorRef *)(output);
-    ::fesql::storage::ListV<V> *col =
-        (::fesql::storage::ListV<V> *)(list_ref->list);
-    ::fesql::storage::IteratorImpl<V> *iter =
-        (::fesql::storage::IteratorImpl<V> *)(iterator_ref->iterator);
+    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::IteratorRef *iterator_ref =
+        (::fesql::codec::IteratorRef *)(output);
+    ::fesql::codec::ListV<V> *col =
+        (::fesql::codec::ListV<V> *)(list_ref->list);
+    ::fesql::codec::IteratorImpl<V> *iter =
+        (::fesql::codec::IteratorImpl<V> *)(iterator_ref->iterator);
     new (iter) IteratorImpl<V>(*col);
     return true;
 }
@@ -128,19 +130,19 @@ bool has_next_iterator(int8_t *input) {
     if (nullptr == input) {
         return false;
     }
-    ::fesql::storage::IteratorRef *iter_ref =
-        (::fesql::storage::IteratorRef *)(input);
-    ::fesql::storage::IteratorImpl<V> *iter =
-        (::fesql::storage::IteratorImpl<V> *)(iter_ref->iterator);
+    ::fesql::codec::IteratorRef *iter_ref =
+        (::fesql::codec::IteratorRef *)(input);
+    ::fesql::codec::IteratorImpl<V> *iter =
+        (::fesql::codec::IteratorImpl<V> *)(iter_ref->iterator);
     return iter == nullptr ? false : iter->Valid();
 }
 
 template <class V>
 V next_iterator(int8_t *input) {
-    ::fesql::storage::IteratorRef *iter_ref =
-        (::fesql::storage::IteratorRef *)(input);
-    ::fesql::storage::IteratorImpl<V> *iter =
-        (::fesql::storage::IteratorImpl<V> *)(iter_ref->iterator);
+    ::fesql::codec::IteratorRef *iter_ref =
+        (::fesql::codec::IteratorRef *)(input);
+    ::fesql::codec::IteratorImpl<V> *iter =
+        (::fesql::codec::IteratorImpl<V> *)(iter_ref->iterator);
     return iter->Next();
 }
 

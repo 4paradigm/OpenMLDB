@@ -20,7 +20,7 @@ target_link_libraries(fesql_client_bm_case_test fesql_client_bm_case
         fesql_dbms
         fesql_tablet
         fesql_storage fesql_vm fesql_analyser fesql_parser fesql_planner fesql_codegen fesql_udf
-        fesql_node
+        fesql_node fesql_codec
         fesql_proto brpc protobuf benchmark gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread rt)
 
 add_test(fesql_client_bm_case_test fesql_client_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/fesql_client_bm_case_test.xml)
@@ -33,7 +33,7 @@ target_link_libraries(fesql_client_bm
         fesql_dbms
         fesql_tablet
         fesql_storage fesql_vm fesql_analyser fesql_parser fesql_planner fesql_codegen fesql_udf
-        fesql_node
+        fesql_node fesql_codec
         fesql_proto brpc protobuf benchmark gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread rt)
 
 add_executable(fesql_client_batch_run_bm fesql_client_batch_run_bm.cc)
@@ -43,5 +43,5 @@ target_link_libraries(fesql_client_batch_run_bm
         fesql_dbms
         fesql_tablet
         fesql_storage fesql_vm fesql_analyser fesql_parser fesql_planner fesql_codegen fesql_udf
-        fesql_node
+        fesql_node fesql_codec
         fesql_proto brpc protobuf benchmark gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread rt)

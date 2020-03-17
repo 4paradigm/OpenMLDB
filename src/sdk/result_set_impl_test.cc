@@ -19,7 +19,7 @@
 
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
-#include "storage/codec.h"
+#include "codec/row_codec.h"
 
 namespace fesql {
 namespace sdk {
@@ -42,7 +42,7 @@ std::vector<tablet::QueryResponse> GetTestCase() {
         tablet::QueryResponse response;
         type::ColumnDef* col1 = response.mutable_schema()->Add();
         col1->set_type(type::kVarchar);
-        storage::RowBuilder rb(response.schema());
+        codec::RowBuilder rb(response.schema());
         uint32_t size = rb.CalTotalLength(5);
         std::string* row_data = response.add_result_set();
         row_data->resize(size);
@@ -61,7 +61,7 @@ TEST_P(ResultSetImplTest, test_normal) {
     resp_ptr->CopyFrom(response);
     ResultSetImpl rs(std::move(resp_ptr));
     rs.Init();
-    storage::RowView row_view(response.schema());
+    codec::RowView row_view(response.schema());
     for (int32_t i = 0; i < response.result_set_size(); i++) {
         const std::string& row = response.result_set(i);
         ASSERT_TRUE(rs.Next());
