@@ -228,6 +228,7 @@ public class RowView {
                 val = row.getDouble(offset);
                 break;
             case Varchar:
+            case Blob:
                 int field_offset = offset;
                 int next_str_field_offset = 0;
                 if (field_offset < string_field_cnt - 1) {

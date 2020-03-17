@@ -227,6 +227,9 @@ public class RowBuilder {
     }
 
     public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
+        if (row == null || row.length == 0 || schema == null || schema.size() == 0 || row.length != schema.size()) {
+            throw new TabletException("input error");
+        }
         int strLength = RowCodecCommon.calStrLength(row, schema);
         RowBuilder builder = new RowBuilder(schema);
         int size = builder.calTotalLength(strLength);
@@ -243,6 +246,7 @@ public class RowBuilder {
             boolean ok = false;
             switch (columnDesc.getDataType()) {
                 case Varchar:
+                case Blob:
                     ok = builder.appendString((String) row[i]);
                     break;
                 case Bool:
