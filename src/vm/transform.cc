@@ -24,6 +24,7 @@ bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
     if (nullptr == node) {
         status.msg = "node is null";
         status.code = common::kOpGenError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     std::stack<LogicalOp> stacks;
@@ -60,6 +61,7 @@ bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
     if (nullptr == node || nullptr == ouput) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     LogicalOp logical_op = LogicalOp(node);
@@ -122,10 +124,17 @@ bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
             ok = TransformRenameOp(
                 dynamic_cast<const ::fesql::node::RenamePlanNode*>(node), &op,
                 status);
+            break;
+        case node::kPlanTypeDistinct:
+            ok = TransformDistinctOp(
+                dynamic_cast<const ::fesql::node::DistinctPlanNode*>(node), &op,
+                status);
+            break;
         default: {
             status.msg = "fail to transform physical plan: can't handle type " +
                          node::NameOfPlanNodeType(node->type_);
             status.code = common::kPlanError;
+            LOG(WARNING) << status.msg;
             return false;
         }
     }
@@ -143,6 +152,7 @@ bool Transform::TransformLimitOp(const node::LimitPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     PhysicalOpNode* depend = nullptr;
@@ -159,6 +169,7 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     PhysicalOpNode* depend = nullptr;
@@ -187,6 +198,7 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
     if (ops.empty()) {
         status.msg = "fail transform project op: empty projects";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
 
@@ -214,6 +226,7 @@ bool Transform::TransformWindowProject(const node::ProjectListNode* node,
     if (nullptr == node || nullptr == node->w_ptr_ || nullptr == output) {
         status.msg = "project node or window node or output node is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
 
@@ -245,6 +258,7 @@ bool Transform::TransformJoinOp(const node::JoinPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     PhysicalOpNode* left = nullptr;
@@ -265,6 +279,7 @@ bool Transform::TransformUnionOp(const node::UnionPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     PhysicalOpNode* left = nullptr;
@@ -284,6 +299,7 @@ bool Transform::TransformGroupOp(const node::GroupPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     PhysicalOpNode* left = nullptr;
@@ -298,6 +314,7 @@ bool Transform::TransformSortOp(const node::SortPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     PhysicalOpNode* left = nullptr;
@@ -313,6 +330,7 @@ bool Transform::TransformFilterOp(const node::FilterPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     PhysicalOpNode* depend = nullptr;
@@ -328,10 +346,20 @@ bool Transform::TransformScanOp(const node::TablePlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
-    *output = new PhysicalScanTableNode(catalog_->GetTable(db_, node->table_));
-    return true;
+    auto table = catalog_->GetTable(db_, node->table_);
+    if (table) {
+        *output = new PhysicalScanTableNode(table);
+        return true;
+    } else {
+        status.msg = "fail to transform scan op: table " + db_ + "." +
+                     node->table_ + " not exist!";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
 }
 
 // return optimized filter condition and scan index name
@@ -365,6 +393,21 @@ bool Transform::TransformQueryPlan(const node::QueryPlanNode* node,
         return false;
     }
     return TransformPhysicalPlan(node->GetChildren()[0], output, status);
+}
+bool Transform::TransformDistinctOp(const node::DistinctPlanNode* node,
+                                    PhysicalOpNode** output,
+                                    base::Status& status) {
+    if (nullptr == node || nullptr == output) {
+        status.msg = "input node or output node is null";
+        status.code = common::kPlanError;
+        return false;
+    }
+    PhysicalOpNode* left = nullptr;
+    if (!TransformPhysicalPlan(node->GetChildren()[0], &left, status)) {
+        return false;
+    }
+    *output = new PhysicalDistinctNode(left);
+    return true;
 }
 
 }  // namespace vm

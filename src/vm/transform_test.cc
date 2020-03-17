@@ -8,8 +8,8 @@
  **/
 #include "vm/transform.h"
 #include <stack>
-#include <utility>
 #include <string>
+#include <utility>
 #include "base/status.h"
 #include "gtest/gtest.h"
 #include "node/node_manager.h"
@@ -19,14 +19,14 @@
 
 namespace fesql {
 namespace vm {
-//class LogicalGraphTest
+// class LogicalGraphTest
 //    : public ::testing::TestWithParam<std::pair<std::string, int>> {
 // public:
 //    LogicalGraphTest() {}
 //    ~LogicalGraphTest() {}
 //};
 //
-//INSTANTIATE_TEST_CASE_P(
+// INSTANTIATE_TEST_CASE_P(
 //    SqlSubQueryTransform, LogicalGraphTest,
 //    testing::Values(
 //        std::make_pair("SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from "
@@ -36,8 +36,8 @@ namespace vm {
 //        std::make_pair(
 //            "SELECT LastName,FirstName, Title, Salary FROM Employees AS T1 "
 //            "WHERE Salary >=(SELECT Avg(Salary) "
-//            "FROM Employees WHERE T1.Title = Employees.Title) Order by Title;",
-//            6),
+//            "FROM Employees WHERE T1.Title = Employees.Title) Order by
+//            Title;", 6),
 //        std::make_pair(
 //            "select * from \n"
 //            "    (select * from stu where grade = 7) s\n"
@@ -54,7 +54,7 @@ namespace vm {
 //        std::make_pair("SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;",
 //                       5)));
 //
-//TEST_P(LogicalGraphTest, transform_logical_graph_test) {
+// TEST_P(LogicalGraphTest, transform_logical_graph_test) {
 //    auto param = GetParam();
 //    const std::string sql = param.first;
 //    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
@@ -86,13 +86,11 @@ namespace vm {
 //}
 //
 
-class TransformTest
-    : public ::testing::TestWithParam<std::string> {
+class TransformTest : public ::testing::TestWithParam<std::string> {
  public:
     TransformTest() {}
     ~TransformTest() {}
 };
-
 
 void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
     table_def.set_name("t1");
@@ -126,7 +124,6 @@ void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
     }
 }
 
-
 INSTANTIATE_TEST_CASE_P(
     SqlExprPlanner, TransformTest,
     testing::Values(
@@ -139,16 +136,16 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT MIN(COL1) FROM t1;", "SELECT min(COL1) FROM t1;",
         "SELECT MAX(COL1) FROM t1;", "SELECT max(COL1) as max_col1 FROM t1;",
         "SELECT SUM(COL1) FROM t1;", "SELECT sum(COL1) as sum_col1 FROM t1;",
-        "SELECT COL1, COL2, `TS`, AVG(AMT) OVER w, SUM(AMT) OVER w FROM t \n"
+        "SELECT COL1, COL2, `TS`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `TS` ROWS BETWEEN UNBOUNDED PRECEDING AND "
         "UNBOUNDED FOLLOWING);",
         "SELECT COL1, trim(COL2), `TS`, AVG(AMT) OVER w, SUM(AMT) OVER w FROM "
-        "t \n"
+        "t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",
-        "SELECT COL1, SUM(AMT) OVER w as w_amt_sum FROM t \n"
+        "SELECT COL1, SUM(AMT) OVER w as w_amt_sum FROM t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",
@@ -175,6 +172,139 @@ INSTANTIATE_TEST_CASE_P(
         "PRECEDING AND CURRENT ROW) limit 10;",
         "SELECT COUNT(*) FROM t1;"));
 
+INSTANTIATE_TEST_CASE_P(
+    SqlWherePlan, TransformTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 where COL1+COL2;",
+        "SELECT COL1 FROM t1 where COL1;",
+        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20;",
+        "SELECT COL1 FROM t1 where COL1 > 10;"));
+INSTANTIATE_TEST_CASE_P(
+    SqlLikePlan, TransformTest,
+    testing::Values("SELECT COL1 FROM t1 where COL like \"%abc\";",
+                    "SELECT COL1 FROM t1 where COL1 like '%123';",
+                    "SELECT COL1 FROM t1 where COL not like \"%abc\";",
+                    "SELECT COL1 FROM t1 where COL1 not like '%123';",
+                    "SELECT COL1 FROM t1 where COL1 not like 10;",
+                    "SELECT COL1 FROM t1 where COL1 like 10;"));
+INSTANTIATE_TEST_CASE_P(
+    SqlInPlan, TransformTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 where COL in (1, 2, 3, 4, 5);",
+        "SELECT COL1 FROM t1 where COL1 in (\"abc\", \"xyz\", \"test\");",
+        "SELECT COL1 FROM t1 where COL1 not in (1,2,3,4,5);"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlGroupPlan, TransformTest,
+    testing::Values(
+        "SELECT distinct sum(COL1) as col1sum, * FROM t1 where col2 > 10 group "
+        "by COL1, "
+        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
+        "SELECT COL1 FROM t1 group by COL1+COL2;",
+        "SELECT COL1 FROM t1 group by COL1;",
+        "SELECT COL1 FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT COL1 FROM t1 group by COL1, COL2;",
+        "SELECT COL1 FROM t1 group by COL1;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlHavingPlan, TransformTest,
+    testing::Values(
+        "SELECT COL1 FROM t1 having COL1+COL2;",
+        "SELECT COL1 FROM t1 having COL1;",
+        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
+        "SELECT COL1 FROM t1 HAVING COL1 > 10;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlOrderPlan, TransformTest,
+    testing::Values("SELECT COL1 FROM t1 order by COL1 + COL2 - COL3;",
+                    "SELECT COL1 FROM t1 order by COL1, COL2, COL3;",
+                    "SELECT COL1 FROM t1 order by COL1, COL2;",
+                    "SELECT COL1 FROM t1 order by COL1;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlWhereGroupHavingOrderPlan, TransformTest,
+    testing::Values(
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0 order by COL1 limit 10;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0 limit 10;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
+        "sum(COL1) > 0;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
+        "col1sum > 0;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlJoinPlan, TransformTest,
+    testing::Values("SELECT * FROM t1 full join t2 on t1.col1 = t2.col2;",
+                    "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2;",
+                    "SELECT * FROM t1 right join t2 on t1.col1 = t2.col2;",
+                    "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlUnionPlan, TransformTest,
+    testing::Values(
+        "SELECT * FROM t1 UNION SELECT * FROM t2;",
+        "SELECT * FROM t1 UNION DISTINCT SELECT * FROM t2;",
+        "SELECT * FROM t1 UNION ALL SELECT * FROM t2;",
+        "SELECT * FROM t1 UNION ALL SELECT * FROM t2 UNION SELECT * FROM t3;",
+        "SELECT * FROM t1 left join t2 on t1.col1 = t2.col2 UNION ALL SELECT * "
+        "FROM t3 UNION SELECT * FROM t4;",
+        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "COL2 having col1sum > 0 order by COL1+COL2 limit 10 UNION ALL "
+        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
+        "sum(COL1) > 0;",
+        "SELECT * FROM t1 inner join t2 on t1.col1 = t2.col2 UNION "
+        "SELECT * FROM t3 inner join t4 on t3.col1 = t4.col2 UNION "
+        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;"));
+INSTANTIATE_TEST_CASE_P(
+    SqlDistinctPlan, TransformTest,
+    testing::Values(
+        "SELECT distinct COL1 FROM t1 HAVING COL1 > 10 and COL2 = 20;",
+        "SELECT DISTINCT sum(COL1) as col1sum, * FROM t1 group by COL1,COL2;",
+        "SELECT DISTINCT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "SELECT DISTINCT COUNT(*) FROM t1;",
+        "SELECT distinct COL1 FROM t1 where COL1+COL2;",
+        "SELECT DISTINCT COL1 FROM t1 where COL1 > 10;"));
+
+INSTANTIATE_TEST_CASE_P(
+    SqlSubQueryPlan, TransformTest,
+    testing::Values(
+        "SELECT * FROM t1 WHERE COL1 > (select avg(COL1) from t1) limit 10;",
+        "select * from (select * from t1 where col1>0);",
+        "select * from \n"
+        "    (select * from t1 where col1 = 7) s\n"
+        "left join \n"
+        "    (select * from t2 where col2 = 2) t\n"
+        "on s.col3 = t.col3\n"
+        "union\n"
+        "select distinct * from \n"
+        "    (select distinct * from t1 where col1 = 7) s\n"
+        "right join \n"
+        "    (select distinct * from t2 where col2 = 2) t\n"
+        "on s.col3 = t.col3;",
+        "SELECT * FROM t5 inner join t6 on t5.col1 = t6.col2;",
+        "select * from \n"
+        "    (select * from t1 where col1 = 7) s\n"
+        "left join \n"
+        "    (select * from t2 where col2 = 2) t\n"
+        "on s.col3 = t.col3\n"
+        "union\n"
+        "select distinct * from \n"
+        "    (select  * from t1 where col1 = 7) s\n"
+        "right join \n"
+        "    (select distinct * from t2 where col2 = 2) t\n"
+        "on s.col3 = t.col3;"
+        ));
+
 TEST_P(TransformTest, transform_physical_plan) {
     std::string sqlstr = GetParam();
     std::cout << sqlstr << std::endl;
@@ -183,10 +313,40 @@ TEST_P(TransformTest, transform_physical_plan) {
     std::cout << sqlstr << std::endl;
 
     fesql::type::TableDef table_def;
+    fesql::type::TableDef table_def2;
+    fesql::type::TableDef table_def3;
+    fesql::type::TableDef table_def4;
+    fesql::type::TableDef table_def5;
+    fesql::type::TableDef table_def6;
     BuildTableDef(table_def);
+    BuildTableDef(table_def2);
+    BuildTableDef(table_def3);
+    BuildTableDef(table_def4);
+    BuildTableDef(table_def5);
+    BuildTableDef(table_def6);
+    table_def2.set_name("t2");
+    table_def3.set_name("t3");
+    table_def4.set_name("t4");
+    table_def5.set_name("t5");
+    table_def6.set_name("t6");
     std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
+    std::shared_ptr<::fesql::storage::Table> table2(
+        new ::fesql::storage::Table(1, 1, table_def2));
+    std::shared_ptr<::fesql::storage::Table> table3(
+        new ::fesql::storage::Table(1, 1, table_def3));
+    std::shared_ptr<::fesql::storage::Table> table4(
+        new ::fesql::storage::Table(1, 1, table_def4));
+    std::shared_ptr<::fesql::storage::Table> table5(
+        new ::fesql::storage::Table(1, 1, table_def5));
+    std::shared_ptr<::fesql::storage::Table> table6(
+        new ::fesql::storage::Table(1, 1, table_def6));
     auto catalog = BuildCommonCatalog(table_def, table);
+    AddTable(catalog, table_def2, table2);
+    AddTable(catalog, table_def3, table3);
+    AddTable(catalog, table_def4, table4);
+    AddTable(catalog, table_def5, table5);
+    AddTable(catalog, table_def6, table6);
 
     ::fesql::node::NodeManager manager;
     ::fesql::node::PlanNodeList plan_trees;
@@ -211,13 +371,9 @@ TEST_P(TransformTest, transform_physical_plan) {
     Transform transform("db", catalog);
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(transform.TransformPhysicalPlan(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan, base_status));
-//    ASSERT_TRUE(nullptr != physical_plan);
-//    physical_plan->Print(std::cout, "");
+        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
+        base_status));
 }
-
-
-
 
 }  // namespace vm
 }  // namespace fesql

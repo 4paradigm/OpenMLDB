@@ -26,6 +26,7 @@ enum PhysicalOpType {
     kPhysicalOpProject,
     kPhysicalOpLimit,
     kPhysicalOpRename,
+    kPhysicalOpDistinct,
     kPhysicalOpJoin,
     kPhysicalOpUnoin
 };
@@ -285,6 +286,12 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
           name_(name) {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const std::string &name_;
+};
+
+class PhysicalDistinctNode : public PhysicalUnaryNode {
+ public:
+    PhysicalDistinctNode(PhysicalOpNode *node)
+        : PhysicalUnaryNode(node, kPhysicalOpDistinct, false, false) {}
 };
 
 }  // namespace vm

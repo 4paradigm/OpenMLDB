@@ -114,6 +114,8 @@ class Transform {
                            PhysicalOpNode** output, base::Status& status);
     bool TransformQueryPlan(const node::QueryPlanNode* node,
                             PhysicalOpNode** output, base::Status& status);
+    bool TransformDistinctOp(const node::DistinctPlanNode* node,
+                             PhysicalOpNode** output, base::Status& status);
 };
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         fesql::base::Status& status,  // NOLINT

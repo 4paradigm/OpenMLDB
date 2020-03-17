@@ -27,6 +27,19 @@
 namespace fesql {
 namespace vm {
 
+bool AddTable(std::shared_ptr<tablet::TabletCatalog>& catalog,
+              const fesql::type::TableDef& table_def,
+              std::shared_ptr<fesql::storage::Table> table) {
+    std::shared_ptr<tablet::TabletTableHandler> handler(
+        new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
+                                       table_def.catalog(), table_def.indexes(),
+                                       table));
+    bool ok = handler->Init();
+    if (!ok) {
+        return false;
+    }
+    return catalog->AddTable(handler);
+}
 std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     const fesql::type::TableDef& table_def,
     std::shared_ptr<fesql::storage::Table> table) {
@@ -35,17 +48,11 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     if (!ok) {
         return std::shared_ptr<tablet::TabletCatalog>();
     }
-
-    std::shared_ptr<tablet::TabletTableHandler> handler(
-        new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
-                                       table_def.catalog(), table_def.indexes(),
-                                       table));
-    ok = handler->Init();
-    if (!ok) {
+    if (!AddTable(catalog, table_def, table)) {
         return std::shared_ptr<tablet::TabletCatalog>();
     }
-    catalog->AddTable(handler);
     return catalog;
+
 }
 
 std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
