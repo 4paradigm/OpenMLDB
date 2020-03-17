@@ -71,6 +71,7 @@ inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
         return total_size + str_field_cnt * 4;
     }
 }
+
 inline int32_t AppendInt16(int8_t* buf_ptr, uint32_t buf_size, int16_t val,
                            uint32_t field_offset) {
     if (field_offset + 2 > buf_size) {
@@ -180,6 +181,7 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
                   int32_t type_id, int8_t* data);
 
 }  // namespace v1
+
 void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
                      ::llvm::orc::MangleAndInterner& mi);  // NOLINT
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
