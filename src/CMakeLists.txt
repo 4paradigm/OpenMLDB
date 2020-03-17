@@ -118,3 +118,5 @@ target_link_libraries(nameserver_create_remote_test  gtest pthread tablet namese
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
 target_link_libraries(rtidb gflags common client  tablet storage replica log nameserver brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal)
+
+add_subdirectory(client)

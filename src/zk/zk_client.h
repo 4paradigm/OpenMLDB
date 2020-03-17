@@ -39,12 +39,12 @@ public:
              const std::string& endpoint,
              const std::string& zk_root_path);
 
-  ZkClient(const std::string &hosts,
-           int32_t session_timeout,
-           const std::string &endpoint,
-           const std::string &zk_root_path,
-           const std::string &zone_path);
-  ~ZkClient();
+    ZkClient(const std::string &hosts,
+             int32_t session_timeout,
+             const std::string &endpoint,
+             const std::string &zk_root_path,
+             const std::string &zone_path);
+    ~ZkClient();
 
     // init zookeeper connections
     bool Init();

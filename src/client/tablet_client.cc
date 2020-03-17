@@ -1011,16 +1011,18 @@ bool TabletClient::Get(uint32_t tid,
     if (!ts_name.empty()) {
         request.set_ts_name(ts_name);
     }
+    response.set_allocated_value(&value);
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get,
             &request, &response, FLAGS_request_timeout_ms, 1);
     if (response.has_msg()) {
         msg = response.msg();
     }
     if (!ok || response.code()  != 0) {
+        response.release_value();
         return false;
     }
     ts = response.ts();
-    value.assign(response.value());
+    response.release_value();
     return true;
 }
 

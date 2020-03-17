@@ -8,9 +8,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sched.h>
-#include <unistd.h>
 #include <iostream>
-#include <sstream>
 
 #include <snappy.h>
 #include <gflags/gflags.h>
