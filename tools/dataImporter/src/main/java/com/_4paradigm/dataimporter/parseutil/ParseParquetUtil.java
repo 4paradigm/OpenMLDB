@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -53,6 +54,7 @@ public class ParseParquetUtil {
     private final int JULIAN_EPOCH_OFFSET_DAYS = 2440588;
     private final long MILLIS_IN_DAY = TimeUnit.DAYS.toMillis(1);
     private final long NANOS_PER_MILLISECOND = TimeUnit.MILLISECONDS.toNanos(1);
+    private static final long ONE_DAY_IN_MILLIS = 86400000;
 
     static {
         if (arr != null) {
@@ -81,12 +83,20 @@ public class ParseParquetUtil {
             } else {
                 index = arr[i];
             }
+            Type type = schema.getType(i);
             columnName = schema.getFieldName(i);
-            columnType = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
+            columnType = type.asPrimitiveType().getPrimitiveTypeName();
             try {
                 switch (columnType) {
                     case INT32:
-                        map.put(columnName, group.getInteger(index, 0));
+                        if (type.asPrimitiveType().getOriginalType() != null &&
+                                "date".equalsIgnoreCase(type.asPrimitiveType().getOriginalType().name())) {
+                            int offsetDays = group.getInteger(index, 0);
+                            Date date = new Date(offsetDays * ONE_DAY_IN_MILLIS);
+                            map.put(columnName, date);
+                        } else {
+                            map.put(columnName, group.getInteger(index, 0));
+                        }
                         break;
                     case INT64:
                         map.put(columnName, group.getLong(index, 0));
