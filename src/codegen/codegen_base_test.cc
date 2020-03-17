@@ -175,7 +175,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
     }
 
     ::fesql::storage::ListV<fesql::storage::Row>* w =
-        new storage::ListV<storage::Row>(rows);
+        new storage::ListV<storage::Row>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 
@@ -290,7 +290,7 @@ void BuildWindow2(std::vector<fesql::storage::Row>& rows,  // NOLINT
         rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(rows);
+    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 }  // namespace codegen

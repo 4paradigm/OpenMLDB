@@ -8,4 +8,4 @@ RUN wget http://pkg.4paradigm.com/fesql/cmake-3.15.4.tar.gz  && tar -zxvf cmake-
 RUN yum install perl-Digest-MD5 -y
 RUN wget http://pkg.4paradigm.com/fesql/lcov-1.14.tar.gz  && tar -zxvf lcov-1.14.tar.gz && cd lcov-1.14 && make install
 ADD install_deps.sh /depends/
-RUN cd /depends && source /opt/rh/devtoolset-8/enable && bash install_deps.sh
+RUN cd /depends && source /opt/rh/devtoolset-7/enable && bash install_deps.sh

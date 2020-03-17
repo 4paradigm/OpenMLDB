@@ -20,7 +20,7 @@ class WindowIteratorTest : public ::testing::Test {
 
 TEST_F(WindowIteratorTest, IteratorImplTest) {
     std::vector<int> int_vec({1, 2, 3, 4, 5});
-    ListV<int> list(int_vec);
+    ListV<int> list(&int_vec);
     IteratorImpl<int> impl(list);
 
     ASSERT_TRUE(impl.Valid());
@@ -89,7 +89,7 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
         rows.push_back(Row{.buf = ptr});
     }
 
-    ListV<Row> list(rows);
+    ListV<Row> list(&rows);
     IteratorImpl<Row> impl(list);
     ASSERT_TRUE(impl.Valid());
     ASSERT_TRUE(impl.Valid());
@@ -258,7 +258,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
         rows.push_back(row);
         keys.push_back(6000L);
         ASSERT_EQ(rows.size(), keys.size());
-        CurrentHistorySlideWindow window(-1000L, rows, keys, 0);
+        CurrentHistorySlideWindow window(-1000L, &rows, &keys, 0);
         ASSERT_TRUE(window.Slide());
         ASSERT_EQ(1u, window.Count());
 
@@ -332,7 +332,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
         rows.push_back(row);
         keys.push_back(6000L);
         ASSERT_EQ(rows.size(), keys.size());
-        CurrentHistorySlideWindow window(-1000L, 5, rows, keys, 0);
+        CurrentHistorySlideWindow window(-1000L, 5, &rows, &keys, 0);
         ASSERT_TRUE(window.Slide());
         ASSERT_EQ(1u, window.Count());
         ASSERT_TRUE(window.Slide());
@@ -384,7 +384,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
         rows.push_back(row);
         keys.push_back(3L);
         ASSERT_EQ(rows.size(), keys.size());
-        CurrentHistorySlideWindow window(-1000L, 2, rows, keys, 4);
+        CurrentHistorySlideWindow window(-1000L, 2, &rows, &keys, 4);
         ASSERT_TRUE(window.Slide());
         ASSERT_EQ(1u, window.Count());
         ASSERT_TRUE(window.Slide());
@@ -441,7 +441,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundSlideWindowTest) {
         //        std::reverse(keys.begin(), keys.end());
 
         // history current_ts -1000 ~ current_ts
-        CurrentHistoryUnboundSlideWindow window(rows, keys, 0);
+        CurrentHistoryUnboundSlideWindow window(&rows, &keys, 0);
         ASSERT_TRUE(window.Slide());
         ASSERT_EQ(1u, window.Count());
         ASSERT_TRUE(window.Slide());
@@ -518,7 +518,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundSlideWindowTest) {
         ASSERT_EQ(rows.size(), keys.size());
 
         // history current_ts -1000 ~ current_ts
-        CurrentHistoryUnboundSlideWindow window(10, rows, keys, 0);
+        CurrentHistoryUnboundSlideWindow window(10, &rows, &keys, 0);
         ASSERT_TRUE(window.Slide());
         ASSERT_EQ(1u, window.Count());
         ASSERT_TRUE(window.Slide());

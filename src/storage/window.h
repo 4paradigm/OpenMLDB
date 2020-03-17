@@ -27,10 +27,10 @@ enum BOUND { UNBOUND, CURRENT, NORMAL };
 template <class V>
 class ListV {
  public:
-    ListV() : start_(0), end_(0), buffer_({}) {}
-    explicit ListV(const std::vector<V> &buffer)
-        : start_(0), end_(buffer.size()), buffer_(buffer) {}
-    ListV(const std::vector<V> &buffer, uint32_t start, uint32_t end)
+    ListV() : start_(0), end_(0), buffer_(nullptr) {}
+    explicit ListV(std::vector<V> *buffer)
+        : start_(0), end_(buffer->size()), buffer_(buffer) {}
+    ListV(std::vector<V> *buffer, uint32_t start, uint32_t end)
         : start_(start), end_(end), buffer_(buffer) {}
 
     ListV(const ListV<V>& list)
@@ -38,7 +38,7 @@ class ListV {
     ~ListV() {}
     // TODO(chenjing): at 数组越界处理
     virtual const V At(int32_t pos) const {
-        return buffer_.at(pos);
+        return buffer_->at(pos);
     }
     virtual const uint32_t Count() const { return end_ - start_; }
     virtual const uint32_t GetStart() const { return start_; }
@@ -48,7 +48,7 @@ class ListV {
  protected:
     uint32_t start_;
     uint32_t end_;
-    std::vector<V> buffer_;
+    std::vector<V> *buffer_;
 };
 
 template <class V, class R>
@@ -110,52 +110,55 @@ class StringColumnImpl : public ColumnImpl<fesql::storage::StringRef> {
 class Window : public ListV<Row> {
  public:
     Window(int64_t start_offset, int64_t end_offset)
-        : ListV<Row>(),
+        : ListV<Row>(new std::vector<Row>()),
           start_offset_(start_offset),
           end_offset_(end_offset),
           max_size_(0),
-          keys_({}) {}
+          keys_(new std::vector<uint64_t >()) {}
     Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
-        : ListV<Row>(),
+        : ListV<Row>(new std::vector<Row>()),
           start_offset_(start_offset),
           end_offset_(end_offset),
           max_size_(max_size),
-          keys_({}) {}
-    virtual ~Window() {}
+          keys_(new std::vector<uint64_t>()) {}
+    virtual ~Window() {
+        delete buffer_;
+        delete keys_;
+    }
     virtual void BufferData(uint64_t key, const Row &row) = 0;
     void Reserve(uint64_t size) {
-        buffer_.reserve(size);
-        keys_.reserve(size);
+        buffer_->reserve(size);
+        keys_->reserve(size);
     }
 
  protected:
     int64_t start_offset_;
     int32_t end_offset_;
     uint32_t max_size_;
-    std::vector<uint64_t> keys_;
+    std::vector<uint64_t> *keys_;
 };
 
 class SlideWindow : public ListV<Row> {
  public:
     SlideWindow(int64_t start_offset, int64_t end_offset,
-                const std::vector<Row> &buffer,
-                const std::vector<uint64_t> &keys, uint32_t start)
+                std::vector<Row> *buffer,
+                std::vector<uint64_t> *keys, uint32_t start)
         : ListV<Row>(buffer, start, start),
           start_offset_(start_offset),
           end_offset_(end_offset),
           max_size_(0),
           keys_(keys) {
-        window_end_ = buffer.size();
+        window_end_ = buffer->size();
     }
     SlideWindow(int64_t start_offset, int64_t end_offset, uint32_t max_size,
-                const std::vector<Row> &buffer,
-                const std::vector<uint64_t> &keys, uint32_t start)
+                std::vector<Row> *buffer,
+                std::vector<uint64_t> *keys, uint32_t start)
         : ListV<Row>(buffer, start, start),
           start_offset_(start_offset),
           end_offset_(end_offset),
           max_size_(max_size),
           keys_(keys) {
-        window_end_ = buffer.size();
+        window_end_ = buffer->size();
     }
     virtual ~SlideWindow() {}
     virtual bool Slide() = 0;
@@ -165,7 +168,7 @@ class SlideWindow : public ListV<Row> {
     int32_t end_offset_;
     uint32_t max_size_;
     uint32_t window_end_;
-    const std::vector<uint64_t> keys_;
+    std::vector<uint64_t> *keys_;
 };
 
 // TODO(chenjing):
@@ -179,14 +182,14 @@ class CurrentHistoryWindow : public Window {
         : Window(start_offset, 0, max_size) {}
 
     void BufferData(uint64_t key, const Row &row) {
-        keys_.push_back(key);
-        buffer_.push_back(row);
+        keys_->push_back(key);
+        buffer_->push_back(row);
         end_++;
         int64_t sub = (key + start_offset_);
         uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
         while (start_ < end_ &&
                ((0 != max_size_ && (end_ - start_) > max_size_) ||
-                keys_[start_] <= start_ts)) {
+                keys_->at(start_) <= start_ts)) {
             start_++;
         }
     }
@@ -199,8 +202,8 @@ class CurrentHistoryUnboundWindow : public Window {
     explicit CurrentHistoryUnboundWindow(uint32_t max_size)
         : Window(INT64_MIN, 0, max_size) {}
     void BufferData(uint64_t key, const Row &row) {
-        keys_.push_back(key);
-        buffer_.push_back(row);
+        keys_->push_back(key);
+        buffer_->push_back(row);
         end_++;
         while ((0 != max_size_ && (end_ - start_) > max_size_)) {
             start_++;
@@ -214,24 +217,24 @@ class CurrentHistoryUnboundWindow : public Window {
 class CurrentHistorySlideWindow : public SlideWindow {
  public:
     CurrentHistorySlideWindow(int64_t start_offset,
-                              const std::vector<Row> &buffer,
-                              const std::vector<uint64_t> &keys, uint32_t start)
+                              std::vector<Row> *buffer,
+                              std::vector<uint64_t> *keys, uint32_t start)
         : SlideWindow(start_offset, 0, buffer, keys, start) {}
     CurrentHistorySlideWindow(int64_t start_offset, uint32_t max_size,
-                              const std::vector<Row> &buffer,
-                              const std::vector<uint64_t> &keys, uint32_t start)
+                              std::vector<Row> *buffer,
+                              std::vector<uint64_t> *keys, uint32_t start)
         : SlideWindow(start_offset, 0, max_size, buffer, keys, start) {}
     bool Slide() {
         if (end_ >= window_end_) {
             return false;
         }
-        uint64_t key = keys_[end_];
+        uint64_t key = keys_->at(end_);
         end_ += 1;
         int64_t sub = (key + start_offset_);
         uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
         while (start_ < end_ &&
                ((0 != max_size_ && (end_ - start_) > max_size_) ||
-                keys_[start_] <= start_ts)) {
+                keys_->at(start_) <= start_ts)) {
             start_++;
         }
         return true;
@@ -241,14 +244,14 @@ class CurrentHistorySlideWindow : public SlideWindow {
 // 历史无限滑动窗口，窗口内数据包含所有历史到当前记录
 class CurrentHistoryUnboundSlideWindow : public SlideWindow {
  public:
-    CurrentHistoryUnboundSlideWindow(const std::vector<Row> &buffer,
-                                     const std::vector<uint64_t> &keys,
+    CurrentHistoryUnboundSlideWindow(std::vector<Row> *buffer,
+                                     std::vector<uint64_t> *keys,
                                      uint32_t start)
         : SlideWindow(INT64_MIN, 0, buffer, keys, start) {}
 
     CurrentHistoryUnboundSlideWindow(uint32_t max_size,
-                                     const std::vector<Row> &buffer,
-                                     const std::vector<uint64_t> &keys,
+                                     std::vector<Row> *buffer,
+                                     std::vector<uint64_t> *keys,
                                      uint32_t start)
         : SlideWindow(INT64_MIN, 0, max_size, buffer, keys, start) {}
     bool Slide() {
