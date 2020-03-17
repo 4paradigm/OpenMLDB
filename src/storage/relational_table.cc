@@ -403,8 +403,8 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
         auto col_iter = col_idx_map.find(schema.Get(i).name());
         if (col_iter != col_idx_map.end()) {
             if (schema.Get(i).not_null() && value_view.IsNULL(col_iter->second)) {
-                return false;
                 PDLOG(WARNING, "not_null is true but value is null ,update table tid %u pid %u failed", id_, pid_);
+                return false;
             } else if (value_view.IsNULL(col_iter->second)) {
                 builder.AppendNULL(); 
                 continue;

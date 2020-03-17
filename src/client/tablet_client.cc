@@ -187,6 +187,33 @@ bool TabletClient::UpdateTableMetaForAddField(uint32_t tid,
     return false;
 }
 
+bool TabletClient::Update(uint32_t tid, uint32_t pid, 
+        const Schema& new_cd_schema, const Schema& new_value_schema, 
+        const std::string& cd_value, const std::string& value, 
+        std::string& msg) {
+    ::rtidb::api::UpdateRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::rtidb::api::Columns* cd =  request.mutable_condition_columns();
+    for (int i = 0; i < new_cd_schema.size(); i++) {
+        cd->add_name(new_cd_schema.Get(i).name());
+    }
+    cd->set_value(cd_value);
+    ::rtidb::api::Columns* val = request.mutable_value_columns();
+    for (int i = 0; i < new_value_schema.size(); i++) {
+        val->add_name(new_value_schema.Get(i).name());
+    }
+    val->set_value(value);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Update,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    msg = response.msg();
+    return false;
+}
+
 bool TabletClient::Put(uint32_t tid,
              uint32_t pid,
              uint64_t time,
