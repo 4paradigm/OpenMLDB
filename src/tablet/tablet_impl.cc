@@ -2267,7 +2267,7 @@ void TabletImpl::SendData(RpcController* controller,
         response->set_msg("block_id mismatch");
         PDLOG(WARNING, "block_id mismatch. tid %u, pid %u, file_name %s, request block_id %lu cur block_id %lu", 
                 tid, pid, request->file_name().c_str(), request->block_id(), receiver->GetBlockId());
-        response->set_code(::rtidb::base::ReturnCode::kBlock_idMismatch);
+        response->set_code(::rtidb::base::ReturnCode::kBlockIdMismatch);
         return;
     }
     std::string data = cntl->request_attachment().to_string();

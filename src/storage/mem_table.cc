@@ -613,10 +613,11 @@ TableIterator* MemTable::NewIterator(uint32_t index, int32_t ts_idx, const std::
 
 uint64_t MemTable::GetRecordIdxByteSize() {
     uint64_t record_idx_byte_size = 0;
-    for (uint32_t i = 0; i < segments_.size(); i++) {
-        if (segments_[i]!=NULL) {
+    const std::vector<std::shared_ptr<IndexDef>> indexs = GetAllIndex();
+    for (const auto& index_def : indexs) {
+        if (index_def->IsReady() && index_def->GetId() < segments_.size()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
-                record_idx_byte_size += segments_[i][j]->GetIdxByteSize(); 
+                record_idx_byte_size += segments_[index_def->GetId()][j]->GetIdxByteSize(); 
             }
         }
     }
