@@ -24,6 +24,11 @@ target_link_libraries(transform_test ${vm_deps_libs} protobuf ${llvm_libs} ${COM
 add_test(transform_test transform_test --gtest_output=xml:${CMAKE_BINARY_DIR}/transform_test.xml)
 list(APPEND transform_test transform_test)
 
+add_executable(logical_graph_test logical_graph_test.cc)
+target_link_libraries(logical_graph_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} ${Boost_LIBRARIES} gtest pthread)
+add_test(logical_graph_test logical_graph_test --gtest_output=xml:${CMAKE_BINARY_DIR}/logical_graph_test.xml)
+list(APPEND logical_graph_test logical_graph_test)
+
 #add_executable(csv_catalog_test csv_catalog_test.cc)
 #target_link_libraries(csv_catalog_test  fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
 #add_test(csv_catalog_test csv_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/csv_catalog_test.xml)

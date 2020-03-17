@@ -15,6 +15,7 @@
 namespace fesql {
 namespace vm {
 
+// new and delete physical node manage
 enum PhysicalOpType {
     kPhysicalOpScan,
     kPhysicalOpFilter,
