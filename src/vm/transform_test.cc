@@ -134,7 +134,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT distinct sum(COL1) as col1sum, * FROM t1 where col2 > 10 group "
         "by COL1, "
         "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2;",
+        "SELECT sum(col1) as col1sum, * FROM t1 group by col1, col2;",
         "SELECT COL1 FROM t1 group by COL1+COL2;",
         "SELECT COL1 FROM t1 group by COL1;",
         "SELECT COL1 FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
@@ -256,6 +256,7 @@ TEST_P(TransformTest, transform_physical_plan) {
     BuildTableDef(table_def4);
     BuildTableDef(table_def5);
     BuildTableDef(table_def6);
+    table_def.set_name("t1");
     table_def2.set_name("t2");
     table_def3.set_name("t3");
     table_def4.set_name("t4");
@@ -273,6 +274,12 @@ TEST_P(TransformTest, transform_physical_plan) {
         new ::fesql::storage::Table(1, 1, table_def5));
     std::shared_ptr<::fesql::storage::Table> table6(
         new ::fesql::storage::Table(1, 1, table_def6));
+
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col1");
+    index->add_first_keys("col2");
+    index->set_second_key("col15");
     auto catalog = BuildCommonCatalog(table_def, table);
     AddTable(catalog, table_def2, table2);
     AddTable(catalog, table_def3, table3);
@@ -291,7 +298,7 @@ TEST_P(TransformTest, transform_physical_plan) {
         ASSERT_EQ(0, base_status.code);
         if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
             0) {
-            std::cout << *(plan_trees[0]);
+            std::cout << *(plan_trees[0]) << std::endl;
         } else {
             std::cout << base_status.msg;
         }
@@ -300,11 +307,13 @@ TEST_P(TransformTest, transform_physical_plan) {
         std::cout.flush();
     }
 
-    Transform transform("db", catalog);
+    Transform transform(&manager, "db", catalog);
+    transform.AddPass(kPassGroupByOptimized);
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformPhysicalPlan(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
-        base_status));
+    ASSERT_TRUE(
+        transform.TransformPhysicalPlan(dynamic_cast<node::PlanNode*>(plan_trees[0]),
+                                  &physical_plan, base_status));
+    physical_plan->Print(std::cout, "");
 }
 
 }  // namespace vm

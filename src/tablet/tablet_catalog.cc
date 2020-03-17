@@ -76,7 +76,7 @@ bool TabletTableHandler::Init() {
         }
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
-    LOG(INFO) << "init table handler for table " << name_ << " in db " << db_
+    DLOG(INFO) << "init table handler for table " << name_ << " in db " << db_
               << " done";
     return true;
 }

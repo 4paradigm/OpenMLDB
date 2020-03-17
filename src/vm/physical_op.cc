@@ -10,21 +10,45 @@
 namespace fesql {
 namespace vm {
 
-const char INDENT[] = "\t";
+const char INDENT[] = "  ";
 void PhysicalOpNode::Print(std::ostream& output, const std::string& tab) const {
-    output << PhysicalOpTypeName(type_);
+    output << tab << PhysicalOpTypeName(type_);
 }
 void PhysicalOpNode::PrintChildren(std::ostream& output,
                                    const std::string& tab) const {}
+void PhysicalOpNode::UpdateProducer(int i, PhysicalOpNode* producer) {
+    producers_[i] = producer;
+}
 void PhysicalUnaryNode::PrintChildren(std::ostream& output,
                                       const std::string& tab) const {
-    producer_->Print(output, tab);
+    if (producers_.empty() || nullptr == producers_[0]) {
+        LOG(WARNING) << "empty producers";
+        return;
+    }
+    producers_[0]->Print(output, tab + INDENT);
+}
+void PhysicalUnaryNode::Print(std::ostream& output,
+                              const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "\n";
+    PrintChildren(output, tab);
 }
 void PhysicalBinaryNode::PrintChildren(std::ostream& output,
                                        const std::string& tab) const {
-    left_producer_->Print(output, tab + INDENT);
+    if (2 != producers_.size() || nullptr == producers_[0] ||
+        nullptr == producers_[1]) {
+        LOG(WARNING) << "fail to print children";
+        return;
+    }
+    producers_[0]->Print(output, tab + INDENT);
     output << "\n";
-    right_producer_->Print(output, tab + INDENT);
+    producers_[1]->Print(output, tab + INDENT);
+}
+void PhysicalBinaryNode::Print(std::ostream& output,
+                               const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "\n";
+    PrintChildren(output, tab);
 }
 void PhysicalScanTableNode::Print(std::ostream& output,
                                   const std::string& tab) const {
@@ -37,22 +61,25 @@ void PhysicalScanTableNode::Print(std::ostream& output,
 void PhysicalScanIndexNode::Print(std::ostream& output,
                                   const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(table=" << table_handler_->GetName() << "index=" << index_name_
-           << ")";
+    output << "(type = " << ScanTypeName(scan_type_)
+           << ", table=" << table_handler_->GetName()
+           << ", index=" << index_name_ << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
 void PhysicalGroupNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
+    output << "(group by =" << node::ExprString(groups_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
 void PhysicalProjectNode::Print(std::ostream& output,
                                 const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(projectType=" << ProjectTypeName(project_type_);
+    output << "(projectType=" << ProjectTypeName(project_type_) << ")";
     output << "\n";
+
     PrintChildren(output, tab);
 }
 void PhysicalLoopsNode::Print(std::ostream& output,
@@ -82,7 +109,7 @@ void PhysicalLimitNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 void PhysicalRenameNode::Print(std::ostream& output,
-                              const std::string& tab) const {
+                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(name=" << name_ << ")";
     output << "\n";

@@ -9,8 +9,10 @@
 
 #ifndef SRC_VM_TRANSFORM_H_
 #define SRC_VM_TRANSFORM_H_
+#include <node/node_manager.h>
 #include <node/plan_node.h>
 #include <node/sql_node.h>
+#include <string>
 #include "base/graph.h"
 #include "base/status.h"
 #include "vm/physical_op.h"
@@ -66,33 +68,105 @@ struct EqualPhysicalOp {
     }
 };
 
+template <class T>
+class TransformPass {
+ public:
+    TransformPass(node::NodeManager* node_manager, const std::string& db,
+                  const std::shared_ptr<Catalog>& catalog)
+        : db_(db), catalog_(catalog), node_manager_(node_manager) {}
+    const std::string db_;
+    const std::shared_ptr<Catalog> catalog_;
+
+ protected:
+    node::NodeManager* node_manager_;
+    virtual bool Transform(T in, T* output) = 0;
+    virtual bool Apply(T in, T* out) = 0;
+};
+class TransformUpPysicalPass : public TransformPass<PhysicalOpNode*> {
+ public:
+    TransformUpPysicalPass(node::NodeManager* node_manager,
+                           const std::string& db,
+                           const std::shared_ptr<Catalog>& catalog)
+        : TransformPass<PhysicalOpNode*>(node_manager, db, catalog) {}
+    virtual bool Apply(PhysicalOpNode* in, PhysicalOpNode** out);
+};
+
+class ExprTransformPass : public TransformPass<node::ExprNode*> {
+ public:
+    ExprTransformPass(node::NodeManager* node_manager, const std::string& db,
+                      const std::shared_ptr<Catalog>& catalog)
+        : TransformPass<node::ExprNode*>(node_manager, db, catalog) {}
+};
+
+class CanonicalizeExprTransformPass : public ExprTransformPass {
+ public:
+    CanonicalizeExprTransformPass(node::NodeManager* node_manager,
+                                  const std::string& db,
+                                  const std::shared_ptr<Catalog>& catalog)
+        : ExprTransformPass(node_manager, db, catalog) {}
+    virtual bool Transform(node::ExprNode* in, node::ExprNode** output);
+};
+
+class GroupByOptimized : public TransformUpPysicalPass {
+ public:
+    GroupByOptimized(node::NodeManager* node_manager, const std::string& db,
+                     const std::shared_ptr<Catalog>& catalog)
+        : TransformUpPysicalPass(node_manager, db, catalog) {}
+
+ private:
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+
+    bool TransformGroupExpr(const node::ExprListNode* group,
+                            const IndexHint& index_hint, std::string& index,
+                            const node::ExprListNode** output);
+    bool MatchBestIndex(std::vector<std::string>& columns,
+                        const IndexHint& catalog, std::vector<bool>& bitmap,
+                        std::string& index_name);  // NOLINT
+};
+
 typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;
 
+enum PhysicalPlanPassType {
+    kPassGroupByOptimized,
+};
+
+inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
+    switch (type) {
+        case kPassGroupByOptimized:
+            return "PassGroupByOptimized";
+        default:
+            return "unknowPass";
+    }
+    return "";
+}
 class Transform {
  public:
-    Transform(const std::string &db, const std::shared_ptr<Catalog>& catalog);
+    Transform(node::NodeManager* node_manager, const std::string& db,
+              const std::shared_ptr<Catalog>& catalog);
     virtual ~Transform();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
-                               ::fesql::vm::PhysicalOpNode** ouput,
+                               ::fesql::vm::PhysicalOpNode** output,
                                ::fesql::base::Status& status);  // NOLINT
+
+    bool AddPass(PhysicalPlanPassType type);
+
     typedef std::unordered_map<LogicalOp, ::fesql::vm::PhysicalOpNode*,
                                HashLogicalOp, EqualLogicalOp>
         LogicalOpMap;
+
+ private:
+    bool TransformPlanOp(const ::fesql::node::PlanNode* node,
+                         ::fesql::vm::PhysicalOpNode** ouput,
+                         ::fesql::base::Status& status);  // NOLINT
     bool TransformLimitOp(const node::LimitPlanNode* node,
                           PhysicalOpNode** output, base::Status& status);
 
- private:
     bool TransformProjectOp(const node::ProjectPlanNode* node,
                             PhysicalOpNode** output, base::Status& status);
     bool TransformWindowProject(const node::ProjectListNode* project_list,
-                                PhysicalOpNode* depend,
-                                PhysicalOpNode** output, base::Status& status);
-
- private:
-    const std::string db_;
-    const std::shared_ptr<Catalog> catalog_;
-    LogicalOpMap op_map_;
+                                PhysicalOpNode* depend, PhysicalOpNode** output,
+                                base::Status& status);
 
     bool TransformJoinOp(const node::JoinPlanNode* node,
                          PhysicalOpNode** output, base::Status& status);
@@ -116,7 +190,13 @@ class Transform {
                             PhysicalOpNode** output, base::Status& status);
     bool TransformDistinctOp(const node::DistinctPlanNode* node,
                              PhysicalOpNode** output, base::Status& status);
+    node::NodeManager* node_manager_;
+    const std::string db_;
+    const std::shared_ptr<Catalog> catalog_;
+    std::vector<PhysicalPlanPassType> passes;
+    LogicalOpMap op_map_;
 };
+
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         fesql::base::Status& status,  // NOLINT
                                         LogicalGraph& graph);

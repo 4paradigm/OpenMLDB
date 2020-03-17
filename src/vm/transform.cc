@@ -49,15 +49,15 @@ bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
     return true;
 }
 
-Transform::Transform(const std::string& db,
+Transform::Transform(node::NodeManager* node_manager, const std::string& db,
                      const std::shared_ptr<Catalog>& catalog)
-    : db_(db), catalog_(catalog) {}
+    : node_manager_(node_manager), db_(db), catalog_(catalog) {}
 
 Transform::~Transform() {}
 
-bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
-                                      ::fesql::vm::PhysicalOpNode** ouput,
-                                      ::fesql::base::Status& status) {
+bool Transform::TransformPlanOp(const ::fesql::node::PlanNode* node,
+                                ::fesql::vm::PhysicalOpNode** ouput,
+                                ::fesql::base::Status& status) {
     if (nullptr == node || nullptr == ouput) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -156,7 +156,7 @@ bool Transform::TransformLimitOp(const node::LimitPlanNode* node,
         return false;
     }
     PhysicalOpNode* depend = nullptr;
-    if (!TransformPhysicalPlan(node->GetChildren()[0], &depend, status)) {
+    if (!TransformPlanOp(node->GetChildren()[0], &depend, status)) {
         return false;
     }
     *output = new PhysicalLimitNode(depend, node->limit_cnt_);
@@ -173,7 +173,7 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
         return false;
     }
     PhysicalOpNode* depend = nullptr;
-    if (!TransformPhysicalPlan(node->GetChildren()[0], &depend, status)) {
+    if (!TransformPlanOp(node->GetChildren()[0], &depend, status)) {
         return false;
     }
 
@@ -263,10 +263,10 @@ bool Transform::TransformJoinOp(const node::JoinPlanNode* node,
     }
     PhysicalOpNode* left = nullptr;
     PhysicalOpNode* right = nullptr;
-    if (!TransformPhysicalPlan(node->GetChildren()[0], &left, status)) {
+    if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
     }
-    if (!TransformPhysicalPlan(node->GetChildren()[1], &right, status)) {
+    if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
         return false;
     }
     *output =
@@ -284,10 +284,10 @@ bool Transform::TransformUnionOp(const node::UnionPlanNode* node,
     }
     PhysicalOpNode* left = nullptr;
     PhysicalOpNode* right = nullptr;
-    if (!TransformPhysicalPlan(node->GetChildren()[0], &left, status)) {
+    if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
     }
-    if (!TransformPhysicalPlan(node->GetChildren()[1], &right, status)) {
+    if (!TransformPlanOp(node->GetChildren()[1], &right, status)) {
         return false;
     }
     *output = new PhysicalUnionNode(left, right, node->is_all);
@@ -303,7 +303,7 @@ bool Transform::TransformGroupOp(const node::GroupPlanNode* node,
         return false;
     }
     PhysicalOpNode* left = nullptr;
-    if (!TransformPhysicalPlan(node->GetChildren()[0], &left, status)) {
+    if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
     }
     *output = new PhysicalGroupNode(left, node->by_list_);
@@ -318,7 +318,7 @@ bool Transform::TransformSortOp(const node::SortPlanNode* node,
         return false;
     }
     PhysicalOpNode* left = nullptr;
-    if (!TransformPhysicalPlan(node->GetChildren()[0], &left, status)) {
+    if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
     }
     *output = new PhysicalSortNode(left, node->order_list_);
@@ -334,7 +334,7 @@ bool Transform::TransformFilterOp(const node::FilterPlanNode* node,
         return false;
     }
     PhysicalOpNode* depend = nullptr;
-    if (!TransformPhysicalPlan(node->GetChildren()[0], &depend, status)) {
+    if (!TransformPlanOp(node->GetChildren()[0], &depend, status)) {
         return false;
     }
     *output = new PhysicalFliterNode(depend, node->condition_);
@@ -378,7 +378,7 @@ bool Transform::TransformRenameOp(const node::RenamePlanNode* node,
         return false;
     }
     PhysicalOpNode* left = nullptr;
-    if (!TransformPhysicalPlan(node->GetChildren()[0], &left, status)) {
+    if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
     }
     *output = new PhysicalRenameNode(left, node->table_);
@@ -392,7 +392,7 @@ bool Transform::TransformQueryPlan(const node::QueryPlanNode* node,
         status.code = common::kPlanError;
         return false;
     }
-    return TransformPhysicalPlan(node->GetChildren()[0], output, status);
+    return TransformPlanOp(node->GetChildren()[0], output, status);
 }
 bool Transform::TransformDistinctOp(const node::DistinctPlanNode* node,
                                     PhysicalOpNode** output,
@@ -403,12 +403,205 @@ bool Transform::TransformDistinctOp(const node::DistinctPlanNode* node,
         return false;
     }
     PhysicalOpNode* left = nullptr;
-    if (!TransformPhysicalPlan(node->GetChildren()[0], &left, status)) {
+    if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
     }
     *output = new PhysicalDistinctNode(left);
     return true;
 }
+bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
+                                      ::fesql::vm::PhysicalOpNode** output,
+                                      ::fesql::base::Status& status) {
+    PhysicalOpNode* physical_plan;
+    if (!TransformPlanOp(node, &physical_plan, status)) {
+        return false;
+    }
 
+    for (auto type : passes) {
+        switch (type) {
+            case kPassGroupByOptimized: {
+                GroupByOptimized pass(node_manager_, db_, catalog_);
+                PhysicalOpNode* new_op;
+                if (pass.Apply(physical_plan, &new_op)) {
+                    physical_plan = new_op;
+                }
+                break;
+            }
+            default: {
+                LOG(WARNING) << "can't not handle pass: "
+                             << PhysicalPlanPassTypeName(type);
+            }
+        }
+    }
+    *output = physical_plan;
+    return true;
+}
+bool Transform::AddPass(PhysicalPlanPassType type) {
+    passes.push_back(type);
+    return true;
+}
+
+bool GroupByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
+    switch (in->type_) {
+        case kPhysicalOpGroupBy: {
+            PhysicalGroupNode* group_op = dynamic_cast<PhysicalGroupNode*>(in);
+            if (kPhysicalOpScan == in->GetProducers()[0]->type_) {
+                auto scan_op =
+                    dynamic_cast<PhysicalScanNode*>(in->GetProducers()[0]);
+                if (kScanTypeTableScan == scan_op->scan_type_) {
+                    std::string index_name;
+                    const node::ExprListNode* new_groups;
+                    if (!TransformGroupExpr(group_op->groups_,
+                                            scan_op->table_handler_->GetIndex(),
+                                            index_name, &new_groups)) {
+                        return false;
+                    }
+
+                    PhysicalScanIndexNode* scan_index_op =
+                        new PhysicalScanIndexNode(scan_op->table_handler_,
+                                                  index_name);
+                    // remove node if groups is empty
+                    if (new_groups->children_.empty()) {
+                        *output = scan_index_op;
+                        return true;
+                    } else {
+                        PhysicalGroupNode* new_group_op =
+                            new PhysicalGroupNode(scan_index_op, new_groups);
+                        *output = new_group_op;
+                        return true;
+                    }
+                }
+            }
+            break;
+        }
+        default: {
+            return false;
+        }
+    }
+    return false;
+}
+bool GroupByOptimized::TransformGroupExpr(const node::ExprListNode* groups,
+                                          const IndexHint& index_hint,
+                                          std::string& index_name,
+                                          const node::ExprListNode** output) {
+    std::vector<std::string> columns;
+    for (auto group : groups->children_) {
+        switch (group->expr_type_) {
+            case node::kExprColumnRef:
+                columns.push_back(
+                    dynamic_cast<node::ColumnRefNode*>(group)->GetColumnName());
+                break;
+            default: {
+                break;
+            }
+        }
+    }
+
+    if (columns.empty()) {
+        return false;
+    }
+
+    std::vector<bool> bitmap(columns.size(), true);
+    if (MatchBestIndex(columns, index_hint, bitmap, index_name)) {
+        IndexSt index = index_hint.at(index_name);
+        node::ExprListNode* new_groups = node_manager_->MakeExprList();
+        std::set<std::string> keys;
+        for (auto iter = index.keys.cbegin(); iter != index.keys.cend();
+             iter++) {
+            keys.insert(iter->name);
+        }
+        for (auto group : groups->children_) {
+            switch (group->expr_type_) {
+                case node::kExprColumnRef: {
+                    std::string column =
+                        dynamic_cast<node::ColumnRefNode*>(group)
+                            ->GetColumnName();
+                    // skip group when match index keys
+                    if (keys.find(column) == keys.cend()) {
+                        new_groups->AddChild(group);
+                    }
+                    break;
+                }
+                default: {
+                    new_groups->AddChild(group);
+                }
+            }
+        }
+        *output = new_groups;
+        return true;
+    } else {
+        return false;
+    }
+}
+bool GroupByOptimized::MatchBestIndex(std::vector<std::string>& columns,
+                                      const IndexHint& index_hint,
+                                      std::vector<bool>& bitmap,
+                                      std::string& index_name) {
+    std::set<std::string> column_set;
+    for (int i = 0; i < columns.size(); ++i) {
+        if (bitmap[i]) {
+            column_set.insert(columns[i]);
+        }
+    }
+
+    for (auto iter = index_hint.cbegin(); iter != index_hint.cend(); iter++) {
+        IndexSt index = iter->second;
+        std::set<std::string> keys;
+        for (auto key_iter = index.keys.cbegin(); key_iter != index.keys.cend();
+             key_iter++) {
+            keys.insert(key_iter->name);
+        }
+
+        if (column_set == keys) {
+            index_name = index.name;
+            return true;
+        }
+    }
+
+    bool succ = false;
+    for (int i = 0; i < bitmap.size(); ++i) {
+        if (bitmap[i]) {
+            bitmap[i] = false;
+            std::string name;
+            if (MatchBestIndex(columns, index_hint, bitmap, name)) {
+                succ = true;
+                if (index_name.empty()) {
+                    index_name = name;
+                } else {
+                    auto org_index = index_hint.at(index_name);
+                    auto new_index = index_hint.at(name);
+                    if (org_index.keys.size() < new_index.keys.size()) {
+                        index_name = name;
+                    }
+                }
+            }
+            bitmap[i] = true;
+        }
+    }
+    return succ;
+}
+
+// This is primarily intended to be used on top-level WHERE (or JOIN/ON)
+// clauses.  It can also be used on top-level CHECK constraints, for which
+// pass is_check = true.  DO NOT call it on any expression that is not known
+// to be one or the other, as it might apply inappropriate simplifications.
+bool CanonicalizeExprTransformPass::Transform(node::ExprNode* in,
+                                              node::ExprNode** output) {
+    // 1. 忽略NULL以及OR中的False/AND中的TRUE
+    // 2. 拉平谓词
+    // 3. 清除重复ORs
+    // 4.
+    return false;
+}
+bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
+    auto producer = in->GetProducers();
+    for (int j = 0; j < producer.size(); ++j) {
+        PhysicalOpNode* output;
+        if (Apply(producer[j], &output)) {
+            in->UpdateProducer(j, output);
+        }
+    }
+    return Transform(in, out);
+}
 }  // namespace vm
 }  // namespace fesql

@@ -73,52 +73,70 @@ class PhysicalOpNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
+    std::vector<PhysicalOpNode *>& GetProducers() {
+        return producers_;
+    }
+    void UpdateProducer(int i, PhysicalOpNode *producer);
+
     void AddConsumer(PhysicalOpNode *consumer) {
         consumers_.push_back(consumer);
+    }
+
+    void AddProducer(PhysicalOpNode *producer) {
+        producers_.push_back(producer);
     }
     const PhysicalOpType type_;
     const bool is_block_;
     const bool is_lazy_;
     vm::Schema output_schema;
 
- private:
+
+ protected:
     std::vector<PhysicalOpNode *> consumers_;
+    std::vector<PhysicalOpNode *> producers_;
 };
 
 class PhysicalUnaryNode : public PhysicalOpNode {
  public:
     PhysicalUnaryNode(PhysicalOpNode *node, PhysicalOpType type, bool is_block,
                       bool is_lazy)
-        : PhysicalOpNode(type, is_block, is_lazy), producer_(node) {
-        node->AddConsumer(this);
+        : PhysicalOpNode(type, is_block, is_lazy) {
+        AddProducer(node);
+        producers_[0]->AddConsumer(this);
     }
+    virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
-
- private:
-    PhysicalOpNode *producer_;
 };
 
 class PhysicalBinaryNode : public PhysicalOpNode {
  public:
     PhysicalBinaryNode(PhysicalOpNode *left, PhysicalOpNode *right,
                        PhysicalOpType type, bool is_block, bool is_lazy)
-        : PhysicalOpNode(type, is_block, is_lazy),
-          left_producer_(left),
-          right_producer_(right) {
+        : PhysicalOpNode(type, is_block, is_lazy) {
+        AddProducer(left);
+        AddProducer(right);
         left->AddConsumer(this);
         right->AddConsumer(this);
     }
+    virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
-
- private:
-    PhysicalOpNode *left_producer_;
-    PhysicalOpNode *right_producer_;
 };
 
 enum ScanType { kScanTypeTableScan, kScanTypeIndexScan };
 
+
+inline const std::string ScanTypeName(const ScanType &type) {
+    switch (type) {
+        case kScanTypeTableScan:
+            return "TableScan";
+        case kScanTypeIndexScan:
+            return "IndexScan";
+        default:
+            return "UNKNOW";
+    }
+}
 class PhysicalScanNode : public PhysicalOpNode {
  public:
     PhysicalScanNode(const std::shared_ptr<TableHandler> &table_handler,
@@ -262,10 +280,10 @@ class PhysicalSortNode : public PhysicalUnaryNode {
     const node::OrderByNode *order_;
 };
 
-class PhysicalFliterNode : public PhysicalOpNode {
+class PhysicalFliterNode : public PhysicalUnaryNode {
  public:
     PhysicalFliterNode(PhysicalOpNode *node, const node::ExprNode *condition)
-        : PhysicalOpNode(kPhysicalOpFilter, false, false),
+        : PhysicalUnaryNode(node, kPhysicalOpFilter, false, false),
           condition_(condition) {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprNode *condition_;
