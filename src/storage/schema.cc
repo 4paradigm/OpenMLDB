@@ -14,6 +14,10 @@ IndexDef::IndexDef(const std::string& name, uint32_t id) :
     name_(name), index_id_(id), status_(IndexStatus::kReady) {
 }
 
+IndexDef::IndexDef(const std::string& name, uint32_t id, IndexStatus status) : 
+    name_(name), index_id_(id), status_(status) {
+}
+
 IndexDef::~IndexDef() {
 }
 

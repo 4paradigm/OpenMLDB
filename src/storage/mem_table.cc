@@ -96,7 +96,6 @@ bool MemTable::Init() {
             key_entry_max_height_ = FLAGS_absolute_default_skiplist_height;
         }
     }
-
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         std::shared_ptr<IndexDef> index_def = GetIndex(i);
         if (!index_def || !index_def->IsReady()) {
@@ -107,15 +106,16 @@ bool MemTable::Init() {
         }
         const std::vector<uint32_t> ts_vec =  index_def->GetTsColumn();
         Segment** seg_arr = new Segment*[seg_cnt_];
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            if (!ts_vec.empty()) {
+        if (!ts_vec.empty()) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(key_entry_max_height_, ts_vec);
                 PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u", 
-                            i, j, key_entry_max_height_, ts_vec.size());
-            } else {
+                    i, j, key_entry_max_height_, ts_vec.size());
+            }
+        } else {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(key_entry_max_height_);
-                PDLOG(INFO, "init %u, %u segment. height %u", 
-                            i, j, key_entry_max_height_);
+                PDLOG(INFO, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
             }
         }
         segments_.push_back(seg_arr);
@@ -175,6 +175,11 @@ bool MemTable::Put(uint64_t time,
                                      value.length());
     Dimensions::const_iterator it = dimensions.begin();
     for (;it != dimensions.end(); ++it) {
+        std::shared_ptr<IndexDef> index_def = GetIndex(it->idx());
+        if (!index_def || !index_def->IsReady()) {
+            block->dim_cnt_down --;
+            continue;
+        }
         Slice spk(it->key());
         bool ok = Put(spk, time, block, it->idx());
         // decr the data block dimension count
@@ -313,7 +318,7 @@ void MemTable::SchedGc() {
             index_def->SetStatus(IndexStatus::kDeleting);
         } else if(index_def->GetStatus() == IndexStatus::kDeleting) {
             if (segments_[i] != NULL) {
-                for (uint32_t k = 0; k < seg_cnt_; i++) {
+                for (uint32_t k = 0; k < seg_cnt_; k++) {
                     if (segments_[i][k] != NULL) {
                         segments_[i][k]->ReleaseAndCount(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                         delete segments_[i][k];
@@ -324,6 +329,8 @@ void MemTable::SchedGc() {
             delete[] segments_[i];
             segments_[i] = NULL;
             index_def->SetStatus(IndexStatus::kDeleted);
+            continue;
+        } else if (index_def->GetStatus() == IndexStatus::kDeleted) {
             continue;
         }
         const std::vector<uint32_t> ts_vec = index_def->GetTsColumn();
@@ -678,6 +685,9 @@ bool MemTable::DeleteIndex(std::string idx_name) {
         PDLOG(WARNING, "index %s status is not ready. tid %u pid %u", 
                 idx_name.c_str(), id_, pid_);
         return false;
+    }
+    if ((uint32_t)index_def->GetId() <table_meta_.column_key_size()) {
+        table_meta_.mutable_column_key(index_def->GetId())->set_flag(1);
     }
     index_def->SetStatus(IndexStatus::kWaiting);
     return true;
