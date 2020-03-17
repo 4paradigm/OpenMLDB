@@ -4258,6 +4258,93 @@ void TabletImpl::DeleteIndex(RpcController* controller,
     response->set_msg("ok");
 }
 
+void TabletImpl::DumpIndexData(RpcController* controller,
+        const ::rtidb::api::DumpIndexDataRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    std::shared_ptr<Table> table;
+    std::shared_ptr<Snapshot> snapshot;
+    std::shared_ptr<LogReplicator> replicator;
+    std::string db_root_path;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        table = GetTableUnLock(request->tid(), request->pid());
+        if (!table) {
+            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+            response->set_msg("table is not exist");
+            return;
+        }
+        if (table->GetStorageMode() != ::rtidb::common::kMemory) {
+            response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
+            response->set_msg("only support mem_table");
+            return;
+        }
+        if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+            PDLOG(WARNING, "table state is %d, cannot dump index data. %u, pid %u", 
+                    table->GetTableStat(), request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
+            response->set_msg("table status is not kNormal");
+            return;
+        }
+        snapshot = GetSnapshotUnLock(request->tid(), request->pid());
+        if (!snapshot) {
+            PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kSnapshotIsNotExist);
+            response->set_msg("table snapshot is not exist");
+            return;
+        }
+        replicator = GetReplicatorUnLock(request->tid(), request->pid());
+        if (!replicator) {
+            PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", 
+                request->tid(),request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
+            response->set_msg("replicator is not exist");
+            return;
+        }
+        bool ok = ChooseDBRootPath(request->tid(), request->pid(), table->GetStorageMode(), db_root_path);
+        if (!ok) {
+            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
+            response->set_msg("fail to get db root path");
+            return;
+        }
+    }
+    std::string index_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/index/";
+    std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
+    ::rtidb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
+    std::vector<::rtidb::log::WriteHandle*> whs;
+    for (int i=0;i<request->partition_num();++i) {
+        std::string index_file_name = std::to_string(request->pid()) + "_" + std::to_string(i) + "_index.data";
+        std::string index_data_path = index_path + index_file_name;
+        FILE* fd = fopen(index_data_path.c_str(), "ab+");
+        if (fd == NULL) {
+            PDLOG(WARNING, "fail to create file %s", index_data_path.c_str());
+            response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
+            response->set_msg("fail to get db root path");
+            return;
+        }
+        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
+        whs.push_back(wh);
+    }
+    uint64_t offset = 0;
+    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
+    if (memtable_snapshot->DumpSnapshotIndexData(table, request->column_key(), whs, offset) && binlog.DumpBinlogIndexData(table, request->column_key(), whs, offset)) {
+        PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+    } else {
+        PDLOG(WARNING, "fail to dump index on table tid[%u] pid[%u]", request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kDumpIndexDataFailed);
+        response->set_msg("dump index data failed");
+    }
+    for (auto& wh : whs) {
+        wh->EndLog();
+        delete wh;
+        wh = NULL;
+    }
+}
+
 }
 }
 

@@ -208,10 +208,12 @@ bool MemTable::Put(const Dimensions& dimensions,
     uint32_t real_ref_cnt = 0;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         std::shared_ptr<IndexDef> index_def = GetIndex(iter->idx());
-        if (!index_def || !index_def->IsReady()) {
+        if (!index_def) {
             PDLOG(WARNING, "can not found dimension idx %u. tid %u pid %u", 
                             iter->idx(), id_, pid_);
             return false;
+        } else if (!index_def->IsReady()){
+            continue;
         }
         bool has_ts = false;
         const std::vector<uint32_t> ts_vec = index_def->GetTsColumn();

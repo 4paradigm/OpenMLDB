@@ -225,6 +225,7 @@ enum ReturnCode {
     kRequestHasNoZoneInfoOrTaskInfo = 515,
     kCurNameserverIsLeaderCluster = 516,
     kIndexDeleteFailed = 601,
+    kDumpIndexDataFailed = 602,
     kOperatorNotSupport = 701,
 };
 

@@ -625,6 +625,13 @@ message DeleteIndexRequest {
     optional string idx_name = 2;
 }
 
+message DumpIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    optional rtidb.common.ColumnKey column_key = 4;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -675,4 +682,5 @@ service TabletServer {
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
     rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
+    rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
 }

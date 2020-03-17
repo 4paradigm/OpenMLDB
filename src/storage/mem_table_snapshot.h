@@ -47,7 +47,10 @@ public:
 
     int TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
                 uint64_t& count, uint64_t& expired_key_num, uint64_t& deleted_key_num);
+
     void Put(std::string& path, std::shared_ptr<Table>& table, std::vector<std::string*> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt);
+
+    bool DumpSnapshotIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t& lasest_offset);
 
 private:
 

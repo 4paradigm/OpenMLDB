@@ -529,5 +529,10 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     return ret;
 }
 
+
+bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t& lasest_offset) {
+    return true;
+}
+
 }
 }

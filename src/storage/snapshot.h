@@ -10,6 +10,7 @@
 #include <memory>
 #include "storage/table.h"
 #include "proto/tablet.pb.h"
+#include "log/log_writer.h"
 
 namespace rtidb {
 namespace storage {

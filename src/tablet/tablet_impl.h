@@ -262,6 +262,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void DumpIndexData(RpcController* controller,
+            const ::rtidb::api::DumpIndexDataRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     inline void SetServer(brpc::Server* server) {
         server_ = server;
     }
