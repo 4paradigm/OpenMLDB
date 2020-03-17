@@ -6,15 +6,7 @@
  * Date: 2020/3/12
  *--------------------------------------------------------------------------
  **/
-#include "vm/physical_op.h"
-#include <storage/table.h>
-#include <stack>
-#include "base/status.h"
 #include "gtest/gtest.h"
-#include "node/node_manager.h"
-#include "parser/parser.h"
-#include "plan/planner.h"
-#include "vm/test_base.h"
 namespace fesql {
 namespace vm {
 class PhysicalOpTest : public ::testing::Test {
@@ -22,7 +14,8 @@ class PhysicalOpTest : public ::testing::Test {
     PhysicalOpTest() {}
     ~PhysicalOpTest() {}
 };
-
+TEST_F(PhysicalOpTest, test) {
+}
 }  // namespace vm
 }  // namespace fesql
 int main(int argc, char** argv) {
