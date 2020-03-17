@@ -14,6 +14,7 @@
 #include "log/sequential_file.h"
 #include "log/log_reader.h"
 #include "proto/tablet.pb.h"
+#include "base/hash.h"
 #include "gflags/gflags.h"
 #include "logging.h"
 #include "timer.h"
@@ -530,7 +531,50 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
 }
 
 
-bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t& lasest_offset) {
+bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, std::vector<::rtidb::log::WriteHandle*>& whs, uint32_t partition_num, uint64_t& lasest_offset) {
+    ::rtidb::api::Manifest manifest;
+    manifest.set_offset(0);
+    int ret = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
+    if (ret == -1) {
+        return false;
+    }
+    std::string path = snapshot_path_ + "/" + manifest.name();
+    uint64_t expect_cnt = manifest.count();
+    std::atomic<uint64_t> succ_cnt, failed_cnt;
+    succ_cnt = failed_cnt = 0;
+    {
+        FILE* fd = fopen(path.c_str(), "rb");
+        if (fd == NULL) {
+            PDLOG(WARNING, "fail to open path %s for error %s", path.c_str(), strerror(errno));
+            return false;
+        }
+        ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
+        ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+        std::string buffer;
+        while (true) {
+            buffer.clear();
+            ::rtidb::base::Slice record;
+            ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+            if (status.IsWaitRecord() || status.IsEof()) {
+                PDLOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu",
+                      path.c_str(), tid_, pid_, succ_cnt.load(std::memory_order_relaxed), failed_cnt.load(std::memory_order_relaxed));
+                break;
+            }
+            if (!status.ok()) {
+                PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
+                failed_cnt.fetch_add(1, std::memory_order_relaxed);
+                continue;
+            }
+            std::string* sp = new std::string(record.data(), record.size());
+            ::rtidb::api::LogEntry entry;
+            entry.ParseFromString(*sp);
+            std::set<uint32_t> pid_set;
+            for (const auto& dim : entry.dimensions()) {
+                pid_set.insert(::rtidb::base::hash64(dim.key())%partition_num);
+            }
+            //todo @pxc decode
+        }
+    }while(0);
     return true;
 }
 

@@ -129,7 +129,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
     return true;
 }
 
-bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t& lasest_offset) {
+bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, std::vector<::rtidb::log::WriteHandle*>& whs, uint32_t partition_num, uint64_t& lasest_offset) {
     return true;
 }
 

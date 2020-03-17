@@ -4329,7 +4329,7 @@ void TabletImpl::DumpIndexData(RpcController* controller,
     }
     uint64_t offset = 0;
     std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
-    if (memtable_snapshot->DumpSnapshotIndexData(table, request->column_key(), whs, offset) && binlog.DumpBinlogIndexData(table, request->column_key(), whs, offset)) {
+    if (memtable_snapshot->DumpSnapshotIndexData(table, request->column_key(), whs, request->partition_num(), offset) && binlog.DumpBinlogIndexData(table, request->column_key(), whs, request->partition_num(), offset)) {
         PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", request->tid(), request->pid());
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
