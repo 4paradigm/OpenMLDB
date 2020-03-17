@@ -5,8 +5,8 @@
 // Date 2017-09-05
 //
 
+#include "base/status.h"
 #include "nameserver/name_server_impl.h"
-
 #include <gflags/gflags.h>
 #include "timer.h"
 #include <strings.h>
@@ -1260,7 +1260,7 @@ void NameServerImpl::ShowTablet(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -1273,7 +1273,7 @@ void NameServerImpl::ShowTablet(RpcController* controller,
         status->set_state(::rtidb::api::TabletState_Name(it->second->state_));
         status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_);
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -1803,13 +1803,13 @@ void NameServerImpl::ConnectZK(RpcController* controller,
                 PDLOG(INFO, "watch node ok");
             }
         }
-        response->set_code(0);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         PDLOG(INFO, "connect zk ok");
         return;
     }
-    response->set_code(-1);
-    response->set_msg("reconnect failed");
+    response->set_code(::rtidb::base::ReturnCode::kConnectZkFailed);
+    response->set_msg("connect zk failed");
 }
 
 void NameServerImpl::DisConnectZK(RpcController* controller,
@@ -1819,7 +1819,7 @@ void NameServerImpl::DisConnectZK(RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     zk_client_->CloseZK();
     OnLostLock();
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
     PDLOG(INFO, "disconnect zk ok");
 }
@@ -1830,7 +1830,7 @@ void NameServerImpl::GetTablePartition(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -1841,7 +1841,7 @@ void NameServerImpl::GetTablePartition(RpcController* controller,
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "table[%s] is not exist", name.c_str());
-        response->set_code(100);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
@@ -1853,7 +1853,7 @@ void NameServerImpl::GetTablePartition(RpcController* controller,
         table_partition->CopyFrom(iter->second->table_partition(idx));
         break;
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -1863,13 +1863,13 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(301);
+        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -1880,7 +1880,7 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "table[%s] is not exist", name.c_str());
-        response->set_code(100);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
@@ -1899,7 +1899,7 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
                             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-            response->set_code(304);
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             return;
         }
@@ -1907,7 +1907,7 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         iter->second = cur_table_info;
         break;
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -1917,7 +1917,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -1926,7 +1926,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     auto iter = table_info_.find(request->name());
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
-        response->set_code(100);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
@@ -1936,7 +1936,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         } else {
             thread_pool_.AddTask(boost::bind(&NameServerImpl::MakeTablePartitionSnapshot, this, request->pid(), request->offset(), iter->second));
         }
-        response->set_code(0);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         return;
     }
     std::shared_ptr<OPData> op_data;
@@ -1944,27 +1944,27 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     request->SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kMakeSnapshotOP, value, op_data,
                     request->name(), request->pid()) < 0) {
-        response->set_code(304);
+        response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
         response->set_msg("set zk failed");
         PDLOG(WARNING, "create makesnapshot op data error. name[%s] pid[%u]",
                         request->name().c_str(), request->pid());
         return;
     }
     if (CreateMakeSnapshotOPTask(op_data) < 0) {
-        response->set_code(305);
+        response->set_code(::rtidb::base::ReturnCode::kCreateOpFailed);
         response->set_msg("create op failed");
         PDLOG(WARNING, "create makesnapshot op task failed. name[%s] pid[%u]",
                         request->name().c_str(), request->pid());
         return;
     }
     if (AddOPData(op_data) < 0) {
-        response->set_code(306);
+        response->set_code(::rtidb::base::ReturnCode::kAddOpDataFailed);
         response->set_msg("add op data failed");
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u]",
                         request->name().c_str(), request->pid());
         return;
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
     PDLOG(INFO, "add makesnapshot op ok. op_id[%lu] name[%s] pid[%u]",
                  op_data->op_info_.op_id(), request->name().c_str(), request->pid());
@@ -2310,7 +2310,7 @@ void NameServerImpl::ConfSet(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -2319,14 +2319,14 @@ void NameServerImpl::ConfSet(RpcController* controller,
     std::string key = request->conf().key();
     std::string value = request->conf().value();
     if (key.empty() || value.empty()) {
-        response->set_code(307);
+        response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
         response->set_msg("invalid parameter");
         PDLOG(WARNING, "key[%s] value[%s]", key.c_str(), value.c_str());
         return;
     }
     std::transform(value.begin(), value.end(), value.begin(), ::tolower);
     if (value != "true" && value != "false") {
-        response->set_code(307);
+        response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
         response->set_msg("invalid parameter");
         PDLOG(WARNING, "invalid value[%s]", request->conf().value().c_str());
         return;
@@ -2334,7 +2334,7 @@ void NameServerImpl::ConfSet(RpcController* controller,
     if (key == "auto_failover") {
         if (!zk_client_->SetNodeValue(zk_auto_failover_node_, value)) {
             PDLOG(WARNING, "set auto_failover_node failed!");
-            response->set_code(304);
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             return;
         }
@@ -2344,13 +2344,13 @@ void NameServerImpl::ConfSet(RpcController* controller,
             auto_failover_.store(false, std::memory_order_release);
         }
     } else {
-        response->set_code(307);
+        response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
         response->set_msg("invalid parameter");
         PDLOG(WARNING, "unsupport set key[%s]", key.c_str());
         return;
     }
     PDLOG(INFO, "config set ok. key[%s] value[%s]", key.c_str(), value.c_str());
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -2360,7 +2360,7 @@ void NameServerImpl::ConfGet(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -2370,7 +2370,7 @@ void NameServerImpl::ConfGet(RpcController* controller,
     conf->set_key("auto_failover");
     auto_failover_.load(std::memory_order_acquire) ? conf->set_value("true") : conf->set_value("false");
 
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -2380,13 +2380,13 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(301);
+        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -2397,13 +2397,13 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "table[%s] is not exist", name.c_str());
-        response->set_code(100);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     if (pid > (uint32_t)iter->second->table_partition_size() - 1) {
         PDLOG(WARNING, "pid[%u] is not exist, table[%s]", pid, name.c_str());
-        response->set_code(308);
+        response->set_code(::rtidb::base::ReturnCode::kPidIsNotExist);
         response->set_msg("pid is not exist");
         return;
     }
@@ -2415,7 +2415,7 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
         if (iter->second->table_partition(idx).partition_meta_size() == 1) {
             PDLOG(WARNING, "table[%s] pid[%u] has no followers, cannot change leader",
                         name.c_str(), iter->second->table_partition(idx).pid());
-            response->set_code(134);
+            response->set_code(::rtidb::base::ReturnCode::kNoFollower);
             response->set_msg("no follower");
             return;
         }
@@ -2426,7 +2426,7 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
                 } else if (!request->has_candidate_leader()) {
                     PDLOG(WARNING, "leader is alive, cannot change leader. table[%s] pid[%u]",
                                     name.c_str(), pid);
-                    response->set_code(309);
+                    response->set_code(::rtidb::base::ReturnCode::kLeaderIsAlive);
                     response->set_msg("leader is alive");
                     return;
                 }
@@ -2435,7 +2435,7 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
         break;
     }
     if (follower_endpoint.empty()) {
-        response->set_code(310);
+        response->set_code(::rtidb::base::ReturnCode::kNoAliveFollower);
         response->set_msg("no alive follower");
         PDLOG(WARNING, "no alive follower. table[%s] pid[%u]", name.c_str(), pid);
         return;
@@ -2445,12 +2445,12 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
         candidate_leader = request->candidate_leader();
     }
     if (CreateChangeLeaderOP(name, pid, candidate_leader, false) < 0) {
-        response->set_code(305);
+        response->set_code(::rtidb::base::ReturnCode::kCreateOpFailed);
         response->set_msg("create op failed");
         PDLOG(WARNING, "change leader failed. name[%s] pid[%u]", name.c_str(), pid);
         return;
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -2460,13 +2460,13 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(301);
+        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -2474,7 +2474,7 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
     uint32_t concurrency = FLAGS_name_server_task_concurrency;
     if (request->has_concurrency()) {
         if (request->concurrency() > FLAGS_name_server_task_max_concurrency) {
-            response->set_code(307);
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("invalid parameter");
             PDLOG(WARNING, "concurrency is greater than the max value %u", FLAGS_name_server_task_max_concurrency);
             return;
@@ -2487,14 +2487,14 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = tablets_.find(endpoint);
         if (iter == tablets_.end()) {
-            response->set_code(302);
+            response->set_code(::rtidb::base::ReturnCode::kEndpointIsNotExist);
             response->set_msg("endpoint is not exist");
             PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
             return;
         }
     }
     OfflineEndpointInternal(endpoint, concurrency);
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -2547,13 +2547,13 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(301);
+        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -2561,7 +2561,7 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
     uint32_t concurrency = FLAGS_name_server_task_concurrency;
     if (request->has_concurrency()) {
         if (request->concurrency() > FLAGS_name_server_task_max_concurrency) {
-            response->set_code(307);
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("invalid parameter");
             PDLOG(WARNING, "concurrency is greater than the max value %u", FLAGS_name_server_task_max_concurrency);
             return;
@@ -2574,12 +2574,12 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = tablets_.find(endpoint);
         if (iter == tablets_.end()) {
-            response->set_code(302);
+            response->set_code(::rtidb::base::ReturnCode::kEndpointIsNotExist);
             response->set_msg("endpoint is not exist");
             PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
             return;
         } else if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-            response->set_code(303);
+            response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
             response->set_msg("tablet is not healthy");
             PDLOG(WARNING, "tablet[%s] is not healthy", endpoint.c_str());
             return;
@@ -2590,7 +2590,7 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
         need_restore = true;
     }
     RecoverEndpointInternal(endpoint, need_restore, concurrency);
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -2600,13 +2600,13 @@ void NameServerImpl::RecoverTable(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(301);
+        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -2617,12 +2617,12 @@ void NameServerImpl::RecoverTable(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end()) {
-        response->set_code(302);
+        response->set_code(::rtidb::base::ReturnCode::kEndpointIsNotExist);
         response->set_msg("endpoint is not exist");
         PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
         return;
     } else if (it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        response->set_code(303);
+        response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
         response->set_msg("tablet is not healthy");
         PDLOG(WARNING, "tablet[%s] is not healthy", endpoint.c_str());
         return;
@@ -2630,7 +2630,7 @@ void NameServerImpl::RecoverTable(RpcController* controller,
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "table[%s] is not exist", name.c_str());
-        response->set_code(100);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
@@ -2645,7 +2645,7 @@ void NameServerImpl::RecoverTable(RpcController* controller,
                 if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                     PDLOG(WARNING, "status is alive, need not recover. name[%s] pid[%u] endpoint[%s]",
                                     name.c_str(), pid, endpoint.c_str());
-                    response->set_code(311);
+                    response->set_code(::rtidb::base::ReturnCode::kPartitionIsAlive);
                     response->set_msg("table is alive, need not recover");
                     return;
                 }
@@ -2660,14 +2660,14 @@ void NameServerImpl::RecoverTable(RpcController* controller,
     if (!has_found) {
         PDLOG(WARNING, "not found table[%s] pid[%u] in endpoint[%s]",
                         name.c_str(), pid, endpoint.c_str());
-        response->set_code(308);
+        response->set_code(::rtidb::base::ReturnCode::kPidIsNotExist);
         response->set_msg("pid is not exist");
         return;
     }
     CreateRecoverTableOP(name, pid, endpoint, is_leader,
             FLAGS_check_binlog_sync_progress_delta, FLAGS_name_server_task_concurrency);
     PDLOG(INFO, "recover table[%s] pid[%u] endpoint[%s]", name.c_str(), pid, endpoint.c_str());
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -2677,13 +2677,13 @@ void NameServerImpl::CancelOP(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(301);
+        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -2704,14 +2704,14 @@ void NameServerImpl::CancelOP(RpcController* controller,
             for (auto& task : (*iter)->task_list_) {
                 task->task_info_->set_status(::rtidb::api::kCanceled);
             }
-            response->set_code(0);
+            response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
             PDLOG(INFO, "op[%lu] is canceled! op_type[%s]",
                         request->op_id(), ::rtidb::api::OPType_Name((*iter)->op_info_.op_type()).c_str());
             return;
         }
     }
-    response->set_code(312);
+    response->set_code(::rtidb::base::ReturnCode::kOpStatusIsNotKdoingOrKinited);
     response->set_msg("op status is not kDoing or kInited");
     PDLOG(WARNING, "op[%lu] status is not kDoing or kInited", request->op_id());
     return;
@@ -2723,7 +2723,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -2771,7 +2771,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         op_status->set_start_time(kv.second->op_info_.start_time());
         op_status->set_end_time(kv.second->op_info_.end_time());
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -2781,7 +2781,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -2793,8 +2793,15 @@ void NameServerImpl::ShowTable(RpcController* controller,
         }
         ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
         table_info->CopyFrom(*(kv.second));
+        table_info->clear_column_key();
+        for (const auto& column_key : kv.second->column_key()) {
+            if(!column_key.flag()) {
+                ::rtidb::common::ColumnKey* ck = table_info->add_column_key();
+                ck->CopyFrom(column_key);
+            }
+        }
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -2804,7 +2811,7 @@ void NameServerImpl::DropTable(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -2812,13 +2819,13 @@ void NameServerImpl::DropTable(RpcController* controller,
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
-            response->set_code(501);
+            response->set_code(::rtidb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
             response->set_msg("nameserver is for follower cluster, and request has no zone info");
             PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(502);
+            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -2831,7 +2838,7 @@ void NameServerImpl::DropTable(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = table_info_.find(request->name());
         if (iter == table_info_.end()) {
-            response->set_code(100);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist!");
             PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
             return;
@@ -2845,7 +2852,7 @@ void NameServerImpl::DropTable(RpcController* controller,
             std::lock_guard<std::mutex> lock(mu_);
             std::vector<uint64_t> rep_cluster_op_id_vec;
             if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDropTableRemote, task_ptr, rep_cluster_op_id_vec) < 0) {
-                response->set_code(504);
+                response->set_code(::rtidb::base::ReturnCode::kAddTaskInReplicaClusterNsFailed);
                 response->set_msg("add task in replica cluster ns failed");
                 return;
             }
@@ -2854,7 +2861,7 @@ void NameServerImpl::DropTable(RpcController* controller,
                     ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
         task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableInternel, this, *request, *response, table_info, task_ptr));
-        response->set_code(0);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
     } else {
         DropTableInternel(*request, *response, table_info, task_ptr);
@@ -2956,7 +2963,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -2968,14 +2975,14 @@ void NameServerImpl::AddTableField(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = table_info_.find(request->name());
         if (iter == table_info_.end()) {
-            response->set_code(100);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table doesn`t exist!");
             PDLOG(WARNING, "table[%s] is doesn`t exist!", request->name().c_str());
             return;
         }
         table_info = iter->second;
         if (table_info->added_column_desc_size() == MAX_ADD_TABLE_FIELD_COUNT) {
-            response->set_code(324);
+            response->set_code(::rtidb::base::ReturnCode::kTheCountOfAddingFieldIsMoreThan63);
             response->set_msg("the count of adding field is more than 63");
             PDLOG(WARNING, "the count of adding field is more than 63 in table %s!", request->name().c_str());
             return;
@@ -2985,7 +2992,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         if (table_info->column_desc_v1_size() > 0) {
             for (const auto& column : table_info->column_desc_v1()) {
                 if (column.name() == col_name) {
-                    response->set_code(323);
+                    response->set_code(::rtidb::base::ReturnCode::kFieldNameRepeatedInTable_info);
                     response->set_msg("field name repeated in table_info!");
                     PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
                     return;
@@ -2994,7 +3001,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         } else {
             for (const auto& column : table_info->column_desc()) {
                 if (column.name() == col_name) {
-                    response->set_code(323);
+                    response->set_code(::rtidb::base::ReturnCode::kFieldNameRepeatedInTable_info);
                     response->set_msg("field name repeated in table_info!");
                     PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
                     return;
@@ -3003,7 +3010,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         }
         for (const auto& column : table_info->added_column_desc()) {
             if (column.name() == col_name) {
-                response->set_code(323);
+                response->set_code(::rtidb::base::ReturnCode::kFieldNameRepeatedInTable_info);
                 response->set_msg("field name repeated in table_info!");
                 PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
                 return;
@@ -3025,7 +3032,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
             std::shared_ptr<TabletInfo> tablet_ptr = it->second;
             // check tablet healthy
             if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                response->set_code(303);
+                response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
                 response->set_msg("tablet is not healthy!");
                 PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
                 return;
@@ -3062,7 +3069,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
     std::string msg;
     for (auto it = tablet_client_map.begin(); it != tablet_client_map.end(); it++ ){
         if (!it->second->UpdateTableMetaForAddField(tid, request->column_desc(), schema, msg)) {
-            response->set_code(325);
+            response->set_code(::rtidb::base::ReturnCode::kFailToUpdateTablemetaForAddingField);
             response->set_msg("fail to update tableMeta for adding field: "+ msg);
             PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field failed!",
                     it->first.c_str());
@@ -3081,7 +3088,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info_zk.name(), table_value)) {
-            response->set_code(304);
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed!");
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
                     zk_table_data_path_.c_str(), table_info_zk.name().c_str(), table_value.c_str());
@@ -3094,7 +3101,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         added_column_desc->CopyFrom(request->column_desc());
         NotifyTableChanged();
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -3118,7 +3125,7 @@ void NameServerImpl::DeleteOPTask(RpcController* controller,
         }
         task_map_.erase(iter);
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -3134,7 +3141,7 @@ void NameServerImpl::GetTaskStatus(RpcController* controller,
             task->CopyFrom(*task_info);
         }
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -3144,7 +3151,7 @@ void NameServerImpl::LoadTable(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "nameserver is not leader");
         return;
@@ -3152,13 +3159,13 @@ void NameServerImpl::LoadTable(RpcController* controller,
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
-            response->set_code(501);
+            response->set_code(::rtidb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
             response->set_msg("nameserver is for follower cluster, and request has no zone info");
             PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(502);
+            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -3176,25 +3183,25 @@ void NameServerImpl::LoadTable(RpcController* controller,
         if(CreateReLoadTableOP(name, pid, endpoint, INVALID_PARENT_ID, FLAGS_name_server_task_concurrency, 
                     request->task_info().op_id(), rep_cluster_op_id) < 0) {
             PDLOG(WARNING, "create load table op failed, table_name: %s, endpoint: %s", name.c_str(), endpoint.c_str());
-            response->set_code(305);
+            response->set_code(::rtidb::base::ReturnCode::kCreateOpFailed);
             response->set_msg("create op failed");
             return; 
         }
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
         std::vector<uint64_t> rep_cluster_op_id_vec = {rep_cluster_op_id};
         if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kLoadTable, task_ptr, rep_cluster_op_id_vec) < 0) {
-            response->set_code(504);
+            response->set_code(::rtidb::base::ReturnCode::kAddTaskInReplicaClusterNsFailed);
             response->set_msg("add task in replica cluster ns failed");
             return;
         }
         PDLOG(INFO, "add task in replica cluster ns success, op_id [%lu] task_tpye [%s] task_status [%s]" , 
                 task_ptr->op_id(), ::rtidb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                 ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
-        response->set_code(0);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
     } else {
         PDLOG(WARNING, "request has no zone_info or task_info!"); 
-        response->set_code(515);
+        response->set_code(::rtidb::base::ReturnCode::kRequestHasNoZone_infoOrTask_info);
         response->set_msg("request has no zone_info or task_info");
     }
 } 
@@ -3206,7 +3213,7 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -3214,13 +3221,13 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
-            response->set_code(501);
+            response->set_code(::rtidb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
             response->set_msg("nameserver is for follower cluster, and request has no zone info");
             PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(502);
+            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -3228,7 +3235,7 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
             return;
         }
     } else {
-        response->set_code(506);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotReplicaCluster);
         response->set_msg("nameserver is not replica cluster");
         PDLOG(WARNING, "nameserver is not replica cluster");
         return;
@@ -3272,14 +3279,14 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
         }
         auto iter = pid_set.rbegin();
         if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
-            response->set_code(307);
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("invalid parameter");
             PDLOG(WARNING, "pid is not start with zero and consecutive");
             return;
         }
     } else {
         if (SetPartitionInfo(*table_info) < 0) {
-            response->set_code(314);
+            response->set_code(::rtidb::base::ReturnCode::kSetPartitionInfoFailed);
             response->set_msg("set partition info failed");
             PDLOG(WARNING, "set partition info failed");
             return;
@@ -3289,7 +3296,7 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
-            response->set_code(304);
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
             return;
@@ -3297,7 +3304,7 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
         table_index_++;
         table_info->set_tid(table_index_);
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -3308,7 +3315,7 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -3316,13 +3323,13 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
-            response->set_code(501);
+            response->set_code(::rtidb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
             response->set_msg("nameserver is for follower cluster, and request has no zone info");
             PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(502);
+            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -3330,7 +3337,7 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
             return;
         }
     } else {
-        response->set_code(506);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotReplicaCluster);
         response->set_msg("nameserver is not replica cluster");
         PDLOG(WARNING, "nameserver is not  replica cluster");
         return;
@@ -3374,14 +3381,14 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
         }
         auto iter = pid_set.rbegin();
         if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
-            response->set_code(307);
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("invalid parameter");
             PDLOG(WARNING, "pid is not start with zero and consecutive");
             return;
         }
     } else {
         if (SetPartitionInfo(*table_info) < 0) {
-            response->set_code(314);
+            response->set_code(::rtidb::base::ReturnCode::kSetPartitionInfoFailed);
             response->set_msg("set partition info failed");
             PDLOG(WARNING, "set partition info failed");
             return;
@@ -3392,7 +3399,7 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
-            response->set_code(304);
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
             return;
@@ -3437,7 +3444,7 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
     if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info_zk->name(), table_value)) {
         PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]", 
                 zk_table_data_path_.c_str(), table_info_zk->name().c_str(), table_value.c_str(), table_value.length());
-        response->set_code(304);
+        response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
         response->set_msg("set zk failed");
         return;
     }
@@ -3449,7 +3456,7 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
         NotifyTableChanged();
     }
 
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -3459,7 +3466,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -3467,13 +3474,13 @@ void NameServerImpl::CreateTable(RpcController* controller,
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
-            response->set_code(501);
+            response->set_code(::rtidb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
             response->set_msg("nameserver is for follower cluster, and request has no zone info");
             PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(502);
+            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -3486,7 +3493,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info_.find(table_info->name()) != table_info_.end()) {
-            response->set_code(101);
+            response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
             response->set_msg("table already exists");
             PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
             return;
@@ -3494,13 +3501,13 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
         if (CheckTableMeta(*table_info) < 0) {
-            response->set_code(307);
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("check TableMeta failed, index column type can not float or double");
             return;
         }
         if (table_info->has_ttl_desc()) {
             if ((table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max) || (table_info->ttl_desc().lat_ttl() > FLAGS_latest_ttl_max)) {
-                response->set_code(307);
+                response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
                 uint32_t max_ttl = table_info->ttl_desc().ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
                 uint64_t ttl = table_info->ttl_desc().abs_ttl() > FLAGS_absolute_ttl_max ? table_info->ttl_desc().abs_ttl() : table_info->ttl_desc().lat_ttl();
                 response->set_msg("invalid parameter");
@@ -3511,7 +3518,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         } else if (table_info->has_ttl()) {
             if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max)
                     || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
-                response->set_code(307);
+                response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
                 uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
                 response->set_msg("invalid parameter");
                 PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]",
@@ -3522,7 +3529,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     if (!request->has_zone_info()) { 
         if (FillColumnKey(*table_info) < 0) {
-            response->set_code(307);
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
             response->set_msg("fill column key failed");
             PDLOG(WARNING, "fill column key failed");
             return;
@@ -3534,14 +3541,14 @@ void NameServerImpl::CreateTable(RpcController* controller,
             }
             auto iter = pid_set.rbegin();
             if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
-                response->set_code(307);
+                response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
                 response->set_msg("invalid parameter");
                 PDLOG(WARNING, "pid is not start with zero and consecutive");
                 return;
             }
         } else {
             if (SetPartitionInfo(*table_info) < 0) {
-                response->set_code(314);
+                response->set_code(::rtidb::base::ReturnCode::kSetPartitionInfoFailed);
                 response->set_msg("set partition info failed");
                 PDLOG(WARNING, "set partition info failed");
                 return;
@@ -3557,7 +3564,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
-                response->set_code(304);
+                response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
                 response->set_msg("set zk failed");
                 PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
                 return;
@@ -3571,7 +3578,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     std::vector<::rtidb::base::ColumnDesc> columns;
     if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
         if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
-            response->set_code(315);
+            response->set_code(::rtidb::base::ReturnCode::kConvertColumnDescFailed);
             response->set_msg("convert column desc failed");
             PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", 
                     table_info->name().c_str(), tid);
@@ -3585,7 +3592,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
             std::lock_guard<std::mutex> lock(mu_);
             std::vector<uint64_t> rep_cluster_op_id_vec;
             if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kCreateTableRemote, task_ptr, rep_cluster_op_id_vec) < 0) {
-                response->set_code(504);
+                response->set_code(::rtidb::base::ReturnCode::kAddTaskInReplicaClusterNsFailed);
                 response->set_msg("add task in replica cluster ns failed");
                 return;
             }
@@ -3594,7 +3601,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
                     ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
         task_thread_pool_.AddTask(boost::bind(&NameServerImpl::CreateTableInternel, this, *response, table_info, columns, cur_term, tid, task_ptr));
-        response->set_code(0);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
     } else {
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
@@ -3614,7 +3621,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
     do {
         if (CreateTableOnTablet(table_info, false, columns, endpoint_map, cur_term) < 0 ||
                 CreateTableOnTablet(table_info, true, columns, endpoint_map, cur_term) < 0) {
-            response.set_code(316);
+            response.set_code(::rtidb::base::ReturnCode::kCreateTableFailedOnTablet);
             response.set_msg("create table failed on tablet");
             PDLOG(WARNING, "create table failed. name[%s] tid[%u]", 
                             table_info->name().c_str(), tid);
@@ -3625,7 +3632,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
         if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
             PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]",
                             zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
-            response.set_code(304);
+            response.set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response.set_msg("set zk failed");
             break;
         }
@@ -3663,7 +3670,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                 if(CreateTableRemoteOP(*table_info, remote_table_info, kv.first, 
                             INVALID_PARENT_ID, FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
                     PDLOG(WARNING, "create CreateTableRemoteOP for replica cluster failed, table_name: %s, alias: %s", table_info->name().c_str(), kv.first.c_str());
-                    response.set_code(503);
+                    response.set_code(::rtidb::base::ReturnCode::kCreateCreatetableremoteopForReplicaClusterFailed);
                     response.set_msg( "create CreateTableRemoteOP for replica cluster failed");
                     break;
                 } 
@@ -3672,7 +3679,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                 break;    
             }
         }
-        response.set_code(0);
+        response.set_code(::rtidb::base::ReturnCode::kOk);
         response.set_msg("ok");
         return;
     } while (0);
@@ -3918,7 +3925,7 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
               Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -3934,21 +3941,21 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
     auto it = tablets_.find(request->endpoint());
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        response->set_code(303);
+        response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
         response->set_msg("tablet is not healthy");
         PDLOG(WARNING, "tablet[%s] is not healthy", request->endpoint().c_str());
         return;
     }
     auto iter = table_info_.find(request->name());
     if (iter == table_info_.end()) {
-        response->set_code(100);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
         return;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
     if (*(pid_group.rbegin()) > (uint32_t)table_info->table_partition_size() - 1) {
-        response->set_code(307);
+        response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
         response->set_msg("invalid parameter");
         PDLOG(WARNING, "max pid is greater than partition size. table[%s]", request->name().c_str());
         return;
@@ -3959,7 +3966,7 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         }
         for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
             if (table_info->table_partition(idx).partition_meta(meta_idx).endpoint() == request->endpoint()) {
-                response->set_code(317);
+                response->set_code(::rtidb::base::ReturnCode::kPidAlreadyExists);
                 char msg[100];
                 sprintf(msg, "pid %u is exist in %s", 
                         table_info->table_partition(idx).pid(), request->endpoint().c_str());
@@ -3980,19 +3987,19 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
                     request->name(), pid) < 0) {
             PDLOG(WARNING, "create AddReplicaOP data failed. table[%s] pid[%u]",
                     request->name().c_str(), pid);
-            response->set_code(304);
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             return;
         }
         if (CreateAddReplicaOPTask(op_data) < 0) {
             PDLOG(WARNING, "create AddReplicaOP task failed. table[%s] pid[%u] endpoint[%s]",
                     request->name().c_str(), pid, request->endpoint().c_str());
-            response->set_code(305);
+            response->set_code(::rtidb::base::ReturnCode::kCreateOpFailed);
             response->set_msg("create op failed");
             return;
         }
         if (AddOPData(op_data, 1) < 0) {
-            response->set_code(306);
+            response->set_code(::rtidb::base::ReturnCode::kAddOpDataFailed);
             response->set_msg("add op data failed");
             PDLOG(WARNING, "add op data failed. table[%s] pid[%u]",
                     request->name().c_str(), pid);
@@ -4001,7 +4008,7 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         PDLOG(INFO, "add addreplica op ok. op_id[%lu] table[%s] pid[%u]", 
                 op_data->op_info_.op_id(), request->name().c_str(), pid);
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -4011,7 +4018,7 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
        Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -4019,13 +4026,13 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         if (!request->has_zone_info()) {
-            response->set_code(501);
+            response->set_code(::rtidb::base::ReturnCode::kNameserverIsFollowerAndRequestHasNoZoneInfo);
             response->set_msg("nameserver is for follower cluster, and request has no zone info");
             PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(502);
+            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -4036,21 +4043,21 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
     uint32_t pid = request->pid();
     auto it = tablets_.find(request->endpoint());
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        response->set_code(303);
+        response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
         response->set_msg("tablet is not healthy");
         PDLOG(WARNING, "tablet[%s] is not healthy", request->endpoint().c_str());
         return;
     }
     auto iter = table_info_.find(request->name());
     if (iter == table_info_.end()) {
-        response->set_code(100);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
         return;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
     if (pid > (uint32_t)table_info->table_partition_size() - 1) {
-        response->set_code(307);
+        response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
         response->set_msg("invalid parameter");
         PDLOG(WARNING, "max pid is greater than partition size. table[%s]", request->name().c_str());
         return;
@@ -4060,7 +4067,7 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
             for (int group_idx = 0; group_idx < request->endpoint_group_size(); group_idx++) {
                 for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
                     if (table_info->table_partition(idx).partition_meta(meta_idx).endpoint() == request->endpoint_group(group_idx)) {
-                        response->set_code(317);
+                        response->set_code(::rtidb::base::ReturnCode::kPidAlreadyExists);
                         char msg[100];
                         sprintf(msg, "pid %u is exist in %s", 
                                 table_info->table_partition(idx).pid(), request->endpoint_group(group_idx).c_str());
@@ -4087,19 +4094,19 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
                     request->name(), pid, INVALID_PARENT_ID, request->task_info().op_id()) < 0) {
             PDLOG(WARNING, "create AddReplicaOP data failed. table[%s] pid[%u]",
                     request->name().c_str(), pid);
-            response->set_code(304);
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             return;
         }
         if (CreateAddReplicaOPTask(op_data) < 0) {
             PDLOG(WARNING, "create AddReplicaOP task failed. table[%s] pid[%u] endpoint[%s]",
                     request->name().c_str(), pid, endpoint.c_str());
-            response->set_code(305);
+            response->set_code(::rtidb::base::ReturnCode::kCreateOpFailed);
             response->set_msg("create op failed");
             return;
         }
         if (AddOPData(op_data, 1) < 0) {
-            response->set_code(306);
+            response->set_code(::rtidb::base::ReturnCode::kAddOpDataFailed);
             response->set_msg("add op data failed");
             PDLOG(WARNING, "add op data failed. table[%s] pid[%u]",
                     request->name().c_str(), pid);
@@ -4111,14 +4118,14 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
     }
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kAddReplicaNSRemote, task_ptr, rep_cluster_op_id_vec) < 0) {
-        response->set_code(504);
+        response->set_code(::rtidb::base::ReturnCode::kAddTaskInReplicaClusterNsFailed);
         response->set_msg("add task in replica cluster ns failed");
         return;
     }
     PDLOG(INFO, "add task in replica cluster ns success, op_id [%lu] task_tpye [%s] task_status [%s]" , 
             task_ptr->op_id(), ::rtidb::api::TaskType_Name(task_ptr->task_type()).c_str(),
             ::rtidb::api::TaskStatus_Name(task_ptr->status()).c_str());
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -4217,13 +4224,13 @@ void NameServerImpl::Migrate(RpcController* controller,
        Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(301);
+        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -4231,21 +4238,21 @@ void NameServerImpl::Migrate(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
     auto pos = tablets_.find(request->src_endpoint());
     if (pos == tablets_.end() || pos->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        response->set_code(318);
+        response->set_code(::rtidb::base::ReturnCode::kSrc_endpointIsNotExistOrNotHealthy);
         response->set_msg("src_endpoint is not exist or not healthy");
         PDLOG(WARNING, "src_endpoint[%s] is not exist or not healthy", request->src_endpoint().c_str());
         return;
     }
     pos = tablets_.find(request->des_endpoint());
     if (pos == tablets_.end() || pos->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        response->set_code(319);
+        response->set_code(::rtidb::base::ReturnCode::kDes_endpointIsNotExistOrNotHealthy);
         response->set_msg("des_endpoint is not exist or not healthy");
         PDLOG(WARNING, "des_endpoint[%s] is not exist or not healthy", request->des_endpoint().c_str());
         return;
     }
     auto iter = table_info_.find(request->name());
     if (iter == table_info_.end()) {
-        response->set_code(100);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
         return;
@@ -4310,7 +4317,7 @@ void NameServerImpl::Migrate(RpcController* controller,
         }
     }
     if (has_error) {
-        response->set_code(320);
+        response->set_code(::rtidb::base::ReturnCode::kMigrateFailed);
         response->set_msg(error_msg);
         PDLOG(WARNING, "%s", error_msg);
         return;
@@ -4319,7 +4326,7 @@ void NameServerImpl::Migrate(RpcController* controller,
         uint32_t pid = request->pid(i);
         CreateMigrateOP(request->src_endpoint(), request->name(), pid, request->des_endpoint());
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -4469,7 +4476,7 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
        Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -4485,21 +4492,21 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = table_info_.find(request->name());
     if (iter == table_info_.end()) {
-        response->set_code(100);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
         return;
     }
     auto it = tablets_.find(request->endpoint());
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        response->set_code(303);
+        response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
         response->set_msg("tablet is not healthy");
         PDLOG(WARNING, "tablet[%s] is not healthy", request->endpoint().c_str());
         return;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
     if (*(pid_group.rbegin()) > (uint32_t) table_info->table_partition_size() - 1) {
-        response->set_code(307);
+        response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
         response->set_msg("max pid is greater than partition size");
         PDLOG(WARNING, "max pid is greater than partition size. table[%s]", request->name().c_str());
         return;
@@ -4521,7 +4528,7 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
         }
         if (!pid_in_endpoint) {
             char msg[100];
-            response->set_code(308);
+            response->set_code(::rtidb::base::ReturnCode::kPidIsNotExist);
             sprintf(msg, "pid %u is not in %s",
                          table_info->table_partition(idx).pid(), request->endpoint().c_str());
             response->set_msg(msg);
@@ -4529,7 +4536,7 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
             return;
         } else if (is_leader) {
             char msg[100];
-            response->set_code(102);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsLeader);
             sprintf(msg, "can not del leader. pid %u endpoint %s" ,
                          table_info->table_partition(idx).pid(), request->endpoint().c_str());
             response->set_msg(msg);
@@ -4540,12 +4547,12 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
     }
     for (auto pid : pid_group) {
         if (CreateDelReplicaOP(request->name(), pid, request->endpoint()) < 0) {
-            response->set_code(-1);
+            response->set_code(::rtidb::base::ReturnCode::kCreateOpFailed);
             response->set_msg("create op failed");
             return;
         }
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -7068,13 +7075,13 @@ void NameServerImpl::UpdateTableAliveStatus(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(301);
+        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -7084,14 +7091,14 @@ void NameServerImpl::UpdateTableAliveStatus(RpcController* controller,
     std::string endpoint = request->endpoint();
     if (tablets_.find(endpoint) == tablets_.end()) {
         PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
-        response->set_code(302);
+        response->set_code(::rtidb::base::ReturnCode::kEndpointIsNotExist);
         response->set_msg("endpoint is not exist");
         return;
     }
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "table [%s] is not exist", name.c_str());
-        response->set_code(100);
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
@@ -7124,18 +7131,18 @@ void NameServerImpl::UpdateTableAliveStatus(RpcController* controller,
             NotifyTableChanged();
             iter->second = cur_table_info;
             PDLOG(INFO, "update alive status ok. name[%s] endpoint[%s]", name.c_str(), endpoint.c_str());
-            response->set_code(0);
+            response->set_code(::rtidb::base::ReturnCode::kOk);
             response->set_msg("ok");
             return;
         } else {
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
                             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
             response->set_msg("set zk failed");
-            response->set_code(304);
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
         }
     } else {
         response->set_msg("no pid has update");
-        response->set_code(321);
+        response->set_code(::rtidb::base::ReturnCode::kNoPidHasUpdate);
     }
 }
 
@@ -7408,7 +7415,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_acquire) == kFOLLOWER)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -7416,7 +7423,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
     std::shared_ptr<TableInfo> table = GetTableInfo(request->name());
     if (!table) {
         PDLOG(WARNING, "table with name %s does not exist", request->name().c_str());
-        response->set_code(101);
+        response->set_code(::rtidb::base::ReturnCode::kTableAlreadyExists);
         response->set_msg("table is not exist");
         return;
     }
@@ -7442,7 +7449,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
     if (old_ttl_type != new_ttl_type) {
         PDLOG(WARNING, "table ttl type mismatch, expect %s but %s",::rtidb::api::TTLType_Name(old_ttl_type).c_str(),
             ::rtidb::api::TTLType_Name(new_ttl_type).c_str());
-        response->set_code(112);
+        response->set_code(::rtidb::base::ReturnCode::kTtlTypeMismatch);
         response->set_msg("ttl type mismatch");
         return;
     }
@@ -7460,7 +7467,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         if (!has_found) {
             PDLOG(WARNING, "ts name %s not found in table %s",
                     ts_name.c_str(), request->name().c_str());
-            response->set_code(137);
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
             response->set_msg("ts name not found");
             return;
         }
@@ -7479,7 +7486,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         }
     }
     if (!all_ok) {
-        response->set_code(322);
+        response->set_code(::rtidb::base::ReturnCode::kFailToUpdateTtlFromTablet);
         response->set_msg("fail to update ttl from tablet");
         return;
     }
@@ -7509,12 +7516,12 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table->name(), table_value)) {
         PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
                         zk_table_data_path_.c_str(), table->name().c_str(), table_value.c_str());
-        response->set_code(304);
+        response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
         response->set_msg("set zk failed");
         return;
     }
     table->CopyFrom(table_info);
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -7663,13 +7670,13 @@ void NameServerImpl::AddReplicaCluster(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (mode_.load(std::memory_order_relaxed) != kLEADER) {
-        response->set_code(454);
+        response->set_code(::rtidb::base::ReturnCode::kCurNameserverIsNotLeaderMdoe);
         response->set_msg("cur nameserver is not leader mode");
         PDLOG(WARNING, "cur nameserver is not leader mode");
         return;
@@ -7773,13 +7780,13 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
     std::string rpc_msg = "accept";
 
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (mode_.load(std::memory_order_relaxed) == kLEADER) {
-        response->set_code(568);
+        response->set_code(::rtidb::base::ReturnCode::kCurNameserverIsLeaderCluster);
         response->set_msg("cur nameserver is leader cluster");
         PDLOG(WARNING, "cur nameserver is leader cluster");
         return;
@@ -7841,13 +7848,13 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (mode_.load(std::memory_order_relaxed) == kFOLLOWER) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("cur nameserver is not leader, is follower cluster");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -7863,7 +7870,7 @@ void NameServerImpl::ShowReplicaCluster(RpcController* controller,
         status->set_state(ClusterStatus_Name(it->second->state_.load(std::memory_order_relaxed)));
         status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_);
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
@@ -7873,7 +7880,7 @@ void NameServerImpl::RemoveReplicaCluster(RpcController* controller,
         ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire) || (mode_.load(std::memory_order_relaxed) == kFOLLOWER)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -7931,13 +7938,13 @@ void NameServerImpl::RemoveReplicaClusterByNs(RpcController* controller,
     std::string rpc_msg = "ok";
 
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (mode_.load(std::memory_order_acquire) != kFOLLOWER) {
-        response->set_code(405);
+        response->set_code(::rtidb::base::ReturnCode::kThisIsNotFollower);
         response->set_msg("this is not follower");
         return;
     }
@@ -8028,24 +8035,24 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("cur nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (request->sm() >= kFOLLOWER) {
-        response->set_code(409);
+        response->set_code(::rtidb::base::ReturnCode::kUnkownServerMode);
         response->set_msg("unkown server status");
         return;
     }
     if (mode_.load(std::memory_order_acquire) == request->sm()) {
-        response->set_code(0);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         return;
     }
     if (mode_.load(std::memory_order_acquire) == kLEADER) {
         std::lock_guard<std::mutex> lock(mu_);
         if (nsc_.size() > 0) {
-            response->set_code(410);
+            response->set_code(::rtidb::base::ReturnCode::kZoneNotEmpty);
             response->set_msg("zone not empty");
             return;
         }
@@ -8058,14 +8065,14 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
     if (zk_client_->IsExistNode(zk_zone_data_path_ + "/follower") > 0) {
         if (!zk_client_->CreateNode(zk_zone_data_path_ + "/follower", value)) {
             PDLOG(WARNING, "write follower to zk failed");
-            response->set_code(450);
+            response->set_code(::rtidb::base::ReturnCode::kCreateZkFailed);
             response->set_msg("create zk failed");
             return;
         }
     } else {
         if (!zk_client_->SetNodeValue(zk_zone_data_path_ + "/follower", value)) {
             PDLOG(WARNING, "set zk failed, save follower value failed");
-            response->set_code(304);
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
             response->set_msg("set zk failed");
             return;
         }
@@ -8080,7 +8087,7 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         mode_.store(request->sm(), std::memory_order_release);
     }
     PDLOG(INFO, "set new cluster mode [%s]", ServerMode_Name(request->sm()).c_str());
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     return;
 }
 
@@ -8090,13 +8097,13 @@ void NameServerImpl::SyncTable(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     if (mode_.load(std::memory_order_relaxed) != kLEADER) {
-        response->set_code(454);
+        response->set_code(::rtidb::base::ReturnCode::kCurNameserverIsNotLeaderMdoe);
         response->set_msg("cur nameserver is not leader mode");
         PDLOG(WARNING, "cur nameserver is not leader mode");
         return;
@@ -8112,7 +8119,7 @@ void NameServerImpl::SyncTable(RpcController* controller,
             std::lock_guard<std::mutex> lock(mu_);
             auto iter = table_info_.find(name);
             if (iter == table_info_.end()) {
-                response->set_code(100);
+                response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist!");
                 PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
                 return;
@@ -8405,7 +8412,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(300);
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -8418,7 +8425,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         auto table_iter = table_info_.find(request->table_name());
         if (table_iter == table_info_.end()) {
-            response->set_code(100);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist!");
             PDLOG(WARNING, "table[%s] is not exist!", request->table_name().c_str());
             return;
@@ -8436,7 +8443,8 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             }
         } else {
             for (int i = 0; i < table_info->column_key_size(); i++) {
-                if (table_info->column_key(i).index_name() == request->idx_name()) {
+                if (table_info->column_key(i).index_name() == request->idx_name() &&
+                    !table_info->column_key(i).flag()) {
                     idx = i;
                     flag = false;
                     break;
@@ -8444,16 +8452,16 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             }
         }
         if (flag) {
-            response->set_code(108);
+            response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("index doesn't exist!");
             PDLOG(WARNING, "index[%s]  doesn't exist!", request->idx_name().c_str());
             return;
         }
         for (const auto& kv : tablets_) {
             if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                response->set_code(303);
+                response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
                 response->set_msg("tablet is offline!");
-                PDLOG(WARNING, "tablet[%s] is offline!", kv.second->client_->GetEndpoint());
+                PDLOG(WARNING, "tablet[%s] is offline!", kv.second->client_->GetEndpoint().c_str());
                 return;
             }
             tablet_client_map.insert(std::make_pair(kv.second->client_->GetEndpoint(), kv.second->client_));
@@ -8465,10 +8473,10 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             if (table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                 tablets.insert(table_info->table_partition(idx).partition_meta(meta_idx).endpoint());
             } else {
-                response->set_code(509);
+                response->set_code(::rtidb::base::ReturnCode::kTableHasANoAliveLeaderPartition);
                 response->set_msg("partition is not alive!");
                 PDLOG(WARNING, "partition[%s][%d] is not alive!", 
-                    table_info->table_partition(idx).partition_meta(meta_idx).endpoint(), 
+                    table_info->table_partition(idx).partition_meta(meta_idx).endpoint().c_str(), 
                     table_info->table_partition(idx).pid());
                 return;
             }
@@ -8476,7 +8484,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
     }
     for(const auto &endpoint : tablets) {
         if(!tablet_client_map[endpoint]->DeleteIndex(table_info->tid(), request->idx_name())) {
-            response->set_code(601);
+            response->set_code(::rtidb::base::ReturnCode::kIndexDeleteFailed);
             response->set_msg("delete index on tablet failed!");
             PDLOG(WARNING, "tablet[%s] delete index failed!", endpoint.c_str());
             return;
@@ -8487,8 +8495,8 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
     } else {
         table_info->mutable_column_desc_v1(idx)->set_add_ts_idx(false);
     }
-    PDLOG(INFO, "delete index : table[%s] index[%s]", request->table_name(), request->idx_name());
-    response->set_code(0);
+    PDLOG(INFO, "delete index : table[%s] index[%s]", request->table_name().c_str(), request->idx_name().c_str());
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
