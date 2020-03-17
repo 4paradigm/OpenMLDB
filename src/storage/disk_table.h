@@ -331,19 +331,15 @@ public:
         offset_.store(offset, std::memory_order_relaxed);
     }
 
-    inline std::map<std::string, uint32_t>& GetMapping() {
-        return mapping_;
-    }
-
     virtual TableIterator* NewIterator(const std::string& pk, Ticket& ticket) override;
 
     virtual TableIterator* NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) override;
 
-    virtual TableIterator* NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) override;
+    virtual TableIterator* NewIterator(uint32_t idx, int32_t ts_idx, const std::string& pk, Ticket& ticket) override;
 
     virtual TableIterator* NewTraverseIterator(uint32_t idx) override;
 
-    virtual TableIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx) override;
+    virtual TableIterator* NewTraverseIterator(uint32_t idx, uint32_t ts_idx) override;
 
     virtual void SchedGc() override;
     
