@@ -246,7 +246,6 @@ public class RowBuilder {
             boolean ok = false;
             switch (columnDesc.getDataType()) {
                 case Varchar:
-                case Blob:
                     ok = builder.appendString((String) row[i]);
                     break;
                 case Bool:

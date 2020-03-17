@@ -147,7 +147,7 @@ public class TableSyncClientTest extends TestCaseBase {
         {
             com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
             col.setName("image");
-            col.setDataType(DataType.Varchar);
+            col.setDataType(DataType.Blob);
             col.setNotNull(false);
             list.add(col);
         }
