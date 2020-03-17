@@ -2399,6 +2399,9 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         column_desc->CopyFrom(table_info.column_desc(idx));
         const auto& tp_iter = DATA_TYPE_MAP.find(cur_type);
         column_desc->set_data_type(tp_iter->second);
+        if (tp_iter->second == ::rtidb::type::kBlob) {
+            column_desc->set_data_type(::rtidb::type::kVarchar);
+        }
     }
     if (table_info.column_key_size() == 0
             && (!table_info.has_table_type() || table_info.table_type() != "Relational")) {
