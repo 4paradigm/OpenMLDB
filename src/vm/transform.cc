@@ -241,25 +241,24 @@ bool Transform::TransformWindowProject(const node::ProjectListNode* node,
     PhysicalOpNode* depend = const_cast<PhysicalOpNode*>(depend_node);
     if (!node->w_ptr_->GetKeys().empty()) {
         // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-        node::ExprListNode *expr = node_manager_->MakeExprList();
+        node::ExprListNode* expr = node_manager_->MakeExprList();
         for (auto id : node->w_ptr_->GetKeys()) {
             expr->AddChild(node_manager_->MakeColumnRefNode(id, ""));
         }
-        PhysicalGroupNode* group_op =
-            new PhysicalGroupNode(depend, expr);
+        PhysicalGroupNode* group_op = new PhysicalGroupNode(depend, expr);
         node_manager_->RegisterNode(group_op);
         depend = group_op;
     }
 
     if (!node->w_ptr_->GetOrders().empty()) {
         // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-        node::ExprListNode *expr = new node::ExprListNode();
+        node::ExprListNode* expr = new node::ExprListNode();
         for (auto id : node->w_ptr_->GetOrders()) {
             expr->AddChild(new node::ColumnRefNode(id, ""));
         }
-        node::OrderByNode* order_node = dynamic_cast<node::OrderByNode*>(node_manager_->MakeOrderByNode(expr, true));
-        PhysicalSortNode* sort_op =
-            new PhysicalSortNode(depend, order_node);
+        node::OrderByNode* order_node = dynamic_cast<node::OrderByNode*>(
+            node_manager_->MakeOrderByNode(expr, true));
+        PhysicalSortNode* sort_op = new PhysicalSortNode(depend, order_node);
         node_manager_->RegisterNode(sort_op);
         depend = sort_op;
     }

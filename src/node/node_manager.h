@@ -48,11 +48,12 @@ class NodeManager {
             sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
         }
 
-        for (auto physical_node_list_iter= physical_plan_node_list_.begin();
+        for (auto physical_node_list_iter = physical_plan_node_list_.begin();
              physical_node_list_iter != physical_plan_node_list_.end();
              ++physical_node_list_iter) {
             delete (*physical_node_list_iter);
-            physical_node_list_iter = physical_plan_node_list_.erase(physical_node_list_iter);
+            physical_node_list_iter =
+                physical_plan_node_list_.erase(physical_node_list_iter);
         }
     }
 
@@ -220,10 +221,11 @@ class NodeManager {
 
     PlanNode *MakeDistinctPlanNode(PlanNode *node);
 
-    vm::PhysicalOpNode* RegisterNode(vm::PhysicalOpNode* node_ptr) {
+    vm::PhysicalOpNode *RegisterNode(vm::PhysicalOpNode *node_ptr) {
         physical_plan_node_list_.push_back(node_ptr);
         return node_ptr;
     }
+
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {
         parser_node_list_.push_back(node_ptr);
@@ -249,13 +251,11 @@ class NodeManager {
         return node_ptr;
     }
 
-
-
     std::list<SQLNode *> parser_node_list_;
     std::list<SQLNodeList *> sql_node_list_list_;
     std::list<node::PlanNode *> plan_node_list_;
     std::list<node::BatchPlanNode *> batch_plan_node_list_;
-    std::list<vm::PhysicalOpNode*> physical_plan_node_list_;
+    std::list<vm::PhysicalOpNode *> physical_plan_node_list_;
 };
 
 }  // namespace node
