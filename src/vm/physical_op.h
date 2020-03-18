@@ -73,6 +73,7 @@ class PhysicalOpNode {
  public:
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
         : type_(type), is_block_(is_block), is_lazy_(is_lazy) {}
+    virtual ~PhysicalOpNode() {}
     virtual bool consume() { return true; }
     virtual bool produce() { return true; }
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -106,6 +107,7 @@ class PhysicalUnaryNode : public PhysicalOpNode {
         AddProducer(node);
         producers_[0]->AddConsumer(this);
     }
+    virtual ~PhysicalUnaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
@@ -121,6 +123,7 @@ class PhysicalBinaryNode : public PhysicalOpNode {
         left->AddConsumer(this);
         right->AddConsumer(this);
     }
+    virtual ~PhysicalBinaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
@@ -147,6 +150,7 @@ class PhysicalScanNode : public PhysicalOpNode {
           table_handler_(table_handler) {
         output_schema = table_handler->GetSchema();
     }
+    ~PhysicalScanNode() {}
     const ScanType scan_type_;
     const std::shared_ptr<TableHandler> table_handler_;
 };
@@ -156,6 +160,7 @@ class PhysicalScanTableNode : public PhysicalScanNode {
     explicit PhysicalScanTableNode(
         const std::shared_ptr<TableHandler> &table_handler)
         : PhysicalScanNode(table_handler, kScanTypeTableScan) {}
+    virtual ~PhysicalScanTableNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
 
@@ -165,6 +170,7 @@ class PhysicalScanIndexNode : public PhysicalScanNode {
                           const std::string &index_name)
         : PhysicalScanNode(table_handler, kScanTypeIndexScan),
           index_name_(index_name) {}
+    virtual ~PhysicalScanIndexNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const std::string index_name_;
 };
@@ -175,6 +181,7 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
         : PhysicalUnaryNode(node, kPhysicalOpGroupBy, true, false),
           groups_(groups) {}
 
+    virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
 };
@@ -201,6 +208,7 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
         : PhysicalUnaryNode(node, kPhysicalOpProject, false, false),
           project_type_(project_type),
           project_(project) {}
+    virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const ProjectType project_type_;
     const node::PlanNodeList *project_;
@@ -211,6 +219,7 @@ class PhysicalRowProjectNode : public PhysicalProjectNode {
     PhysicalRowProjectNode(PhysicalOpNode *node,
                            const node::PlanNodeList *project)
         : PhysicalProjectNode(node, project, kProjectRow) {}
+    virtual ~PhysicalRowProjectNode() {}
 };
 
 class PhysicalAggrerationNode : public PhysicalProjectNode {
@@ -218,6 +227,7 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
     PhysicalAggrerationNode(PhysicalOpNode *node,
                             const node::PlanNodeList *project)
         : PhysicalProjectNode(node, project, kProjectAggregation) {}
+    virtual ~PhysicalAggrerationNode() {}
 };
 
 class PhysicalBufferNode : public PhysicalUnaryNode {
@@ -227,6 +237,7 @@ class PhysicalBufferNode : public PhysicalUnaryNode {
         : PhysicalUnaryNode(node, kPhysicalOpBuffer, false, false),
           start_offset_(start),
           end_offset_(end) {}
+    virtual ~PhysicalBufferNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const int64_t start_offset_;
     const int64_t end_offset_;
@@ -235,6 +246,7 @@ class PhysicalLoopsNode : public PhysicalUnaryNode {
  public:
     explicit PhysicalLoopsNode(PhysicalOpNode *node)
         : PhysicalUnaryNode(node, kPhysicalOpLoops, false, false) {}
+    virtual ~PhysicalLoopsNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
 
@@ -246,6 +258,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_type_(join_type),
           condition_(condition) {}
+    virtual ~PhysicalJoinNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::JoinType join_type_;
     const node::ExprNode *condition_;
@@ -256,6 +269,7 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
     PhysicalUnionNode(PhysicalOpNode *left, PhysicalOpNode *right, bool is_all)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           is_all_(is_all) {}
+    virtual ~PhysicalUnionNode() {}
     const bool is_all_;
 };
 
@@ -264,6 +278,7 @@ class PhysicalSortNode : public PhysicalUnaryNode {
     PhysicalSortNode(PhysicalOpNode *node, const node::OrderByNode *order)
         : PhysicalUnaryNode(node, kPhysicalOpSortBy, true, false),
           order_(order) {}
+    virtual ~PhysicalSortNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::OrderByNode *order_;
 };
@@ -273,6 +288,7 @@ class PhysicalFliterNode : public PhysicalUnaryNode {
     PhysicalFliterNode(PhysicalOpNode *node, const node::ExprNode *condition)
         : PhysicalUnaryNode(node, kPhysicalOpFilter, false, false),
           condition_(condition) {}
+    virtual ~PhysicalFliterNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprNode *condition_;
 };
@@ -282,6 +298,7 @@ class PhysicalLimitNode : public PhysicalUnaryNode {
     PhysicalLimitNode(PhysicalOpNode *node, int32_t limit_cnt)
         : PhysicalUnaryNode(node, kPhysicalOpLimit, false, false),
           limit_cnt(limit_cnt) {}
+    virtual ~PhysicalLimitNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const int32_t limit_cnt;
 };
@@ -291,6 +308,7 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
     PhysicalRenameNode(PhysicalOpNode *node, const std::string &name)
         : PhysicalUnaryNode(node, kPhysicalOpRename, false, false),
           name_(name) {}
+    virtual ~PhysicalRenameNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const std::string &name_;
 };
@@ -299,6 +317,7 @@ class PhysicalDistinctNode : public PhysicalUnaryNode {
  public:
     explicit PhysicalDistinctNode(PhysicalOpNode *node)
         : PhysicalUnaryNode(node, kPhysicalOpDistinct, false, false) {}
+    virtual ~PhysicalDistinctNode() {}
 };
 
 }  // namespace vm
