@@ -236,7 +236,7 @@ bool RelationalTable::Delete(const std::string& pk, uint32_t idx) {
     }
 }
 
-bool RelationalTable::Get(uint32_t idx, const std::string& pk, 
+bool RelationalTable::Get(uint32_t idx, const std::string& pk,
         std::string& value) {
     if (idx >= idx_cnt_) {
         PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
@@ -251,6 +251,55 @@ bool RelationalTable::Get(uint32_t idx, const std::string& pk,
     } else {
         return false;
     }
+}
+
+RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx) {
+    if (idx >= idx_cnt_) {
+        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+        return NULL;
+    }
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+    return new RelationalTableTraverseIterator(db_, it, snapshot);
+}
+
+RelationalTableTraverseIterator::RelationalTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
+        const rocksdb::Snapshot* snapshot):db_(db), it_(it), snapshot_(snapshot), traverse_cnt_(0) {
+}
+
+RelationalTableTraverseIterator::~RelationalTableTraverseIterator() {
+    delete it_;
+    db_->ReleaseSnapshot(snapshot_);
+}
+
+bool RelationalTableTraverseIterator::Valid() {
+    return  it_->Valid();
+}
+
+void RelationalTableTraverseIterator::Next() {
+    traverse_cnt_++;
+    it_->Next();
+}
+
+void RelationalTableTraverseIterator::SeekToFirst() {
+    return it_->SeekToFirst();
+}
+
+void RelationalTableTraverseIterator::Seek(const std::string &pk) {
+    rocksdb::Slice spk(pk);
+    it_->Seek(spk);
+}
+
+uint64_t RelationalTableTraverseIterator::GetCount() {
+    return traverse_cnt_;
+}
+
+std::string RelationalTableTraverseIterator::GetValue() {
+    rocksdb::Slice spk = it_->value();
+    return spk.ToString();
 }
 
 }

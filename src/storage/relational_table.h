@@ -30,6 +30,24 @@ typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
 namespace rtidb {
 namespace storage {
+class RelationalTableTraverseIterator {
+ public:
+    RelationalTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
+                                    const rocksdb::Snapshot* snapshot);
+    ~RelationalTableTraverseIterator();
+    bool Valid();
+    void Next();
+    void SeekToFirst();
+    void Seek(const std::string& pk);
+    uint64_t GetCount();
+    std::string GetValue();
+
+ private:
+    rocksdb::DB* db_;
+    rocksdb::Iterator* it_;
+    const rocksdb::Snapshot* snapshot_;
+    uint64_t traverse_cnt_;
+};
 
 class RelationalTable {
 
@@ -68,6 +86,8 @@ public:
     bool Get(uint32_t idx, const std::string& pk, std::string& value);
 
     bool Delete(const std::string& pk, uint32_t idx);
+
+    rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx);
 
     inline ::rtidb::common::StorageMode GetStorageMode() const {
         return storage_mode_;
