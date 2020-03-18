@@ -290,6 +290,7 @@ class ProjectListNode : public LeafPlanNode {
 
     const bool is_window_agg_;
     const WindowPlanNode *w_ptr_;
+
  private:
     PlanNodeList projects;
 };

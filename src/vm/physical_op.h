@@ -10,6 +10,9 @@
 #ifndef SRC_VM_PHYSICAL_OP_H_
 #define SRC_VM_PHYSICAL_OP_H_
 #include <node/plan_node.h>
+#include <memory>
+#include <string>
+#include <vector>
 #include "base/graph.h"
 #include "vm/catalog.h"
 namespace fesql {
@@ -23,7 +26,7 @@ enum PhysicalOpType {
     kPhysicalOpSortBy,
     kPhysicalOpLoops,
     kPhysicalOpAggrerate,
-    kPhysicalOpWindow,
+    kPhysicalOpBuffer,
     kPhysicalOpProject,
     kPhysicalOpLimit,
     kPhysicalOpRename,
@@ -48,12 +51,14 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "PROJECT";
         case kPhysicalOpAggrerate:
             return "AGGRERATE";
-        case kPhysicalOpWindow:
-            return "WINDOW";
+        case kPhysicalOpBuffer:
+            return "BUFFER";
         case kPhysicalOpLimit:
             return "LIMIT";
         case kPhysicalOpRename:
             return "RENAME";
+        case kPhysicalOpDistinct:
+            return "DISTINCT";
         case kPhysicalOpJoin:
             return "JOIN";
         case kPhysicalOpUnoin:
@@ -68,14 +73,12 @@ class PhysicalOpNode {
  public:
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
         : type_(type), is_block_(is_block), is_lazy_(is_lazy) {}
-    virtual bool consume() { return true; };
-    virtual bool produce() { return true; };
+    virtual bool consume() { return true; }
+    virtual bool produce() { return true; }
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
-    std::vector<PhysicalOpNode *>& GetProducers() {
-        return producers_;
-    }
+    std::vector<PhysicalOpNode *> &GetProducers() { return producers_; }
     void UpdateProducer(int i, PhysicalOpNode *producer);
 
     void AddConsumer(PhysicalOpNode *consumer) {
@@ -89,7 +92,6 @@ class PhysicalOpNode {
     const bool is_block_;
     const bool is_lazy_;
     vm::Schema output_schema;
-
 
  protected:
     std::vector<PhysicalOpNode *> consumers_;
@@ -126,7 +128,6 @@ class PhysicalBinaryNode : public PhysicalOpNode {
 
 enum ScanType { kScanTypeTableScan, kScanTypeIndexScan };
 
-
 inline const std::string ScanTypeName(const ScanType &type) {
     switch (type) {
         case kScanTypeTableScan:
@@ -152,7 +153,8 @@ class PhysicalScanNode : public PhysicalOpNode {
 
 class PhysicalScanTableNode : public PhysicalScanNode {
  public:
-    PhysicalScanTableNode(const std::shared_ptr<TableHandler> &table_handler)
+    explicit PhysicalScanTableNode(
+        const std::shared_ptr<TableHandler> &table_handler)
         : PhysicalScanNode(table_handler, kScanTypeTableScan) {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
@@ -178,7 +180,7 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
         // TODO(chenjing): remove 临时适配, 有mem泄漏问题
         node::ExprListNode *expr = new node::ExprListNode();
         for (auto id : groups) {
-            expr->AddChild(new node::ExprIdNode(id));
+            expr->AddChild(new node::ColumnRefNode(id, ""));
         }
         groups_ = expr;
     }
@@ -227,15 +229,20 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
         : PhysicalProjectNode(node, project, kProjectAggregation) {}
 };
 
-class PhysicalWindowNode : public PhysicalUnaryNode {
+class PhysicalBufferNode : public PhysicalUnaryNode {
  public:
-    PhysicalWindowNode(PhysicalOpNode *node, const int64_t start,
+    PhysicalBufferNode(PhysicalOpNode *node, const int64_t start,
                        const int64_t end)
-        : PhysicalUnaryNode(node, kPhysicalOpWindow, false, false) {}
+        : PhysicalUnaryNode(node, kPhysicalOpBuffer, false, false),
+          start_offset_(start),
+          end_offset_(end) {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    const int64_t start_offset_;
+    const int64_t end_offset_;
 };
 class PhysicalLoopsNode : public PhysicalUnaryNode {
  public:
-    PhysicalLoopsNode(PhysicalOpNode *node)
+    explicit PhysicalLoopsNode(PhysicalOpNode *node)
         : PhysicalUnaryNode(node, kPhysicalOpLoops, false, false) {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
@@ -272,7 +279,7 @@ class PhysicalSortNode : public PhysicalUnaryNode {
         // TODO(chenjing): remove 临时适配, 有mem泄漏问题
         node::ExprListNode *expr = new node::ExprListNode();
         for (auto id : orders) {
-            expr->AddChild(new node::ExprIdNode(id));
+            expr->AddChild(new node::ColumnRefNode(id, ""));
         }
         order_ = new node::OrderByNode(expr, true);
     }
@@ -309,7 +316,7 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
 
 class PhysicalDistinctNode : public PhysicalUnaryNode {
  public:
-    PhysicalDistinctNode(PhysicalOpNode *node)
+    explicit PhysicalDistinctNode(PhysicalOpNode *node)
         : PhysicalUnaryNode(node, kPhysicalOpDistinct, false, false) {}
 };
 

@@ -54,18 +54,14 @@ void PhysicalScanTableNode::Print(std::ostream& output,
                                   const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(table=" << table_handler_->GetName() << ")";
-    output << "\n";
-    PrintChildren(output, tab);
 }
 
 void PhysicalScanIndexNode::Print(std::ostream& output,
                                   const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type = " << ScanTypeName(scan_type_)
+    output << "(type=" << ScanTypeName(scan_type_)
            << ", table=" << table_handler_->GetName()
            << ", index=" << index_name_ << ")";
-    output << "\n";
-    PrintChildren(output, tab);
 }
 void PhysicalGroupNode::Print(std::ostream& output,
                               const std::string& tab) const {
@@ -91,6 +87,8 @@ void PhysicalLoopsNode::Print(std::ostream& output,
 void PhysicalJoinNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
+    output << "(type=" << node::JoinTypeName(join_type_)
+           << ", condition=" << node::ExprString(condition_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -119,6 +117,14 @@ void PhysicalFliterNode::Print(std::ostream& output,
                                const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(condition=" << node::ExprString(condition_) << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+void PhysicalBufferNode::Print(std::ostream& output,
+                               const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(start=" << std::to_string(start_offset_)
+           << ", end=" << std::to_string(end_offset_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }

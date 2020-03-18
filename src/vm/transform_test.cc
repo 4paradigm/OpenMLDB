@@ -7,9 +7,12 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/transform.h"
+#include <algorithm>
+#include <memory>
 #include <stack>
 #include <string>
 #include <utility>
+#include <vector>
 #include "base/status.h"
 #include "gtest/gtest.h"
 #include "node/node_manager.h"
@@ -135,6 +138,8 @@ INSTANTIATE_TEST_CASE_P(
         "by COL1, "
         "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
         "SELECT sum(col1) as col1sum, * FROM t1 group by col1, col2;",
+        "SELECT sum(col1) as col1sum, * FROM t1 group by col1, col2, col3;",
+        "SELECT sum(col1) as col1sum, * FROM t1 group by col3, col2, col1;",
         "SELECT COL1 FROM t1 group by COL1+COL2;",
         "SELECT COL1 FROM t1 group by COL1;",
         "SELECT COL1 FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
@@ -310,12 +315,167 @@ TEST_P(TransformTest, transform_physical_plan) {
     Transform transform(&manager, "db", catalog);
     transform.AddPass(kPassGroupByOptimized);
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(
-        transform.TransformPhysicalPlan(dynamic_cast<node::PlanNode*>(plan_trees[0]),
-                                  &physical_plan, base_status));
+    ASSERT_TRUE(transform.TransformPhysicalPlan(
+        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
+        base_status));
     physical_plan->Print(std::cout, "");
 }
 
+void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
+                         std::string sql, std::string exp) {
+    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    std::cout << sql << std::endl;
+
+    ::fesql::node::NodeManager manager;
+    ::fesql::node::PlanNodeList plan_trees;
+    ::fesql::base::Status base_status;
+    {
+        ::fesql::plan::SimplePlanner planner(&manager);
+        ::fesql::parser::FeSQLParser parser;
+        ::fesql::node::NodePointVector parser_trees;
+        parser.parse(sql, parser_trees, &manager, base_status);
+        ASSERT_EQ(0, base_status.code);
+        if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
+            0) {
+            //            std::cout << *(plan_trees[0]) << std::endl;
+        } else {
+            std::cout << base_status.msg;
+        }
+
+        ASSERT_EQ(0, base_status.code);
+        std::cout.flush();
+    }
+
+    Transform transform(&manager, "db", catalog);
+    transform.AddPass(kPassGroupByOptimized);
+    transform.AddPass(kPassSortByOptimized);
+    PhysicalOpNode* physical_plan = nullptr;
+    ASSERT_TRUE(transform.TransformPhysicalPlan(
+        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
+        base_status));
+    std::ostringstream oos;
+    physical_plan->Print(oos, "");
+    std::cout << oos.str() << std::endl;
+    ASSERT_EQ(oos.str(), exp);
+}
+TEST_F(TransformTest, pass_group_optimized_test) {
+    std::vector<std::pair<std::string, std::string>> in_outs;
+    in_outs.push_back(
+        std::make_pair("SELECT sum(col1) as col1sum, * FROM t1 group by col1;",
+                       "PROJECT(projectType=ProjectRow)\n"
+                       "  SCAN(type=IndexScan, table=t1, index=index1)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT sum(col1) as col1sum, * FROM t1 group by col1, col2;",
+        "PROJECT(projectType=ProjectRow)\n"
+        "  SCAN(type=IndexScan, table=t1, index=index12)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT sum(col1) as col1sum, * FROM t1 group by col1, col2, col3;",
+        "PROJECT(projectType=ProjectRow)\n"
+        "  GROUP_BY(group by =(col3))\n"
+        "    SCAN(type=IndexScan, table=t1, index=index12)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT sum(col1) as col1sum, * FROM t1 group by col3, col2, col1;",
+        "PROJECT(projectType=ProjectRow)\n"
+        "  GROUP_BY(group by =(col3))\n"
+        "    SCAN(type=IndexScan, table=t1, index=index12)"));
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    {
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col15");
+    }
+    {
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col15");
+    }
+
+    auto catalog = BuildCommonCatalog(table_def, table);
+
+    for (auto in_out : in_outs) {
+        Physical_Plan_Check(catalog, in_out.first, in_out.second);
+    }
+}
+
+TEST_F(TransformTest, pass_sort_optimized_test) {
+    std::vector<std::pair<std::string, std::string>> in_outs;
+    in_outs.push_back(std::make_pair(
+        "SELECT "
+        "col1, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10)\n"
+        "  JOIN(type=kJoinTypeConcat, condition=)\n"
+        "    PROJECT(projectType=ProjectRow)\n"
+        "      SCAN(table=t1)\n"
+        "    PROJECT(projectType=Aggregation)\n"
+        "      BUFFER(start=-3, end=0)\n"
+        "        SCAN(type=IndexScan, table=t1, index=index1)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT "
+        "col1, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col15 ROWS "
+        "BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10)\n"
+        "  JOIN(type=kJoinTypeConcat, condition=)\n"
+        "    PROJECT(projectType=ProjectRow)\n"
+        "      SCAN(table=t1)\n"
+        "    PROJECT(projectType=Aggregation)\n"
+        "      BUFFER(start=-3, end=0)\n"
+        "        SCAN(type=IndexScan, table=t1, index=index12)"));
+    in_outs.push_back(std::make_pair(
+        "SELECT "
+        "col1, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "sum(col2) OVER w1 as w1_col2_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col15 ROWS BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;",
+        "LIMIT(limit=10)\n"
+        "  JOIN(type=kJoinTypeConcat, condition=)\n"
+        "    PROJECT(projectType=ProjectRow)\n"
+        "      SCAN(table=t1)\n"
+        "    PROJECT(projectType=Aggregation)\n"
+        "      BUFFER(start=-3, end=0)\n"
+        "        SORT_BY((col15) ASC)\n"
+        "          GROUP_BY(group by =(col3))\n"
+        "            SCAN(table=t1)"));
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    {
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col15");
+    }
+    {
+        ::fesql::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col15");
+    }
+
+    auto catalog = BuildCommonCatalog(table_def, table);
+
+    for (auto in_out : in_outs) {
+        Physical_Plan_Check(catalog, in_out.first, in_out.second);
+    }
+}
 }  // namespace vm
 }  // namespace fesql
 int main(int argc, char** argv) {

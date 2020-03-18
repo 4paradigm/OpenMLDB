@@ -7,6 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/transform.h"
+#include <set>
 #include <stack>
 #include <unordered_map>
 #include "vm/physical_op.h"
@@ -18,15 +19,17 @@ std::ostream& operator<<(std::ostream& output,
                          const fesql::vm::LogicalOp& thiz) {
     return output << *(thiz.node_);
 }
-bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
-                                        fesql::base::Status& status,  // NOLINT
-                                        LogicalGraph& graph) {        // NOLINT
-    if (nullptr == node) {
-        status.msg = "node is null";
+bool TransformLogicalTreeToLogicalGraph(
+    const ::fesql::node::PlanNode* node, LogicalGraph* graph_ptr,
+    fesql::base::Status& status) {  // NOLINT
+
+    if (nullptr == node || nullptr == graph_ptr) {
+        status.msg = "node or graph_ptr is null";
         status.code = common::kOpGenError;
         LOG(WARNING) << status.msg;
         return false;
     }
+    auto& graph = *graph_ptr;
     std::stack<LogicalOp> stacks;
     LogicalOp op(node);
     graph.AddVertex(op);
@@ -209,11 +212,11 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
         auto iter = ops.cbegin();
 
         PhysicalOpNode* join = new PhysicalJoinNode(
-            (*iter), *(++iter), ::fesql::node::kJoinTypeAppend, nullptr);
+            (*iter), *(++iter), ::fesql::node::kJoinTypeConcat, nullptr);
         iter++;
         for (; iter != ops.cend(); iter++) {
             join = new PhysicalJoinNode(
-                join, *iter, ::fesql::node::kJoinTypeAppend, nullptr);
+                join, *iter, ::fesql::node::kJoinTypeConcat, nullptr);
         }
         *output = join;
         return true;
@@ -245,8 +248,8 @@ bool Transform::TransformWindowProject(const node::ProjectListNode* node,
 
     if (node->w_ptr_->GetStartOffset() != -1 ||
         node->w_ptr_->GetEndOffset() != -1) {
-        PhysicalWindowNode* window_op =
-            new PhysicalWindowNode(depend, node->w_ptr_->GetStartOffset(),
+        PhysicalBufferNode* window_op =
+            new PhysicalBufferNode(depend, node->w_ptr_->GetStartOffset(),
                                    node->w_ptr_->GetEndOffset());
         depend = window_op;
     }
@@ -362,13 +365,6 @@ bool Transform::TransformScanOp(const node::TablePlanNode* node,
     }
 }
 
-// return optimized filter condition and scan index name
-bool Transform::TryOptimizedFilterCondition(const IndexHint& index_map,
-                                            const node::ExprNode* condition,
-                                            std::string& index_name,  // NOLINT
-                                            node::ExprNode** output) {
-    return false;
-}
 bool Transform::TransformRenameOp(const node::RenamePlanNode* node,
                                   PhysicalOpNode** output,
                                   base::Status& status) {
@@ -427,6 +423,14 @@ bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
                 }
                 break;
             }
+            case kPassSortByOptimized: {
+                SortByOptimized pass(node_manager_, db_, catalog_);
+                PhysicalOpNode* new_op;
+                if (pass.Apply(physical_plan, &new_op)) {
+                    physical_plan = new_op;
+                }
+                break;
+            }
             default: {
                 LOG(WARNING) << "can't not handle pass: "
                              << PhysicalPlanPassTypeName(type);
@@ -453,7 +457,7 @@ bool GroupByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     const node::ExprListNode* new_groups;
                     if (!TransformGroupExpr(group_op->groups_,
                                             scan_op->table_handler_->GetIndex(),
-                                            index_name, &new_groups)) {
+                                            &index_name, &new_groups)) {
                         return false;
                     }
 
@@ -482,8 +486,13 @@ bool GroupByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
 }
 bool GroupByOptimized::TransformGroupExpr(const node::ExprListNode* groups,
                                           const IndexHint& index_hint,
-                                          std::string& index_name,
+                                          std::string* index_name,
                                           const node::ExprListNode** output) {
+    if (nullptr == groups || nullptr == output || nullptr == index_name) {
+        LOG(WARNING) << "fail to transform group expr : group exor or output "
+                        "or index_name ptr is null";
+        return false;
+    }
     std::vector<std::string> columns;
     for (auto group : groups->children_) {
         switch (group->expr_type_) {
@@ -502,8 +511,8 @@ bool GroupByOptimized::TransformGroupExpr(const node::ExprListNode* groups,
     }
 
     std::vector<bool> bitmap(columns.size(), true);
-    if (MatchBestIndex(columns, index_hint, bitmap, index_name)) {
-        IndexSt index = index_hint.at(index_name);
+    if (MatchBestIndex(columns, index_hint, &bitmap, index_name)) {
+        IndexSt index = index_hint.at(*index_name);
         node::ExprListNode* new_groups = node_manager_->MakeExprList();
         std::set<std::string> keys;
         for (auto iter = index.keys.cbegin(); iter != index.keys.cend();
@@ -533,12 +542,18 @@ bool GroupByOptimized::TransformGroupExpr(const node::ExprListNode* groups,
         return false;
     }
 }
-bool GroupByOptimized::MatchBestIndex(std::vector<std::string>& columns,
+bool GroupByOptimized::MatchBestIndex(const std::vector<std::string>& columns,
                                       const IndexHint& index_hint,
-                                      std::vector<bool>& bitmap,
-                                      std::string& index_name) {
+                                      std::vector<bool>* bitmap_ptr,
+                                      std::string* index_name) {
+    if (nullptr == bitmap_ptr || nullptr == index_name) {
+        LOG(WARNING)
+            << "fail to match best index: bitmap or index_name ptr is null";
+        return false;
+    }
     std::set<std::string> column_set;
-    for (int i = 0; i < columns.size(); ++i) {
+    auto& bitmap = *bitmap_ptr;
+    for (size_t i = 0; i < columns.size(); ++i) {
         if (bitmap[i]) {
             column_set.insert(columns[i]);
         }
@@ -553,31 +568,33 @@ bool GroupByOptimized::MatchBestIndex(std::vector<std::string>& columns,
         }
 
         if (column_set == keys) {
-            index_name = index.name;
+            *index_name = index.name;
             return true;
         }
     }
 
+    std::string best_index_name;
     bool succ = false;
-    for (int i = 0; i < bitmap.size(); ++i) {
+    for (size_t i = 0; i < bitmap.size(); ++i) {
         if (bitmap[i]) {
             bitmap[i] = false;
             std::string name;
-            if (MatchBestIndex(columns, index_hint, bitmap, name)) {
+            if (MatchBestIndex(columns, index_hint, bitmap_ptr, &name)) {
                 succ = true;
-                if (index_name.empty()) {
-                    index_name = name;
+                if (best_index_name.empty()) {
+                    best_index_name = name;
                 } else {
-                    auto org_index = index_hint.at(index_name);
+                    auto org_index = index_hint.at(best_index_name);
                     auto new_index = index_hint.at(name);
                     if (org_index.keys.size() < new_index.keys.size()) {
-                        index_name = name;
+                        best_index_name = name;
                     }
                 }
             }
             bitmap[i] = true;
         }
     }
+    *index_name = best_index_name;
     return succ;
 }
 
@@ -594,8 +611,12 @@ bool CanonicalizeExprTransformPass::Transform(node::ExprNode* in,
     return false;
 }
 bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
+    if (nullptr == in || nullptr == out) {
+        LOG(WARNING) << "fail to apply pass: input or output is null";
+        return false;
+    }
     auto producer = in->GetProducers();
-    for (int j = 0; j < producer.size(); ++j) {
+    for (size_t j = 0; j < producer.size(); ++j) {
         PhysicalOpNode* output;
         if (Apply(producer[j], &output)) {
             in->UpdateProducer(j, output);
@@ -603,5 +624,102 @@ bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
     }
     return Transform(in, out);
 }
+bool SortByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
+    switch (in->type_) {
+        case kPhysicalOpSortBy: {
+            PhysicalSortNode* sort_op = dynamic_cast<PhysicalSortNode*>(in);
+            if (kPhysicalOpScan == in->GetProducers()[0]->type_) {
+                auto scan_op =
+                    dynamic_cast<PhysicalScanNode*>(in->GetProducers()[0]);
+                if (kScanTypeIndexScan == scan_op->scan_type_) {
+                    std::string index_name;
+                    auto scan_index_op =
+                        dynamic_cast<PhysicalScanIndexNode*>(scan_op);
+
+                    const node::OrderByNode* new_order;
+                    if (!TransformOrderExpr(sort_op->order_, scan_index_op,
+                                            &new_order)) {
+                        return false;
+                    }
+
+                    // remove node if groups is empty
+                    if (nullptr == new_order->order_by_ ||
+                        new_order->order_by_->children_.empty()) {
+                        *output = scan_index_op;
+                        return true;
+                    } else {
+                        PhysicalSortNode* new_sort_op =
+                            new PhysicalSortNode(scan_index_op, new_order);
+                        *output = new_sort_op;
+                        return true;
+                    }
+                }
+            }
+            break;
+        }
+        default: {
+            return false;
+        }
+    }
+    return false;
+}
+bool SortByOptimized::TransformOrderExpr(
+    const node::OrderByNode* order, const PhysicalScanIndexNode* scan_index_op,
+    const node::OrderByNode** output) {
+    if (nullptr == order || nullptr == scan_index_op || nullptr == output) {
+        LOG(WARNING) << "fail to transform order expr : order expr or scan op "
+                        "or output is null";
+        return false;
+    }
+    auto& index_st = scan_index_op->table_handler_->GetIndex().at(
+        scan_index_op->index_name_);
+    auto& ts_column =
+        scan_index_op->table_handler_->GetSchema().Get(index_st.ts_pos);
+
+    std::vector<std::string> columns;
+    bool succ = false;
+    for (auto expr : order->order_by_->children_) {
+        switch (expr->expr_type_) {
+            case node::kExprColumnRef:
+                columns.push_back(
+                    dynamic_cast<node::ColumnRefNode*>(expr)->GetColumnName());
+                if (ts_column.name() ==
+                    dynamic_cast<node::ColumnRefNode*>(expr)->GetColumnName()) {
+                    succ = true;
+                }
+                break;
+            default: {
+                break;
+            }
+        }
+    }
+
+    if (succ) {
+        node::ExprListNode* expr_list = node_manager_->MakeExprList();
+        for (auto expr : order->order_by_->children_) {
+            switch (expr->expr_type_) {
+                case node::kExprColumnRef: {
+                    std::string column =
+                        dynamic_cast<node::ColumnRefNode*>(expr)
+                            ->GetColumnName();
+                    // skip group when match index keys
+                    if (ts_column.name() != column) {
+                        expr_list->AddChild(expr);
+                    }
+                    break;
+                }
+                default: {
+                    expr_list->AddChild(expr);
+                }
+            }
+        }
+        *output = dynamic_cast<node::OrderByNode*>(
+            node_manager_->MakeOrderByNode(expr_list, order->is_asc_));
+        return true;
+    } else {
+        return false;
+    }
+}
+
 }  // namespace vm
 }  // namespace fesql

@@ -12,7 +12,10 @@
 #include <node/node_manager.h>
 #include <node/plan_node.h>
 #include <node/sql_node.h>
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 #include "base/graph.h"
 #include "base/status.h"
 #include "vm/physical_op.h"
@@ -117,24 +120,38 @@ class GroupByOptimized : public TransformUpPysicalPass {
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
     bool TransformGroupExpr(const node::ExprListNode* group,
-                            const IndexHint& index_hint, std::string& index,
+                            const IndexHint& index_hint, std::string* index,
                             const node::ExprListNode** output);
-    bool MatchBestIndex(std::vector<std::string>& columns,
-                        const IndexHint& catalog, std::vector<bool>& bitmap,
-                        std::string& index_name);  // NOLINT
+    bool MatchBestIndex(const std::vector<std::string>& columns,
+                        const IndexHint& catalog, std::vector<bool>* bitmap,
+                        std::string* index_name);  // NOLINT
 };
 
+class SortByOptimized : public TransformUpPysicalPass {
+ public:
+    SortByOptimized(node::NodeManager* node_manager, const std::string& db,
+                     const std::shared_ptr<Catalog>& catalog)
+        : TransformUpPysicalPass(node_manager, db, catalog) {}
+ private:
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool TransformOrderExpr(const node::OrderByNode* order,
+                            const PhysicalScanIndexNode* scan_index_op,
+                            const node::OrderByNode** output);
+};
 typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;
 
 enum PhysicalPlanPassType {
     kPassGroupByOptimized,
+    kPassSortByOptimized
 };
 
 inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
     switch (type) {
         case kPassGroupByOptimized:
             return "PassGroupByOptimized";
+        case kPassSortByOptimized:
+            return "PassSortByOptimized";
         default:
             return "unknowPass";
     }
@@ -160,36 +177,43 @@ class Transform {
                          ::fesql::vm::PhysicalOpNode** ouput,
                          ::fesql::base::Status& status);  // NOLINT
     bool TransformLimitOp(const node::LimitPlanNode* node,
-                          PhysicalOpNode** output, base::Status& status);
+                          PhysicalOpNode** output,
+                          base::Status& status);  // NOLINT
 
     bool TransformProjectOp(const node::ProjectPlanNode* node,
-                            PhysicalOpNode** output, base::Status& status);
+                            PhysicalOpNode** output,
+                            base::Status& status);  // NOLINT
     bool TransformWindowProject(const node::ProjectListNode* project_list,
                                 PhysicalOpNode* depend, PhysicalOpNode** output,
-                                base::Status& status);
+                                base::Status& status);  // NOLINT
 
     bool TransformJoinOp(const node::JoinPlanNode* node,
-                         PhysicalOpNode** output, base::Status& status);
+                         PhysicalOpNode** output,
+                         base::Status& status);  // NOLINT
     bool TransformUnionOp(const node::UnionPlanNode* node,
-                          PhysicalOpNode** output, base::Status& status);
+                          PhysicalOpNode** output,
+                          base::Status& status);  // NOLINT
     bool TransformGroupOp(const node::GroupPlanNode* node,
-                          PhysicalOpNode** output, base::Status& status);
+                          PhysicalOpNode** output,
+                          base::Status& status);  // NOLINT
     bool TransformSortOp(const node::SortPlanNode* node,
-                         PhysicalOpNode** output, base::Status& status);
+                         PhysicalOpNode** output,
+                         base::Status& status);  // NOLINT
     bool TransformFilterOp(const node::FilterPlanNode* node,
-                           PhysicalOpNode** output, base::Status& status);
-    bool TryOptimizedFilterCondition(const IndexHint& index_map,
-                                     const node::ExprNode* condition,
-                                     std::string& index_name,
-                                     node::ExprNode** output);
+                           PhysicalOpNode** output,
+                           base::Status& status);  // NOLINT
     bool TransformScanOp(const node::TablePlanNode* node,
-                         PhysicalOpNode** output, base::Status& status);
+                         PhysicalOpNode** output,
+                         base::Status& status);  // NOLINT
     bool TransformRenameOp(const node::RenamePlanNode* node,
-                           PhysicalOpNode** output, base::Status& status);
+                           PhysicalOpNode** output,
+                           base::Status& status);  // NOLINT
     bool TransformQueryPlan(const node::QueryPlanNode* node,
-                            PhysicalOpNode** output, base::Status& status);
+                            PhysicalOpNode** output,
+                            base::Status& status);  // NOLINT
     bool TransformDistinctOp(const node::DistinctPlanNode* node,
-                             PhysicalOpNode** output, base::Status& status);
+                             PhysicalOpNode** output,
+                             base::Status& status);  // NOLINT
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
@@ -198,8 +222,8 @@ class Transform {
 };
 
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
-                                        fesql::base::Status& status,  // NOLINT
-                                        LogicalGraph& graph);
+                                        LogicalGraph* graph,
+                                        fesql::base::Status& status);  // NOLINT
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_TRANSFORM_H_

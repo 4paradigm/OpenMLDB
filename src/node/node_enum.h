@@ -162,7 +162,7 @@ enum JoinType {
     kJoinTypeLeft,
     kJoinTypeRight,
     kJoinTypeInner,
-    kJoinTypeAppend,
+    kJoinTypeConcat,
 };
 
 enum UnoinType {

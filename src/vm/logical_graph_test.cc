@@ -68,7 +68,7 @@ TEST_P(LogicalGraphTest, transform_logical_graph_test) {
         ASSERT_EQ(0, base_status.code);
         if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
             0) {
-            std::cout << *(plan_trees[0]);
+            std::cout << *(plan_trees[0]) << std::endl;
         } else {
             std::cout << base_status.msg;
         }
@@ -78,7 +78,7 @@ TEST_P(LogicalGraphTest, transform_logical_graph_test) {
     }
     LogicalGraph graph;
     TransformLogicalTreeToLogicalGraph(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), base_status, graph);
+        dynamic_cast<node::PlanNode*>(plan_trees[0]), &graph, base_status);
     graph.DfsVisit();
     ASSERT_EQ(param.second, graph.VertexSize());
 }

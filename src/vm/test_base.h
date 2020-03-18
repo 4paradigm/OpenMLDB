@@ -27,7 +27,7 @@
 namespace fesql {
 namespace vm {
 
-bool AddTable(std::shared_ptr<tablet::TabletCatalog>& catalog,
+bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
               const fesql::type::TableDef& table_def,
               std::shared_ptr<fesql::storage::Table> table) {
     std::shared_ptr<tablet::TabletTableHandler> handler(
@@ -52,7 +52,6 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
         return std::shared_ptr<tablet::TabletCatalog>();
     }
     return catalog;
-
 }
 
 std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
