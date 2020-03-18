@@ -115,7 +115,10 @@ class RTIDBClient:
     v = {}
     for k in value_columns:
       v.update({k: str(value_columns[k])})
-    return self.__client.Update(table_name, cond, v, _wo)
+    ok = self.__client.Update(table_name, cond, v, _wo)
+    if ok.code != 0:
+      raise Exception(ok.code, ok.msg)
+    return True
   
   def query(self, table_name: str, read_option: ReadOption):
     if (len(read_option.index) < 1):
