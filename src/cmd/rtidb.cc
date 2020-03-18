@@ -1175,19 +1175,6 @@ bool GetColumnMap(const std::vector<std::string>& parts, std::map<std::string, s
     return true;
 }
 
-void SchemaWrapper(const std::map<std::string, std::string>& columns_map, const Schema& schema, 
-        Schema& new_schema) {
-    for (int i = 0; i < schema.size(); i++) {
-        const ::rtidb::common::ColumnDesc& col = schema.Get(i);
-        const std::string& col_name = col.name();
-        auto iter = columns_map.find(col_name);
-        if(iter != columns_map.end()) {
-            ::rtidb::common::ColumnDesc* tmp = new_schema.Add();
-            tmp->CopyFrom(col);
-        }
-    }
-}
-
 void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 5) {
         std::cout << "update format error. eg: update table_name=xxx col1=xxx ... where col=xxx" << std::endl;
@@ -1241,7 +1228,7 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
         return;
     }
     Schema new_cd_schema;
-    SchemaWrapper(condition_columns_map, tables[0].column_desc_v1(), new_cd_schema);
+    ::rtidb::base::RowSchemaCodec::SchemaWrapper(condition_columns_map, tables[0].column_desc_v1(), new_cd_schema);
     std::string cd_value;
     ::rtidb::base::ResultMsg cd_rm = ::rtidb::base::RowSchemaCodec::Encode(condition_columns_map, new_cd_schema, cd_value);
     if(cd_rm.code < 0) {
@@ -1254,7 +1241,7 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
         cd_value = compressed;
     }
     Schema new_value_schema;
-    SchemaWrapper(value_columns_map, tables[0].column_desc_v1(), new_value_schema);
+    ::rtidb::base::RowSchemaCodec::SchemaWrapper(value_columns_map, tables[0].column_desc_v1(), new_value_schema);
     std::string value;
     ::rtidb::base::ResultMsg value_rm = ::rtidb::base::RowSchemaCodec::Encode(value_columns_map, new_value_schema, value);
     if(value_rm.code < 0) {

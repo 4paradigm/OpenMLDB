@@ -3,7 +3,7 @@ import rtidb
 
 class TestRtidb(unittest.TestCase):
   def setUp(self):
-    self.nsc = rtidb.RTIDBClient("172.27.128.37:6181", "/issue-5")
+    self.nsc = rtidb.RTIDBClient("172.27.128.37:7183", "/rtidb_cluster")
   def test_FailedClient(self):
     with self.assertRaises(Exception) as context:
       nsc = rtidb.RTIDBClient("127.0.0.1:61811", "/issue-5")
@@ -20,6 +20,11 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("card3", l["card"])
       #self.assertEqual("mcc3", l["mcc"]) #TODO: current skip verify mcc, beacuse mcc value is mcc3\x00 maybe server problem
       self.assertEqual(3, l["p_biz_date"])
+  def test_update(self):
+    condition_columns = {"id":"11"} 
+    value_columns = {"attribute":"a3","image":"i3"}
+    ok = self.nsc.update("test1", condition_columns, value_columns, None);
+    self.assertEqual(ok, True);
 
 if __name__ == "__main__":
   unittest.main()

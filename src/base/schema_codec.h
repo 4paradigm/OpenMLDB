@@ -340,6 +340,19 @@ public:
         return 0;
     }
 
+    static void SchemaWrapper(const std::map<std::string, std::string>& columns_map, const Schema& schema, 
+            Schema& new_schema) {
+        for (int i = 0; i < schema.size(); i++) {
+            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
+            const std::string& col_name = col.name();
+            auto iter = columns_map.find(col_name);
+            if(iter != columns_map.end()) {
+                ::rtidb::common::ColumnDesc* tmp = new_schema.Add();
+                tmp->CopyFrom(col);
+            }
+        }
+    }
+
     static int32_t CalStrLength(const std::map<std::string, std::string>& str_map, const Schema& schema,
             ResultMsg& rm) {
         int32_t str_len = 0;

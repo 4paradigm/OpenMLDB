@@ -295,7 +295,6 @@ std::shared_ptr<rtidb::client::TabletClient> RtidbClient::GetTabletClient(const 
     return tablet;
 }
 
-/**
 GeneralResult RtidbClient::Update(const std::string& table_name, 
         const std::map<std::string, std::string> condition_columns_map, 
         const std::map<std::string, std::string> value_columns_map,
@@ -304,7 +303,7 @@ GeneralResult RtidbClient::Update(const std::string& table_name,
     std::shared_ptr<TableHandler> th;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        auto iter = tables_.find(name);
+        auto iter = tables_.find(table_name);
         if (iter == tables_.end()) {
             result.SetError(-1, "table not found");
             return result;
@@ -322,39 +321,38 @@ GeneralResult RtidbClient::Update(const std::string& table_name,
     }
     std::string pk = cd_iter->second;
 
-    uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) % th->partition.size());
+    uint32_t tid = th->table_info->tid();
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) % th->table_info->table_partition_size());
     google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc> new_cd_schema;
-    //TODO SchemaWrapper
-    SchemaWrapper(condition_columns_map, *(th->columns), new_cd_schema);
+    ::rtidb::base::RowSchemaCodec::SchemaWrapper(condition_columns_map, *(th->columns), new_cd_schema);
     std::string cd_value;
     ::rtidb::base::ResultMsg cd_rm = ::rtidb::base::RowSchemaCodec::Encode(condition_columns_map, new_cd_schema, cd_value);
     if(cd_rm.code < 0) {
-        result.SetError(rm.code, "encode error, msg: " + cd_rm.msg);
+        result.SetError(cd_rm.code, "encode error, msg: " + cd_rm.msg);
         return result;
     }
-    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+    if (th->table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
         std::string compressed;
         ::snappy::Compress(cd_value.c_str(), cd_value.length(), &compressed);
         cd_value = compressed;
     }
     google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>  new_value_schema;
-    SchemaWrapper(value_columns_map,*(th->columns), new_value_schema);
+    ::rtidb::base::RowSchemaCodec::SchemaWrapper(value_columns_map,*(th->columns), new_value_schema);
     std::string value;
     ::rtidb::base::ResultMsg value_rm = ::rtidb::base::RowSchemaCodec::Encode(value_columns_map, new_value_schema, value);
     if(value_rm.code < 0) {
-        result.SetError(rm.code, "encode error, msg: " + value_rm.msg);
+        result.SetError(value_rm.code, "encode error, msg: " + value_rm.msg);
         return result;
     }
-    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+    if (th->table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
         std::string compressed;
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
     }
-    std::string err_msg;
-    auto tablet_client = GetTabletClient(th->partition[0].leader, err_msg);
+    std::string msg;
+    auto tablet_client = GetTabletClient(th->partition[0].leader, msg);
     if (tablet_client == NULL) {
-        result.SetError(-1, err_msg);
+        result.SetError(-1, msg);
         return result;
     }
     bool ok = tablet_client->Update(tid, pid, new_cd_schema, new_value_schema, cd_value, value, msg);
@@ -363,7 +361,6 @@ GeneralResult RtidbClient::Update(const std::string& table_name,
     }
     return result;
 }
-*/
 
 GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::string, std::string>& value, const WriteOption& wo) {
     GeneralResult result;
@@ -447,9 +444,4 @@ GeneralResult RtidbClient::Delete(const std::string& name, const std::map<std::s
     return result;
 }
 
-GeneralResult RtidbClient::Update(const std::string& name, const std::map<std::string, std::string>& condition,
-        const std::map<std::string, std::string> values, const WriteOption& wo) {
-    GeneralResult result;
-    return result;
-}
 
