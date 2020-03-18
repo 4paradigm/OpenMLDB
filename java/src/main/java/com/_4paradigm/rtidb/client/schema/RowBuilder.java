@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class RowBuilder {
 
@@ -226,8 +227,8 @@ public class RowBuilder {
         return true;
     }
 
-    public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
-        if (row == null || row.length == 0 || schema == null || schema.size() == 0 || row.length != schema.size()) {
+    public static ByteBuffer encode(Map<String, Object> row, List<ColumnDesc> schema) throws TabletException {
+        if (row == null || row.size() == 0 || schema == null || schema.size() == 0 || row.size() != schema.size()) {
             throw new TabletException("input error");
         }
         int strLength = RowCodecCommon.calStrLength(row, schema);
@@ -237,37 +238,37 @@ public class RowBuilder {
         buffer = builder.setBuffer(buffer, size);
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
-            if (columnDesc.isNotNull() && row[i] == null) {
+            if (columnDesc.isNotNull() && row.get(columnDesc.getName()) == null) {
                 throw new TabletException("col " + columnDesc.getName() + " should not be null");
-            } else if (row[i] == null) {
+            } else if (row.get(columnDesc.getName()) == null) {
                 builder.appendNULL();
                 continue;
             }
             boolean ok = false;
             switch (columnDesc.getDataType()) {
                 case Varchar:
-                    ok = builder.appendString((String) row[i]);
+                    ok = builder.appendString((String) row.get(columnDesc.getName()));
                     break;
                 case Bool:
-                    ok = builder.appendBool((Boolean) row[i]);
+                    ok = builder.appendBool((Boolean) row.get(columnDesc.getName()));
                     break;
                 case SmallInt:
-                    ok = builder.appendInt16((Short) row[i]);
+                    ok = builder.appendInt16((Short) row.get(columnDesc.getName()));
                     break;
                 case Int:
-                    ok = builder.appendInt32((Integer) row[i]);
+                    ok = builder.appendInt32((Integer) row.get(columnDesc.getName()));
                     break;
                 case Timestamp:
-                    ok = builder.appendTimestamp((Long) row[i]);
+                    ok = builder.appendTimestamp((Long) row.get(columnDesc.getName()));
                     break;
                 case BigInt:
-                    ok = builder.appendInt64((Long) row[i]);
+                    ok = builder.appendInt64((Long) row.get(columnDesc.getName()));
                     break;
                 case Float:
-                    ok = builder.appendFloat((Float) row[i]);
+                    ok = builder.appendFloat((Float) row.get(columnDesc.getName()));
                     break;
                 case Double:
-                    ok = builder.appendDouble((Double) row[i]);
+                    ok = builder.appendDouble((Double) row.get(columnDesc.getName()));
                     break;
                 default:
                     throw new TabletException("unsupported data type");

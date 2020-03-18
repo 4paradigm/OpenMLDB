@@ -988,7 +988,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return ret;
     }
 
-    private boolean putRelationTable(String name, Object[] row) throws TabletException {
+    private boolean putRelationTable(String name, Map<String, Object> row) throws TabletException {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
@@ -998,13 +998,13 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         ByteBuffer buffer;
         List<ColumnDesc> schema;
-        if (row.length == th.getSchema().size()) {
+        if (row.size() == th.getSchema().size()) {
             schema = th.getSchema();
             buffer = RowBuilder.encode(row, th.getSchema());
         } else {
-            schema = th.getSchemaMap().get(row.length);
+            schema = th.getSchemaMap().get(row.size());
             if (schema == null) {
-                throw new TabletException("no schema for column count " + row.length);
+                throw new TabletException("no schema for column count " + row.size());
             }
             buffer = RowBuilder.encode(row, schema);
         }
@@ -1139,26 +1139,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row == null) {
             throw new TabletException("putting data is null");
         }
-        Object[] arrayRow = null;
         if (wo.isUpdateIfEqual() && wo.isUpdateIfExist()) {
-            if (row.size() > th.getSchema().size() && th.getSchemaMap().size() > 0) {
-                int columnSize = row.size();
-                if (row.size() > th.getSchema().size() + th.getSchemaMap().size()) {
-                    columnSize = th.getSchema().size() + th.getSchemaMap().size();
-                }
-                arrayRow = new Object[columnSize];
-                List<ColumnDesc> schema = th.getSchemaMap().get(columnSize);
-                for (int i = 0; i < schema.size(); i++) {
-                    arrayRow[i] = row.get(schema.get(i).getName());
-                }
-            } else {
-                arrayRow = new Object[th.getSchema().size()];
-                for (int i = 0; i < th.getSchema().size(); i++) {
-                    arrayRow[i] = row.get(th.getSchema().get(i).getName());
-                }
-            }
+            return putRelationTable(tname, row);
         }
-        return putRelationTable(tname, arrayRow);
+        return false;
     }
 
     private boolean updateRequest(TableHandler th, int pid, List<ColumnDesc> newCdSchema, List<ColumnDesc> newValueSchema,
@@ -1216,15 +1200,12 @@ public class TableSyncClientImpl implements TableSyncClient {
         return false;
     }
 
-    private List<ColumnDesc> schemaWrapper(Map<String, Object> columns, List<ColumnDesc> schema,
-                                           Object[] array) {
+    private List<ColumnDesc> schemaWrapper(Map<String, Object> columns, List<ColumnDesc> schema) {
         List<ColumnDesc> newSchema = new ArrayList<>();
-        int cIdx = 0;
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
             String colName = columnDesc.getName();
             if (columns.containsKey(colName)) {
-                array[cIdx++] = columns.get(colName);
                 newSchema.add(columnDesc);
             }
         }
@@ -1256,13 +1237,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         idxValue = validateKey(idxValue);
         int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
 
-        Object[] cdArray = new Object[conditionColumns.size()];
-        List<ColumnDesc> newCdSchema = schemaWrapper(conditionColumns, th.getSchema(), cdArray);
-        ByteBuffer conditionBuffer = RowBuilder.encode(cdArray, newCdSchema);
+        List<ColumnDesc> newCdSchema = schemaWrapper(conditionColumns, th.getSchema());
+        ByteBuffer conditionBuffer = RowBuilder.encode(conditionColumns, newCdSchema);
 
-        Object[] valueArray = new Object[valueColumns.size()];
-        List<ColumnDesc> newValueSchema = schemaWrapper(valueColumns, th.getSchema(), valueArray);
-        ByteBuffer valueBuffer = RowBuilder.encode(valueArray, newValueSchema);
+        List<ColumnDesc> newValueSchema = schemaWrapper(valueColumns, th.getSchema());
+        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
 
         return updateRequest(th, pid, newCdSchema, newValueSchema, conditionBuffer, valueBuffer);
     }
