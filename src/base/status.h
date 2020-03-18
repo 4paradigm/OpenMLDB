@@ -13,6 +13,11 @@
 namespace rtidb {
 namespace base {
 
+struct ResultMsg {
+    int code;
+    std::string msg;
+};
+
 class Status {
 public:
     // Create a success status.

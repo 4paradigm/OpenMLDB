@@ -16,6 +16,7 @@
 #include "proto/name_server.pb.h"
 #include "base/codec.h"
 #include <boost/lexical_cast.hpp>
+#include "base/status.h"
 
 namespace rtidb {
 namespace base {
@@ -339,50 +340,108 @@ public:
         return 0;
     }
 
-
-    static int Encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema,
-               const std::vector<std::string>& value_vec, uint32_t string_length, std::string& buffer) {
-        if (value_vec.size() != schema.size()) {
-            return -1;
-        }
-        rtidb::base::RowBuilder rb(schema);
-        uint32_t total_size = rb.CalTotalLength(string_length);
-        buffer.clear();
-        buffer.resize(total_size);
-        rb.SetBuffer(reinterpret_cast<int8_t*>(&buffer[0]), total_size);
-        for (int32_t i = 0; i < schema.size(); i++) {
-            if (value_vec[i] == NONETOKEN) {
-                rb.AppendNULL();
-                continue;
-            }
-            auto type = schema.Get(i).data_type();
-            try {
-                if (type == rtidb::type::kInt) {
-                    rb.AppendInt32(boost::lexical_cast<int32_t>(value_vec[i]));
-                } else if (type == rtidb::type::kTimestamp) {
-                    rb.AppendTimestamp(boost::lexical_cast<int64_t>(value_vec[i]));
-                } else if (type == rtidb::type::kBigInt) {
-                    rb.AppendInt64(boost::lexical_cast<int64_t>(value_vec[i]));
-                } else if (type == rtidb::type::kBool) {
-                    rb.AppendBool(boost::lexical_cast<bool>(value_vec[i]));
-                } else if (type == rtidb::type::kFloat) {
-                    rb.AppendFloat(boost::lexical_cast<float>(value_vec[i]));
-                } else if (type == rtidb::type::kSmallInt) {
-                    rb.AppendInt16(boost::lexical_cast<int16_t>(value_vec[i]));
-                } else if (type == rtidb::type::kDouble) {
-                    rb.AppendDouble(boost::lexical_cast<double>(value_vec[i]));
-                } else if (type == rtidb::type::kVarchar) {
-                    rb.AppendString(value_vec[i].data(), value_vec[i].size());
-                } else if (type == rtidb::type::kDate) {
-                    rb.AppendNULL();
-                } else {
+    static int32_t CalStrLength(const std::map<std::string, std::string>& str_map, const Schema& schema,
+            ResultMsg& rm) {
+        int32_t str_len = 0;
+        for (int i = 0; i < schema.size(); i++) {
+            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
+            if (col.data_type() == ::rtidb::type::kVarchar) {
+                auto iter = str_map.find(col.name());
+                if (iter == str_map.end()) {
+                    rm.code = -1;
+                    rm.msg = col.name() + " not in str_map";
                     return -1;
                 }
-            } catch (boost::bad_lexical_cast &) {
-                return -1;
+                if (!col.not_null() && (iter->second == "null" || iter->second == NONETOKEN)) {
+                    continue;
+                } else if (iter->second == "null" || iter->second == NONETOKEN) {
+                    rm.code = -1;
+                    rm.msg = col.name() + " should not be null";
+                    return -1;
+                }
+                str_len += iter->second.length();
             }
         }
-        return 0;
+        return str_len;
+    }
+
+    static ResultMsg Encode(const std::map<std::string, std::string>& str_map, const Schema& schema, std::string& row) {
+        ResultMsg rm;
+        if (str_map.size() == 0 || schema.size() == 0 || str_map.size() - schema.size() != 0) {
+            rm.code = -1;
+            rm.msg = "input error";
+            return rm;
+        }
+        int32_t str_len = CalStrLength(str_map, schema, rm);
+        if (str_len < 0) {
+            return rm;
+        }
+        ::rtidb::base::RowBuilder builder(schema);
+        uint32_t size = builder.CalTotalLength(str_len);
+        row.resize(size);
+        builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+        for (int i = 0; i < schema.size(); i++) {
+            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
+            auto iter = str_map.find(col.name());
+            if (iter == str_map.end()) {
+                rm.code = -1;
+                rm.msg = col.name() + " not in str_map";
+                return rm; 
+            }
+            if (!col.not_null() && (iter->second == "null" || iter->second == NONETOKEN)) {
+                builder.AppendNULL();
+                continue;
+            } else if (iter->second == "null" || iter->second == NONETOKEN) {
+                rm.code = -1;
+                rm.msg = col.name() + " should not be null";
+                return rm;
+            }
+            bool ok = false;
+            try {
+                switch (col.data_type()) {
+                    case rtidb::type::kVarchar:
+                        ok = builder.AppendString(iter->second.c_str(), iter->second.length());
+                        break;
+                    case rtidb::type::kBool:
+                        ok = builder.AppendBool(boost::lexical_cast<bool>(iter->second));
+                        break;
+                    case rtidb::type::kSmallInt:
+                        ok = builder.AppendInt16(boost::lexical_cast<uint16_t>(iter->second));
+                        break;
+                    case rtidb::type::kInt:
+                        ok = builder.AppendInt32(boost::lexical_cast<uint32_t>(iter->second));
+                        break;
+                    case rtidb::type::kBigInt:
+                        ok = builder.AppendInt64(boost::lexical_cast<uint64_t>(iter->second));
+                        break;
+                    case rtidb::type::kTimestamp:
+                        ok = builder.AppendTimestamp(boost::lexical_cast<uint64_t>(iter->second));
+                        break;
+                    case rtidb::type::kFloat:
+                        ok = builder.AppendFloat(boost::lexical_cast<float>(iter->second));
+                        break;
+                    case rtidb::type::kDouble:
+                        ok = builder.AppendDouble(boost::lexical_cast<double>(iter->second));
+                        break;
+                    default:
+                        rm.code = -1;
+                        rm.msg = "unsupported data type";
+                        return rm;
+                }
+                if (!ok) {
+                    rm.code = -1;
+                    rm.msg = "append " + ::rtidb::type::DataType_Name(col.data_type()) + " error";
+                    return rm;
+                }
+            } catch(std::exception const& e) {
+                rm.code = -1;
+                rm.msg = "input format error"; 
+                return rm;
+            }
+        }
+        rm.code = 0;
+        rm.msg = "ok";
+        return rm;
     }
 
     static void Decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, const std::string& value,

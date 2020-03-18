@@ -295,6 +295,76 @@ std::shared_ptr<rtidb::client::TabletClient> RtidbClient::GetTabletClient(const 
     return tablet;
 }
 
+/**
+GeneralResult RtidbClient::Update(const std::string& table_name, 
+        const std::map<std::string, std::string> condition_columns_map, 
+        const std::map<std::string, std::string> value_columns_map,
+        const WriteOption& wo) {
+    GeneralResult result;
+    std::shared_ptr<TableHandler> th;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = tables_.find(name);
+        if (iter == tables_.end()) {
+            result.SetError(-1, "table not found");
+            return result;
+        }
+        th = iter->second;
+    }
+    if (condition_columns_map.size() == 0 || value_columns_map.size() == 0) {
+        result.SetError(-1, "condition_columns_map or value_columns_map is empty");
+        return result;
+    }
+    auto cd_iter = condition_columns_map.begin();
+    if (cd_iter == condition_columns_map.end()) {
+        result.SetError(-1, "condition_columns_map is empty");
+        return result;
+    }
+    std::string pk = cd_iter->second;
+
+    uint32_t tid = tables[0].tid();
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) % th->partition.size());
+    google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc> new_cd_schema;
+    //TODO SchemaWrapper
+    SchemaWrapper(condition_columns_map, *(th->columns), new_cd_schema);
+    std::string cd_value;
+    ::rtidb::base::ResultMsg cd_rm = ::rtidb::base::RowSchemaCodec::Encode(condition_columns_map, new_cd_schema, cd_value);
+    if(cd_rm.code < 0) {
+        result.SetError(rm.code, "encode error, msg: " + cd_rm.msg);
+        return result;
+    }
+    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+        std::string compressed;
+        ::snappy::Compress(cd_value.c_str(), cd_value.length(), &compressed);
+        cd_value = compressed;
+    }
+    google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>  new_value_schema;
+    SchemaWrapper(value_columns_map,*(th->columns), new_value_schema);
+    std::string value;
+    ::rtidb::base::ResultMsg value_rm = ::rtidb::base::RowSchemaCodec::Encode(value_columns_map, new_value_schema, value);
+    if(value_rm.code < 0) {
+        result.SetError(rm.code, "encode error, msg: " + value_rm.msg);
+        return result;
+    }
+    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+        std::string compressed;
+        ::snappy::Compress(value.c_str(), value.length(), &compressed);
+        value = compressed;
+    }
+    std::string err_msg;
+    auto tablet_client = GetTabletClient(th->partition[0].leader, err_msg);
+    if (tablet_client == NULL) {
+        result.SetError(-1, err_msg);
+        return result;
+    }
+    bool ok = tablet_client->Update(tid, pid, new_cd_schema, new_value_schema, cd_value, value, msg);
+    if (!ok) {
+        result.SetError(-1, msg);
+    }
+    return result;
+}
+*/
+
 GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::string, std::string>& value, const WriteOption& wo) {
     GeneralResult result;
     std::shared_ptr<TableHandler> th;
@@ -318,8 +388,6 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
             keys_column.insert(col);
         }
     }
-    std::vector<std::string> value_vec;
-    std::uint32_t string_length = 0;
     for (auto& column : *(th->columns)) {
         auto iter = value.find(column.name());
         auto set_iter = keys_column.find(column.name());
@@ -328,19 +396,13 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
                 std::string err_msg = "miss column " + column.name();
                 result.SetError(-1, err_msg);
             }
-            value_vec.push_back("");
             // TODO: add auto gen key columm
-        } else {
-            value_vec.push_back(iter->second);
-            if ((column.data_type() == rtidb::type::kVarchar) && (iter->second != rtidb::base::NONETOKEN)) {
-                string_length += iter->second.size();
-            }
-        }
+        } 
     }
     std::string buffer;
-    int code = rtidb::base::RowSchemaCodec::Encode(*(th->columns), value_vec, string_length, buffer);
-    if (code != 0) {
-        result.SetError(code, "encode error");
+    rtidb::base::ResultMsg rm = rtidb::base::RowSchemaCodec::Encode(value, *(th->columns), buffer);
+    if (rm.code != 0) {
+        result.SetError(rm.code, "encode error, msg: " + rm.msg);
         return result;
     }
     std::string err_msg;

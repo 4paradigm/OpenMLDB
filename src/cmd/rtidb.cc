@@ -503,97 +503,6 @@ bool GetParameterMap(const std::string& first, const std::vector<std::string>& p
     return true;
 }
 
-
-int32_t CalStrLength(const std::vector<std::string>& str_vec, const Schema& schema) {
-    int32_t str_len = 0;
-    for (int i = 0; i < schema.size(); i++) {
-        const ::rtidb::common::ColumnDesc& col = schema.Get(i);
-        if (col.data_type() == ::rtidb::type::kVarchar) {
-            if (!col.not_null() && str_vec.at(i) == "null") {
-                continue;
-            } else if (col.not_null() && str_vec.at(i) == "null") {
-                printf("col %s should not be null\n", col.name().c_str());
-                return -1;
-            }
-            str_len += str_vec.at(i).length();
-        }
-    }
-    return str_len;
-}
-
-
-bool Encode(const std::vector<std::string>& str_vec, const Schema& schema, std::string& row) {
-    if (str_vec.size() == 0 || schema.size() == 0 || str_vec.size() - schema.size() != 0) {
-        printf("input error\n");
-        return false;
-    }
-    int32_t str_len = CalStrLength(str_vec, schema);
-    if (str_len < 0) {
-        return false;
-    }
-    ::rtidb::base::RowBuilder builder(schema);
-    uint32_t size = builder.CalTotalLength(str_len);
-    row.resize(size);
-    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
-    for (int i = 0; i < schema.size(); i++) {
-        const ::rtidb::common::ColumnDesc& col = schema.Get(i);
-        if (!col.not_null() && str_vec.at(i) == "null") {
-            builder.AppendNULL();
-            continue;
-        } else if (col.not_null() && str_vec.at(i) == "null") {
-            printf("col %s should not be null\n", col.name().c_str());
-            return false;
-        }
-        bool ok = false;
-        try {
-            switch (col.data_type()) {
-                case rtidb::type::kVarchar:
-                    ok = builder.AppendString(str_vec.at(i).c_str(), str_vec.at(i).length());
-                    break;
-                case rtidb::type::kBool:
-                    if (str_vec.at(i) == "true") {
-                        builder.AppendBool(true);
-                    } else if (str_vec.at(i) == "false"){
-                        builder.AppendBool(false);
-                    } else {
-                        printf("input bool error\n");
-                        return false;
-                    }
-                    break;
-                case rtidb::type::kSmallInt:
-                    ok = builder.AppendInt16(boost::lexical_cast<uint16_t>(str_vec.at(i)));
-                    break;
-                case rtidb::type::kInt:
-                    ok = builder.AppendInt32(boost::lexical_cast<uint32_t>(str_vec.at(i)));
-                    break;
-                case rtidb::type::kBigInt:
-                    ok = builder.AppendInt64(boost::lexical_cast<uint64_t>(str_vec.at(i)));
-                    break;
-                case rtidb::type::kTimestamp:
-                    ok = builder.AppendTimestamp(boost::lexical_cast<uint64_t>(str_vec.at(i)));
-                    break;
-                case rtidb::type::kFloat:
-                    ok = builder.AppendFloat(boost::lexical_cast<float>(str_vec.at(i)));
-                    break;
-                case rtidb::type::kDouble:
-                    ok = builder.AppendDouble(boost::lexical_cast<double>(str_vec.at(i)));
-                    break;
-                default:
-                    printf("unsupported data type\n");
-                    return false;
-            }
-            if (!ok) {
-                printf("append %s error\n", ::rtidb::type::DataType_Name(col.data_type()).c_str());
-                return false;
-            }
-        } catch(std::exception const& e) {
-            printf("input format error\n");
-            return false;
-        }
-    }
-    return true;
-}
-
 std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(const ::rtidb::nameserver::TableInfo& table_info,
             uint32_t pid, std::string& msg) {
     std::string endpoint;
@@ -1267,13 +1176,12 @@ bool GetColumnMap(const std::vector<std::string>& parts, std::map<std::string, s
 }
 
 void SchemaWrapper(const std::map<std::string, std::string>& columns_map, const Schema& schema, 
-        std::vector<std::string>& str_vec, Schema& new_schema) {
+        Schema& new_schema) {
     for (int i = 0; i < schema.size(); i++) {
         const ::rtidb::common::ColumnDesc& col = schema.Get(i);
         const std::string& col_name = col.name();
         auto iter = columns_map.find(col_name);
         if(iter != columns_map.end()) {
-            str_vec.push_back(iter->second);
             ::rtidb::common::ColumnDesc* tmp = new_schema.Add();
             tmp->CopyFrom(col);
         }
@@ -1333,11 +1241,11 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
         return;
     }
     Schema new_cd_schema;
-    std::vector<std::string> cd_str_vec;
-    SchemaWrapper(condition_columns_map, tables[0].column_desc_v1(), cd_str_vec, new_cd_schema);
+    SchemaWrapper(condition_columns_map, tables[0].column_desc_v1(), new_cd_schema);
     std::string cd_value;
-    if(!Encode(cd_str_vec, new_cd_schema, cd_value)) {
-        printf("encode error\n");
+    ::rtidb::base::ResultMsg cd_rm = ::rtidb::base::RowSchemaCodec::Encode(condition_columns_map, new_cd_schema, cd_value);
+    if(cd_rm.code < 0) {
+        printf("encode error, msg: %s\n", cd_rm.msg.c_str());
         return;
     }
     if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
@@ -1346,11 +1254,11 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
         cd_value = compressed;
     }
     Schema new_value_schema;
-    std::vector<std::string> value_str_vec;
-    SchemaWrapper(value_columns_map, tables[0].column_desc_v1(), value_str_vec, new_value_schema);
+    SchemaWrapper(value_columns_map, tables[0].column_desc_v1(), new_value_schema);
     std::string value;
-    if(!Encode(value_str_vec, new_value_schema, value)) {
-        printf("encode error\n");
+    ::rtidb::base::ResultMsg value_rm = ::rtidb::base::RowSchemaCodec::Encode(value_columns_map, new_value_schema, value);
+    if(value_rm.code < 0) {
+        printf("encode error, msg: %s\n", value_rm.msg.c_str());
         return;
     }
     if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
