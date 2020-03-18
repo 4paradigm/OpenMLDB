@@ -252,11 +252,6 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
-    void AlignTable(RpcController* controller,
-            const ::rtidb::api::GeneralRequest* request,
-            ::rtidb::api::GeneralResponse* response,
-            Closure* done);
-
     void DeleteIndex(RpcController* controller,
             const ::rtidb::api::DeleteIndexRequest* request,
             ::rtidb::api::GeneralResponse* response,
