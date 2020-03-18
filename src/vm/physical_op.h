@@ -174,16 +174,7 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     PhysicalGroupNode(PhysicalOpNode *node, const node::ExprListNode *groups)
         : PhysicalUnaryNode(node, kPhysicalOpGroupBy, true, false),
           groups_(groups) {}
-    PhysicalGroupNode(PhysicalOpNode *node,
-                      const std::vector<std::string> &groups)
-        : PhysicalUnaryNode(node, kPhysicalOpGroupBy, true, false) {
-        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-        node::ExprListNode *expr = new node::ExprListNode();
-        for (auto id : groups) {
-            expr->AddChild(new node::ColumnRefNode(id, ""));
-        }
-        groups_ = expr;
-    }
+
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
 };
@@ -273,16 +264,6 @@ class PhysicalSortNode : public PhysicalUnaryNode {
     PhysicalSortNode(PhysicalOpNode *node, const node::OrderByNode *order)
         : PhysicalUnaryNode(node, kPhysicalOpSortBy, true, false),
           order_(order) {}
-    PhysicalSortNode(PhysicalOpNode *node,
-                     const std::vector<std::string> orders)
-        : PhysicalUnaryNode(node, kPhysicalOpSortBy, true, false) {
-        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-        node::ExprListNode *expr = new node::ExprListNode();
-        for (auto id : orders) {
-            expr->AddChild(new node::ColumnRefNode(id, ""));
-        }
-        order_ = new node::OrderByNode(expr, true);
-    }
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::OrderByNode *order_;
 };

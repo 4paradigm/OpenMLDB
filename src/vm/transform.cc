@@ -163,6 +163,7 @@ bool Transform::TransformLimitOp(const node::LimitPlanNode* node,
         return false;
     }
     *output = new PhysicalLimitNode(depend, node->limit_cnt_);
+    node_manager_->RegisterNode(*output);
     return true;
 }
 
@@ -193,8 +194,10 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
             }
             ops.push_back(project_op);
         } else {
-            ops.push_back(new PhysicalRowProjectNode(
-                depend, &(project_list->GetProjects())));
+            PhysicalOpNode* op = new PhysicalRowProjectNode(
+                depend, &(project_list->GetProjects()));
+            node_manager_->RegisterNode(op);
+            ops.push_back(op);
         }
     }
 
@@ -213,10 +216,12 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
 
         PhysicalOpNode* join = new PhysicalJoinNode(
             (*iter), *(++iter), ::fesql::node::kJoinTypeConcat, nullptr);
+        node_manager_->RegisterNode(join);
         iter++;
         for (; iter != ops.cend(); iter++) {
             join = new PhysicalJoinNode(
                 join, *iter, ::fesql::node::kJoinTypeConcat, nullptr);
+            node_manager_->RegisterNode(join);
         }
         *output = join;
         return true;
@@ -235,14 +240,27 @@ bool Transform::TransformWindowProject(const node::ProjectListNode* node,
 
     PhysicalOpNode* depend = const_cast<PhysicalOpNode*>(depend_node);
     if (!node->w_ptr_->GetKeys().empty()) {
+        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
+        node::ExprListNode *expr = node_manager_->MakeExprList();
+        for (auto id : node->w_ptr_->GetKeys()) {
+            expr->AddChild(node_manager_->MakeColumnRefNode(id, ""));
+        }
         PhysicalGroupNode* group_op =
-            new PhysicalGroupNode(depend, node->w_ptr_->GetKeys());
+            new PhysicalGroupNode(depend, expr);
+        node_manager_->RegisterNode(group_op);
         depend = group_op;
     }
 
     if (!node->w_ptr_->GetOrders().empty()) {
+        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
+        node::ExprListNode *expr = new node::ExprListNode();
+        for (auto id : node->w_ptr_->GetOrders()) {
+            expr->AddChild(new node::ColumnRefNode(id, ""));
+        }
+        node::OrderByNode* order_node = dynamic_cast<node::OrderByNode*>(node_manager_->MakeOrderByNode(expr, true));
         PhysicalSortNode* sort_op =
-            new PhysicalSortNode(depend, node->w_ptr_->GetOrders());
+            new PhysicalSortNode(depend, order_node);
+        node_manager_->RegisterNode(sort_op);
         depend = sort_op;
     }
 
@@ -251,9 +269,11 @@ bool Transform::TransformWindowProject(const node::ProjectListNode* node,
         PhysicalBufferNode* window_op =
             new PhysicalBufferNode(depend, node->w_ptr_->GetStartOffset(),
                                    node->w_ptr_->GetEndOffset());
+        node_manager_->RegisterNode(window_op);
         depend = window_op;
     }
     *output = new PhysicalAggrerationNode(depend, &(node->GetProjects()));
+    node_manager_->RegisterNode(*output);
     return true;
 }
 bool Transform::TransformJoinOp(const node::JoinPlanNode* node,
@@ -274,6 +294,7 @@ bool Transform::TransformJoinOp(const node::JoinPlanNode* node,
     }
     *output =
         new PhysicalJoinNode(left, right, node->join_type_, node->condition_);
+    node_manager_->RegisterNode(*output);
     return true;
 }
 bool Transform::TransformUnionOp(const node::UnionPlanNode* node,
@@ -294,6 +315,7 @@ bool Transform::TransformUnionOp(const node::UnionPlanNode* node,
         return false;
     }
     *output = new PhysicalUnionNode(left, right, node->is_all);
+    node_manager_->RegisterNode(*output);
     return true;
 }
 bool Transform::TransformGroupOp(const node::GroupPlanNode* node,
@@ -310,6 +332,7 @@ bool Transform::TransformGroupOp(const node::GroupPlanNode* node,
         return false;
     }
     *output = new PhysicalGroupNode(left, node->by_list_);
+    node_manager_->RegisterNode(*output);
     return true;
 }
 bool Transform::TransformSortOp(const node::SortPlanNode* node,
@@ -325,6 +348,7 @@ bool Transform::TransformSortOp(const node::SortPlanNode* node,
         return false;
     }
     *output = new PhysicalSortNode(left, node->order_list_);
+    node_manager_->RegisterNode(*output);
     return true;
 }
 bool Transform::TransformFilterOp(const node::FilterPlanNode* node,
@@ -341,6 +365,7 @@ bool Transform::TransformFilterOp(const node::FilterPlanNode* node,
         return false;
     }
     *output = new PhysicalFliterNode(depend, node->condition_);
+    node_manager_->RegisterNode(*output);
     return true;
 }
 
@@ -355,6 +380,7 @@ bool Transform::TransformScanOp(const node::TablePlanNode* node,
     auto table = catalog_->GetTable(db_, node->table_);
     if (table) {
         *output = new PhysicalScanTableNode(table);
+        node_manager_->RegisterNode(*output);
         return true;
     } else {
         status.msg = "fail to transform scan op: table " + db_ + "." +
@@ -378,6 +404,7 @@ bool Transform::TransformRenameOp(const node::RenamePlanNode* node,
         return false;
     }
     *output = new PhysicalRenameNode(left, node->table_);
+    node_manager_->RegisterNode(*output);
     return true;
 }
 bool Transform::TransformQueryPlan(const node::QueryPlanNode* node,
@@ -403,6 +430,7 @@ bool Transform::TransformDistinctOp(const node::DistinctPlanNode* node,
         return false;
     }
     *output = new PhysicalDistinctNode(left);
+    node_manager_->RegisterNode(*output);
     return true;
 }
 bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
@@ -464,6 +492,7 @@ bool GroupByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     PhysicalScanIndexNode* scan_index_op =
                         new PhysicalScanIndexNode(scan_op->table_handler_,
                                                   index_name);
+                    node_manager_->RegisterNode(scan_index_op);
                     // remove node if groups is empty
                     if (new_groups->children_.empty()) {
                         *output = scan_index_op;
@@ -471,6 +500,7 @@ bool GroupByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     } else {
                         PhysicalGroupNode* new_group_op =
                             new PhysicalGroupNode(scan_index_op, new_groups);
+                        node_manager_->RegisterNode(new_group_op);
                         *output = new_group_op;
                         return true;
                     }
@@ -650,6 +680,7 @@ bool SortByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     } else {
                         PhysicalSortNode* new_sort_op =
                             new PhysicalSortNode(scan_index_op, new_order);
+                        node_manager_->RegisterNode(new_sort_op);
                         *output = new_sort_op;
                         return true;
                     }

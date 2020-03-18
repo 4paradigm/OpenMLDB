@@ -16,6 +16,7 @@
 #include "node/batch_plan_node.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "vm/physical_op.h"
 
 namespace fesql {
 namespace node {
@@ -212,6 +213,10 @@ class NodeManager {
 
     PlanNode *MakeDistinctPlanNode(PlanNode *node);
 
+    vm::PhysicalOpNode* RegisterNode(vm::PhysicalOpNode* node_ptr) {
+        physical_plan_node_list_.push_back(node_ptr);
+        return node_ptr;
+    }
  private:
     SQLNode *RegisterNode(SQLNode *node_ptr) {
         parser_node_list_.push_back(node_ptr);
@@ -236,11 +241,14 @@ class NodeManager {
         sql_node_list_list_.push_back(node_ptr);
         return node_ptr;
     }
+    
+
 
     std::list<SQLNode *> parser_node_list_;
     std::list<SQLNodeList *> sql_node_list_list_;
     std::list<node::PlanNode *> plan_node_list_;
     std::list<node::BatchPlanNode *> batch_plan_node_list_;
+    std::list<vm::PhysicalOpNode*> physical_plan_node_list_;
 };
 
 }  // namespace node
