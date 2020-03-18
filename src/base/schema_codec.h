@@ -306,7 +306,7 @@ public:
 
     static int Encode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema,
                const std::vector<std::string>& value_vec, uint32_t string_length, std::string& buffer) {
-        if (value_vec.size() != schema.size()) {
+        if (value_vec.size() != static_cast<uint64_t>(schema.size())) {
             return -1;
         }
         rtidb::base::RowBuilder rb(schema);
