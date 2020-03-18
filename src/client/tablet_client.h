@@ -238,6 +238,9 @@ public:
     ::rtidb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name, 
                 const std::string& pk, uint64_t ts, uint32_t limit, uint32_t& count);
 
+    bool Traverse(uint32_t tid, uint32_t pid, const std::string& pk, uint32_t limit,
+                uint32_t* count, std::string* msg, std::string* data, bool* is_finish);
+
     void ShowTp();
 
     bool SetMode(bool mode);

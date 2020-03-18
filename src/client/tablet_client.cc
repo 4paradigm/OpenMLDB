@@ -1107,6 +1107,28 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, ::rtidb::common::Sto
     count = response->count();
     return kv_it;
 }
+bool TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& pk, uint32_t limit, uint32_t* count, std::string* msg, std::string* data, bool* is_finish) {
+    rtidb::api::TraverseRequest request;
+    rtidb::api::TraverseResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_limit(limit);
+
+    response.set_allocated_pairs(data);
+    response.set_allocated_msg(msg);
+    if (!pk.empty()) {
+        request.set_pk(pk);
+    }
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::Traverse, &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    response.release_pairs();
+    response.release_msg();
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    *count = response.count();
+    *is_finish = response.is_finish();
+    return true;
+}
 
 bool TabletClient::SetMode(bool mode) {
     ::rtidb::api::SetModeRequest request;
