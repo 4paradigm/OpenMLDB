@@ -70,27 +70,6 @@ DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
 
-static const std::unordered_map<std::string, ::rtidb::type::DataType>  DATA_TYPE_MAP = {
-    {"bool", ::rtidb::type::kBool}, 
-    {"smallint", ::rtidb::type::kSmallInt},
-    {"int", ::rtidb::type::kInt},
-    {"bigint", ::rtidb::type::kBigInt},
-    {"float", ::rtidb::type::kFloat},
-    {"double", ::rtidb::type::kDouble},
-    {"varchar", ::rtidb::type::kVarchar},
-    {"date", ::rtidb::type::kDate},
-    {"timestamp", ::rtidb::type::kTimestamp},
-    {"blob", ::rtidb::type::kBlob}
-};
-
-static const std::unordered_map<std::string, ::rtidb::type::IndexType> INDEX_TYPE_MAP = {
-    {"unique", ::rtidb::type::kUnique},
-    {"nounique", ::rtidb::type::kNoUinque},
-    {"primarykey", ::rtidb::type::kPrimaryKey},
-    {"autogen", ::rtidb::type::kAutoGen},
-    {"increment", ::rtidb::type::kIncrement}
-};
-
 void SetupLog() {
     // Config log 
     if (FLAGS_log_level == "debug") {
@@ -2346,7 +2325,7 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         std::string cur_type = table_info.column_desc(idx).type();
         std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
         if (table_info.has_table_type() && table_info.table_type() == "Relational") {
-            if (DATA_TYPE_MAP.find(cur_type) == DATA_TYPE_MAP.end()) {
+            if (::rtidb::base::DATA_TYPE_MAP.find(cur_type) == ::rtidb::base::DATA_TYPE_MAP.end()) {
                 printf("type %s is invalid\n", cur_type.c_str());
                 return -1;
             }
@@ -2395,7 +2374,7 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         name_map.insert(std::make_pair(table_info.column_desc(idx).name(), cur_type));
         ::rtidb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc_v1();
         column_desc->CopyFrom(table_info.column_desc(idx));
-        const auto& tp_iter = DATA_TYPE_MAP.find(cur_type);
+        const auto& tp_iter = ::rtidb::base::DATA_TYPE_MAP.find(cur_type);
         column_desc->set_data_type(tp_iter->second);
         if (tp_iter->second == ::rtidb::type::kBlob) {
             column_desc->set_data_type(::rtidb::type::kVarchar);
@@ -2482,8 +2461,8 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
             }
             std::string idx_type = table_info.index(idx).index_type();
             std::transform(idx_type.begin(), idx_type.end(), idx_type.begin(), ::tolower);
-            const auto& idx_iter = INDEX_TYPE_MAP.find(idx_type);
-            if (idx_iter == INDEX_TYPE_MAP.end()) {
+            const auto& idx_iter = ::rtidb::base::INDEX_TYPE_MAP.find(idx_type);
+            if (idx_iter == ::rtidb::base::INDEX_TYPE_MAP.end()) {
                 printf("index type %s is invalid\n", idx_type.c_str());
                 return -1;
             }

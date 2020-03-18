@@ -9,6 +9,7 @@
 #define RTIDB_SCHEMA_CODEC_H
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <string>
 #include <cstring>
 #include <iostream>
@@ -34,6 +35,41 @@ const std::map<std::string, rtidb::type::DataType> NameToDataType = {
     {"date", rtidb::type::DataType::kDate},
     {"timestamp", rtidb::type::DataType::kTimestamp}
 };
+
+static const std::unordered_map<std::string, ::rtidb::type::DataType>  DATA_TYPE_MAP = {
+    {"bool", ::rtidb::type::kBool}, 
+    {"smallint", ::rtidb::type::kSmallInt},
+    {"int", ::rtidb::type::kInt},
+    {"bigint", ::rtidb::type::kBigInt},
+    {"float", ::rtidb::type::kFloat},
+    {"double", ::rtidb::type::kDouble},
+    {"varchar", ::rtidb::type::kVarchar},
+    {"date", ::rtidb::type::kDate},
+    {"timestamp", ::rtidb::type::kTimestamp},
+    {"blob", ::rtidb::type::kBlob}
+};
+
+static const std::unordered_map<std::string, ::rtidb::type::IndexType> INDEX_TYPE_MAP = {
+    {"unique", ::rtidb::type::kUnique},
+    {"nounique", ::rtidb::type::kNoUinque},
+    {"primarykey", ::rtidb::type::kPrimaryKey},
+    {"autogen", ::rtidb::type::kAutoGen},
+    {"increment", ::rtidb::type::kIncrement}
+};
+
+static const std::unordered_map<::rtidb::type::DataType, std::string> DATA_TYPE_STR_MAP = {
+    {::rtidb::type::kBool, "bool"},
+    {::rtidb::type::kSmallInt, "smallInt"},
+    {::rtidb::type::kInt, "int"},
+    {::rtidb::type::kBigInt, "bigInt"},
+    {::rtidb::type::kFloat, "float"},
+    {::rtidb::type::kDouble, "double"},
+    {::rtidb::type::kTimestamp, "timestamp"},
+    {::rtidb::type::kDate, "date"},
+    {::rtidb::type::kVarchar, "varchar"},
+    {::rtidb::type::kBlob, "blob"}
+};
+
 enum ColType {
     kString = 0,
     kFloat = 1,
