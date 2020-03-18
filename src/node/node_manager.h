@@ -47,6 +47,13 @@ class NodeManager {
             delete (*sql_node_list_iter);
             sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
         }
+
+        for (auto physical_node_list_iter= physical_plan_node_list_.begin();
+             physical_node_list_iter != physical_plan_node_list_.end();
+             ++physical_node_list_iter) {
+            delete (*physical_node_list_iter);
+            physical_node_list_iter = physical_plan_node_list_.erase(physical_node_list_iter);
+        }
     }
 
     int GetParserNodeListSize() { return parser_node_list_.size(); }
@@ -241,7 +248,7 @@ class NodeManager {
         sql_node_list_list_.push_back(node_ptr);
         return node_ptr;
     }
-    
+
 
 
     std::list<SQLNode *> parser_node_list_;
