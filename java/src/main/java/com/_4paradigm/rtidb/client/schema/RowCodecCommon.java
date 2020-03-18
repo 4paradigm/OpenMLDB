@@ -54,23 +54,23 @@ public class RowCodecCommon {
         }
     }
 
-    public static int calStrLength(Object[] row, List<ColumnDesc> schema) throws TabletException {
+    public static int calStrLength(Map<String, Object> row, List<ColumnDesc> schema) throws TabletException {
         int strLength = 0;
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
             if (columnDesc.getDataType().equals(DataType.Varchar)) {
-                if (!columnDesc.isNotNull() && row[i] == null) {
+                if (!columnDesc.isNotNull() && row.get(columnDesc.getName()) == null) {
                     continue;
-                } else if (columnDesc.isNotNull() && row[i] == null) {
+                } else if (columnDesc.isNotNull() && row.get(columnDesc.getName()) == null) {
                     throw new TabletException("col " + columnDesc.getName() + " should not be null");
                 }
-                strLength += ((String) row[i]).length();
+                strLength += ((String) row.get(columnDesc.getName())).length();
             }
         }
         return strLength;
     }
 
-    public static String getPrimaryKey(Object[] row, List<Common.ColumnKey> columnKeyList, List<ColumnDesc> schema) {
+    public static String getPrimaryKey(Map<String, Object> row, List<Common.ColumnKey> columnKeyList, List<ColumnDesc> schema) {
         String pkColName = "";
         for (int i = 0; i < columnKeyList.size(); i++) {
             Common.ColumnKey columnKey = columnKeyList.get(i);
@@ -83,10 +83,10 @@ public class RowCodecCommon {
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
             if (columnDesc.getName().equals(pkColName)) {
-                if (row[i] == null) {
+                if (row.get(columnDesc.getName()) == null) {
                     pk = RTIDBClientConfig.NULL_STRING;
                 } else {
-                    pk = String.valueOf(row[i]);
+                    pk = String.valueOf(row.get(columnDesc.getName()));
                 }
                 if (pk.isEmpty()) {
                     pk = RTIDBClientConfig.EMPTY_STRING;
