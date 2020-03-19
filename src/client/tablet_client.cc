@@ -208,8 +208,12 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Update,
             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
+        cd->release_value();
+        val->release_value();
         return true;
     }
+    cd->release_value();
+    val->release_value();
     msg = response.msg();
     return false;
 }
