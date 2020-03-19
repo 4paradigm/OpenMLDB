@@ -33,6 +33,15 @@ void PhysicalUnaryNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+bool PhysicalUnaryNode::InitSchema() {
+    if (producers_.empty() || nullptr == producers_[0]) {
+        LOG(WARNING) << "InitSchema fail: producers is empty or null";
+        return false;
+    }
+    output_schema.CopyFrom(producers_[0]->output_schema);
+    PrintSchema();
+    return true;
+}
 void PhysicalBinaryNode::PrintChildren(std::ostream& output,
                                        const std::string& tab) const {
     if (2 != producers_.size() || nullptr == producers_[0] ||
@@ -49,6 +58,18 @@ void PhysicalBinaryNode::Print(std::ostream& output,
     PhysicalOpNode::Print(output, tab);
     output << "\n";
     PrintChildren(output, tab);
+}
+bool PhysicalBinaryNode::InitSchema() {
+    if (2 != producers_.size() || nullptr == producers_[0] ||
+        nullptr == producers_[1]) {
+        LOG(WARNING) << "InitSchema fail: producers size isn't 2 or left/right "
+                        "producer is null";
+        return false;
+    }
+    output_schema.CopyFrom(producers_[0]->output_schema);
+    output_schema.MergeFrom(producers_[1]->output_schema);
+    PrintSchema();
+    return false;
 }
 void PhysicalScanTableNode::Print(std::ostream& output,
                                   const std::string& tab) const {
@@ -73,32 +94,13 @@ void PhysicalGroupNode::Print(std::ostream& output,
 void PhysicalProjectNode::Print(std::ostream& output,
                                 const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    std::string projects_str = "(";
-    if (project_.empty()) {
-        projects_str.append(")");
-    } else {
-        auto iter = project_.cbegin();
-        auto node = dynamic_cast<node::ProjectNode*>(*iter);
-        projects_str.append(node->GetName());
-        iter++;
-        for (; iter != project_.cend(); iter++) {
-            auto node = dynamic_cast<node::ProjectNode*>(*iter);
-            projects_str.append(",");
-
-            if (node->GetPos() >= 10) {
-                projects_str.append("...");
-                break;
-            }
-            projects_str.append(node->GetName());
-        }
-        projects_str.append(")");
-    }
-
-    output << "(type=" << ProjectTypeName(project_type_)
-           << ", projects=" << projects_str << ")";
+    output << "(type=" << ProjectTypeName(project_type_) << ")";
     output << "\n";
-
     PrintChildren(output, tab);
+}
+bool PhysicalProjectNode::InitSchema() {
+    PrintSchema();
+    return true;
 }
 void PhysicalLoopsNode::Print(std::ostream& output,
                               const std::string& tab) const {
@@ -114,6 +116,7 @@ void PhysicalJoinNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+
 void PhysicalSortNode::Print(std::ostream& output,
                              const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -149,6 +152,31 @@ void PhysicalBufferNode::Print(std::ostream& output,
            << ", end=" << std::to_string(end_offset_) << ")";
     output << "\n";
     PrintChildren(output, tab);
+}
+bool PhysicalScanNode::InitSchema() {
+    if (table_handler_) {
+        output_schema.CopyFrom(table_handler_->GetSchema());
+        PrintSchema();
+        return true;
+    } else {
+        LOG(WARNING) << "InitSchema fail: table handler is null";
+        return false;
+    }
+}
+void PhysicalOpNode::PrintSchema() {
+    std::stringstream ss;
+    for (int32_t i = 0; i < output_schema.size(); i++) {
+        if (i > 0) {
+            ss << "\n";
+        }
+        const type::ColumnDef& column = output_schema.Get(i);
+        ss << column.name() << " " << type::Type_Name(column.type());
+    }
+//    DLOG(INFO) << "\n" << ss.str();
+}
+bool PhysicalUnionNode::InitSchema() {
+    output_schema.CopyFrom(producers_[0]->output_schema);
+    PrintSchema();
 }
 }  // namespace vm
 }  // namespace fesql

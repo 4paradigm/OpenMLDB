@@ -25,19 +25,19 @@ namespace fesql {
 namespace codegen {
 
 RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
+                                     ::llvm::Module* module)
+    : schema_(schema), module_(module) {}
+
+RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::Schema& schema,
                                      ::llvm::Module* module, bool is_window_agg)
-    : schema_(schema), module_(module), is_window_agg_(is_window_agg) {}
+    : schema_(schema), module_(module) {}
 
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 bool RowFnLetIRBuilder::Build(
-    const std::string& name, const ::fesql::node::ProjectListNode* node,
+    const std::string& name, const node::PlanNodeList& projects,
+    const bool row_mode,
     vm::Schema& output_schema) {  // NOLINT (runtime/references)
-    if (node == NULL) {
-        LOG(WARNING) << "node is null";
-        return false;
-    }
-
     ::llvm::Function* fn = NULL;
     std::string row_ptr_name = "row_ptr_name";
     std::string output_ptr_name = "output_ptr_name";
@@ -68,17 +68,14 @@ bool RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
 
-
     VariableIRBuilder variable_ir_builder(block, &sv);
-    ExprIRBuilder expr_ir_builder(block, &sv, schema_,
-                                  !node->IsWindowAgg(), row_ptr_name,
+    ExprIRBuilder expr_ir_builder(block, &sv, schema_, row_mode, row_ptr_name,
                                   row_size_name, module_);
 
-    const ::fesql::node::PlanNodeList& children = node->GetProjects();
-    ::fesql::node::PlanNodeList::const_iterator it = children.cbegin();
+    ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
     uint32_t index = 0;
-    for (; it != children.cend(); it++) {
+    for (; it != projects.cend(); it++) {
         const ::fesql::node::PlanNode* pn = *it;
         if (pn == NULL) {
             LOG(WARNING) << "plan node is null";
@@ -128,6 +125,14 @@ bool RowFnLetIRBuilder::Build(
     ir_builder.CreateRet(ret);
     return true;
 }
+
+bool RowFnLetIRBuilder::Build(const std::string& name,
+                              const node::ProjectListNode* projects,
+                              vm::Schema& output_schema) {
+    return Build(name, projects->GetProjects(), !projects->is_window_agg_,
+                 output_schema);
+}
+
 
 bool RowFnLetIRBuilder::EncodeBuf(
     const std::map<uint32_t, ::llvm::Value*>* values, const vm::Schema& schema,

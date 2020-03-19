@@ -34,12 +34,15 @@ class RowFnLetIRBuilder {
  public:
     RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module,
                       bool is_window_agg);
+    RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module);
 
     ~RowFnLetIRBuilder();
 
-    bool Build(const std::string& name,
-               const ::fesql::node::ProjectListNode* node,
-               vm::Schema& schema);  // NOLINT (runtime/references)
+    bool Build(const std::string& name, const node::ProjectListNode* projects,
+               vm::Schema& output_schema);  // NOLINT (runtime/references)
+    bool Build(const std::string& name, const node::PlanNodeList& projects,
+               const bool row_mode,
+               vm::Schema& output_schema);  // NOLINT (runtime/references)
 
  private:
     bool BuildFnHeader(const std::string& name, ::llvm::Function** fn);
@@ -53,17 +56,16 @@ class RowFnLetIRBuilder {
                   const std::string& output_ptr_name, ::llvm::Function* fn,
                   ScopeVar& sv);  // NOLINT
 
-    bool EncodeBuf(const std::map<uint32_t, ::llvm::Value*>* values,
-                   const vm::Schema& schema,
-                   VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
-                   ::llvm::BasicBlock* block,
-                   const std::string& output_ptr_name);
+    bool EncodeBuf(
+        const std::map<uint32_t, ::llvm::Value*>* values,
+        const vm::Schema& schema,
+        VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
+        ::llvm::BasicBlock* block, const std::string& output_ptr_name);
 
  private:
     // input schema
     vm::Schema schema_;
     ::llvm::Module* module_;
-    bool is_window_agg_;
 };
 
 }  // namespace codegen

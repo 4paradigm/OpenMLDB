@@ -18,6 +18,8 @@
 #include <vector>
 #include "base/graph.h"
 #include "base/status.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Support/raw_ostream.h"
 #include "vm/physical_op.h"
 namespace fesql {
 namespace vm {
@@ -130,20 +132,33 @@ class GroupByOptimized : public TransformUpPysicalPass {
 class SortByOptimized : public TransformUpPysicalPass {
  public:
     SortByOptimized(node::NodeManager* node_manager, const std::string& db,
-                     const std::shared_ptr<Catalog>& catalog)
+                    const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
+
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
     bool TransformOrderExpr(const node::OrderByNode* order,
                             const PhysicalScanIndexNode* scan_index_op,
                             const node::OrderByNode** output);
 };
+
+class LeftJoinOptimized : public TransformUpPysicalPass {
+ public:
+    LeftJoinOptimized(node::NodeManager* node_manager, const std::string& db,
+                      const std::shared_ptr<Catalog>& catalog)
+        : TransformUpPysicalPass(node_manager, db, catalog) {}
+
+ private:
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool ColumnExist(const Schema& schema, const std::string& column);
+};
 typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;
 
 enum PhysicalPlanPassType {
     kPassGroupByOptimized,
-    kPassSortByOptimized
+    kPassSortByOptimized,
+    kPassLeftJoinOptimized
 };
 
 inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
@@ -152,6 +167,8 @@ inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
             return "PassGroupByOptimized";
         case kPassSortByOptimized:
             return "PassSortByOptimized";
+        case kPassLeftJoinOptimized:
+            return "PassLeftJoinOptimized";
         default:
             return "unknowPass";
     }
@@ -160,8 +177,9 @@ inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
 class Transform {
  public:
     Transform(node::NodeManager* node_manager, const std::string& db,
-              const std::shared_ptr<Catalog>& catalog);
+              const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module);
     virtual ~Transform();
+    bool AddDefaultPasses();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
                                ::fesql::vm::PhysicalOpNode** output,
                                ::fesql::base::Status& status);  // NOLINT
@@ -214,11 +232,30 @@ class Transform {
     bool TransformDistinctOp(const node::DistinctPlanNode* node,
                              PhysicalOpNode** output,
                              base::Status& status);  // NOLINT
+
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
+
+ private:
+    bool GenProjects(const Schema& input_schema,
+                     const node::PlanNodeList& projects, const bool row_mode,
+                     std::string& fn_name,   // NOLINT
+                     Schema& output_schema,  // NOLINT
+                     base::Status& status);  // NOLINT
+
+    ::llvm::Module* module_;
+    uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
+    bool CreatePhysicalAggrerationNode(PhysicalOpNode* node,
+                                       const node::PlanNodeList& projects,
+                                       PhysicalOpNode** output,
+                                       base::Status& status);
+    bool CreatePhysicalRowNode(PhysicalOpNode* node,
+                                       const node::PlanNodeList& projects,
+                                       PhysicalOpNode** output,
+                                       base::Status& status);
 };
 
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,

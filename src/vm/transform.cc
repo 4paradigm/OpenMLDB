@@ -10,6 +10,7 @@
 #include <set>
 #include <stack>
 #include <unordered_map>
+#include "codegen/fn_let_ir_builder.h"
 #include "vm/physical_op.h"
 
 namespace fesql {
@@ -53,8 +54,13 @@ bool TransformLogicalTreeToLogicalGraph(
 }
 
 Transform::Transform(node::NodeManager* node_manager, const std::string& db,
-                     const std::shared_ptr<Catalog>& catalog)
-    : node_manager_(node_manager), db_(db), catalog_(catalog) {}
+                     const std::shared_ptr<Catalog>& catalog,
+                     ::llvm::Module* module)
+    : node_manager_(node_manager),
+      db_(db),
+      catalog_(catalog),
+      module_(module),
+      id_(0) {}
 
 Transform::~Transform() {}
 
@@ -194,9 +200,17 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
             }
             ops.push_back(project_op);
         } else {
-            PhysicalOpNode* op = new PhysicalRowProjectNode(
-                depend, (project_list->GetProjects()));
-            node_manager_->RegisterNode(op);
+            PhysicalOpNode* op = nullptr;
+            if (kPhysicalOpGroupBy == depend->type_) {
+                if (!CreatePhysicalAggrerationNode(
+                    depend, project_list->GetProjects(), &op, status)) {
+                    return false;
+                }
+            } else {
+                if (!CreatePhysicalRowNode(depend, project_list->GetProjects(), &op, status)) {
+                    return false;
+                }
+            }
             ops.push_back(op);
         }
     }
@@ -235,13 +249,9 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
             project_list.push_back(node_manager_->MakeProjectNode(
                 pos, project_node->GetName(),
                 node_manager_->MakeColumnRefNode(project_node->GetName(), "")));
-                pos++;
+            pos++;
         }
-        PhysicalProjectNode* project_op =
-            new PhysicalRowProjectNode(join, project_list);
-        node_manager_->RegisterNode(project_op);
-        *output = project_op;
-        return true;
+        return CreatePhysicalRowNode(join, project_list, output, status);
     }
 }
 bool Transform::TransformWindowProject(const node::ProjectListNode* node,
@@ -288,7 +298,14 @@ bool Transform::TransformWindowProject(const node::ProjectListNode* node,
         node_manager_->RegisterNode(window_op);
         depend = window_op;
     }
-    *output = new PhysicalAggrerationNode(depend, node->GetProjects());
+
+    Schema output_schema;
+    std::string fn_name;
+    if (!GenProjects(depend->output_schema, node->GetProjects(), false, fn_name,
+                     output_schema, status)) {
+        return false;
+    }
+    *output = new PhysicalAggrerationNode(depend, fn_name, output_schema);
     node_manager_->RegisterNode(*output);
     return true;
 }
@@ -475,6 +492,14 @@ bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
                 }
                 break;
             }
+            case kPassLeftJoinOptimized: {
+                LeftJoinOptimized pass(node_manager_, db_, catalog_);
+                PhysicalOpNode* new_op;
+                if (pass.Apply(physical_plan, &new_op)) {
+                    physical_plan = new_op;
+                }
+                break;
+            }
             default: {
                 LOG(WARNING) << "can't not handle pass: "
                              << PhysicalPlanPassTypeName(type);
@@ -486,6 +511,61 @@ bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
 }
 bool Transform::AddPass(PhysicalPlanPassType type) {
     passes.push_back(type);
+    return true;
+}
+bool Transform::GenProjects(const Schema& input_schema,
+                            const node::PlanNodeList& projects,
+                            const bool row_project,
+                            std::string& fn_name,    // NOLINT
+                            Schema& output_schema,   // NOLINT
+                            base::Status& status) {  // NOLINT
+    // TODO(wangtaize) use ops end op output schema
+    ::fesql::codegen::RowFnLetIRBuilder builder(input_schema, module_);
+    fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
+    bool ok = builder.Build(fn_name, projects, row_project, output_schema);
+    if (!ok) {
+        status.code = common::kCodegenError;
+        status.msg = "fail to codegen projects node";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    return true;
+}
+bool Transform::AddDefaultPasses() {
+    AddPass(kPassLeftJoinOptimized);
+    AddPass(kPassGroupByOptimized);
+    AddPass(kPassSortByOptimized);
+    return false;
+}
+bool Transform::CreatePhysicalAggrerationNode(
+    PhysicalOpNode* node, const node::PlanNodeList& projects,
+    PhysicalOpNode** output, base::Status& status) {  // NOLINT
+    Schema output_schema;
+    std::string fn_name;
+    if (!GenProjects(node->output_schema, projects, false, fn_name,
+                     output_schema, status)) {
+        return false;
+    }
+    PhysicalOpNode* op =
+        new PhysicalAggrerationNode(node, fn_name, output_schema);
+    node_manager_->RegisterNode(op);
+    *output = op;
+    return true;
+}
+bool Transform::CreatePhysicalRowNode(PhysicalOpNode* node,
+                                      const node::PlanNodeList& projects,
+                                      PhysicalOpNode** output,
+                                      base::Status& status) {
+    Schema output_schema;
+    std::string fn_name;
+    if (!GenProjects(node->output_schema, projects, true, fn_name,
+                     output_schema, status)) {
+        return false;
+    }
+    PhysicalOpNode* op =
+        new PhysicalRowProjectNode(node, fn_name, output_schema);
+    node_manager_->RegisterNode(op);
+    *output = op;
     return true;
 }
 
@@ -768,5 +848,124 @@ bool SortByOptimized::TransformOrderExpr(
     }
 }
 
+bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
+    switch (in->type_) {
+        case kPhysicalOpGroupBy: {
+            auto group_op = dynamic_cast<PhysicalGroupNode*>(in);
+            if (nullptr == group_op || nullptr == group_op->groups_ ||
+                group_op->groups_->IsEmpty()) {
+                LOG(WARNING)
+                    << "LeftJoin optimized skip: groups is null or empty";
+            }
+            if (kPhysicalOpJoin == in->GetProducers()[0]->type_) {
+                PhysicalJoinNode* join_op =
+                    dynamic_cast<PhysicalJoinNode*>(in->GetProducers()[0]);
+
+                if (node::kJoinTypeLeft != join_op->join_type_) {
+                    // skip optimized for other join type
+                    return false;
+                }
+                std::vector<std::string> columns;
+                for (auto expr : group_op->groups_->children_) {
+                    switch (expr->expr_type_) {
+                        case node::kExprColumnRef: {
+                            auto column =
+                                dynamic_cast<node::ColumnRefNode*>(expr);
+                            if (!ColumnExist(join_op->GetProducers()
+                                                 .at(0)
+                                                 ->output_schema,
+                                             column->GetColumnName())) {
+                                return false;
+                            }
+                            break;
+                        }
+                        default: {
+                            // can't optimize when group by other expression
+                            return false;
+                        }
+                    }
+                }
+
+                auto group_expr = group_op->groups_;
+                // 符合优化条件
+                PhysicalGroupNode* new_group_op = new PhysicalGroupNode(
+                    join_op->GetProducers()[0], group_expr);
+                PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
+                    new_group_op, join_op->GetProducers()[1],
+                    join_op->join_type_, join_op->condition_);
+                *output = new_join_op;
+                return true;
+            }
+
+            break;
+        }
+        case kPhysicalOpSortBy: {
+            auto sort_op = dynamic_cast<PhysicalSortNode*>(in);
+            if (nullptr == sort_op || nullptr == sort_op->order_ ||
+                nullptr == sort_op->order_->order_by_ ||
+                sort_op->order_->order_by_->IsEmpty()) {
+                LOG(WARNING)
+                    << "LeftJoin optimized skip: order is null or empty";
+            }
+            if (kPhysicalOpJoin == in->GetProducers()[0]->type_) {
+                if (kPhysicalOpJoin == in->GetProducers()[0]->type_) {
+                    PhysicalJoinNode* join_op =
+                        dynamic_cast<PhysicalJoinNode*>(in->GetProducers()[0]);
+
+                    if (node::kJoinTypeLeft != join_op->join_type_) {
+                        // skip optimized for other join type
+                        return false;
+                    }
+                    std::vector<std::string> columns;
+                    for (auto expr : sort_op->order_->order_by_->children_) {
+                        switch (expr->expr_type_) {
+                            case node::kExprColumnRef: {
+                                auto column =
+                                    dynamic_cast<node::ColumnRefNode*>(expr);
+                                if (!ColumnExist(join_op->GetProducers()
+                                                     .at(0)
+                                                     ->output_schema,
+                                                 column->GetColumnName())) {
+                                    return false;
+                                }
+                                break;
+                            }
+                            default: {
+                                // can't optimize when group by other expression
+                                return false;
+                            }
+                        }
+                    }
+
+                    auto order_expr = sort_op->order_;
+                    // 符合优化条件
+                    PhysicalSortNode* new_order_op = new PhysicalSortNode(
+                        join_op->GetProducers()[0], order_expr);
+                    PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
+                        new_order_op, join_op->GetProducers()[1],
+                        join_op->join_type_, join_op->condition_);
+                    *output = new_join_op;
+                    return true;
+                }
+            }
+
+            break;
+        }
+        default: {
+            return false;
+        }
+    }
+    return false;
+}
+bool LeftJoinOptimized::ColumnExist(const Schema& schema,
+                                    const std::string& column_name) {
+    for (int32_t i = 0; i < schema.size(); i++) {
+        const type::ColumnDef& column = schema.Get(i);
+        if (column_name == column.name()) {
+            return true;
+        }
+    }
+    return false;
+}
 }  // namespace vm
 }  // namespace fesql

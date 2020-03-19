@@ -72,13 +72,16 @@ class PhysicalOpNode;
 class PhysicalOpNode {
  public:
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
-        : type_(type), is_block_(is_block), is_lazy_(is_lazy) {}
+        : type_(type), is_block_(is_block), is_lazy_(is_lazy) {
+    }
     virtual ~PhysicalOpNode() {}
     virtual bool consume() { return true; }
     virtual bool produce() { return true; }
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
+    virtual bool InitSchema() = 0;
+    virtual void PrintSchema();
     std::vector<PhysicalOpNode *> &GetProducers() { return producers_; }
     void UpdateProducer(int i, PhysicalOpNode *producer);
 
@@ -106,11 +109,13 @@ class PhysicalUnaryNode : public PhysicalOpNode {
         : PhysicalOpNode(type, is_block, is_lazy) {
         AddProducer(node);
         producers_[0]->AddConsumer(this);
+        InitSchema();
     }
     virtual ~PhysicalUnaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
+    bool InitSchema() override;
 };
 
 class PhysicalBinaryNode : public PhysicalOpNode {
@@ -122,7 +127,9 @@ class PhysicalBinaryNode : public PhysicalOpNode {
         AddProducer(right);
         left->AddConsumer(this);
         right->AddConsumer(this);
+        InitSchema();
     }
+    bool InitSchema() override;
     virtual ~PhysicalBinaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
@@ -148,9 +155,10 @@ class PhysicalScanNode : public PhysicalOpNode {
         : PhysicalOpNode(kPhysicalOpScan, false, false),
           scan_type_(scan_type),
           table_handler_(table_handler) {
-        output_schema = table_handler->GetSchema();
+        InitSchema();
     }
     ~PhysicalScanNode() {}
+    bool InitSchema() override;
     const ScanType scan_type_;
     const std::shared_ptr<TableHandler> table_handler_;
 };
@@ -203,30 +211,33 @@ inline const std::string ProjectTypeName(const ProjectType &type) {
 
 class PhysicalProjectNode : public PhysicalUnaryNode {
  public:
-    PhysicalProjectNode(PhysicalOpNode *node, const node::PlanNodeList &project,
-                        ProjectType project_type)
+    PhysicalProjectNode(PhysicalOpNode *node, const std::string &fn_name,
+                        const Schema &schema, ProjectType project_type)
         : PhysicalUnaryNode(node, kPhysicalOpProject, false, false),
           project_type_(project_type),
-          project_(project) {}
+          fn_name_(fn_name) {
+        output_schema.CopyFrom(schema);
+    }
     virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    bool InitSchema() override;
     const ProjectType project_type_;
-    const node::PlanNodeList project_;
+    const std::string fn_name_;
 };
 
 class PhysicalRowProjectNode : public PhysicalProjectNode {
  public:
-    PhysicalRowProjectNode(PhysicalOpNode *node,
-                           const node::PlanNodeList &project)
-        : PhysicalProjectNode(node, project, kProjectRow) {}
+    PhysicalRowProjectNode(PhysicalOpNode *node, const std::string fn_name,
+                           const Schema &schema)
+        : PhysicalProjectNode(node, fn_name, schema, kProjectRow) {}
     virtual ~PhysicalRowProjectNode() {}
 };
 
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
-    PhysicalAggrerationNode(PhysicalOpNode *node,
-                            const node::PlanNodeList &project)
-        : PhysicalProjectNode(node, project, kProjectAggregation) {}
+    PhysicalAggrerationNode(PhysicalOpNode *node, const std::string &fn_name,
+                            const Schema &schema)
+        : PhysicalProjectNode(node, fn_name, schema, kProjectAggregation) {}
     virtual ~PhysicalAggrerationNode() {}
 };
 
@@ -270,6 +281,7 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           is_all_(is_all) {}
     virtual ~PhysicalUnionNode() {}
+    bool InitSchema() override;
     const bool is_all_;
 };
 
