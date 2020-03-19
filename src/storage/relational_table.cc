@@ -297,9 +297,9 @@ uint64_t RelationalTableTraverseIterator::GetCount() {
     return traverse_cnt_;
 }
 
-std::string RelationalTableTraverseIterator::GetValue() {
+rtidb::base::Slice RelationalTableTraverseIterator::GetValue() {
     rocksdb::Slice spk = it_->value();
-    return spk.ToString();
+    return rtidb::base::Slice(spk.data(), spk.size());
 }
 
 }

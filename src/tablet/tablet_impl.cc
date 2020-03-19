@@ -1414,8 +1414,7 @@ void TabletImpl::Traverse(RpcController* controller,
         rtidb::storage::RelationalTableTraverseIterator* it =
             r_table->NewTraverse(index);
         if (it == NULL) {
-            response->set_code(137);
-            // TODO(kongquan): new another error code and error msg
+            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
             response->set_msg("ts name not found, when create iterator");
         }
         if (request->has_pk()) {
@@ -1424,14 +1423,14 @@ void TabletImpl::Traverse(RpcController* controller,
             it->SeekToFirst();
         }
         uint32_t scount = 0;
-        std::vector<std::string> value_vec;
+        std::vector<rtidb::base::Slice> value_vec;
         uint32_t total_block_size = 0;
         for (; it->Valid(); it->Next()) {
             if (request->limit() > 0 && scount > request->limit() - 1) {
                 PDLOG(DEBUG, "reache the limit %u", request->limit());
                 break;
             }
-            std::string value = it->GetValue();
+            rtidb::base::Slice value = it->GetValue();
             total_block_size += value.size();
             value_vec.push_back(value);
             scount++;
@@ -1461,7 +1460,7 @@ void TabletImpl::Traverse(RpcController* controller,
             offset += (4 + value.size());
         }
         PDLOG(DEBUG, "traverse count %d. last_value %s", scount,
-              value_vec[value_vec.size() - 1].c_str());
+              value_vec[value_vec.size() - 1].data());
         response->set_code(0);
         response->set_count(scount);
         response->set_is_finish(is_finish);

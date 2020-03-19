@@ -30,77 +30,6 @@ int64_t ViewResult::GetInt(uint32_t idx) {
     return val;
 }
 
-std::map<std::string, std::string> ViewResult::DecodeData() {
-    std::map<std::string, std::string> result;
-    for (int i = 0; i < columns_->size(); i++) {
-        std::string col_name = columns_->Get(i).name();
-        if (rv_->IsNULL(i)) {
-            result.insert(std::make_pair(col_name, rtidb::base::NONETOKEN));
-        }
-        std::string col = "";
-        auto type = columns_->Get(i).data_type();
-        if (type == rtidb::type::kInt) {
-            int32_t val;
-            int ret = rv_->GetInt32(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kTimestamp) {
-            int64_t val;
-            int ret = rv_->GetTimestamp(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kBigInt) {
-            int64_t val;
-            int ret = rv_->GetInt64(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kBool) {
-            bool val;
-            int ret = rv_->GetBool(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kFloat) {
-            float val;
-            int ret = rv_->GetFloat(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kSmallInt) {
-            int16_t val;
-            int ret = rv_->GetInt16(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kDouble) {
-            double val;
-            int ret = rv_->GetDouble(i, &val);
-            if (ret == 0) {
-                col = std::to_string(val);
-            }
-        } else if (type == rtidb::type::kVarchar) {
-            char* ch = NULL;
-            uint32_t length = 0;
-            int ret = rv_->GetString(i, &ch, &length);
-            if (ret == 0) {
-                col.assign(ch, length);
-            }
-        } else if (type == rtidb::type::kBlob) {
-            char* ch = NULL;
-            uint32_t length = 0;
-            int ret = rv_->GetString(i, &ch, &length);
-            if (ret == 0) {
-                col.assign(ch, length);
-            }
-        }
-        result.insert(std::make_pair(col_name, col));
-    }
-    return result;
-}
-
 void TraverseResult::Init(RtidbClient* client, std::string* table_name,
                           struct ReadOption* ro, uint32_t count) {
     client_ = client;
@@ -279,7 +208,6 @@ void RtidbClient::RefreshTable() {
                 break;
             }
         }
-        std::cout << pk_index << " ------======00000------ " << pk_type << std::endl;
         if (pk_type_set.find(pk_type) == pk_type_set.end()) {
             continue;
         }

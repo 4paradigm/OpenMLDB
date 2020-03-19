@@ -40,7 +40,7 @@ class RelationalTableTraverseIterator {
     void SeekToFirst();
     void Seek(const std::string& pk);
     uint64_t GetCount();
-    std::string GetValue();
+    rtidb::base::Slice GetValue();
 
  private:
     rocksdb::DB* db_;

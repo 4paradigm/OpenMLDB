@@ -201,7 +201,6 @@ public:
 
     ~ViewResult() {}
 
-    std::map<std::string, std::string> DecodeData();
     int64_t GetInt(uint32_t idx);
 
     std::shared_ptr<rtidb::base::RowView> rv_;
