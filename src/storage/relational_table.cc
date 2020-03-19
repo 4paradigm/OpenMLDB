@@ -187,7 +187,63 @@ bool RelationalTable::Init() {
     return true;
 }
 
-bool RelationalTable::Put(const std::string &pk, const char *data, uint32_t size) {
+bool RelationalTable::Put(const std::string& value) {
+    std::string pk_col_name;
+    for (const ::rtidb::common::ColumnKey& column_key : table_meta_.column_key()) {
+        if (column_key.index_type() == ::rtidb::type::kPrimaryKey) {
+            pk_col_name = column_key.index_name();
+        }
+        //TODO: other index type
+    }
+    const Schema& schema = table_meta_.column_desc(); 
+    ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), value.length());
+    int index = 0;
+    ::rtidb::type::DataType data_type = ::rtidb::type::kBool;
+    std::string pk = "";
+    for (int i = 0; i < table_meta_.column_desc_size(); i++) {
+        if (table_meta_.column_desc(i).name() == pk_col_name) {
+            index = i;
+            data_type = table_meta_.column_desc(i).data_type();
+            break;
+        }
+    }
+    switch(data_type) {
+        case ::rtidb::type::kSmallInt: { 
+            int16_t val = 0;
+            view.GetInt16(index, &val);
+            pk = std::to_string(val);
+            break;
+        }
+        case ::rtidb::type::kInt: {
+            int32_t val = 0;
+            view.GetInt32(index, &val);
+            pk = std::to_string(val);
+            break;
+        }
+        case ::rtidb::type::kBigInt: {
+            int64_t val = 0;
+            view.GetInt64(index, &val);
+            pk = std::to_string(val);
+            break;
+        }
+        case ::rtidb::type::kVarchar: { 
+            char* ch = NULL;
+            uint32_t length = 0;
+            view.GetString(index, &ch, &length);
+            pk.assign(ch, length);
+            break;
+        }
+        default: {
+            PDLOG(WARNING, "unsupported data type %s", 
+                rtidb::type::DataType_Name(data_type).c_str());
+            return false;
+        }
+        //TODO: other data type
+    }
+    return PutDB(pk, value.c_str(), value.size());
+}
+
+bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t size) {
     rocksdb::Status s;
     rocksdb::Slice spk = rocksdb::Slice(pk);
     s = db_->Put(write_opts_, cf_hs_[1], spk, rocksdb::Slice(data, size));
@@ -479,7 +535,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
             return false;
         }
     }
-    ok = Put(pk, row.c_str(), row.length());
+    ok = PutDB(pk, row.c_str(), row.length());
     if (!ok) {
         PDLOG(WARNING, "put failed, update table tid %u pid %u failed", id_, pid_);
         return false;

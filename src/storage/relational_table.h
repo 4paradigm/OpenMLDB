@@ -61,7 +61,9 @@ public:
 
     static void initOptionTemplate();
 
-    bool Put(const std::string& pk,
+    bool Put(const std::string& value); 
+
+    bool PutDB(const std::string& pk,
              const char* data,
              uint32_t size);
 
