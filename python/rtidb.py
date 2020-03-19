@@ -62,7 +62,10 @@ class RtidbResult:
   def __iter__(self):
     return self
   def count(self):
-    return self.__data.ValueSize()
+    if hasattr(self.__data, "ValueSize"):
+      return self.__data.ValueSize()
+    else:
+      raise Exception(-1, "result not support count")
   def __next__(self):
     if self.__data.next():
       result = {}
