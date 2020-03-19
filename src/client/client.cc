@@ -33,15 +33,13 @@ int64_t ViewResult::GetInt(uint32_t idx) {
 void TraverseResult::Init(RtidbClient* client, std::string* table_name,
                           struct ReadOption* ro, uint32_t count) {
     client_ = client;
-    table_name_ = table_name;
-    ro_ = ro;
+    table_name_.reset(table_name);
+    ro_.reset(ro);
     offset_ = 0;
     count_ = count;
 }
 
 TraverseResult::~TraverseResult() {
-    delete table_name_;
-    delete ro_;
 }
 
 bool TraverseResult::TraverseNext() {

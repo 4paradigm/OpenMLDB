@@ -20,6 +20,17 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("card3", l["card"])
       #self.assertEqual("mcc3", l["mcc"]) #TODO: current skip verify mcc, beacuse mcc value is mcc3\x00 maybe server problem
       self.assertEqual(3, l["p_biz_date"])
+  def test_traverse(self):
+    ro = rtidb.ReadOption()
+    resp = self.nsc.traverse("10001", ro)
+    id = 0;
+    for l in resp:
+      self.assertEqual("{:04d}".format(id), l["id"])
+      self.assertEqual("i{}".format(id), l["image"])
+      self.assertEqual("a{}".format(id), l["attribute"])
+      id+=1
+    #TODO(kongquan): current put data use java client, when python put feature is complete, put data before traverse
+
 
 if __name__ == "__main__":
   unittest.main()

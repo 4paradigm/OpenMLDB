@@ -292,8 +292,8 @@ private:
     std::shared_ptr<std::string> value_;
     RtidbClient* client_;
     bool is_finish_;
-    struct ReadOption* ro_;
-    std::string* table_name_;
+    std::shared_ptr<ReadOption> ro_;
+    std::shared_ptr<std::string> table_name_;
     uint32_t count_;
     std::string last_pk_;
 };

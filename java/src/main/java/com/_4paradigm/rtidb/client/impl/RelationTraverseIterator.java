@@ -6,6 +6,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowView;
+import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.client.type.IndexType;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
@@ -35,10 +36,10 @@ public class RelationTraverseIterator {
     private Map<Integer, ColumnDesc> idxDescMap = new HashMap<>();
     private RowView rowView;
     private boolean isFinished = false;
-    private String idxName = null;
     private int pid = 0;
     private String last_pk = null;
     private int key_idx = 0;
+    private DataType key_type;
     private RTIDBClient client = null;
 
     public RelationTraverseIterator(RTIDBClient client, TableHandler th, Set<String> colSet) {
@@ -58,6 +59,7 @@ public class RelationTraverseIterator {
             }
         }
         this.rowView = new RowView(th.getSchema());
+        String idxName = "";
         for (int i = 0; i < th.getTableInfo().getColumnKeyCount(); i++) {
             Common.ColumnKey key = th.getTableInfo().getColumnKey(i);
             if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.kPrimaryKey)) {
@@ -66,10 +68,10 @@ public class RelationTraverseIterator {
         }
         for (int i = 0; i < schema.size(); i++) {
             if (schema.get(i).getName().equals(idxName)) {
+                key_type = schema.get(i).getDataType();
                 key_idx = i;
             }
         }
-        next();
     }
 
 
@@ -126,7 +128,8 @@ public class RelationTraverseIterator {
         }
         offset += (4 + length);
         slice.limit(offset);
-        boolean ok = rowView.reset(slice.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN), length);
+        ByteBuffer value = slice.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+        boolean ok = rowView.reset(value, length);
         if (!ok) {
             throw new RuntimeException("row view reset failed");
         }
@@ -164,6 +167,8 @@ public class RelationTraverseIterator {
             Tablet.TraverseRequest.Builder builder = Tablet.TraverseRequest.newBuilder();
             builder.setTid(th.getTableInfo().getTid());
             if (offset != 0) {
+                Object val = rowView.getValue(key_idx, key_type);
+                last_pk = val.toString();
                 builder.setPk(last_pk);
             }
             builder.setLimit(client.getConfig().getTraverseLimit());

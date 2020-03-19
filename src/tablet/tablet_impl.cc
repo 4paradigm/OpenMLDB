@@ -1419,6 +1419,7 @@ void TabletImpl::Traverse(RpcController* controller,
         }
         if (request->has_pk()) {
             it->Seek(request->pk());
+            it->Next();
         } else {
             it->SeekToFirst();
         }
