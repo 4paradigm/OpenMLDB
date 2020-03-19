@@ -17,5 +17,7 @@ namespace std {
 namespace std {
         %template(VectorReadFilter) vector<ReadFilter>;
 }
+%include "base/slice.h"
+%include "base/status.h"
 %include "client/ns_client.h"
 %include "base/schema_codec.h"

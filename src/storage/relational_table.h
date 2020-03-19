@@ -25,8 +25,11 @@
 #include "storage/table.h"
 #include <boost/lexical_cast.hpp>
 #include "timer.h"
+#include "base/codec.h"
+#include <mutex>
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
 namespace rtidb {
 namespace storage {
@@ -65,9 +68,19 @@ public:
     bool Put(const std::string& value,
              const Dimensions& dimensions);
 
-    bool Get(uint32_t idx, const std::string& pk, std::string& value);
+    bool Get(uint32_t idx, const std::string& pk, rtidb::base::Slice& slice);
 
     bool Delete(const std::string& pk, uint32_t idx);
+
+    bool Update(const ::rtidb::api::Columns& cd_columns, 
+            const ::rtidb::api::Columns& col_columns);
+
+    void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
+            std::map<std::string, int>& cd_idx_map, 
+            Schema& condition_schema);
+        
+    bool UpdateDB(const std::map<std::string, int>& cd_idx_map, const std::map<std::string, int>& col_idx_map, const Schema& condition_schema, const Schema& value_schema, 
+            const std::string& cd_value, const std::string& col_value); 
 
     inline ::rtidb::common::StorageMode GetStorageMode() const {
         return storage_mode_;
@@ -112,6 +125,7 @@ public:
     }
     
 private:
+    std::mutex mu_;
     ::rtidb::common::StorageMode storage_mode_;
     std::string name_;
     uint32_t id_;
