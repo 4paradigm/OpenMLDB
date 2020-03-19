@@ -1398,7 +1398,7 @@ void TabletImpl::Traverse(RpcController* controller,
         uint32_t offset = 0;
         for (const auto& kv : value_map) {
             for (const auto& pair : kv.second) {
-                PDLOG(DEBUG, "encode pk %s ts %lu value %s size %u", kv.first.c_str(), pair.first, pair.second.data(), pair.second.size());
+                PDLOG(DEBUG, "encode pk %s ts %lu size %u", kv.first.c_str(), pair.first, pair.second.size());
                 ::rtidb::base::EncodeFull(kv.first, pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
                 offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
             }
@@ -1435,7 +1435,7 @@ void TabletImpl::Traverse(RpcController* controller,
             value_vec.push_back(value);
             scount++;
             if (it->GetCount() >= FLAGS_max_traverse_cnt) {
-                PDLOG(DEBUG, "traverse cnt %lu max %lu, key %s ts %lu",
+                PDLOG(DEBUG, "traverse cnt %lu max %lu",
                       it->GetCount(), FLAGS_max_traverse_cnt);
                 break;
             }
@@ -1459,8 +1459,7 @@ void TabletImpl::Traverse(RpcController* controller,
             rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
             offset += (4 + value.size());
         }
-        PDLOG(DEBUG, "traverse count %d. last_value %s", scount,
-              value_vec[value_vec.size() - 1].data());
+        PDLOG(DEBUG, "tid %u pid %u, traverse count %d.", request->tid(), request->pid(), scount);
         response->set_code(0);
         response->set_count(scount);
         response->set_is_finish(is_finish);
