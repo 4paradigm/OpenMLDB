@@ -310,21 +310,17 @@ GeneralResult RtidbClient::Update(const std::string& table_name,
         }
         th = iter->second;
     }
-    if (condition_columns_map.size() == 0 || value_columns_map.size() == 0) {
+    if (condition_columns_map.empty() || value_columns_map.size().empty()) {
         result.SetError(-1, "condition_columns_map or value_columns_map is empty");
         return result;
     }
     auto cd_iter = condition_columns_map.begin();
-    if (cd_iter == condition_columns_map.end()) {
-        result.SetError(-1, "condition_columns_map is empty");
-        return result;
-    }
     std::string pk = cd_iter->second;
 
     uint32_t tid = th->table_info->tid();
     uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) % th->table_info->table_partition_size());
     google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc> new_cd_schema;
-    ::rtidb::base::RowSchemaCodec::SchemaWrapper(condition_columns_map, *(th->columns), new_cd_schema);
+    ::rtidb::base::RowSchemaCodec::GetSchemaData(condition_columns_map, *(th->columns), new_cd_schema);
     std::string cd_value;
     ::rtidb::base::ResultMsg cd_rm = ::rtidb::base::RowSchemaCodec::Encode(condition_columns_map, new_cd_schema, cd_value);
     if(cd_rm.code < 0) {
@@ -337,7 +333,7 @@ GeneralResult RtidbClient::Update(const std::string& table_name,
         cd_value = compressed;
     }
     google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>  new_value_schema;
-    ::rtidb::base::RowSchemaCodec::SchemaWrapper(value_columns_map,*(th->columns), new_value_schema);
+    ::rtidb::base::RowSchemaCodec::GetSchemaData(value_columns_map,*(th->columns), new_value_schema);
     std::string value;
     ::rtidb::base::ResultMsg value_rm = ::rtidb::base::RowSchemaCodec::Encode(value_columns_map, new_value_schema, value);
     if(value_rm.code < 0) {

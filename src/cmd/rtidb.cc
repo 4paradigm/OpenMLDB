@@ -1195,15 +1195,11 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
         std::cout << "update format error. eg: update table_name=xxx col1=xxx ... where col=xxx" << std::endl;
         return;
     }
-    if (condition_columns_map.size() == 0 || value_columns_map.size() == 0) {
+    if (condition_columns_map.empty() || value_columns_map.empty()) {
         std::cout << "update format error. eg: update table_name=xxx col1=xxx ... where col=xxx" << std::endl;
         return;
     }
     auto cd_iter = condition_columns_map.begin();
-    if (cd_iter == condition_columns_map.end()) {
-        std::cout << "condition_columns_map is empty" << std::endl;
-        return;
-    }
     std::string pk = cd_iter->second;
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
@@ -1228,7 +1224,7 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
         return;
     }
     Schema new_cd_schema;
-    ::rtidb::base::RowSchemaCodec::SchemaWrapper(condition_columns_map, tables[0].column_desc_v1(), new_cd_schema);
+    ::rtidb::base::RowSchemaCodec::GetSchemaData(condition_columns_map, tables[0].column_desc_v1(), new_cd_schema);
     std::string cd_value;
     ::rtidb::base::ResultMsg cd_rm = ::rtidb::base::RowSchemaCodec::Encode(condition_columns_map, new_cd_schema, cd_value);
     if(cd_rm.code < 0) {
@@ -1241,7 +1237,7 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
         cd_value = compressed;
     }
     Schema new_value_schema;
-    ::rtidb::base::RowSchemaCodec::SchemaWrapper(value_columns_map, tables[0].column_desc_v1(), new_value_schema);
+    ::rtidb::base::RowSchemaCodec::GetSchemaData(value_columns_map, tables[0].column_desc_v1(), new_value_schema);
     std::string value;
     ::rtidb::base::ResultMsg value_rm = ::rtidb::base::RowSchemaCodec::Encode(value_columns_map, new_value_schema, value);
     if(value_rm.code < 0) {
@@ -1256,7 +1252,6 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
     bool ok = tablet_client->Update(tid, pid, new_cd_schema, new_value_schema, cd_value, value, msg);
     if (!ok) {
         printf("update failed, msg: %s\n", msg.c_str());
-        return;
     } else {
         printf("update ok\n");
     }

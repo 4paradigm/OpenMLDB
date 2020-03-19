@@ -22,7 +22,7 @@ namespace rtidb {
 namespace base {
 
 static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
-    const auto& iter = ::rtidb::base::DATA_TYPE_STR_MAP.find(data_type);
+    auto iter = ::rtidb::base::DATA_TYPE_STR_MAP.find(data_type);
     if (iter == ::rtidb::base::DATA_TYPE_STR_MAP.end()) {
         return "-";
     } else {

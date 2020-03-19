@@ -340,7 +340,7 @@ public:
         return 0;
     }
 
-    static void SchemaWrapper(const std::map<std::string, std::string>& columns_map, const Schema& schema, 
+    static void GetSchemaData(const std::map<std::string, std::string>& columns_map, const Schema& schema, 
             Schema& new_schema) {
         for (int i = 0; i < schema.size(); i++) {
             const ::rtidb::common::ColumnDesc& col = schema.Get(i);
