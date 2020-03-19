@@ -81,7 +81,7 @@ void PhysicalProjectNode::Print(std::ostream& output,
         auto node = dynamic_cast<node::ProjectNode*>(*iter);
         projects_str.append(node->GetName());
         iter++;
-        for (;iter != project_.cend(); iter++) {
+        for (; iter != project_.cend(); iter++) {
             auto node = dynamic_cast<node::ProjectNode*>(*iter);
             projects_str.append(",");
 
