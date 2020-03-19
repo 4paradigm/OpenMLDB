@@ -372,9 +372,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
         PDLOG(WARNING, "get failed, update table tid %u pid %u failed", id_, pid_);
         return false;
     }
-    std::string value;
-    value.assign(slice.data(), slice.size());
-    ::rtidb::base::RowView row_view(schema, reinterpret_cast<int8_t*>(&(value[0])), value.length());
+    ::rtidb::base::RowView row_view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())), slice.size());
     uint32_t col_value_size = col_value.length();
     ::rtidb::base::RowView value_view(value_schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(col_value[0]))), col_value_size);
     uint32_t string_length = 0; 

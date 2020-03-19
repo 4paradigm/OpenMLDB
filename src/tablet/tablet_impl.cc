@@ -522,7 +522,7 @@ void TabletImpl::Update(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (follower_.load(std::memory_order_relaxed)) {
-        response->set_code(453);
+        response->set_code(::rtidb::base::ReturnCode::kIsFollowerCluster);
         response->set_msg("is follower cluster");
         return;
     }
@@ -532,19 +532,19 @@ void TabletImpl::Update(RpcController* controller,
         r_table = GetRelationalTableUnLock(request->tid(), request->pid());
         if (!r_table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(100);
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table is not exist");
             return;
         }
     }
     bool ok = r_table->Update(request->condition_columns(), request->value_columns());
     if (!ok) {
-        response->set_code(138);
+        response->set_code(::rtidb::base::ReturnCode::kUpdateFailed);
         response->set_msg("update failed");
         PDLOG(WARNING, "update failed. tid %u, pid %u", request->tid(), request->pid());
         return;
     }
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
