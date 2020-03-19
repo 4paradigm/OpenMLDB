@@ -2264,10 +2264,12 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         name_map.insert(std::make_pair(table_info.column_desc(idx).name(), cur_type));
         ::rtidb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc_v1();
         column_desc->CopyFrom(table_info.column_desc(idx));
-        const auto& tp_iter = ::rtidb::base::DATA_TYPE_MAP.find(cur_type);
-        column_desc->set_data_type(tp_iter->second);
-        if (tp_iter->second == ::rtidb::type::kBlob) {
-            column_desc->set_data_type(::rtidb::type::kVarchar);
+        if (table_info.has_table_type() && table_info.table_type() == "Relational") {
+            const auto& tp_iter = ::rtidb::base::DATA_TYPE_MAP.find(cur_type);
+            column_desc->set_data_type(tp_iter->second);
+            if (tp_iter->second == ::rtidb::type::kBlob) {
+                column_desc->set_data_type(::rtidb::type::kVarchar);
+            }
         }
     }
     if (table_info.column_key_size() == 0
