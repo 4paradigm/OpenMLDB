@@ -207,13 +207,11 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
     val->set_allocated_value(const_cast<std::string*>(&value));
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Update,
             &request, &response, FLAGS_request_timeout_ms, 1);
-    if (ok && response.code() == 0) {
-        cd->release_value();
-        val->release_value();
-        return true;
-    }
     cd->release_value();
     val->release_value();
+    if (ok && response.code() == 0) {
+        return true;
+    }
     msg = response.msg();
     return false;
 }
