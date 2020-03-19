@@ -199,12 +199,12 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
     for (int i = 0; i < new_cd_schema.size(); i++) {
         cd->add_name(new_cd_schema.Get(i).name());
     }
-    cd->set_value(cd_value);
+    cd->set_allocated_value(const_cast<std::string*>(&cd_value));
     ::rtidb::api::Columns* val = request.mutable_value_columns();
     for (int i = 0; i < new_value_schema.size(); i++) {
         val->add_name(new_value_schema.Get(i).name());
     }
-    val->set_value(value);
+    val->set_allocated_value(const_cast<std::string*>(&value));
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Update,
             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {

@@ -253,7 +253,7 @@ bool RelationalTable::Get(uint32_t idx, const std::string& pk,
     }
 }
 */
-bool RelationalTable::Get(uint32_t idx, const std::string& pk, std::string& value) {
+bool RelationalTable::Get(uint32_t idx, const std::string& pk, rtidb::base::Slice& slice) {
     if (idx >= idx_cnt_) {
         PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return false;
@@ -271,8 +271,8 @@ bool RelationalTable::Get(uint32_t idx, const std::string& pk, std::string& valu
     if (!it->Valid()) {
         return false;
     }
-    rocksdb::Slice it_value = it->value();
-    value.assign(it_value.data(), it_value.size());
+    rocksdb::Slice value = it->value();
+    slice = rtidb::base::Slice(value.data(), value.size());
     return true;
 }
 
@@ -318,8 +318,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
         const std::string& cd_value, const std::string& col_value) {
     const Schema& schema = table_meta_.column_desc();
     uint32_t cd_value_size = cd_value.length();
-    std::string cd_value_r = cd_value;
-    ::rtidb::base::RowView cd_view(condition_schema, reinterpret_cast<int8_t*>(&(cd_value_r[0])), cd_value_size);
+    ::rtidb::base::RowView cd_view(condition_schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(cd_value[0]))), cd_value_size);
     ::rtidb::type::DataType pk_data_type;
     std::string pk;
     //TODO if condition columns size is more than 1
@@ -367,16 +366,17 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     }
 
     std::lock_guard<std::mutex> lock(mu_);
-    std::string value;
-    bool ok = Get(0, pk, value);
+    rtidb::base::Slice slice;
+    bool ok = Get(0, pk, slice);
     if (!ok) {
         PDLOG(WARNING, "get failed, update table tid %u pid %u failed", id_, pid_);
         return false;
     }
+    std::string value;
+    value.assign(slice.data(), slice.size());
     ::rtidb::base::RowView row_view(schema, reinterpret_cast<int8_t*>(&(value[0])), value.length());
     uint32_t col_value_size = col_value.length();
-    std::string col_value_r = col_value;
-    ::rtidb::base::RowView value_view(value_schema, reinterpret_cast<int8_t*>(&(col_value_r[0])), col_value_size);
+    ::rtidb::base::RowView value_view(value_schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(col_value[0]))), col_value_size);
     uint32_t string_length = 0; 
     for (int i = 0; i < schema.size(); i++) {
         if (schema.Get(i).data_type() == rtidb::type::kVarchar) {

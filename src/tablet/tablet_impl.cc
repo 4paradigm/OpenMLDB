@@ -503,12 +503,14 @@ void TabletImpl::Get(RpcController* controller,
             index = iit->second;
         }
         */
-        ok = r_table->Get(index, request->key(), *value);
+        rtidb::base::Slice slice;
+        ok = r_table->Get(index, request->key(), slice);
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
             response->set_msg("key not found");
             return;
         }
+        value->assign(slice.data(), slice.size());
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
     }

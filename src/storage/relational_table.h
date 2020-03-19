@@ -68,7 +68,7 @@ public:
     bool Put(const std::string& value,
              const Dimensions& dimensions);
 
-    bool Get(uint32_t idx, const std::string& pk, std::string& value);
+    bool Get(uint32_t idx, const std::string& pk, rtidb::base::Slice& slice);
 
     bool Delete(const std::string& pk, uint32_t idx);
 

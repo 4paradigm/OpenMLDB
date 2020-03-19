@@ -310,7 +310,7 @@ GeneralResult RtidbClient::Update(const std::string& table_name,
         }
         th = iter->second;
     }
-    if (condition_columns_map.empty() || value_columns_map.size().empty()) {
+    if (condition_columns_map.empty() || value_columns_map.empty()) {
         result.SetError(-1, "condition_columns_map or value_columns_map is empty");
         return result;
     }
