@@ -3,7 +3,9 @@ package com._4paradigm.rtidb.client;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
+import com._4paradigm.rtidb.client.impl.RelationTraverseIterator;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.ReadOption;
 import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 import com.google.protobuf.ByteString;
 
@@ -62,5 +64,5 @@ public interface TabletSyncClient {
     boolean put(String name, String key,
                 long time, byte[] bytes) throws TimeoutException,TabletException;
     boolean put(String name, long time, Object[] row) throws TimeoutException,TabletException;
-    
+
 }

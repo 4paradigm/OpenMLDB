@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client;
 
+import com._4paradigm.rtidb.client.impl.RelationTraverseIterator;
 import com._4paradigm.rtidb.client.impl.RelationalIterator;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ReadOption;
@@ -93,7 +94,7 @@ public interface TableSyncClient {
     Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type,
                     long et, Tablet.GetType etType) throws TimeoutException, TabletException;
 
-    public RelationalIterator traverse(String tableName, ReadOption ro) throws TimeoutException, TabletException;
+    public RelationTraverseIterator traverse(String tableName, ReadOption ro) throws TimeoutException, TabletException;
 
     public RelationalIterator batchQuery(String tableName, ReadOption ro) throws TimeoutException, TabletException;
 

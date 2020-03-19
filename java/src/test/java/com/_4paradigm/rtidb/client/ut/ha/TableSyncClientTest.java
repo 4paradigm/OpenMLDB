@@ -8,6 +8,7 @@ import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
+import com._4paradigm.rtidb.client.impl.RelationTraverseIterator;
 import com._4paradigm.rtidb.client.impl.RelationalIterator;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.*;
@@ -599,7 +600,54 @@ public class TableSyncClientTest extends TestCaseBase {
         }
     }
 
+    @Test
+    public void testRelationalTableTraverse() {
+        String name = createRelationalTable();
+        try {
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 3);
 
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("id", 11l);
+            data.put("attribute", "a1");
+            data.put("image", "i1");
+
+            boolean ok = tableSyncClient.put(name, data, wo);
+            Assert.assertTrue(ok);
+
+            data.clear();
+            data.put("id", 12l);
+            data.put("attribute", "a2");
+            data.put("image", "i2");
+            tableSyncClient.put(name, data, wo);
+
+            //query
+            Map<String, Object> index = new HashMap<>();
+            index.put("id", 11l);
+            Set<String> colSet = new HashSet<>();
+            colSet.add("id");
+            colSet.add("image");
+            ReadOption ro = new ReadOption(index, null, colSet, 1);
+
+            //traverse
+            RelationTraverseIterator trit = tableSyncClient.traverse(name, ro);
+            Assert.assertTrue(trit.valid());
+            Map<String, Object> TraverseMap = trit.getDecodedValue();
+            Assert.assertEquals(TraverseMap.size(), 2);
+            Assert.assertEquals(TraverseMap.get("id"), 11l);
+            Assert.assertEquals(TraverseMap.get("image"), "i1");
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+    
     @Test
     public void testAddTableFieldWithColumnKey() {
         String name = String.valueOf(id.incrementAndGet());

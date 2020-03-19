@@ -279,8 +279,6 @@ public:
         is_finish_ = is_finish;
     }
 
-    uint64_t ValueSize() { return static_cast<uint64_t>(count_); }
-
     bool Next();
 
  public:
