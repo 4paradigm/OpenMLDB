@@ -73,7 +73,7 @@ public class RowView {
 
     public boolean reset(ByteBuffer row, int size) {
         if (schema.size() == 0 || row == null || size <= RowCodecCommon.HEADER_LENGTH ||
-                row.getInt(row.position() + RowCodecCommon.VERSION_LENGTH) != size) {
+                row.getInt(RowCodecCommon.VERSION_LENGTH) != size) {
             is_valid = false;
             return false;
         }
@@ -127,13 +127,13 @@ public class RowView {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
         }
         int ptr = RowCodecCommon.HEADER_LENGTH + (idx >> 3);
-        byte bt = row.get(row.position() + ptr);
+        byte bt = row.get(ptr);
         int ret = bt & (1 << (idx & 0x07));
         return (ret > 0) ? true : false;
     }
 
     public static int getSize(ByteBuffer row) {
-        return row.getInt(row.position() + RowCodecCommon.VERSION_LENGTH);
+        return row.getInt(RowCodecCommon.VERSION_LENGTH);
     }
 
     public Boolean getBool(int idx) throws TabletException {
@@ -204,7 +204,7 @@ public class RowView {
             return null;
         }
         Object val = null;
-        int offset = offset_vec.get(idx) + row.position();
+        int offset = offset_vec.get(idx);
         switch (type) {
             case Bool: {
                 int v = row.get(offset);
@@ -237,7 +237,7 @@ public class RowView {
                 if (field_offset < string_field_cnt - 1) {
                     next_str_field_offset = field_offset + 1;
                 }
-                return getStrField(row, field_offset - row.position(), next_str_field_offset,
+                return getStrField(row, field_offset, next_str_field_offset,
                         str_field_start_offset, RowCodecCommon.getAddrLength(size));
             default:
                 throw new TabletException("unsupported data type");
@@ -302,7 +302,7 @@ public class RowView {
         }
         int len;
         if (next_str_field_offset <= 0) {
-            int total_length = row.getInt(row.position() + RowCodecCommon.VERSION_LENGTH);
+            int total_length = row.getInt(RowCodecCommon.VERSION_LENGTH);
             len = total_length - str_offset;
         } else {
             len = next_str_offset - str_offset;

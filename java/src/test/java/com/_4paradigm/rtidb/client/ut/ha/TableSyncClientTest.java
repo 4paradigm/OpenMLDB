@@ -647,7 +647,7 @@ public class TableSyncClientTest extends TestCaseBase {
             nsc.dropTable(name);
         }
     }
-    
+
     @Test
     public void testAddTableFieldWithColumnKey() {
         String name = String.valueOf(id.incrementAndGet());

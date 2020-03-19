@@ -126,7 +126,7 @@ public class RelationTraverseIterator {
         }
         offset += (4 + length);
         slice.limit(offset);
-        boolean ok = rowView.reset(slice, length);
+        boolean ok = rowView.reset(slice.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN), length);
         if (!ok) {
             throw new RuntimeException("row view reset failed");
         }
