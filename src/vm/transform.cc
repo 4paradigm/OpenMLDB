@@ -195,7 +195,7 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
             ops.push_back(project_op);
         } else {
             PhysicalOpNode* op = new PhysicalRowProjectNode(
-                depend, &(project_list->GetProjects()));
+                depend, (project_list->GetProjects()));
             node_manager_->RegisterNode(op);
             ops.push_back(op);
         }
@@ -223,7 +223,24 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
                 join, *iter, ::fesql::node::kJoinTypeConcat, nullptr);
             node_manager_->RegisterNode(join);
         }
-        *output = join;
+        node::PlanNodeList project_list;
+        uint32_t pos = 0;
+        for (auto iter = node->pos_mapping_.cbegin();
+             iter != node->pos_mapping_.cend(); iter++) {
+            auto sub_project_list = dynamic_cast<node::ProjectListNode*>(
+                node->project_list_vec_[iter->first]);
+
+            auto project_node = dynamic_cast<node::ProjectNode*>(
+                sub_project_list->GetProjects().at(iter->second));
+            project_list.push_back(node_manager_->MakeProjectNode(
+                pos, project_node->GetName(),
+                node_manager_->MakeColumnRefNode(project_node->GetName(), "")));
+                pos++;
+        }
+        PhysicalProjectNode* project_op =
+            new PhysicalRowProjectNode(join, project_list);
+        node_manager_->RegisterNode(project_op);
+        *output = project_op;
         return true;
     }
 }
@@ -271,7 +288,7 @@ bool Transform::TransformWindowProject(const node::ProjectListNode* node,
         node_manager_->RegisterNode(window_op);
         depend = window_op;
     }
-    *output = new PhysicalAggrerationNode(depend, &(node->GetProjects()));
+    *output = new PhysicalAggrerationNode(depend, node->GetProjects());
     node_manager_->RegisterNode(*output);
     return true;
 }

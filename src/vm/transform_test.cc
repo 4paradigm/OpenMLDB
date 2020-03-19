@@ -362,20 +362,20 @@ TEST_F(TransformTest, pass_group_optimized_test) {
     std::vector<std::pair<std::string, std::string>> in_outs;
     in_outs.push_back(
         std::make_pair("SELECT sum(col1) as col1sum, * FROM t1 group by col1;",
-                       "PROJECT(projectType=ProjectRow)\n"
+                       "PROJECT(type=ProjectRow, projects=(col1sum,*))\n"
                        "  SCAN(type=IndexScan, table=t1, index=index1)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum, * FROM t1 group by col1, col2;",
-        "PROJECT(projectType=ProjectRow)\n"
+        "PROJECT(type=ProjectRow, projects=(col1sum,*))\n"
         "  SCAN(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum, * FROM t1 group by col1, col2, col3;",
-        "PROJECT(projectType=ProjectRow)\n"
+        "PROJECT(type=ProjectRow, projects=(col1sum,*))\n"
         "  GROUP_BY(group by =(col3))\n"
         "    SCAN(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum, * FROM t1 group by col3, col2, col1;",
-        "PROJECT(projectType=ProjectRow)\n"
+        "PROJECT(type=ProjectRow, projects=(col1sum,*))\n"
         "  GROUP_BY(group by =(col3))\n"
         "    SCAN(type=IndexScan, table=t1, index=index12)"));
     fesql::type::TableDef table_def;
@@ -414,12 +414,13 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  JOIN(type=kJoinTypeConcat, condition=)\n"
-        "    PROJECT(projectType=ProjectRow)\n"
-        "      SCAN(table=t1)\n"
-        "    PROJECT(projectType=Aggregation)\n"
-        "      BUFFER(start=-3, end=0)\n"
-        "        SCAN(type=IndexScan, table=t1, index=index1)"));
+        "  PROJECT(type=ProjectRow, projects=(col1,w1_col3_sum,w1_col2_sum))\n"
+        "    JOIN(type=kJoinTypeConcat, condition=)\n"
+        "      PROJECT(type=ProjectRow, projects=(col1))\n"
+        "        SCAN(table=t1)\n"
+        "      PROJECT(type=Aggregation, projects=(w1_col3_sum,w1_col2_sum))\n"
+        "        BUFFER(start=-3, end=0)\n"
+        "          SCAN(type=IndexScan, table=t1, index=index1)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1, "
@@ -429,12 +430,13 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  JOIN(type=kJoinTypeConcat, condition=)\n"
-        "    PROJECT(projectType=ProjectRow)\n"
-        "      SCAN(table=t1)\n"
-        "    PROJECT(projectType=Aggregation)\n"
-        "      BUFFER(start=-3, end=0)\n"
-        "        SCAN(type=IndexScan, table=t1, index=index12)"));
+        "  PROJECT(type=ProjectRow, projects=(col1,w1_col3_sum,w1_col2_sum))\n"
+        "    JOIN(type=kJoinTypeConcat, condition=)\n"
+        "      PROJECT(type=ProjectRow, projects=(col1))\n"
+        "        SCAN(table=t1)\n"
+        "      PROJECT(type=Aggregation, projects=(w1_col3_sum,w1_col2_sum))\n"
+        "        BUFFER(start=-3, end=0)\n"
+        "          SCAN(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1, "
@@ -443,14 +445,15 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  JOIN(type=kJoinTypeConcat, condition=)\n"
-        "    PROJECT(projectType=ProjectRow)\n"
-        "      SCAN(table=t1)\n"
-        "    PROJECT(projectType=Aggregation)\n"
-        "      BUFFER(start=-3, end=0)\n"
-        "        SORT_BY((col15) ASC)\n"
-        "          GROUP_BY(group by =(col3))\n"
-        "            SCAN(table=t1)"));
+        "  PROJECT(type=ProjectRow, projects=(col1,w1_col3_sum,w1_col2_sum))\n"
+        "    JOIN(type=kJoinTypeConcat, condition=)\n"
+        "      PROJECT(type=ProjectRow, projects=(col1))\n"
+        "        SCAN(table=t1)\n"
+        "      PROJECT(type=Aggregation, projects=(w1_col3_sum,w1_col2_sum))\n"
+        "        BUFFER(start=-3, end=0)\n"
+        "          SORT_BY((col15) ASC)\n"
+        "            GROUP_BY(group by =(col3))\n"
+        "              SCAN(table=t1)"));
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");

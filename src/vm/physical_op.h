@@ -203,7 +203,7 @@ inline const std::string ProjectTypeName(const ProjectType &type) {
 
 class PhysicalProjectNode : public PhysicalUnaryNode {
  public:
-    PhysicalProjectNode(PhysicalOpNode *node, const node::PlanNodeList *project,
+    PhysicalProjectNode(PhysicalOpNode *node, const node::PlanNodeList &project,
                         ProjectType project_type)
         : PhysicalUnaryNode(node, kPhysicalOpProject, false, false),
           project_type_(project_type),
@@ -211,13 +211,13 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
     virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const ProjectType project_type_;
-    const node::PlanNodeList *project_;
+    const node::PlanNodeList project_;
 };
 
 class PhysicalRowProjectNode : public PhysicalProjectNode {
  public:
     PhysicalRowProjectNode(PhysicalOpNode *node,
-                           const node::PlanNodeList *project)
+                           const node::PlanNodeList &project)
         : PhysicalProjectNode(node, project, kProjectRow) {}
     virtual ~PhysicalRowProjectNode() {}
 };
@@ -225,7 +225,7 @@ class PhysicalRowProjectNode : public PhysicalProjectNode {
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalAggrerationNode(PhysicalOpNode *node,
-                            const node::PlanNodeList *project)
+                            const node::PlanNodeList &project)
         : PhysicalProjectNode(node, project, kProjectAggregation) {}
     virtual ~PhysicalAggrerationNode() {}
 };

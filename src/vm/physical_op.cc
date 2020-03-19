@@ -73,7 +73,29 @@ void PhysicalGroupNode::Print(std::ostream& output,
 void PhysicalProjectNode::Print(std::ostream& output,
                                 const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(projectType=" << ProjectTypeName(project_type_) << ")";
+    std::string projects_str = "(";
+    if (project_.empty()) {
+        projects_str.append(")");
+    } else {
+        auto iter = project_.cbegin();
+        auto node = dynamic_cast<node::ProjectNode*>(*iter);
+        projects_str.append(node->GetName());
+        iter++;
+        for (;iter != project_.cend(); iter++) {
+            auto node = dynamic_cast<node::ProjectNode*>(*iter);
+            projects_str.append(",");
+
+            if (node->GetPos() >= 10) {
+                projects_str.append("...");
+                break;
+            }
+            projects_str.append(node->GetName());
+        }
+        projects_str.append(")");
+    }
+
+    output << "(type=" << ProjectTypeName(project_type_)
+           << ", projects=" << projects_str << ")";
     output << "\n";
 
     PrintChildren(output, tab);
