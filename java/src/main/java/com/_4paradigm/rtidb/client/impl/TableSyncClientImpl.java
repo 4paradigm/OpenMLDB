@@ -1139,10 +1139,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row == null) {
             throw new TabletException("putting data is null");
         }
-        if (wo.isUpdateIfEqual() && wo.isUpdateIfExist()) {
-            return putRelationTable(tname, row);
-        }
-        return false;
+        //TODO: resolve wo
+        return putRelationTable(tname, row);
+
     }
 
     private boolean updateRequest(TableHandler th, int pid, List<ColumnDesc> newCdSchema, List<ColumnDesc> newValueSchema,
@@ -1200,7 +1199,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return false;
     }
 
-    private List<ColumnDesc> schemaWrapper(Map<String, Object> columns, List<ColumnDesc> schema) {
+    private List<ColumnDesc> getSchemaData(Map<String, Object> columns, List<ColumnDesc> schema) {
         List<ColumnDesc> newSchema = new ArrayList<>();
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
@@ -1237,10 +1236,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         idxValue = validateKey(idxValue);
         int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
 
-        List<ColumnDesc> newCdSchema = schemaWrapper(conditionColumns, th.getSchema());
+        List<ColumnDesc> newCdSchema = getSchemaData(conditionColumns, th.getSchema());
         ByteBuffer conditionBuffer = RowBuilder.encode(conditionColumns, newCdSchema);
 
-        List<ColumnDesc> newValueSchema = schemaWrapper(valueColumns, th.getSchema());
+        List<ColumnDesc> newValueSchema = getSchemaData(valueColumns, th.getSchema());
         ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
 
         return updateRequest(th, pid, newCdSchema, newValueSchema, conditionBuffer, valueBuffer);
