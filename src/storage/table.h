@@ -143,16 +143,16 @@ public:
         table_meta_.CopyFrom(table_meta);
     }
 
-    const std::vector<std::shared_ptr<IndexDef>>& GetAllIndex() {
-        return table_index_->GetAllIndex();
+    std::vector<std::shared_ptr<IndexDef>> GetAllIndex() {
+        return table_index_.GetAllIndex();
     }
 
     std::shared_ptr<IndexDef> GetIndex(const std::string& name) {
-        return table_index_->GetIndex(name);
+        return table_index_.GetIndex(name);
     }
 
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx) {
-        return table_index_->GetIndex(idx);
+        return table_index_.GetIndex(idx);
     }
 
     inline std::map<std::string, uint8_t>& GetTSMapping() {
@@ -232,7 +232,7 @@ protected:
     std::atomic<uint32_t> table_status_;
     std::string schema_;
     std::map<std::string, uint8_t> ts_mapping_;
-    std::shared_ptr<TableIndex> table_index_;
+    TableIndex table_index_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> abs_ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_abs_ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> lat_ttl_vec_;

@@ -4263,6 +4263,21 @@ void TabletImpl::AddIndex(RpcController* controller,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
+    }
+    MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+    if (!mem_table->AddIndex(request->column_key())) {
+        PDLOG(WARNING, "add index %s failed. tid %u, pid %u", 
+                request->column_key().index_name(), request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("add index failed");
+        return;
+    }
     PDLOG(INFO, "add index %s ok. tid %u pid %u", 
             request->column_key().index_name().c_str(), request->tid(), request->pid());
     response->set_code(::rtidb::base::ReturnCode::kOk);
