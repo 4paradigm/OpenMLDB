@@ -234,6 +234,10 @@ bool MemTable::Put(const Dimensions& dimensions,
     }
     DataBlock* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (auto it = dimensions.begin(); it != dimensions.end(); it++) {
+        std::shared_ptr<IndexDef> index_def = GetIndex(it->idx());
+        if (!index_def || !index_def->IsReady()) {
+            continue;
+        }
         Slice spk(it->key());
         uint32_t seg_idx = 0;
         if (seg_cnt_ > 1) {
@@ -689,7 +693,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
                 idx_name.c_str(), id_, pid_);
         return false;
     }
-    if ((uint32_t)index_def->GetId() <table_meta_.column_key_size()) {
+    if (index_def->GetId() < (uint32_t)table_meta_.column_key_size()) {
         table_meta_.mutable_column_key(index_def->GetId())->set_flag(1);
     }
     index_def->SetStatus(IndexStatus::kWaiting);
