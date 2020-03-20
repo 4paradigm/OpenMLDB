@@ -534,30 +534,52 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(const ::rtidb::na
 void PutRelational(uint32_t tid, const std::map<std::string, std::string>& parameter_map, 
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& schema, 
         const ::rtidb::nameserver::TableInfo& table_info) {
+    bool has_auto_gen = false;
+    std::string pk_col_name;
+    const ::google::protobuf::RepeatedPtrField< ::rtidb::common::ColumnKey >& column_key_list = table_info.column_key();
+    for (const ::rtidb::common::ColumnKey& column_key : column_key_list) {
+        if (column_key.index_type() == ::rtidb::type::kPrimaryKey ||
+                column_key.index_type() == ::rtidb::type::kAutoGen) {
+            pk_col_name = column_key.index_name();
+        }
+        if (column_key.index_type() == ::rtidb::type::kAutoGen) {
+            has_auto_gen = true;
+        }
+        break;
+        //TODO: other index type
+    }
     std::map<std::string, std::string> map;
     for (int i = 0; i < schema.size(); i++) {
         auto iter = parameter_map.find(schema.Get(i).name());
-        if (iter == parameter_map.end()) {
+        if (iter == parameter_map.end() && !has_auto_gen) {
             printf("%s is not in input \n", schema.Get(i).name().c_str());
             return;
-        } else {
+        } else if (iter != parameter_map.end()){
             map.insert(std::make_pair(schema.Get(i).name(), iter->second));
         }
     }
-    std::string pk;
-    const ::google::protobuf::RepeatedPtrField< ::rtidb::common::ColumnKey >& column_key_list = table_info.column_key();
-    for (int i = 0; i < schema.size(); i++) {
-        for (int j = 0; j < column_key_list.size(); j++) {
-            if (column_key_list.Get(j).index_name() == schema.Get(i).name()) {
+    uint32_t pid = 0;
+    if (has_auto_gen) {
+        if (map.find(pk_col_name) != map.end()) {
+            printf("should not input autoGenPk column \n");
+            return;
+        }
+        map.insert(std::make_pair(pk_col_name, ::rtidb::base::DEFAULT_LONG));
+        ::rtidb::base::Random rand(0xdeadbeef);
+        pid = (uint32_t)(rand.Next() % table_info.table_partition_size());
+    } else {
+        std::string pk;
+        for (int i = 0; i < schema.size(); i++) {
+            if (pk_col_name == schema.Get(i).name()) {
                 pk = map[schema.Get(i).name()];
                 break;
             }
+            if (pk != "") {
+                break;
+            }
         }
-        if (pk != "") {
-            break;
-        }
+        pid = (uint32_t)(::rtidb::base::hash64(pk) % table_info.table_partition_size());
     }
-    uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) % table_info.table_partition_size());
     std::string msg;
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(table_info, pid, msg);
     if (!tablet_client) {
@@ -2044,7 +2066,15 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> column_desc_list_2 = tables[0].added_column_desc();
         int base_size = (int)(column_desc_list_1.size());
         int add_size = (int)(column_desc_list_2.size());
-        int modify_index = parts.size() - start_index - base_size;
+        int in_size = parts.size();
+        if (tables[0].has_table_type() && tables[0].table_type() == ::rtidb::type::TableType::kRelational) {
+            for (int i = 0; i < tables[0].column_key_size(); i++) {
+                if (tables[0].column_key(i).index_type() == ::rtidb::type::kAutoGen) {
+                    in_size = parts.size() + 1;
+                }
+            }
+        }
+        int modify_index = in_size - start_index - base_size;
         if (modify_index - add_size > 0 || modify_index < 0) {
             printf("put format error! input value does not match the schema\n");
             return;

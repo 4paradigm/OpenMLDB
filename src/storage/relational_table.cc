@@ -188,7 +188,7 @@ bool RelationalTable::Init() {
 }
 
 bool RelationalTable::Put(const std::string& value) {
-    int64_t auto_gen_pk = auto_gen_.Next();
+    int64_t auto_gen_pk = id_generator_.Next();
 
     bool has_auto_gen = false;
     std::string pk_col_name;

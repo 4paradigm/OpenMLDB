@@ -1,5 +1,5 @@
 //
-// auto_gen.h
+// id_generator.h  
 // Copyright (C) 2017 4paradigm.com
 // Author wangbao
 // Date 2020-3-20
@@ -15,12 +15,12 @@
 namespace rtidb {
 namespace base{
 
-class AutoGen {
+class IdGenerator {
 public:
-    AutoGen(): rand_(0xdeadbeef) {}
-    AutoGen(const AutoGen&) = delete;
-    AutoGen& operator=(const AutoGen&) = delete;
-    ~AutoGen() {}
+    IdGenerator(): rand_(0xdeadbeef) {}
+    IdGenerator(const IdGenerator&) = delete;
+    IdGenerator& operator=(const IdGenerator&) = delete;
+    ~IdGenerator() {}
 
     int64_t Next() {
         return 11;

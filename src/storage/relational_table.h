@@ -27,7 +27,7 @@
 #include "timer.h"
 #include "base/codec.h"
 #include <mutex>
-#include "base/auto_gen.h"
+#include "base/id_generator.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
@@ -151,7 +151,7 @@ private:
     std::atomic<uint64_t> offset_;
     std::string db_root_path_;
 
-    ::rtidb::base::AutoGen auto_gen_;
+    ::rtidb::base::IdGenerator id_generator_;
 };
 
 }
