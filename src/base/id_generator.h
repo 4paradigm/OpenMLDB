@@ -8,6 +8,7 @@
 #include "base/random.h"
 #include <unistd.h>
 #include <pthread.h>
+#include <stdlib.h>
 
 
 #pragma once
@@ -26,7 +27,7 @@ public:
         pthread_t tid = pthread_self();
         uint32_t rd = rand_.Next();
         int64_t res = (((ts << 8) | (tid | 0xFF)) << 4) | (rd | 0xFFF);
-        return res | 0x7FFFFFFFFFFFFFFF;
+        return llabs(res);
     }
 
 private:
