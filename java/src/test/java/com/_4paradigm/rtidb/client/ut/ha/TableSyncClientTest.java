@@ -8,7 +8,6 @@ import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
-import com._4paradigm.rtidb.client.impl.RelationTraverseIterator;
 import com._4paradigm.rtidb.client.impl.RelationalIterator;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.*;
@@ -704,7 +703,7 @@ public class TableSyncClientTest extends TestCaseBase {
             ReadOption ro = new ReadOption(null, null, colSet, 1);
 
             //traverse
-            RelationTraverseIterator trit = tableSyncClient.traverse(name, ro);
+            RelationalIterator trit = tableSyncClient.traverse(name, ro);
             for (long i = 0; i < 10; i++) {
                 trit.next();
                 Assert.assertTrue(trit.valid());
@@ -748,7 +747,7 @@ public class TableSyncClientTest extends TestCaseBase {
             ReadOption ro = new ReadOption(null, null, colSet, 1);
 
             //traverse
-            RelationTraverseIterator trit = tableSyncClient.traverse(name, ro);
+            RelationalIterator trit = tableSyncClient.traverse(name, ro);
             for (long i = 0; i < 1000; i++) {
                 trit.next();
                 Assert.assertTrue(trit.valid());

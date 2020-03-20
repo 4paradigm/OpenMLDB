@@ -284,13 +284,13 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public RelationTraverseIterator traverse(String tableName, ReadOption ro) throws TimeoutException, TabletException {
+    public RelationalIterator traverse(String tableName, ReadOption ro) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tableName);
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
         }
         Set<String> colSet = ro.getColSet();
-        return new RelationTraverseIterator(client, th, colSet);
+        return new RelationalIterator(client, th, colSet);
     }
 
     @Override
