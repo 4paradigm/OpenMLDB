@@ -9,11 +9,8 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.*;
-import com._4paradigm.rtidb.client.type.DataType;
-import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
-import com._4paradigm.rtidb.type.Type;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
@@ -1119,30 +1116,14 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         //TODO: resolve wo
 
-        boolean hasAutoGenPk = false;
-        String indexName = "";
-        for (int i = 0; i < th.getTableInfo().getColumnKeyList().size(); i++) {
-            Common.ColumnKey columnKey = th.getTableInfo().getColumnKeyList().get(i);
-            if (columnKey.hasIndexType() && columnKey.getIndexType() == Type.IndexType.kAutoGen) {
-                hasAutoGenPk = true;
-                indexName = columnKey.getIndexName();
-                break;
-            }
-        }
-        for (int i = 0; i < th.getSchema().size(); i++) {
-            ColumnDesc columnDesc = th.getSchema().get(i);
-            if (columnDesc.getName().equals(indexName)) {
-                if (!columnDesc.getDataType().equals(DataType.BigInt)) {
-                    throw new TabletException("autoGenPk column dataType must be BigInt");
-                }
-                break;
-            }
-        }
-        if (hasAutoGenPk &&
+        String indexName = th.getAutoGenPkName();
+        indexName.isEmpty();
+
+        if (!indexName.isEmpty() &&
                 (row.size() == th.getSchema().size() || row.containsKey(indexName))) {
             throw new TabletException("should not input autoGenPk column");
         }
-        if (hasAutoGenPk) {
+        if (!indexName.isEmpty()) {
             row.put(indexName, RowCodecCommon.DEFAULT_LONG);
         }
 
@@ -1159,7 +1140,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         buffer = RowBuilder.encode(row, schema);
 
         int pid = 0;
-        if (!hasAutoGenPk) {
+        if (indexName.isEmpty()) {
             String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
             pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
         } else {

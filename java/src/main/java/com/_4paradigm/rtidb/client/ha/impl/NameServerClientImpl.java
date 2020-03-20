@@ -201,7 +201,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
 
 
     @Override
-    public boolean createTable(TableDesc tableDesc) {
+    public boolean createTable(TableDesc tableDesc) throws TabletException {
         TableInfo.Builder builder = TableInfo.newBuilder();
         builder.setName(tableDesc.getName())
                 .setTableType(TableType.valueFrom(tableDesc.getTableType()))
@@ -222,9 +222,13 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                     .build();
             builder.addColumnDescV1(cd);
         }
+        String indexName = "";
         for (IndexDef index : tableDesc.getIndexs()) {
             if (index.getIndexType() == IndexType.PrimaryKey ||
                     index.getIndexType() == IndexType.AutoGen) {
+                if (index.getIndexType() == IndexType.AutoGen) {
+                    indexName = index.getIndexName();
+                }
                 Common.ColumnKey.Builder colKeyBuilder = Common.ColumnKey.newBuilder();
                 colKeyBuilder.setIndexName(index.getIndexName())
                         .setIndexType(IndexType.valueFrom(index.getIndexType()));
@@ -238,6 +242,15 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             }
         }
         TableInfo tableInfo = builder.build();
+        for (int i = 0; i < tableInfo.getColumnDescV1List().size(); i++) {
+            Common.ColumnDesc columnDesc = tableInfo.getColumnDescV1List().get(i);
+            if (columnDesc.getName().equals(indexName)) {
+                if (!columnDesc.getDataType().equals(DataType.valueFrom(DataType.BigInt))) {
+                    throw new TabletException("autoGenPk column dataType must be BigInt");
+                }
+                break;
+            }
+        }
         CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
         GeneralResponse response = ns.createTable(request);
         if (response != null && response.getCode() == 0) {

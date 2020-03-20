@@ -123,7 +123,7 @@ public class TableSyncClientTest extends TestCaseBase {
         return name;
     }
 
-    private String createRelationalTable(IndexType indexType) {
+    private String createRelationalTable(IndexType indexType) throws TabletException {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         TableDesc tableDesc = new TableDesc();
@@ -502,8 +502,9 @@ public class TableSyncClientTest extends TestCaseBase {
 
     @Test
     public void testRelationalTable() {
-        String name = createRelationalTable(IndexType.PrimaryKey);
+        String name = "";
         try {
+            name = createRelationalTable(IndexType.PrimaryKey);
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
             Assert.assertEquals(schema.size(), 3);
 
@@ -634,8 +635,9 @@ public class TableSyncClientTest extends TestCaseBase {
 
     @Test
     public void testAutoGenPk() {
-        String name = createRelationalTable(IndexType.AutoGen);
+        String name = "";
         try {
+            name = createRelationalTable(IndexType.AutoGen);
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
             Assert.assertEquals(schema.size(), 3);
 
