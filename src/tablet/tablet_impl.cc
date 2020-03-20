@@ -1612,7 +1612,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
                 Closure*done) {
     brpc::ClosureGuard done_guard(done);
     if (request->query_key_size() < 1) {
-        response->set_code(0);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
         return;
     }
     uint32_t tid = request->tid();
@@ -1659,7 +1659,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
 
     delete it;
     bool is_finish = false;
-    if (scount == request->query_key_size()) {
+    if (static_cast<uint64_t>(scount) == static_cast<uint64_t>(request->query_key_size())) {
         is_finish = true;
     }
     uint32_t total_size = scount * 4 + total_block_size;
