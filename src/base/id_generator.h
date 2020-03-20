@@ -7,8 +7,7 @@
 
 #include "base/random.h"
 #include <unistd.h>
-#include <sys/syscall.h>
-#define gettid() syscall(SYS_gettid)
+#include <pthread.h>
 
 
 #pragma once
@@ -23,14 +22,11 @@ public:
     ~IdGenerator() {}
 
     int64_t Next() {
-        return 11;
-        /**
         int64_t ts = ::baidu::common::timer::get_micros();
-        int64_t tid = gettid();
+        pthread_t tid = pthread_self();
         uint32_t rd = rand_.Next();
-        int64_t res = (((ts << 8) | (tid | 0xFF)) << 8) | (rd | 0xFF);
+        int64_t res = (((ts << 8) | (tid | 0xFF)) << 4) | (rd | 0xFFF);
         return res | 0x7FFFFFFFFFFFFFFF;
-    **/
     }
 
 private:
