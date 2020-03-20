@@ -38,10 +38,12 @@
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <random>
+#include "proto/type.pb.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
 DECLARE_string(endpoint);
 DECLARE_int32(port);
@@ -1165,6 +1167,112 @@ void HandleNSDelete(const std::vector<std::string>& parts, ::rtidb::client::NsCl
     }
 }
 
+bool GetColumnMap(const std::vector<std::string>& parts, std::map<std::string, std::string>& condition_columns_map, 
+        std::map<std::string, std::string>& value_columns_map) {
+    std::string delimiter = "=";
+    bool is_condition_columns_map = false; 
+    std::vector<std::string> temp_vec;
+    for (uint32_t i = 2; i < parts.size(); i++) {
+        if (parts[i] == "where") {
+           is_condition_columns_map = true;
+           continue;
+        }
+        ::rtidb::base::SplitString(parts[i], delimiter, temp_vec);
+        if (temp_vec.size() < 2 || temp_vec[1].empty()) {
+            return false;
+        }
+        if (is_condition_columns_map) {
+            condition_columns_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        } else {
+            value_columns_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        }
+    }
+    return true;
+}
+
+void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 5) {
+        std::cout << "update format error. eg: update table_name=xxx col1=xxx ... where col=xxx" << std::endl;
+        return;
+    }
+    std::string table_name;
+    std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1], "=", temp_vec);
+    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" && !temp_vec[1].empty()) {
+        table_name = temp_vec[1];
+    } else {
+        std::cout << "update format error. eg: update table_name=xxx col1=xxx ... where col=xxx" << std::endl;
+        return;
+    }
+    std::map<std::string, std::string> condition_columns_map;
+    std::map<std::string, std::string> value_columns_map;
+    if (!GetColumnMap(parts, condition_columns_map, value_columns_map)) {
+        std::cout << "update format error. eg: update table_name=xxx col1=xxx ... where col=xxx" << std::endl;
+        return;
+    }
+    if (condition_columns_map.empty() || value_columns_map.empty()) {
+        std::cout << "update format error. eg: update table_name=xxx col1=xxx ... where col=xxx" << std::endl;
+        return;
+    }
+    auto cd_iter = condition_columns_map.begin();
+    std::string pk = cd_iter->second;
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(table_name, tables, msg);
+    if (!ret) {
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables.empty()) {
+        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        return;
+    }
+    if (tables[0].column_desc_v1_size() == 0) {
+        std::cout << "column_desc_v1_size is 0"<< std::endl;
+        return;
+    }
+    uint32_t tid = tables[0].tid();
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) % tables[0].table_partition_size());
+    std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+    if (!tablet_client) {
+        std::cout << "failed to get. error msg: " << msg << std::endl;
+        return;
+    }
+    Schema new_cd_schema;
+    ::rtidb::base::RowSchemaCodec::GetSchemaData(condition_columns_map, tables[0].column_desc_v1(), new_cd_schema);
+    std::string cd_value;
+    ::rtidb::base::ResultMsg cd_rm = ::rtidb::base::RowSchemaCodec::Encode(condition_columns_map, new_cd_schema, cd_value);
+    if(cd_rm.code < 0) {
+        printf("encode error, msg: %s\n", cd_rm.msg.c_str());
+        return;
+    }
+    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+        std::string compressed;
+        ::snappy::Compress(cd_value.c_str(), cd_value.length(), &compressed);
+        cd_value = compressed;
+    }
+    Schema new_value_schema;
+    ::rtidb::base::RowSchemaCodec::GetSchemaData(value_columns_map, tables[0].column_desc_v1(), new_value_schema);
+    std::string value;
+    ::rtidb::base::ResultMsg value_rm = ::rtidb::base::RowSchemaCodec::Encode(value_columns_map, new_value_schema, value);
+    if(value_rm.code < 0) {
+        printf("encode error, msg: %s\n", value_rm.msg.c_str());
+        return;
+    }
+    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+        std::string compressed;
+        ::snappy::Compress(value.c_str(), value.length(), &compressed);
+        value = compressed;
+    }
+    bool ok = tablet_client->Update(tid, pid, new_cd_schema, new_value_schema, cd_value, value, msg);
+    if (!ok) {
+        printf("update failed, msg: %s\n", msg.c_str());
+    } else {
+        printf("update ok\n");
+    }
+
+}
+
 void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "get format error. eg: get table_name key ts | get table_name key idx_name ts | get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
@@ -2121,9 +2229,16 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
         std::string cur_type = table_info.column_desc(idx).type();
         std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
-        if (type_set.find(cur_type) == type_set.end()) {
-            printf("type %s is invalid\n", table_info.column_desc(idx).type().c_str());
-            return -1;
+        if (table_info.has_table_type() && table_info.table_type() == "Relational") {
+            if (::rtidb::base::DATA_TYPE_MAP.find(cur_type) == ::rtidb::base::DATA_TYPE_MAP.end()) {
+                printf("type %s is invalid\n", cur_type.c_str());
+                return -1;
+            }
+        } else {
+            if (type_set.find(cur_type) == type_set.end()) {
+                printf("type %s is invalid\n", table_info.column_desc(idx).type().c_str());
+                return -1;
+            }
         }
         if (table_info.column_desc(idx).name() == "" || 
                 name_map.find(table_info.column_desc(idx).name()) != name_map.end()) {
@@ -2164,14 +2279,12 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         name_map.insert(std::make_pair(table_info.column_desc(idx).name(), cur_type));
         ::rtidb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc_v1();
         column_desc->CopyFrom(table_info.column_desc(idx));
-        if (cur_type == "smallint") {
-            column_desc->set_type("int16");
-        } else if (cur_type == "int") {
-            column_desc->set_type("int32");
-        } else if (cur_type == "bigint") {
-            column_desc->set_type("int64");
-        } else if (cur_type == "blob" || cur_type == "varchar") {
-            column_desc->set_type("string");
+        if (table_info.has_table_type() && table_info.table_type() == "Relational") {
+            const auto& tp_iter = ::rtidb::base::DATA_TYPE_MAP.find(cur_type);
+            column_desc->set_data_type(tp_iter->second);
+            if (tp_iter->second == ::rtidb::type::kBlob) {
+                column_desc->set_data_type(::rtidb::type::kVarchar);
+            }
         }
     }
     if (table_info.column_key_size() == 0
@@ -2253,6 +2366,14 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
             for (int inner = 0; inner < table_info.index(idx).col_name_size(); inner++) {
                 column_key->add_col_name(table_info.index(idx).col_name(inner));
             }
+            std::string idx_type = table_info.index(idx).index_type();
+            std::transform(idx_type.begin(), idx_type.end(), idx_type.begin(), ::tolower);
+            const auto& idx_iter = ::rtidb::base::INDEX_TYPE_MAP.find(idx_type);
+            if (idx_iter == ::rtidb::base::INDEX_TYPE_MAP.end()) {
+                printf("index type %s is invalid\n", idx_type.c_str());
+                return -1;
+            }
+            column_key->set_index_type(idx_iter->second);
             index_set.insert(table_info.index(idx).index_name());
         }
     }
@@ -2387,11 +2508,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     type_set.insert("date");
     type_set.insert("int16");
     type_set.insert("uint16");
-    type_set.insert("smallint");
-    type_set.insert("int");
-    type_set.insert("bigint");
-    type_set.insert("varchar");
-    type_set.insert("blob");
     ::rtidb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
         if (GenTableInfo(parts[1], type_set, ns_table_info) < 0) {
@@ -2582,6 +2698,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("switchmode - switch cluster mode\n");
         printf("synctable - synctable from leader cluster to replica cluster\n");
         printf("deleteindx - delete index of specified table");
+        printf("update - update record of specified table");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -2787,6 +2904,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("desc: delete index of specified index\n");
             printf("usage: deleteindex table_name index_name");
             printf("usage: deleteindex test index0");
+        } else if (parts[1] == "update") {
+            printf("desc: update record of table\n");
+            printf("usage: update table_name=xxx col1=xxx col2=xxx where col=xxx\n");
+            printf("eg: update table_name=test1 mcc=mcc2 where card=card0\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -4992,6 +5113,8 @@ void StartNsClient() {
            HandleNSClientAddIndex(parts, &client); 
         } else if (parts[0] == "deleteindex") {
             HandleNSClientDeleteIndex(parts, &client);
+        } else if (parts[0] == "update") {
+            HandleNSUpdate(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

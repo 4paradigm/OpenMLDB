@@ -503,15 +503,49 @@ void TabletImpl::Get(RpcController* controller,
             index = iit->second;
         }
         */
-        ok = r_table->Get(index, request->key(), *value);
+        rtidb::base::Slice slice;
+        ok = r_table->Get(index, request->key(), slice);
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
             response->set_msg("key not found");
             return;
         }
+        value->assign(slice.data(), slice.size());
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
     }
+}
+
+void TabletImpl::Update(RpcController* controller,
+        const ::rtidb::api::UpdateRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (follower_.load(std::memory_order_relaxed)) {
+        response->set_code(::rtidb::base::ReturnCode::kIsFollowerCluster);
+        response->set_msg("is follower cluster");
+        return;
+    }
+    std::shared_ptr<RelationalTable> r_table;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        r_table = GetRelationalTableUnLock(request->tid(), request->pid());
+        if (!r_table) {
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+            response->set_msg("table is not exist");
+            return;
+        }
+    }
+    bool ok = r_table->Update(request->condition_columns(), request->value_columns());
+    if (!ok) {
+        response->set_code(::rtidb::base::ReturnCode::kUpdateFailed);
+        response->set_msg("update failed");
+        PDLOG(WARNING, "update failed. tid %u, pid %u", request->tid(), request->pid());
+        return;
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
 }
 
 void TabletImpl::Put(RpcController* controller,
