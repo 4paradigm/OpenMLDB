@@ -14,6 +14,7 @@
 #include "base/kv_iterator.h"
 #include "base/schema_codec.h"
 
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 namespace rtidb {
 
 const uint32_t INVALID_TID = UINT32_MAX;
@@ -55,6 +56,11 @@ public:
     bool CreateTable(const ::rtidb::api::TableMeta& table_meta);
    
     bool UpdateTableMetaForAddField(uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc, const std::string& schema, std::string& msg);
+
+    bool Update(uint32_t tid, uint32_t pid, 
+            const Schema& new_cd_schema, const Schema& new_value_schema, 
+            const std::string& cd_value, const std::string& value, 
+            std::string& msg); 
 
     bool Put(uint32_t tid,
              uint32_t pid,

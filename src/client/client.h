@@ -306,11 +306,14 @@ public:
     QueryResult Query(const std::string& name, const struct ReadOption& ro);
     GeneralResult Put(const std::string& name, const std::map<std::string, std::string>& values, const WriteOption& wo);
     GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
-    GeneralResult Update(const std::string& name, const std::map<std::string, std::string>& condition, const std::map<std::string, std::string> values, const WriteOption& wo);
     TraverseResult Traverse(const std::string& name, const struct ReadOption& ro);
     bool Traverse(const std::string& name, const struct ReadOption& ro, std::string* data, uint32_t* count,
                                const std::string& last_key, bool* is_finish);
     void SetZkCheckInterval(int32_t interval);
+    GeneralResult Update(const std::string& table_name, 
+            const std::map<std::string, std::string>& condition_columns_map,
+            const std::map<std::string, std::string>& value_columns_map,
+            const WriteOption& wo); 
 
 private:
     std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint, std::string* msg);
