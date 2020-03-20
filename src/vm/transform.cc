@@ -925,6 +925,8 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
                     new_group_op, join_op->GetProducers()[1],
                     join_op->join_type_, join_op->condition_);
+                node_manager_->RegisterNode(new_group_op);
+                node_manager_->RegisterNode(new_join_op);
                 *output = new_join_op;
                 return true;
             }
@@ -973,9 +975,11 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     // 符合优化条件
                     PhysicalSortNode* new_order_op = new PhysicalSortNode(
                         join_op->GetProducers()[0], order_expr);
+                    node_manager_->RegisterNode(new_order_op);
                     PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
                         new_order_op, join_op->GetProducers()[1],
                         join_op->join_type_, join_op->condition_);
+                    node_manager_->RegisterNode(new_order_op);
                     *output = new_join_op;
                     return true;
                 }
