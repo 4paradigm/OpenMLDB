@@ -1498,6 +1498,7 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_code(0);
         response->set_count(scount);
         response->set_is_finish(is_finish);
+        response->set_row_codec(true);
     }
 }
 
@@ -1603,6 +1604,80 @@ void TabletImpl::Delete(RpcController* controller,
             return;
         }
     }
+}
+
+void TabletImpl::BatchQuery(RpcController* controller,
+                const rtidb::api::BatchQueryRequest* request,
+                rtidb::api::BatchQueryResponse* response,
+                Closure*done) {
+    brpc::ClosureGuard done_guard(done);
+    if (request->query_key_size() < 1) {
+        response->set_code(0);
+        return;
+    }
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<RelationalTable> r_table;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        r_table = GetRelationalTableUnLock(tid, pid);
+    }
+    if (!r_table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
+    }
+    uint32_t index = 0;
+    rtidb::storage::RelationalTableTraverseIterator* it =
+            r_table->NewTraverse(index);
+    if (it == NULL) {
+        response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
+        response->set_msg("ts name not found, when create iterator");
+        return;
+    }
+    std::vector<rtidb::base::Slice> value_vec;
+    uint32_t total_block_size = 0;
+
+    uint32_t scount = 0;
+    for (auto& key : request->query_key()) {
+        it->Seek(key);
+        scount++;
+        if (!it->Valid()) {
+            continue;
+        }
+        rtidb::base::Slice value = it->GetValue();
+
+        total_block_size += value.size();
+        value_vec.push_back(value);
+        if (scount >= FLAGS_max_traverse_cnt) {
+            PDLOG(DEBUG, "batchquery cnt %lu max %lu",
+                  scount, FLAGS_max_traverse_cnt);
+            break;
+        }
+    }
+
+    delete it;
+    bool is_finish = false;
+    if (scount == request->query_key_size()) {
+        is_finish = true;
+    }
+    uint32_t total_size = scount * 4 + total_block_size;
+    std::string* pairs = response->mutable_pairs();
+    if (scount <= 0) {
+        pairs->resize(0);
+    } else {
+        pairs->resize(total_size);
+    }
+    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
+    uint32_t offset = 0;
+    for (const auto& value : value_vec) {
+        rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
+        offset += (4 + value.size());
+    }
+    PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(), request->pid(), scount);
+    response->set_code(0);
+    response->set_is_finish(is_finish);
 }
 
 void TabletImpl::ChangeRole(RpcController* controller,

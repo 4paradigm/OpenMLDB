@@ -675,7 +675,31 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         ASSERT_STREQ(str3.c_str(), str2.c_str());
         buffer += size;
     }
+    {
 
+        rtidb::api::BatchQueryRequest batchQuery_request;
+        rtidb::api::BatchQueryResponse batchQuery_response;
+        batchQuery_request.set_tid(id);
+        batchQuery_request.set_pid(1);
+        batchQuery_request.add_query_key("10");
+        tablet.BatchQuery(NULL, &batchQuery_request, &batchQuery_response, &closure);
+        ASSERT_EQ(0, batchQuery_response.code());
+        ASSERT_TRUE(batchQuery_response.is_finish());
+        buffer = batchQuery_response.pairs().data();
+        uint32_t value_size = 0;
+        memcpy(static_cast<void*>(&value_size), buffer, 4);
+        buffer += 4;
+        view.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(buffer)), value_size);
+        val = 0;
+        ASSERT_EQ(view.GetInt64(0, &val), 0);
+        ASSERT_EQ(val, 10l);
+        ASSERT_EQ(view.GetString(1, &ch, &length), 0);
+        str3.assign(ch, length);
+        ASSERT_STREQ(str3.c_str(), str1.c_str());
+        ASSERT_EQ(view.GetString(2, &ch, &length), 0);
+        str3.assign(ch, length);
+        ASSERT_STREQ(str3.c_str(), str2.c_str());
+    }
     //drop table
     {
         MockClosure closure;

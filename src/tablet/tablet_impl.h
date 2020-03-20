@@ -262,6 +262,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void BatchQuery(RpcController* controller,
+            const rtidb::api::BatchQueryRequest* request,
+            rtidb::api::BatchQueryResponse* response,
+            Closure*done);
+
     inline void SetServer(brpc::Server* server) {
         server_ = server;
     }
