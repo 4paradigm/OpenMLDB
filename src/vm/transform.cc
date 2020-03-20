@@ -203,11 +203,12 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
             PhysicalOpNode* op = nullptr;
             if (kPhysicalOpGroupBy == depend->type_) {
                 if (!CreatePhysicalAggrerationNode(
-                    depend, project_list->GetProjects(), &op, status)) {
+                        depend, project_list->GetProjects(), &op, status)) {
                     return false;
                 }
             } else {
-                if (!CreatePhysicalRowNode(depend, project_list->GetProjects(), &op, status)) {
+                if (!CreatePhysicalRowNode(depend, project_list->GetProjects(),
+                                           &op, status)) {
                     return false;
                 }
             }
@@ -556,6 +557,37 @@ bool Transform::CreatePhysicalRowNode(PhysicalOpNode* node,
                                       const node::PlanNodeList& projects,
                                       PhysicalOpNode** output,
                                       base::Status& status) {
+    node::PlanNodeList new_projects;
+    bool has_all_project = false;
+    for (auto iter = projects.cbegin(); iter != projects.cend(); iter++) {
+        auto project_node = dynamic_cast<node::ProjectNode*>(*iter);
+        auto expr = project_node->GetExpression();
+        if (nullptr == expr) {
+            status.msg = "invalid project: expression is null";
+            status.code = common::kPlanError;
+            return false;
+        }
+        if (node::kExprAll == expr->expr_type_) {
+            auto all_expr = dynamic_cast<node::AllNode*>(expr);
+            if (all_expr->children_.empty()) {
+                // expand all expression if needed
+                for (auto column : node->output_schema) {
+                    all_expr->children_.push_back(
+                        node_manager_->MakeColumnRefNode(
+                            column.name(), all_expr->GetRelationName()));
+                }
+            }
+            has_all_project = true;
+        }
+    }
+
+    if (has_all_project && 1 == projects.size()) {
+        // skip project
+        DLOG(INFO) << "skip project node: project has only kAllExpr expression";
+        *output = node;
+        return true;
+    }
+
     Schema output_schema;
     std::string fn_name;
     if (!GenProjects(node->output_schema, projects, true, fn_name,

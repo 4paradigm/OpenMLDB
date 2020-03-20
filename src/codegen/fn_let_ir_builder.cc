@@ -90,28 +90,32 @@ bool RowFnLetIRBuilder::Build(
         const ::fesql::node::ProjectNode* pp_node =
             (const ::fesql::node::ProjectNode*)pn;
         const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
-        ::llvm::Value* expr_out_val = NULL;
-        std::string col_name = pp_node->GetName();
-        ok = expr_ir_builder.Build(sql_node, &expr_out_val, status);
-        if (!ok) {
-            LOG(WARNING) << "fail to codegen project expression: "
-                         << status.msg;
-            return false;
+
+        switch (sql_node->expr_type_) {
+            case node::kExprAll: {
+                const node::AllNode* expr_all =
+                    dynamic_cast<const node::AllNode*>(sql_node);
+                for (auto expr : expr_all->children_) {
+                    auto column_ref = dynamic_cast<node::ColumnRefNode*>(expr);
+                    if (!BuildProject(index, column_ref,
+                                      column_ref->GetColumnName(), &outputs,
+                                      expr_ir_builder, output_schema, status)) {
+                        return false;
+                    }
+                    index++;
+                }
+                break;
+            }
+            default: {
+                std::string col_name = pp_node->GetName();
+                if (!BuildProject(index, sql_node, col_name, &outputs,
+                                  expr_ir_builder, output_schema, status)) {
+                    return false;
+                }
+                index++;
+                break;
+            }
         }
-        ::fesql::node::DataType data_type;
-        ok = GetBaseType(expr_out_val->getType(), &data_type);
-        if (!ok) {
-            return false;
-        }
-        ::fesql::type::Type ctype;
-        if (!DataType2SchemaType(data_type, &ctype)) {
-            return false;
-        }
-        outputs.insert(std::make_pair(index, expr_out_val));
-        index++;
-        ::fesql::type::ColumnDef* cdef = output_schema.Add();
-        cdef->set_name(col_name);
-        cdef->set_type(ctype);
     }
 
     ok = EncodeBuf(&outputs, output_schema, variable_ir_builder, block,
@@ -132,7 +136,6 @@ bool RowFnLetIRBuilder::Build(const std::string& name,
     return Build(name, projects->GetProjects(), !projects->is_window_agg_,
                  output_schema);
 }
-
 
 bool RowFnLetIRBuilder::EncodeBuf(
     const std::map<uint32_t, ::llvm::Value*>* values, const vm::Schema& schema,
@@ -203,6 +206,32 @@ bool RowFnLetIRBuilder::FillArgs(const std::string& row_ptr_name,
     sv.AddVar(row_size_name, &*it);
     ++it;
     sv.AddVar(output_ptr_name, &*it);
+    return true;
+}
+bool RowFnLetIRBuilder::BuildProject(
+    const uint32_t index, const node::ExprNode* expr,
+    const std::string& col_name, std::map<uint32_t, ::llvm::Value*>* outputs,
+    ExprIRBuilder& expr_ir_builder, vm::Schema& output_schema,  // NOLINT
+    base::Status& status) {                                     // NOLINT
+    ::llvm::Value* expr_out_val = NULL;
+    bool ok = expr_ir_builder.Build(expr, &expr_out_val, status);
+    if (!ok) {
+        LOG(WARNING) << "fail to codegen project expression: " << status.msg;
+        return false;
+    }
+    ::fesql::node::DataType data_type;
+    ok = GetBaseType(expr_out_val->getType(), &data_type);
+    if (!ok) {
+        return false;
+    }
+    ::fesql::type::Type ctype;
+    if (!DataType2SchemaType(data_type, &ctype)) {
+        return false;
+    }
+    outputs->insert(std::make_pair(index, expr_out_val));
+    ::fesql::type::ColumnDef* cdef = output_schema.Add();
+    cdef->set_name(col_name);
+    cdef->set_type(ctype);
     return true;
 }
 

@@ -308,6 +308,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
         // TODO(wangtaize) null check
         ::llvm::Value* val = outputs_->at(idx);
         switch (column.type()) {
+            case ::fesql::type::kBool:
             case ::fesql::type::kInt16:
             case ::fesql::type::kInt32:
             case ::fesql::type::kInt64:
@@ -353,7 +354,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
             }
             default: {
                 LOG(WARNING) << "unsuported type, append val for output col "
-                             << column.name();
+                             <<  Type_Name(column.type());
                 return false;
             }
         }

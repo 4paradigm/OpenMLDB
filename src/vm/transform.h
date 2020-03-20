@@ -251,11 +251,11 @@ class Transform {
     bool CreatePhysicalAggrerationNode(PhysicalOpNode* node,
                                        const node::PlanNodeList& projects,
                                        PhysicalOpNode** output,
-                                       base::Status& status);
+                                       base::Status& status);  // NOLINT
     bool CreatePhysicalRowNode(PhysicalOpNode* node,
-                                       const node::PlanNodeList& projects,
-                                       PhysicalOpNode** output,
-                                       base::Status& status);
+                               const node::PlanNodeList& projects,
+                               PhysicalOpNode** output,
+                               base::Status& status);  // NOLINT
 };
 
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,

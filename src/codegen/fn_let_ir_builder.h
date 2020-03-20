@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 #include "codegen/variable_ir_builder.h"
+#include "codegen/expr_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/plan_node.h"
 #include "proto/type.pb.h"
@@ -61,6 +62,13 @@ class RowFnLetIRBuilder {
         const vm::Schema& schema,
         VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
         ::llvm::BasicBlock* block, const std::string& output_ptr_name);
+
+    bool BuildProject(
+        const uint32_t index, const node::ExprNode* expr,
+        const std::string& col_name, std::map<uint32_t, ::llvm::Value*>* output,
+        ExprIRBuilder& expr_ir_builder,  // NOLINT (runtime/references)
+        vm::Schema& output_schema,       // NOLINT (runtime/references)
+        base::Status& status);           // NOLINT (runtime/references)
 
  private:
     // input schema

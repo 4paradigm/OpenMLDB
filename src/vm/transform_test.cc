@@ -7,22 +7,20 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/transform.h"
-#include <llvm/IR/LLVMContext.h>
 #include <udf/udf.h>
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <memory>
-#include <stack>
 #include <string>
 #include <utility>
 #include <vector>
 #include "base/status.h"
-#include "boost/algorithm/algorithm.hpp"
+#include "boost/algorithm/string.hpp"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/InitLLVM.h"
@@ -89,17 +87,20 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 c1 FROM t1;", "SELECT t1.COL1 FROM t1;",
         "SELECT t1.COL1 as c1 FROM t1;", "SELECT t1.COL1 c1 FROM t1;",
         "SELECT t1.COL1 c1 FROM t1 limit 10;",
-//        "SELECT * FROM t1;",
-//        "SELECT COUNT(*) FROM t1;", "SELECT COUNT(COL1) FROM t1;",
-//        "SELECT TRIM(COL1) FROM t1;", "SELECT trim(COL1) as trim_col1 FROM t1;",
-        "SELECT MIN(COL1) as min_col1 FROM t1;", "SELECT min(COL1) FROM t1;",
-        "SELECT MAX(COL1) FROM t1;", "SELECT max(COL1) as max_col1 FROM t1;",
-        "SELECT SUM(COL1) FROM t1;", "SELECT sum(COL1) as sum_col1 FROM t1;",
-        "SELECT COL1, COL2, `TS`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM t1 \n"
+        //        "SELECT * FROM t1;",
+        //        "SELECT COUNT(*) FROM t1;", "SELECT COUNT(COL1) FROM t1;",
+        //        "SELECT TRIM(COL1) FROM t1;", "SELECT trim(COL1) as trim_col1
+        //        FROM t1;", "SELECT MIN(COL1) as min_col1 FROM t1;", "SELECT
+        //        min(COL1) FROM t1;", "SELECT MAX(COL1) FROM t1;", "SELECT
+        //        max(COL1) as max_col1 FROM t1;", "SELECT SUM(COL1) FROM t1;",
+        //        "SELECT sum(COL1) as sum_col1 FROM t1;",
+        "SELECT COL1, COL2, `COL15`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
+        "t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
-        "              ORDER BY `TS` ROWS BETWEEN UNBOUNDED PRECEDING AND "
+        "              ORDER BY `COL15` ROWS BETWEEN UNBOUNDED PRECEDING AND "
         "UNBOUNDED FOLLOWING);",
-        "SELECT COL1, sum(COL2) as sum_col2, `col3`, AVG(col4) OVER w, SUM(col4) OVER w FROM "
+        "SELECT COL1, sum(COL2) OVER w as sum_col2, `col3`, AVG(col4) OVER w, "
+        "SUM(col4) OVER w FROM "
         "t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `col15` ROWS BETWEEN 3 PRECEDING AND 3 "
@@ -127,9 +128,8 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT !(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;",
 
         "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
-        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
-        "PRECEDING AND CURRENT ROW) limit 10;",
-        "SELECT COUNT(*) FROM t1;"));
+        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `col15` RANGE BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;"));
 
 INSTANTIATE_TEST_CASE_P(
     SqlWherePlan, TransformTest,
@@ -157,17 +157,17 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SqlGroupPlan, TransformTest,
     testing::Values(
-        "SELECT distinct sum(COL1) as col1sum, * FROM t1 where col2 > 10 group "
+        "SELECT distinct sum(COL1) as col1sum FROM t1 where col2 > 10 group "
         "by COL1, "
         "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
-        "SELECT sum(col1) as col1sum, * FROM t1 group by col1, col2;",
-        "SELECT sum(col1) as col1sum, * FROM t1 group by col1, col2, col3;",
-        "SELECT sum(col1) as col1sum, * FROM t1 group by col3, col2, col1;",
-        "SELECT COL1 FROM t1 group by COL1+COL2;",
-        "SELECT COL1 FROM t1 group by COL1;",
-        "SELECT COL1 FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
-        "SELECT COL1 FROM t1 group by COL1, COL2;",
-        "SELECT COL1 FROM t1 group by COL1;"));
+        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
+        "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
+        "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
+        "SELECT sum(COL1) FROM t1 group by COL1+COL2;",
+        "SELECT sum(COL1) FROM t1 group by COL1;",
+        "SELECT sum(COL1) FROM t1 group by COL1 > 10 and COL2 = 20 or COL1 =0;",
+        "SELECT sum(COL1) FROM t1 group by COL1, COL2;",
+        "SELECT sum(COL1) FROM t1 group by COL1;"));
 
 INSTANTIATE_TEST_CASE_P(
     SqlHavingPlan, TransformTest,
@@ -188,17 +188,17 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SqlWhereGroupHavingOrderPlan, TransformTest,
     testing::Values(
-        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "SELECT sum(COL1) as col1sum FROM t1 where col2 > 10 group by COL1, "
         "COL2 having col1sum > 0 order by COL1+COL2 limit 10;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "SELECT sum(COL1) as col1sum FROM t1 where col2 > 10 group by COL1, "
         "COL2 having col1sum > 0 order by COL1 limit 10;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "SELECT sum(COL1) as col1sum FROM t1 where col2 > 10 group by COL1, "
         "COL2 having col1sum > 0 limit 10;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, "
+        "SELECT sum(COL1) as col1sum FROM t1 where col2 > 10 group by COL1, "
         "COL2 having col1sum > 0;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
+        "SELECT sum(COL1) as col1sum FROM t1 group by COL1, COL2 having "
         "sum(COL1) > 0;",
-        "SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having "
+        "SELECT sum(COL1) as col1sum FROM t1 group by COL1, COL2 having "
         "col1sum > 0;"));
 
 INSTANTIATE_TEST_CASE_P(
@@ -248,7 +248,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT DISTINCT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
         "WINDOW w1 AS (PARTITION BY col15 ORDER BY `TS` RANGE BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
-        "SELECT DISTINCT COUNT(*) FROM t1;",
+        //        "SELECT DISTINCT COUNT(*) FROM t1;",
         "SELECT distinct COL1 FROM t1 where COL1+COL2;",
         "SELECT DISTINCT COL1 FROM t1 where COL1 > 10;"));
 
