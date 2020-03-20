@@ -4,23 +4,23 @@ import com._4paradigm.rtidb.type.Type;
 
 public enum IndexType {
 
-    kUnique, // uinque index
-    kNoUinque,
-    kPrimaryKey,
-    kAutoGen,  // auto gen primary key
-    kIncrement; // auto gen increment id primary key
+    Unique, // uinque index
+    NoUinque,
+    PrimaryKey,
+    AutoGen,  // auto gen primary key
+    Increment; // auto gen increment id primary key
 
     public static Type.IndexType valueFrom(IndexType indexType) {
         switch (indexType) {
-            case kUnique:
+            case Unique:
                 return Type.IndexType.kUnique;
-            case kNoUinque:
+            case NoUinque:
                 return Type.IndexType.kNoUinque;
-            case kPrimaryKey:
+            case PrimaryKey:
                 return Type.IndexType.kPrimaryKey;
-            case kAutoGen:
+            case AutoGen:
                 return Type.IndexType.kAutoGen;
-            case kIncrement:
+            case Increment:
                 return Type.IndexType.kIncrement;
             default:
                 throw new RuntimeException("not supported type with" + indexType);

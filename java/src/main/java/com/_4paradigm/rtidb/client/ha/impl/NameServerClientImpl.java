@@ -223,7 +223,8 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             builder.addColumnDescV1(cd);
         }
         for (IndexDef index : tableDesc.getIndexs()) {
-            if (index.getIndexType() == IndexType.kPrimaryKey) {
+            if (index.getIndexType() == IndexType.PrimaryKey ||
+                    index.getIndexType() == IndexType.AutoGen) {
                 Common.ColumnKey.Builder colKeyBuilder = Common.ColumnKey.newBuilder();
                 colKeyBuilder.setIndexName(index.getIndexName())
                         .setIndexType(IndexType.valueFrom(index.getIndexType()));

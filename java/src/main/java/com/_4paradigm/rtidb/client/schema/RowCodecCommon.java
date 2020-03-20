@@ -22,6 +22,7 @@ public class RowCodecCommon {
     public static final long UINT16_MAX = (1 << 16) - 1;
     public static final long UINT24_MAX = (1 << 24) - 1;
     public static final long UINT32_MAX = (1 << 32) - 1;
+    public static final long DEFAULT_LONG = 1L;
 
     public static final Map<DataType, Integer> TYPE_SIZE_MAP = new HashMap<>();
     static {
@@ -61,7 +62,9 @@ public class RowCodecCommon {
             if (columnDesc.getDataType().equals(DataType.Varchar)) {
                 if (!columnDesc.isNotNull() && row.get(columnDesc.getName()) == null) {
                     continue;
-                } else if (columnDesc.isNotNull() && row.get(columnDesc.getName()) == null) {
+                } else if (columnDesc.isNotNull()
+                        && row.containsKey(columnDesc.getName())
+                        && row.get(columnDesc.getName()) == null) {
                     throw new TabletException("col " + columnDesc.getName() + " should not be null");
                 }
                 strLength += ((String) row.get(columnDesc.getName())).length();
@@ -75,7 +78,7 @@ public class RowCodecCommon {
         for (int i = 0; i < columnKeyList.size(); i++) {
             Common.ColumnKey columnKey = columnKeyList.get(i);
             if (columnKey.hasIndexType() &&
-                    columnKey.getIndexType() == IndexType.valueFrom(IndexType.kPrimaryKey)) {
+                    columnKey.getIndexType() == IndexType.valueFrom(IndexType.PrimaryKey)) {
                 pkColName = columnKey.getIndexName();
             }
         }

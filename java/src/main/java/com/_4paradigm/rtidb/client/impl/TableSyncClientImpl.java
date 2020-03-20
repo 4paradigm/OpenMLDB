@@ -9,8 +9,11 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.*;
+import com._4paradigm.rtidb.client.type.DataType;
+import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.type.Type;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
@@ -988,31 +991,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         return ret;
     }
 
-    private boolean putRelationTable(String name, Map<String, Object> row) throws TabletException {
-        TableHandler th = client.getHandler(name);
-        if (th == null) {
-            throw new TabletException("no table with name " + name);
-        }
-        if (row == null) {
-            throw new TabletException("putting data is null");
-        }
-        ByteBuffer buffer;
-        List<ColumnDesc> schema;
-        if (row.size() == th.getSchema().size()) {
-            schema = th.getSchema();
-            buffer = RowBuilder.encode(row, th.getSchema());
-        } else {
-            schema = th.getSchemaMap().get(row.size());
-            if (schema == null) {
-                throw new TabletException("no schema for column count " + row.size());
-            }
-            buffer = RowBuilder.encode(row, schema);
-        }
-        String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
-        int pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
-        return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
-    }
-
     private boolean put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException {
         return put(tid, pid, key, time, null, null, ByteBuffer.wrap(bytes), th);
     }
@@ -1140,7 +1118,54 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("putting data is null");
         }
         //TODO: resolve wo
-        return putRelationTable(tname, row);
+
+        boolean hasAutoGenPk = false;
+        String indexName = "";
+        for (int i = 0; i < th.getTableInfo().getColumnKeyList().size(); i++) {
+            Common.ColumnKey columnKey = th.getTableInfo().getColumnKeyList().get(i);
+            if (columnKey.hasIndexType() && columnKey.getIndexType() == Type.IndexType.kAutoGen) {
+                hasAutoGenPk = true;
+                indexName = columnKey.getIndexName();
+                break;
+            }
+        }
+        for (int i = 0; i < th.getSchema().size(); i++) {
+            ColumnDesc columnDesc = th.getSchema().get(i);
+            if (columnDesc.getName().equals(indexName)) {
+                if (!columnDesc.getDataType().equals(DataType.BigInt)) {
+                    throw new TabletException("autoGenPk column dataType must be BigInt");
+                }
+                break;
+            }
+        }
+        if (hasAutoGenPk &&
+                (row.size() == th.getSchema().size() || row.containsKey(indexName))) {
+            throw new TabletException("should not input autoGenPk column");
+        }
+        if (hasAutoGenPk) {
+            row.put(indexName, RowCodecCommon.DEFAULT_LONG);
+        }
+
+        ByteBuffer buffer;
+        List<ColumnDesc> schema;
+        if (row.size() == th.getSchema().size()) {
+            schema = th.getSchema();
+        } else {
+            schema = th.getSchemaMap().get(row.size());
+            if (schema.isEmpty()) {
+                throw new TabletException("no schema for column count " + row.size());
+            }
+        }
+        buffer = RowBuilder.encode(row, schema);
+
+        int pid = 0;
+        if (!hasAutoGenPk) {
+            String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
+            pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
+        } else {
+            pid = new Random().nextInt() % th.getPartitions().length;
+        }
+        return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
 
     }
 
