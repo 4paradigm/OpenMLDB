@@ -77,6 +77,12 @@ void PhysicalScanTableNode::Print(std::ostream& output,
     output << "(table=" << table_handler_->GetName() << ")";
 }
 
+void PhysicalFetchRequestNode::Print(std::ostream& output,
+                                     const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(request=" << table_handler_->GetName() << ")";
+}
+
 void PhysicalScanIndexNode::Print(std::ostream& output,
                                   const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -101,6 +107,16 @@ void PhysicalProjectNode::Print(std::ostream& output,
 bool PhysicalProjectNode::InitSchema() {
     PrintSchema();
     return true;
+}
+
+void PhysicalWindowAggrerationNode::Print(std::ostream& output,
+                                          const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(type=" << ProjectTypeName(project_type_)
+           << ", start=" << std::to_string(start_offset_)
+           << ", end=" << std::to_string(end_offset_) << ")";
+    output << "\n";
+    PrintChildren(output, tab);
 }
 void PhysicalLoopsNode::Print(std::ostream& output,
                               const std::string& tab) const {
@@ -172,11 +188,12 @@ void PhysicalOpNode::PrintSchema() {
         const type::ColumnDef& column = output_schema.Get(i);
         ss << column.name() << " " << type::Type_Name(column.type());
     }
-//    DLOG(INFO) << "\n" << ss.str();
+    //    DLOG(INFO) << "\n" << ss.str();
 }
 bool PhysicalUnionNode::InitSchema() {
     output_schema.CopyFrom(producers_[0]->output_schema);
     PrintSchema();
 }
+
 }  // namespace vm
 }  // namespace fesql

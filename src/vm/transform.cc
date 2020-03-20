@@ -90,7 +90,7 @@ bool Transform::TransformPlanOp(const ::fesql::node::PlanNode* node,
                 status);
             break;
         case node::kPlanTypeProject:
-            ok = TransformProjectOp(
+            ok = TransformProjecPlantOp(
                 dynamic_cast<const ::fesql::node::ProjectPlanNode*>(node), &op,
                 status);
             break;
@@ -173,9 +173,9 @@ bool Transform::TransformLimitOp(const node::LimitPlanNode* node,
     return true;
 }
 
-bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
-                                   PhysicalOpNode** output,
-                                   base::Status& status) {
+bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
+                                       PhysicalOpNode** output,
+                                       base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -192,28 +192,12 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
          iter != node->project_list_vec_.cend(); iter++) {
         fesql::node::ProjectListNode* project_list =
             dynamic_cast<fesql::node::ProjectListNode*>(*iter);
-        if (project_list->is_window_agg_) {
-            PhysicalOpNode* project_op;
-            if (!TransformWindowProject(project_list, depend, &project_op,
-                                        status)) {
-                return false;
-            }
-            ops.push_back(project_op);
-        } else {
-            PhysicalOpNode* op = nullptr;
-            if (kPhysicalOpGroupBy == depend->type_) {
-                if (!CreatePhysicalAggrerationNode(
-                        depend, project_list->GetProjects(), &op, status)) {
-                    return false;
-                }
-            } else {
-                if (!CreatePhysicalRowNode(depend, project_list->GetProjects(),
-                                           &op, status)) {
-                    return false;
-                }
-            }
-            ops.push_back(op);
+
+        PhysicalOpNode* project_op;
+        if (!TransformProjectOp(project_list, depend, &project_op, status)) {
+            return false;
         }
+        ops.push_back(project_op);
     }
 
     if (ops.empty()) {
@@ -247,30 +231,46 @@ bool Transform::TransformProjectOp(const node::ProjectPlanNode* node,
 
             auto project_node = dynamic_cast<node::ProjectNode*>(
                 sub_project_list->GetProjects().at(iter->second));
-            project_list.push_back(node_manager_->MakeProjectNode(
-                pos, project_node->GetName(),
-                node_manager_->MakeColumnRefNode(project_node->GetName(), "")));
+            if (node::kExprAll == project_node->GetExpression()->expr_type_) {
+                auto all_expr =
+                    dynamic_cast<node::AllNode*>(project_node->GetExpression());
+                if (all_expr->children_.empty()) {
+                    // expand all expression if needed
+                    for (auto column : depend->output_schema) {
+                        all_expr->children_.push_back(
+                            node_manager_->MakeColumnRefNode(
+                                column.name(), all_expr->GetRelationName()));
+                    }
+                }
+                project_list.push_back(
+                    node_manager_->MakeProjectNode(pos, "*", all_expr));
+            } else {
+                project_list.push_back(node_manager_->MakeProjectNode(
+                    pos, project_node->GetName(),
+                    node_manager_->MakeColumnRefNode(project_node->GetName(),
+                                                     "")));
+            }
             pos++;
         }
         return CreatePhysicalRowNode(join, project_list, output, status);
     }
 }
-bool Transform::TransformWindowProject(const node::ProjectListNode* node,
-                                       PhysicalOpNode* depend_node,
-                                       PhysicalOpNode** output,
-                                       base::Status& status) {
-    if (nullptr == node || nullptr == node->w_ptr_ || nullptr == output) {
+bool Transform::TransformWindowOp(const node::ProjectListNode* project_list,
+                                  PhysicalOpNode* node, PhysicalOpNode** output,
+                                  base::Status& status) {
+    if (nullptr == project_list || nullptr == project_list->w_ptr_ ||
+        nullptr == output) {
         status.msg = "project node or window node or output node is null";
         status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
         return false;
     }
 
-    PhysicalOpNode* depend = const_cast<PhysicalOpNode*>(depend_node);
-    if (!node->w_ptr_->GetKeys().empty()) {
+    PhysicalOpNode* depend = const_cast<PhysicalOpNode*>(node);
+    if (!project_list->w_ptr_->GetKeys().empty()) {
         // TODO(chenjing): remove 临时适配, 有mem泄漏问题
         node::ExprListNode* expr = node_manager_->MakeExprList();
-        for (auto id : node->w_ptr_->GetKeys()) {
+        for (auto id : project_list->w_ptr_->GetKeys()) {
             expr->AddChild(node_manager_->MakeColumnRefNode(id, ""));
         }
         PhysicalGroupNode* group_op = new PhysicalGroupNode(depend, expr);
@@ -278,10 +278,10 @@ bool Transform::TransformWindowProject(const node::ProjectListNode* node,
         depend = group_op;
     }
 
-    if (!node->w_ptr_->GetOrders().empty()) {
+    if (!project_list->w_ptr_->GetOrders().empty()) {
         // TODO(chenjing): remove 临时适配, 有mem泄漏问题
         node::ExprListNode* expr = new node::ExprListNode();
-        for (auto id : node->w_ptr_->GetOrders()) {
+        for (auto id : project_list->w_ptr_->GetOrders()) {
             expr->AddChild(new node::ColumnRefNode(id, ""));
         }
         node::OrderByNode* order_node = dynamic_cast<node::OrderByNode*>(
@@ -290,24 +290,7 @@ bool Transform::TransformWindowProject(const node::ProjectListNode* node,
         node_manager_->RegisterNode(sort_op);
         depend = sort_op;
     }
-
-    if (node->w_ptr_->GetStartOffset() != -1 ||
-        node->w_ptr_->GetEndOffset() != -1) {
-        PhysicalBufferNode* window_op =
-            new PhysicalBufferNode(depend, node->w_ptr_->GetStartOffset(),
-                                   node->w_ptr_->GetEndOffset());
-        node_manager_->RegisterNode(window_op);
-        depend = window_op;
-    }
-
-    Schema output_schema;
-    std::string fn_name;
-    if (!GenProjects(depend->output_schema, node->GetProjects(), false, fn_name,
-                     output_schema, status)) {
-        return false;
-    }
-    *output = new PhysicalAggrerationNode(depend, fn_name, output_schema);
-    node_manager_->RegisterNode(*output);
+    *output = depend;
     return true;
 }
 bool Transform::TransformJoinOp(const node::JoinPlanNode* node,
@@ -413,7 +396,11 @@ bool Transform::TransformScanOp(const node::TablePlanNode* node,
     }
     auto table = catalog_->GetTable(db_, node->table_);
     if (table) {
-        *output = new PhysicalScanTableNode(table);
+        if (node->IsPrimary()) {
+            *output = new PhysicalFetchRequestNode(table);
+        } else {
+            *output = new PhysicalScanTableNode(table);
+        }
         node_manager_->RegisterNode(*output);
         return true;
     } else {
@@ -467,9 +454,9 @@ bool Transform::TransformDistinctOp(const node::DistinctPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
-                                      ::fesql::vm::PhysicalOpNode** output,
-                                      ::fesql::base::Status& status) {
+bool Transform::TransformBatchPhysicalPlan(::fesql::node::PlanNode* node,
+                                           ::fesql::vm::PhysicalOpNode** output,
+                                           ::fesql::base::Status& status) {
     PhysicalOpNode* physical_plan;
     if (!TransformPlanOp(node, &physical_plan, status)) {
         return false;
@@ -538,6 +525,24 @@ bool Transform::AddDefaultPasses() {
     AddPass(kPassSortByOptimized);
     return false;
 }
+
+bool Transform::CreatePhysicalAggrerationNodeionNode(
+    PhysicalOpNode* node, const node::PlanNodeList& projects,
+    const int64_t start, const int64_t end, PhysicalOpNode** output,
+    base::Status& status) {
+    Schema output_schema;
+    std::string fn_name;
+    if (!GenProjects(node->output_schema, projects, false, fn_name,
+                     output_schema, status)) {
+        return false;
+    }
+    PhysicalOpNode* op = new PhysicalWindowAggrerationNode(
+        node, fn_name, output_schema, start, end);
+    node_manager_->RegisterNode(op);
+    *output = op;
+    return true;
+}
+
 bool Transform::CreatePhysicalAggrerationNode(
     PhysicalOpNode* node, const node::PlanNodeList& projects,
     PhysicalOpNode** output, base::Status& status) {  // NOLINT
@@ -553,6 +558,7 @@ bool Transform::CreatePhysicalAggrerationNode(
     *output = op;
     return true;
 }
+
 bool Transform::CreatePhysicalRowNode(PhysicalOpNode* node,
                                       const node::PlanNodeList& projects,
                                       PhysicalOpNode** output,
@@ -599,6 +605,107 @@ bool Transform::CreatePhysicalRowNode(PhysicalOpNode* node,
     node_manager_->RegisterNode(op);
     *output = op;
     return true;
+}
+bool Transform::TransformRequestPhysicalPlan(
+    ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
+    ::fesql::base::Status& status) {
+    // return false if Primary path check fail
+    ::fesql::node::PlanNode* primary_node;
+    if (!ValidatePriimaryPath(node, &primary_node, status)) {
+        return false;
+    }
+
+    PhysicalOpNode* physical_plan;
+    if (!TransformPlanOp(node, &physical_plan, status)) {
+        return false;
+    }
+
+    *output = physical_plan;
+    return true;
+}
+bool Transform::ValidatePriimaryPath(node::PlanNode* node,
+                                     node::PlanNode** output,
+                                     base::Status& status) {
+    if (nullptr == node) {
+        status.msg = "primary path validate fail: node or output is null";
+        status.code = common::kPlanError;
+        return false;
+    }
+
+    switch (node->type_) {
+        case node::kPlanTypeJoin:
+        case node::kPlanTypeUnion: {
+            auto binary_op = dynamic_cast<node::BinaryPlanNode*>(node);
+            node::PlanNode* left_primary_table = nullptr;
+            if (!ValidatePriimaryPath(binary_op->GetLeft(), &left_primary_table,
+                                      status)) {
+                return false;
+            }
+
+            node::PlanNode* right_primary_table = nullptr;
+            if (!ValidatePriimaryPath(binary_op->GetRight(),
+                                      &right_primary_table, status)) {
+                status.msg =
+                    "primary path validate fail: right path isn't valid";
+                status.code = common::kPlanError;
+                return false;
+            }
+
+            if (left_primary_table == right_primary_table) {
+                *output = left_primary_table;
+                return true;
+            } else {
+                status.msg =
+                    "primary path validate fial: left path and right path has "
+                    "different source";
+                status.code = common::kPlanError;
+                return false;
+            }
+        }
+        case node::kPlanTypeTable: {
+            auto table_op = dynamic_cast<node::TablePlanNode*>(node);
+            table_op->SetIsPrimary(true);
+            return true;
+        }
+        case node::kPlanTypeCreate:
+        case node::kPlanTypeInsert:
+        case node::kPlanTypeCmd:
+        case node::kPlanTypeWindow:
+        case node::kProjectList:
+        case node::kProjectNode: {
+            status.msg =
+                "primary path validate fail: invalid node of primary path";
+            status.code = common::kPlanError;
+            return false;
+        }
+        default: {
+            auto unary_op = dynamic_cast<const node::UnaryPlanNode*>(node);
+            return ValidatePriimaryPath(unary_op->GetDepend(), output, status);
+        }
+    }
+    return false;
+}
+bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
+                                   PhysicalOpNode* depend,
+                                   PhysicalOpNode** output,
+                                   base::Status& status) {
+    if (project_list->is_window_agg_ && nullptr != project_list->w_ptr_) {
+        PhysicalOpNode* window;
+        if (!TransformWindowOp(project_list, depend, &window, status)) {
+            return false;
+        }
+        return CreatePhysicalAggrerationNodeionNode(
+            window, project_list->GetProjects(),
+            project_list->w_ptr_->GetStartOffset(),
+            project_list->w_ptr_->GetEndOffset(), output, status);
+    } else if (kPhysicalOpGroupBy == depend->type_) {
+        // TODO(chenjing): 基于聚合函数分组
+        return CreatePhysicalAggrerationNode(
+            depend, project_list->GetProjects(), output, status);
+    } else {
+        return CreatePhysicalRowNode(depend, project_list->GetProjects(),
+                                     output, status);
+    }
 }
 
 bool GroupByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {

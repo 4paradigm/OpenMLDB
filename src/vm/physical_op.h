@@ -72,8 +72,7 @@ class PhysicalOpNode;
 class PhysicalOpNode {
  public:
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
-        : type_(type), is_block_(is_block), is_lazy_(is_lazy) {
-    }
+        : type_(type), is_block_(is_block), is_lazy_(is_lazy) {}
     virtual ~PhysicalOpNode() {}
     virtual bool consume() { return true; }
     virtual bool produce() { return true; }
@@ -136,7 +135,7 @@ class PhysicalBinaryNode : public PhysicalOpNode {
                                const std::string &tab) const;
 };
 
-enum ScanType { kScanTypeTableScan, kScanTypeIndexScan };
+enum ScanType { kScanTypeTableScan, kScanTypeIndexScan, kScanTypeRequestFetch };
 
 inline const std::string ScanTypeName(const ScanType &type) {
     switch (type) {
@@ -144,6 +143,8 @@ inline const std::string ScanTypeName(const ScanType &type) {
             return "TableScan";
         case kScanTypeIndexScan:
             return "IndexScan";
+        case kScanTypeRequestFetch:
+            return "RequestFetch";
         default:
             return "UNKNOW";
     }
@@ -172,6 +173,15 @@ class PhysicalScanTableNode : public PhysicalScanNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
 
+class PhysicalFetchRequestNode : public PhysicalScanNode {
+ public:
+    explicit PhysicalFetchRequestNode(
+        const std::shared_ptr<TableHandler> &table_handler)
+        : PhysicalScanNode(table_handler, kScanTypeRequestFetch) {}
+    virtual ~PhysicalFetchRequestNode() {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+};
+
 class PhysicalScanIndexNode : public PhysicalScanNode {
  public:
     PhysicalScanIndexNode(const std::shared_ptr<TableHandler> &table_handler,
@@ -197,6 +207,7 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
 enum ProjectType {
     kProjectRow,
     kProjectAggregation,
+    kProjectWindowAggregation,
 };
 inline const std::string ProjectTypeName(const ProjectType &type) {
     switch (type) {
@@ -204,6 +215,8 @@ inline const std::string ProjectTypeName(const ProjectType &type) {
             return "ProjectRow";
         case kProjectAggregation:
             return "Aggregation";
+        case kProjectWindowAggregation:
+            return "WindowAggregation";
         default:
             return "Unknow";
     }
@@ -239,6 +252,21 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
                             const Schema &schema)
         : PhysicalProjectNode(node, fn_name, schema, kProjectAggregation) {}
     virtual ~PhysicalAggrerationNode() {}
+};
+class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
+ public:
+    PhysicalWindowAggrerationNode(PhysicalOpNode *node,
+                                  const std::string &fn_name,
+                                  const Schema &schema,
+                                  const int64_t start_offset,
+                                  const int64_t end_offset)
+        : PhysicalProjectNode(node, fn_name, schema, kProjectWindowAggregation),
+          start_offset_(start_offset),
+          end_offset_(end_offset) {}
+    virtual ~PhysicalWindowAggrerationNode() {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    const int64_t start_offset_;
+    const int64_t end_offset_;
 };
 
 class PhysicalBufferNode : public PhysicalUnaryNode {

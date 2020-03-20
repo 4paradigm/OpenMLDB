@@ -375,13 +375,7 @@ void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
             insert.table = insert_stmt->table_name_;
             insert.columns = insert_stmt->columns_;
 
-            size_t row_size = 0;
-            for (auto item : insert.values) {
-                row_size += item.GetSize();
-            }
-
             type::TableDef schema;
-
             if (false == GetSchema(insert.db, insert.table, schema, status)) {
                 if (0 == status.code) {
                     status.code = -1;

@@ -71,6 +71,9 @@ class UnaryPlanNode : public PlanNode {
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
     virtual bool Equals(const PlanNode *that) const;
+    PlanNode* GetDepend() const {
+        return children_[0];
+    }
 };
 
 class BinaryPlanNode : public PlanNode {
@@ -87,6 +90,12 @@ class BinaryPlanNode : public PlanNode {
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
     virtual bool Equals(const PlanNode *that) const;
+    PlanNode* GetLeft() const {
+        return children_[0];
+    }
+    PlanNode* GetRight() const {
+        return children_[1];
+    }
 };
 
 class MultiChildPlanNode : public PlanNode {
@@ -112,11 +121,21 @@ class RenamePlanNode : public UnaryPlanNode {
 class TablePlanNode : public LeafPlanNode {
  public:
     TablePlanNode(const std::string &db, const std::string &table)
-        : LeafPlanNode(kPlanTypeTable), db_(db), table_(table) {}
+        : LeafPlanNode(kPlanTypeTable), db_(db), table_(table), is_primary_(false) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const PlanNode *that) const;
+    const bool IsPrimary() const {
+        return is_primary_;
+    }
+    void SetIsPrimary(bool is_primary) {
+        is_primary_ = is_primary;
+    }
+
     const std::string db_;
     const std::string table_;
+
+ private:
+    bool is_primary_;
 };
 
 class DistinctPlanNode : public UnaryPlanNode {

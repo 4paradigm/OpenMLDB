@@ -180,9 +180,12 @@ class Transform {
               const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module);
     virtual ~Transform();
     bool AddDefaultPasses();
-    bool TransformPhysicalPlan(const ::fesql::node::PlanNode* node,
+    bool TransformBatchPhysicalPlan(::fesql::node::PlanNode* node,
                                ::fesql::vm::PhysicalOpNode** output,
                                ::fesql::base::Status& status);  // NOLINT
+    bool TransformRequestPhysicalPlan(::fesql::node::PlanNode* node,
+                                    ::fesql::vm::PhysicalOpNode** output,
+                                    ::fesql::base::Status& status);  // NOLINT
 
     bool AddPass(PhysicalPlanPassType type);
 
@@ -198,10 +201,10 @@ class Transform {
                           PhysicalOpNode** output,
                           base::Status& status);  // NOLINT
 
-    bool TransformProjectOp(const node::ProjectPlanNode* node,
+    bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                             PhysicalOpNode** output,
                             base::Status& status);  // NOLINT
-    bool TransformWindowProject(const node::ProjectListNode* project_list,
+    bool TransformWindowOp(const node::ProjectListNode* project_list,
                                 PhysicalOpNode* depend, PhysicalOpNode** output,
                                 base::Status& status);  // NOLINT
 
@@ -256,6 +259,16 @@ class Transform {
                                const node::PlanNodeList& projects,
                                PhysicalOpNode** output,
                                base::Status& status);  // NOLINT
+    bool ValidatePriimaryPath( node::PlanNode* node,
+                              node::PlanNode** output,
+                              base::Status& status);
+    bool ValidateTableNode(const node::PlanNode* node, base::Status& status);
+    bool TransformProjectOp(node::ProjectListNode* node, PhysicalOpNode* depend,
+                            PhysicalOpNode** output, base::Status& status);
+    bool CreatePhysicalAggrerationNodeionNode(
+        PhysicalOpNode* node, const node::PlanNodeList& projects,
+        const int64_t start, const int64_t end,
+        PhysicalOpNode** output, base::Status& status);
 };
 
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,

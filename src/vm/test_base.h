@@ -61,8 +61,8 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     return BuildCommonCatalog(table_def, table);
 }
 
-void PrintSchema(const Schema& schema) {
-    std::stringstream ss;
+
+void PrintSchema(std::stringstream& ss, const Schema& schema) {
     for (int32_t i = 0; i < schema.size(); i++) {
         if (i > 0) {
             ss << "\n";
@@ -70,6 +70,11 @@ void PrintSchema(const Schema& schema) {
         const type::ColumnDef& column = schema.Get(i);
         ss << column.name() << " " << type::Type_Name(column.type());
     }
+}
+
+void PrintSchema(const Schema& schema) {
+    std::stringstream ss;
+    PrintSchema(ss, schema);
     LOG(INFO) << "\n" << ss.str();
 }
 

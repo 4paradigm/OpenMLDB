@@ -80,17 +80,14 @@ class Value {
     }
     explicit Value(int64_t v) : size(8) {
         type = kTypeInt64;
-        size = sizeof(int64_t);
         val_.vlong = v;
     }
     explicit Value(float v) : size(4) {
         type = kTypeFloat;
-        size = sizeof(float);
         val_.vfloat = v;
     }
     explicit Value(double v) : size(8) {
         type = kTypeDouble;
-        size = sizeof(double);
         val_.vdouble = v;
     }
     explicit Value(const char* v) {
