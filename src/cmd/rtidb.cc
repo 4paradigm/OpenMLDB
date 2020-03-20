@@ -830,10 +830,27 @@ void HandleNSClientSyncTable(const std::vector<std::string>& parts, ::rtidb::cli
 
 void HandleNSClientAddIndex(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
-        std::cout << "Bad format for addindex! eg. addindex table_name index_name" << std::endl;
+        std::cout << "Bad format for addindex! eg. addindex table_name index_name [col_name] [ts_name]" << std::endl;
         return;
     }
     ::rtidb::common::ColumnKey column_key;
+    column_key.set_index_name(parts[2]);
+    if (parts.size() > 3) {
+        std::vector<std::string> col_vec;
+        ::rtidb::base::SplitString(parts[3], ",", col_vec);
+        for (const auto& col_name : col_vec) {
+            column_key.add_col_name(col_name);
+        }
+        if (parts.size() > 4) {
+            std::vector<std::string> ts_vec;
+            ::rtidb::base::SplitString(parts[4], ",", ts_vec);
+            for (const auto& ts_name : ts_vec) {
+                column_key.add_ts_name(ts_name);
+            }
+        }
+    } else {
+        column_key.add_col_name(parts[2]);
+    }
     std::string msg;
     bool ret = client->AddIndex(parts[1], column_key, msg);
     if (!ret) {
@@ -2898,8 +2915,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: synctable test bj 0\n");
         } else if (parts[1] == "addindex") {
             printf("desc: add new index to table\n");
-            printf("usage: addindex table_name index_name\n");
+            printf("usage: addindex table_name index_name [col_name] [ts_name]\n");
             printf("ex: addindex test card\n");
+            printf("ex: addindex test combine1 card,mcc\n");
+            printf("ex: addindex test combine2 id,name ts1,ts2\n");
         } else if (parts[1] == "deleteindex") {
             printf("desc: delete index of specified index\n");
             printf("usage: deleteindex table_name index_name");
