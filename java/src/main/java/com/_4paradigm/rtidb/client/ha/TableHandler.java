@@ -20,7 +20,7 @@ public class TableHandler {
     private Map<Integer, List<ColumnDesc>> schemaMap = new TreeMap<>();
     private ReadStrategy readStrategy = ReadStrategy.kReadLeader;
     private boolean hasTsCol = false;
-    private String autoGenPkName;
+    private String autoGenPkName = "";
     public TableHandler(TableInfo tableInfo) {
         this.tableInfo = tableInfo;
         int schemaSize = 0;
