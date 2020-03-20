@@ -94,8 +94,6 @@ bool BatchQueryResult::Next() {
         if (is_finish_) {
             return false;
         }
-        last_pk_.clear();
-        last_pk_ = GetKey();
         value_->clear();
         offset_ = 0;
         std::vector<std::string> get_keys;
@@ -108,6 +106,7 @@ bool BatchQueryResult::Next() {
         if (get_keys.size() == 0) {
             return  false;
         }
+        value_->clear();
         bool ok = BatchQueryNext(get_keys);
         if (!ok) {
             return  ok;

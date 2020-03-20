@@ -331,7 +331,6 @@ private:
     std::shared_ptr<std::string> table_name_;
     std::set<std::string> already_get_;
     uint32_t count_;
-    std::string last_pk_;
 };
 
 class RtidbClient {
