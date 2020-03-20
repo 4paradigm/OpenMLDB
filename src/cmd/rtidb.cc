@@ -44,7 +44,6 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
-static const int64_t DEFAULT_LONG = 1;
 
 DECLARE_string(endpoint);
 DECLARE_int32(port);

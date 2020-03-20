@@ -23,10 +23,14 @@ public:
     ~AutoGen() {}
 
     int64_t Next() {
+        return 11;
+        /**
         int64_t ts = ::baidu::common::timer::get_micros();
         int64_t tid = gettid();
-        int64_t rd = rand_.Next();
-        return ((ts | 0x7FFF) << 8) + (((tid | 0xFFFF)) << 8)  + (rd | 0xFFFF) ;
+        uint32_t rd = rand_.Next();
+        int64_t res = (((ts << 8) | (tid | 0xFF)) << 8) | (rd | 0xFF);
+        return res | 0x7FFFFFFFFFFFFFFF;
+    **/
     }
 
 private:
