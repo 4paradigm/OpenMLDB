@@ -1117,7 +1117,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         //TODO: resolve wo
 
         String indexName = th.getAutoGenPkName();
-        indexName.isEmpty();
 
         if (!indexName.isEmpty() &&
                 (row.size() == th.getSchema().size() || row.containsKey(indexName))) {
