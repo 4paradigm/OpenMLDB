@@ -1498,7 +1498,6 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_code(0);
         response->set_count(scount);
         response->set_is_finish(is_finish);
-        response->set_row_codec(true);
     }
 }
 
