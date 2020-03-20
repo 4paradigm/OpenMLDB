@@ -2053,7 +2053,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         for (int i = 0; i < modify_index; i++) {
             column_desc_list_1.Add()->CopyFrom(column_desc_list_2.Get(i));
         }
-        if (tables[0].has_table_type() && tables[0].table_type() != ::rtidb::type::kRelational) {
+        if (!tables[0].has_table_type() || tables[0].table_type() != ::rtidb::type::kRelational) {
             std::vector<::rtidb::base::ColumnDesc> columns;
             if (modify_index > 0) {
                 if (::rtidb::base::SchemaCodec::ConvertColumnDesc(column_desc_list_1, columns) < 0) {
