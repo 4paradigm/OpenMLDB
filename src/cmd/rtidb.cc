@@ -44,6 +44,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+static const int64_t DEFAULT_LONG = 1;
 
 DECLARE_string(endpoint);
 DECLARE_int32(port);
@@ -2419,6 +2420,7 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
         ns_table_info.set_partition_num(1);
         ns_table_info.clear_column_key();
         index_set.clear();
+        std::string auto_gen_pk_name = "";
         for (int idx = 0; idx < table_info.index_size(); idx++) {
             ::rtidb::common::ColumnKey* column_key = ns_table_info.add_column_key();
             column_key->set_index_name(table_info.index(idx).index_name());
@@ -2432,8 +2434,22 @@ int SetColumnDesc(const ::rtidb::client::TableInfo& table_info,
                 printf("index type %s is invalid\n", idx_type.c_str());
                 return -1;
             }
+            if (idx_iter->second == ::rtidb::type::kAutoGen) {
+                auto_gen_pk_name = table_info.index(idx).index_name();
+            }
             column_key->set_index_type(idx_iter->second);
             index_set.insert(table_info.index(idx).index_name());
+        }
+        for (int i = 0; i < table_info.column_desc_size(); i++) {
+            if (table_info.column_desc(i).name() == auto_gen_pk_name) {
+                std::string cur_type = table_info.column_desc(i).type();
+                std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
+                if (cur_type != "bigint") {
+                    printf("autoGenPk column dataType must be BigInt\n");
+                    return -1;
+                }
+                break;
+            }
         }
     }
     if (index_set.empty() && table_info.column_desc_size() > 0) {
