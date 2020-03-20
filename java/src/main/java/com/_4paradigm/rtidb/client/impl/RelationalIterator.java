@@ -95,7 +95,6 @@ public class RelationalIterator {
             }
         }
         rowView = new RowView(th.getSchema());
-        rowView.reset(bb, bs.size());
         next();
     }
 
