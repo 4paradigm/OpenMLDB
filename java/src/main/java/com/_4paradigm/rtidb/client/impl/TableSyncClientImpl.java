@@ -294,13 +294,25 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public RelationalIterator batchQuery(String tableName, ReadOption ro) throws TimeoutException, TabletException {
+    public RelationalIterator batchQuery(String tableName, List<ReadOption> ros) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tableName);
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
         }
-        //TODO
-        return new RelationalIterator();
+        if (ros.size() < 1) {
+            throw new TabletException("read option list size is o");
+        }
+        Set<String> colSet = ros.get(0).getColSet();
+        List<String> keys = new ArrayList<String>();
+        for (int i = 0; i < ros.size(); i++) {
+            Iterator<Map.Entry<String, Object>> it = ros.get(i).getIndex().entrySet().iterator();
+            if (it.hasNext()) {
+                Map.Entry<String, Object> next = it.next();
+                Object value = next.getValue();
+                keys.add(value.toString());
+            }
+        }
+        return new RelationalIterator(client, th, keys, colSet);
     }
 
     @Override

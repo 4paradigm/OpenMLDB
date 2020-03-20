@@ -11,9 +11,12 @@ import com._4paradigm.rtidb.client.type.IndexType;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.type.Type;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
+import org.apache.jute.Index;
 import rtidb.api.TabletServer;
+import sun.awt.X11.XSystemTrayPeer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -42,6 +45,8 @@ public class RelationalIterator {
     private DataType key_type;
     private RTIDBClient client = null;
     private boolean continue_update = false;
+    private boolean batch_query = false;
+    private List<String> keys = null;
 
     public RelationalIterator() {
     }
@@ -98,6 +103,41 @@ public class RelationalIterator {
         next();
     }
 
+    public RelationalIterator(RTIDBClient client, TableHandler th, List<String> queryKeys, Set<String> colSet) {
+        this.offset = 0;
+        this.totalSize = 0;
+        this.schema = th.getSchema();
+        this.th = th;
+        this.client = client;
+        this.compressType = th.getTableInfo().getCompressType();
+        this.keys = queryKeys;
+
+        if (colSet != null && !colSet.isEmpty()) {
+            for (int i = 0; i < this.getSchema().size(); i++) {
+                ColumnDesc columnDesc = this.getSchema().get(i);
+                if (colSet.contains(columnDesc.getName())) {
+                    this.idxDescMap.put(i, columnDesc);
+                }
+            }
+        }
+        rowView = new RowView(th.getSchema());
+        String idxName = "";
+        for (int i = 0; i < th.getTableInfo().getColumnKeyCount(); i++) {
+            Common.ColumnKey key = th.getTableInfo().getColumnKey(i);
+            if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.kPrimaryKey)) {
+                idxName = key.getIndexName();
+            }
+        }
+        for (int i = 0; i < schema.size(); i++) {
+            if (schema.get(i).getName().equals(idxName)) {
+                key_type = schema.get(i).getDataType();
+                key_idx = i;
+            }
+        }
+        batch_query = true;
+
+    }
+
 
     public List<ColumnDesc> getSchema() {
         if (th != null && th.getSchemaMap().size() > 0) {
@@ -133,7 +173,7 @@ public class RelationalIterator {
     }
 
     public void next() {
-        if (continue_update) {
+        if (continue_update || batch_query) {
             if (offset >= totalSize && !isFinished) {
                 try {
                     getData();
@@ -184,10 +224,45 @@ public class RelationalIterator {
                 map.put(columnDesc.getName(), value);
             }
         }
+        if (batch_query) {
+            Object val = rowView.getValue(key_idx, key_type);
+            if (keys.contains(val)) {
+                keys.remove(val);
+            }
+        }
         return map;
     }
 
     private void getData() throws TimeoutException, TabletException {
+        if (batch_query) {
+            PartitionHandler ph = th.getHandler(0);
+            TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+            Tablet.BatchQueryRequest.Builder builder = Tablet.BatchQueryRequest.newBuilder();
+            builder.setTid(th.getTableInfo().getTid());
+            if (keys == null || keys.isEmpty()) {
+                throw new TabletException("batch query keys is not provides");
+            }
+            for (int i = 0; i < keys.size(); i++) {
+                String key = keys.get(i);
+                builder.addQueryKey(key);
+            }
+            Tablet.BatchQueryRequest request = builder.build();
+            Tablet.BatchQueryResponse response = ts.batchQuery(request);
+            if (response != null && response.getCode() == 0) {
+                bs = response.getPairs();
+                bb = bs.asReadOnlyByteBuffer();
+                totalSize = this.bs.size();
+                offset = 0;
+                if (response.hasIsFinish() && response.getIsFinish()) {
+                    isFinished = true;
+                }
+                return;
+            }
+            if (response != null) {
+                throw new TabletException(response.getCode(), response.getMsg());
+            }
+            throw new TabletException("rtidb internal server error");
+        }
         do {
             if (pid >= th.getPartitions().length) {
                 isFinished = true;
