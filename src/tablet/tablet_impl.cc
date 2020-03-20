@@ -85,7 +85,7 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size),
     io_pool_(FLAGS_io_pool_size), snapshot_pool_(1), server_(NULL),
-    mode_root_paths_(), mode_recycle_root_paths_(){
+    mode_root_paths_(), mode_recycle_root_paths_(), rand_(0xdeadbeef){
     follower_.store(false);
 }
 
@@ -648,7 +648,14 @@ void TabletImpl::Put(RpcController* controller,
             }
         }
     } else {
-        bool ok = r_table->Put(request->value());
+        int64_t auto_gen_pk = 0;
+        const rtidb::api::TableMeta& table_meta = r_table->GetTableMeta();
+        for (const ::rtidb::common::ColumnKey& column_key : table_meta.column_key()) {
+            if (column_key.index_type() == ::rtidb::type::kAutoGen) {
+                AutoGenPk(&auto_gen_pk); 
+            }
+        }
+        bool ok = r_table->Put(request->value(), auto_gen_pk);
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
             response->set_msg("put failed");
@@ -658,6 +665,10 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         response->set_code(::rtidb::base::ReturnCode::kOk);
     }
+}
+
+void TabletImpl::AutoGenPk(int64_t* auto_gen_pk) {
+    *auto_gen_pk = gettid() + ::baidu::common::timer::get_micros() + rand_.Next();
 }
 
 int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::string& msg) {

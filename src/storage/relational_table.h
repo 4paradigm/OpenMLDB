@@ -61,7 +61,7 @@ public:
 
     static void initOptionTemplate();
 
-    bool Put(const std::string& value); 
+    bool Put(const std::string& value, int64_t auto_gen_pk); 
 
     bool PutDB(const std::string& pk,
              const char* data,

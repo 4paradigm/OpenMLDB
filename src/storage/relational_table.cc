@@ -187,58 +187,74 @@ bool RelationalTable::Init() {
     return true;
 }
 
-bool RelationalTable::Put(const std::string& value) {
+bool RelationalTable::Put(const std::string& value, int64_t auto_gen_pk) {
+    bool has_auto_gen = false;;
     std::string pk_col_name;
     for (const ::rtidb::common::ColumnKey& column_key : table_meta_.column_key()) {
-        if (column_key.index_type() == ::rtidb::type::kPrimaryKey) {
+        if (column_key.index_type() == ::rtidb::type::kPrimaryKey ||
+                column_key.index_type() == ::rtidb::type::kAutoGen) {
             pk_col_name = column_key.index_name();
         }
+        if (column_key.index_type() == ::rtidb::type::kAutoGen) {
+            has_auto_gen = true;
+        }
+        break;
         //TODO: other index type
     }
     const Schema& schema = table_meta_.column_desc(); 
-    ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), value.length());
     int index = 0;
     ::rtidb::type::DataType data_type = ::rtidb::type::kBool;
     std::string pk = "";
-    for (int i = 0; i < table_meta_.column_desc_size(); i++) {
-        if (table_meta_.column_desc(i).name() == pk_col_name) {
+    for (int i = 0; i < schema.size(); i++) {
+        if (schema.Get(i).name() == pk_col_name) {
             index = i;
-            data_type = table_meta_.column_desc(i).data_type();
+            data_type = schema.Get(i).data_type();
             break;
         }
     }
-    switch(data_type) {
-        case ::rtidb::type::kSmallInt: { 
-            int16_t val = 0;
-            view.GetInt16(index, &val);
-            pk = std::to_string(val);
-            break;
-        }
-        case ::rtidb::type::kInt: {
-            int32_t val = 0;
-            view.GetInt32(index, &val);
-            pk = std::to_string(val);
-            break;
-        }
-        case ::rtidb::type::kBigInt: {
-            int64_t val = 0;
-            view.GetInt64(index, &val);
-            pk = std::to_string(val);
-            break;
-        }
-        case ::rtidb::type::kVarchar: { 
-            char* ch = NULL;
-            uint32_t length = 0;
-            view.GetString(index, &ch, &length);
-            pk.assign(ch, length);
-            break;
-        }
-        default: {
-            PDLOG(WARNING, "unsupported data type %s", 
-                rtidb::type::DataType_Name(data_type).c_str());
+    if (has_auto_gen) {
+        if (data_type != ::rtidb::type::kBigInt) {
+            PDLOG(WARNING, "auto_gen_pk date_type must bu bigint");
             return false;
         }
-        //TODO: other data type
+        ::rtidb::base::RowBuilder builder(schema);
+        builder.SetBuffer(reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), value.size());
+        builder.AppendInt64(auto_gen_pk);
+        pk = std::to_string(auto_gen_pk);
+    } else {
+        ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), value.length());
+        switch(data_type) {
+            case ::rtidb::type::kSmallInt: {  
+                int16_t si_val = 0;
+                view.GetInt16(index, &si_val);
+                pk = std::to_string(si_val);
+                break;
+            }
+            case ::rtidb::type::kInt: { 
+                int32_t i_val = 0;
+                view.GetInt32(index, &i_val);
+                pk = std::to_string(i_val);
+                break;
+            }
+            case ::rtidb::type::kBigInt: { 
+                int64_t bi_val = 0;
+                view.GetInt64(index, &bi_val);
+                pk = std::to_string(bi_val);
+                break;
+            }
+            case ::rtidb::type::kVarchar: {  
+                char* ch = NULL;
+                uint32_t length = 0;
+                view.GetString(index, &ch, &length);
+                pk.assign(ch, length);
+                break;
+            }
+            default: 
+                PDLOG(WARNING, "unsupported data type %s", 
+                        rtidb::type::DataType_Name(data_type).c_str());
+                return false;
+            //TODO: other data type
+        }
     }
     return PutDB(pk, value.c_str(), value.size());
 }
