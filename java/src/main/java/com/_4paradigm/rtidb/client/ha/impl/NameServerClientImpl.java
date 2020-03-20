@@ -246,7 +246,8 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             Common.ColumnDesc columnDesc = tableInfo.getColumnDescV1List().get(i);
             if (columnDesc.getName().equals(indexName)) {
                 if (!columnDesc.getDataType().equals(DataType.valueFrom(DataType.BigInt))) {
-                    throw new TabletException("autoGenPk column dataType must be BigInt");
+                    logger.warn("autoGenPk column dataType must be BigInt");
+                    return false;
                 }
                 break;
             }
