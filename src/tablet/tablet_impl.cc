@@ -1678,6 +1678,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
     PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(), request->pid(), scount);
     response->set_code(0);
     response->set_is_finish(is_finish);
+    response->set_count(scount);
 }
 
 void TabletImpl::ChangeRole(RpcController* controller,

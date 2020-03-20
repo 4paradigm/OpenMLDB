@@ -1171,6 +1171,28 @@ bool TabletClient::SetMode(bool mode) {
     return true;
 }
 
+bool TabletClient::BatchQuery(uint32_t tid, uint32_t pid, const std::string& idx_name, const std::vector<std::string>& keys, std::string* msg, std::string* data, bool* is_finish, uint32_t* count) {
+    rtidb::api::BatchQueryRequest request;
+    rtidb::api::BatchQueryResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    response.set_allocated_msg(msg);
+    response.set_allocated_pairs(data);
+    for (const auto& key : keys) {
+        request.add_query_key(key);
+    }
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::BatchQuery,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    response.release_msg();
+    response.release_pairs();
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    *is_finish = response.is_finish();
+    *count = response.count();
+    return true;
+}
+
 bool TabletClient::GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>& tid_pid_offset) {
     ::rtidb::api::EmptyRequest request;
     ::rtidb::api::TableSnapshotOffsetResponse response;

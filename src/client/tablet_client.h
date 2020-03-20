@@ -236,6 +236,8 @@ public:
 
     bool GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>& tid_pid_offset);
 
+    bool BatchQuery(uint32_t tid, uint32_t pid, const std::string& idx_name, const std::vector<std::string>& keys, std::string* msg, std::string* data, bool* is_finish, uint32_t* count);
+
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
     bool ConnectZK();

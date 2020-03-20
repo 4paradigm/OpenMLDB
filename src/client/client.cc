@@ -39,7 +39,19 @@ void TraverseResult::Init(RtidbClient* client, std::string* table_name,
     count_ = count;
 }
 
+void  BatchQueryResult::Init(RtidbClient* client, std::string* table_name, const std::vector<std::string>& keys, uint32_t count) {
+    client_ = client;
+    table_name_.reset(table_name);
+    keys_ = std::make_shared<std::vector<std::string>>(keys);
+    offset_ = 0;
+    count_ = count;
+}
+
 TraverseResult::~TraverseResult() {
+}
+
+BatchQueryResult::~BatchQueryResult() {
+
 }
 
 bool TraverseResult::TraverseNext() {
@@ -75,6 +87,51 @@ bool TraverseResult::Next() {
     }
     count_--;
     return ok;
+}
+
+bool BatchQueryResult::Next() {
+    if (count_ < 1) {
+        if (is_finish_) {
+            return false;
+        }
+        last_pk_.clear();
+        last_pk_ = GetKey();
+        value_->clear();
+        offset_ = 0;
+        std::vector<std::string> get_keys;
+        for (const auto key : *keys_) {
+           if (already_get_.find(key) != already_get_.end())  {
+               continue;
+           }
+           get_keys.push_back(key);
+        }
+        if (get_keys.size() == 0) {
+            return  false;
+        }
+        bool ok = BatchQueryNext(get_keys);
+        if (!ok) {
+            return  ok;
+        }
+        offset_ = 0;
+    }
+    const char* buffer = value_->c_str();
+    buffer += offset_;
+    uint32_t size = 0;
+    memcpy(static_cast<void*>(&size), buffer, 4);
+    memrev32ifbe(static_cast<void*>(&size));
+    buffer += 4;
+    bool ok =
+            rv_->Reset(reinterpret_cast<int8_t*>(const_cast<char*>(buffer)), size);
+    if (ok) {
+        offset_ += 4 + size;
+    }
+    count_--;
+    already_get_.insert(GetKey());
+    return ok;
+}
+
+bool BatchQueryResult::BatchQueryNext(const std::vector<std::string>& get_key) {
+    return client_->BatchQuery(*table_name_, get_key, value_.get(), &is_finish_, &count_);
 }
 
 RtidbClient::RtidbClient()
@@ -326,10 +383,7 @@ bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
         return false;
     }
     bool ok = tablet->Traverse(th->table_info->tid(), 0, last_key, 1000, count, &err_msg, data, is_finish);
-    if (!ok) {
-        return false;
-    }
-    return true;
+    return ok;
 }
 
 std::shared_ptr<rtidb::client::TabletClient> RtidbClient::GetTabletClient(
@@ -483,3 +537,49 @@ GeneralResult RtidbClient::Delete(const std::string& name, const std::map<std::s
     return result;
 }
 
+BatchQueryResult RtidbClient::BatchQuery(const std::string &name, const std::vector<ReadOption> &ros) {
+    std::vector<std::string> keys;
+    for (const auto& it : ros) {
+        if (it.index.size() < 1) {
+            continue;
+        }
+        keys.push_back(it.index.begin()->second);
+    }
+    std::shared_ptr<TableHandler> th = GetTableHandler(name);
+    BatchQueryResult result;
+    if (th == NULL) {
+        result.SetError(-1, "table not found");
+        return result;
+    }
+    auto tablet = GetTabletClient(th->partition[0].leader, &result.msg_);
+    if (tablet == NULL) {
+        result.code_ = -1;
+        return result;
+    }
+    std::string* data = new std::string();
+    bool is_finish;
+    uint32_t count;
+    bool ok = BatchQuery(name, keys, data, &is_finish, &count);
+    if (!ok) {
+        delete data;
+        return result;
+    }
+    std::string* table_name = new std::string(name);
+    result.Init(this, table_name, keys, count);
+    result.SetValue(data, is_finish);
+    return result;
+
+}
+
+bool RtidbClient::BatchQuery(const std::string& name, const std::vector<std::string>& keys, std::string* data, bool* is_finish, uint32_t* count) {
+    std::shared_ptr<TableHandler> th = GetTableHandler(name);
+    if (th == NULL) {
+        return false;
+    }
+    std::string err_msg;
+    auto tablet = GetTabletClient(th->partition[0].leader, &err_msg);
+    if (tablet == NULL) {
+        return false;
+    }
+    return tablet->BatchQuery(th->table_info->tid(), 0, "", keys, &err_msg, data, is_finish, count);
+}

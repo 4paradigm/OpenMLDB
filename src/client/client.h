@@ -298,6 +298,42 @@ private:
     std::string last_pk_;
 };
 
+class BatchQueryResult: public ViewResult {
+public:
+    void SetError(int err_code, const std::string& err_msg) {
+        code_ = err_code;
+        msg_ = err_msg;
+    }
+
+    void Init(RtidbClient* client, std::string* table_name, const std::vector<std::string>& keys, uint32_t count);
+
+    ~BatchQueryResult();
+
+    void SetValue(std::string* value, bool is_finish) {
+        value_.reset(value);
+        is_finish_ = is_finish;
+    }
+
+    bool Next();
+
+public:
+    int code_;
+    std::string msg_;
+
+private:
+    bool BatchQueryNext(const std::vector<std::string>& get_keys);
+
+    uint32_t offset_;
+    std::shared_ptr<std::string> value_;
+    RtidbClient* client_;
+    bool is_finish_;
+    std::shared_ptr<std::vector<std::string>> keys_;
+    std::shared_ptr<std::string> table_name_;
+    std::set<std::string> already_get_;
+    uint32_t count_;
+    std::string last_pk_;
+};
+
 class RtidbClient {
 public:
     RtidbClient();
@@ -309,6 +345,8 @@ public:
     TraverseResult Traverse(const std::string& name, const struct ReadOption& ro);
     bool Traverse(const std::string& name, const struct ReadOption& ro, std::string* data, uint32_t* count,
                                const std::string& last_key, bool* is_finish);
+    BatchQueryResult BatchQuery(const std::string& name, const std::vector<ReadOption>& ros);
+    bool BatchQuery(const std::string& name, const std::vector<std::string>& keys, std::string* data, bool* is_finish, uint32_t* count);
     void SetZkCheckInterval(int32_t interval);
     GeneralResult Update(const std::string& table_name, 
             const std::map<std::string, std::string>& condition_columns_map,
