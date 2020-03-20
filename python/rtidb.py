@@ -144,7 +144,27 @@ class RTIDBClient:
     return RtidbResult(resp)
 
   def batch_query(self, table_name: str, read_options: ReadOptions):
-    return RtidbResult(interclient.QueryResult())
+    if (len(read_options) < 1):
+      raise Exception("muse set read_options")
+    ros = interclient.VectorReadOption()
+    for ro in read_options:
+      mid_map = {}
+      for k in ro.index:
+        mid_map.update({k: str(ro.index[k])})
+      interro = interclient.ReadOption(mid_map)
+      for filter in ro.read_filter:
+        mid_rf = interclient.ReadFilter()
+        mid_rf.column = filter.name
+        mid_rf.type = filter.type
+        mid_rf.value = str(filter.value)
+        interro.read_filter.append(mid_rf)
+      for col in ro.col_set:
+        interro.col_set.append(col)
+      ros.append(interro)
+    resp = self.__client.BatchQuery(table_name, ros);
+    if (resp.code_ != 0):
+      raise Exception(resp.code_, resp.msg_);
+    return RtidbResult(resp)
 
   def delete(self, table_name: str, condition_columns: map):
     if (len(condition_columns) != 1):

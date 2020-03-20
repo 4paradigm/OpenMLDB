@@ -565,6 +565,7 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string &name, const std::vec
     }
     std::string* table_name = new std::string(name);
     result.Init(this, table_name, keys, count);
+    result.SetRv(th);
     result.SetValue(data, is_finish);
     return result;
 

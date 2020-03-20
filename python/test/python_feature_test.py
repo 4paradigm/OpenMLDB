@@ -34,6 +34,20 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("a{}".format(id), l["attribute"])
       id+=1
     #TODO(kongquan): current put data use java client, when python put feature is complete, put data before traverse
+  def test_batchQuery(self):
+    ros = list()
+    for i in range(1000):
+      ro = rtidb.ReadOption()
+      ro.index = {"id": "{:04d}".format(i)}
+      ros.append(ro)
+    resp = self.nsc.batch_query("10001", ros)
+    id = 0;
+    for l in resp:
+      self.assertEqual("{:04d}".format(id), l["id"])
+      self.assertEqual("i{}".format(id), l["image"])
+      self.assertEqual("a{}".format(id), l["attribute"])
+      id+=1
+    #TODO(kongquan): current put data use java client, when python put feature is complete, put data before traverse
 
 
   def test_update(self):
