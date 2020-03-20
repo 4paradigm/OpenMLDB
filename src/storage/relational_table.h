@@ -27,6 +27,7 @@
 #include "timer.h"
 #include "base/codec.h"
 #include <mutex>
+#include "base/auto_gen.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
@@ -61,7 +62,7 @@ public:
 
     static void initOptionTemplate();
 
-    bool Put(const std::string& value, int64_t auto_gen_pk); 
+    bool Put(const std::string& value); 
 
     bool PutDB(const std::string& pk,
              const char* data,
@@ -149,6 +150,8 @@ private:
     rocksdb::Options options_;
     std::atomic<uint64_t> offset_;
     std::string db_root_path_;
+
+    ::rtidb::base::AutoGen auto_gen_;
 };
 
 }

@@ -187,8 +187,10 @@ bool RelationalTable::Init() {
     return true;
 }
 
-bool RelationalTable::Put(const std::string& value, int64_t auto_gen_pk) {
-    bool has_auto_gen = false;;
+bool RelationalTable::Put(const std::string& value) {
+    int64_t auto_gen_pk = auto_gen_.Next();
+
+    bool has_auto_gen = false;
     std::string pk_col_name;
     for (const ::rtidb::common::ColumnKey& column_key : table_meta_.column_key()) {
         if (column_key.index_type() == ::rtidb::type::kPrimaryKey ||

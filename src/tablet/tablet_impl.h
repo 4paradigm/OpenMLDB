@@ -25,10 +25,6 @@
 #include <brpc/server.h>
 #include <mutex>
 #include "base/spinlock.h"
-#include "base/random.h"
-#include <unistd.h>
-#include <sys/syscall.h>
-#define gettid() syscall(SYS_gettid)
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
@@ -400,8 +396,6 @@ private:
     
     void SchedDelRecycle();
 
-    void AutoGenPk(int64_t* auto_gen_pk);
-
 private:
     RelationalTables relational_tables_;
     Tables tables_;
@@ -422,7 +416,6 @@ private:
     std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_root_paths_;
     std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_recycle_root_paths_;
     std::atomic<bool> follower_;
-    ::rtidb::base::Random rand_;
 };
 
 }
