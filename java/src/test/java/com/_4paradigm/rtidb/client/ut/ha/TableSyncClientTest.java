@@ -680,8 +680,9 @@ public class TableSyncClientTest extends TestCaseBase {
 
     @Test
     public void testRelationalTableTraverse() {
-        String name = createRelationalTable();
+        String name = "";
         try {
+            name = createRelationalTable(IndexType.PrimaryKey);
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
             Assert.assertEquals(schema.size(), 3);
 
