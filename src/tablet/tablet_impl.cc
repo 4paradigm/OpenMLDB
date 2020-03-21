@@ -1448,8 +1448,8 @@ void TabletImpl::Traverse(RpcController* controller,
         rtidb::storage::RelationalTableTraverseIterator* it =
             r_table->NewTraverse(index);
         if (it == NULL) {
-            response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
-            response->set_msg("ts name not found, when create iterator");
+            response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
+            response->set_msg("idx name not found");
         }
         if (request->has_pk()) {
             it->Seek(request->pk());
@@ -1632,7 +1632,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
             r_table->NewTraverse(index);
     if (it == NULL) {
         response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
-        response->set_msg("ts name not found, when create iterator");
+        response->set_msg("idx name not found");
         return;
     }
     std::vector<rtidb::base::Slice> value_vec;
