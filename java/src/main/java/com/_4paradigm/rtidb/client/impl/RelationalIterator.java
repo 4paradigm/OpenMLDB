@@ -68,7 +68,7 @@ public class RelationalIterator {
         String idxName = "";
         for (int i = 0; i < th.getTableInfo().getColumnKeyCount(); i++) {
             Common.ColumnKey key = th.getTableInfo().getColumnKey(i);
-            if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.kPrimaryKey)) {
+            if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.PrimaryKey)) {
                 idxName = key.getIndexName();
             }
         }
@@ -121,7 +121,7 @@ public class RelationalIterator {
         String idxName = "";
         for (int i = 0; i < th.getTableInfo().getColumnKeyCount(); i++) {
             Common.ColumnKey key = th.getTableInfo().getColumnKey(i);
-            if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.kPrimaryKey)) {
+            if (key.hasIndexType() && key.getIndexType() == IndexType.valueFrom(IndexType.PrimaryKey)) {
                 idxName = key.getIndexName();
             }
         }
