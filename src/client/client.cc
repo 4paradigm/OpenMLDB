@@ -265,6 +265,13 @@ void RtidbClient::RefreshTable() {
         if (pk_type_set.find(pk_type) == pk_type_set.end()) {
             continue;
         }
+        for (int i = 0; i < table_info->column_key_size(); i++) {
+            if (table_info->column_key(i).has_index_type() &&
+                table_info->column_key(i).index_type() == ::rtidb::type::IndexType::kAutoGen) {
+                handler->auto_gen_pk_ = table_info->column_key(i).index_name();
+                break;
+            }
+        }
         handler->table_info = table_info;
         handler->columns = columns;
         handler->pk_index = pk_index;
@@ -475,14 +482,16 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
     }
     std::set<std::string> keys_column;
     for (auto& key : th->table_info->column_key()) {
-        for (auto& col : key.col_name()) {
-            if (value.find(col) == value.end()) {
+        for (auto &col : key.col_name()) {
+            if (value.find(col) == value.end() && 
+                    th->auto_gen_pk_.empty()) {
                 result.SetError(-1, "key col must have ");
                 return result;
             }
             keys_column.insert(col);
         }
     }
+    std::map<std::string, std::string> val;
     for (auto& column : *(th->columns)) {
         auto iter = value.find(column.name());
         auto set_iter = keys_column.find(column.name());
@@ -490,12 +499,26 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
             if (set_iter == keys_column.end()) {
                 std::string err_msg = "miss column " + column.name();
                 result.SetError(-1, err_msg);
+                return result;
+            } else if (th->auto_gen_pk_.empty()) {
+                result.SetError(-1, "input value error");
+                return result;
+            } else {
+                val = value;
+                val.insert(std::make_pair(th->auto_gen_pk_, ::rtidb::base::DEFAULT_LONG));
             }
-            // TODO: add auto gen key columm
-        } 
+        } else if (column.name() == th->auto_gen_pk_) {
+            result.SetError(-1, "should not input autoGenPk column");
+            return result;
+        }
     }
     std::string buffer;
-    rtidb::base::ResultMsg rm = rtidb::base::RowSchemaCodec::Encode(value, *(th->columns), buffer);
+    rtidb::base::ResultMsg rm;
+    if (!th->auto_gen_pk_.empty()) {
+        rm = rtidb::base::RowSchemaCodec::Encode(val, *(th->columns), buffer);
+    } else {
+        rm = rtidb::base::RowSchemaCodec::Encode(value, *(th->columns), buffer);
+    }
     if (rm.code != 0) {
         result.SetError(rm.code, "encode error, msg: " + rm.msg);
         return result;

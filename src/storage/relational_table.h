@@ -27,6 +27,7 @@
 #include "timer.h"
 #include "base/codec.h"
 #include <mutex>
+#include "base/id_generator.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
@@ -79,7 +80,9 @@ public:
 
     static void initOptionTemplate();
 
-    bool Put(const std::string& pk,
+    bool Put(const std::string& value); 
+
+    bool PutDB(const std::string& pk,
              const char* data,
              uint32_t size);
 
@@ -167,6 +170,8 @@ private:
     rocksdb::Options options_;
     std::atomic<uint64_t> offset_;
     std::string db_root_path_;
+
+    ::rtidb::base::IdGenerator id_generator_;
 };
 
 }

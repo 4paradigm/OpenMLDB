@@ -72,7 +72,19 @@ class TestRtidb(unittest.TestCase):
       self.assertEqual("a3", l["attribute"])
       self.assertEqual("i3", l["image"])
 
-
+  def test_auto_gen(self):
+    #data = {"id":"1", "attribute":"a1", "image":"i1"}
+    data = {"attribute":"a1", "image":"i1"}
+    self.assertTrue(self.nsc.put("test1", data, None))
+    ro = rtidb.ReadOption()
+    ro.index.update({"id":"11"})
+    resp = self.nsc.query("test1", ro)
+    self.assertEqual(1, resp.count())
+    for l in resp:
+      self.assertEqual(11, l["id"])
+      self.assertEqual("a1", l["attribute"])
+      self.assertEqual("i1", l["image"])
+    print("put ok")
 
 if __name__ == "__main__":
   unittest.main()

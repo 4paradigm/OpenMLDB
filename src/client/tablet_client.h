@@ -64,6 +64,11 @@ public:
 
     bool Put(uint32_t tid,
              uint32_t pid,
+             const std::string& value, 
+             std::string& msg);
+
+    bool Put(uint32_t tid,
+             uint32_t pid,
              const std::string& pk, 
              uint64_t time,
              const std::string& value);
