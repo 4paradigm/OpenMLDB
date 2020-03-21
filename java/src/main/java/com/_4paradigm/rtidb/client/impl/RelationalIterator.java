@@ -11,12 +11,9 @@ import com._4paradigm.rtidb.client.type.IndexType;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
-import com._4paradigm.rtidb.type.Type;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
-import org.apache.jute.Index;
 import rtidb.api.TabletServer;
-import sun.awt.X11.XSystemTrayPeer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
