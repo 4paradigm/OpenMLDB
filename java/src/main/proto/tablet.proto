@@ -30,13 +30,6 @@ enum TabletState {
     kTabletHealthy = 10;
 }
 
-enum TableType {
-    // KV table 
-    kKVTable = 1;
-    // Time Series table
-    kTSTable = 2;
-}
-
 enum TTLType {
     kAbsoluteTime = 1;
     kRelativeTime = 2;
@@ -335,6 +328,7 @@ message TableMeta {
     optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
     optional TTLDesc ttl_desc = 19;
+    optional rtidb.type.TableType table_type = 20;
 }
 
 message CreateTableRequest {
@@ -360,6 +354,7 @@ message DropTableRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
     optional TaskInfo task_info = 3;
+    optional rtidb.type.TableType table_type = 4;
 }
 
 message DropTableResponse {
@@ -642,6 +637,20 @@ message UpdateRequest {
     optional Columns value_columns = 4;
 }
 
+message BatchQueryRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    repeated string query_key = 3;
+}
+
+message BatchQueryResponse {
+    optional bytes pairs = 1;
+    optional string msg = 2;
+    optional int32 code = 3;
+    optional bool is_finish = 4;
+    optional uint32 count = 5;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -652,6 +661,7 @@ service TabletServer {
     rpc Count(CountRequest) returns (CountResponse);
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
     rpc Update(UpdateRequest) returns (GeneralResponse);
+    rpc BatchQuery(BatchQueryRequest) returns (BatchQueryResponse);
 
     // table api for master
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);

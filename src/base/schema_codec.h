@@ -411,7 +411,7 @@ public:
                 return rm;
             }
             bool ok = false;
-            try {
+           try {
                 switch (col.data_type()) {
                     case rtidb::type::kVarchar:
                         ok = builder.AppendString(iter->second.c_str(), iter->second.length());

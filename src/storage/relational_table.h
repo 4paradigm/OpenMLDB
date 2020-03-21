@@ -34,6 +34,24 @@ using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
 
 namespace rtidb {
 namespace storage {
+class RelationalTableTraverseIterator {
+ public:
+    RelationalTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
+                                    const rocksdb::Snapshot* snapshot);
+    ~RelationalTableTraverseIterator();
+    bool Valid();
+    void Next();
+    void SeekToFirst();
+    void Seek(const std::string& pk);
+    uint64_t GetCount();
+    rtidb::base::Slice GetValue();
+
+ private:
+    rocksdb::DB* db_;
+    rocksdb::Iterator* it_;
+    const rocksdb::Snapshot* snapshot_;
+    uint64_t traverse_cnt_;
+};
 
 class RelationalTable {
 
@@ -74,6 +92,8 @@ public:
     bool Get(uint32_t idx, const std::string& pk, rtidb::base::Slice& slice);
 
     bool Delete(const std::string& pk, uint32_t idx);
+
+    rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx);
 
     bool Update(const ::rtidb::api::Columns& cd_columns, 
             const ::rtidb::api::Columns& col_columns);

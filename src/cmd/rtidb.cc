@@ -2572,6 +2572,17 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         printf("storage mode %s is invalid\n", table_info.storage_mode().c_str());
         return -1;
     }
+    std::string table_type = table_info.table_type();
+    std::transform(table_type.begin(), table_type.end(), table_type.begin(), ::tolower);
+    if (table_type == "ktimeseries" || table_type == "timeseries") {
+        ns_table_info.set_table_type(rtidb::type::TableType::kTimeSeries);
+    } else if (table_type == "krelational" || table_type == "relational") {
+        ns_table_info.set_table_type(rtidb::type::TableType::kRelational);
+    } else {
+        printf("table_type mode %s is invalid\n", table_info.table_type().c_str());
+        return -1;
+    }
+
     if (table_info.has_key_entry_max_height()) {
         if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
             printf("Fail to create table. key_entry_max_height %u is greater than the max heght %u\n", 

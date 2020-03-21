@@ -1249,136 +1249,198 @@ void TabletImpl::Traverse(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    std::shared_ptr<RelationalTable> r_table;
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
-        return;
-    }
-    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-        PDLOG(WARNING, "table is loading. tid %u, pid %u", 
-                request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
-        response->set_msg("table is loading");
-        return;
-    }
-    uint32_t index = 0;
-    int ts_index = -1;
-    if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
-        if (!index_def || !index_def->IsReady()) {
-            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                    request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
-            response->set_msg("idx name not found");
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        r_table = GetRelationalTableUnLock(request->tid(), request->pid());
+        if (!r_table) {
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+            response->set_msg("table is not exist");
             return;
         }
-        index = index_def->GetId();
     }
-    if (request->has_ts_name() && request->ts_name().size() > 0) {
-        auto iter = table->GetTSMapping().find(request->ts_name());
-        if (iter == table->GetTSMapping().end()) {
-            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+    if (table) {
+        if (table->GetTableStat() == ::rtidb::storage::kLoading) {
+            PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                     request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableIsLoading);
+            response->set_msg("table is loading");
+            return;
+        }
+        uint32_t index = 0;
+        int ts_index = -1;
+        if (request->has_idx_name() && request->idx_name().size() > 0) {
+            std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+            if (!index_def || !index_def->IsReady()) {
+                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                        request->tid(), request->pid());
+                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
+                response->set_msg("idx name not found");
+                return;
+            }
+            index = index_def->GetId();
+        }
+        if (request->has_ts_name() && request->ts_name().size() > 0) {
+            auto iter = table->GetTSMapping().find(request->ts_name());
+            if (iter == table->GetTSMapping().end()) {
+                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                        request->tid(), request->pid());
+                response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
+                response->set_msg("ts name not found");
+                return;
+            }
+            ts_index = iter->second;
+        }
+        ::rtidb::storage::TableIterator* it = NULL;
+        if (ts_index >= 0) {
+            it = table->NewTraverseIterator(index, ts_index);
+        } else {
+            it = table->NewTraverseIterator(index);
+        }
+        if (it == NULL) {
             response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
-            response->set_msg("ts name not found");
+            response->set_msg("ts name not found, when create iterator");
             return;
         }
-        ts_index = iter->second;
-    }
-    ::rtidb::storage::TableIterator* it = NULL;
-    if (ts_index >= 0) {
-        it = table->NewTraverseIterator(index, ts_index);
-    } else {
-        it = table->NewTraverseIterator(index);
-    }
-    if (it == NULL) {
-        response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
-        response->set_msg("ts name not found, when create iterator");
-        return;
-    }
 
-    uint64_t last_time = 0;
-    std::string last_pk;
-    if (request->has_pk() && request->pk().size() > 0) {
-        PDLOG(DEBUG, "tid %u, pid %u seek pk %s ts %lu", 
-                request->tid(), request->pid(), request->pk().c_str(), request->ts());
-        it->Seek(request->pk(), request->ts());
-        last_pk = request->pk();
-        last_time = request->ts();
-    } else {
-        PDLOG(DEBUG, "tid %u, pid %u seek to first", request->tid(), request->pid());
-        it->SeekToFirst();
-    }
-    std::map<std::string, std::vector<std::pair<uint64_t, rtidb::base::Slice>>> value_map;
-    uint32_t total_block_size = 0;
-    bool remove_duplicated_record = false;
-    if (request->has_enable_remove_duplicated_record()) {
-        remove_duplicated_record = request->enable_remove_duplicated_record();
-    }
-    uint32_t scount = 0;
-    for (;it->Valid(); it->Next()) {
-        if (request->limit() > 0 && scount > request->limit() - 1) {
-            PDLOG(DEBUG, "reache the limit %u ", request->limit());
-            break;
+        uint64_t last_time = 0;
+        std::string last_pk;
+        if (request->has_pk() && request->pk().size() > 0) {
+            PDLOG(DEBUG, "tid %u, pid %u seek pk %s ts %lu", 
+                    request->tid(), request->pid(), request->pk().c_str(), request->ts());
+            it->Seek(request->pk(), request->ts());
+            last_pk = request->pk();
+            last_time = request->ts();
+        } else {
+            PDLOG(DEBUG, "tid %u, pid %u seek to first", request->tid(), request->pid());
+            it->SeekToFirst();
         }
-        PDLOG(DEBUG, "traverse pk %s ts %lu", it->GetPK().c_str(), it->GetKey());
-        // skip duplicate record
-        if (remove_duplicated_record && last_time == it->GetKey() && last_pk == it->GetPK()) {
-            PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
-            continue;
+        std::map<std::string, std::vector<std::pair<uint64_t, rtidb::base::Slice>>> value_map;
+        uint32_t total_block_size = 0;
+        bool remove_duplicated_record = false;
+        if (request->has_enable_remove_duplicated_record()) {
+            remove_duplicated_record = request->enable_remove_duplicated_record();
         }
-        last_pk = it->GetPK();
-        last_time = it->GetKey();
-        if (value_map.find(last_pk) == value_map.end()) {
-            value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, rtidb::base::Slice>>()));
-            value_map[last_pk].reserve(request->limit());
+        uint32_t scount = 0;
+        for (;it->Valid(); it->Next()) {
+            if (request->limit() > 0 && scount > request->limit() - 1) {
+                PDLOG(DEBUG, "reache the limit %u ", request->limit());
+                break;
+            }
+            PDLOG(DEBUG, "traverse pk %s ts %lu", it->GetPK().c_str(), it->GetKey());
+            // skip duplicate record
+            if (remove_duplicated_record && last_time == it->GetKey() && last_pk == it->GetPK()) {
+                PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
+                continue;
+            }
+            last_pk = it->GetPK();
+            last_time = it->GetKey();
+            if (value_map.find(last_pk) == value_map.end()) {
+                value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, rtidb::base::Slice>>()));
+                value_map[last_pk].reserve(request->limit());
+            }
+            rtidb::base::Slice value = it->GetValue();
+            value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
+            total_block_size += last_pk.length() + value.size();
+            scount ++;
+            if (it->GetCount() >= FLAGS_max_traverse_cnt) {
+                PDLOG(DEBUG, "traverse cnt %lu max %lu, key %s ts %lu", 
+                        it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(), last_time);
+                break;
+            }
         }
-        rtidb::base::Slice value = it->GetValue();
-        value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
-        total_block_size += last_pk.length() + value.size();
-        scount ++;
+        bool is_finish = false;
         if (it->GetCount() >= FLAGS_max_traverse_cnt) {
-            PDLOG(DEBUG, "traverse cnt %lu max %lu, key %s ts %lu", 
+            PDLOG(DEBUG, "traverse cnt %lu is great than max %lu, key %s ts %lu", 
                     it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(), last_time);
-            break;
-        }
-    }
-    bool is_finish = false;
-    if (it->GetCount() >= FLAGS_max_traverse_cnt) {
-        PDLOG(DEBUG, "traverse cnt %lu is great than max %lu, key %s ts %lu", 
-                it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(), last_time);
-        last_pk = it->GetPK();
-        last_time = it->GetKey();
-        if (last_pk.empty()) {
+            last_pk = it->GetPK();
+            last_time = it->GetKey();
+            if (last_pk.empty()) {
+                is_finish = true;
+            }
+        } else if (scount < request->limit()) {
             is_finish = true;
         }
-    } else if (scount < request->limit()) {
-        is_finish = true;
-    }
-    delete it;
-    uint32_t total_size = scount * (8+4+4) + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (scount <= 0) {
-        pairs->resize(0);
-    } else {
-        pairs->resize(total_size);
-    }
-    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
-    uint32_t offset = 0;
-    for (const auto& kv : value_map) {
-        for (const auto& pair : kv.second) {
-            PDLOG(DEBUG, "encode pk %s ts %lu value %s size %u", kv.first.c_str(), pair.first, pair.second.data(), pair.second.size());
-            ::rtidb::base::EncodeFull(kv.first, pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
-            offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
+        delete it;
+        uint32_t total_size = scount * (8+4+4) + total_block_size;
+        std::string* pairs = response->mutable_pairs();
+        if (scount <= 0) {
+            pairs->resize(0);
+        } else {
+            pairs->resize(total_size);
         }
+        char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
+        uint32_t offset = 0;
+        for (const auto& kv : value_map) {
+            for (const auto& pair : kv.second) {
+                PDLOG(DEBUG, "encode pk %s ts %lu size %u", kv.first.c_str(), pair.first, pair.second.size());
+                ::rtidb::base::EncodeFull(kv.first, pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
+                offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
+            }
+        }
+        PDLOG(DEBUG, "traverse count %d. last_pk %s last_time %lu", scount, last_pk.c_str(), last_time);
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_count(scount);
+        response->set_pk(last_pk);
+        response->set_ts(last_time);
+        response->set_is_finish(is_finish);
+    } else {
+        uint32_t index = 0;
+        rtidb::storage::RelationalTableTraverseIterator* it =
+            r_table->NewTraverse(index);
+        if (it == NULL) {
+            response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
+            response->set_msg("idx name not found");
+        }
+        if (request->has_pk()) {
+            it->Seek(request->pk());
+            it->Next();
+        } else {
+            it->SeekToFirst();
+        }
+        uint32_t scount = 0;
+        std::vector<rtidb::base::Slice> value_vec;
+        uint32_t total_block_size = 0;
+        for (; it->Valid(); it->Next()) {
+            if (request->limit() > 0 && scount > request->limit() - 1) {
+                PDLOG(DEBUG, "reache the limit %u", request->limit());
+                break;
+            }
+            rtidb::base::Slice value = it->GetValue();
+            total_block_size += value.size();
+            value_vec.push_back(value);
+            scount++;
+            if (it->GetCount() >= FLAGS_max_traverse_cnt) {
+                PDLOG(DEBUG, "traverse cnt %lu max %lu",
+                      it->GetCount(), FLAGS_max_traverse_cnt);
+                break;
+            }
+        }
+
+        bool is_finish = false;
+        if (!it->Valid()) {
+            is_finish = true;
+        }
+        delete it;
+        uint32_t total_size = scount * 4 + total_block_size;
+        std::string* pairs = response->mutable_pairs();
+        if (scount <= 0) {
+            pairs->resize(0);
+        } else {
+            pairs->resize(total_size);
+        }
+        char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
+        uint32_t offset = 0;
+        for (const auto& value : value_vec) {
+            rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
+            offset += (4 + value.size());
+        }
+        PDLOG(DEBUG, "tid %u pid %u, traverse count %d.", request->tid(), request->pid(), scount);
+        response->set_code(0);
+        response->set_count(scount);
+        response->set_is_finish(is_finish);
     }
-    PDLOG(DEBUG, "traverse count %d. last_pk %s last_time %lu", scount, last_pk.c_str(), last_time);
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-    response->set_count(scount);
-    response->set_pk(last_pk);
-    response->set_ts(last_time);
-    response->set_is_finish(is_finish);
 }
 
 void TabletImpl::Delete(RpcController* controller,
@@ -1483,6 +1545,88 @@ void TabletImpl::Delete(RpcController* controller,
             return;
         }
     }
+}
+
+void TabletImpl::BatchQuery(RpcController* controller,
+                const rtidb::api::BatchQueryRequest* request,
+                rtidb::api::BatchQueryResponse* response,
+                Closure*done) {
+    brpc::ClosureGuard done_guard(done);
+    if (request->query_key_size() < 1) {
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        return;
+    }
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<RelationalTable> r_table;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        r_table = GetRelationalTableUnLock(tid, pid);
+    }
+    if (!r_table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
+    }
+    uint32_t index = 0;
+    rtidb::storage::RelationalTableTraverseIterator* it =
+            r_table->NewTraverse(index);
+    if (it == NULL) {
+        response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
+        response->set_msg("idx name not found");
+        return;
+    }
+    std::vector<rtidb::base::Slice> value_vec;
+    uint32_t total_block_size = 0;
+
+    uint32_t scount = 0;
+    uint32_t not_found_count = 0;
+    for (auto& key : request->query_key()) {
+        it->Seek(key);
+        scount++;
+        if (!it->Valid()) {
+            not_found_count++;
+            continue;
+        }
+        rtidb::base::Slice value = it->GetValue();
+
+        total_block_size += value.size();
+        value_vec.push_back(value);
+        if (scount >= FLAGS_max_traverse_cnt) {
+            PDLOG(DEBUG, "batchquery cnt %lu max %lu",
+                  scount, FLAGS_max_traverse_cnt);
+            break;
+        }
+    }
+
+    delete it;
+    if (total_block_size == 0) {
+        PDLOG(DEBUG, "tid %u pid %u, batchQuery not key found.", request->tid(), request->pid());
+        response->set_code(rtidb::base::ReturnCode::kOk);
+        response->set_is_finish(true);
+    }
+    bool is_finish = false;
+    if (static_cast<uint64_t>(scount) == static_cast<uint64_t>(request->query_key_size())) {
+        is_finish = true;
+    }
+    uint32_t total_size = (scount - not_found_count) * 4 + total_block_size;
+    std::string* pairs = response->mutable_pairs();
+    if (scount <= 0) {
+        pairs->resize(0);
+    } else {
+        pairs->resize(total_size);
+    }
+    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
+    uint32_t offset = 0;
+    for (const auto& value : value_vec) {
+        rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
+        offset += (4 + value.size());
+    }
+    PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(), request->pid(), scount);
+    response->set_code(rtidb::base::ReturnCode::kOk);
+    response->set_is_finish(is_finish);
+    response->set_count(scount);
 }
 
 void TabletImpl::ChangeRole(RpcController* controller,
@@ -4160,29 +4304,6 @@ void TabletImpl::SetMode(RpcController* controller,
     std::string mode = request->follower() == true ? "follower" : "normal";
     PDLOG(INFO, "set tablet mode %s", mode.c_str());
     response->set_code(::rtidb::base::ReturnCode::kOk);
-}
-
-void TabletImpl::AlignTable(RpcController* controller,
-        const ::rtidb::api::GeneralRequest* request,
-        ::rtidb::api::GeneralResponse* response,
-        Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
-        return;
-    }
-    std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
-    if (!replicator) {
-        PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(),
-              request->pid());
-        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
-        return;
-    }
-    // replicator.GetLogPart().Get
 }
 
 void TabletImpl::DeleteIndex(RpcController* controller,
