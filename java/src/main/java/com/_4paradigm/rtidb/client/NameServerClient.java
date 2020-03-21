@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface NameServerClient {
 
-    boolean createTable(TableDesc tableDesc) throws TabletException;
+    boolean createTable(TableDesc tableDesc);
     boolean createTable(TableInfo tableInfo);
     boolean dropTable(String tname);
     List<TableInfo> showTable(String tname);
