@@ -790,6 +790,21 @@ public class TableSyncClientTest extends TestCaseBase {
                 Set<String> colSet = new HashSet<>();
                 colSet.add("id");
                 colSet.add("image");
+
+                Map<String, Object> index = new HashMap<String, Object>();
+                if (i % 13 == 0) {
+                    index.put("id", String.format("%04d", 1000 + i));
+                } else {
+                    index.put("id", String.format("%04d", i));
+                }
+                ReadOption ro = new ReadOption(index, null, colSet, 1);
+                ros.add(ro);
+            }
+
+            for (int i = 1000; i < 1200; i++) {
+                Set<String> colSet = new HashSet<>();
+                colSet.add("id");
+                colSet.add("image");
                 Map<String, Object> index = new HashMap<String, Object>();
                 index.put("id", String.format("%04d", i));
                 ReadOption ro = new ReadOption(index, null, colSet, 1);
@@ -802,6 +817,9 @@ public class TableSyncClientTest extends TestCaseBase {
                 trit.next();
                 Assert.assertTrue(trit.valid());
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
+                if (i % 13 == 0) {
+                    i++;
+                }
                 Assert.assertEquals(TraverseMap.size(), 2);
                 Assert.assertEquals(TraverseMap.get("id"), String.format("%04d", i));
                 Assert.assertEquals(TraverseMap.get("image"), "i" + i);
