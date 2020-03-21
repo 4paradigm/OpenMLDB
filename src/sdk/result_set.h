@@ -19,6 +19,7 @@
 #define SRC_SDK_RESULT_SET_H_
 
 #include <stdint.h>
+#include "sdk/base.h"
 
 namespace fesql {
 namespace sdk {
@@ -31,8 +32,6 @@ class ResultSet {
     virtual ~ResultSet() {}
 
     virtual bool Next() = 0;
-
-    virtual bool Close() = 0;
 
     virtual bool GetString(uint32_t index, char** result, uint32_t* size) = 0;
 
@@ -54,6 +53,9 @@ class ResultSet {
 
     virtual bool GetTime(uint32_t index, int64_t* mills) = 0;
 
+    virtual const Schema& GetSchema() = 0;
+
+    virtual int32_t Size() = 0;
 };
 
 }  // namespace sdk

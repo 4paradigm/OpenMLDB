@@ -21,9 +21,11 @@
 #include "sdk/result_set.h"
 #include "proto/tablet.pb.h"
 #include "codec/row_codec.h"
+#include "sdk/base_impl.h"
 
 namespace fesql {
 namespace sdk {
+
 
 class ResultSetImpl : public ResultSet {
  public:
@@ -31,9 +33,8 @@ class ResultSetImpl : public ResultSet {
     ~ResultSetImpl();
 
     bool Init();
-    bool Next();
 
-    bool Close();
+    bool Next();
 
     bool GetString(uint32_t index, char** result, uint32_t* size);
 
@@ -55,12 +56,16 @@ class ResultSetImpl : public ResultSet {
 
     bool GetTime(uint32_t index, int64_t* mills);
 
+    const Schema& GetSchema();
+
+    int32_t Size();
+
  private:
     std::unique_ptr<tablet::QueryResponse> response_;
-    vm::Schema schema_;
     int32_t index_;
     int32_t size_;
     std::unique_ptr<codec::RowView> row_view_;
+    SchemaImpl schema_;
 };
 
 }  // namespace sdk

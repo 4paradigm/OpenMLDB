@@ -22,14 +22,18 @@
 namespace fesql {
 namespace sdk {
 
-ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response):response_(std::move(response)), schema_(), index_(-1),
-    size_(response_->result_set().size()) {}
+ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response):response_(std::move(response)),index_(-1),
+    size_(0), row_view_(), schema_() {
+   if (response_) {
+       schema_.SetSchema(response_->schema());
+       size_ = response_->result_set().size();
+   }
+}
 
 ResultSetImpl::~ResultSetImpl() {}
 
 bool ResultSetImpl::Init() {
-    schema_ = response_->schema();
-    std::unique_ptr<codec::RowView> row_view(new codec::RowView(schema_));
+    std::unique_ptr<codec::RowView> row_view(new codec::RowView(response_->schema()));
     row_view_ = std::move(row_view);
     return true;
 }
@@ -128,6 +132,14 @@ bool ResultSetImpl::GetTime(uint32_t index, int64_t *mills) {
     }
     int32_t ret = row_view_->GetTimestamp(index, mills);
     return ret == 0;
+}
+
+const Schema& ResultSetImpl::GetSchema() {
+    return schema_;
+}
+
+int32_t ResultSetImpl::Size() {
+    return size_;
 }
 
 }  // namespace of sdk

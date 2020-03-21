@@ -11,6 +11,13 @@
 #include "gtest/gtest.h"
 #include "node/node_enum.h"
 #include "tablet/tablet_server_impl.h"
+#include "gflags/gflags.h"
+
+DECLARE_string(dbms_endpoint);
+DECLARE_string(endpoint);
+DECLARE_int32(port);
+DECLARE_bool(enable_keep_alive);
+
 namespace fesql {
 namespace dbms {
 using fesql::base::Status;
@@ -26,19 +33,37 @@ class DBMSServerImplTest : public ::testing::Test {
  public:
     DBMSServerImplTest() {}
     ~DBMSServerImplTest() {}
+    void SetUp() {
+        tablet_endpoint = "127.0.0.1:8120";
+        tablet_ = new tablet::TabletServerImpl();
+        tablet_->Init();
+        brpc::ServerOptions options;
+        server_.AddService(tablet_, brpc::SERVER_DOESNT_OWN_SERVICE);
+        int32_t port = 8120;
+        server_.Start(port, &options);
+        dbms_ = new ::fesql::dbms::DBMSServerImpl();
+        {
+            MockClosure closure;
+            dbms::KeepAliveRequest request;
+            request.set_endpoint(tablet_endpoint);
+            dbms::KeepAliveResponse response;
+            dbms_->KeepAlive(NULL, &request, &response, &closure);
+        }
+    }
+    void TearDown() {
+        server_.Stop(10);
+        delete dbms_;
+        delete tablet_;
+    }
+ public:
+    std::string tablet_endpoint;
+    brpc::Server server_;
+    ::fesql::dbms::DBMSServerImpl* dbms_;
+    tablet::TabletServerImpl* tablet_;
 };
 
 TEST_F(DBMSServerImplTest, CreateTableTest) {
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    brpc::Server server;
-    server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE);
-    int32_t port = 8120;
-    server.Start(port, &options);
-
-    ::fesql::dbms::DBMSServerImpl dbms_server;
-    dbms_server.SetTabletEndpoint("127.0.0.1:" + std::to_string(port));
+    MockClosure closure;
     // null db
     {
         ::fesql::dbms::AddTableRequest request;
@@ -49,20 +74,16 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
             column->set_name("column1");
             column->set_type(fesql::type::kInt32);
         }
-
         ::fesql::dbms::AddTableResponse response;
-        MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kNoDatabase, response.status().code());
     }
-
     // create database
     {
         ::fesql::dbms::AddDatabaseRequest request;
         ::fesql::dbms::AddDatabaseResponse response;
         request.set_name("db_test");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
+        dbms_->AddDatabase(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -78,8 +99,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         }
 
         ::fesql::dbms::AddTableResponse response;
-        MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kNoDatabase, response.status().code());
     }
 
@@ -104,7 +124,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
 
         ::fesql::dbms::AddTableResponse response;
         MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -128,8 +148,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         }
 
         ::fesql::dbms::AddTableResponse response;
-        MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -173,8 +192,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         }
 
         ::fesql::dbms::AddTableResponse response;
-        MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -184,7 +202,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         request.set_db_name("db_test");
         ::fesql::dbms::AddTableResponse response;
         MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kBadRequest, response.status().code());
         ASSERT_EQ("table name is empty", response.status().msg());
     }
@@ -203,22 +221,21 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
 
         ::fesql::dbms::AddTableResponse response;
         MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kTableExists, response.status().code());
         ASSERT_EQ("table already exists", response.status().msg());
     }
 
     {
-        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetTablesRequest request;
         request.set_db_name("db_test");
-        ::fesql::dbms::GetItemsResponse response;
-        MockClosure closure;
-        dbms_server.GetTables(NULL, &request, &response, &closure);
+        ::fesql::dbms::GetTablesResponse response;
+        dbms_->GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
-        ASSERT_EQ(3, response.items_size());
-        ASSERT_EQ("test1", response.items(0));
-        ASSERT_EQ("test2", response.items(1));
-        ASSERT_EQ("test3", response.items(2));
+        ASSERT_EQ(3, response.tables_size());
+        ASSERT_EQ("test1", response.tables(0).name());
+        ASSERT_EQ("test2", response.tables(1).name());
+        ASSERT_EQ("test3", response.tables(2).name());
     }
 
     // show tables with empty items
@@ -227,66 +244,54 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
         ::fesql::dbms::AddDatabaseRequest request;
         ::fesql::dbms::AddDatabaseResponse response;
         request.set_name("db_test1");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
+        dbms_->AddDatabase(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
     {
-        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetTablesRequest request;
         request.set_db_name("db_test1");
-        ::fesql::dbms::GetItemsResponse response;
-        MockClosure closure;
-        dbms_server.GetTables(NULL, &request, &response, &closure);
+        ::fesql::dbms::GetTablesResponse response;
+        dbms_->GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
-        ASSERT_EQ(0, response.items_size());
+        ASSERT_EQ(0, response.tables_size());
     }
 }
+
 TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
-    ::fesql::dbms::DBMSServerImpl dbms_server;
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    brpc::Server server;
-    server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE);
-    int32_t port = 8121;
-    server.Start(port, &options);
-    dbms_server.SetTabletEndpoint("127.0.0.1:" + std::to_string(port));
+
+    MockClosure closure;
     // show database
     {
-        ::fesql::dbms::GetItemsRequest request;
-        ::fesql::dbms::GetItemsResponse response;
-        MockClosure closure;
-        dbms_server.GetDatabases(NULL, &request, &response, &closure);
+        ::fesql::dbms::GetDatabasesRequest request;
+        ::fesql::dbms::GetDatabasesResponse response;
+        dbms_->GetDatabases(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
-        ASSERT_EQ(0, response.items_size());
+        ASSERT_EQ(0, response.names_size());
     }
     // create database 1
     {
         ::fesql::dbms::AddDatabaseRequest request;
         ::fesql::dbms::AddDatabaseResponse response;
         request.set_name("db_test1");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
+        dbms_->AddDatabase(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
     // show database
     {
-        ::fesql::dbms::GetItemsRequest request;
-        ::fesql::dbms::GetItemsResponse response;
-        MockClosure closure;
-        dbms_server.GetDatabases(NULL, &request, &response, &closure);
+        ::fesql::dbms::GetDatabasesRequest request;
+        ::fesql::dbms::GetDatabasesResponse response;
+        dbms_->GetDatabases(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
-        ASSERT_EQ(1, response.items_size());
-        ASSERT_EQ("db_test1", response.items(0));
+        ASSERT_EQ(1, response.names_size());
+        ASSERT_EQ("db_test1", response.names(0));
     }
     // create database 2
     {
         ::fesql::dbms::AddDatabaseRequest request;
         ::fesql::dbms::AddDatabaseResponse response;
         request.set_name("db_test2");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
+        dbms_->AddDatabase(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -295,30 +300,27 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         ::fesql::dbms::AddDatabaseRequest request;
         ::fesql::dbms::AddDatabaseResponse response;
         request.set_name("db_test3");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
+        dbms_->AddDatabase(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
     // show database
     {
-        ::fesql::dbms::GetItemsRequest request;
-        ::fesql::dbms::GetItemsResponse response;
-        MockClosure closure;
-        dbms_server.GetDatabases(NULL, &request, &response, &closure);
+        ::fesql::dbms::GetDatabasesRequest request;
+        ::fesql::dbms::GetDatabasesResponse response;
+        dbms_->GetDatabases(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
-        ASSERT_EQ(3, response.items_size());
-        ASSERT_EQ("db_test1", response.items(0));
-        ASSERT_EQ("db_test2", response.items(1));
-        ASSERT_EQ("db_test3", response.items(2));
+        ASSERT_EQ(3, response.names_size());
+        ASSERT_EQ("db_test1", response.names(0));
+        ASSERT_EQ("db_test2", response.names(1));
+        ASSERT_EQ("db_test3", response.names(2));
     }
 
     // show tables out of database
     {
-        ::fesql::dbms::GetItemsRequest request;
-        ::fesql::dbms::GetItemsResponse response;
-        MockClosure closure;
-        dbms_server.GetTables(NULL, &request, &response, &closure);
+        ::fesql::dbms::GetTablesRequest request;
+        ::fesql::dbms::GetTablesResponse response;
+        dbms_->GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kNoDatabase, response.status().code());
     }
 
@@ -342,8 +344,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         }
 
         ::fesql::dbms::AddTableResponse response;
-        MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -367,8 +368,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         }
 
         ::fesql::dbms::AddTableResponse response;
-        MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -392,8 +392,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         }
 
         ::fesql::dbms::AddTableResponse response;
-        MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -417,8 +416,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         }
 
         ::fesql::dbms::AddTableResponse response;
-        MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -442,63 +440,51 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
         }
 
         ::fesql::dbms::AddTableResponse response;
-        MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
     {
-        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetTablesRequest request;
         request.set_db_name("db_test1");
-        ::fesql::dbms::GetItemsResponse response;
-        MockClosure closure;
-        dbms_server.GetTables(NULL, &request, &response, &closure);
+        ::fesql::dbms::GetTablesResponse response;
+        dbms_->GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
-        ASSERT_EQ(3, response.items_size());
-        ASSERT_EQ("test1", response.items(0));
-        ASSERT_EQ("test2", response.items(1));
-        ASSERT_EQ("test3", response.items(2));
+        ASSERT_EQ(3, response.tables_size());
+        ASSERT_EQ("test1", response.tables(0).name());
+        ASSERT_EQ("test2", response.tables(1).name());
+        ASSERT_EQ("test3", response.tables(2).name());
     }
 
     {
-        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetTablesRequest request;
         request.set_db_name("db_test2");
-        ::fesql::dbms::GetItemsResponse response;
-        MockClosure closure;
-        dbms_server.GetTables(NULL, &request, &response, &closure);
+        ::fesql::dbms::GetTablesResponse response;
+        dbms_->GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
-        ASSERT_EQ(2, response.items_size());
-        ASSERT_EQ("test1", response.items(0));
-        ASSERT_EQ("test4", response.items(1));
+        ASSERT_EQ(2, response.tables_size());
+        ASSERT_EQ("test1", response.tables(0).name());
+        ASSERT_EQ("test4", response.tables(1).name());
     }
 
     {
-        ::fesql::dbms::GetItemsRequest request;
+        ::fesql::dbms::GetTablesRequest request;
         request.set_db_name("db_test3");
-        ::fesql::dbms::GetItemsResponse response;
+        ::fesql::dbms::GetTablesResponse response;
         MockClosure closure;
-        dbms_server.GetTables(NULL, &request, &response, &closure);
+        dbms_->GetTables(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
-        ASSERT_EQ(0, response.items_size());
+        ASSERT_EQ(0, response.tables_size());
     }
 }
+
 TEST_F(DBMSServerImplTest, GetTableTest) {
-    ::fesql::dbms::DBMSServerImpl dbms_server;
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    brpc::Server server;
-    server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE);
-    int32_t port = 8122;
-    server.Start(port, &options);
-    dbms_server.SetTabletEndpoint("127.0.0.1:" + std::to_string(port));
-    // create database
+    MockClosure closure;
     {
         ::fesql::dbms::AddDatabaseRequest request;
         ::fesql::dbms::AddDatabaseResponse response;
         request.set_name("db_test");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
+        dbms_->AddDatabase(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -543,8 +529,7 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
         request.set_db_name("db_test");
         *(request.mutable_table()) = table;
         ::fesql::dbms::AddTableResponse response;
-        MockClosure closure;
-        dbms_server.AddTable(NULL, &request, &response, &closure);
+        dbms_->AddTable(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
     }
 
@@ -555,99 +540,17 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
         ::fesql::dbms::GetSchemaResponse response;
         request.set_name("test");
         MockClosure closure;
-        dbms_server.GetSchema(NULL, &request, &response, &closure);
+        dbms_->GetSchema(NULL, &request, &response, &closure);
         ASSERT_EQ(fesql::common::kOk, response.status().code());
         ASSERT_EQ(table.DebugString(), response.table().DebugString());
-    }
-}
-TEST_F(DBMSServerImplTest, DataBaseTest) {
-    ::fesql::dbms::DBMSServerImpl dbms_server;
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    brpc::Server server;
-    server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE);
-    int32_t port = 8123;
-    server.Start(port, &options);
-    dbms_server.SetTabletEndpoint("127.0.0.1:" + std::to_string(port));
-    // create database
-    {
-        ::fesql::dbms::AddDatabaseRequest request;
-        ::fesql::dbms::AddDatabaseResponse response;
-        request.set_name("db_test");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
-
-    // create database empty name
-    {
-        ::fesql::dbms::AddDatabaseRequest request;
-        ::fesql::dbms::AddDatabaseResponse response;
-        request.set_name("");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kBadRequest, response.status().code());
-        ASSERT_EQ("database name is empty", response.status().msg());
-    }
-
-    // create database already exist
-    {
-        ::fesql::dbms::AddDatabaseRequest request;
-        ::fesql::dbms::AddDatabaseResponse response;
-        request.set_name("db_test");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kNameExists, response.status().code());
-        ASSERT_EQ("database name exists", response.status().msg());
-    }
-
-    // create database
-    {
-        ::fesql::dbms::AddDatabaseRequest request;
-        ::fesql::dbms::AddDatabaseResponse response;
-        request.set_name("db_test2");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
-
-    // create database
-    {
-        ::fesql::dbms::AddDatabaseRequest request;
-        ::fesql::dbms::AddDatabaseResponse response;
-        request.set_name("db_test3");
-        MockClosure closure;
-        dbms_server.AddDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-    }
-
-    // exist database
-    {
-        ::fesql::dbms::IsExistRequest request;
-        ::fesql::dbms::IsExistResponse response;
-        request.set_name("db_test");
-        MockClosure closure;
-        dbms_server.IsExistDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-        ASSERT_EQ(true, response.exist());
-    }
-
-    // not exist database
-    {
-        ::fesql::dbms::IsExistRequest request;
-        ::fesql::dbms::IsExistResponse response;
-        request.set_name("db_test_not_exist");
-        MockClosure closure;
-        dbms_server.IsExistDatabase(NULL, &request, &response, &closure);
-        ASSERT_EQ(fesql::common::kOk, response.status().code());
-        ASSERT_EQ(false, response.exist());
     }
 }
 
 }  // namespace dbms
 }  // namespace fesql
 int main(int argc, char** argv) {
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::testing::InitGoogleTest(&argc, argv);
+    FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();
 }

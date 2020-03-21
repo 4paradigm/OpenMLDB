@@ -23,7 +23,7 @@ namespace fesql {
 namespace dbms {
 
 DBMSServerImpl::DBMSServerImpl()
-    : tablet_endpoint_(""), tablet_sdk(nullptr), tid_(0) {}
+    : tablet_sdk(nullptr), tid_(0), tablets_() {}
 DBMSServerImpl::~DBMSServerImpl() { delete tablet_sdk; }
 
 void DBMSServerImpl::AddGroup(RpcController* ctr,
@@ -99,14 +99,14 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
     }
 
     if (nullptr == tablet_sdk) {
-        if (tablet_endpoint_.empty()) {
+        if (tablets_.empty()) {
             ::fesql::common::Status* status = response->mutable_status();
             status->set_code(::fesql::common::kConnError);
             status->set_msg("can't connect tablet endpoint is empty");
             LOG(WARNING) << status->msg();
             return;
         }
-        tablet_sdk = new fesql::tablet::TabletInternalSDK(tablet_endpoint_);
+        tablet_sdk = new fesql::tablet::TabletInternalSDK(*(tablets_.begin()));
         if (tablet_sdk == NULL) {
             ::fesql::common::Status* status = response->mutable_status();
             status->set_code(::fesql::common::kConnError);
@@ -265,25 +265,24 @@ void DBMSServerImpl::IsExistDatabase(RpcController* ctr,
 }
 
 void DBMSServerImpl::GetDatabases(RpcController* controller,
-                                  const GetItemsRequest* request,
-                                  GetItemsResponse* response, Closure* done) {
+                                  const GetDatabasesRequest* request,
+                                  GetDatabasesResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     // TODO(chenjing): case intensive
     ::fesql::common::Status* status = response->mutable_status();
 
     std::lock_guard<std::mutex> lock(mu_);
     for (auto entry : databases_) {
-        response->add_items(entry.first);
+        response->add_names(entry.first);
     }
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
 }
 
 void DBMSServerImpl::GetTables(RpcController* controller,
-                               const GetItemsRequest* request,
-                               GetItemsResponse* response, Closure* done) {
+                               const GetTablesRequest* request,
+                               GetTablesResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-
     type::Database* db;
     {
         common::Status get_db_status;
@@ -301,11 +300,10 @@ void DBMSServerImpl::GetTables(RpcController* controller,
             return;
         }
     }
-
     ::fesql::common::Status* status = response->mutable_status();
     std::lock_guard<std::mutex> lock(mu_);
     for (auto table : db->tables()) {
-        response->add_items(table.name());
+        response->add_tables()->CopyFrom(table);
     }
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
@@ -336,5 +334,30 @@ type::Database* DBMSServerImpl::GetDatabase(const std::string db_name,
     }
     return &it->second;
 }
+
+void DBMSServerImpl::KeepAlive(RpcController* ctrl, 
+        const KeepAliveRequest *request,
+    KeepAliveResponse *response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
+    tablets_.insert(request->endpoint());
+    ::fesql::common::Status* status = response->mutable_status();
+    status->set_code(::fesql::common::kOk);
+}
+
+void DBMSServerImpl::GetTablet(RpcController* ctrl,
+        const GetTabletRequest *request,
+        GetTabletResponse *response,
+        Closure *done) {
+    brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
+    std::set<std::string>::iterator it = tablets_.begin();
+    for (; it != tablets_.end(); ++it) {
+        response->add_endpoints(*it);
+    }
+    ::fesql::common::Status* status = response->mutable_status();
+    status->set_code(::fesql::common::kOk);
+}
+
 }  // namespace dbms
 }  // namespace fesql

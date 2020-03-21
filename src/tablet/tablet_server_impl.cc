@@ -22,14 +22,22 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "gflags/gflags.h"
 #include "base/strings.h"
+
+DECLARE_string(dbms_endpoint);
+DECLARE_string(endpoint);
+DECLARE_int32(port);
+DECLARE_bool(enable_keep_alive);
 
 namespace fesql {
 namespace tablet {
 
-TabletServerImpl::TabletServerImpl() : slock_(), engine_(), catalog_() {}
+TabletServerImpl::TabletServerImpl() : slock_(), engine_(), catalog_(), dbms_ch_(NULL) {}
 
-TabletServerImpl::~TabletServerImpl() {}
+TabletServerImpl::~TabletServerImpl() {
+    delete dbms_ch_;
+}
 
 bool TabletServerImpl::Init() {
     catalog_ = std::shared_ptr<TabletCatalog>(new TabletCatalog());
@@ -39,8 +47,27 @@ bool TabletServerImpl::Init() {
         return false;
     }
     engine_ = std::move(std::unique_ptr<vm::Engine>(new vm::Engine(catalog_)));
+    if (FLAGS_enable_keep_alive) {
+        dbms_ch_ = new ::brpc::Channel();
+        brpc::ChannelOptions options;
+        int ret = dbms_ch_->Init(FLAGS_dbms_endpoint.c_str(), &options);
+        if (ret != 0) {
+            return false;
+        }
+        KeepAlive();
+    }
     LOG(INFO) << "init tablet ok";
     return true;
+}
+
+void TabletServerImpl::KeepAlive() {
+    dbms::DBMSServer_Stub stub(dbms_ch_);
+    std::string endpoint = FLAGS_endpoint + ":" + std::to_string(FLAGS_port);
+    dbms::KeepAliveRequest request;
+    request.set_endpoint(endpoint);
+    dbms::KeepAliveResponse response;
+    brpc::Controller cntl;
+    stub.KeepAlive(&cntl, &request, &response, NULL);
 }
 
 void TabletServerImpl::CreateTable(RpcController* ctrl,

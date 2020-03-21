@@ -31,39 +31,66 @@ using namespace llvm::orc;  // NOLINT
 
 namespace fesql {
 namespace sdk {
+class MockClosure : public ::google::protobuf::Closure {
+ public:
+    MockClosure() {}
+    ~MockClosure() {}
+    void Run() {}
+};
+
 enum EngineRunMode { RUN, RUNBATCH, RUNONE };
 class TabletSdkTest : public ::testing::TestWithParam<EngineRunMode> {
  public:
-    TabletSdkTest() {
-        base_tablet_port_ = 8300;
-        base_dbms_port_ = 9500;
+    TabletSdkTest():base_tablet_port_(8300), base_dbms_port_(9500), tablet_server_(),
+    tablet_(NULL), dbms_server_(), dbms_(NULL){
     }
     ~TabletSdkTest() {}
+
+    void SetUp() {
+        brpc::ServerOptions options;
+        tablet_ = new tablet::TabletServerImpl();
+        tablet_->Init();
+        tablet_server_.AddService(tablet_, brpc::SERVER_DOESNT_OWN_SERVICE);
+        tablet_server_.Start(base_tablet_port_, &options);
+
+        dbms_ = new ::fesql::dbms::DBMSServerImpl();
+        dbms_server_.AddService(dbms_, brpc::SERVER_DOESNT_OWN_SERVICE);
+        dbms_server_.Start(base_dbms_port_, &options);
+        {
+            std::string tablet_endpoint = "127.0.0.1:" + std::to_string(base_tablet_port_);
+            MockClosure closure;
+            dbms::KeepAliveRequest request;
+            request.set_endpoint(tablet_endpoint);
+            dbms::KeepAliveResponse response;
+            dbms_->KeepAlive(NULL, &request, &response, &closure);
+        }
+    }
+
+    void TearDown() {
+        tablet_server_.Stop(10);
+        dbms_server_.Stop(10);
+        delete tablet_;
+        delete dbms_;
+    }
 
  protected:
     int base_tablet_port_;
     int base_dbms_port_;
+    brpc::Server tablet_server_;
+    tablet::TabletServerImpl* tablet_;
+    brpc::Server dbms_server_;
+    dbms::DBMSServerImpl *dbms_;
 };
 
 INSTANTIATE_TEST_CASE_P(TabletRUNAndBatchMode, TabletSdkTest,
-                        testing::Values(RUN, RUNBATCH));
+                        testing::Values(RUNBATCH));
 
 TEST_P(TabletSdkTest, test_normal) {
     ParamType mode = GetParam();
-    int port_offset = 0;
-    int tablet_port = base_tablet_port_ + port_offset;
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    brpc::Server server;
-    server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE);
-    server.Start(tablet_port, &options);
-
     tablet::TabletInternalSDK interal_sdk("127.0.0.1:" +
-                                          std::to_string(tablet_port));
+                                          std::to_string(base_tablet_port_));
     bool ok = interal_sdk.Init();
     ASSERT_TRUE(ok);
-
     tablet::CreateTableRequest req;
     req.set_tid(1);
     req.add_pids(0);
@@ -104,70 +131,56 @@ TEST_P(TabletSdkTest, test_normal) {
     interal_sdk.CreateTable(&req, status);
     ASSERT_EQ(status.code(), common::kOk);
     std::unique_ptr<TabletSdk> sdk =
-        CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
+        CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
     } else {
         ASSERT_FALSE(true);
     }
 
-    Insert insert;
-
-    insert.values.push_back(fesql::sdk::Value(1));
-    insert.values.push_back(fesql::sdk::Value(2));
-    insert.values.push_back(fesql::sdk::Value(3.1));
-    insert.values.push_back(fesql::sdk::Value(4.1));
-    insert.values.push_back(fesql::sdk::Value(5));
-
-    insert.db = "db1";
-    insert.table = "t1";
-    insert.key = "k";
-    insert.ts = 1024;
-
+    std::string sql = "insert into t1 values(1, 2, 3.1, 4.1, 5)";
+    std::string db = "db1";
     ::fesql::sdk::Status insert_status;
-    sdk->SyncInsert(insert, insert_status);
+    sdk->Insert(db, sql, &insert_status);
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
     {
-        Query query;
-        query.db = "db1";
-        query.sql = "select col1, col2, col3, col4, col5 from t1 limit 1;";
-        query.is_batch_mode = RUNBATCH == mode;
+        std::string sql = "select col1, col2, col3, col4, col5 from t1 limit 1;";
         sdk::Status query_status;
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::unique_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(5u, rs->GetColumnCnt());
-            ASSERT_EQ("col1", rs->GetColumnName(0));
-            ASSERT_EQ("col2", rs->GetColumnName(1));
-            ASSERT_EQ("col3", rs->GetColumnName(2));
-            ASSERT_EQ("col4", rs->GetColumnName(3));
-            ASSERT_EQ("col5", rs->GetColumnName(4));
-            ASSERT_EQ(1, rs->GetRowCnt());
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(5, schema.GetColumnCnt());
+            ASSERT_EQ("col1", schema.GetColumnName(0));
+            ASSERT_EQ("col2", schema.GetColumnName(1));
+            ASSERT_EQ("col3", schema.GetColumnName(2));
+            ASSERT_EQ("col4", schema.GetColumnName(3));
+            ASSERT_EQ("col5", schema.GetColumnName(4));
+            ASSERT_EQ(1, rs->Size());
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 int16_t val = 0;
-                ASSERT_TRUE(it->GetInt16(1, &val));
+                ASSERT_TRUE(rs->GetInt16(1, &val));
                 ASSERT_EQ(val, 2u);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, static_cast<float>(3.1));
             }
             {
                 double val = 0;
-                ASSERT_TRUE(it->GetDouble(3, &val));
+                ASSERT_TRUE(rs->GetDouble(3, &val));
                 ASSERT_EQ(val, 4.1);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(4, &val));
+                ASSERT_TRUE(rs->GetInt64(4, &val));
                 ASSERT_EQ(val, 5L);
             }
         } else {
@@ -176,27 +189,24 @@ TEST_P(TabletSdkTest, test_normal) {
     }
 
     {
-        Query query;
         sdk::Status query_status;
-        query.db = "db1";
-        query.sql = "select col1, col5 from t1 limit 1;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::string sql = "select col1, col5 from t1 limit 1;";
+        std::unique_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(2u, rs->GetColumnCnt());
-            ASSERT_EQ("col1", rs->GetColumnName(0));
-            ASSERT_EQ("col5", rs->GetColumnName(1));
-            ASSERT_EQ(1, rs->GetRowCnt());
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(2u, schema.GetColumnCnt());
+            ASSERT_EQ("col1", schema.GetColumnName(0));
+            ASSERT_EQ("col5", schema.GetColumnName(1));
+            ASSERT_EQ(1, rs->Size());
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(1, &val));
+                ASSERT_TRUE(rs->GetInt64(1, &val));
                 ASSERT_EQ(val, 5L);
             }
         } else {
@@ -207,47 +217,19 @@ TEST_P(TabletSdkTest, test_normal) {
 
 TEST_P(TabletSdkTest, test_create_and_query) {
     ParamType mode = GetParam();
-    // prepare servive
-    brpc::Server server;
-    brpc::Server tablet_server;
-    int port_offset = 1;
-    int tablet_port = base_tablet_port_ + port_offset;
-    int port = base_dbms_port_ + port_offset;
-
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    if (0 !=
-        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
-        LOG(WARNING) << "Fail to add tablet service";
-        exit(1);
-    }
-    tablet_server.Start(tablet_port, &options);
-
-    ::fesql::dbms::DBMSServerImpl* dbms = new ::fesql::dbms::DBMSServerImpl();
-    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(WARNING) << "Fail to add dbms service";
-        exit(1);
-    }
-    server.Start(port, &options);
-    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
-
-    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
-
     // create database db1
     {
         fesql::sdk::Status status;
-        DatabaseDef db;
-        db.name = "db_1";
-        dbms_sdk->CreateDatabase(db, status);
+        std::string name = "db_1";
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     {
         // create table db1
-        DatabaseDef db;
         std::string sql =
             "create table t1(\n"
             "    column1 int NOT NULL,\n"
@@ -258,18 +240,14 @@ TEST_P(TabletSdkTest, test_create_and_query) {
             "    index(key=column1, ts=column5)\n"
             ");";
 
-        db.name = "db_1";
+        std::string name = "db_1";
         fesql::sdk::Status status;
-        fesql::sdk::ExecuteResult result;
-        fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     std::unique_ptr<TabletSdk> sdk =
-        CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
+        CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
     } else {
@@ -277,31 +255,28 @@ TEST_P(TabletSdkTest, test_create_and_query) {
     }
 
     ::fesql::sdk::Status insert_status;
-    sdk->SyncInsert("db_1", "insert into t1 values(1, 2.2, 3.3, 4, 5);",
-                    insert_status);
+    sdk->Insert("db_1", "insert into t1 values(1, 2.2, 3.3, 4, 5);",
+                  &insert_status);
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
     {
-        Query query;
         sdk::Status query_status;
-        query.db = "db_1";
-        query.sql = "select column1, column2 from t1 limit 1;";
-        query.is_batch_mode = RUNBATCH == mode;
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::string db = "db_1";
+        std::string sql = "select column1, column2 from t1 limit 1;";
+        std::unique_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(2u, rs->GetColumnCnt());
-            ASSERT_EQ("column1", rs->GetColumnName(0));
-            ASSERT_EQ("column2", rs->GetColumnName(1));
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(2u, schema.GetColumnCnt());
+            ASSERT_EQ("column1", schema.GetColumnName(0));
+            ASSERT_EQ("column2", schema.GetColumnName(1));
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 double val = 0;
-                ASSERT_TRUE(it->GetDouble(1, &val));
+                ASSERT_TRUE(rs->GetDouble(1, &val));
                 ASSERT_EQ(val, 2.2);
             }
         } else {
@@ -310,42 +285,40 @@ TEST_P(TabletSdkTest, test_create_and_query) {
     }
 
     {
-        Query query;
         sdk::Status query_status;
-        query.db = "db_1";
-        query.sql =
+        std::string db = "db_1";
+        std::string sql =
             "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    "
             "return d\nend\n%%sql\nSELECT column1, column2, "
             "test(column1,column5) as f1, column1 + column5 as f2 FROM t1 "
             "limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::unique_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(4u, rs->GetColumnCnt());
-            ASSERT_EQ("column1", rs->GetColumnName(0));
-            ASSERT_EQ("column2", rs->GetColumnName(1));
-            ASSERT_EQ("f1", rs->GetColumnName(2));
-            ASSERT_EQ("f2", rs->GetColumnName(3));
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(4u, schema.GetColumnCnt());
+            ASSERT_EQ("column1", schema.GetColumnName(0));
+            ASSERT_EQ("column2", schema.GetColumnName(1));
+            ASSERT_EQ("f1", schema.GetColumnName(2));
+            ASSERT_EQ("f2", schema.GetColumnName(3));
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 double val = 0;
-                ASSERT_TRUE(it->GetDouble(1, &val));
+                ASSERT_TRUE(rs->GetDouble(1, &val));
                 ASSERT_EQ(val, 2.2);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(2, &val));
+                ASSERT_TRUE(rs->GetInt32(2, &val));
                 ASSERT_EQ(val, 7);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(3, &val));
+                ASSERT_TRUE(rs->GetInt32(3, &val));
                 ASSERT_EQ(val, 6);
             }
         } else {
@@ -354,101 +327,68 @@ TEST_P(TabletSdkTest, test_create_and_query) {
     }
 
     {
-        Query query;
         sdk::Status query_status;
-        query.db = "db_1";
-        query.sql =
+        std::string db = "db_1";
+        std::string sql =
             "select column1, column2, column3, column4, column5 from t1 limit "
             "1;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::unique_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(5u, rs->GetColumnCnt());
-            ASSERT_EQ("column1", rs->GetColumnName(0));
-            ASSERT_EQ("column2", rs->GetColumnName(1));
-            ASSERT_EQ("column3", rs->GetColumnName(2));
-            ASSERT_EQ("column4", rs->GetColumnName(3));
-            ASSERT_EQ("column5", rs->GetColumnName(4));
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(5, schema.GetColumnCnt());
+            ASSERT_EQ("column1", schema.GetColumnName(0));
+            ASSERT_EQ("column2", schema.GetColumnName(1));
+            ASSERT_EQ("column3", schema.GetColumnName(2));
+            ASSERT_EQ("column4", schema.GetColumnName(3));
+            ASSERT_EQ("column5", schema.GetColumnName(4));
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 double val = 0;
-                ASSERT_TRUE(it->GetDouble(1, &val));
+                ASSERT_TRUE(rs->GetDouble(1, &val));
                 ASSERT_EQ(val, 2.2);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 4L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5);
             }
         } else {
             ASSERT_TRUE(false);
         }
     }
-    //
-    delete dbms;
-    delete dbms_sdk;
-    delete tablet;
 }
 
 TEST_P(TabletSdkTest, test_udf_query) {
     ParamType mode = GetParam();
-    // prepare servive
-    brpc::Server server;
-    brpc::Server tablet_server;
-    int port_offset = 2;
-    int tablet_port = base_tablet_port_ + port_offset;
-    int port = base_dbms_port_ + port_offset;
-
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    if (0 !=
-        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
-        LOG(WARNING) << "Fail to add tablet service";
-        exit(1);
-    }
-    tablet_server.Start(tablet_port, &options);
-
-    ::fesql::dbms::DBMSServerImpl* dbms = new ::fesql::dbms::DBMSServerImpl();
-    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(WARNING) << "Fail to add dbms service";
-        exit(1);
-    }
-    server.Start(port, &options);
-    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
-
-    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
-
+    std::string name = "db_2";
     // create database db1
     {
         fesql::sdk::Status status;
-        DatabaseDef db;
-        db.name = "db_1";
-        dbms_sdk->CreateDatabase(db, status);
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     {
+        fesql::sdk::Status status;
         // create table db1
-        DatabaseDef db;
         std::string sql =
             "create table t1(\n"
             "    column1 int NOT NULL,\n"
@@ -459,18 +399,12 @@ TEST_P(TabletSdkTest, test_udf_query) {
             "    column6 string,\n"
             "    index(key=column1, ts=column5)\n"
             ");";
-        db.name = "db_1";
-        fesql::sdk::Status status;
-        fesql::sdk::ExecuteResult result;
-        fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     std::unique_ptr<TabletSdk> sdk =
-        CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
+        CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
     } else {
@@ -478,64 +412,59 @@ TEST_P(TabletSdkTest, test_udf_query) {
     }
 
     ::fesql::sdk::Status insert_status;
-    sdk->SyncInsert("db_1",
-                    "insert into t1 values(1, 2, 3.3, 4, 5, \"hello\");",
-                    insert_status);
+    sdk->Insert("db_1",
+                 "insert into t1 values(1, 2, 3.3, 4, 5, \"hello\");",
+                  &insert_status);
     if (0 != insert_status.code) {
         std::cout << insert_status.msg << std::endl;
     }
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
-
     {
-        Query query;
         sdk::Status query_status;
-        query.db = "db_1";
-        query.sql =
+        std::string sql =
             "select column1, column2, column3, column4, column5, column6 from "
             "t1 limit "
             "1;";
-        query.is_batch_mode = RUNBATCH == mode;
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(6u, rs->GetColumnCnt());
-            ASSERT_EQ("column1", rs->GetColumnName(0));
-            ASSERT_EQ("column2", rs->GetColumnName(1));
-            ASSERT_EQ("column3", rs->GetColumnName(2));
-            ASSERT_EQ("column4", rs->GetColumnName(3));
-            ASSERT_EQ("column5", rs->GetColumnName(4));
-            ASSERT_EQ("column6", rs->GetColumnName(5));
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(6u, schema.GetColumnCnt());
+            ASSERT_EQ("column1", schema.GetColumnName(0));
+            ASSERT_EQ("column2", schema.GetColumnName(1));
+            ASSERT_EQ("column3", schema.GetColumnName(2));
+            ASSERT_EQ("column4", schema.GetColumnName(3));
+            ASSERT_EQ("column5", schema.GetColumnName(4));
+            ASSERT_EQ("column6", schema.GetColumnName(5));
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 4L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5);
             }
             {
                 char* val = NULL;
                 uint32_t size = 0;
-                ASSERT_TRUE(it->GetString(5, &val, &size));
+                ASSERT_TRUE(rs->GetString(5, &val, &size));
                 ASSERT_EQ(size, 5);
                 std::string str(val, 5);
                 ASSERT_EQ(str, "hello");
@@ -545,90 +474,53 @@ TEST_P(TabletSdkTest, test_udf_query) {
         }
     }
     {
-        Query query;
         sdk::Status query_status;
-        query.db = "db_1";
-        query.sql =
+        std::string sql =
             "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    "
             "return d\nend\n%%sql\nSELECT column1, column2, "
             "test(column1,column5) as f1 FROM t1 limit 10;";
-
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(3u, rs->GetColumnCnt());
-            ASSERT_EQ("column1", rs->GetColumnName(0));
-            ASSERT_EQ("column2", rs->GetColumnName(1));
-            std::cout << rs->GetColumnName(2) << std::endl;
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(3u, schema.GetColumnCnt());
+            ASSERT_EQ("column1", schema.GetColumnName(0));
+            ASSERT_EQ("column2", schema.GetColumnName(1));
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(2, &val));
+                ASSERT_TRUE(rs->GetInt32(2, &val));
                 ASSERT_EQ(val, 7);
             }
         } else {
             ASSERT_TRUE(false);
         }
     }
-    //
-    delete dbms;
-    delete dbms_sdk;
-    delete tablet;
 }
 
 TEST_F(TabletSdkTest, test_window_udf_query) {
-    // prepare servive
-    brpc::Server server;
-    brpc::Server tablet_server;
-    int port_offset = 3;
-    int tablet_port = base_tablet_port_ + port_offset;
-    int port = base_dbms_port_ + port_offset;
-
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    if (0 !=
-        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
-        LOG(WARNING) << "Fail to add tablet service";
-        exit(1);
-    }
-    tablet_server.Start(tablet_port, &options);
-
-    ::fesql::dbms::DBMSServerImpl* dbms = new ::fesql::dbms::DBMSServerImpl();
-    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(WARNING) << "Fail to add dbms service";
-        exit(1);
-    }
-    server.Start(port, &options);
-    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
-
-    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
-
+    std::string name = "db_3";
     // create database db1
     {
         fesql::sdk::Status status;
-        DatabaseDef db;
-        db.name = "db_1";
-        dbms_sdk->CreateDatabase(db, status);
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     {
         // create table db1
-        DatabaseDef db;
         std::string sql =
             "create table t1(\n"
             "    column1 int NOT NULL,\n"
@@ -639,18 +531,13 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
             "    column6 string,\n"
             "    index(key=column1, ts=column4)\n"
             ");";
-        db.name = "db_1";
         fesql::sdk::Status status;
-        fesql::sdk::ExecuteResult result;
-        fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     std::unique_ptr<TabletSdk> sdk =
-        CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
+        CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
     } else {
@@ -659,53 +546,39 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
 
     ::fesql::sdk::Status insert_status;
     {
-        sdk->SyncInsert("db_1",
+        sdk->Insert(name,
                         "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
-                        insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+                        &insert_status);
+        ASSERT_EQ(0, insert_status.code);
     }
     {
-        sdk->SyncInsert("db_1",
+        sdk->Insert(name,
                         "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
-                        insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+                        &insert_status);
+        ASSERT_EQ(0, insert_status.code);
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(11, 4, 5.5, 3000, 7, \"string1\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(11, 4, 5.5, 3000, 7, \"string1\");",
+            &insert_status);
+        ASSERT_EQ(0, insert_status.code);
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(11, 5, 6.6, 4000, 8, \"string2\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(11, 5, 6.6, 4000, 8, \"string2\");",
+            &insert_status);
+        ASSERT_EQ(0, insert_status.code);
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(11, 6, 7.7, 5000, 9, \"string3\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(11, 6, 7.7, 5000, 9, \"string3\");",
+            &insert_status);
+        ASSERT_EQ(0, insert_status.code);
     }
 
-    ASSERT_EQ(0, static_cast<int>(insert_status.code));
-
     {
-        Query query;
         sdk::Status query_status;
-        query.db = "db_1";
-        query.sql =
+        std::string sql =
             "select "
             "sum(column1) OVER w1 as w1_col1_sum, "
             "sum(column2) OVER w1 as w1_col2_sum, "
@@ -715,126 +588,120 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
             "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
             "BETWEEN 3000"
             "PRECEDING AND CURRENT ROW) limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(5u, rs->GetColumnCnt());
-            ASSERT_EQ("w1_col1_sum", rs->GetColumnName(0));
-            ASSERT_EQ("w1_col2_sum", rs->GetColumnName(1));
-            ASSERT_EQ("w1_col3_sum", rs->GetColumnName(2));
-            ASSERT_EQ("w1_col4_sum", rs->GetColumnName(3));
-            ASSERT_EQ("w1_col5_sum", rs->GetColumnName(4));
-
-            ASSERT_EQ(5u, rs->GetRowCnt());
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(5, schema.GetColumnCnt());
+            ASSERT_EQ("w1_col1_sum", schema.GetColumnName(0));
+            ASSERT_EQ("w1_col2_sum", schema.GetColumnName(1));
+            ASSERT_EQ("w1_col3_sum", schema.GetColumnName(2));
+            ASSERT_EQ("w1_col4_sum", schema.GetColumnName(3));
+            ASSERT_EQ("w1_col5_sum", schema.GetColumnName(4));
+            ASSERT_EQ(5, rs->Size());
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 11 + 11 + 11);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 4 + 5 + 6);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 5.5f + 6.6f + 7.7f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 3000L + 4000L + 5000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 7 + 8 + 9);
             }
 
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 11 + 11);
             }
 
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 4 + 5);
             }
 
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 11);
             }
 
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 4);
             }
 
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2 + 3);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f + 4.4f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 1000L + 2000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5 + 6);
             }
 
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 1000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5);
             }
 
@@ -842,54 +709,22 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
             ASSERT_TRUE(false);
         }
     }
-    //
-    delete dbms;
-    delete dbms_sdk;
-    delete tablet;
 }
 
 TEST_F(TabletSdkTest, test_window_udf_batch_query) {
-    // prepare servive
-    brpc::Server server;
-    brpc::Server tablet_server;
-    int port_offset = 3;
-    int tablet_port = base_tablet_port_ + port_offset;
-    int port = base_dbms_port_ + port_offset;
-
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    if (0 !=
-        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
-        LOG(WARNING) << "Fail to add tablet service";
-        exit(1);
-    }
-    tablet_server.Start(tablet_port, &options);
-
-    ::fesql::dbms::DBMSServerImpl* dbms = new ::fesql::dbms::DBMSServerImpl();
-    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(WARNING) << "Fail to add dbms service";
-        exit(1);
-    }
-    server.Start(port, &options);
-    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
-
-    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
-
+    std::string name = "db_4";
     // create database db1
     {
         fesql::sdk::Status status;
-        DatabaseDef db;
-        db.name = "db_1";
-        dbms_sdk->CreateDatabase(db, status);
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     {
         // create table db1
-        DatabaseDef db;
         std::string sql =
             "create table t1(\n"
             "    column1 int NOT NULL,\n"
@@ -900,18 +735,13 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
             "    column6 string,\n"
             "    index(key=column1, ts=column4)\n"
             ");";
-        db.name = "db_1";
         fesql::sdk::Status status;
-        fesql::sdk::ExecuteResult result;
-        fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     std::unique_ptr<TabletSdk> sdk =
-        CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
+        CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
     } else {
@@ -920,53 +750,40 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
 
     ::fesql::sdk::Status insert_status;
     {
-        sdk->SyncInsert("db_1",
+        sdk->Insert(name,
                         "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
-                        insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+                    &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert("db_1",
+        sdk->Insert(name,
                         "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
-                        insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+                       &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(11, 4, 5.5, 3000, 7, \"string1\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(11, 4, 5.5, 3000, 7, \"string1\");",
+            &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(11, 5, 6.6, 4000, 8, \"string2\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(11, 5, 6.6, 4000, 8, \"string2\");",
+            &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(11, 6, 7.7, 5000, 9, \"string3\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(11, 6, 7.7, 5000, 9, \"string3\");",
+            &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
 
-    ASSERT_EQ(0, static_cast<int>(insert_status.code));
 
     {
-        Query query;
         sdk::Status query_status;
-        query.db = "db_1";
-        query.sql =
+        std::string sql =
             "select "
             "sum(column1) OVER w1 as w1_col1_sum, "
             "sum(column2) OVER w1 as w1_col2_sum, "
@@ -976,112 +793,106 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
             "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
             "BETWEEN 3000"
             "PRECEDING AND CURRENT ROW) limit 10;";
-        query.is_batch_mode = true;
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(5u, rs->GetColumnCnt());
-            ASSERT_EQ("w1_col1_sum", rs->GetColumnName(0));
-            ASSERT_EQ("w1_col2_sum", rs->GetColumnName(1));
-            ASSERT_EQ("w1_col3_sum", rs->GetColumnName(2));
-            ASSERT_EQ("w1_col4_sum", rs->GetColumnName(3));
-            ASSERT_EQ("w1_col5_sum", rs->GetColumnName(4));
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(5u, schema.GetColumnCnt());
+            ASSERT_EQ("w1_col1_sum", schema.GetColumnName(0));
+            ASSERT_EQ("w1_col2_sum", schema.GetColumnName(1));
+            ASSERT_EQ("w1_col3_sum", schema.GetColumnName(2));
+            ASSERT_EQ("w1_col4_sum", schema.GetColumnName(3));
+            ASSERT_EQ("w1_col5_sum", schema.GetColumnName(4));
 
-            ASSERT_EQ(5u, rs->GetRowCnt());
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_EQ(5, rs->Size());
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 11);
             }
 
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 4);
             }
 
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 11 + 11);
             }
 
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 4 + 5);
             }
 
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 11 + 11 + 11);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 4 + 5 + 6);
             }
 
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 1000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5);
             }
 
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2 + 3);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f + 4.4f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 1000L + 2000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5 + 6);
             }
 
@@ -1089,54 +900,23 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
             ASSERT_TRUE(false);
         }
     }
-    //
-    delete dbms;
-    delete dbms_sdk;
-    delete tablet;
 }
 
 TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
-    // prepare servive
-    brpc::Server server;
-    brpc::Server tablet_server;
-    int port_offset = 3;
-    int tablet_port = base_tablet_port_ + port_offset;
-    int port = base_dbms_port_ + port_offset;
-
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    if (0 !=
-        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
-        LOG(WARNING) << "Fail to add tablet service";
-        exit(1);
-    }
-    tablet_server.Start(tablet_port, &options);
-
-    ::fesql::dbms::DBMSServerImpl* dbms = new ::fesql::dbms::DBMSServerImpl();
-    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(WARNING) << "Fail to add dbms service";
-        exit(1);
-    }
-    server.Start(port, &options);
-    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
-
-    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
+    std::string name = "db_5";
 
     // create database db1
     {
         fesql::sdk::Status status;
-        DatabaseDef db;
-        db.name = "db_1";
-        dbms_sdk->CreateDatabase(db, status);
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     {
         // create table db1
-        DatabaseDef db;
         std::string sql =
             "create table t1(\n"
             "    column1 int NOT NULL,\n"
@@ -1147,18 +927,13 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             "    column6 string,\n"
             "    index(key=column1, ts=column4)\n"
             ");";
-        db.name = "db_1";
         fesql::sdk::Status status;
-        fesql::sdk::ExecuteResult result;
-        fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     std::unique_ptr<TabletSdk> sdk =
-        CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
+        CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
     } else {
@@ -1167,53 +942,41 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
 
     ::fesql::sdk::Status insert_status;
     {
-        sdk->SyncInsert("db_1",
-                        "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
-                        insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(name,
+                    "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
+                     &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert("db_1",
-                        "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
-                        insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(name,
+                   "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
+                    &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(1, 4, 5.5, 3000, 7, \"string1\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, 
+            "insert into t1 values(1, 4, 5.5, 3000, 7, \"string1\");",
+            &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(1, 5, 6.6, 4000, 8, \"string2\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(1, 5, 6.6, 4000, 8, \"string2\");",
+            &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(1, 6, 7.7, 5000, 9, \"string3\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(1, 6, 7.7, 5000, 9, \"string3\");",
+            &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
 
-    ASSERT_EQ(0, static_cast<int>(insert_status.code));
 
     {
-        Query query;
         sdk::Status query_status;
-        query.db = "db_1";
-        query.sql =
+        std::string sql =
             "select "
             "sum(column1) OVER w1 as w1_col1_sum, "
             "sum(column2) OVER w1 as w1_col2_sum, "
@@ -1223,149 +986,149 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
             "BETWEEN 3s "
             "PRECEDING AND CURRENT ROW) limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(5u, rs->GetColumnCnt());
-            ASSERT_EQ("w1_col1_sum", rs->GetColumnName(0));
-            ASSERT_EQ("w1_col2_sum", rs->GetColumnName(1));
-            ASSERT_EQ("w1_col3_sum", rs->GetColumnName(2));
-            ASSERT_EQ("w1_col4_sum", rs->GetColumnName(3));
-            ASSERT_EQ("w1_col5_sum", rs->GetColumnName(4));
+            const Schema& schema =rs->GetSchema();
+            ASSERT_EQ(5u, schema.GetColumnCnt());
+            ASSERT_EQ("w1_col1_sum", schema.GetColumnName(0));
+            ASSERT_EQ("w1_col2_sum", schema.GetColumnName(1));
+            ASSERT_EQ("w1_col3_sum", schema.GetColumnName(2));
+            ASSERT_EQ("w1_col4_sum", schema.GetColumnName(3));
+            ASSERT_EQ("w1_col5_sum", schema.GetColumnName(4));
 
-            ASSERT_EQ(5u, rs->GetRowCnt());
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_EQ(5, rs->Size());
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1 + 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 4 + 5 + 6);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 5.5f + 6.6f + 7.7f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 3000L + 4000L + 5000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 7 + 8 + 9);
             }
 
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1 + 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 3 + 4 + 5);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 4.4f + 5.5f + 6.6f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 2000L + 3000L + 4000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 6 + 7 + 8);
             }
-            it->Next();
+
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1 + 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2 + 3 + 4);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f + 4.4f + 5.5f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 1000L + 2000L + 3000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5 + 6 + 7);
             }
 
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2 + 3);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f + 4.4f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 1000L + 2000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5 + 6);
             }
 
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 1000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5);
             }
 
@@ -1373,54 +1136,22 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             ASSERT_TRUE(false);
         }
     }
-    //
-    delete dbms;
-    delete dbms_sdk;
-    delete tablet;
 }
 
 TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
-    // prepare servive
-    brpc::Server server;
-    brpc::Server tablet_server;
-    int port_offset = 3;
-    int tablet_port = base_tablet_port_ + port_offset;
-    int port = base_dbms_port_ + port_offset;
-
-    tablet::TabletServerImpl* tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    if (0 !=
-        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
-        LOG(WARNING) << "Fail to add tablet service";
-        exit(1);
-    }
-    tablet_server.Start(tablet_port, &options);
-
-    ::fesql::dbms::DBMSServerImpl* dbms = new ::fesql::dbms::DBMSServerImpl();
-    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(WARNING) << "Fail to add dbms service";
-        exit(1);
-    }
-    server.Start(port, &options);
-    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
-
-    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
-
     // create database db1
+    std::string name = "db_6";
     {
         fesql::sdk::Status status;
-        DatabaseDef db;
-        db.name = "db_1";
-        dbms_sdk->CreateDatabase(db, status);
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     {
         // create table db1
-        DatabaseDef db;
         std::string sql =
             "create table t1(\n"
             "    column1 int NOT NULL,\n"
@@ -1431,18 +1162,13 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
             "    column6 string,\n"
             "    index(key=column1, ts=column4)\n"
             ");";
-        db.name = "db_1";
         fesql::sdk::Status status;
-        fesql::sdk::ExecuteResult result;
-        fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     std::unique_ptr<TabletSdk> sdk =
-        CreateTabletSdk("127.0.0.1:" + std::to_string(tablet_port));
+        CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
     } else {
@@ -1451,53 +1177,41 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
 
     ::fesql::sdk::Status insert_status;
     {
-        sdk->SyncInsert("db_1",
+        sdk->Insert(name,
                         "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
-                        insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+                        &insert_status);
+
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert("db_1",
+        sdk->Insert(name,
                         "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
-                        insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+                        &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(1, 4, 5.5, 3000, 7, \"string1\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(1, 4, 5.5, 3000, 7, \"string1\");",
+            &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(1, 5, 6.6, 4000, 8, \"string2\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(1, 5, 6.6, 4000, 8, \"string2\");",
+            &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->SyncInsert(
-            "db_1", "insert into t1 values(1, 6, 7.7, 5000, 9, \"string3\");",
-            insert_status);
-        if (0 != insert_status.code) {
-            std::cout << insert_status.msg << std::endl;
-        }
+        sdk->Insert(
+            name, "insert into t1 values(1, 6, 7.7, 5000, 9, \"string3\");",
+            &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
 
-    ASSERT_EQ(0, static_cast<int>(insert_status.code));
 
     {
-        Query query;
         sdk::Status query_status;
-        query.db = "db_1";
-        query.sql =
+        std::string sql =
             "select "
             "sum(column1) OVER w1 as w1_col1_sum, "
             "sum(column2) OVER w1 as w1_col2_sum, "
@@ -1507,160 +1221,155 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
             "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
             "BETWEEN 3s "
             "PRECEDING AND CURRENT ROW) limit 10;";
-        query.is_batch_mode = true;
-        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
+        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            ASSERT_EQ(5u, rs->GetColumnCnt());
-            ASSERT_EQ("w1_col1_sum", rs->GetColumnName(0));
-            ASSERT_EQ("w1_col2_sum", rs->GetColumnName(1));
-            ASSERT_EQ("w1_col3_sum", rs->GetColumnName(2));
-            ASSERT_EQ("w1_col4_sum", rs->GetColumnName(3));
-            ASSERT_EQ("w1_col5_sum", rs->GetColumnName(4));
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(5, schema.GetColumnCnt());
+            ASSERT_EQ("w1_col1_sum", schema.GetColumnName(0));
+            ASSERT_EQ("w1_col2_sum", schema.GetColumnName(1));
+            ASSERT_EQ("w1_col3_sum", schema.GetColumnName(2));
+            ASSERT_EQ("w1_col4_sum", schema.GetColumnName(3));
+            ASSERT_EQ("w1_col5_sum", schema.GetColumnName(4));
 
-            ASSERT_EQ(5u, rs->GetRowCnt());
-            std::unique_ptr<ResultSetIterator> it = rs->Iterator();
-
-            it->Next();
+            ASSERT_EQ(5, rs->Size());
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 1000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5);
             }
 
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2 + 3);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f + 4.4f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 1000L + 2000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5 + 6);
             }
-            it->Next();
+
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1 + 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 2 + 3 + 4);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 3.3f + 4.4f + 5.5f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 1000L + 2000L + 3000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5 + 6 + 7);
             }
-            it->Next();
+
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1 + 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 3 + 4 + 5);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 4.4f + 5.5f + 6.6f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 2000L + 3000L + 4000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 6 + 7 + 8);
             }
 
-            ASSERT_TRUE(it->HasNext());
-            it->Next();
+            ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(0, &val));
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1 + 1);
             }
             {
                 int32_t val = 0;
-                ASSERT_TRUE(it->GetInt32(1, &val));
+                ASSERT_TRUE(rs->GetInt32(1, &val));
                 ASSERT_EQ(val, 4 + 5 + 6);
             }
             {
                 float val = 0;
-                ASSERT_TRUE(it->GetFloat(2, &val));
+                ASSERT_TRUE(rs->GetFloat(2, &val));
                 ASSERT_EQ(val, 5.5f + 6.6f + 7.7f);
             }
             {
                 int64_t val = 0;
-                ASSERT_TRUE(it->GetInt64(3, &val));
+                ASSERT_TRUE(rs->GetInt64(3, &val));
                 ASSERT_EQ(val, 3000L + 4000L + 5000L);
             }
             {
                 int val = 0;
-                ASSERT_TRUE(it->GetInt32(4, &val));
+                ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 7 + 8 + 9);
             }
         } else {
             ASSERT_TRUE(false);
         }
     }
-    //
-    delete dbms;
-    delete dbms_sdk;
-    delete tablet;
 }
 
 }  // namespace sdk

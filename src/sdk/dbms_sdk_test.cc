@@ -12,50 +12,68 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "tablet/tablet_server_impl.h"
+#include "gflags/gflags.h"
+
+DECLARE_string(dbms_endpoint);
+DECLARE_string(endpoint);
+DECLARE_int32(port);
+DECLARE_bool(enable_keep_alive);
+
 
 namespace fesql {
 namespace sdk {
-
+class MockClosure : public ::google::protobuf::Closure {
+ public:
+    MockClosure() {}
+    ~MockClosure() {}
+    void Run() {}
+};
 class DBMSSdkTest : public ::testing::Test {
  public:
-    DBMSSdkTest() {}
+    DBMSSdkTest():dbms_server_(), tablet_server_(), tablet_(NULL),
+    dbms_(NULL){}
     ~DBMSSdkTest() {}
+    void SetUp() {
+        brpc::ServerOptions options;
+        tablet_ = new tablet::TabletServerImpl();
+        tablet_->Init();
+        tablet_server_.AddService(tablet_, brpc::SERVER_DOESNT_OWN_SERVICE);
+        tablet_server_.Start(tablet_port, &options);
+        dbms_ = new ::fesql::dbms::DBMSServerImpl();
+        dbms_server_.AddService(dbms_, brpc::SERVER_DOESNT_OWN_SERVICE);
+        dbms_server_.Start(dbms_port, &options);
+        {
+            std::string tablet_endpoint = "127.0.0.1:" + std::to_string(tablet_port);
+            MockClosure closure;
+            dbms::KeepAliveRequest request;
+            request.set_endpoint(tablet_endpoint);
+            dbms::KeepAliveResponse response;
+            dbms_->KeepAlive(NULL, &request, &response, &closure);
+        }
+    }
+
+    void TearDown() {
+        dbms_server_.Stop(10);
+        tablet_server_.Stop(10);
+        delete tablet_;
+        delete dbms_;
+    }
+ public:
+    brpc::Server dbms_server_;
+    brpc::Server tablet_server_;
+    int tablet_port = 8200;
+    int dbms_port = 8200;
+    tablet::TabletServerImpl *tablet_;
+    dbms::DBMSServerImpl *dbms_;
 };
 
 TEST_F(DBMSSdkTest, DatabasesAPITest) {
-    brpc::Server server;
-    brpc::Server tablet_server;
-    int tablet_port = 8200;
-    int port = 9444;
-
-    tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    if (0 !=
-        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
-        LOG(WARNING) << "Fail to add tablet service";
-        exit(1);
-    }
-    tablet_server.Start(tablet_port, &options);
-
-    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
-    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(WARNING) << "Fail to add dbms service";
-        exit(1);
-    }
-    server.Start(port, &options);
-    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
-
-    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
-
     {
-        // get databases is empty
-        std::vector<std::string> names;
         Status status;
-        dbms_sdk->GetDatabases(names, status);
-        std::cout << status.msg << std::endl;
+        std::vector<std::string> names = dbms_sdk->GetDatabases(&status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(0u, names.size());
     }
@@ -63,152 +81,59 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
     // create database db1
     {
         Status status;
-        DatabaseDef db;
-        db.name = "db_1";
-        dbms_sdk->CreateDatabase(db, status);
+        std::string name = "db_1";
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
-
     // create database db2
     {
         Status status;
-        DatabaseDef db;
-        db.name = "db_2";
-        dbms_sdk->CreateDatabase(db, status);
+        std::string name = "db_2";
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     // create database db3
     {
         Status status;
-        DatabaseDef db;
-        db.name = "db_3";
-        dbms_sdk->CreateDatabase(db, status);
+        std::string name = "db_3";
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     {
         // get databases
-        std::vector<std::string> names;
         Status status;
-        dbms_sdk->GetDatabases(names, status);
+        std::vector<std::string> names = dbms_sdk->GetDatabases(&status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(3u, names.size());
     }
 
-    {
-        // use databases db2
-        DatabaseDef db;
-        db.name = "db_2";
-        Status status;
-        dbms_sdk->IsExistDatabase(db, status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-    }
-
-    {
-        // use databases db_not_exist
-        DatabaseDef db;
-        db.name = "db_not_exist";
-        Status status;
-        ASSERT_EQ(false, dbms_sdk->IsExistDatabase(db, status));
-        ASSERT_EQ(0, static_cast<int>(status.code));
-    }
-
-    delete tablet;
-    delete dbms;
-    delete dbms_sdk;
-}
-TEST_F(DBMSSdkTest, GroupAPITest) {
-    brpc::Server server;
-    brpc::Server tablet_server;
-    int tablet_port = 8201;
-    int port = 9445;
-
-    tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    if (0 !=
-        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
-        LOG(WARNING) << "Fail to add tablet service";
-        exit(1);
-    }
-    tablet_server.Start(tablet_port, &options);
-
-    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
-    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(WARNING) << "Fail to add dbms service";
-        exit(1);
-    }
-    server.Start(port, &options);
-    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
-
-    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
-    ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    ASSERT_TRUE(nullptr != dbms_sdk);
-
-    // create group g1
-    {
-        Status status;
-        GroupDef group;
-        group.name = "g1";
-        dbms_sdk->CreateGroup(group, status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-    }
-    delete dbms;
-    delete dbms_sdk;
-    delete tablet;
 }
 
 TEST_F(DBMSSdkTest, TableAPITest) {
-    brpc::Server server;
-    brpc::Server tablet_server;
-    int tablet_port = 8203;
-    int port = 9446;
-
-    tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    if (0 !=
-        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
-        LOG(WARNING) << "Fail to add tablet service";
-        exit(1);
-    }
-    tablet_server.Start(tablet_port, &options);
-
-    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
-    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(WARNING) << "Fail to add dbms service";
-        exit(1);
-    }
-    server.Start(port, &options);
-    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
-
-    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
-
     // create database db1
     {
         Status status;
-        DatabaseDef db;
-        db.name = "db_1";
-        dbms_sdk->CreateDatabase(db, status);
+        std::string name = "db_1";
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     // create database db2
     {
         Status status;
-        DatabaseDef db;
-        ::fesql::sdk::ExecuteResult result;
-        db.name = "db_2";
-        dbms_sdk->CreateDatabase(db, status);
+        std::string name = "db_2";
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
-
     {
+
+        Status status;
         // create table test1
-        DatabaseDef db;
         std::string sql =
             "create table test1(\n"
             "    column1 int NOT NULL,\n"
@@ -218,50 +143,13 @@ TEST_F(DBMSSdkTest, TableAPITest) {
             "    column5 int,\n"
             "    index(key=(column4, column3), ts=column2, ttl=60d)\n"
             ");";
-        db.name = "db_1";
-        Status status;
-        ::fesql::sdk::ExecuteResult result;
-        ::fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
-        std::cout << status.msg << std::endl;
+        std::string name = "db_1";
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
-    // desc test1
-    {
-        DatabaseDef db;
-        db.name = "db_1";
-        Status status;
-        std::unique_ptr<::fesql::sdk::Schema> rs =
-            dbms_sdk->GetSchema(db, "test1", status);
-        std::cout << status.msg << std::endl;
-        ASSERT_EQ(0, static_cast<int>(status.code));
-        bool ok = rs != NULL;
-        ASSERT_TRUE(ok);
-        ASSERT_EQ(5, rs.get()->GetColumnCnt());
-        ASSERT_EQ("column1", rs.get()->GetColumnName(0));
-        ASSERT_EQ("column2", rs.get()->GetColumnName(1));
-        ASSERT_EQ("column3", rs.get()->GetColumnName(2));
-        ASSERT_EQ("column4", rs.get()->GetColumnName(3));
-        ASSERT_EQ("column5", rs.get()->GetColumnName(4));
-
-        ASSERT_EQ(sdk::kTypeInt32, rs.get()->GetColumnType(0));
-        ASSERT_EQ(sdk::kTypeTimestamp, rs.get()->GetColumnType(1));
-        ASSERT_EQ(sdk::kTypeInt32, rs.get()->GetColumnType(2));
-        ASSERT_EQ(sdk::kTypeString, rs.get()->GetColumnType(3));
-        ASSERT_EQ(sdk::kTypeInt32, rs.get()->GetColumnType(4));
-
-        ASSERT_EQ(true, rs.get()->IsColumnNotNull(0));
-        ASSERT_EQ(true, rs.get()->IsColumnNotNull(1));
-        ASSERT_EQ(false, rs.get()->IsColumnNotNull(2));
-        ASSERT_EQ(true, rs.get()->IsColumnNotNull(3));
-        ASSERT_EQ(false, rs.get()->IsColumnNotNull(4));
-    }
     {
         // create table test2
-        DatabaseDef db;
         std::string sql =
             "create table IF NOT EXISTS test2(\n"
             "    column1 int NOT NULL,\n"
@@ -272,18 +160,14 @@ TEST_F(DBMSSdkTest, TableAPITest) {
             "    index(key=(column1), ts=column2)\n"
             ");";
 
-        db.name = "db_1";
+        std::string name = "db_1";
         Status status;
-        ::fesql::sdk::ExecuteResult result;
-        ::fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
+
     {
         // create table test3
-        DatabaseDef db;
         std::string sql =
             "create table test3(\n"
             "    column1 int NOT NULL,\n"
@@ -294,99 +178,43 @@ TEST_F(DBMSSdkTest, TableAPITest) {
             "    index(key=(column4), ts=column2)\n"
             ");";
 
-        db.name = "db_1";
+        std::string name = "db_1";
         Status status;
-        ::fesql::sdk::ExecuteResult result;
-        ::fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
     {
         // show db_1 tables
-        DatabaseDef db;
-        db.name = "db_1";
-        std::vector<std::string> names;
+        std::string name = "db_1";
         Status status;
-        ::fesql::sdk::ExecuteRequst request;
-
-        dbms_sdk->GetTables(db, names, status);
+        std::unique_ptr<TableSet> tablet_set = dbms_sdk->GetTables(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_EQ(3u, names.size());
-    }
-
-    {
-        // use databases db2
-        DatabaseDef db;
-        db.name = "db_2";
-        Status status;
-        dbms_sdk->IsExistDatabase(db, status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
+        ASSERT_EQ(3u, tablet_set->Size());
     }
     {
         // show tables empty
-        DatabaseDef db;
-        db.name = "db_2";
-        std::vector<std::string> names;
+        std::string name = "db_2";
         Status status;
-        dbms_sdk->GetTables(db, names, status);
+        std::unique_ptr<TableSet> ts = dbms_sdk->GetTables(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
-        ASSERT_EQ(0u, names.size());
+        ASSERT_EQ(0u, ts->Size());
     }
-    delete dbms;
-    delete dbms_sdk;
-    delete tablet;
 }
 
 TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
-    brpc::Server server;
-    brpc::Server tablet_server;
-    int tablet_port = 8204;
-    int port = 9447;
-
-    tablet::TabletServerImpl *tablet = new tablet::TabletServerImpl();
-    ASSERT_TRUE(tablet->Init());
-    brpc::ServerOptions options;
-    if (0 !=
-        tablet_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE)) {
-        LOG(WARNING) << "Fail to add tablet service";
-        exit(1);
-    }
-    tablet_server.Start(tablet_port, &options);
-
-    ::fesql::dbms::DBMSServerImpl *dbms = new ::fesql::dbms::DBMSServerImpl();
-    if (server.AddService(dbms, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(WARNING) << "Fail to add dbms service";
-        exit(1);
-    }
-    server.Start(port, &options);
-    dbms->SetTabletEndpoint("127.0.0.1:" + std::to_string(tablet_port));
-
-    const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
 
-    // create database db1
     {
         Status status;
-        DatabaseDef db;
-        db.name = "db_1";
-        dbms_sdk->CreateDatabase(db, status);
+        std::string name = "db_1";
+        dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
-    }
-
-    {
-        // exist databases db1
-        DatabaseDef db;
-        db.name = "db_1";
-        Status status;
-        ASSERT_EQ(true, dbms_sdk->IsExistDatabase(db, status));
     }
 
     {
         // create table db1
-        DatabaseDef db;
         std::string sql =
             "create table test3(\n"
             "    column1 int NOT NULL,\n"
@@ -397,19 +225,14 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
             "    index(key=(column4), ts=column2)\n"
             ");";
 
-        db.name = "db_1";
+        std::string name = "db_1";
         Status status;
-        fesql::sdk::ExecuteResult result;
-        fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     {
         // create table db1
-        DatabaseDef db;
         std::string sql =
             "create table test4(\n"
             "    column1 int NOT NULL,\n"
@@ -417,24 +240,18 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
             "    index(key=(column1), ts=column2)\n"
             ");";
 
-        db.name = "db_1";
+        std::string name = "db_1";
         Status status;
-        fesql::sdk::ExecuteResult result;
-        fesql::sdk::ExecuteRequst request;
-        request.database = db;
-        request.sql = sql;
-        dbms_sdk->ExecuteScript(request, result, status);
+        dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
-
-    delete dbms;
-    delete dbms_sdk;
-    delete tablet;
 }
 
 }  // namespace sdk
 }  // namespace fesql
 int main(int argc, char *argv[]) {
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::testing::InitGoogleTest(&argc, argv);
+    FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();
 }

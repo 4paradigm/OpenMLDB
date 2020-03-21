@@ -50,14 +50,34 @@ message GetSchemaResponse {
     optional type.TableDef table = 2;
 }
 
-message GetItemsRequest {
-    optional string table_name = 1;
-    optional string db_name = 2;
+message GetDatabasesRequest {}
+message GetDatabasesResponse {
+    optional common.Status status = 1;
+    repeated string names = 2;
+}
+message GetTablesRequest {
+    optional string db_name = 1;
+    optional string table_name = 2;
 }
 
-message GetItemsResponse {
+message GetTablesResponse {
     optional common.Status status = 1;
-    repeated string items = 2;
+    repeated type.TableDef tables = 2;
+}
+
+message KeepAliveRequest {
+    optional string endpoint = 1;
+}
+
+message KeepAliveResponse {
+    optional common.Status status = 1;
+}
+
+message GetTabletRequest {}
+
+message GetTabletResponse {
+    optional common.Status status = 1;
+    repeated string endpoints = 2;
 }
 
 service DBMSServer {
@@ -66,6 +86,8 @@ service DBMSServer {
     rpc IsExistDatabase (IsExistRequest) returns (IsExistResponse);
     rpc AddTable (AddTableRequest) returns (AddTableResponse);
     rpc GetSchema (GetSchemaRequest) returns (GetSchemaResponse);
-    rpc GetDatabases (GetItemsRequest) returns (GetItemsResponse);
-    rpc GetTables (GetItemsRequest) returns (GetItemsResponse);
+    rpc GetDatabases (GetDatabasesRequest) returns (GetDatabasesResponse);
+    rpc GetTables (GetTablesRequest) returns (GetTablesResponse);
+    rpc KeepAlive(KeepAliveRequest) returns(KeepAliveResponse);
+    rpc GetTablet(GetTabletRequest) returns(GetTabletResponse);
 }

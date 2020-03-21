@@ -21,6 +21,7 @@
 #include <map>
 #include <mutex>  // NOLINT (build/c++11)
 #include <string>
+#include <set>
 #include "proto/dbms.pb.h"
 #include "proto/type.pb.h"
 #include "tablet/tablet_internal_sdk.h"
@@ -55,23 +56,24 @@ class DBMSServerImpl : public DBMSServer {
     void GetSchema(RpcController* controller, const GetSchemaRequest* request,
                    GetSchemaResponse* response, Closure* done);
 
-    void GetDatabases(RpcController* controller, const GetItemsRequest* request,
-                      GetItemsResponse* response, Closure* done);
+    void GetDatabases(RpcController* controller, const GetDatabasesRequest* request,
+                      GetDatabasesResponse* response, Closure* done);
 
-    void GetTables(RpcController* controller, const GetItemsRequest* request,
-                   GetItemsResponse* response, Closure* done);
+    void GetTables(RpcController* controller, const GetTablesRequest* request,
+                   GetTablesResponse* response, Closure* done);
 
-    void SetTabletEndpoint(const std::string& endpoint) {
-        tablet_endpoint_ = endpoint;
-    }
+    void KeepAlive(RpcController* controller, const KeepAliveRequest *request,
+            KeepAliveResponse *response, Closure* done);
 
+    void GetTablet(RpcController* ctrl, const GetTabletRequest *request,
+            GetTabletResponse *response, Closure* done);
  private:
     std::mutex mu_;
     Groups groups_;
     Databases databases_;
-    std::string tablet_endpoint_;
     fesql::tablet::TabletInternalSDK* tablet_sdk;
     int32_t tid_;
+    std::set<std::string> tablets_;
     void InitTable(type::Database* db,
                    Tables& table);  // NOLINT (runtime/references)
     type::Database* GetDatabase(

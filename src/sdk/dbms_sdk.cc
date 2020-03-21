@@ -25,78 +25,28 @@
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "proto/dbms.pb.h"
+#include "sdk/result_set_impl.h"
 namespace fesql {
 namespace sdk {
-class DBMSSdkImpl;
-class SchemaImpl;
-
-class SchemaImpl : public Schema {
- public:
-    SchemaImpl() : response_(), empty_() {}
-    ~SchemaImpl() {}
-
-    const uint32_t GetColumnCnt() const {
-        return response_.table().columns_size();
-    }
-    const std::string &GetColumnName(uint32_t i) const {
-        // TODO(wangtaize) check i out of index
-        if (static_cast<int>(i) >= response_.table().columns_size()) {
-            LOG(WARNING) << "Array Invalid Access";
-            return empty_;
-        }
-        return response_.table().columns(i).name();
-    }
-
-    const DataType GetColumnType(uint32_t i) const {
-        if (static_cast<int>(i) >= response_.table().columns_size()) {
-            LOG(WARNING) << "Array Invalid Access";
-            return kTypeUnknow;
-        }
-
-        return DataTypeFromProtoType(response_.table().columns(i).type());
-    }
-
-    const bool IsColumnNotNull(uint32_t i) const {
-        if (static_cast<int>(i) >= response_.table().columns_size()) {
-            LOG(WARNING) << "Array Invalid Access";
-            return false;
-        }
-        return response_.table().columns(i).is_not_null();
-    }
-
- private:
-    friend DBMSSdkImpl;
-    dbms::GetSchemaResponse response_;
-    std::string empty_;
-};
 
 class DBMSSdkImpl : public DBMSSdk {
  public:
     explicit DBMSSdkImpl(const std::string &endpoint);
     ~DBMSSdkImpl();
     bool Init();
-    void CreateGroup(const GroupDef &group,
-                     sdk::Status &status)  // NOLINT (runtime/references)
-        override;
-    void CreateDatabase(const DatabaseDef &database,
-                        sdk::Status &status);  // NOLINT (runtime/references)
-    bool IsExistDatabase(const DatabaseDef &database,
-                         sdk::Status &status);  // NOLINT (runtime/references)
 
-    std::unique_ptr<Schema> GetSchema(
-        const DatabaseDef &database, const std::string &name,
-        sdk::Status &status)  // NOLINT (runtime/references)
-        override;
-    void GetTables(
-        const DatabaseDef &database,
-        std::vector<std::string> &names,  // NOLINT (runtime/references)
-        sdk::Status &status);             // NOLINT (runtime/references)
-    void GetDatabases(
-        std::vector<std::string> &names,  // NOLINT (runtime/references)
-        sdk::Status &status);             // NOLINT (runtime/references)
-    void ExecuteScript(
-        const ExecuteRequst &request, ExecuteResult &result,
-        sdk::Status &status) override;  // NOLINT (runtime/references)
+    void CreateDatabase(const std::string& catalog,
+                        sdk::Status *status);
+
+    std::unique_ptr<TableSet> GetTables(
+                       const std::string& catalog,
+                       sdk::Status *status); 
+
+    std::vector<std::string> GetDatabases(sdk::Status *status); 
+
+    std::unique_ptr<ResultSet> ExecuteQuery(const std::string& catalog,
+                      const std::string& sql,
+                      sdk::Status *status);
 
  private:
     ::brpc::Channel *channel_;
@@ -118,214 +68,156 @@ bool DBMSSdkImpl::Init() {
     return true;
 }
 
-void DBMSSdkImpl::CreateGroup(
-    const GroupDef &group,
-    sdk::Status &status) {  // NOLINT (runtime/references)
-    ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::AddGroupRequest request;
-    request.set_name(group.name);
-    ::fesql::dbms::AddGroupResponse response;
-    brpc::Controller cntl;
-    stub.AddGroup(&cntl, &request, &response, NULL);
-    if (cntl.Failed()) {
-        status.code = -1;
-        status.msg = "fail to call remote";
-    } else {
-        status.code = response.status().code();
-        status.msg = response.status().msg();
+std::unique_ptr<TableSet> DBMSSdkImpl::GetTables(
+    const std::string& catalog,
+    sdk::Status *status) {  
+    if (status == NULL) {
+        return std::unique_ptr<TableSetImpl>();
     }
-}
-void DBMSSdkImpl::GetTables(
-    const DatabaseDef &db, std::vector<std::string> &names,
-    sdk::Status &status) {  // NOLINT (runtime/references)
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::GetItemsRequest request;
-    ::fesql::dbms::GetItemsResponse response;
+    ::fesql::dbms::GetTablesRequest request;
+    ::fesql::dbms::GetTablesResponse response;
     brpc::Controller cntl;
-
-    request.set_db_name(db.name);
+    request.set_db_name(catalog);
     stub.GetTables(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
-        status.code = common::kRpcError;
-        status.msg = "fail to call remote";
+        status->code = common::kRpcError;
+        status->msg = "fail to call remote";
+        return std::unique_ptr<TableSetImpl>();
     } else {
-        for (auto item : response.items()) {
-            names.push_back(item);
-        }
-        status.code = response.status().code();
-        status.msg = response.status().msg();
+        std::unique_ptr<TableSetImpl> table_set(new TableSetImpl(response.tables()));
+        status->code = response.status().code();
+        status->msg = response.status().msg();
+        return table_set;
     }
 }
 
-void DBMSSdkImpl::GetDatabases(
-    std::vector<std::string> &names,
-    sdk::Status &status) {  // NOLINT (runtime/references)
+std::vector<std::string> DBMSSdkImpl::GetDatabases(
+    sdk::Status *status) { 
+    if (status == NULL) {
+        return std::vector<std::string>();
+    }
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::GetItemsRequest request;
-    ::fesql::dbms::GetItemsResponse response;
+    ::fesql::dbms::GetDatabasesRequest request;
+    ::fesql::dbms::GetDatabasesResponse response;
+    std::vector<std::string> names;
     brpc::Controller cntl;
     stub.GetDatabases(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
-        status.code = common::kRpcError;
-        status.msg = "fail to call remote";
+        status->code = common::kRpcError;
+        status->msg = "fail to call remote";
     } else {
-        for (auto item : response.items()) {
-            names.push_back(item);
+        for (auto name : response.names()) {
+            names.push_back(name);
         }
-        status.code = response.status().code();
-        status.msg = response.status().msg();
+        status->code = response.status().code();
+        status->msg = response.status().msg();
     }
+    return names;
 }
 
-std::unique_ptr<Schema> DBMSSdkImpl::GetSchema(
-    const DatabaseDef &database, const std::string &name,
-    sdk::Status &status) {  // NOLINT (runtime/references)
-    ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::GetSchemaRequest request;
-    request.set_db_name(database.name);
-    request.set_name(name);
-    ::fesql::dbms::GetSchemaResponse response;
 
-    SchemaImpl *schema = new SchemaImpl();
-    brpc::Controller cntl;
-    stub.GetSchema(&cntl, &request, &schema->response_, NULL);
-    if (cntl.Failed()) {
-        delete schema;
-        status.code = common::kRpcError;
-        status.msg = "fail to call remote";
-        return std::unique_ptr<Schema>();
-    }
-    status.code = response.status().code();
-    status.msg = response.status().msg();
-    if (0 != status.code) {
-        delete schema;
-        return std::unique_ptr<Schema>();
-    }
-    return std::move(std::unique_ptr<Schema>(schema));
-}
-
-void DBMSSdkImpl::ExecuteScript(
-    const ExecuteRequst &request, ExecuteResult &result,
-    sdk::Status &status) {  // NOLINT (runtime/references)
+std::unique_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(
+    const std::string& catalog, const std::string& sql,
+    sdk::Status *status) {
+    std::unique_ptr<ResultSetImpl> empty;
     node::NodeManager node_manager;
     parser::FeSQLParser parser;
     analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
-
-    DLOG(INFO) << "start to execute script from dbms:\n" << request.sql;
+    DLOG(INFO) << "start to execute script from dbms:\n" << sql;
     // TODO(chenjing): init with db
 
     base::Status sql_status;
     node::NodePointVector parser_trees;
-    parser.parse(request.sql, parser_trees, &node_manager, sql_status);
+    parser.parse(sql, parser_trees, &node_manager, sql_status);
     if (0 != sql_status.code) {
         LOG(WARNING) << sql_status.msg;
-        status.code = sql_status.code;
-        status.msg = sql_status.msg;
-        return;
+        status->code = sql_status.code;
+        status->msg = sql_status.msg;
+        return empty;
     }
     node::NodePointVector query_trees;
     analyser.Analyse(parser_trees, query_trees, sql_status);
     if (0 != sql_status.code) {
-        LOG(WARNING) << status.msg;
-        status.code = sql_status.code;
-        status.msg = sql_status.msg;
-        return;
+        status->code = sql_status.code;
+        status->msg = sql_status.msg;
+        LOG(WARNING) << status->msg;
+        return empty;
     }
     node::PlanNodeList plan_trees;
     planner.CreatePlanTree(query_trees, plan_trees, sql_status);
 
     if (0 != sql_status.code) {
-        LOG(WARNING) << status.msg;
-        status.code = sql_status.code;
-        status.msg = sql_status.msg;
-        return;
+        status->code = sql_status.code;
+        status->msg = sql_status.msg;
+        LOG(WARNING) << status->msg;
+        return empty;
     }
 
     node::PlanNode *plan = plan_trees[0];
 
     if (nullptr == plan) {
-        status.msg = "fail to execute plan : plan null";
-        status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
-        return;
+        status->msg = "fail to execute plan : plan null";
+        status->code = common::kPlanError;
+        LOG(WARNING) << status->msg;
+        return empty;
     }
     switch (plan->GetType()) {
         case node::kPlanTypeCreate: {
             node::CreatePlanNode *create =
                 dynamic_cast<node::CreatePlanNode *>(plan);
-
             ::fesql::dbms::DBMSServer_Stub stub(channel_);
             ::fesql::dbms::AddTableRequest add_table_request;
             ::fesql::dbms::AddTableResponse response;
-
-            add_table_request.set_db_name(request.database.name);
-
+            add_table_request.set_db_name(catalog);
             ::fesql::type::TableDef *table = add_table_request.mutable_table();
-            table->set_catalog(request.database.name);
+            table->set_catalog(catalog);
             plan::TransformTableDef(create->GetTableName(),
                                     create->GetColumnDescList(), table,
                                     sql_status);
             if (0 != sql_status.code) {
-                status.code = sql_status.code;
-                status.msg = sql_status.msg;
-                LOG(WARNING) << status.msg;
-                return;
+                status->code = sql_status.code;
+                status->msg = sql_status.msg;
+                LOG(WARNING) << status->msg;
+                return empty;
             }
             brpc::Controller cntl;
             stub.AddTable(&cntl, &add_table_request, &response, NULL);
             if (cntl.Failed()) {
-                status.code = -1;
-                status.msg = "fail to call remote";
+                status->code = -1;
+                status->msg = "fail to call remote";
             } else {
-                status.code = response.status().code();
-                status.msg = response.status().msg();
+                status->code = response.status().code();
+                status->msg = response.status().msg();
             }
-            return;
+            return empty;
         }
 
         default: {
-            status.msg = "fail to execute script with unSuppurt type" +
+            status->msg = "fail to execute script with unSuppurt type" +
                          node::NameOfPlanNodeType(plan->GetType());
-            status.code = fesql::common::kUnSupport;
-            return;
+            status->code = fesql::common::kUnSupport;
+            return empty;
         }
     }
 }
 void DBMSSdkImpl::CreateDatabase(
-    const DatabaseDef &database,
-    sdk::Status &status) {  // NOLINT (runtime/references)
+    const std::string& catalog,
+    sdk::Status *status) { 
+    if (status == NULL) return;
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::AddDatabaseRequest request;
-    request.set_name(database.name);
+    request.set_name(catalog);
     ::fesql::dbms::AddDatabaseResponse response;
     brpc::Controller cntl;
     stub.AddDatabase(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
-        status.code = -1;
-        status.msg = "fail to call remote";
+        status->code = -1;
+        status->msg = "fail to call remote";
     } else {
-        status.code = response.status().code();
-        status.msg = response.status().msg();
-    }
-}
-bool DBMSSdkImpl::IsExistDatabase(
-    const DatabaseDef &database,
-    sdk::Status &status) {  // NOLINT (runtime/references)
-    ::fesql::dbms::DBMSServer_Stub stub(channel_);
-    ::fesql::dbms::IsExistRequest request;
-    request.set_name(database.name);
-    ::fesql::dbms::IsExistResponse response;
-    brpc::Controller cntl;
-    stub.IsExistDatabase(&cntl, &request, &response, NULL);
-    if (cntl.Failed()) {
-        status.code = -1;
-        status.msg = "fail to call remote";
-        return false;
-    } else {
-        status.code = response.status().code();
-        status.msg = response.status().msg();
-        return response.exist();
+        status->code = response.status().code();
+        status->msg = response.status().msg();
     }
 }
 

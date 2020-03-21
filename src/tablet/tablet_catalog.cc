@@ -131,6 +131,10 @@ std::shared_ptr<vm::TableHandler> TabletCatalog::GetTable(
 }
 
 bool TabletCatalog::AddTable(std::shared_ptr<TabletTableHandler> table) {
+    if (!table) {
+        LOG(WARNING) << "input table is null";
+        return false;
+    }
     auto db_it = tables_.find(table->GetDatabase());
     if (db_it == tables_.end()) {
         tables_.insert(std::make_pair(

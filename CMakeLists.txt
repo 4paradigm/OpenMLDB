@@ -1,4 +1,24 @@
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required (VERSION 3.8)
+
+if(POLICY CMP0068)
+  cmake_policy(SET CMP0068 NEW)
+endif()
+# Define file(GENERATE) behavior for relative paths.
+if(POLICY CMP0070)
+  cmake_policy(SET CMP0070 NEW)
+endif()
+# target_sources: use absolute path for INTERFACE_SOURCES.
+if(POLICY CMP0076)
+  cmake_policy(SET CMP0076 NEW)
+endif()
+# SWIG: use standard target name.
+if(POLICY CMP0078)
+  cmake_policy(SET CMP0078 NEW)
+endif()
+# SWIG: use SWIG_MODULE_NAME property.
+if(POLICY CMP0086)
+  cmake_policy(SET CMP0086 NEW)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 
@@ -47,6 +67,8 @@ add_definitions(${LLVM_DEFINITIONS})
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib64)
+find_package(SWIG REQUIRED)
+include(UseSWIG)
 add_subdirectory(src)
 #TODO add flag
 add_subdirectory(experiments)

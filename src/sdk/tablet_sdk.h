@@ -22,52 +22,28 @@
 #include <string>
 #include <vector>
 #include "sdk/base.h"
+#include "sdk/result_set.h"
 
 namespace fesql {
 namespace sdk {
-
-class ResultSetIterator {
- public:
-    ResultSetIterator() {}
-    virtual ~ResultSetIterator() {}
-    virtual bool HasNext() = 0;
-    virtual void Next() = 0;
-    virtual bool GetInt16(uint32_t idx, int16_t* val) = 0;
-    virtual bool GetInt32(uint32_t idx, int32_t* val) = 0;
-    virtual bool GetInt64(uint32_t idx, int64_t* val) = 0;
-    virtual bool GetFloat(uint32_t idx, float* val) = 0;
-    virtual bool GetDouble(uint32_t idx, double* val) = 0;
-    virtual bool GetString(uint32_t idx, char** val, uint32_t* size) = 0;
-};
-
-class ResultSet {
- public:
-    ResultSet() {}
-    virtual ~ResultSet() {}
-    virtual const uint32_t GetColumnCnt() const = 0;
-    virtual const std::string& GetColumnName(uint32_t i) const = 0;
-    virtual const DataType GetColumnType(uint32_t i) const = 0;
-    virtual const uint32_t GetRowCnt() const = 0;
-    virtual std::unique_ptr<ResultSetIterator> Iterator() = 0;
-};
 
 class TabletSdk {
  public:
     TabletSdk() = default;
     virtual ~TabletSdk() {}
-    virtual void SyncInsert(const Insert& insert,
-                            sdk::Status& status) = 0;  // NOLINT
-    virtual void SyncInsert(const std::string& db, const std::string& sql,
-                            sdk::Status& status) = 0;  // NOLINT
-    virtual std::unique_ptr<ResultSet> SyncQuery(
-        const Query& query,
-        sdk::Status& status) = 0;  // NOLINT
+    virtual void Insert(const std::string& db, const std::string& sql,
+                        sdk::Status* status) = 0;
+    virtual std::unique_ptr<ResultSet> Query(
+        const std::string& db, 
+        const std::string& sql,
+        sdk::Status* status) = 0;
 };
 
-// create a new dbms sdk with a endpoint
+// create a new tablet sdk with a endpoint
 // failed return NULL
 std::unique_ptr<TabletSdk> CreateTabletSdk(const std::string& endpoint);
 
 }  // namespace sdk
 }  // namespace fesql
 #endif  // SRC_SDK_TABLET_SDK_H_
+
