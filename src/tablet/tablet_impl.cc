@@ -1631,7 +1631,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
     rtidb::storage::RelationalTableTraverseIterator* it =
             r_table->NewTraverse(index);
     if (it == NULL) {
-        response->set_code(::rtidb::base::ReturnCode::kTsNameNotFound);
+        response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
         response->set_msg("ts name not found, when create iterator");
         return;
     }
