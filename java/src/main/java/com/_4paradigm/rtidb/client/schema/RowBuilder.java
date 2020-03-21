@@ -238,7 +238,9 @@ public class RowBuilder {
         buffer = builder.setBuffer(buffer, size);
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
-            if (columnDesc.isNotNull() && row.get(columnDesc.getName()) == null) {
+            if (columnDesc.isNotNull()
+                    && row.containsKey(columnDesc.getName())
+                    && row.get(columnDesc.getName()) == null) {
                 throw new TabletException("col " + columnDesc.getName() + " should not be null");
             } else if (row.get(columnDesc.getName()) == null) {
                 builder.appendNULL();

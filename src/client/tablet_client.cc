@@ -217,6 +217,30 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::Put(uint32_t tid,
+        uint32_t pid,
+        const std::string& value, 
+        std::string& msg) {
+    ::rtidb::api::PutRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_allocated_value(const_cast<std::string*>(&value));
+    ::rtidb::api::PutResponse response;
+    uint64_t consumed = ::baidu::common::timer::get_micros();
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (FLAGS_enable_show_tp) {
+        consumed = ::baidu::common::timer::get_micros() - consumed;
+        percentile_.push_back(consumed);
+    }
+    request.release_value();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    msg.assign(response.msg());
+    return false;
+}
+
+bool TabletClient::Put(uint32_t tid,
              uint32_t pid,
              uint64_t time,
              const std::string& value,

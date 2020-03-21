@@ -210,6 +210,7 @@ struct TableHandler {
     std::shared_ptr<rtidb::nameserver::TableInfo>  table_info;
     std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> columns;
     std::vector<PartitionInfo> partition;
+    std::string auto_gen_pk_; 
 };
 
 class RtidbClient {

@@ -988,31 +988,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         return ret;
     }
 
-    private boolean putRelationTable(String name, Map<String, Object> row) throws TabletException {
-        TableHandler th = client.getHandler(name);
-        if (th == null) {
-            throw new TabletException("no table with name " + name);
-        }
-        if (row == null) {
-            throw new TabletException("putting data is null");
-        }
-        ByteBuffer buffer;
-        List<ColumnDesc> schema;
-        if (row.size() == th.getSchema().size()) {
-            schema = th.getSchema();
-            buffer = RowBuilder.encode(row, th.getSchema());
-        } else {
-            schema = th.getSchemaMap().get(row.size());
-            if (schema == null) {
-                throw new TabletException("no schema for column count " + row.size());
-            }
-            buffer = RowBuilder.encode(row, schema);
-        }
-        String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
-        int pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
-        return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
-    }
-
     private boolean put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException {
         return put(tid, pid, key, time, null, null, ByteBuffer.wrap(bytes), th);
     }
@@ -1140,7 +1115,37 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("putting data is null");
         }
         //TODO: resolve wo
-        return putRelationTable(tname, row);
+
+        String indexName = th.getAutoGenPkName();
+
+        if (!indexName.isEmpty() &&
+                (row.size() == th.getSchema().size() || row.containsKey(indexName))) {
+            throw new TabletException("should not input autoGenPk column");
+        }
+        if (!indexName.isEmpty()) {
+            row.put(indexName, RowCodecCommon.DEFAULT_LONG);
+        }
+
+        ByteBuffer buffer;
+        List<ColumnDesc> schema;
+        if (row.size() == th.getSchema().size()) {
+            schema = th.getSchema();
+        } else {
+            schema = th.getSchemaMap().get(row.size());
+            if (schema.isEmpty()) {
+                throw new TabletException("no schema for column count " + row.size());
+            }
+        }
+        buffer = RowBuilder.encode(row, schema);
+
+        int pid = 0;
+        if (indexName.isEmpty()) {
+            String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
+            pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
+        } else {
+            pid = new Random().nextInt() % th.getPartitions().length;
+        }
+        return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
 
     }
 

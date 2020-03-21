@@ -123,7 +123,7 @@ public class TableSyncClientTest extends TestCaseBase {
         return name;
     }
 
-    private String createRelationalTable() {
+    private String createRelationalTable(IndexType indexType) throws TabletException {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         TableDesc tableDesc = new TableDesc();
@@ -156,7 +156,7 @@ public class TableSyncClientTest extends TestCaseBase {
         List<IndexDef> indexs = new ArrayList<>();
         IndexDef indexDef = new IndexDef();
         indexDef.setIndexName("id");
-        indexDef.setIndexType(IndexType.kPrimaryKey);
+        indexDef.setIndexType(indexType);
         List<String> colNameList = new ArrayList<>();
         colNameList.add("id");
         indexDef.setColNameList(colNameList);
@@ -491,7 +491,7 @@ public class TableSyncClientTest extends TestCaseBase {
     public void testCreateRelationalTable() {
         String name = "";
         try {
-            name = createRelationalTable();
+            name = createRelationalTable(IndexType.PrimaryKey);
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -502,8 +502,9 @@ public class TableSyncClientTest extends TestCaseBase {
 
     @Test
     public void testRelationalTable() {
-        String name = createRelationalTable();
+        String name = "";
         try {
+            name = createRelationalTable(IndexType.PrimaryKey);
             List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
             Assert.assertEquals(schema.size(), 3);
 
@@ -632,6 +633,53 @@ public class TableSyncClientTest extends TestCaseBase {
         }
     }
 
+    @Test
+    public void testAutoGenPk() {
+        String name = "";
+        try {
+            name = createRelationalTable(IndexType.AutoGen);
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 3);
+
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("id", 11l);
+            data.put("attribute", "a1");
+            data.put("image", "i1");
+            try {
+                tableSyncClient.put(name, data, wo);
+                Assert.fail();
+            } catch (TabletException e) {
+                Assert.assertTrue(true);
+            }
+            data.clear();
+            data.put("attribute", "a1");
+            data.put("image", "i1");
+            boolean ok = tableSyncClient.put(name, data, wo);
+            Assert.assertTrue(ok);
+
+
+//            //query
+//            Map<String, Object> index = new HashMap<>();
+//            index.put("id", 11l);
+//            ReadOption ro = new ReadOption(index, null, null, 1);
+//            RelationalIterator it = tableSyncClient.query(name, ro);
+//            Assert.assertTrue(it.valid());
+//
+//            Map<String, Object> queryMap = it.getDecodedValue();
+//            Assert.assertEquals(queryMap.size(), 3);
+//            Assert.assertEquals(queryMap.get("id"), 11l);
+//            Assert.assertEquals(queryMap.get("attribute"), "a1");
+//            Assert.assertEquals(queryMap.get("image"), "i1");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
 
     @Test
     public void testAddTableFieldWithColumnKey() {
