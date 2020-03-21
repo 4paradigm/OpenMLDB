@@ -1638,15 +1638,15 @@ void TabletImpl::BatchQuery(RpcController* controller,
     std::vector<rtidb::base::Slice> value_vec;
     uint32_t total_block_size = 0;
 
-    uint32_t found_count = 0;
+    uint32_t scount = 0;
     uint32_t not_found_count = 0;
     for (auto& key : request->query_key()) {
         it->Seek(key);
+        scount++;
         if (!it->Valid()) {
             not_found_count++;
             continue;
         }
-        found_count++;
         rtidb::base::Slice value = it->GetValue();
 
         total_block_size += value.size();
@@ -1665,10 +1665,10 @@ void TabletImpl::BatchQuery(RpcController* controller,
         response->set_is_finish(true);
     }
     bool is_finish = false;
-    if (static_cast<uint64_t>(found_count + not_found_count) == static_cast<uint64_t>(request->query_key_size())) {
+    if (static_cast<uint64_t>(scount) == static_cast<uint64_t>(request->query_key_size())) {
         is_finish = true;
     }
-    uint32_t total_size = found_count * 4 + total_block_size;
+    uint32_t total_size = (scount - not_found_count) * 4 + total_block_size;
     std::string* pairs = response->mutable_pairs();
     if (scount <= 0) {
         pairs->resize(0);
