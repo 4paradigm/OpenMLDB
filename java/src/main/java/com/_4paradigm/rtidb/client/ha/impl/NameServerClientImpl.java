@@ -201,7 +201,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
 
 
     @Override
-    public boolean createTable(TableDesc tableDesc) throws TabletException {
+    public boolean createTable(TableDesc tableDesc) {
         TableInfo.Builder builder = TableInfo.newBuilder();
         builder.setName(tableDesc.getName())
                 .setTableType(TableType.valueFrom(tableDesc.getTableType()))
