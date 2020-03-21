@@ -45,7 +45,6 @@ public class TableSyncClientTest extends TestCaseBase {
     public void tearDown() {
         super.tearDown();
     }
-
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
@@ -680,7 +679,6 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
-<<<<<<< HEAD
     public void testRelationalTableTraverse() {
         String name = createRelationalTable();
         try {
