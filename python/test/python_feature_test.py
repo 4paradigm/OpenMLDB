@@ -36,13 +36,19 @@ class TestRtidb(unittest.TestCase):
     #TODO(kongquan): current put data use java client, when python put feature is complete, put data before traverse
   def test_batchQuery(self):
     ros = list()
-    for i in range(1000):
+    count = 1000;
+    for i in range(count):
       ro = rtidb.ReadOption()
-      ro.index = {"id": "{:04d}".format(i)}
+      if (i % 13 == 0):
+        ro.index = {"id": "{:04d}".format(i+1000)}
+      else:
+        ro.index = {"id": "{:04d}".format(i)}
       ros.append(ro)
     resp = self.nsc.batch_query("10001", ros)
     id = 0;
     for l in resp:
+      if (id % 13 == 0):
+        id+=1
       self.assertEqual("{:04d}".format(id), l["id"])
       self.assertEqual("i{}".format(id), l["image"])
       self.assertEqual("a{}".format(id), l["attribute"])
