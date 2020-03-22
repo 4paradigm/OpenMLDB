@@ -112,10 +112,11 @@ class CanonicalizeExprTransformPass : public ExprTransformPass {
     virtual bool Transform(node::ExprNode* in, node::ExprNode** output);
 };
 
-class AggerationOptimized : public TransformUpPysicalPass {
+class GroupAndSortOptimized : public TransformUpPysicalPass {
  public:
-    AggerationOptimized(node::NodeManager* node_manager, const std::string& db,
-                     const std::shared_ptr<Catalog>& catalog)
+    GroupAndSortOptimized(node::NodeManager* node_manager,
+                          const std::string& db,
+                          const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
 
  private:
@@ -132,16 +133,6 @@ class AggerationOptimized : public TransformUpPysicalPass {
                         std::string* index_name);  // NOLINT
 };
 
-class WindowOptimized : public TransformUpPysicalPass {
- public:
-    WindowOptimized(node::NodeManager* node_manager, const std::string& db,
-                    const std::shared_ptr<Catalog>& catalog)
-        : TransformUpPysicalPass(node_manager, db, catalog) {}
-
- private:
-    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-};
-
 class LeftJoinOptimized : public TransformUpPysicalPass {
  public:
     LeftJoinOptimized(node::NodeManager* node_manager, const std::string& db,
@@ -151,22 +142,21 @@ class LeftJoinOptimized : public TransformUpPysicalPass {
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
     bool ColumnExist(const Schema& schema, const std::string& column);
+    bool CheckExprListFromSchema(const node::ExprListNode* expr_list,
+                                 const Schema& schema);
 };
 typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;
 
 enum PhysicalPlanPassType {
-    kPassGroupByOptimized,
-    kPassSortByOptimized,
+    kPassGroupAndSortOptimized,
     kPassLeftJoinOptimized
 };
 
 inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
     switch (type) {
-        case kPassGroupByOptimized:
+        case kPassGroupAndSortOptimized:
             return "PassGroupByOptimized";
-        case kPassSortByOptimized:
-            return "PassSortByOptimized";
         case kPassLeftJoinOptimized:
             return "PassLeftJoinOptimized";
         default:
@@ -204,9 +194,10 @@ class Transform {
     bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                 PhysicalOpNode** output,
                                 base::Status& status);  // NOLINT
-    bool TransformWindowOp(const node::ProjectListNode* project_list,
-                           PhysicalOpNode* depend, PhysicalOpNode** output,
-                           base::Status& status);  // NOLINT
+    bool TransformGroupAndSortOp(const node::ProjectListNode* project_list,
+                                 PhysicalOpNode* depend,
+                                 PhysicalOpNode** output,
+                                 base::Status& status);  // NOLINT
 
     bool TransformJoinOp(const node::JoinPlanNode* node,
                          PhysicalOpNode** output,
@@ -257,9 +248,10 @@ class Transform {
                                    PhysicalOpNode** output,
                                    base::Status& status);  // NOLINT
     bool ValidatePriimaryPath(node::PlanNode* node, node::PlanNode** output,
-                              base::Status& status);
+                              base::Status& status);  // NOLINT
     bool TransformProjectOp(node::ProjectListNode* node, PhysicalOpNode* depend,
-                            PhysicalOpNode** output, base::Status& status);
+                            PhysicalOpNode** output,
+                            base::Status& status);  // NOLINT
 };
 
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,

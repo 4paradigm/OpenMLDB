@@ -24,6 +24,7 @@ enum PhysicalOpType {
     kPhysicalOpFilter,
     kPhysicalOpGroupBy,
     kPhysicalOpSortBy,
+    kPhysicalOpGroupAndSort,
     kPhysicalOpLoops,
     kPhysicalOpAggrerate,
     kPhysicalOpBuffer,
@@ -43,6 +44,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "GROUP_BY";
         case kPhysicalOpSortBy:
             return "SORT_BY";
+        case kPhysicalOpGroupAndSort:
+            return "GROUP_AND_SORT_BY";
         case kPhysicalOpFilter:
             return "FILTER_BY";
         case kPhysicalOpLoops:
@@ -204,6 +207,22 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     const node::ExprListNode *groups_;
 };
 
+class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
+ public:
+    PhysicalGroupAndSortNode(PhysicalOpNode *node,
+                             const node::ExprListNode *groups,
+                             const node::OrderByNode *orders)
+        : PhysicalUnaryNode(node, kPhysicalOpGroupAndSort, true, false),
+          groups_(groups),
+          orders_(orders) {}
+
+    virtual ~PhysicalGroupAndSortNode() {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+
+    const node::ExprListNode *groups_;
+    const node::OrderByNode *orders_;
+};
+
 enum ProjectType {
     kRowProject,
     kTableProject,
@@ -271,31 +290,22 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalGroupAggrerationNode(PhysicalOpNode *node,
                                  const std::string &fn_name,
-                                 const Schema &schema,
-                                 const node::ExprListNode *groups)
-        : PhysicalProjectNode(node, fn_name, schema, kGroupAggregation),
-          groups_(groups) {}
+                                 const Schema &schema)
+        : PhysicalProjectNode(node, fn_name, schema, kGroupAggregation) {}
     virtual ~PhysicalGroupAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    const node::ExprListNode *groups_;
 };
 
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalWindowAggrerationNode(
         PhysicalOpNode *node, const std::string &fn_name, const Schema &schema,
-        const node::ExprListNode *groups, const node::OrderByNode *orders,
         const int64_t start_offset, const int64_t end_offset)
         : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation),
-          groups_(groups),
-          orders_(orders),
           start_offset_(start_offset),
           end_offset_(end_offset) {}
     virtual ~PhysicalWindowAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-
-    const node::ExprListNode *groups_;
-    const node::OrderByNode *orders_;
     const int64_t start_offset_;
     const int64_t end_offset_;
 };

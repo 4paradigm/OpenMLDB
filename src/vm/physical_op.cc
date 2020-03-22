@@ -93,7 +93,16 @@ void PhysicalScanIndexNode::Print(std::ostream& output,
 void PhysicalGroupNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(group by =" << node::ExprString(groups_) << ")";
+    output << "(groups=" << node::ExprString(groups_) << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
+void PhysicalGroupAndSortNode::Print(std::ostream& output,
+                                     const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(groups=" << node::ExprString(groups_)
+           << ", orders=" << node::ExprString(orders_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -112,8 +121,7 @@ bool PhysicalProjectNode::InitSchema() {
 void PhysicalGroupAggrerationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << ProjectTypeName(project_type_)
-           << ", groups=" << node::ExprString(groups_) << ")";
+    output << "(type=" << ProjectTypeName(project_type_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -122,8 +130,6 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_)
-           << ", groups=" << node::ExprString(groups_)
-           << ", orders=" << node::ExprString(orders_)
            << ", start=" << std::to_string(start_offset_)
            << ", end=" << std::to_string(end_offset_) << ")";
     output << "\n";

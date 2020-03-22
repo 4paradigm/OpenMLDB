@@ -103,8 +103,7 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 >= COL2 or COL1 != COL2 as col12 FROM t1;",
         "SELECT !(COL1 >= COL2 or COL1 != COL2) as col12 FROM t1;",
         "SELECT col1-col2 as col1_2, *, col1+col2 as col12 FROM t1 limit 10;"
-        "SELECT *, col1+col2 as col12 FROM t1 limit 10;"
-    ));
+        "SELECT *, col1+col2 as col12 FROM t1 limit 10;"));
 
 INSTANTIATE_TEST_CASE_P(
     SqlWindowProjectPlanner, TransformTest,
@@ -399,21 +398,21 @@ TEST_F(TransformTest, pass_group_optimized_test) {
     std::vector<std::pair<std::string, std::string>> in_outs;
     in_outs.push_back(
         std::make_pair("SELECT sum(col1) as col1sum FROM t1 group by col1;",
-                       "PROJECT(type=Aggregation)\n"
+                       "PROJECT(type=GroupAggregation)\n"
                        "  SCAN(type=IndexScan, table=t1, index=index1)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
-        "PROJECT(type=Aggregation)\n"
+        "PROJECT(type=GroupAggregation)\n"
         "  SCAN(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
-        "PROJECT(type=Aggregation)\n"
-        "  GROUP_BY(group by =(col3))\n"
+        "PROJECT(type=GroupAggregation)\n"
+        "  GROUP_BY(groups=(col3))\n"
         "    SCAN(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
-        "PROJECT(type=Aggregation)\n"
-        "  GROUP_BY(group by =(col3))\n"
+        "PROJECT(type=GroupAggregation)\n"
+        "  GROUP_BY(groups=(col3))\n"
         "    SCAN(type=IndexScan, table=t1, index=index12)"));
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
@@ -451,13 +450,12 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  PROJECT(type=ProjectRow)\n"
+        "  PROJECT(type=TableProject)\n"
         "    JOIN(type=kJoinTypeConcat, condition=)\n"
-        "      PROJECT(type=ProjectRow)\n"
+        "      PROJECT(type=TableProject)\n"
         "        SCAN(table=t1)\n"
-        "      PROJECT(type=Aggregation)\n"
-        "        BUFFER(start=-3, end=0)\n"
-        "          SCAN(type=IndexScan, table=t1, index=index1)"));
+        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
+        "        SCAN(type=IndexScan, table=t1, index=index1)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1, "
@@ -467,13 +465,12 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  PROJECT(type=ProjectRow)\n"
+        "  PROJECT(type=TableProject)\n"
         "    JOIN(type=kJoinTypeConcat, condition=)\n"
-        "      PROJECT(type=ProjectRow)\n"
+        "      PROJECT(type=TableProject)\n"
         "        SCAN(table=t1)\n"
-        "      PROJECT(type=Aggregation)\n"
-        "        BUFFER(start=-3, end=0)\n"
-        "          SCAN(type=IndexScan, table=t1, index=index12)"));
+        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
+        "        SCAN(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1, "
@@ -482,15 +479,13 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  PROJECT(type=ProjectRow)\n"
+        "  PROJECT(type=TableProject)\n"
         "    JOIN(type=kJoinTypeConcat, condition=)\n"
-        "      PROJECT(type=ProjectRow)\n"
+        "      PROJECT(type=TableProject)\n"
         "        SCAN(table=t1)\n"
-        "      PROJECT(type=Aggregation)\n"
-        "        BUFFER(start=-3, end=0)\n"
-        "          SORT_BY((col15) ASC)\n"
-        "            GROUP_BY(group by =(col3))\n"
-        "              SCAN(table=t1)"));
+        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
+        "        GROUP_AND_SORT_BY(groups=(col3), orders=(col15) ASC)\n"
+        "          SCAN(table=t1)"));
 
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
@@ -529,17 +524,16 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  PROJECT(type=ProjectRow)\n"
+        "  PROJECT(type=TableProject)\n"
         "    JOIN(type=kJoinTypeConcat, condition=)\n"
-        "      PROJECT(type=ProjectRow)\n"
+        "      PROJECT(type=TableProject)\n"
         "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
         "          SCAN(table=t1)\n"
         "          SCAN(table=t2)\n"
-        "      PROJECT(type=Aggregation)\n"
-        "        BUFFER(start=-3, end=0)\n"
-        "          JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-        "            SCAN(type=IndexScan, table=t1, index=index1)\n"
-        "            SCAN(table=t2)"));
+        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
+        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
+        "          SCAN(type=IndexScan, table=t1, index=index1)\n"
+        "          SCAN(table=t2)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1, "
@@ -549,17 +543,16 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  PROJECT(type=ProjectRow)\n"
+        "  PROJECT(type=TableProject)\n"
         "    JOIN(type=kJoinTypeConcat, condition=)\n"
-        "      PROJECT(type=ProjectRow)\n"
+        "      PROJECT(type=TableProject)\n"
         "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
         "          SCAN(table=t1)\n"
         "          SCAN(table=t2)\n"
-        "      PROJECT(type=Aggregation)\n"
-        "        BUFFER(start=-3, end=0)\n"
-        "          JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-        "            SCAN(type=IndexScan, table=t1, index=index12)\n"
-        "            SCAN(table=t2)"));
+        "      PROJECT(type=WindowAggregation, start=-3, end=0)\n"
+        "        JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
+        "          SCAN(type=IndexScan, table=t1, index=index12)\n"
+        "          SCAN(table=t2)"));
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");

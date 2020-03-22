@@ -664,6 +664,9 @@ std::string ExprString(const ExprNode *expr) {
     return nullptr == expr ? std::string() : expr->GetExprString();
 }
 
+bool ExprListNullOrEmpty(const ExprListNode* expr) {
+    return nullptr == expr || expr->IsEmpty();
+}
 void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;

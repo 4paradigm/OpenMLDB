@@ -258,9 +258,9 @@ bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                          output, status);
     }
 }
-bool Transform::TransformWindowOp(const node::ProjectListNode* project_list,
-                                  PhysicalOpNode* node, PhysicalOpNode** output,
-                                  base::Status& status) {
+bool Transform::TransformGroupAndSortOp(
+    const node::ProjectListNode* project_list, PhysicalOpNode* depend,
+    PhysicalOpNode** output, base::Status& status) {
     if (nullptr == project_list || nullptr == project_list->w_ptr_ ||
         nullptr == output) {
         status.msg = "project node or window node or output node is null";
@@ -269,33 +269,33 @@ bool Transform::TransformWindowOp(const node::ProjectListNode* project_list,
         return false;
     }
 
-    PhysicalOpNode* depend = const_cast<PhysicalOpNode*>(node);
-
+    node::OrderByNode* orders = nullptr;
+    node::ExprListNode* groups = nullptr;
     if (!project_list->w_ptr_->GetOrders().empty()) {
         // TODO(chenjing): remove 临时适配, 有mem泄漏问题
         node::ExprListNode* expr = new node::ExprListNode();
         for (auto id : project_list->w_ptr_->GetOrders()) {
             expr->AddChild(new node::ColumnRefNode(id, ""));
         }
-        node::OrderByNode* order_node = dynamic_cast<node::OrderByNode*>(
+        orders = dynamic_cast<node::OrderByNode*>(
             node_manager_->MakeOrderByNode(expr, true));
-        PhysicalSortNode* sort_op = new PhysicalSortNode(depend, order_node);
-        node_manager_->RegisterNode(sort_op);
-        depend = sort_op;
     }
 
     if (!project_list->w_ptr_->GetKeys().empty()) {
         // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-        node::ExprListNode* expr = node_manager_->MakeExprList();
+        groups = node_manager_->MakeExprList();
         for (auto id : project_list->w_ptr_->GetKeys()) {
-            expr->AddChild(node_manager_->MakeColumnRefNode(id, ""));
+            groups->AddChild(node_manager_->MakeColumnRefNode(id, ""));
         }
-        PhysicalGroupNode* group_op = new PhysicalGroupNode(depend, expr);
-        node_manager_->RegisterNode(group_op);
-        depend = group_op;
     }
-
-    *output = depend;
+    if (nullptr == orders && nullptr == groups) {
+        *output = depend;
+        return true;
+    }
+    PhysicalGroupAndSortNode* group_sort_op =
+        new PhysicalGroupAndSortNode(depend, groups, orders);
+    node_manager_->RegisterNode(group_sort_op);
+    *output = group_sort_op;
     return true;
 }
 bool Transform::TransformJoinOp(const node::JoinPlanNode* node,
@@ -469,16 +469,8 @@ bool Transform::TransformBatchPhysicalPlan(::fesql::node::PlanNode* node,
 
     for (auto type : passes) {
         switch (type) {
-            case kPassGroupByOptimized: {
-                AggerationOptimized pass(node_manager_, db_, catalog_);
-                PhysicalOpNode* new_op;
-                if (pass.Apply(physical_plan, &new_op)) {
-                    physical_plan = new_op;
-                }
-                break;
-            }
-            case kPassSortByOptimized: {
-                WindowOptimized pass(node_manager_, db_, catalog_);
+            case kPassGroupAndSortOptimized: {
+                GroupAndSortOptimized pass(node_manager_, db_, catalog_);
                 PhysicalOpNode* new_op;
                 if (pass.Apply(physical_plan, &new_op)) {
                     physical_plan = new_op;
@@ -526,8 +518,7 @@ bool Transform::GenProjects(const Schema& input_schema,
 }
 bool Transform::AddDefaultPasses() {
     AddPass(kPassLeftJoinOptimized);
-    AddPass(kPassGroupByOptimized);
-    AddPass(kPassSortByOptimized);
+    AddPass(kPassGroupAndSortOptimized);
     return false;
 }
 
@@ -536,6 +527,12 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
                                           node::ProjectListNode* project_list,
                                           PhysicalOpNode** output,
                                           base::Status& status) {
+    if (nullptr == project_list || nullptr == output) {
+        status.msg = "project node or output node is null";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
     const node::PlanNodeList& projects = project_list->GetProjects();
     Schema output_schema;
     std::string fn_name;
@@ -616,33 +613,16 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
         }
         case kGroupAggregation: {
             auto group_op = dynamic_cast<PhysicalGroupNode*>(node);
-            op = new PhysicalGroupAggrerationNode(node, fn_name, output_schema,
-                                                  group_op->groups_);
+            op = new PhysicalGroupAggrerationNode(node, fn_name, output_schema);
             break;
         }
         case kWindowAggregation: {
-            node::ExprListNode* groups = nullptr;
-            node::OrderByNode* orders = nullptr;
-            if (!project_list->w_ptr_->GetOrders().empty()) {
-                // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-                auto expr = new node::ExprListNode();
-                for (auto id : project_list->w_ptr_->GetOrders()) {
-                    expr->AddChild(new node::ColumnRefNode(id, ""));
-                }
-                orders = dynamic_cast<node::OrderByNode*>(
-                    node_manager_->MakeOrderByNode(expr, true));
+            PhysicalOpNode* depend = nullptr;
+            if (!TransformGroupAndSortOp(project_list, node, &depend, status)) {
+                return false;
             }
-
-            if (!project_list->w_ptr_->GetKeys().empty()) {
-                // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-                groups = node_manager_->MakeExprList();
-                for (auto id : project_list->w_ptr_->GetKeys()) {
-                    groups->AddChild(node_manager_->MakeColumnRefNode(id, ""));
-                }
-            }
-
             op = new PhysicalWindowAggrerationNode(
-                node, fn_name, output_schema, groups, orders,
+                depend, fn_name, output_schema,
                 project_list->w_ptr_->GetStartOffset(),
                 project_list->w_ptr_->GetEndOffset());
             break;
@@ -749,23 +729,18 @@ bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
     }
 }
 
-bool AggerationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
-    if (in->type_ != kPhysicalOpProject) {
-        return false;
-    }
-    PhysicalProjectNode* project_op = dynamic_cast<PhysicalProjectNode*>(in);
-
-    switch (project_op->project_type_) {
-        case kGroupAggregation: {
-            PhysicalGroupAggrerationNode* group_agg =
-                dynamic_cast<PhysicalGroupAggrerationNode*>(in);
+bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
+                                      PhysicalOpNode** output) {
+    switch (in->type_) {
+        case kPhysicalOpGroupBy: {
+            PhysicalGroupNode* group_op = dynamic_cast<PhysicalGroupNode*>(in);
             if (kPhysicalOpScan == in->GetProducers()[0]->type_) {
                 auto scan_op =
                     dynamic_cast<PhysicalScanNode*>(in->GetProducers()[0]);
                 if (kScanTypeTableScan == scan_op->scan_type_) {
                     std::string index_name;
                     const node::ExprListNode* new_groups;
-                    if (!TransformGroupExpr(group_agg->groups_,
+                    if (!TransformGroupExpr(group_op->groups_,
                                             scan_op->table_handler_->GetIndex(),
                                             &index_name, &new_groups)) {
                         return false;
@@ -775,19 +750,22 @@ bool AggerationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
                         new PhysicalScanIndexNode(scan_op->table_handler_,
                                                   index_name);
                     node_manager_->RegisterNode(scan_index_op);
-                    PhysicalGroupAggrerationNode* new_group_agg =
-                        new PhysicalGroupAggrerationNode(
-                            scan_index_op, group_agg->fn_name_,
-                            group_agg->output_schema, new_groups);
-                    *output = new_group_agg;
+
+                    if (nullptr == new_groups || new_groups->IsEmpty()) {
+                        *output = scan_index_op;
+                    } else {
+                        PhysicalGroupNode* new_group_op =
+                            new PhysicalGroupNode(scan_index_op, new_groups);
+                        *output = new_group_op;
+                    }
                     return true;
                 }
             }
             break;
         }
-        case kWindowAggregation: {
-            PhysicalWindowAggrerationNode* window_agg =
-                dynamic_cast<PhysicalWindowAggrerationNode*>(in);
+        case kPhysicalOpGroupAndSort: {
+            PhysicalGroupAndSortNode* group_sort_op =
+                dynamic_cast<PhysicalGroupAndSortNode*>(in);
             if (kPhysicalOpScan == in->GetProducers()[0]->type_) {
                 auto scan_op =
                     dynamic_cast<PhysicalScanNode*>(in->GetProducers()[0]);
@@ -796,13 +774,13 @@ bool AggerationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
                     const node::ExprListNode* new_groups;
                     const node::OrderByNode* new_orders;
                     auto& index_hint = scan_op->table_handler_->GetIndex();
-                    if (!TransformGroupExpr(window_agg->groups_, index_hint,
+                    if (!TransformGroupExpr(group_sort_op->groups_, index_hint,
                                             &index_name, &new_groups)) {
                         return false;
                     }
 
                     auto index_st = index_hint.at(index_name);
-                    TransformOrderExpr(window_agg->orders_,
+                    TransformOrderExpr(group_sort_op->orders_,
                                        scan_op->table_handler_->GetSchema(),
                                        index_st, &new_orders);
 
@@ -810,12 +788,18 @@ bool AggerationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
                         new PhysicalScanIndexNode(scan_op->table_handler_,
                                                   index_name);
                     node_manager_->RegisterNode(scan_index_op);
-                    PhysicalWindowAggrerationNode* new_window_agg =
-                        new PhysicalWindowAggrerationNode(
-                            scan_index_op, window_agg->fn_name_,
-                            window_agg->output_schema, new_groups, new_orders,
-                            window_agg->start_offset_, window_agg->end_offset_);
-                    *output = new_window_agg;
+
+                    if ((nullptr == new_groups || new_groups->IsEmpty()) &&
+                        (nullptr == new_orders ||
+                         nullptr == new_orders->order_by_ ||
+                         new_orders->order_by_->IsEmpty())) {
+                        *output = scan_index_op;
+                    } else {
+                        PhysicalGroupAndSortNode* new_group_sort_op =
+                            new PhysicalGroupAndSortNode(
+                                scan_index_op, new_groups, new_orders);
+                        *output = new_group_sort_op;
+                    }
                     return true;
                 }
             }
@@ -827,10 +811,9 @@ bool AggerationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
     }
     return false;
 }
-bool AggerationOptimized::TransformGroupExpr(const node::ExprListNode* groups,
-                                          const IndexHint& index_hint,
-                                          std::string* index_name,
-                                          const node::ExprListNode** output) {
+bool GroupAndSortOptimized::TransformGroupExpr(
+    const node::ExprListNode* groups, const IndexHint& index_hint,
+    std::string* index_name, const node::ExprListNode** output) {
     if (nullptr == groups || nullptr == output || nullptr == index_name) {
         LOG(WARNING) << "fail to transform group expr : group exor or output "
                         "or index_name ptr is null";
@@ -886,10 +869,9 @@ bool AggerationOptimized::TransformGroupExpr(const node::ExprListNode* groups,
     }
 }
 
-bool AggerationOptimized::MatchBestIndex(const std::vector<std::string>& columns,
-                                      const IndexHint& index_hint,
-                                      std::vector<bool>* bitmap_ptr,
-                                      std::string* index_name) {
+bool GroupAndSortOptimized::MatchBestIndex(
+    const std::vector<std::string>& columns, const IndexHint& index_hint,
+    std::vector<bool>* bitmap_ptr, std::string* index_name) {
     if (nullptr == bitmap_ptr || nullptr == index_name) {
         LOG(WARNING)
             << "fail to match best index: bitmap or index_name ptr is null";
@@ -969,10 +951,9 @@ bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
     return Transform(in, out);
 }
 
-bool AggerationOptimized::TransformOrderExpr(const node::OrderByNode* order,
-                                          const Schema& schema,
-                                          const IndexSt& index_st,
-                                          const node::OrderByNode** output) {
+bool GroupAndSortOptimized::TransformOrderExpr(
+    const node::OrderByNode* order, const Schema& schema,
+    const IndexSt& index_st, const node::OrderByNode** output) {
     if (nullptr == order || nullptr == output) {
         LOG(WARNING) << "fail to transform order expr : order expr or scan op "
                         "or output is null";
@@ -1028,11 +1009,14 @@ bool AggerationOptimized::TransformOrderExpr(const node::OrderByNode* order,
 }
 
 bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
+    if (nullptr == in) {
+        LOG(WARNING) << "LeftJoin optimized skip: node is null";
+        return false;
+    }
     switch (in->type_) {
         case kPhysicalOpGroupBy: {
             auto group_op = dynamic_cast<PhysicalGroupNode*>(in);
-            if (nullptr == group_op || nullptr == group_op->groups_ ||
-                group_op->groups_->IsEmpty()) {
+            if (node::ExprListNullOrEmpty(group_op->groups_)) {
                 LOG(WARNING)
                     << "LeftJoin optimized skip: groups is null or empty";
             }
@@ -1044,27 +1028,11 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     // skip optimized for other join type
                     return false;
                 }
-                std::vector<std::string> columns;
-                for (auto expr : group_op->groups_->children_) {
-                    switch (expr->expr_type_) {
-                        case node::kExprColumnRef: {
-                            auto column =
-                                dynamic_cast<node::ColumnRefNode*>(expr);
-                            if (!ColumnExist(join_op->GetProducers()
-                                                 .at(0)
-                                                 ->output_schema,
-                                             column->GetColumnName())) {
-                                return false;
-                            }
-                            break;
-                        }
-                        default: {
-                            // can't optimize when group by other expression
-                            return false;
-                        }
-                    }
+                if (!CheckExprListFromSchema(
+                        group_op->groups_,
+                        join_op->GetProducers()[0]->output_schema)) {
+                    return false;
                 }
-
                 auto group_expr = group_op->groups_;
                 // 符合优化条件
                 PhysicalGroupNode* new_group_op = new PhysicalGroupNode(
@@ -1082,9 +1050,8 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
         }
         case kPhysicalOpSortBy: {
             auto sort_op = dynamic_cast<PhysicalSortNode*>(in);
-            if (nullptr == sort_op || nullptr == sort_op->order_ ||
-                nullptr == sort_op->order_->order_by_ ||
-                sort_op->order_->order_by_->IsEmpty()) {
+            if (nullptr == sort_op->order_ ||
+                node::ExprListNullOrEmpty(sort_op->order_->order_by_)) {
                 LOG(WARNING)
                     << "LeftJoin optimized skip: order is null or empty";
             }
@@ -1097,25 +1064,11 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                         // skip optimized for other join type
                         return false;
                     }
-                    std::vector<std::string> columns;
-                    for (auto expr : sort_op->order_->order_by_->children_) {
-                        switch (expr->expr_type_) {
-                            case node::kExprColumnRef: {
-                                auto column =
-                                    dynamic_cast<node::ColumnRefNode*>(expr);
-                                if (!ColumnExist(join_op->GetProducers()
-                                                     .at(0)
-                                                     ->output_schema,
-                                                 column->GetColumnName())) {
-                                    return false;
-                                }
-                                break;
-                            }
-                            default: {
-                                // can't optimize when group by other expression
-                                return false;
-                            }
-                        }
+
+                    if (!CheckExprListFromSchema(
+                            sort_op->order_->order_by_,
+                            join_op->GetProducers()[0]->output_schema)) {
+                        return false;
                     }
 
                     auto order_expr = sort_op->order_;
@@ -1134,12 +1087,61 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
 
             break;
         }
+
+        case kPhysicalOpGroupAndSort: {
+            auto group_sort_op = dynamic_cast<PhysicalGroupAndSortNode*>(in);
+            if (node::ExprListNullOrEmpty(group_sort_op->groups_) &&
+                (nullptr == group_sort_op->orders_ ||
+                 node::ExprListNullOrEmpty(
+                     group_sort_op->orders_->order_by_))) {
+                LOG(WARNING) << "LeftJoin group and sort optimized skip: both "
+                                "order and groups are empty ";
+            }
+            if (kPhysicalOpJoin == in->GetProducers()[0]->type_) {
+                if (kPhysicalOpJoin == in->GetProducers()[0]->type_) {
+                    PhysicalJoinNode* join_op =
+                        dynamic_cast<PhysicalJoinNode*>(in->GetProducers()[0]);
+
+                    if (node::kJoinTypeLeft != join_op->join_type_) {
+                        // skip optimized for other join type
+                        return false;
+                    }
+
+                    if (!CheckExprListFromSchema(
+                            group_sort_op->groups_,
+                            join_op->GetProducers()[0]->output_schema)) {
+                        return false;
+                    }
+
+                    if (!CheckExprListFromSchema(
+                            group_sort_op->orders_->order_by_,
+                            join_op->GetProducers()[0]->output_schema)) {
+                        return false;
+                    }
+
+                    // 符合优化条件
+                    PhysicalGroupAndSortNode* new_group_sort_op =
+                        new PhysicalGroupAndSortNode(join_op->GetProducers()[0],
+                                                     group_sort_op->groups_,
+                                                     group_sort_op->orders_);
+                    node_manager_->RegisterNode(new_group_sort_op);
+                    PhysicalJoinNode* new_join_op = new PhysicalJoinNode(
+                        new_group_sort_op, join_op->GetProducers()[1],
+                        join_op->join_type_, join_op->condition_);
+                    node_manager_->RegisterNode(new_join_op);
+                    *output = new_join_op;
+                    return true;
+                }
+            }
+
+            break;
+        }
         default: {
             return false;
         }
     }
     return false;
-}
+}  // namespace vm
 bool LeftJoinOptimized::ColumnExist(const Schema& schema,
                                     const std::string& column_name) {
     for (int32_t i = 0; i < schema.size(); i++) {
@@ -1149,6 +1151,28 @@ bool LeftJoinOptimized::ColumnExist(const Schema& schema,
         }
     }
     return false;
+}
+bool LeftJoinOptimized::CheckExprListFromSchema(
+    const node::ExprListNode* expr_list, const Schema& schema) {
+    if (node::ExprListNullOrEmpty(expr_list)) {
+        return true;
+    }
+    for (auto expr : expr_list->children_) {
+        switch (expr->expr_type_) {
+            case node::kExprColumnRef: {
+                auto column = dynamic_cast<node::ColumnRefNode*>(expr);
+                if (!ColumnExist(schema, column->GetColumnName())) {
+                    return false;
+                }
+                break;
+            }
+            default: {
+                // can't optimize when group by other expression
+                return false;
+            }
+        }
+    }
+    return true;
 }
 }  // namespace vm
 }  // namespace fesql
