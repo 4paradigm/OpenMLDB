@@ -112,9 +112,9 @@ class CanonicalizeExprTransformPass : public ExprTransformPass {
     virtual bool Transform(node::ExprNode* in, node::ExprNode** output);
 };
 
-class GroupByOptimized : public TransformUpPysicalPass {
+class AggerationOptimized : public TransformUpPysicalPass {
  public:
-    GroupByOptimized(node::NodeManager* node_manager, const std::string& db,
+    AggerationOptimized(node::NodeManager* node_manager, const std::string& db,
                      const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
 
@@ -124,22 +124,22 @@ class GroupByOptimized : public TransformUpPysicalPass {
     bool TransformGroupExpr(const node::ExprListNode* group,
                             const IndexHint& index_hint, std::string* index,
                             const node::ExprListNode** output);
+    bool TransformOrderExpr(const node::OrderByNode* order,
+                            const Schema& schema, const IndexSt& index_st,
+                            const node::OrderByNode** output);
     bool MatchBestIndex(const std::vector<std::string>& columns,
                         const IndexHint& catalog, std::vector<bool>* bitmap,
                         std::string* index_name);  // NOLINT
 };
 
-class SortByOptimized : public TransformUpPysicalPass {
+class WindowOptimized : public TransformUpPysicalPass {
  public:
-    SortByOptimized(node::NodeManager* node_manager, const std::string& db,
+    WindowOptimized(node::NodeManager* node_manager, const std::string& db,
                     const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool TransformOrderExpr(const node::OrderByNode* order,
-                            const PhysicalScanIndexNode* scan_index_op,
-                            const node::OrderByNode** output);
 };
 
 class LeftJoinOptimized : public TransformUpPysicalPass {
@@ -181,11 +181,11 @@ class Transform {
     virtual ~Transform();
     bool AddDefaultPasses();
     bool TransformBatchPhysicalPlan(::fesql::node::PlanNode* node,
-                               ::fesql::vm::PhysicalOpNode** output,
-                               ::fesql::base::Status& status);  // NOLINT
-    bool TransformRequestPhysicalPlan(::fesql::node::PlanNode* node,
                                     ::fesql::vm::PhysicalOpNode** output,
                                     ::fesql::base::Status& status);  // NOLINT
+    bool TransformRequestPhysicalPlan(::fesql::node::PlanNode* node,
+                                      ::fesql::vm::PhysicalOpNode** output,
+                                      ::fesql::base::Status& status);  // NOLINT
 
     bool AddPass(PhysicalPlanPassType type);
 
@@ -202,11 +202,11 @@ class Transform {
                           base::Status& status);  // NOLINT
 
     bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
-                            PhysicalOpNode** output,
-                            base::Status& status);  // NOLINT
-    bool TransformWindowOp(const node::ProjectListNode* project_list,
-                                PhysicalOpNode* depend, PhysicalOpNode** output,
+                                PhysicalOpNode** output,
                                 base::Status& status);  // NOLINT
+    bool TransformWindowOp(const node::ProjectListNode* project_list,
+                           PhysicalOpNode* depend, PhysicalOpNode** output,
+                           base::Status& status);  // NOLINT
 
     bool TransformJoinOp(const node::JoinPlanNode* node,
                          PhysicalOpNode** output,
@@ -251,24 +251,15 @@ class Transform {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
-    bool CreatePhysicalAggrerationNode(PhysicalOpNode* node,
-                                       const node::PlanNodeList& projects,
-                                       PhysicalOpNode** output,
-                                       base::Status& status);  // NOLINT
-    bool CreatePhysicalRowNode(PhysicalOpNode* node,
-                               const node::PlanNodeList& projects,
-                               PhysicalOpNode** output,
-                               base::Status& status);  // NOLINT
-    bool ValidatePriimaryPath( node::PlanNode* node,
-                              node::PlanNode** output,
+    bool CreatePhysicalProjectNode(const ProjectType project_type,
+                                   PhysicalOpNode* node,
+                                   node::ProjectListNode* project_list,
+                                   PhysicalOpNode** output,
+                                   base::Status& status);  // NOLINT
+    bool ValidatePriimaryPath(node::PlanNode* node, node::PlanNode** output,
                               base::Status& status);
-    bool ValidateTableNode(const node::PlanNode* node, base::Status& status);
     bool TransformProjectOp(node::ProjectListNode* node, PhysicalOpNode* depend,
                             PhysicalOpNode** output, base::Status& status);
-    bool CreatePhysicalAggrerationNodeionNode(
-        PhysicalOpNode* node, const node::PlanNodeList& projects,
-        const int64_t start, const int64_t end,
-        PhysicalOpNode** output, base::Status& status);
 };
 
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,

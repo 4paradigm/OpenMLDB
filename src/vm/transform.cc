@@ -222,7 +222,8 @@ bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
                 join, *iter, ::fesql::node::kJoinTypeConcat, nullptr);
             node_manager_->RegisterNode(join);
         }
-        node::PlanNodeList project_list;
+
+        auto project_list = node_manager_->MakeProjectListPlanNode(nullptr);
         uint32_t pos = 0;
         for (auto iter = node->pos_mapping_.cbegin();
              iter != node->pos_mapping_.cend(); iter++) {
@@ -242,17 +243,19 @@ bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                 column.name(), all_expr->GetRelationName()));
                     }
                 }
-                project_list.push_back(
+                project_list->AddProject(
                     node_manager_->MakeProjectNode(pos, "*", all_expr));
             } else {
-                project_list.push_back(node_manager_->MakeProjectNode(
+                project_list->AddProject(node_manager_->MakeProjectNode(
                     pos, project_node->GetName(),
                     node_manager_->MakeColumnRefNode(project_node->GetName(),
                                                      "")));
             }
             pos++;
         }
-        return CreatePhysicalRowNode(join, project_list, output, status);
+
+        return CreatePhysicalProjectNode(kTableProject, join, project_list,
+                                         output, status);
     }
 }
 bool Transform::TransformWindowOp(const node::ProjectListNode* project_list,
@@ -267,16 +270,6 @@ bool Transform::TransformWindowOp(const node::ProjectListNode* project_list,
     }
 
     PhysicalOpNode* depend = const_cast<PhysicalOpNode*>(node);
-    if (!project_list->w_ptr_->GetKeys().empty()) {
-        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-        node::ExprListNode* expr = node_manager_->MakeExprList();
-        for (auto id : project_list->w_ptr_->GetKeys()) {
-            expr->AddChild(node_manager_->MakeColumnRefNode(id, ""));
-        }
-        PhysicalGroupNode* group_op = new PhysicalGroupNode(depend, expr);
-        node_manager_->RegisterNode(group_op);
-        depend = group_op;
-    }
 
     if (!project_list->w_ptr_->GetOrders().empty()) {
         // TODO(chenjing): remove 临时适配, 有mem泄漏问题
@@ -290,6 +283,18 @@ bool Transform::TransformWindowOp(const node::ProjectListNode* project_list,
         node_manager_->RegisterNode(sort_op);
         depend = sort_op;
     }
+
+    if (!project_list->w_ptr_->GetKeys().empty()) {
+        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
+        node::ExprListNode* expr = node_manager_->MakeExprList();
+        for (auto id : project_list->w_ptr_->GetKeys()) {
+            expr->AddChild(node_manager_->MakeColumnRefNode(id, ""));
+        }
+        PhysicalGroupNode* group_op = new PhysicalGroupNode(depend, expr);
+        node_manager_->RegisterNode(group_op);
+        depend = group_op;
+    }
+
     *output = depend;
     return true;
 }
@@ -465,7 +470,7 @@ bool Transform::TransformBatchPhysicalPlan(::fesql::node::PlanNode* node,
     for (auto type : passes) {
         switch (type) {
             case kPassGroupByOptimized: {
-                GroupByOptimized pass(node_manager_, db_, catalog_);
+                AggerationOptimized pass(node_manager_, db_, catalog_);
                 PhysicalOpNode* new_op;
                 if (pass.Apply(physical_plan, &new_op)) {
                     physical_plan = new_op;
@@ -473,7 +478,7 @@ bool Transform::TransformBatchPhysicalPlan(::fesql::node::PlanNode* node,
                 break;
             }
             case kPassSortByOptimized: {
-                SortByOptimized pass(node_manager_, db_, catalog_);
+                WindowOptimized pass(node_manager_, db_, catalog_);
                 PhysicalOpNode* new_op;
                 if (pass.Apply(physical_plan, &new_op)) {
                     physical_plan = new_op;
@@ -526,86 +531,128 @@ bool Transform::AddDefaultPasses() {
     return false;
 }
 
-bool Transform::CreatePhysicalAggrerationNodeionNode(
-    PhysicalOpNode* node, const node::PlanNodeList& projects,
-    const int64_t start, const int64_t end, PhysicalOpNode** output,
-    base::Status& status) {
+bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
+                                          PhysicalOpNode* node,
+                                          node::ProjectListNode* project_list,
+                                          PhysicalOpNode** output,
+                                          base::Status& status) {
+    const node::PlanNodeList& projects = project_list->GetProjects();
     Schema output_schema;
     std::string fn_name;
-    if (!GenProjects(node->output_schema, projects, false, fn_name,
-                     output_schema, status)) {
-        return false;
-    }
-    PhysicalOpNode* op = new PhysicalWindowAggrerationNode(
-        node, fn_name, output_schema, start, end);
-    node_manager_->RegisterNode(op);
-    *output = op;
-    return true;
-}
-
-bool Transform::CreatePhysicalAggrerationNode(
-    PhysicalOpNode* node, const node::PlanNodeList& projects,
-    PhysicalOpNode** output, base::Status& status) {  // NOLINT
-    Schema output_schema;
-    std::string fn_name;
-    if (!GenProjects(node->output_schema, projects, false, fn_name,
-                     output_schema, status)) {
-        return false;
-    }
-    PhysicalOpNode* op =
-        new PhysicalAggrerationNode(node, fn_name, output_schema);
-    node_manager_->RegisterNode(op);
-    *output = op;
-    return true;
-}
-
-bool Transform::CreatePhysicalRowNode(PhysicalOpNode* node,
-                                      const node::PlanNodeList& projects,
-                                      PhysicalOpNode** output,
-                                      base::Status& status) {
-    node::PlanNodeList new_projects;
-    bool has_all_project = false;
-    for (auto iter = projects.cbegin(); iter != projects.cend(); iter++) {
-        auto project_node = dynamic_cast<node::ProjectNode*>(*iter);
-        auto expr = project_node->GetExpression();
-        if (nullptr == expr) {
-            status.msg = "invalid project: expression is null";
-            status.code = common::kPlanError;
-            return false;
-        }
-        if (node::kExprAll == expr->expr_type_) {
-            auto all_expr = dynamic_cast<node::AllNode*>(expr);
-            if (all_expr->children_.empty()) {
-                // expand all expression if needed
-                for (auto column : node->output_schema) {
-                    all_expr->children_.push_back(
-                        node_manager_->MakeColumnRefNode(
-                            column.name(), all_expr->GetRelationName()));
+    switch (project_type) {
+        case kRowProject:
+        case kTableProject: {
+            node::PlanNodeList new_projects;
+            bool has_all_project = false;
+            for (auto iter = projects.cbegin(); iter != projects.cend();
+                 iter++) {
+                auto project_node = dynamic_cast<node::ProjectNode*>(*iter);
+                auto expr = project_node->GetExpression();
+                if (nullptr == expr) {
+                    status.msg = "invalid project: expression is null";
+                    status.code = common::kPlanError;
+                    return false;
+                }
+                if (node::kExprAll == expr->expr_type_) {
+                    auto all_expr = dynamic_cast<node::AllNode*>(expr);
+                    if (all_expr->children_.empty()) {
+                        // expand all expression if needed
+                        for (auto column : node->output_schema) {
+                            all_expr->children_.push_back(
+                                node_manager_->MakeColumnRefNode(
+                                    column.name(),
+                                    all_expr->GetRelationName()));
+                        }
+                    }
+                    has_all_project = true;
                 }
             }
-            has_all_project = true;
+
+            if (has_all_project && 1 == projects.size()) {
+                // skip project
+                DLOG(INFO) << "skip project node: project has only kAllExpr "
+                              "expression";
+                *output = node;
+                return true;
+            }
+
+            if (!GenProjects(node->output_schema, projects, true, fn_name,
+                             output_schema, status)) {
+                return false;
+            }
+            break;
+        }
+        case kAggregation:
+        case kGroupAggregation: {
+            if (!GenProjects(node->output_schema, projects, false, fn_name,
+                             output_schema, status)) {
+                return false;
+            }
+            break;
+        }
+        case kWindowAggregation: {
+            // TODO(chenjing): gen window aggregation
+            if (!GenProjects(node->output_schema, projects, false, fn_name,
+                             output_schema, status)) {
+                return false;
+            }
+            break;
         }
     }
 
-    if (has_all_project && 1 == projects.size()) {
-        // skip project
-        DLOG(INFO) << "skip project node: project has only kAllExpr expression";
-        *output = node;
-        return true;
-    }
+    PhysicalOpNode* op = nullptr;
+    switch (project_type) {
+        case kRowProject: {
+            op = new PhysicalRowProjectNode(node, fn_name, output_schema);
+            break;
+        }
+        case kTableProject: {
+            op = new PhysicalTableProjectNode(node, fn_name, output_schema);
+            break;
+        }
+        case kAggregation: {
+            op = new PhysicalAggrerationNode(node, fn_name, output_schema);
+            break;
+        }
+        case kGroupAggregation: {
+            auto group_op = dynamic_cast<PhysicalGroupNode*>(node);
+            op = new PhysicalGroupAggrerationNode(node, fn_name, output_schema,
+                                                  group_op->groups_);
+            break;
+        }
+        case kWindowAggregation: {
+            node::ExprListNode* groups = nullptr;
+            node::OrderByNode* orders = nullptr;
+            if (!project_list->w_ptr_->GetOrders().empty()) {
+                // TODO(chenjing): remove 临时适配, 有mem泄漏问题
+                auto expr = new node::ExprListNode();
+                for (auto id : project_list->w_ptr_->GetOrders()) {
+                    expr->AddChild(new node::ColumnRefNode(id, ""));
+                }
+                orders = dynamic_cast<node::OrderByNode*>(
+                    node_manager_->MakeOrderByNode(expr, true));
+            }
 
-    Schema output_schema;
-    std::string fn_name;
-    if (!GenProjects(node->output_schema, projects, true, fn_name,
-                     output_schema, status)) {
-        return false;
+            if (!project_list->w_ptr_->GetKeys().empty()) {
+                // TODO(chenjing): remove 临时适配, 有mem泄漏问题
+                groups = node_manager_->MakeExprList();
+                for (auto id : project_list->w_ptr_->GetKeys()) {
+                    groups->AddChild(node_manager_->MakeColumnRefNode(id, ""));
+                }
+            }
+
+            op = new PhysicalWindowAggrerationNode(
+                node, fn_name, output_schema, groups, orders,
+                project_list->w_ptr_->GetStartOffset(),
+                project_list->w_ptr_->GetEndOffset());
+            break;
+        }
     }
-    PhysicalOpNode* op =
-        new PhysicalRowProjectNode(node, fn_name, output_schema);
     node_manager_->RegisterNode(op);
     *output = op;
     return true;
 }
+
 bool Transform::TransformRequestPhysicalPlan(
     ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
     ::fesql::base::Status& status) {
@@ -690,35 +737,35 @@ bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
                                    PhysicalOpNode** output,
                                    base::Status& status) {
     if (project_list->is_window_agg_ && nullptr != project_list->w_ptr_) {
-        PhysicalOpNode* window;
-        if (!TransformWindowOp(project_list, depend, &window, status)) {
-            return false;
-        }
-        return CreatePhysicalAggrerationNodeionNode(
-            window, project_list->GetProjects(),
-            project_list->w_ptr_->GetStartOffset(),
-            project_list->w_ptr_->GetEndOffset(), output, status);
+        return CreatePhysicalProjectNode(kWindowAggregation, depend,
+                                         project_list, output, status);
     } else if (kPhysicalOpGroupBy == depend->type_) {
         // TODO(chenjing): 基于聚合函数分组
-        return CreatePhysicalAggrerationNode(
-            depend, project_list->GetProjects(), output, status);
+        return CreatePhysicalProjectNode(kGroupAggregation, depend,
+                                         project_list, output, status);
     } else {
-        return CreatePhysicalRowNode(depend, project_list->GetProjects(),
-                                     output, status);
+        return CreatePhysicalProjectNode(kTableProject, depend, project_list,
+                                         output, status);
     }
 }
 
-bool GroupByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
-    switch (in->type_) {
-        case kPhysicalOpGroupBy: {
-            PhysicalGroupNode* group_op = dynamic_cast<PhysicalGroupNode*>(in);
+bool AggerationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
+    if (in->type_ != kPhysicalOpProject) {
+        return false;
+    }
+    PhysicalProjectNode* project_op = dynamic_cast<PhysicalProjectNode*>(in);
+
+    switch (project_op->project_type_) {
+        case kGroupAggregation: {
+            PhysicalGroupAggrerationNode* group_agg =
+                dynamic_cast<PhysicalGroupAggrerationNode*>(in);
             if (kPhysicalOpScan == in->GetProducers()[0]->type_) {
                 auto scan_op =
                     dynamic_cast<PhysicalScanNode*>(in->GetProducers()[0]);
                 if (kScanTypeTableScan == scan_op->scan_type_) {
                     std::string index_name;
                     const node::ExprListNode* new_groups;
-                    if (!TransformGroupExpr(group_op->groups_,
+                    if (!TransformGroupExpr(group_agg->groups_,
                                             scan_op->table_handler_->GetIndex(),
                                             &index_name, &new_groups)) {
                         return false;
@@ -728,17 +775,48 @@ bool GroupByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                         new PhysicalScanIndexNode(scan_op->table_handler_,
                                                   index_name);
                     node_manager_->RegisterNode(scan_index_op);
-                    // remove node if groups is empty
-                    if (new_groups->children_.empty()) {
-                        *output = scan_index_op;
-                        return true;
-                    } else {
-                        PhysicalGroupNode* new_group_op =
-                            new PhysicalGroupNode(scan_index_op, new_groups);
-                        node_manager_->RegisterNode(new_group_op);
-                        *output = new_group_op;
-                        return true;
+                    PhysicalGroupAggrerationNode* new_group_agg =
+                        new PhysicalGroupAggrerationNode(
+                            scan_index_op, group_agg->fn_name_,
+                            group_agg->output_schema, new_groups);
+                    *output = new_group_agg;
+                    return true;
+                }
+            }
+            break;
+        }
+        case kWindowAggregation: {
+            PhysicalWindowAggrerationNode* window_agg =
+                dynamic_cast<PhysicalWindowAggrerationNode*>(in);
+            if (kPhysicalOpScan == in->GetProducers()[0]->type_) {
+                auto scan_op =
+                    dynamic_cast<PhysicalScanNode*>(in->GetProducers()[0]);
+                if (kScanTypeTableScan == scan_op->scan_type_) {
+                    std::string index_name;
+                    const node::ExprListNode* new_groups;
+                    const node::OrderByNode* new_orders;
+                    auto& index_hint = scan_op->table_handler_->GetIndex();
+                    if (!TransformGroupExpr(window_agg->groups_, index_hint,
+                                            &index_name, &new_groups)) {
+                        return false;
                     }
+
+                    auto index_st = index_hint.at(index_name);
+                    TransformOrderExpr(window_agg->orders_,
+                                       scan_op->table_handler_->GetSchema(),
+                                       index_st, &new_orders);
+
+                    PhysicalScanIndexNode* scan_index_op =
+                        new PhysicalScanIndexNode(scan_op->table_handler_,
+                                                  index_name);
+                    node_manager_->RegisterNode(scan_index_op);
+                    PhysicalWindowAggrerationNode* new_window_agg =
+                        new PhysicalWindowAggrerationNode(
+                            scan_index_op, window_agg->fn_name_,
+                            window_agg->output_schema, new_groups, new_orders,
+                            window_agg->start_offset_, window_agg->end_offset_);
+                    *output = new_window_agg;
+                    return true;
                 }
             }
             break;
@@ -749,7 +827,7 @@ bool GroupByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     }
     return false;
 }
-bool GroupByOptimized::TransformGroupExpr(const node::ExprListNode* groups,
+bool AggerationOptimized::TransformGroupExpr(const node::ExprListNode* groups,
                                           const IndexHint& index_hint,
                                           std::string* index_name,
                                           const node::ExprListNode** output) {
@@ -807,7 +885,8 @@ bool GroupByOptimized::TransformGroupExpr(const node::ExprListNode* groups,
         return false;
     }
 }
-bool GroupByOptimized::MatchBestIndex(const std::vector<std::string>& columns,
+
+bool AggerationOptimized::MatchBestIndex(const std::vector<std::string>& columns,
                                       const IndexHint& index_hint,
                                       std::vector<bool>* bitmap_ptr,
                                       std::string* index_name) {
@@ -889,60 +968,21 @@ bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
     }
     return Transform(in, out);
 }
-bool SortByOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
-    switch (in->type_) {
-        case kPhysicalOpSortBy: {
-            PhysicalSortNode* sort_op = dynamic_cast<PhysicalSortNode*>(in);
-            if (kPhysicalOpScan == in->GetProducers()[0]->type_) {
-                auto scan_op =
-                    dynamic_cast<PhysicalScanNode*>(in->GetProducers()[0]);
-                if (kScanTypeIndexScan == scan_op->scan_type_) {
-                    std::string index_name;
-                    auto scan_index_op =
-                        dynamic_cast<PhysicalScanIndexNode*>(scan_op);
 
-                    const node::OrderByNode* new_order;
-                    if (!TransformOrderExpr(sort_op->order_, scan_index_op,
-                                            &new_order)) {
-                        return false;
-                    }
-
-                    // remove node if groups is empty
-                    if (nullptr == new_order->order_by_ ||
-                        new_order->order_by_->children_.empty()) {
-                        *output = scan_index_op;
-                        return true;
-                    } else {
-                        PhysicalSortNode* new_sort_op =
-                            new PhysicalSortNode(scan_index_op, new_order);
-                        node_manager_->RegisterNode(new_sort_op);
-                        *output = new_sort_op;
-                        return true;
-                    }
-                }
-            }
-            break;
-        }
-        default: {
-            return false;
-        }
-    }
-    return false;
-}
-bool SortByOptimized::TransformOrderExpr(
-    const node::OrderByNode* order, const PhysicalScanIndexNode* scan_index_op,
-    const node::OrderByNode** output) {
-    if (nullptr == order || nullptr == scan_index_op || nullptr == output) {
+bool AggerationOptimized::TransformOrderExpr(const node::OrderByNode* order,
+                                          const Schema& schema,
+                                          const IndexSt& index_st,
+                                          const node::OrderByNode** output) {
+    if (nullptr == order || nullptr == output) {
         LOG(WARNING) << "fail to transform order expr : order expr or scan op "
                         "or output is null";
         return false;
     }
-    auto& index_st = scan_index_op->table_handler_->GetIndex().at(
-        scan_index_op->index_name_);
-    auto& ts_column =
-        scan_index_op->table_handler_->GetSchema().Get(index_st.ts_pos);
 
+    auto& ts_column = schema.Get(index_st.ts_pos);
     std::vector<std::string> columns;
+    *output = order;
+
     bool succ = false;
     for (auto expr : order->order_by_->children_) {
         switch (expr->expr_type_) {
