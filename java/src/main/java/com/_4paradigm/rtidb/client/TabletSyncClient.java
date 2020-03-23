@@ -62,5 +62,5 @@ public interface TabletSyncClient {
     boolean put(String name, String key,
                 long time, byte[] bytes) throws TimeoutException,TabletException;
     boolean put(String name, long time, Object[] row) throws TimeoutException,TabletException;
-    
+
 }

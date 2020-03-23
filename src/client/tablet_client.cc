@@ -217,6 +217,30 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::Put(uint32_t tid,
+        uint32_t pid,
+        const std::string& value, 
+        std::string& msg) {
+    ::rtidb::api::PutRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_allocated_value(const_cast<std::string*>(&value));
+    ::rtidb::api::PutResponse response;
+    uint64_t consumed = ::baidu::common::timer::get_micros();
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (FLAGS_enable_show_tp) {
+        consumed = ::baidu::common::timer::get_micros() - consumed;
+        percentile_.push_back(consumed);
+    }
+    request.release_value();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    msg.assign(response.msg());
+    return false;
+}
+
+bool TabletClient::Put(uint32_t tid,
              uint32_t pid,
              uint64_t time,
              const std::string& value,
@@ -1136,6 +1160,28 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, ::rtidb::common::Sto
     count = response->count();
     return kv_it;
 }
+bool TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& pk, uint32_t limit, uint32_t* count, std::string* msg, std::string* data, bool* is_finish) {
+    rtidb::api::TraverseRequest request;
+    rtidb::api::TraverseResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_limit(limit);
+
+    response.set_allocated_pairs(data);
+    response.set_allocated_msg(msg);
+    if (!pk.empty()) {
+        request.set_pk(pk);
+    }
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::Traverse, &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    response.release_pairs();
+    response.release_msg();
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    *count = response.count();
+    *is_finish = response.is_finish();
+    return true;
+}
 
 bool TabletClient::SetMode(bool mode) {
     ::rtidb::api::SetModeRequest request;
@@ -1146,6 +1192,28 @@ bool TabletClient::SetMode(bool mode) {
     if (!ok || response.code() != 0) {
         return false;
     }
+    return true;
+}
+
+bool TabletClient::BatchQuery(uint32_t tid, uint32_t pid, const std::string& idx_name, const std::vector<std::string>& keys, std::string* msg, std::string* data, bool* is_finish, uint32_t* count) {
+    rtidb::api::BatchQueryRequest request;
+    rtidb::api::BatchQueryResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    response.set_allocated_msg(msg);
+    response.set_allocated_pairs(data);
+    for (const auto& key : keys) {
+        request.add_query_key(key);
+    }
+    bool ok = client_.SendRequest(&rtidb::api::TabletServer_Stub::BatchQuery,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    response.release_msg();
+    response.release_pairs();
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    *is_finish = response.is_finish();
+    *count = response.count();
     return true;
 }
 

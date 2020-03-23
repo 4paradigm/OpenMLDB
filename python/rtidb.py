@@ -62,9 +62,12 @@ class RtidbResult:
   def __iter__(self):
     return self
   def count(self):
-    return self.__data.ValueSize()
+    if hasattr(self.__data, "ValueSize"):
+      return self.__data.ValueSize()
+    else:
+      raise Exception(-1, "result not support count")
   def __next__(self):
-    if self.__data.next():
+    if self.__data.Next():
       result = {}
       for idx in range(len(self.__names)):
         type = self.__data.GetColumnType(idx)
@@ -141,7 +144,27 @@ class RTIDBClient:
     return RtidbResult(resp)
 
   def batch_query(self, table_name: str, read_options: ReadOptions):
-    return RtidbResult(interclient.QueryResult())
+    if (len(read_options) < 1):
+      raise Exception("muse set read_options")
+    ros = interclient.VectorReadOption()
+    for ro in read_options:
+      mid_map = {}
+      for k in ro.index:
+        mid_map.update({k: str(ro.index[k])})
+      interro = interclient.ReadOption(mid_map)
+      for filter in ro.read_filter:
+        mid_rf = interclient.ReadFilter()
+        mid_rf.column = filter.name
+        mid_rf.type = filter.type
+        mid_rf.value = str(filter.value)
+        interro.read_filter.append(mid_rf)
+      for col in ro.col_set:
+        interro.col_set.append(col)
+      ros.append(interro)
+    resp = self.__client.BatchQuery(table_name, ros);
+    if (resp.code_ != 0):
+      raise Exception(resp.code_, resp.msg_);
+    return RtidbResult(resp)
 
   def delete(self, table_name: str, condition_columns: map):
     if (len(condition_columns) != 1):
@@ -154,5 +177,19 @@ class RTIDBClient:
       raise Exception(resp.code, resp.msg)
     return true
 
-  def traverse(self, table_name: str):
-    return RtidbResult(interclient.QueryResult())
+  def traverse(self, table_name: str, read_option: ReadOption = None):
+    mid_map = {}
+    if read_option != None:
+      for k in read_option.index:
+        mid_map.update({k: str(read_option.index[k])})
+      ro = interclient.ReadOption(mid_map)
+      for filter in read_option.read_filter:
+        mid_rf = interclient.ReadFilter()
+        mid_rf.column = filter.name
+        mid_rf.type = filter.type
+        mid_rf.value = str(filter.value)
+        ro.read_filter.append(mid_rf)
+      for col in read_option.col_set:
+        ro.col_set.append(col)
+    resp = self.__client.Traverse(table_name, ro)
+    return RtidbResult(resp)

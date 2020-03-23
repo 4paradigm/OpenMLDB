@@ -187,7 +187,81 @@ bool RelationalTable::Init() {
     return true;
 }
 
-bool RelationalTable::Put(const std::string &pk, const char *data, uint32_t size) {
+bool RelationalTable::Put(const std::string& value) {
+    int64_t auto_gen_pk = id_generator_.Next();
+
+    bool has_auto_gen = false;
+    std::string pk_col_name;
+    for (const ::rtidb::common::ColumnKey& column_key : table_meta_.column_key()) {
+        if (column_key.index_type() == ::rtidb::type::kPrimaryKey ||
+                column_key.index_type() == ::rtidb::type::kAutoGen) {
+            pk_col_name = column_key.index_name();
+        }
+        if (column_key.index_type() == ::rtidb::type::kAutoGen) {
+            has_auto_gen = true;
+        }
+        break;
+        //TODO: other index type
+    }
+    const Schema& schema = table_meta_.column_desc(); 
+    int index = 0;
+    ::rtidb::type::DataType data_type = ::rtidb::type::kBool;
+    std::string pk = "";
+    for (int i = 0; i < schema.size(); i++) {
+        if (schema.Get(i).name() == pk_col_name) {
+            index = i;
+            data_type = schema.Get(i).data_type();
+            break;
+        }
+    }
+    if (has_auto_gen) {
+        if (data_type != ::rtidb::type::kBigInt) {
+            PDLOG(WARNING, "auto_gen_pk date_type must bu bigint");
+            return false;
+        }
+        ::rtidb::base::RowBuilder builder(schema);
+        builder.SetBuffer(reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), value.size());
+        builder.AppendInt64(auto_gen_pk);
+        pk = std::to_string(auto_gen_pk);
+    } else {
+        ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), value.length());
+        switch(data_type) {
+            case ::rtidb::type::kSmallInt: {  
+                int16_t si_val = 0;
+                view.GetInt16(index, &si_val);
+                pk = std::to_string(si_val);
+                break;
+            }
+            case ::rtidb::type::kInt: { 
+                int32_t i_val = 0;
+                view.GetInt32(index, &i_val);
+                pk = std::to_string(i_val);
+                break;
+            }
+            case ::rtidb::type::kBigInt: { 
+                int64_t bi_val = 0;
+                view.GetInt64(index, &bi_val);
+                pk = std::to_string(bi_val);
+                break;
+            }
+            case ::rtidb::type::kVarchar: {  
+                char* ch = NULL;
+                uint32_t length = 0;
+                view.GetString(index, &ch, &length);
+                pk.assign(ch, length);
+                break;
+            }
+            default: 
+                PDLOG(WARNING, "unsupported data type %s", 
+                        rtidb::type::DataType_Name(data_type).c_str());
+                return false;
+            //TODO: other data type
+        }
+    }
+    return PutDB(pk, value.c_str(), value.size());
+}
+
+bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t size) {
     rocksdb::Status s;
     rocksdb::Slice spk = rocksdb::Slice(pk);
     s = db_->Put(write_opts_, cf_hs_[1], spk, rocksdb::Slice(data, size));
@@ -479,12 +553,61 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
             return false;
         }
     }
-    ok = Put(pk, row.c_str(), row.length());
+    ok = PutDB(pk, row.c_str(), row.length());
     if (!ok) {
         PDLOG(WARNING, "put failed, update table tid %u pid %u failed", id_, pid_);
         return false;
     }
     return true;
+}
+
+RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx) {
+    if (idx >= idx_cnt_) {
+        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+        return NULL;
+    }
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+    return new RelationalTableTraverseIterator(db_, it, snapshot);
+}
+
+RelationalTableTraverseIterator::RelationalTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
+        const rocksdb::Snapshot* snapshot):db_(db), it_(it), snapshot_(snapshot), traverse_cnt_(0) {
+}
+
+RelationalTableTraverseIterator::~RelationalTableTraverseIterator() {
+    delete it_;
+    db_->ReleaseSnapshot(snapshot_);
+}
+
+bool RelationalTableTraverseIterator::Valid() {
+    return  it_->Valid();
+}
+
+void RelationalTableTraverseIterator::Next() {
+    traverse_cnt_++;
+    it_->Next();
+}
+
+void RelationalTableTraverseIterator::SeekToFirst() {
+    return it_->SeekToFirst();
+}
+
+void RelationalTableTraverseIterator::Seek(const std::string &pk) {
+    rocksdb::Slice spk(pk);
+    it_->Seek(spk);
+}
+
+uint64_t RelationalTableTraverseIterator::GetCount() {
+    return traverse_cnt_;
+}
+
+rtidb::base::Slice RelationalTableTraverseIterator::GetValue() {
+    rocksdb::Slice spk = it_->value();
+    return rtidb::base::Slice(spk.data(), spk.size());
 }
 
 }

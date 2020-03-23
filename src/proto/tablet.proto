@@ -643,6 +643,19 @@ message UpdateRequest {
     optional Columns value_columns = 4;
 }
 
+message BatchQueryRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    repeated string query_key = 3;
+}
+
+message BatchQueryResponse {
+    optional bytes pairs = 1;
+    optional string msg = 2;
+    optional int32 code = 3;
+    optional bool is_finish = 4;
+    optional uint32 count = 5;
+}
 
 service TabletServer {
 
@@ -654,6 +667,7 @@ service TabletServer {
     rpc Count(CountRequest) returns (CountResponse);
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
     rpc Update(UpdateRequest) returns (GeneralResponse);
+    rpc BatchQuery(BatchQueryRequest) returns (BatchQueryResponse);
 
     // table api for master
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);

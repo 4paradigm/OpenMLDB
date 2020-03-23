@@ -25,6 +25,7 @@ const uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;
 const uint32_t HEADER_BYTE_SIZE = 3;
 
 const std::string NONETOKEN = "None#*@!";
+const std::string DEFAULT_LONG = "1";
 
 const std::map<std::string, rtidb::type::DataType> NameToDataType = {
     {"string", rtidb::type::DataType::kVarchar},
@@ -410,7 +411,7 @@ public:
                 return rm;
             }
             bool ok = false;
-            try {
+           try {
                 switch (col.data_type()) {
                     case rtidb::type::kVarchar:
                         ok = builder.AppendString(iter->second.c_str(), iter->second.length());

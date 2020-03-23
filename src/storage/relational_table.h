@@ -27,12 +27,31 @@
 #include "timer.h"
 #include "base/codec.h"
 #include <mutex>
+#include "base/id_generator.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
 namespace rtidb {
 namespace storage {
+class RelationalTableTraverseIterator {
+ public:
+    RelationalTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
+                                    const rocksdb::Snapshot* snapshot);
+    ~RelationalTableTraverseIterator();
+    bool Valid();
+    void Next();
+    void SeekToFirst();
+    void Seek(const std::string& pk);
+    uint64_t GetCount();
+    rtidb::base::Slice GetValue();
+
+ private:
+    rocksdb::DB* db_;
+    rocksdb::Iterator* it_;
+    const rocksdb::Snapshot* snapshot_;
+    uint64_t traverse_cnt_;
+};
 
 class RelationalTable {
 
@@ -61,7 +80,9 @@ public:
 
     static void initOptionTemplate();
 
-    bool Put(const std::string& pk,
+    bool Put(const std::string& value); 
+
+    bool PutDB(const std::string& pk,
              const char* data,
              uint32_t size);
 
@@ -71,6 +92,8 @@ public:
     bool Get(uint32_t idx, const std::string& pk, rtidb::base::Slice& slice);
 
     bool Delete(const std::string& pk, uint32_t idx);
+
+    rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx);
 
     bool Update(const ::rtidb::api::Columns& cd_columns, 
             const ::rtidb::api::Columns& col_columns);
@@ -147,6 +170,8 @@ private:
     rocksdb::Options options_;
     std::atomic<uint64_t> offset_;
     std::string db_root_path_;
+
+    ::rtidb::base::IdGenerator id_generator_;
 };
 
 }
