@@ -26,6 +26,7 @@
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
 #include "zk/zk_client.h"
+#include "base/hash.h"
 
 DECLARE_uint32(name_server_task_concurrency);
 DECLARE_uint32(name_server_task_concurrency_for_replica_cluster);

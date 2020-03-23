@@ -5909,7 +5909,7 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data,
     uint32_t idx = 0;
     if (op_data->op_info_.for_replica_cluster() == 1) {
         idx = FLAGS_name_server_task_max_concurrency +
-              (rand_.Next() % concurrency);
+              (::rtidb::base::hash64(op_data->op_info_.name()) % concurrency);
         PDLOG(INFO,
               "current task is for replica cluster, op_index [%lu] op_type[%s]",
               op_data->op_info_.op_id(),
