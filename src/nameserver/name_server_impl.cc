@@ -6124,6 +6124,10 @@ void NameServerImpl::SchedMakeSnapshot() {
             if (part_iter == table_iter->second.end()) {
                 continue;
             }
+            if (part_iter->second < 1) {
+                PDLOG(WARNING, "table %s pid %u snapshot offset is %lu, too small, skip makesnapshot", table.second->name().c_str(), part.pid() part_iter->second);
+            }
+            PDLOG(INFO, "table %s pid %u specify snapshot offset is %lu", table.second->name().c_str(), part.pid() part_iter->second);
             for (const auto& part_meta : part.partition_meta()) {
                 if (part_meta.is_alive()) {
                     auto client_iter =
