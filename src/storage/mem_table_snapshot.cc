@@ -6,7 +6,7 @@
 //
 //
 #include "storage/mem_table_snapshot.h"
-
+#include "base/schema_codec.h"
 #include "base/file_util.h"
 #include "base/strings.h"
 #include "base/slice.h"
@@ -16,6 +16,9 @@
 #include "proto/tablet.pb.h"
 #include "base/hash.h"
 #include "gflags/gflags.h"
+#include "base/kv_iterator.h"
+#include "base/flat_array.h"
+#include "base/display.h"
 #include "logging.h"
 #include "timer.h"
 #include "thread_pool.h"
@@ -531,15 +534,40 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
 }
 
 
-bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, std::vector<::rtidb::log::WriteHandle*>& whs, uint32_t partition_num, uint64_t& lasest_offset) {
+bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t& latest_offset) {
+    uint32_t partition_num = whs.size();
     ::rtidb::api::Manifest manifest;
     manifest.set_offset(0);
     int ret = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (ret == -1) {
         return false;
     }
+    latest_offset = manifest.offset();
     std::string path = snapshot_path_ + "/" + manifest.name();
-    uint64_t expect_cnt = manifest.count();
+    std::string schema = table->GetSchema();
+    std::vector<::rtidb::base::ColumnDesc> columns;
+    if (!schema.empty()) {
+        ::rtidb::base::SchemaCodec codec;
+        codec.Decode(schema, columns);
+    } else {
+        return true;
+    }
+    std::map<std::string, uint32_t> column_desc_map;
+    for (uint32_t i = 0; i < columns.size(); ++i) {
+        column_desc_map.insert(std::make_pair(columns[i].name, i));
+    }
+    std::vector<uint32_t> index_cols;
+    for (const auto& name : column_key.col_name()) {
+        if (column_desc_map.count(name)) {
+            index_cols.push_back(column_desc_map[name]);
+        } else {
+            PDLOG(WARNING, "fail to find column_desc %s", name.c_str());
+            return false;
+        }
+    }
+    if (index_cols.size() < 1) {
+        return true;
+    }
     std::atomic<uint64_t> succ_cnt, failed_cnt;
     succ_cnt = failed_cnt = 0;
     {
@@ -572,7 +600,34 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
             for (const auto& dim : entry.dimensions()) {
                 pid_set.insert(::rtidb::base::hash64(dim.key())%partition_num);
             }
-            //todo @pxc decode
+            std::string buff;
+            if (table->GetCompressType() == ::rtidb::api::kSnappy) {
+                std::string uncompressed;
+                ::snappy::Uncompress(entry.value().c_str(), entry.value().size(), &buff);
+            } else {
+                buff = entry.value();
+            }
+            std::vector<std::string> row;
+            ::rtidb::base::FillTableRow(columns, buff.c_str(), buff.size(), row);
+            std::string cur_key;
+            for (uint32_t i : index_cols) {
+                if (cur_key.empty()) {
+                    cur_key = row[i];
+                } else {
+                    cur_key += "|" + row[i];
+                }
+            }
+            uint32_t index_pid = ::rtidb::base::hash64(cur_key)%partition_num;
+            if (!pid_set.count(index_pid)) {
+                ::rtidb::api::Dimension* dim = entry.add_dimensions();
+                dim->set_key(cur_key);
+                dim->set_idx(idx);
+                ::rtidb::base::Status status = whs[index_pid]->Write(record);
+                if (!status.ok()) {
+                    PDLOG(WARNING, "fail to dump index entrylog in snapshot to pid[%u].", index_pid);
+                    return false;
+                }
+            }
         }
     }while(0);
     return true;

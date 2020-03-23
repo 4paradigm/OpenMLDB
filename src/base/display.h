@@ -8,6 +8,8 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <snappy.h>
 #include "proto/tablet.pb.h"
 #include "proto/client.pb.h"
 #include "proto/name_server.pb.h"

@@ -629,7 +629,8 @@ message DumpIndexDataRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional uint32 partition_num = 3;
-    optional rtidb.common.ColumnKey column_key = 4;
+    optional uint32 idx = 4;
+    optional rtidb.common.ColumnKey column_key = 5;
 }
 
 service TabletServer {

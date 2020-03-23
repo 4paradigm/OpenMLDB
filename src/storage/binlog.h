@@ -24,7 +24,7 @@ public:
     ~Binlog() = default;
     bool RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, uint64_t& latest_offset);
 
-    bool DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, std::vector<::rtidb::log::WriteHandle*>& whs, uint32_t partition_num, uint64_t& lasest_offset);
+    bool DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t offset);
 
 private:
     LogParts* log_part_;
