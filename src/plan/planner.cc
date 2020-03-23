@@ -129,7 +129,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
     // prepare window list
     std::map<node::WindowDefNode *, node::ProjectListNode *> project_list_map;
     // prepare window def
-    int w_id = 0;
+    int w_id = 1;
     std::map<std::string, node::WindowDefNode *> windows;
     if (nullptr != root->GetWindowList() && !root->GetWindowList()->IsEmpty()) {
         for (auto node : root->GetWindowList()->GetList()) {
@@ -170,6 +170,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             if (w_ptr == nullptr) {
                 project_list_map[w_ptr] =
                     node_manager_->MakeProjectListPlanNode(nullptr);
+
             } else {
                 node::WindowPlanNode *w_node_ptr =
                     node_manager_->MakeWindowPlanNode(w_id++);
@@ -186,33 +187,36 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                                    pos, project_name, project_expr)
                              : node_manager_->MakeAggProjectNode(
                                    pos, project_name, project_expr);
+
         project_list_map[w_ptr]->AddProject(project_node_ptr);
     }
     // add MergeNode if multi ProjectionLists exist
-    PlanNodeList project_list_vec(w_id+1);
+    PlanNodeList project_list_vec(w_id);
     for (auto &v : project_list_map) {
         node::ProjectListNode *project_list = v.second;
         int pos =
             nullptr == project_list->GetW() ? 0 : project_list->GetW()->GetId();
-        if (nullptr == project_list_vec.at(pos)) {
-            project_list_vec[pos] = project_list;
-        } else {
-            auto projects =
-                dynamic_cast<node::ProjectListNode *>(project_list_vec[pos]);
+        project_list_vec[pos] = project_list;
+    }
 
-            if (projects->is_window_agg_) {
-                for (auto p : project_list->GetProjects()) {
-                    projects->AddProject(dynamic_cast<node::ProjectNode *>(p));
-                }
-            } else {
-                for (auto p : projects->GetProjects()) {
-                    project_list->AddProject(dynamic_cast<node::ProjectNode *>(p));
-                }
-                project_list_vec[pos] = project_list;
-            }
+    // merge simple project with 1st window project
+    if (nullptr != project_list_vec[0] && project_list_vec.size() > 1) {
+        auto simple_project =
+            dynamic_cast<node::ProjectListNode *>(project_list_vec[0]);
+        auto first_window_project =
+            dynamic_cast<node::ProjectListNode *>(project_list_vec[1]);
+        node::ProjectListNode *merged_project =
+            node_manager_->MakeProjectListPlanNode(
+                first_window_project->GetW());
+
+        if (MergeProjectList(simple_project, first_window_project,
+                             merged_project)) {
+            project_list_vec[0] = nullptr;
+            project_list_vec[1] = merged_project;
         }
     }
-    PlanNodeList project_list_vec2;
+
+    PlanNodeList project_list_without_null;
     std::vector<std::pair<uint32_t, uint32_t>> pos_mapping(
         select_expr_list.size());
     int project_list_id = 0;
@@ -228,12 +232,12 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                 std::make_pair(project_list_id, project_pos);
             project_pos++;
         }
-        project_list_vec2.push_back(v);
+        project_list_without_null.push_back(v);
         project_list_id++;
     }
 
     current_node = node_manager_->MakeProjectPlanNode(
-        current_node, table_name, project_list_vec2, pos_mapping);
+        current_node, table_name, project_list_without_null, pos_mapping);
 
     // distinct
     if (root->distinct_opt_) {
@@ -651,6 +655,42 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
         }
     }
 
+    return true;
+}
+bool Planner::MergeProjectList(node::ProjectListNode *project_list1,
+                               node::ProjectListNode *project_list2,
+                               node::ProjectListNode *merged_project) {
+    if (nullptr == project_list1 || nullptr == project_list2 ||
+        nullptr == merged_project) {
+        LOG(WARNING) << "can't merge project list: input projects or output "
+                        "projects is null";
+        return false;
+    }
+    auto iter1 = project_list1->GetProjects().cbegin();
+    auto end1 = project_list1->GetProjects().cend();
+    auto iter2 = project_list2->GetProjects().cbegin();
+    auto end2 = project_list2->GetProjects().cend();
+    while (iter1 != end1 && iter2 != end2) {
+        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
+        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
+        if (project1->GetPos() < project2->GetPos()) {
+            merged_project->AddProject(project1);
+            iter1++;
+        } else {
+            merged_project->AddProject(project2);
+            iter2++;
+        }
+    }
+    while (iter1 != end1) {
+        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
+        merged_project->AddProject(project1);
+        iter1++;
+    }
+    while (iter2 != end2) {
+        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
+        merged_project->AddProject(project2);
+        iter2++;
+    }
     return true;
 }
 

@@ -79,7 +79,7 @@ int64_t count_list(int8_t *input) {
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
     ::fesql::storage::ListV<V> *col =
         (::fesql::storage::ListV<V> *)(list_ref->list);
-    return dynamic_cast<int64_t>(col->Count());
+    return col->Count();
 }
 template <class V>
 V max_list(int8_t *input) {

@@ -568,7 +568,6 @@ bool ExprIRBuilder::IsUADF(std::string function_name) {
     for (auto iter = module_->getFunctionList().begin();
          iter != module_->getFunctionList().end(); iter++) {
         if (iter->getName().startswith_lower(function_name + "_list")) {
-            std::cout << "udaf function: " << iter->getName().str() << std::endl;
             return true;
         }
     }

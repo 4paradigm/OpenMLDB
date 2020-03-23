@@ -68,6 +68,9 @@ class Planner {
                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
     std::string MakeTableName(const PlanNode *node) const;
+    bool MergeProjectList(node::ProjectListNode *project_list1,
+                          node::ProjectListNode *project_list2,
+                          node::ProjectListNode *merged_project);
 };
 
 class SimplePlanner : public Planner {

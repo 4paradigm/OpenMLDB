@@ -136,8 +136,8 @@ bool MultiChildPlanNode::Equals(const PlanNode *that) const {
 void ProjectNode::Print(std::ostream &output, const std::string &orgTab) const {
     PlanNode::Print(output, orgTab);
     output << "\n";
-    PrintValue(output, orgTab + INDENT, expression_->GetExprString(), name_,
-               false);
+    PrintValue(output, orgTab + INDENT, expression_->GetExprString(),
+               "[" + std::to_string(pos_) + "]" + name_, false);
 }
 bool ProjectNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {

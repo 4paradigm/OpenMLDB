@@ -328,21 +328,14 @@ TEST_F(PlannerTest, SelectPlanWithWindowProjectTest) {
     node::ProjectPlanNode *project_plan_node =
         (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
     plan_ptr = project_plan_node;
-    ASSERT_EQ(2u, project_plan_node->project_list_vec_.size());
+    ASSERT_EQ(1u, project_plan_node->project_list_vec_.size());
 
     // validate projection 0
     node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(
         project_plan_node->project_list_vec_[0]);
 
-    ASSERT_EQ(1u, project_list->GetProjects().size());
-    ASSERT_TRUE(nullptr == project_list->GetW());
+    ASSERT_EQ(2u, project_list->GetProjects().size());
 
-    ASSERT_FALSE(project_list->IsWindowAgg());
-
-    // validate projection 1: window agg over w2
-    project_list = dynamic_cast<node::ProjectListNode *>(
-        project_plan_node->project_list_vec_[1]);
-    ASSERT_EQ(1u, project_list->GetProjects().size());
     ASSERT_TRUE(nullptr != project_list->GetW());
     ASSERT_EQ(-3, project_list->GetW()->GetStartOffset());
     ASSERT_EQ(3, project_list->GetW()->GetEndOffset());
@@ -490,20 +483,20 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
     node::ProjectPlanNode *project_plan_node =
         (node::ProjectPlanNode *)limit_ptr->GetChildren().at(0);
     plan_ptr = project_plan_node;
-    ASSERT_EQ(3u, project_plan_node->project_list_vec_.size());
+    ASSERT_EQ(2u, project_plan_node->project_list_vec_.size());
 
     const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping =
         project_plan_node->pos_mapping_;
     ASSERT_EQ(9u, pos_mapping.size());
-    ASSERT_EQ(std::make_pair(1u, 0u), pos_mapping[0]);
-    ASSERT_EQ(std::make_pair(2u, 0u), pos_mapping[1]);
-    ASSERT_EQ(std::make_pair(2u, 1u), pos_mapping[2]);
-    ASSERT_EQ(std::make_pair(0u, 0u), pos_mapping[3]);
-    ASSERT_EQ(std::make_pair(1u, 1u), pos_mapping[4]);
-    ASSERT_EQ(std::make_pair(0u, 1u), pos_mapping[5]);
-    ASSERT_EQ(std::make_pair(2u, 2u), pos_mapping[6]);
-    ASSERT_EQ(std::make_pair(2u, 3u), pos_mapping[7]);
-    ASSERT_EQ(std::make_pair(2u, 4u), pos_mapping[8]);
+    ASSERT_EQ(std::make_pair(0u, 0u), pos_mapping[0]);
+    ASSERT_EQ(std::make_pair(1u, 0u), pos_mapping[1]);
+    ASSERT_EQ(std::make_pair(1u, 1u), pos_mapping[2]);
+    ASSERT_EQ(std::make_pair(0u, 1u), pos_mapping[3]);
+    ASSERT_EQ(std::make_pair(0u, 2u), pos_mapping[4]);
+    ASSERT_EQ(std::make_pair(0u, 3u), pos_mapping[5]);
+    ASSERT_EQ(std::make_pair(1u, 2u), pos_mapping[6]);
+    ASSERT_EQ(std::make_pair(1u, 3u), pos_mapping[7]);
+    ASSERT_EQ(std::make_pair(1u, 4u), pos_mapping[8]);
 
     // validate projection 0: window agg over w1
     {
@@ -511,29 +504,7 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
             dynamic_cast<node::ProjectListNode *>(
                 project_plan_node->project_list_vec_.at(0));
 
-        ASSERT_EQ(2u, project_list->GetProjects().size());
-        ASSERT_TRUE(nullptr == project_list->GetW());
-        ASSERT_FALSE(project_list->IsWindowAgg());
-
-        // validate col1 pos 3
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
-                project_list->GetProjects()[0]);
-            ASSERT_EQ(3u, project->GetPos());
-        }
-        // validate col2 pos 5
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
-                project_list->GetProjects()[1]);
-            ASSERT_EQ(5u, project->GetPos());
-        }
-    }
-    {
-        node::ProjectListNode *project_list =
-            dynamic_cast<node::ProjectListNode *>(
-                project_plan_node->project_list_vec_.at(1));
-
-        ASSERT_EQ(2u, project_list->GetProjects().size());
+        ASSERT_EQ(4u, project_list->GetProjects().size());
         ASSERT_FALSE(nullptr == project_list->GetW());
         ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
         ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
@@ -544,18 +515,32 @@ TEST_F(PlannerTest, MultiProjectListPlanPostTest) {
                 project_list->GetProjects()[0]);
             ASSERT_EQ(0u, project->GetPos());
         }
-        // validate w1_col3_sum pos 0
+        // validate col1 pos 3
         {
             node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
                 project_list->GetProjects()[1]);
+            ASSERT_EQ(3u, project->GetPos());
+        }
+
+        // validate w1_col3_sum pos 0
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[2]);
             ASSERT_EQ(4u, project->GetPos());
+        }
+
+        // validate col2 pos 5
+        {
+            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(
+                project_list->GetProjects()[3]);
+            ASSERT_EQ(5u, project->GetPos());
         }
     }
     {
         // validate projection 1: window agg over w2
         node::ProjectListNode *project_list =
             dynamic_cast<node::ProjectListNode *>(
-                project_plan_node->project_list_vec_.at(2));
+                project_plan_node->project_list_vec_.at(1));
 
         ASSERT_EQ(5u, project_list->GetProjects().size());
         ASSERT_TRUE(nullptr != project_list->GetW());

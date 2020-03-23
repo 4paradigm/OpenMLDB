@@ -554,6 +554,87 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     free(ptr);
 }
 
+TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
+    std::string sql =
+        "SELECT "
+        "col1, "
+        "sum(col1) OVER w1 as w1_col1_sum , "
+        "col3, "
+        "sum(col3) OVER w1 as w1_col3_sum, "
+        "col4, "
+        "sum(col4) OVER w1 as w1_col4_sum,  "
+        "sum(col2) OVER w1 as w1_col2_sum,  "
+        "sum(col5) OVER w1 as w1_col5_sum  "
+        "FROM t1 WINDOW "
+        "w1 AS (PARTITION BY COL2 ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "FOLLOWING) limit 10;";
+
+    ::fesql::node::NodePointVector list;
+    ::fesql::parser::FeSQLParser parser;
+    ::fesql::node::NodeManager manager;
+    ::fesql::base::Status status;
+    int ret = parser.parse(sql, list, &manager, status);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(1u, list.size());
+    ::fesql::plan::SimplePlanner planner(&manager);
+
+    ::fesql::node::PlanNodeList plan;
+    ret = planner.CreatePlanTree(list, plan, status);
+    ASSERT_EQ(0, ret);
+    fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
+
+    // Create an LLJIT instance.
+    auto ctx = llvm::make_unique<LLVMContext>();
+    auto m = make_unique<Module>("test_project", *ctx);
+    // Create the add1 function entry and insert this entry into module M.  The
+    // function will have a return type of "int" and take an argument of "int".
+    ::fesql::udf::RegisterUDFToModule(m.get());
+    RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
+    vm::Schema schema;
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(8, schema.size());
+    m->print(::llvm::errs(), NULL);
+    auto J = ExitOnErr(LLJITBuilder().create());
+    auto& jd = J->getMainJITDylib();
+    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
+                                      J->getDataLayout());
+
+    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::udf::InitUDFSymbol(jd, mi);
+
+    ExitOnErr(J->addIRModule(
+        std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
+    auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
+
+    int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
+        int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+
+    int8_t* ptr = NULL;
+    std::vector<fesql::storage::Row> window;
+    BuildWindow(window, &ptr);
+    LOG(INFO) << "input ptr " << ptr;
+
+    int8_t* output = NULL;
+    int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
+    ASSERT_EQ(0, ret2);
+    ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
+    ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
+              *reinterpret_cast<uint32_t*>(output + 7 + 4));
+    ASSERT_EQ(33333.1f, *reinterpret_cast<float*>(output + 7 + 4 + 4));
+    ASSERT_EQ(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
+              *reinterpret_cast<float*>(output + 7 + 4 + 4 + 4));
+    ASSERT_EQ(44444.1, *reinterpret_cast<double*>(output + 7 + 4 + 4 + 4 + 4));
+    ASSERT_EQ(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
+              *reinterpret_cast<double*>(output + 7 + 4 + 4 + 4 + 4 + 8));
+    ASSERT_EQ(2 + 22 + 222 + 2222 + 22222,
+              *reinterpret_cast<int16_t*>(output + 7 + 4 + 4 + 4 + 4 + 8 + 8));
+    ASSERT_EQ(
+        5L + 55L + 555L + 5555L + 55555L,
+        *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 4 + 4 + 8 + 8 + 2));
+    free(ptr);
+}
+
 TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     std::string sql =
         "SELECT "
@@ -604,7 +685,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
 
     int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
-
 
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> window;
@@ -672,7 +752,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
 
     int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
-
 
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> window;
@@ -763,7 +842,6 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
 
     int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
-
 
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> window;
