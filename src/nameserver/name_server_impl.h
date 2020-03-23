@@ -45,6 +45,7 @@ using ::rtidb::zk::DistLock;
 using ::rtidb::zk::ZkClient;
 
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
+const uint32_t INVALID_PID = UINT32_MAX;
 
 // tablet info
 struct TabletInfo {

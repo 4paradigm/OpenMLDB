@@ -5908,12 +5908,14 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data,
                               uint32_t concurrency) {
     uint32_t idx = 0;
     if (op_data->op_info_.for_replica_cluster() == 1) {
-        idx = FLAGS_name_server_task_max_concurrency +
-              (::rtidb::base::hash64(op_data->op_info_.name()) % concurrency);
-        PDLOG(INFO,
-              "current task is for replica cluster, op_index [%lu] op_type[%s]",
-              op_data->op_info_.op_id(),
-              ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+        if (op_data->op_info_.pid() == INVALID_PID) {
+            idx =
+                FLAGS_name_server_task_max_concurrency +
+                (::rtidb::base::hash64(op_data->op_info_.name()) % concurrency);
+        } else {
+            idx = FLAGS_name_server_task_max_concurrency +
+                  (rand_.Next() % concurrency);
+        }
     } else {
         idx = op_data->op_info_.pid() % task_vec_.size();
         if (concurrency < task_vec_.size() && concurrency > 0) {
@@ -7592,7 +7594,7 @@ int NameServerImpl::DropTableRemoteOP(const std::string& name,
                                       uint64_t parent_id,
                                       uint32_t concurrency) {
     std::string value = alias;
-    uint32_t pid = UINT32_MAX;
+    uint32_t pid = INVALID_PID;
     std::shared_ptr<OPData> op_data;
     if (CreateOPData(::rtidb::api::OPType::kDropTableRemoteOP, value, op_data,
                      name, pid, parent_id) < 0) {
@@ -7657,7 +7659,7 @@ int NameServerImpl::CreateTableRemoteOP(
     std::string value;
     create_table_data.SerializeToString(&value);
     std::string name = table_info.name();
-    uint32_t pid = UINT32_MAX;
+    uint32_t pid = INVALID_PID;
     std::shared_ptr<OPData> op_data;
     if (CreateOPData(::rtidb::api::OPType::kCreateTableRemoteOP, value, op_data,
                      name, pid, parent_id) < 0) {
@@ -10373,7 +10375,7 @@ int NameServerImpl::SyncExistTable(
         }
     }
     std::vector<uint32_t> pid_vec;
-    if (pid == UINT32_MAX) {
+    if (pid == INVALID_PID) {
         for (int idx = 0; idx < table_info_remote.table_partition_size();
              idx++) {
             pid_vec.push_back(table_info_remote.table_partition(idx).pid());
