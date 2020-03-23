@@ -2012,8 +2012,10 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
                 return -1;
             }
         }
+    } else {
+        PDLOG(WARNING, "no column_desc in table_meta");
+        return -1;
     }
-
     return 0;
 }
 

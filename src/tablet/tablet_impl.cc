@@ -325,26 +325,30 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
             PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
             return -1;
         }
-        switch(ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: {
-                if (!Seek(it, st, st_type)) {
-                    return 1;
-                }
-                break;
+        if (expire_cnt == 0) {
+            if (!Seek(it, st, st_type)) {
+                return 1;
             }
-            case ::rtidb::api::TTLType::kAbsAndLat: {
-                if (st < expire_time) {
-                    if (!SeekWithCount(it, st, st_type, expire_cnt, cnt)) { return 1; }
-                } else {
-                    if (!Seek(it, st, st_type)) { return 1;}
+        } else {
+            switch(ttl_type) {
+                case ::rtidb::api::TTLType::kAbsoluteTime: {
+                    if (!Seek(it, st, st_type)) {
+                        return 1;
+                    }
+                    break;
                 }
-                break;
-            }
-            default: {
-                if (!SeekWithCount(it, st, st_type, expire_cnt, cnt)) {
-                    return 1; 
+                case ::rtidb::api::TTLType::kAbsAndLat: {
+                    if (!SeekWithCount(it, st, real_st_type, 0, cnt)) {
+                        return 1;
+                    }
+                    break;
                 }
-                break;
+                default: {
+                    if (!SeekWithCount(it, st, st_type, expire_cnt, cnt)) {
+                        return 1;
+                    }
+                    break;
+                }
             }
         }
     } else {
@@ -836,13 +840,20 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
             return -1;
         }
-        switch (ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: 
-                Seek(it, st, real_st_type);
-                break;
-            default: 
-                SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
-                break;
+        if (expire_cnt == 0) {
+            Seek(it, st, real_st_type);
+        } else {
+            switch (ttl_type) {
+                case ::rtidb::api::TTLType::kAbsoluteTime: 
+                    Seek(it, st, real_st_type);
+                    break;
+                case ::rtidb::api::TTLType::kAbsAndLat:
+                    SeekWithCount(it, st, real_st_type, 0, cnt);
+                    break;
+                default:
+                    SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
+                    break;
+            }
         }
     } else {
         it->SeekToFirst();
@@ -961,13 +972,20 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
             PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
             return -1;
         }
-        switch (ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: 
-                Seek(it, st, real_st_type);
-                break;
-            default: 
-                SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
-                break;
+        if (expire_cnt == 0) {
+            Seek(it, st, real_st_type);
+        } else {
+            switch (ttl_type) {
+                case ::rtidb::api::TTLType::kAbsoluteTime: 
+                    Seek(it, st, real_st_type);
+                    break;
+                case ::rtidb::api::TTLType::kAbsAndLat:
+                    SeekWithCount(it, st, real_st_type, 0, cnt);
+                    break;
+                default:
+                    SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
+                    break;
+            }
         }
     } else {
         it->SeekToFirst();
