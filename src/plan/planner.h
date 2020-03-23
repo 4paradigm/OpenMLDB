@@ -61,7 +61,7 @@ class Planner {
 
     bool CreateFuncDefPlan(const SQLNode *root, node::PlanNode **output,
                            Status &status);  // NOLINT (runtime/references)
-    void CreateWindowPlanNode(node::WindowDefNode *w_ptr,
+    bool CreateWindowPlanNode(node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,
                               Status &status);  // NOLINT (runtime/references)
     int64_t CreateFrameOffset(const node::FrameBound *bound,

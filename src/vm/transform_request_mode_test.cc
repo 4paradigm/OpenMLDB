@@ -95,7 +95,7 @@ INSTANTIATE_TEST_CASE_P(
         "t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `COL15` ROWS BETWEEN UNBOUNDED PRECEDING AND "
-        "UNBOUNDED FOLLOWING);",
+        "CURRENT ROW);",
         "SELECT COL1, SUM(col4) OVER w as w_amt_sum FROM t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `col15` ROWS BETWEEN 3 PRECEDING AND 3 "

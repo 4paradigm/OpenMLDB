@@ -196,8 +196,8 @@ bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
 
     if (1 == node->project_list_vec_.size()) {
         return TransformProjectOp(dynamic_cast<fesql::node::ProjectListNode*>(
-                                       node->project_list_vec_[0]),
-                                   depend, output, status);
+                                      node->project_list_vec_[0]),
+                                  depend, output, status);
     }
 
     std::vector<PhysicalOpNode*> ops;
@@ -284,10 +284,14 @@ bool Transform::TransformGroupAndSortOp(
             groups->AddChild(node_manager_->MakeColumnRefNode(id, ""));
         }
     }
+
     if (nullptr == orders && nullptr == groups) {
-        *output = depend;
-        return true;
+        status.msg =
+            "fail to transform window aggeration: gourps and orders is null";
+        LOG(WARNING) << status.msg;
+        return false;
     }
+
     PhysicalGroupAndSortNode* group_sort_op =
         new PhysicalGroupAndSortNode(depend, groups, orders);
     node_manager_->RegisterNode(group_sort_op);
@@ -398,9 +402,9 @@ bool Transform::TransformScanOp(const node::TablePlanNode* node,
     auto table = catalog_->GetTable(db_, node->table_);
     if (table) {
         if (node->IsPrimary()) {
-            *output = new PhysicalFetchRequestNode(table);
+            *output = new PhysicalRequestProviderNode(table);
         } else {
-            *output = new PhysicalScanTableNode(table);
+            *output = new PhysicalTableProviderNode(table);
         }
         node_manager_->RegisterNode(*output);
         return true;
@@ -608,7 +612,9 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
             break;
         }
         case kGroupAggregation: {
-            op = new PhysicalGroupAggrerationNode(node, fn_name, output_schema);
+            auto group_op = dynamic_cast<PhysicalGroupNode*>(node);
+            op = new PhysicalGroupAggrerationNode(node, group_op->groups_,
+                                                  fn_name, output_schema);
             break;
         }
         case kWindowAggregation: {
@@ -617,8 +623,10 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
                 return false;
             }
             op = new PhysicalWindowAggrerationNode(
-                depend, fn_name, output_schema,
-                project_list->w_ptr_->GetStartOffset(),
+                depend,
+                dynamic_cast<PhysicalGroupAndSortNode*>(depend)->groups_,
+                dynamic_cast<PhysicalGroupAndSortNode*>(depend)->orders_,
+                fn_name, output_schema, project_list->w_ptr_->GetStartOffset(),
                 project_list->w_ptr_->GetEndOffset());
             break;
         }
@@ -729,10 +737,10 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
     switch (in->type_) {
         case kPhysicalOpGroupBy: {
             PhysicalGroupNode* group_op = dynamic_cast<PhysicalGroupNode*>(in);
-            if (kPhysicalOpScan == in->GetProducers()[0]->type_) {
-                auto scan_op =
-                    dynamic_cast<PhysicalScanNode*>(in->GetProducers()[0]);
-                if (kScanTypeTableScan == scan_op->scan_type_) {
+            if (kPhysicalOpDataProvider == in->GetProducers()[0]->type_) {
+                auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(
+                    in->GetProducers()[0]);
+                if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
                     const node::ExprListNode* new_groups;
                     if (!TransformGroupExpr(group_op->groups_,
@@ -761,10 +769,10 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
         case kPhysicalOpGroupAndSort: {
             PhysicalGroupAndSortNode* group_sort_op =
                 dynamic_cast<PhysicalGroupAndSortNode*>(in);
-            if (kPhysicalOpScan == in->GetProducers()[0]->type_) {
-                auto scan_op =
-                    dynamic_cast<PhysicalScanNode*>(in->GetProducers()[0]);
-                if (kScanTypeTableScan == scan_op->scan_type_) {
+            if (kPhysicalOpDataProvider == in->GetProducers()[0]->type_) {
+                auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(
+                    in->GetProducers()[0]);
+                if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
                     const node::ExprListNode* new_groups;
                     const node::OrderByNode* new_orders;
@@ -1169,7 +1177,6 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     }
     return true;
 }
-
 
 // transform project plan in request mode
 bool TransformRequestQuery::TransformProjecPlantOp(

@@ -20,7 +20,7 @@ namespace vm {
 
 // new and delete physical node manage
 enum PhysicalOpType {
-    kPhysicalOpScan,
+    kPhysicalOpDataProvider,
     kPhysicalOpFilter,
     kPhysicalOpGroupBy,
     kPhysicalOpSortBy,
@@ -38,8 +38,8 @@ enum PhysicalOpType {
 
 inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
     switch (type) {
-        case kPhysicalOpScan:
-            return "SCAN";
+        case kPhysicalOpDataProvider:
+            return "DATA_PROVIDER";
         case kPhysicalOpGroupBy:
             return "GROUP_BY";
         case kPhysicalOpSortBy:
@@ -138,58 +138,62 @@ class PhysicalBinaryNode : public PhysicalOpNode {
                                const std::string &tab) const;
 };
 
-enum ScanType { kScanTypeTableScan, kScanTypeIndexScan, kScanTypeRequestFetch };
+enum DataProviderType {
+    kProviderTypeTable,
+    kProviderTypeIndexScan,
+    kProviderTypeRequest
+};
 
-inline const std::string ScanTypeName(const ScanType &type) {
+inline const std::string ScanTypeName(const DataProviderType &type) {
     switch (type) {
-        case kScanTypeTableScan:
-            return "TableScan";
-        case kScanTypeIndexScan:
+        case kProviderTypeTable:
+            return "Table";
+        case kProviderTypeIndexScan:
             return "IndexScan";
-        case kScanTypeRequestFetch:
-            return "RequestFetch";
+        case kProviderTypeRequest:
+            return "Request";
         default:
             return "UNKNOW";
     }
 }
-class PhysicalScanNode : public PhysicalOpNode {
+class PhysicalDataProviderNode : public PhysicalOpNode {
  public:
-    PhysicalScanNode(const std::shared_ptr<TableHandler> &table_handler,
-                     ScanType scan_type)
-        : PhysicalOpNode(kPhysicalOpScan, false, false),
-          scan_type_(scan_type),
+    PhysicalDataProviderNode(const std::shared_ptr<TableHandler> &table_handler,
+                             DataProviderType provider_type)
+        : PhysicalOpNode(kPhysicalOpDataProvider, false, false),
+          provider_type_(provider_type),
           table_handler_(table_handler) {
         InitSchema();
     }
-    ~PhysicalScanNode() {}
+    ~PhysicalDataProviderNode() {}
     bool InitSchema() override;
-    const ScanType scan_type_;
+    const DataProviderType provider_type_;
     const std::shared_ptr<TableHandler> table_handler_;
 };
 
-class PhysicalScanTableNode : public PhysicalScanNode {
+class PhysicalTableProviderNode : public PhysicalDataProviderNode {
  public:
-    explicit PhysicalScanTableNode(
+    explicit PhysicalTableProviderNode(
         const std::shared_ptr<TableHandler> &table_handler)
-        : PhysicalScanNode(table_handler, kScanTypeTableScan) {}
-    virtual ~PhysicalScanTableNode() {}
+        : PhysicalDataProviderNode(table_handler, kProviderTypeTable) {}
+    virtual ~PhysicalTableProviderNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
 
-class PhysicalFetchRequestNode : public PhysicalScanNode {
+class PhysicalRequestProviderNode : public PhysicalDataProviderNode {
  public:
-    explicit PhysicalFetchRequestNode(
+    explicit PhysicalRequestProviderNode(
         const std::shared_ptr<TableHandler> &table_handler)
-        : PhysicalScanNode(table_handler, kScanTypeRequestFetch) {}
-    virtual ~PhysicalFetchRequestNode() {}
+        : PhysicalDataProviderNode(table_handler, kProviderTypeRequest) {}
+    virtual ~PhysicalRequestProviderNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
 
-class PhysicalScanIndexNode : public PhysicalScanNode {
+class PhysicalScanIndexNode : public PhysicalDataProviderNode {
  public:
     PhysicalScanIndexNode(const std::shared_ptr<TableHandler> &table_handler,
                           const std::string &index_name)
-        : PhysicalScanNode(table_handler, kScanTypeIndexScan),
+        : PhysicalDataProviderNode(table_handler, kProviderTypeIndexScan),
           index_name_(index_name) {}
     virtual ~PhysicalScanIndexNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -289,23 +293,34 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
 class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalGroupAggrerationNode(PhysicalOpNode *node,
+                                 const node::ExprListNode *groups,
                                  const std::string &fn_name,
                                  const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kGroupAggregation) {}
+        : PhysicalProjectNode(node, fn_name, schema, kGroupAggregation),
+          groups_(groups) {}
     virtual ~PhysicalGroupAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    const node::ExprListNode *groups_;
 };
 
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
-    PhysicalWindowAggrerationNode(
-        PhysicalOpNode *node, const std::string &fn_name, const Schema &schema,
-        const int64_t start_offset, const int64_t end_offset)
+    PhysicalWindowAggrerationNode(PhysicalOpNode *node,
+                                  const node::ExprListNode *groups,
+                                  const node::OrderByNode *orders,
+                                  const std::string &fn_name,
+                                  const Schema &schema,
+                                  const int64_t start_offset,
+                                  const int64_t end_offset)
         : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation),
+          groups_(groups),
+          orders_(orders),
           start_offset_(start_offset),
           end_offset_(end_offset) {}
     virtual ~PhysicalWindowAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    const node::ExprListNode *groups_;
+    const node::OrderByNode *orders_;
     const int64_t start_offset_;
     const int64_t end_offset_;
 };

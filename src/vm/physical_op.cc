@@ -71,13 +71,13 @@ bool PhysicalBinaryNode::InitSchema() {
     PrintSchema();
     return false;
 }
-void PhysicalScanTableNode::Print(std::ostream& output,
+void PhysicalTableProviderNode::Print(std::ostream& output,
                                   const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(table=" << table_handler_->GetName() << ")";
 }
 
-void PhysicalFetchRequestNode::Print(std::ostream& output,
+void PhysicalRequestProviderNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(request=" << table_handler_->GetName() << ")";
@@ -86,7 +86,7 @@ void PhysicalFetchRequestNode::Print(std::ostream& output,
 void PhysicalScanIndexNode::Print(std::ostream& output,
                                   const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << ScanTypeName(scan_type_)
+    output << "(type=" << ScanTypeName(provider_type_)
            << ", table=" << table_handler_->GetName()
            << ", index=" << index_name_ << ")";
 }
@@ -121,7 +121,8 @@ bool PhysicalProjectNode::InitSchema() {
 void PhysicalGroupAggrerationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << ProjectTypeName(project_type_) << ")";
+    output << "(type=" << ProjectTypeName(project_type_)
+           << ", groups=" << node::ExprString(groups_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
@@ -130,6 +131,8 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_)
+           << ", groups=" << node::ExprString(groups_)
+           << ", orders=" << node::ExprString(orders_)
            << ", start=" << std::to_string(start_offset_)
            << ", end=" << std::to_string(end_offset_) << ")";
     output << "\n";
@@ -187,7 +190,7 @@ void PhysicalBufferNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
-bool PhysicalScanNode::InitSchema() {
+bool PhysicalDataProviderNode::InitSchema() {
     if (table_handler_) {
         output_schema.CopyFrom(table_handler_->GetSchema());
         PrintSchema();

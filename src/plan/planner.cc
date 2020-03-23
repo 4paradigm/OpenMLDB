@@ -174,8 +174,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             } else {
                 node::WindowPlanNode *w_node_ptr =
                     node_manager_->MakeWindowPlanNode(w_id++);
-                CreateWindowPlanNode(w_ptr, w_node_ptr, status);
-                if (common::kOk != status.code) {
+                if (!CreateWindowPlanNode(w_ptr, w_node_ptr, status)) {
                     return status.code;
                 }
                 project_list_map[w_ptr] =
@@ -360,7 +359,7 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
     return negtive ? -1 * offset : offset;
 }
 
-void Planner::CreateWindowPlanNode(
+bool Planner::CreateWindowPlanNode(
     node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
     Status &status) {  // NOLINT (runtime/references)
 
@@ -377,19 +376,13 @@ void Planner::CreateWindowPlanNode(
             if (common::kOk != status.code) {
                 LOG(WARNING)
                     << "fail to create project list node: " << status.msg;
-                return;
+                return false;
             }
             end_offset = CreateFrameOffset(end, status);
             if (common::kOk != status.code) {
                 LOG(WARNING)
                     << "fail to create project list node: " << status.msg;
-                return;
-            }
-
-            if (end_offset == INT64_MAX) {
-                LOG(WARNING) << "fail to create project list node: end frame "
-                                "can't be unbound ";
-                return;
+                return false;
             }
 
             if (w_ptr->GetName().empty()) {
@@ -405,11 +398,14 @@ void Planner::CreateWindowPlanNode(
             w_node_ptr->SetKeys(w_ptr->GetPartitions());
             w_node_ptr->SetOrders(w_ptr->GetOrders());
         } else {
-            LOG(WARNING) << "fail to create project list node: right frame "
+            status.code = common::kPlanError;
+            status.msg = "fail to create project list node: right frame "
                             "can't be unbound ";
-            return;
+            LOG(WARNING) << status.msg;
+            return false;
         }
     }
+    return true;
 }
 
 bool Planner::CreateCreateTablePlan(
