@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include  <unistd.h>
 #include "sdk/tablet_sdk.h"
 #include "base/strings.h"
 #include "brpc/server.h"
@@ -25,7 +26,9 @@
 #include "sdk/dbms_sdk.h"
 #include "tablet/tablet_internal_sdk.h"
 #include "tablet/tablet_server_impl.h"
+#include "gflags/gflags.h"
 
+DECLARE_bool(enable_keep_alive);
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
@@ -222,6 +225,7 @@ TEST_P(TabletSdkTest, test_normal) {
 }
 
 TEST_P(TabletSdkTest, test_create_and_query) {
+    usleep(4000 * 1000);
     ParamType mode = GetParam();
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
@@ -380,6 +384,7 @@ TEST_P(TabletSdkTest, test_create_and_query) {
 }
 
 TEST_P(TabletSdkTest, test_udf_query) {
+    usleep(2000 * 1000);
     ParamType mode = GetParam();
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
@@ -418,9 +423,9 @@ TEST_P(TabletSdkTest, test_udf_query) {
     }
 
     ::fesql::sdk::Status insert_status;
-    sdk->Insert("db_1",
-                 "insert into t1 values(1, 2, 3.3, 4, 5, \"hello\");",
-                  &insert_status);
+    sdk->Insert(name,
+                "insert into t1 values(1, 2, 3.3, 4, 5, \"hello\");",
+                 &insert_status);
     if (0 != insert_status.code) {
         std::cout << insert_status.msg << std::endl;
     }
@@ -514,6 +519,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
 }
 
 TEST_F(TabletSdkTest, test_window_udf_query) {
+    usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
@@ -603,7 +609,48 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
             ASSERT_EQ("w1_col3_sum", schema.GetColumnName(2));
             ASSERT_EQ("w1_col4_sum", schema.GetColumnName(3));
             ASSERT_EQ("w1_col5_sum", schema.GetColumnName(4));
+
+            ASSERT_EQ(kTypeInt32, schema.GetColumnType(0));
+            ASSERT_EQ(kTypeInt32, schema.GetColumnType(1));
+            ASSERT_EQ(kTypeFloat, schema.GetColumnType(2));
+            ASSERT_EQ(kTypeInt64, schema.GetColumnType(3));
+            ASSERT_EQ(kTypeInt32, schema.GetColumnType(4));
+
             ASSERT_EQ(5, rs->Size());
+            ASSERT_TRUE(rs->Next());
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(0, &val));
+                ASSERT_EQ(val, 11);
+            }
+
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(1, &val));
+                ASSERT_EQ(val, 4);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(4, &val));
+                ASSERT_EQ(val, 7);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(rs->GetInt64(3, &val));
+                ASSERT_EQ(val, 3000);
+            }
+            ASSERT_TRUE(rs->Next());
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(0, &val));
+                ASSERT_EQ(val, 11 + 11);
+            }
+
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(1, &val));
+                ASSERT_EQ(val, 4 + 5);
+            }
             ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
@@ -630,60 +677,6 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
                 ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 7 + 8 + 9);
             }
-
-            ASSERT_TRUE(rs->Next());
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(rs->GetInt32(0, &val));
-                ASSERT_EQ(val, 11 + 11);
-            }
-
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(rs->GetInt32(1, &val));
-                ASSERT_EQ(val, 4 + 5);
-            }
-
-            ASSERT_TRUE(rs->Next());
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(rs->GetInt32(0, &val));
-                ASSERT_EQ(val, 11);
-            }
-
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(rs->GetInt32(1, &val));
-                ASSERT_EQ(val, 4);
-            }
-
-            ASSERT_TRUE(rs->Next());
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(rs->GetInt32(0, &val));
-                ASSERT_EQ(val, 1 + 1);
-            }
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(rs->GetInt32(1, &val));
-                ASSERT_EQ(val, 2 + 3);
-            }
-            {
-                float val = 0;
-                ASSERT_TRUE(rs->GetFloat(2, &val));
-                ASSERT_EQ(val, 3.3f + 4.4f);
-            }
-            {
-                int64_t val = 0;
-                ASSERT_TRUE(rs->GetInt64(3, &val));
-                ASSERT_EQ(val, 1000L + 2000L);
-            }
-            {
-                int val = 0;
-                ASSERT_TRUE(rs->GetInt32(4, &val));
-                ASSERT_EQ(val, 5 + 6);
-            }
-
             ASSERT_TRUE(rs->Next());
             {
                 int32_t val = 0;
@@ -710,7 +703,32 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
                 ASSERT_TRUE(rs->GetInt32(4, &val));
                 ASSERT_EQ(val, 5);
             }
-
+            ASSERT_TRUE(rs->Next());
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(0, &val));
+                ASSERT_EQ(val, 1 + 1);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(1, &val));
+                ASSERT_EQ(val, 2 + 3);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(rs->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.3f + 4.4f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(rs->GetInt64(3, &val));
+                ASSERT_EQ(val, 1000L + 2000L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(rs->GetInt32(4, &val));
+                ASSERT_EQ(val, 5 + 6);
+            }
         } else {
             ASSERT_TRUE(false);
         }
@@ -718,6 +736,8 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
 }
 
 TEST_F(TabletSdkTest, test_window_udf_batch_query) {
+
+    usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
@@ -909,6 +929,8 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
 }
 
 TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
+
+    usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
@@ -1007,27 +1029,81 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             {
                 int32_t val = 0;
                 ASSERT_TRUE(rs->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(1, &val));
+                ASSERT_EQ(val, 2);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(rs->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.3f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(rs->GetInt64(3, &val));
+                ASSERT_EQ(val, 1000L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(rs->GetInt32(4, &val));
+                ASSERT_EQ(val, 5);
+            }
+
+            ASSERT_TRUE(rs->Next());
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(0, &val));
+                ASSERT_EQ(val, 1 + 1);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(1, &val));
+                ASSERT_EQ(val, 2 + 3);
+            }
+            {
+                float val = 0;
+                ASSERT_TRUE(rs->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.3f + 4.4f);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(rs->GetInt64(3, &val));
+                ASSERT_EQ(val, 1000L + 2000L);
+            }
+            {
+                int val = 0;
+                ASSERT_TRUE(rs->GetInt32(4, &val));
+                ASSERT_EQ(val, 5 + 6);
+            }
+
+            ASSERT_TRUE(rs->Next());
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(0, &val));
                 ASSERT_EQ(val, 1 + 1 + 1);
             }
             {
                 int32_t val = 0;
                 ASSERT_TRUE(rs->GetInt32(1, &val));
-                ASSERT_EQ(val, 4 + 5 + 6);
+                ASSERT_EQ(val, 2 + 3 + 4);
             }
             {
                 float val = 0;
                 ASSERT_TRUE(rs->GetFloat(2, &val));
-                ASSERT_EQ(val, 5.5f + 6.6f + 7.7f);
+                ASSERT_EQ(val, 3.3f + 4.4f + 5.5f);
             }
             {
                 int64_t val = 0;
                 ASSERT_TRUE(rs->GetInt64(3, &val));
-                ASSERT_EQ(val, 3000L + 4000L + 5000L);
+                ASSERT_EQ(val, 1000L + 2000L + 3000L);
             }
             {
                 int val = 0;
                 ASSERT_TRUE(rs->GetInt32(4, &val));
-                ASSERT_EQ(val, 7 + 8 + 9);
+                ASSERT_EQ(val, 5 + 6 + 7);
             }
 
             ASSERT_TRUE(rs->Next());
@@ -1066,78 +1142,23 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             {
                 int32_t val = 0;
                 ASSERT_TRUE(rs->GetInt32(1, &val));
-                ASSERT_EQ(val, 2 + 3 + 4);
+                ASSERT_EQ(val, 4 + 5 + 6);
             }
             {
                 float val = 0;
                 ASSERT_TRUE(rs->GetFloat(2, &val));
-                ASSERT_EQ(val, 3.3f + 4.4f + 5.5f);
+                ASSERT_EQ(val, 5.5f + 6.6f + 7.7f);
             }
             {
                 int64_t val = 0;
                 ASSERT_TRUE(rs->GetInt64(3, &val));
-                ASSERT_EQ(val, 1000L + 2000L + 3000L);
+                ASSERT_EQ(val, 3000L + 4000L + 5000L);
             }
             {
                 int val = 0;
                 ASSERT_TRUE(rs->GetInt32(4, &val));
-                ASSERT_EQ(val, 5 + 6 + 7);
+                ASSERT_EQ(val, 7 + 8 + 9);
             }
-
-            ASSERT_TRUE(rs->Next());
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(rs->GetInt32(0, &val));
-                ASSERT_EQ(val, 1 + 1);
-            }
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(rs->GetInt32(1, &val));
-                ASSERT_EQ(val, 2 + 3);
-            }
-            {
-                float val = 0;
-                ASSERT_TRUE(rs->GetFloat(2, &val));
-                ASSERT_EQ(val, 3.3f + 4.4f);
-            }
-            {
-                int64_t val = 0;
-                ASSERT_TRUE(rs->GetInt64(3, &val));
-                ASSERT_EQ(val, 1000L + 2000L);
-            }
-            {
-                int val = 0;
-                ASSERT_TRUE(rs->GetInt32(4, &val));
-                ASSERT_EQ(val, 5 + 6);
-            }
-
-            ASSERT_TRUE(rs->Next());
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(rs->GetInt32(0, &val));
-                ASSERT_EQ(val, 1);
-            }
-            {
-                int32_t val = 0;
-                ASSERT_TRUE(rs->GetInt32(1, &val));
-                ASSERT_EQ(val, 2);
-            }
-            {
-                float val = 0;
-                ASSERT_TRUE(rs->GetFloat(2, &val));
-                ASSERT_EQ(val, 3.3f);
-            }
-            {
-                int64_t val = 0;
-                ASSERT_TRUE(rs->GetInt64(3, &val));
-                ASSERT_EQ(val, 1000L);
-            }
-            {
-                int val = 0;
-                ASSERT_TRUE(rs->GetInt32(4, &val));
-                ASSERT_EQ(val, 5);
-            }
-
         } else {
             ASSERT_TRUE(false);
         }
@@ -1145,6 +1166,8 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
 }
 
 TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
+
+    usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
     ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
@@ -1382,9 +1405,11 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
 }  // namespace fesql
 
 int main(int argc, char** argv) {
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     InitLLVM X(argc, argv);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
+    FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();
 }

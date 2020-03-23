@@ -256,7 +256,7 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan, const 
                 break;
             }
             case type::kInt64: {
-                ok = rb.AppendInt64(primary->GetLong());
+                ok = rb.AppendInt64(primary->GetInt());
                 break;
             }
             case type::kFloat: {
