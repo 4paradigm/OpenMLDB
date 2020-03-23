@@ -62,7 +62,7 @@ bool TabletServerImpl::Init() {
 
 void TabletServerImpl::KeepAlive() {
     dbms::DBMSServer_Stub stub(dbms_ch_);
-    std::string endpoint = FLAGS_endpoint + ":" + std::to_string(FLAGS_port);
+    std::string endpoint = FLAGS_endpoint;
     dbms::KeepAliveRequest request;
     request.set_endpoint(endpoint);
     dbms::KeepAliveResponse response;

@@ -37,7 +37,6 @@ std::vector<tablet::QueryResponse> GetTestCase() {
     {
         responses.push_back(tablet::QueryResponse());
     }
-
     {
         tablet::QueryResponse response;
         type::ColumnDef* col1 = response.mutable_schema()->Add();
@@ -50,6 +49,37 @@ std::vector<tablet::QueryResponse> GetTestCase() {
         rb.SetBuffer(reinterpret_cast<int8_t*>(row_buf), size);
         std::string hello = "hello";
         rb.AppendString(hello.c_str(), 5);
+        responses.push_back(response);
+    }
+    {
+        tablet::QueryResponse response;
+
+        {
+            type::ColumnDef* col1 = response.mutable_schema()->Add();
+            col1->set_type(type::kInt32);
+            col1->set_name("col1");
+        }
+        {
+            type::ColumnDef* col1 = response.mutable_schema()->Add();
+            col1->set_type(type::kFloat);
+            col1->set_name("col2");
+        }
+        {
+            type::ColumnDef* col1 = response.mutable_schema()->Add();
+            col1->set_type(type::kDouble);
+            col1->set_name("col3");
+        }
+
+        codec::RowBuilder rb(response.schema());
+        uint32_t size = rb.CalTotalLength(0);
+        std::string* row_data = response.add_result_set();
+        row_data->resize(size);
+
+        char* row_buf = &(row_data->at(0));
+        rb.SetBuffer(reinterpret_cast<int8_t*>(row_buf), size);
+        rb.AppendInt32(1);
+        rb.AppendFloat(1.2f);
+        rb.AppendDouble(2.1);
         responses.push_back(response);
     }
     return responses;
@@ -82,6 +112,30 @@ TEST_P(ResultSetImplTest, test_normal) {
                     int16_t right = 1;
                     row_view.GetInt16(j, &left);
                     ASSERT_TRUE(rs.GetInt16(j, &right));
+                    ASSERT_EQ(left, right);
+                    break;
+                }
+                case type::kInt32: {
+                    int32_t left = 0;
+                    int32_t right = 1;
+                    row_view.GetInt32(j, &left);
+                    ASSERT_TRUE(rs.GetInt32(j, &right));
+                    ASSERT_EQ(left, right);
+                    break;
+                }
+                case type::kFloat: {
+                    float left = 0.1f;
+                    float right = 1.1f;
+                    row_view.GetFloat(j, &left);
+                    ASSERT_TRUE(rs.GetFloat(j, &right));
+                    ASSERT_EQ(left, right);
+                    break;
+                }
+                case type::kDouble: {
+                    double left = 1.1;
+                    double right = 2.1;
+                    row_view.GetDouble(j, &left);
+                    ASSERT_TRUE(rs.GetDouble(j, &right));
                     ASSERT_EQ(left, right);
                     break;
                 }

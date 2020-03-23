@@ -41,6 +41,7 @@ class SchemaImpl : public Schema {
     const std::string& GetColumnName(uint32_t index) const;
 
     const DataType GetColumnType(uint32_t index) const;
+    const bool IsColumnNotNull(uint32_t index) const;
  private:
     vm::Schema schema_;
 };

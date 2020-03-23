@@ -81,9 +81,7 @@ message GetTabletResponse {
 }
 
 service DBMSServer {
-    rpc AddGroup (AddGroupRequest) returns (AddGroupResponse);
     rpc AddDatabase (AddDatabaseRequest) returns (AddDatabaseResponse);
-    rpc IsExistDatabase (IsExistRequest) returns (IsExistResponse);
     rpc AddTable (AddTableRequest) returns (AddTableResponse);
     rpc GetSchema (GetSchemaRequest) returns (GetSchemaResponse);
     rpc GetDatabases (GetDatabasesRequest) returns (GetDatabasesResponse);

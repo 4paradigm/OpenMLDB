@@ -81,7 +81,7 @@ class RowBuilder {
     bool Check(::fesql::type::Type type);
 
  private:
-    const Schema& schema_;
+    const Schema schema_;
     int8_t* buf_;
     uint32_t cnt_;
     uint32_t size_;
@@ -139,7 +139,7 @@ class RowView {
     uint32_t str_field_start_offset_;
     uint32_t size_;
     const int8_t* row_;
-    const Schema& schema_;
+    const Schema schema_;
     std::vector<uint32_t> offset_vec_;
 };
 

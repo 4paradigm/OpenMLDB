@@ -35,6 +35,28 @@ enum DataType {
     kTypeTimestamp,
     kTypeUnknow
 };
+inline const std::string DataTypeName(const DataType& type) {
+    switch (type) {
+        case kTypeBool:
+            return "bool";
+        case kTypeInt16:
+            return "int16";
+        case kTypeInt32:
+            return "int32";
+        case kTypeInt64:
+            return "int64";
+        case kTypeFloat:
+            return "float";
+        case kTypeDouble:
+            return "double";
+        case kTypeString:
+            return "string";
+        case kTypeTimestamp:
+            return "timestamp";
+        default:
+            return "unknownType";
+    }
+}
 
 class Schema {
  public:
@@ -43,6 +65,8 @@ class Schema {
     virtual int32_t GetColumnCnt() const = 0;
     virtual const std::string& GetColumnName(uint32_t index) const = 0;
     virtual const DataType GetColumnType(uint32_t index) const = 0;
+    virtual const bool IsColumnNotNull(uint32_t index) const = 0;
+
 };
 
 class Table {

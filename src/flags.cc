@@ -20,6 +20,9 @@
 DEFINE_string(endpoint, "", "config the ip and port that fesql serves for");
 DEFINE_int32(port, 0, "config the port that fesql serves for");
 DEFINE_int32(thread_pool_size, 8, "config the thread pool for dbms and tablet");
+DEFINE_string(tablet_endpoint, "",
+              "config the ip and port that fesql tablet for");
+// for tablet
 DEFINE_string(dbms_endpoint, "",
               "config the ip and port that fesql dbms for");
 DEFINE_bool(enable_keep_alive, true, 
@@ -28,3 +31,4 @@ DEFINE_bool(enable_keep_alive, true,
 // batch config
 DEFINE_string(default_db_name, "_fesql",
               "config the default batch catalog db name");
+

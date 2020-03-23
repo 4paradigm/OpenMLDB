@@ -86,7 +86,6 @@ INSTANTIATE_TEST_CASE_P(TabletRUNAndBatchMode, TabletSdkTest,
                         testing::Values(RUNBATCH));
 
 TEST_P(TabletSdkTest, test_normal) {
-    ParamType mode = GetParam();
     tablet::TabletInternalSDK interal_sdk("127.0.0.1:" +
                                           std::to_string(base_tablet_port_));
     bool ok = interal_sdk.Init();
@@ -138,7 +137,7 @@ TEST_P(TabletSdkTest, test_normal) {
         ASSERT_FALSE(true);
     }
 
-    std::string sql = "insert into t1 values(1, 2, 3.1, 4.1, 5)";
+    std::string sql = "insert into t1 values(1, 2, 3.1, 4.1,5);";
     std::string db = "db1";
     ::fesql::sdk::Status insert_status;
     sdk->Insert(db, sql, &insert_status);
@@ -156,6 +155,13 @@ TEST_P(TabletSdkTest, test_normal) {
             ASSERT_EQ("col3", schema.GetColumnName(2));
             ASSERT_EQ("col4", schema.GetColumnName(3));
             ASSERT_EQ("col5", schema.GetColumnName(4));
+
+            ASSERT_EQ(kTypeInt32, schema.GetColumnType(0));
+            ASSERT_EQ(kTypeInt16, schema.GetColumnType(1));
+            ASSERT_EQ(kTypeFloat, schema.GetColumnType(2));
+            ASSERT_EQ(kTypeDouble, schema.GetColumnType(3));
+            ASSERT_EQ(kTypeInt64, schema.GetColumnType(4));
+
             ASSERT_EQ(1, rs->Size());
             ASSERT_TRUE(rs->Next());
             {
@@ -169,9 +175,9 @@ TEST_P(TabletSdkTest, test_normal) {
                 ASSERT_EQ(val, 2u);
             }
             {
-                float val = 0;
-                ASSERT_TRUE(rs->GetFloat(2, &val));
-                ASSERT_EQ(val, static_cast<float>(3.1));
+                int64_t val = 0;
+                ASSERT_TRUE(rs->GetInt64(4, &val));
+                ASSERT_EQ(val, 5L);
             }
             {
                 double val = 0;
@@ -179,9 +185,9 @@ TEST_P(TabletSdkTest, test_normal) {
                 ASSERT_EQ(val, 4.1);
             }
             {
-                int64_t val = 0;
-                ASSERT_TRUE(rs->GetInt64(4, &val));
-                ASSERT_EQ(val, 5L);
+                float val = 0;
+                ASSERT_TRUE(rs->GetFloat(2, &val));
+                ASSERT_EQ(val, 3.1f);
             }
         } else {
             ASSERT_TRUE(false);

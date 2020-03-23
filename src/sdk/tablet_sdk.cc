@@ -30,6 +30,7 @@
 #include "proto/tablet.pb.h"
 #include "codec/row_codec.h"
 #include "sdk/result_set_impl.h"
+#include "glog/logging.h"
 
 namespace fesql {
 namespace sdk {
@@ -122,6 +123,7 @@ std::unique_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
     }
     status->code = 0;
     std::unique_ptr<ResultSetImpl> impl(new ResultSetImpl(std::move(response)));
+    impl->Init();
     return std::move(impl);
 }
 
@@ -242,29 +244,31 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan, const 
         }
         const node::ConstNode* primary = 
             dynamic_cast<const node::ConstNode*>(insert_stmt->values_.at(index));
+        index++;
+        bool ok = false;
         switch(it->type()) {
             case type::kInt16: {
-                rb.AppendInt16(primary->GetSmallInt());
+                ok = rb.AppendInt16(primary->GetSmallInt());
                 break;
             }
             case type::kInt32: {
-                rb.AppendInt32(primary->GetInt());
+                ok = rb.AppendInt32(primary->GetInt());
                 break;
             }
             case type::kInt64: {
-                rb.AppendInt64(primary->GetLong());
+                ok = rb.AppendInt64(primary->GetLong());
                 break;
             }
             case type::kFloat: {
-                rb.AppendFloat(primary->GetFloat());
+                ok = rb.AppendFloat(static_cast<float>(primary->GetDouble()));
                 break;
             }
             case type::kDouble: {
-                rb.AppendDouble(primary->GetDouble());
+                ok = rb.AppendDouble(primary->GetDouble());
                 break;
             }
             case type::kVarchar: {
-                rb.AppendString(primary->GetStr(), strlen(primary->GetStr()));
+                ok = rb.AppendString(primary->GetStr(), strlen(primary->GetStr()));
                 break;
             }
             default : {
@@ -274,6 +278,14 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan, const 
                 LOG(WARNING) << status->msg;
                 return;
             }
+        }
+        if (!ok) {
+            status->code = common::kTypeError;
+            status->msg = "can not handle data type " +
+                               node::DataTypeName(primary->GetDataType());
+
+            LOG(WARNING) << status->msg;
+            return;
         }
     }
     status->code = 0;

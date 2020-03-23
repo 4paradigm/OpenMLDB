@@ -26,36 +26,6 @@ DBMSServerImpl::DBMSServerImpl()
     : tablet_sdk(nullptr), tid_(0), tablets_() {}
 DBMSServerImpl::~DBMSServerImpl() { delete tablet_sdk; }
 
-void DBMSServerImpl::AddGroup(RpcController* ctr,
-                              const AddGroupRequest* request,
-                              AddGroupResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    if (request->name().empty()) {
-        ::fesql::common::Status* status = response->mutable_status();
-        status->set_code(::fesql::common::kBadRequest);
-        status->set_msg("group name is empty");
-        LOG(WARNING) << "create group failed for name is empty";
-        return;
-    }
-
-    std::lock_guard<std::mutex> lock(mu_);
-    Groups::iterator it = groups_.find(request->name());
-    if (it != groups_.end()) {
-        ::fesql::common::Status* status = response->mutable_status();
-        status->set_code(::fesql::common::kNameExists);
-        status->set_msg("group name exists ");
-        LOG(WARNING) << "create group failed for name existing";
-        return;
-    }
-
-    ::fesql::type::Group& group = groups_[request->name()];
-    group.set_name(request->name());
-    ::fesql::common::Status* status = response->mutable_status();
-    status->set_code(::fesql::common::kOk);
-    status->set_msg("ok");
-    DLOG(INFO) << "create group " << request->name() << " done";
-}
-
 void DBMSServerImpl::AddTable(RpcController* ctr,
                               const AddTableRequest* request,
                               AddTableResponse* response, Closure* done) {
@@ -235,33 +205,6 @@ void DBMSServerImpl::AddDatabase(RpcController* ctr,
     status->set_code(::fesql::common::kOk);
     status->set_msg("ok");
     LOG(INFO) << "create database " << request->name() << " done";
-}
-
-void DBMSServerImpl::IsExistDatabase(RpcController* ctr,
-                                     const IsExistRequest* request,
-                                     IsExistResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    if (request->name().empty()) {
-        ::fesql::common::Status* status = response->mutable_status();
-        status->set_code(::fesql::common::kBadRequest);
-        status->set_msg("database name is empty");
-        LOG(WARNING) << "enter database failed for name is empty";
-        return;
-    }
-
-    // TODO(chenjing): case intensive
-    ::fesql::common::Status* status = response->mutable_status();
-    std::lock_guard<std::mutex> lock(mu_);
-    Databases::iterator it = databases_.find(request->name());
-    if (it == databases_.end()) {
-        ::fesql::common::Status* status = response->mutable_status();
-        status->set_code(::fesql::common::kOk);
-        response->set_exist(false);
-        return;
-    } else {
-        status->set_code(::fesql::common::kOk);
-        response->set_exist(true);
-    }
 }
 
 void DBMSServerImpl::GetDatabases(RpcController* controller,

@@ -51,6 +51,11 @@ const DataType SchemaImpl::GetColumnType(uint32_t index) const {
     }
 }
 
+const bool SchemaImpl::IsColumnNotNull(uint32_t index) const {
+    if ((int32_t)index >= schema_.size()) return false;
+    schema_.Get(index).is_not_null();
+}
+
 TableImpl::TableImpl(const type::TableDef& table_def):table_def_(table_def){
 }
 

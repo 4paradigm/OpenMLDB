@@ -41,14 +41,8 @@ class DBMSServerImpl : public DBMSServer {
     DBMSServerImpl();
     ~DBMSServerImpl();
 
-    void AddGroup(RpcController* ctr, const AddGroupRequest* request,
-                  AddGroupResponse* response, Closure* done);
-
     void AddDatabase(RpcController* ctr, const AddDatabaseRequest* request,
                      AddDatabaseResponse* response, Closure* done) override;
-
-    void IsExistDatabase(RpcController* ctr, const IsExistRequest* request,
-                         IsExistResponse* response, Closure* done);
 
     void AddTable(RpcController* ctr, const AddTableRequest* request,
                   AddTableResponse* response, Closure* done);

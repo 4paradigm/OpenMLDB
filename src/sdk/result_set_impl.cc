@@ -17,6 +17,7 @@
 
 #include "sdk/result_set_impl.h"
 
+#include "base/strings.h"
 #include "glog/logging.h"
 
 namespace fesql {
@@ -41,9 +42,10 @@ bool ResultSetImpl::Init() {
 bool ResultSetImpl::Next() {
     index_++;
     if (index_ < size_){
-        row_view_->Reset(reinterpret_cast<const int8_t*>(response_->result_set(index_).c_str()));
+        const std::string& row = response_->result_set(index_);
+        row_view_->Reset(reinterpret_cast<const int8_t*>(row.c_str()), row.size());
         return true;
-    } 
+    }
     return false;
 }
 
