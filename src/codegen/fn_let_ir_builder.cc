@@ -40,8 +40,9 @@ bool RowFnLetIRBuilder::Build(
     vm::Schema& output_schema) {  // NOLINT (runtime/references)
     ::llvm::Function* fn = NULL;
     std::string row_ptr_name = "row_ptr_name";
-    std::string output_ptr_name = "output_ptr_name";
+    std::string window_ptr_name = "window_ptr_name";
     std::string row_size_name = "row_size_name";
+    std::string output_ptr_name = "output_ptr_name";
     ::llvm::StringRef name_ref(name);
     if (module_->getFunction(name_ref) != NULL) {
         LOG(WARNING) << "function with name " << name << " exist";
@@ -59,7 +60,9 @@ bool RowFnLetIRBuilder::Build(
     ScopeVar sv;
     sv.Enter(name);
 
-    ok = FillArgs(row_ptr_name, row_size_name, output_ptr_name, fn, sv);
+    std::vector<std::string> args = {row_ptr_name, window_ptr_name,
+                                     row_size_name, output_ptr_name};
+    ok = FillArgs(args, fn, sv);
 
     if (!ok) {
         return false;
@@ -67,10 +70,9 @@ bool RowFnLetIRBuilder::Build(
 
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
-
     VariableIRBuilder variable_ir_builder(block, &sv);
-    ExprIRBuilder expr_ir_builder(block, &sv, schema_, row_mode, row_ptr_name,
-                                  row_size_name, module_);
+    ExprIRBuilder expr_ir_builder(
+        block, &sv, schema_, true, row_ptr_name, window_ptr_name, row_size_name, module_);
 
     ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
@@ -99,7 +101,8 @@ bool RowFnLetIRBuilder::Build(
                     auto column_ref = dynamic_cast<node::ColumnRefNode*>(expr);
                     if (!BuildProject(index, column_ref,
                                       column_ref->GetColumnName(), &outputs,
-                                      expr_ir_builder, output_schema, status)) {
+                                      expr_ir_builder, output_schema,
+                                      status)) {
                         return false;
                     }
                     index++;
@@ -109,7 +112,8 @@ bool RowFnLetIRBuilder::Build(
             default: {
                 std::string col_name = pp_node->GetName();
                 if (!BuildProject(index, sql_node, col_name, &outputs,
-                                  expr_ir_builder, output_schema, status)) {
+                                  expr_ir_builder, output_schema,
+                                  status)) {
                     return false;
                 }
                 index++;
@@ -183,6 +187,7 @@ bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
                                       ::llvm::Function** fn) {
     std::vector<::llvm::Type*> args_type;
     args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
+    args_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
     args_type.push_back(::llvm::Type::getInt32Ty(module_->getContext()));
     args_type.push_back(
         ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
@@ -191,21 +196,18 @@ bool RowFnLetIRBuilder::BuildFnHeader(const std::string& name,
                          ::llvm::Type::getInt32Ty(module_->getContext()), fn);
 }
 
-bool RowFnLetIRBuilder::FillArgs(const std::string& row_ptr_name,
-                                 const std::string& row_size_name,
-                                 const std::string& output_ptr_name,
+bool RowFnLetIRBuilder::FillArgs(const std::vector<std::string>& args,
                                  ::llvm::Function* fn,
                                  ScopeVar& sv) {  // NOLINT
-    if (fn == NULL || fn->arg_size() != 3) {
+    if (fn == NULL || fn->arg_size() != args.size()) {
         LOG(WARNING) << "fn is null or fn arg size mismatch";
         return false;
     }
     ::llvm::Function::arg_iterator it = fn->arg_begin();
-    sv.AddVar(row_ptr_name, &*it);
-    ++it;
-    sv.AddVar(row_size_name, &*it);
-    ++it;
-    sv.AddVar(output_ptr_name, &*it);
+    for (auto arg : args) {
+        sv.AddVar(arg, &*it);
+        ++it;
+    }
     return true;
 }
 bool RowFnLetIRBuilder::BuildProject(

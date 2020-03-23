@@ -187,76 +187,72 @@ bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
         return false;
     }
 
-    std::vector<PhysicalOpNode*> ops;
-    for (auto iter = node->project_list_vec_.cbegin();
-         iter != node->project_list_vec_.cend(); iter++) {
-        fesql::node::ProjectListNode* project_list =
-            dynamic_cast<fesql::node::ProjectListNode*>(*iter);
-
-        PhysicalOpNode* project_op;
-        if (!TransformProjectOp(project_list, depend, &project_op, status)) {
-            return false;
-        }
-        ops.push_back(project_op);
-    }
-
-    if (ops.empty()) {
+    if (node->project_list_vec_.empty()) {
         status.msg = "fail transform project op: empty projects";
         status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
         return false;
     }
 
-    if (ops.size() == 1) {
-        *output = ops[0];
-        return true;
-    } else {
-        auto iter = ops.cbegin();
-
-        PhysicalOpNode* join = new PhysicalJoinNode(
-            (*iter), *(++iter), ::fesql::node::kJoinTypeConcat, nullptr);
-        node_manager_->RegisterNode(join);
-        iter++;
-        for (; iter != ops.cend(); iter++) {
-            join = new PhysicalJoinNode(
-                join, *iter, ::fesql::node::kJoinTypeConcat, nullptr);
-            node_manager_->RegisterNode(join);
-        }
-
-        auto project_list = node_manager_->MakeProjectListPlanNode(nullptr);
-        uint32_t pos = 0;
-        for (auto iter = node->pos_mapping_.cbegin();
-             iter != node->pos_mapping_.cend(); iter++) {
-            auto sub_project_list = dynamic_cast<node::ProjectListNode*>(
-                node->project_list_vec_[iter->first]);
-
-            auto project_node = dynamic_cast<node::ProjectNode*>(
-                sub_project_list->GetProjects().at(iter->second));
-            if (node::kExprAll == project_node->GetExpression()->expr_type_) {
-                auto all_expr =
-                    dynamic_cast<node::AllNode*>(project_node->GetExpression());
-                if (all_expr->children_.empty()) {
-                    // expand all expression if needed
-                    for (auto column : depend->output_schema) {
-                        all_expr->children_.push_back(
-                            node_manager_->MakeColumnRefNode(
-                                column.name(), all_expr->GetRelationName()));
-                    }
-                }
-                project_list->AddProject(
-                    node_manager_->MakeProjectNode(pos, "*", all_expr));
-            } else {
-                project_list->AddProject(node_manager_->MakeProjectNode(
-                    pos, project_node->GetName(),
-                    node_manager_->MakeColumnRefNode(project_node->GetName(),
-                                                     "")));
-            }
-            pos++;
-        }
-
-        return CreatePhysicalProjectNode(kTableProject, join, project_list,
-                                         output, status);
+    if (1 == node->project_list_vec_.size()) {
+        return TransformProjectOp(dynamic_cast<fesql::node::ProjectListNode*>(
+                                       node->project_list_vec_[0]),
+                                   depend, output, status);
     }
+
+    std::vector<PhysicalOpNode*> ops;
+    for (auto iter = node->project_list_vec_.rbegin();
+         iter != node->project_list_vec_.rend(); ++iter) {
+        fesql::node::ProjectListNode* project_list =
+            dynamic_cast<fesql::node::ProjectListNode*>(*iter);
+
+        // append oringinal table column after project columns
+        // if there is multi
+        if (node->project_list_vec_.size() > 1) {
+            project_list->AddProject(node_manager_->MakeRowProjectNode(
+                project_list->GetProjects().size(), "*",
+                node_manager_->MakeAllNode("")));
+        }
+
+        PhysicalOpNode* project_op;
+        if (!TransformProjectOp(project_list, depend, &project_op, status)) {
+            return false;
+        }
+        depend = project_op;
+    }
+
+    auto project_list = node_manager_->MakeProjectListPlanNode(nullptr);
+    uint32_t pos = 0;
+    for (auto iter = node->pos_mapping_.cbegin();
+         iter != node->pos_mapping_.cend(); iter++) {
+        auto sub_project_list = dynamic_cast<node::ProjectListNode*>(
+            node->project_list_vec_[iter->first]);
+
+        auto project_node = dynamic_cast<node::ProjectNode*>(
+            sub_project_list->GetProjects().at(iter->second));
+        if (node::kExprAll == project_node->GetExpression()->expr_type_) {
+            auto all_expr =
+                dynamic_cast<node::AllNode*>(project_node->GetExpression());
+            if (all_expr->children_.empty()) {
+                // expand all expression if needed
+                for (auto column : depend->output_schema) {
+                    all_expr->children_.push_back(
+                        node_manager_->MakeColumnRefNode(
+                            column.name(), all_expr->GetRelationName()));
+                }
+            }
+            project_list->AddProject(
+                node_manager_->MakeRowProjectNode(pos, "*", all_expr));
+        } else {
+            project_list->AddProject(node_manager_->MakeRowProjectNode(
+                pos, project_node->GetName(),
+                node_manager_->MakeColumnRefNode(project_node->GetName(), "")));
+        }
+        pos++;
+    }
+
+    return CreatePhysicalProjectNode(kTableProject, depend, project_list,
+                                     output, status);
 }
 bool Transform::TransformGroupAndSortOp(
     const node::ProjectListNode* project_list, PhysicalOpNode* depend,
@@ -534,45 +530,45 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
         return false;
     }
     const node::PlanNodeList& projects = project_list->GetProjects();
+
+    node::PlanNodeList new_projects;
+    bool has_all_project = false;
+
+    for (auto iter = projects.cbegin(); iter != projects.cend(); iter++) {
+        auto project_node = dynamic_cast<node::ProjectNode*>(*iter);
+        auto expr = project_node->GetExpression();
+        if (nullptr == expr) {
+            status.msg = "invalid project: expression is null";
+            status.code = common::kPlanError;
+            return false;
+        }
+        if (node::kExprAll == expr->expr_type_) {
+            auto all_expr = dynamic_cast<node::AllNode*>(expr);
+            if (all_expr->children_.empty()) {
+                // expand all expression if needed
+                for (auto column : node->output_schema) {
+                    all_expr->children_.push_back(
+                        node_manager_->MakeColumnRefNode(
+                            column.name(), all_expr->GetRelationName()));
+                }
+            }
+            has_all_project = true;
+        }
+    }
+
+    if (has_all_project && 1 == projects.size()) {
+        // skip project
+        DLOG(INFO) << "skip project node: project has only kAllExpr "
+                      "expression";
+        *output = node;
+        return true;
+    }
+
     Schema output_schema;
     std::string fn_name;
     switch (project_type) {
         case kRowProject:
         case kTableProject: {
-            node::PlanNodeList new_projects;
-            bool has_all_project = false;
-            for (auto iter = projects.cbegin(); iter != projects.cend();
-                 iter++) {
-                auto project_node = dynamic_cast<node::ProjectNode*>(*iter);
-                auto expr = project_node->GetExpression();
-                if (nullptr == expr) {
-                    status.msg = "invalid project: expression is null";
-                    status.code = common::kPlanError;
-                    return false;
-                }
-                if (node::kExprAll == expr->expr_type_) {
-                    auto all_expr = dynamic_cast<node::AllNode*>(expr);
-                    if (all_expr->children_.empty()) {
-                        // expand all expression if needed
-                        for (auto column : node->output_schema) {
-                            all_expr->children_.push_back(
-                                node_manager_->MakeColumnRefNode(
-                                    column.name(),
-                                    all_expr->GetRelationName()));
-                        }
-                    }
-                    has_all_project = true;
-                }
-            }
-
-            if (has_all_project && 1 == projects.size()) {
-                // skip project
-                DLOG(INFO) << "skip project node: project has only kAllExpr "
-                              "expression";
-                *output = node;
-                return true;
-            }
-
             if (!GenProjects(node->output_schema, projects, true, fn_name,
                              output_schema, status)) {
                 return false;
@@ -612,7 +608,6 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
             break;
         }
         case kGroupAggregation: {
-            auto group_op = dynamic_cast<PhysicalGroupNode*>(node);
             op = new PhysicalGroupAggrerationNode(node, fn_name, output_schema);
             break;
         }
@@ -1173,6 +1168,94 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
         }
     }
     return true;
+}
+
+
+// transform project plan in request mode
+bool TransformRequestQuery::TransformProjecPlantOp(
+    const node::ProjectPlanNode* node, PhysicalOpNode** output,
+    base::Status& status) {
+    if (nullptr == node || nullptr == output) {
+        status.msg = "input node or output node is null";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    PhysicalOpNode* depend = nullptr;
+    if (!TransformPlanOp(node->GetChildren()[0], &depend, status)) {
+        return false;
+    }
+
+    std::vector<PhysicalOpNode*> ops;
+    for (auto iter = node->project_list_vec_.cbegin();
+         iter != node->project_list_vec_.cend(); iter++) {
+        fesql::node::ProjectListNode* project_list =
+            dynamic_cast<fesql::node::ProjectListNode*>(*iter);
+
+        PhysicalOpNode* project_op;
+        if (!TransformProjectOp(project_list, depend, &project_op, status)) {
+            return false;
+        }
+        ops.push_back(project_op);
+    }
+
+    if (ops.empty()) {
+        status.msg = "fail transform project op: empty projects";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    if (ops.size() == 1) {
+        *output = ops[0];
+        return true;
+    } else {
+        auto iter = ops.cbegin();
+
+        PhysicalOpNode* join = new PhysicalJoinNode(
+            (*iter), *(++iter), ::fesql::node::kJoinTypeConcat, nullptr);
+        node_manager_->RegisterNode(join);
+        iter++;
+        for (; iter != ops.cend(); iter++) {
+            join = new PhysicalJoinNode(
+                join, *iter, ::fesql::node::kJoinTypeConcat, nullptr);
+            node_manager_->RegisterNode(join);
+        }
+
+        auto project_list = node_manager_->MakeProjectListPlanNode(nullptr);
+        uint32_t pos = 0;
+        for (auto iter = node->pos_mapping_.cbegin();
+             iter != node->pos_mapping_.cend(); iter++) {
+            auto sub_project_list = dynamic_cast<node::ProjectListNode*>(
+                node->project_list_vec_[iter->first]);
+
+            auto project_node = dynamic_cast<node::ProjectNode*>(
+                sub_project_list->GetProjects().at(iter->second));
+            if (node::kExprAll == project_node->GetExpression()->expr_type_) {
+                auto all_expr =
+                    dynamic_cast<node::AllNode*>(project_node->GetExpression());
+                if (all_expr->children_.empty()) {
+                    // expand all expression if needed
+                    for (auto column : depend->output_schema) {
+                        all_expr->children_.push_back(
+                            node_manager_->MakeColumnRefNode(
+                                column.name(), all_expr->GetRelationName()));
+                    }
+                }
+                project_list->AddProject(
+                    node_manager_->MakeRowProjectNode(pos, "*", all_expr));
+            } else {
+                project_list->AddProject(node_manager_->MakeRowProjectNode(
+                    pos, project_node->GetName(),
+                    node_manager_->MakeColumnRefNode(project_node->GetName(),
+                                                     "")));
+            }
+            pos++;
+        }
+
+        return CreatePhysicalProjectNode(kTableProject, join, project_list,
+                                         output, status);
+    }
 }
 }  // namespace vm
 }  // namespace fesql

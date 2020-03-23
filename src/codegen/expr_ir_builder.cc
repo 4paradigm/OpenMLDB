@@ -36,6 +36,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
       sv_(scope_var),
       row_mode_(true),
       row_ptr_name_(""),
+      window_ptr_name_(""),
       variable_ir_builder_(block, scope_var),
       arithmetic_ir_builder_(block),
       predicate_ir_builder_(block),
@@ -46,6 +47,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                              const vm::Schema& schema, const bool row_mode,
                              const std::string& row_ptr_name,
+                             const std::string& window_ptr_name,
                              const std::string& row_size_name,
                              ::llvm::Module* module)
     : block_(block),
@@ -53,6 +55,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
       schema_(schema),
       row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
+      window_ptr_name_(window_ptr_name),
       row_size_name_(row_size_name),
       variable_ir_builder_(block, scope_var),
       arithmetic_ir_builder_(block),
@@ -63,6 +66,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
 
 ExprIRBuilder::~ExprIRBuilder() {}
 
+// TODO(chenjing): 修改GetFunction, 直接根据参数生成signature
 ::llvm::Function* ExprIRBuilder::GetFuncion(
     const std::string& name, const std::vector<node::TypeNode>& generic_types,
     base::Status& status) {
@@ -72,6 +76,7 @@ ExprIRBuilder::~ExprIRBuilder() {}
             fn_name.append("_").append(type_node.GetName());
         }
     }
+
     ::llvm::Function* fn = module_->getFunction(::llvm::StringRef(fn_name));
     if (nullptr == fn) {
         status.code = common::kCallMethodError;
@@ -186,11 +191,16 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::StringRef name(call_fn->GetFunctionName());
 
+    bool is_udaf = IsUADF(call_fn->GetFunctionName());
     std::vector<::llvm::Value*> llvm_args;
     const fesql::node::ExprListNode* args = call_fn->GetArgs();
     std::vector<::fesql::node::ExprNode*>::const_iterator it =
         args->children_.cbegin();
     std::vector<::fesql::node::TypeNode> generics_types;
+
+    bool old_mode = row_mode_;
+    row_mode_ = !is_udaf;
+
     for (; it != args->children_.cend(); ++it) {
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
         ::llvm::Value* llvm_arg = NULL;
@@ -202,6 +212,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
                 status.code = common::kCodegenError;
                 return false;
             }
+            //TODO(chenjing): 直接使用list TypeNode
             // handle list type
             // 泛型类型还需要优化，目前是hard
             // code识别list或者迭代器类型，然后取generic type
@@ -219,6 +230,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
         }
     }
 
+    row_mode_ = old_mode;
     ::llvm::Function* fn = GetFuncion(name, generics_types, status);
 
     if (common::kOk != status.code) {
@@ -348,11 +360,12 @@ bool ExprIRBuilder::BuildColumnIterator(const std::string& col,
                                         ::llvm::Value** output,
                                         base::Status& status) {  // NOLINT
     ::llvm::Value* row_ptr = NULL;
-    bool ok = variable_ir_builder_.LoadValue(row_ptr_name_, &row_ptr, status);
+    bool ok =
+        variable_ir_builder_.LoadValue(window_ptr_name_, &row_ptr, status);
 
     if (!ok || row_ptr == NULL) {
-        status.msg = "fail to find row ptr with name " + row_ptr_name_ + ": " +
-                     status.msg;
+        status.msg = "fail to find row ptr with name " + window_ptr_name_ +
+                     ": " + status.msg;
         LOG(WARNING) << status.msg;
         return false;
     }
@@ -546,6 +559,20 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         return false;
     }
     return true;
+}
+bool ExprIRBuilder::IsUADF(std::string function_name) {
+    if (module_->getFunctionList().empty()) {
+        return false;
+    }
+
+    for (auto iter = module_->getFunctionList().begin();
+         iter != module_->getFunctionList().end(); iter++) {
+        if (iter->getName().startswith_lower(function_name + "_list")) {
+            std::cout << "udaf function: " << iter->getName().str() << std::endl;
+            return true;
+        }
+    }
+    return false;
 }
 
 }  // namespace codegen

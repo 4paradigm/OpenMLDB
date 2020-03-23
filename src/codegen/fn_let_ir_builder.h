@@ -52,9 +52,7 @@ class RowFnLetIRBuilder {
                        const std::vector<::llvm::Type*>& args_type,
                        ::llvm::Type* ret_type, ::llvm::Function** fn);
 
-    bool FillArgs(const std::string& row_ptr_name,
-                  const std::string& row_size_name,
-                  const std::string& output_ptr_name, ::llvm::Function* fn,
+    bool FillArgs(const std::vector<std::string>& args, ::llvm::Function* fn,
                   ScopeVar& sv);  // NOLINT
 
     bool EncodeBuf(

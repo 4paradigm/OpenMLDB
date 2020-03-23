@@ -217,8 +217,10 @@ class LimitPlanNode : public UnaryPlanNode {
 class ProjectNode : public LeafPlanNode {
  public:
     ProjectNode(int32_t pos, const std::string &name,
+                const bool is_aggregation,
                 node::ExprNode *expression)
         : LeafPlanNode(kProjectNode),
+          is_aggregation_(is_aggregation),
           pos_(pos),
           name_(name),
           expression_(expression) {}
@@ -229,6 +231,7 @@ class ProjectNode : public LeafPlanNode {
     std::string GetName() const { return name_; }
     node::ExprNode *GetExpression() const { return expression_; }
     virtual bool Equals(const PlanNode *node) const;
+    const bool is_aggregation_;
 
  private:
     uint32_t pos_;

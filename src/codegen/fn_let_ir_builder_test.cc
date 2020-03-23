@@ -185,13 +185,13 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
-    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
+        int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
     int8_t* buf = NULL;
     uint32_t size = 0;
     BuildBuf(&buf, &size);
     int8_t* output = NULL;
-    int32_t ret2 = decode(buf, size, &output);
+    int32_t ret2 = decode(buf, nullptr, size, &output);
     ASSERT_EQ(ret2, 0);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
     ASSERT_EQ(out_size, 27u);
@@ -244,13 +244,13 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
-    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
+        int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
     int8_t* buf = NULL;
     uint32_t size = 0;
     BuildBuf(&buf, &size);
     int8_t* output = NULL;
-    int32_t ret2 = decode(buf, size, &output);
+    int32_t ret2 = decode(buf, nullptr, size, &output);
     ASSERT_EQ(ret2, 0);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
     ASSERT_EQ(out_size, 13u);
@@ -298,14 +298,13 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
 
-    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
-
+    int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
+        int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
     int8_t* ptr = NULL;
     uint32_t size = 0;
     BuildBuf(&ptr, &size);
     int8_t* output = NULL;
-    int32_t ret2 = decode(ptr, size, &output);
+    int32_t ret2 = decode(ptr, nullptr, size, &output);
     ASSERT_EQ(ret2, 0);
     ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -352,14 +351,14 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
 
-    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
+        int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
     uint32_t size = 0;
     BuildBuf(&ptr, &size);
     int8_t* output = NULL;
-    int32_t ret2 = decode(ptr, size, &output);
+    int32_t ret2 = decode(ptr, nullptr, size, &output);
     ASSERT_EQ(ret2, 0);
     ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(33u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -481,7 +480,6 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
     *buf = reinterpret_cast<int8_t*>(w);
 }
 
-
 TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     std::string sql =
         "SELECT "
@@ -532,8 +530,8 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
 
-    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
+        int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> window;
@@ -541,7 +539,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     LOG(INFO) << "input ptr " << ptr;
 
     int8_t* output = NULL;
-    int32_t ret2 = decode(ptr, 0, &output);
+    int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
     ASSERT_EQ(0, ret2);
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7));
@@ -604,14 +602,15 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
 
-    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
+        int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+
 
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(ptr, 0, &output);
+    int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
     ASSERT_EQ(ret2, 0);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
@@ -671,14 +670,15 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
 
-    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
+        int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+
 
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(ptr, 0, &output);
+    int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
     ASSERT_EQ(ret2, 0);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
@@ -761,14 +761,15 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_at_fn"));
 
-    int32_t (*decode)(int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+    int32_t (*decode)(int8_t*, int8_t*, int32_t, int8_t**) = (int32_t(*)(
+        int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
+
 
     int8_t* ptr = NULL;
     std::vector<fesql::storage::Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(ptr, 0, &output);
+    int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
     ASSERT_EQ(ret2, 0);
     //    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output +
     //    2));

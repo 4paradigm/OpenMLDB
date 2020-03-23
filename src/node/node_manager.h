@@ -72,8 +72,11 @@ class NodeManager {
     ProjectListNode *MakeProjectListPlanNode(WindowPlanNode *w);
     FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
                                        const ExprNode *condition);
-    ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
+
+    ProjectNode *MakeRowProjectNode(const int32_t pos, const std::string &name,
                                  node::ExprNode *expression);
+    ProjectNode *MakeAggProjectNode(const int32_t pos, const std::string &name,
+                                    node::ExprNode *expression);
     PlanNode *MakeTablePlanNode(const std::string &node);
     PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
                            const ExprNode *condition);
@@ -227,6 +230,10 @@ class NodeManager {
     }
 
  private:
+    ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
+                                 const bool is_aggregation,
+                                 node::ExprNode *expression);
+
     SQLNode *RegisterNode(SQLNode *node_ptr) {
         parser_node_list_.push_back(node_ptr);
         return node_ptr;

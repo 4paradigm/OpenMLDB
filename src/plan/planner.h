@@ -54,9 +54,6 @@ class Planner {
     bool CreateTableReferencePlanNode(
         const node::TableRefNode *root, node::PlanNode **output,
         Status &status);  // NOLINT (runtime/references)
-    void CreateProjectPlanNode(const node::SQLNode *root, const uint32_t pos,
-                               node::ProjectNode **output,
-                               Status &status);  // NOLINT (runtime/references)
     bool CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
                        Status &status);  // NOLINT (runtime/references)
     bool CreateInsertPlan(const SQLNode *root, node::PlanNode **output,

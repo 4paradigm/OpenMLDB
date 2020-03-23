@@ -25,6 +25,9 @@ template <class V>
 double avg_list(int8_t *input);
 
 template <class V>
+int64_t count_list(int8_t *input);
+
+template <class V>
 V max_list(int8_t *input);
 
 template <class V>

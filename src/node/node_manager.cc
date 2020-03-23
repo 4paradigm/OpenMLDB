@@ -606,8 +606,10 @@ PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {
 }
 ProjectNode *NodeManager::MakeProjectNode(const int32_t pos,
                                           const std::string &name,
+                                          const bool is_aggregation,
                                           node::ExprNode *expression) {
-    node::ProjectNode *node_ptr = new ProjectNode(pos, name, expression);
+    node::ProjectNode *node_ptr =
+        new ProjectNode(pos, name, is_aggregation, expression);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -657,6 +659,16 @@ SQLNode *NodeManager::MakeExplainNode(const QueryNode *query,
                                       ExplainType explain_type) {
     node::ExplainNode *node_ptr = new ExplainNode(query, explain_type);
     return RegisterNode(node_ptr);
+}
+ProjectNode *NodeManager::MakeAggProjectNode(const int32_t pos,
+                                             const std::string &name,
+                                             node::ExprNode *expression) {
+    return MakeProjectNode(pos, name, true, expression);
+}
+ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos,
+                                             const std::string &name,
+                                             node::ExprNode *expression) {
+    return MakeProjectNode(pos, name, false, expression);
 }
 
 }  // namespace node

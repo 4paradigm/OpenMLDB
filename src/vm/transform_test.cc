@@ -386,9 +386,13 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     Transform transform(&manager, "db", catalog, m.get());
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformBatchPhysicalPlan(
+
+    bool ok = transform.TransformBatchPhysicalPlan(
         dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
-        base_status));
+        base_status);
+    std::cout << base_status.msg << std::endl;
+    ASSERT_TRUE(ok);
+
     std::ostringstream oos;
     physical_plan->Print(oos, "");
     std::cout << oos.str() << std::endl;
@@ -438,6 +442,7 @@ TEST_F(TransformTest, pass_group_optimized_test) {
     for (auto in_out : in_outs) {
         Physical_Plan_Check(catalog, in_out.first, in_out.second);
     }
+
 }
 
 TEST_F(TransformTest, pass_sort_optimized_test) {
@@ -589,5 +594,6 @@ TEST_F(TransformTest, pass_join_optimized_test) {
 }  // namespace fesql
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
+        google::InitGoogleLogging(argv[0]);
     return RUN_ALL_TESTS();
 }

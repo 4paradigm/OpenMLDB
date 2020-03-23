@@ -129,7 +129,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
     // prepare window list
     std::map<node::WindowDefNode *, node::ProjectListNode *> project_list_map;
     // prepare window def
-    int w_id = 1;
+    int w_id = 0;
     std::map<std::string, node::WindowDefNode *> windows;
     if (nullptr != root->GetWindowList() && !root->GetWindowList()->IsEmpty()) {
         for (auto node : root->GetWindowList()->GetList()) {
@@ -140,14 +140,31 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
 
     for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
         auto expr = select_expr_list[pos];
-        node::ProjectNode *project_node_ptr = nullptr;
+        std::string project_name;
+        node::ExprNode *project_expr;
+        switch (expr->GetType()) {
+            case node::kResTarget: {
+                const node::ResTarget *target_ptr =
+                    (const node::ResTarget *)expr;
 
-        CreateProjectPlanNode(expr, pos, &project_node_ptr, status);
-        if (0 != status.code) {
-            return false;
+                project_name = target_ptr->GetName();
+                if (project_name.empty()) {
+                    project_name = target_ptr->GetVal()->GetExprString();
+                }
+                project_expr = target_ptr->GetVal();
+                break;
+            }
+            default: {
+                status.msg = "can not create project plan node with type " +
+                             node::NameOfSQLNodeType(root->GetType());
+                status.code = common::kPlanError;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
         }
-        node::WindowDefNode *w_ptr = node::WindowOfExpression(
-            windows, project_node_ptr->GetExpression());
+
+        node::WindowDefNode *w_ptr =
+            node::WindowOfExpression(windows, project_expr);
 
         if (project_list_map.find(w_ptr) == project_list_map.end()) {
             if (w_ptr == nullptr) {
@@ -164,15 +181,36 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                     node_manager_->MakeProjectListPlanNode(w_node_ptr);
             }
         }
+        node::ProjectNode *project_node_ptr =
+            nullptr == w_ptr ? node_manager_->MakeRowProjectNode(
+                                   pos, project_name, project_expr)
+                             : node_manager_->MakeAggProjectNode(
+                                   pos, project_name, project_expr);
         project_list_map[w_ptr]->AddProject(project_node_ptr);
     }
     // add MergeNode if multi ProjectionLists exist
-    PlanNodeList project_list_vec(w_id);
+    PlanNodeList project_list_vec(w_id+1);
     for (auto &v : project_list_map) {
         node::ProjectListNode *project_list = v.second;
         int pos =
             nullptr == project_list->GetW() ? 0 : project_list->GetW()->GetId();
-        project_list_vec[pos] = project_list;
+        if (nullptr == project_list_vec.at(pos)) {
+            project_list_vec[pos] = project_list;
+        } else {
+            auto projects =
+                dynamic_cast<node::ProjectListNode *>(project_list_vec[pos]);
+
+            if (projects->is_window_agg_) {
+                for (auto p : project_list->GetProjects()) {
+                    projects->AddProject(dynamic_cast<node::ProjectNode *>(p));
+                }
+            } else {
+                for (auto p : projects->GetProjects()) {
+                    project_list->AddProject(dynamic_cast<node::ProjectNode *>(p));
+                }
+                project_list_vec[pos] = project_list;
+            }
+        }
     }
     PlanNodeList project_list_vec2;
     std::vector<std::pair<uint32_t, uint32_t>> pos_mapping(
@@ -365,38 +403,6 @@ void Planner::CreateWindowPlanNode(
         } else {
             LOG(WARNING) << "fail to create project list node: right frame "
                             "can't be unbound ";
-            return;
-        }
-    }
-}
-
-void Planner::CreateProjectPlanNode(
-    const SQLNode *root, const uint32_t pos, node::ProjectNode **output,
-    Status &status) {  // NOLINT (runtime/references)
-    if (nullptr == root) {
-        status.msg = "fail to create project node: query tree node it null";
-        status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
-        return;
-    }
-
-    switch (root->GetType()) {
-        case node::kResTarget: {
-            const node::ResTarget *target_ptr = (const node::ResTarget *)root;
-
-            std::string name = target_ptr->GetName();
-            if (name.empty()) {
-                name = target_ptr->GetVal()->GetExprString();
-            }
-            *output =
-                node_manager_->MakeProjectNode(pos, name, target_ptr->GetVal());
-            return;
-        }
-        default: {
-            status.msg = "can not create project plan node with type " +
-                         node::NameOfSQLNodeType(root->GetType());
-            status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
             return;
         }
     }
