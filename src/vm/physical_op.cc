@@ -182,14 +182,7 @@ void PhysicalFliterNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
-void PhysicalBufferNode::Print(std::ostream& output,
-                               const std::string& tab) const {
-    PhysicalOpNode::Print(output, tab);
-    output << "(start=" << std::to_string(start_offset_)
-           << ", end=" << std::to_string(end_offset_) << ")";
-    output << "\n";
-    PrintChildren(output, tab);
-}
+
 bool PhysicalDataProviderNode::InitSchema() {
     if (table_handler_) {
         output_schema.CopyFrom(table_handler_->GetSchema());

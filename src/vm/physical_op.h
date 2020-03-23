@@ -27,7 +27,6 @@ enum PhysicalOpType {
     kPhysicalOpGroupAndSort,
     kPhysicalOpLoops,
     kPhysicalOpAggrerate,
-    kPhysicalOpBuffer,
     kPhysicalOpProject,
     kPhysicalOpLimit,
     kPhysicalOpRename,
@@ -54,8 +53,6 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "PROJECT";
         case kPhysicalOpAggrerate:
             return "AGGRERATE";
-        case kPhysicalOpBuffer:
-            return "BUFFER";
         case kPhysicalOpLimit:
             return "LIMIT";
         case kPhysicalOpRename:
@@ -325,18 +322,6 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     const int64_t end_offset_;
 };
 
-class PhysicalBufferNode : public PhysicalUnaryNode {
- public:
-    PhysicalBufferNode(PhysicalOpNode *node, const int64_t start,
-                       const int64_t end)
-        : PhysicalUnaryNode(node, kPhysicalOpBuffer, false, false),
-          start_offset_(start),
-          end_offset_(end) {}
-    virtual ~PhysicalBufferNode() {}
-    virtual void Print(std::ostream &output, const std::string &tab) const;
-    const int64_t start_offset_;
-    const int64_t end_offset_;
-};
 class PhysicalLoopsNode : public PhysicalUnaryNode {
  public:
     explicit PhysicalLoopsNode(PhysicalOpNode *node)
