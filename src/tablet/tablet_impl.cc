@@ -4311,6 +4311,12 @@ void TabletImpl::DumpIndexData(RpcController* controller,
         }
     }
     std::string index_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/index/";
+    if (!::rtidb::base::MkdirRecur(index_path)) {
+        PDLOG(WARNING, "fail to create path %s", index_path.c_str());
+        response->set_code(::rtidb::base::ReturnCode::kFailToCreateFile);
+        response->set_msg("fail to create path");
+        return;
+    }
     std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
     ::rtidb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
     std::vector<::rtidb::log::WriteHandle*> whs;

@@ -154,6 +154,7 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
         ::rtidb::base::SchemaCodec codec;
         codec.Decode(schema, columns);
     } else {
+        PDLOG(INFO, "schema of table tid[%u] pid[%u]is empty", tid, pid);
         return true;
     }
     std::map<std::string, uint32_t> column_desc_map;
@@ -168,9 +169,6 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
             PDLOG(WARNING, "fail to find column_desc %s", name.c_str());
             return false;
         }
-    }
-    if (index_cols.size() < 1) {
-        return true;
     }
 
     while (true) {
@@ -245,13 +243,18 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
         }
         uint32_t index_pid = ::rtidb::base::hash64(cur_key)%partition_num;
         if (!pid_set.count(index_pid)) {
+            std::string entry_str;
             ::rtidb::api::Dimension* dim = entry.add_dimensions();
             dim->set_key(cur_key);
             dim->set_idx(idx);
-            ::rtidb::base::Status status = whs[index_pid]->Write(record);
+            entry.SerializeToString(&entry_str);
+            ::rtidb::base::Slice new_record(entry_str);
+            ::rtidb::base::Status status = whs[index_pid]->Write(new_record);
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to dump index entrylog in binlog to pid[%u].", index_pid);
                 return false;
+            } else {
+                PDLOG(DEBUG, "dump entry key[%s] into pid[%u]", cur_key.c_str(), index_pid);
             }
         }
 

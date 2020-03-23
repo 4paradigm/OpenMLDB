@@ -17,6 +17,7 @@
 #include <gflags/gflags.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include "base/schema_codec.h"
 #include <sys/stat.h> 
 #include <fcntl.h>
 #include "log/log_writer.h"
@@ -1285,7 +1286,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
 
 }
 
-TEST_F(TabletImplTest, MultiGet) {
+TEST_F(TabletImplTest, MultiGet) { //
     TabletImpl tablet;
     tablet.Init();
     uint32_t id = counter++;
@@ -5258,6 +5259,144 @@ TEST_F(TabletImplTest, DelRecycle) {
     ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_ttl = tmp_recycle_ttl;
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
+}
+
+TEST_F(TabletImplTest, DumpIndex) {
+    int old_offset = FLAGS_make_snapshot_threshold_offset;
+    FLAGS_make_snapshot_threshold_offset = 0;
+    uint32_t id = counter++;
+    MockClosure closure;
+    TabletImpl tablet;
+    tablet.Init();
+    ::rtidb::api::CreateTableRequest request;
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+    desc->set_name("card");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_meta->add_column_desc();
+    desc->set_name("mcc");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_meta->add_column_desc();
+    desc->set_name("price");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    desc = table_meta->add_column_desc();
+    desc->set_name("ts1");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    desc->set_is_ts_col(true);
+    desc = table_meta->add_column_desc();
+    desc->set_name("ts2");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    desc->set_is_ts_col(true);
+    ::rtidb::common::ColumnKey* column_key = table_meta->add_column_key();
+    column_key->set_index_name("card");
+    column_key->add_col_name("card");
+    column_key->add_ts_name("ts1");
+    column_key->add_ts_name("ts2");
+
+    
+    std::vector<::rtidb::base::ColumnDesc> columns;
+    ::rtidb::base::SchemaCodec::ConvertColumnDesc(table_meta->column_desc(), columns);
+    ::rtidb::base::SchemaCodec codec;
+    std::string buffer;
+    codec.Encode(columns, buffer);
+    table_meta->set_schema(buffer);
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    ::rtidb::api::CreateTableResponse response;
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+    
+    for (int i = 0; i < 10; i++) {
+        std::vector<std::string> input;
+        input.push_back("card" + std::to_string(i));
+        input.push_back("mcc" + std::to_string(i));
+        input.push_back(std::to_string(i));
+        input.push_back(std::to_string(i+100));
+        input.push_back(std::to_string(i+10000));
+        std::string value;
+        std::vector<std::pair<std::string, uint32_t>> dimensions;
+        MultiDimensionEncode(columns, input, dimensions, value);
+        ::rtidb::api::PutRequest request;
+        request.set_value(value);
+        request.set_tid(id);
+        request.set_pid(1);
+
+        ::rtidb::api::Dimension* d = request.add_dimensions();
+        d->set_key(input[0]);
+        d->set_idx(0);
+        ::rtidb::api::TSDimension* tsd = request.add_ts_dimensions();
+        tsd->set_ts(i+100);
+        tsd->set_idx(0);
+        tsd = request.add_ts_dimensions();
+        tsd->set_ts(i+10000);
+        tsd->set_idx(1);
+        ::rtidb::api::PutResponse response;
+        MockClosure closure;
+        tablet.Put(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    ::rtidb::api::GeneralRequest grq;
+    grq.set_tid(id);
+    grq.set_pid(1);
+    ::rtidb::api::GeneralResponse grp;
+    grp.set_code(-1);
+    tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
+    sleep(2);
+    for (int i = 0; i < 10; i++) {
+        std::vector<std::string> input;
+        input.push_back("card" + std::to_string(i));
+        input.push_back("mcc" + std::to_string(i));
+        input.push_back(std::to_string(i));
+        input.push_back(std::to_string(i+200));
+        input.push_back(std::to_string(i+20000));
+        std::string value;
+        std::vector<std::pair<std::string, uint32_t>> dimensions;
+        MultiDimensionEncode(columns, input, dimensions, value);
+        ::rtidb::api::PutRequest request;
+        request.set_value(value);
+        request.set_tid(id);
+        request.set_pid(1);
+        ::rtidb::api::Dimension* d = request.add_dimensions();
+        d->set_key(input[0]);
+        d->set_idx(0);
+        ::rtidb::api::TSDimension* tsd = request.add_ts_dimensions();
+        tsd->set_ts(i+100);
+        tsd->set_idx(0);
+        tsd = request.add_ts_dimensions();
+        tsd->set_ts(i+10000);
+        tsd->set_idx(1);
+        ::rtidb::api::PutResponse response;
+        MockClosure closure;
+        tablet.Put(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    {
+        column_key = table_meta->add_column_key();
+        column_key->set_index_name("card|mcc");
+        column_key->add_col_name("card");
+        column_key->add_col_name("mcc");
+        column_key->add_ts_name("ts2");
+        ::rtidb::api::DumpIndexDataRequest dump_request;
+        dump_request.set_tid(id);
+        dump_request.set_pid(1);
+        dump_request.set_partition_num(8);
+        dump_request.set_idx(1);
+        dump_request.mutable_column_key()->CopyFrom(*column_key);
+        ::rtidb::api::GeneralResponse dump_response;
+        tablet.DumpIndexData(NULL, &dump_request, &dump_response, &closure);
+        ASSERT_EQ(0, dump_response.code());
+    }
+    {
+
+    }
+    FLAGS_make_snapshot_threshold_offset = old_offset;
 }
 
 }

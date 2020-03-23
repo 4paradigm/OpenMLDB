@@ -535,6 +535,8 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
 
 
 bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, const ::rtidb::common::ColumnKey& column_key, uint32_t idx, std::vector<::rtidb::log::WriteHandle*>& whs, uint64_t& latest_offset) {
+    uint32_t tid = table->GetId();
+    uint32_t pid = table->GetPid();
     uint32_t partition_num = whs.size();
     ::rtidb::api::Manifest manifest;
     manifest.set_offset(0);
@@ -550,6 +552,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
         ::rtidb::base::SchemaCodec codec;
         codec.Decode(schema, columns);
     } else {
+        PDLOG(INFO, "schema of table tid[%u] pid[%u]is empty", tid, pid);
         return true;
     }
     std::map<std::string, uint32_t> column_desc_map;
@@ -565,9 +568,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
             return false;
         }
     }
-    if (index_cols.size() < 1) {
-        return true;
-    }
+
     std::atomic<uint64_t> succ_cnt, failed_cnt;
     succ_cnt = failed_cnt = 0;
     {
@@ -619,13 +620,18 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
             }
             uint32_t index_pid = ::rtidb::base::hash64(cur_key)%partition_num;
             if (!pid_set.count(index_pid)) {
+                std::string entry_str;
                 ::rtidb::api::Dimension* dim = entry.add_dimensions();
                 dim->set_key(cur_key);
                 dim->set_idx(idx);
-                ::rtidb::base::Status status = whs[index_pid]->Write(record);
+                entry.SerializeToString(&entry_str);
+                ::rtidb::base::Slice new_record(entry_str);
+                ::rtidb::base::Status status = whs[index_pid]->Write(new_record);
                 if (!status.ok()) {
                     PDLOG(WARNING, "fail to dump index entrylog in snapshot to pid[%u].", index_pid);
                     return false;
+                } else {
+                    PDLOG(DEBUG, "dump entry key[%s] into pid[%u]", cur_key.c_str(), index_pid);
                 }
             }
         }

@@ -164,6 +164,7 @@ enum ReturnCode {
     kTsNameNotFound = 137,
     kFailToGetDbRootPath = 138,
     kFailToGetRecycleRootPath = 139,
+    kFailToCreateFile = 140,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
