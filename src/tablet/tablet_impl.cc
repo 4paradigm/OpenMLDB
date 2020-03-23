@@ -338,7 +338,7 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
                     break;
                 }
                 case ::rtidb::api::TTLType::kAbsAndLat: {
-                    if (!SeekWithCount(it, st, real_st_type, 0, cnt)) {
+                    if (!SeekWithCount(it, st, st_type, 0, cnt)) {
                         return 1;
                     }
                     break;
