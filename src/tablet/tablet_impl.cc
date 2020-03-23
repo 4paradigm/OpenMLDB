@@ -2551,7 +2551,7 @@ void TabletImpl::MakeSnapshotInternal(
             }
         }
     }
-    PDLOG(INFO, "MakeSnapshotInternal end, tid[%u] pid[%u]", tid, pid);
+    PDLOG(INFO, "MakeSnapshotInternal finish, tid[%u] pid[%u]", tid, pid);
 }
 
 void TabletImpl::MakeSnapshot(RpcController* controller,

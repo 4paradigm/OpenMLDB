@@ -8043,6 +8043,8 @@ void NameServerImpl::WrapTaskFun(
               ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(),
               task_info->op_id());
     }
+    PDLOG(INFO, "task[%s] starts running. op_id[%lu]",
+            ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(), task_info->op_id());
     task_rpc_version_.fetch_add(1, std::memory_order_acq_rel);
     task_info->set_is_rpc_send(true);
 }
