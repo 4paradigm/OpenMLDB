@@ -16,8 +16,8 @@
 #include <set>
 #include <utility>
 
-#include "boost/algorithm/string.hpp"
 #include "base/status.h"
+#include "boost/algorithm/string.hpp"
 #include "timer.h"  // NOLINT
 
 DECLARE_string(endpoint);
@@ -4665,7 +4665,10 @@ void NameServerImpl::CreateTableInternel(
                     PDLOG(WARNING,
                           "create remote table_info erro, wrong msg is [%s]",
                           msg.c_str());
-                    return;
+                    response.set_code(::rtidb::base::ReturnCode::
+                                          kCreateRemoteTableInfoFailed);
+                    response.set_msg("create remote table info failed");
+                    break;
                 }
                 std::lock_guard<std::mutex> lock(mu_);
                 if (CreateTableRemoteOP(
@@ -6125,10 +6128,15 @@ void NameServerImpl::SchedMakeSnapshot() {
                 continue;
             }
             if (part_iter->second < 1) {
-                PDLOG(WARNING, "table %s pid %u snapshot offset is %lu, too small, skip makesnapshot", table.second->name().c_str(), part.pid(), part_iter->second);
+                PDLOG(WARNING,
+                      "table %s pid %u snapshot offset is %lu, too small, skip "
+                      "makesnapshot",
+                      table.second->name().c_str(), part.pid(),
+                      part_iter->second);
                 continue;
             }
-            PDLOG(INFO, "table %s pid %u specify snapshot offset is %lu", table.second->name().c_str(), part.pid(), part_iter->second);
+            PDLOG(INFO, "table %s pid %u specify snapshot offset is %lu",
+                  table.second->name().c_str(), part.pid(), part_iter->second);
             for (const auto& part_meta : part.partition_meta()) {
                 if (part_meta.is_alive()) {
                     auto client_iter =
