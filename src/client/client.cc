@@ -573,17 +573,13 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string &name, const std::vec
         result.SetError(-1, "table not found");
         return result;
     }
-    auto tablet = GetTabletClient(th->partition[0].leader, &result.msg_);
-    if (tablet == NULL) {
-        result.code_ = -1;
-        return result;
-    }
     std::string* data = new std::string();
     bool is_finish;
     uint32_t count;
     bool ok = BatchQuery(name, keys, data, &is_finish, &count);
     if (!ok) {
         delete data;
+        result.SetError(-1, "batchquery error");
         return result;
     }
     std::string* table_name = new std::string(name);

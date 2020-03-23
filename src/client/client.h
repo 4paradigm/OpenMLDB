@@ -266,6 +266,13 @@ class RtidbClient;
 
 class TraverseResult : public ViewResult {
 public:
+    TraverseResult(): code_(0),
+        msg_(), offset_(0), value_(),
+        client_(nullptr), is_finish_(false),
+        ro_(), table_name_(), count_(0),
+        last_pk_() {
+    }
+
     void SetError(int err_code, const std::string& err_msg) {
         code_ = err_code;
         msg_ = err_msg;
@@ -301,6 +308,13 @@ private:
 
 class BatchQueryResult: public ViewResult {
 public:
+    BatchQueryResult(): code_(0),
+    msg_(), offset_(0), value_(),
+    client_(nullptr), is_finish_(false),
+    keys_(), table_name_(), already_get_(),
+    count_(0) {
+    }
+
     void SetError(int err_code, const std::string& err_msg) {
         code_ = err_code;
         msg_ = err_msg;
