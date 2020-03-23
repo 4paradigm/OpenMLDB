@@ -1971,16 +1971,21 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
 }
 
 int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
+    bool has_index = false;
     if (table_info.column_desc_v1_size() > 0) {
         std::map<std::string, std::string> column_map;
         for (const auto& column_desc : table_info.column_desc_v1()) {
-           if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
-               PDLOG(WARNING, "float or double type column can not be index, column is: %s", column_desc.name().c_str());
-               return -1;
-           }
-           column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
+            if (column_desc.add_ts_idx()) {
+                has_index = true;
+            }
+            if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
+                PDLOG(WARNING, "float or double type column can not be index, column is: %s", column_desc.name().c_str());
+                return -1;
+            }
+            column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
         }
         if (table_info.column_key_size() > 0) {
+            has_index = true;
             for (const auto &column_key : table_info.column_key()) {
                 bool has_iter = false;
                 for (const auto &column_name : column_key.col_name()) {
@@ -2005,16 +2010,24 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
                 }
             }
         }
+        if (!has_index) {
+            PDLOG(WARNING, "no index in table_meta");
+            return -1;
+        }
     } else if (table_info.column_desc_size() > 0) {
         for (const auto& column_desc : table_info.column_desc()) {
+            if (column_desc.add_ts_idx()) {
+                has_index = true;
+            }
             if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
                 PDLOG(WARNING, "float or double type column can not be index, column is: %s", column_desc.name().c_str());
                 return -1;
             }
         }
-    } else {
-        PDLOG(WARNING, "no column_desc in table_meta");
-        return -1;
+        if (!has_index) {
+            PDLOG(WARNING, "no index in table_meta");
+            return -1;
+        }
     }
     return 0;
 }
@@ -3504,7 +3517,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
         if (CheckTableMeta(*table_info) < 0) {
             response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
-            response->set_msg("check TableMeta failed, index column type can not float or double");
+            response->set_msg("check TableMeta failed");
             return;
         }
         if (table_info->has_ttl_desc()) {
