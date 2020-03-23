@@ -106,7 +106,8 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                 ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
                 std::vector<int8_t*> output_rows;
                 int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-                    (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))project_op->fn;
+                    (int32_t(*)(int8_t*, int8_t*, int32_t,
+                                int8_t**))project_op->fn;
                 OpNode* prev = project_op->children[0];
                 std::unique_ptr<storage::RowView> row_view = std::move(
                     std::unique_ptr<storage::RowView>(new storage::RowView(
@@ -292,8 +293,9 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                         }
                         fesql::storage::ListV<Row> list(&window);
                         fesql::storage::WindowImpl impl(list);
-                        uint32_t ret = udf(row.buf, reinterpret_cast<int8_t*>(&impl),
-                                           row.size, &output);
+                        uint32_t ret =
+                            udf(row.buf, reinterpret_cast<int8_t*>(&impl),
+                                row.size, &output);
                         if (ret != 0) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
@@ -369,7 +371,8 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
 
                 // op function
                 int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-                    (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))project_op->fn;
+                    (int32_t(*)(int8_t*, int8_t*, int32_t,
+                                int8_t**))project_op->fn;
 
                 std::unique_ptr<storage::RowView> row_view = std::move(
                     std::unique_ptr<storage::RowView>(new storage::RowView(
@@ -424,7 +427,7 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                             // handle window
                             fesql::storage::WindowImpl impl(window);
                             uint32_t ret = udf(iter->second.buf,
-                                reinterpret_cast<int8_t*>(&impl),
+                                               reinterpret_cast<int8_t*>(&impl),
                                                0, &output);
                             if (ret != 0) {
                                 LOG(WARNING) << "fail to run udf " << ret;
@@ -531,7 +534,8 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                 ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
                 std::vector<int8_t*> output_rows;
                 int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-                    (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))project_op->fn;
+                    (int32_t(*)(int8_t*, int8_t*, int32_t,
+                                int8_t**))project_op->fn;
                 OpNode* prev = project_op->children[0];
                 std::unique_ptr<storage::RowView> row_view = std::move(
                     std::unique_ptr<storage::RowView>(new storage::RowView(
@@ -718,8 +722,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                             single_window_it->Next();
                         }
                         fesql::storage::WindowImpl impl(&window);
-                        uint32_t ret = udf(row.buf, reinterpret_cast<int8_t*>(&impl),
-                                           row.size, &output);
+                        uint32_t ret =
+                            udf(row.buf, reinterpret_cast<int8_t*>(&impl),
+                                row.size, &output);
                         if (ret != 0) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;

@@ -361,7 +361,8 @@ WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
     return node_ptr;
 }
 
-ProjectListNode *NodeManager::MakeProjectListPlanNode(const WindowPlanNode *w_ptr) {
+ProjectListNode *NodeManager::MakeProjectListPlanNode(
+    const WindowPlanNode *w_ptr) {
     ProjectListNode *node_ptr = new ProjectListNode(w_ptr, w_ptr != nullptr);
     RegisterNode(node_ptr);
     return node_ptr;

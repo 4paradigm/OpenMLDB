@@ -71,8 +71,8 @@ bool RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
     VariableIRBuilder variable_ir_builder(block, &sv);
-    ExprIRBuilder expr_ir_builder(
-        block, &sv, schema_, true, row_ptr_name, window_ptr_name, row_size_name, module_);
+    ExprIRBuilder expr_ir_builder(block, &sv, schema_, true, row_ptr_name,
+                                  window_ptr_name, row_size_name, module_);
 
     ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
     std::map<uint32_t, ::llvm::Value*> outputs;
@@ -101,8 +101,7 @@ bool RowFnLetIRBuilder::Build(
                     auto column_ref = dynamic_cast<node::ColumnRefNode*>(expr);
                     if (!BuildProject(index, column_ref,
                                       column_ref->GetColumnName(), &outputs,
-                                      expr_ir_builder, output_schema,
-                                      status)) {
+                                      expr_ir_builder, output_schema, status)) {
                         return false;
                     }
                     index++;
@@ -112,8 +111,7 @@ bool RowFnLetIRBuilder::Build(
             default: {
                 std::string col_name = pp_node->GetName();
                 if (!BuildProject(index, sql_node, col_name, &outputs,
-                                  expr_ir_builder, output_schema,
-                                  status)) {
+                                  expr_ir_builder, output_schema, status)) {
                     return false;
                 }
                 index++;

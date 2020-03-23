@@ -192,8 +192,8 @@ class Transform {
                           base::Status& status);  // NOLINT
 
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
-                                PhysicalOpNode** output,
-                                base::Status& status);  // NOLINT
+                                        PhysicalOpNode** output,
+                                        base::Status& status);  // NOLINT
     bool TransformGroupAndSortOp(const node::ProjectListNode* project_list,
                                  PhysicalOpNode* depend,
                                  PhysicalOpNode** output,
@@ -233,7 +233,8 @@ class Transform {
                                    base::Status& status);  // NOLINT
     bool ValidatePriimaryPath(node::PlanNode* node, node::PlanNode** output,
                               base::Status& status);  // NOLINT
-    virtual bool TransformProjectOp(node::ProjectListNode* node, PhysicalOpNode* depend,
+    virtual bool TransformProjectOp(node::ProjectListNode* node,
+                                    PhysicalOpNode* depend,
                                     PhysicalOpNode** output,
                                     base::Status& status);  // NOLINT
 
@@ -252,7 +253,6 @@ class Transform {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
-
 };
 
 class TransformRequestQuery : public Transform {
@@ -266,7 +266,6 @@ class TransformRequestQuery : public Transform {
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
                                         base::Status& status);  // NOLINT
-
 };
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,

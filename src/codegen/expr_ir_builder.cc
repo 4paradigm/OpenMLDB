@@ -212,7 +212,7 @@ bool ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call_fn,
                 status.code = common::kCodegenError;
                 return false;
             }
-            //TODO(chenjing): 直接使用list TypeNode
+            // TODO(chenjing): 直接使用list TypeNode
             // handle list type
             // 泛型类型还需要优化，目前是hard
             // code识别list或者迭代器类型，然后取generic type

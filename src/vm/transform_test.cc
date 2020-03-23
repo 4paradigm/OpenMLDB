@@ -447,7 +447,6 @@ TEST_F(TransformTest, pass_group_optimized_test) {
     for (auto in_out : in_outs) {
         Physical_Plan_Check(catalog, in_out.first, in_out.second);
     }
-
 }
 
 TEST_F(TransformTest, pass_sort_optimized_test) {
@@ -575,6 +574,6 @@ TEST_F(TransformTest, pass_join_optimized_test) {
 }  // namespace fesql
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-        google::InitGoogleLogging(argv[0]);
+    google::InitGoogleLogging(argv[0]);
     return RUN_ALL_TESTS();
 }
