@@ -4371,7 +4371,7 @@ void TabletImpl::AddIndex(RpcController* controller,
     if (!mem_table->AddIndex(request->column_key())) {
         PDLOG(WARNING, "add index %s failed. tid %u, pid %u", 
                 request->column_key().index_name(), request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_code(::rtidb::base::ReturnCode::kAddIndexFailed);
         response->set_msg("add index failed");
         return;
     }
