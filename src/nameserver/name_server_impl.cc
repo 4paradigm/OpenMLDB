@@ -1691,6 +1691,9 @@ bool NameServerImpl::Init() {
                               boost::bind(&NameServerImpl::OnLostLock, this),
                               FLAGS_endpoint);
     dist_lock_->Lock();
+    task_thread_pool_.DelayTask(
+        FLAGS_make_snapshot_check_interval,
+        boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
     return true;
 }
 
@@ -5991,10 +5994,8 @@ void NameServerImpl::DeleteDoneOP() {
 }
 
 void NameServerImpl::SchedMakeSnapshot() {
-    if (!running_.load(std::memory_order_acquire)) {
-        return;
-    }
-    if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
+    if (!running_.load(std::memory_order_acquire) ||
+        mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         task_thread_pool_.DelayTask(
             FLAGS_make_snapshot_check_interval,
             boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
@@ -6160,11 +6161,9 @@ void NameServerImpl::SchedMakeSnapshot() {
         }
     }
     PDLOG(INFO, "make snapshot finished");
-    if (running_.load(std::memory_order_acquire)) {
-        task_thread_pool_.DelayTask(
-            FLAGS_make_snapshot_check_interval,
-            boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
-    }
+    task_thread_pool_.DelayTask(
+        FLAGS_make_snapshot_check_interval + 60 * 60 * 1000,
+        boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
 }
 
 void NameServerImpl::UpdateTableStatus() {
@@ -8044,7 +8043,8 @@ void NameServerImpl::WrapTaskFun(
               task_info->op_id());
     }
     PDLOG(INFO, "task[%s] starts running. op_id[%lu]",
-            ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(), task_info->op_id());
+          ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(),
+          task_info->op_id());
     task_rpc_version_.fetch_add(1, std::memory_order_acq_rel);
     task_info->set_is_rpc_send(true);
 }
