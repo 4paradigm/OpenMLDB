@@ -4330,8 +4330,8 @@ void TabletImpl::DeleteIndex(RpcController* controller,
             std::string root_path;
             MemTable* mem_table = dynamic_cast<MemTable*>(kv.second.get());
             if (!mem_table->DeleteIndex(request->idx_name())) {
-                response->set_code(::rtidb::base::ReturnCode::kIndexDeleteFailed);
-                response->set_msg("delete index fail!");
+                response->set_code(::rtidb::base::ReturnCode::kDeleteIndexFailed);
+                response->set_msg("delete index failed");
                 PDLOG(WARNING, "delete index %s failed. tid %u pid %u", 
                         request->idx_name().c_str(), request->tid(), kv.first);
                 return;

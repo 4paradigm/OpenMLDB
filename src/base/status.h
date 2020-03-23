@@ -171,6 +171,8 @@ enum ReturnCode {
     kFailToGetRecycleRootPath = 139,
     kUpdateFailed = 140,
     kIndexAlreadyExists = 141,
+    kDeleteIndexFailed = 142,
+    kAddIndexFailed = 143,
     kNameserverIsNotLeader = 300,
     kAuto_failoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
@@ -232,7 +234,6 @@ enum ReturnCode {
     kRemoteTableHasANoAliveLeaderPartition = 514,
     kRequestHasNoZone_infoOrTask_info = 515,
     kCurNameserverIsLeaderCluster = 516,
-    kIndexDeleteFailed = 601,
     kOperatorNotSupport = 701,
 };
 
