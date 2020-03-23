@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.schema;
 
 
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.client.type.IndexType;
@@ -21,6 +22,7 @@ public class RowCodecCommon {
     public static final long UINT16_MAX = (1 << 16) - 1;
     public static final long UINT24_MAX = (1 << 24) - 1;
     public static final long UINT32_MAX = (1 << 32) - 1;
+    public static final long DEFAULT_LONG = 1L;
 
     public static final Map<DataType, Integer> TYPE_SIZE_MAP = new HashMap<>();
     static {
@@ -53,26 +55,30 @@ public class RowCodecCommon {
         }
     }
 
-    public static int calStrLength(Object[] row, List<ColumnDesc> schema) {
+    public static int calStrLength(Map<String, Object> row, List<ColumnDesc> schema) throws TabletException {
         int strLength = 0;
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
             if (columnDesc.getDataType().equals(DataType.Varchar)) {
-                if (!columnDesc.isNotNull() && row[i] == null) {
+                if (!columnDesc.isNotNull() && row.get(columnDesc.getName()) == null) {
                     continue;
+                } else if (columnDesc.isNotNull()
+                        && row.containsKey(columnDesc.getName())
+                        && row.get(columnDesc.getName()) == null) {
+                    throw new TabletException("col " + columnDesc.getName() + " should not be null");
                 }
-                strLength += ((String) row[i]).length();
+                strLength += ((String) row.get(columnDesc.getName())).length();
             }
         }
         return strLength;
     }
 
-    public static String getPrimaryKey(Object[] row, List<Common.ColumnKey> columnKeyList, List<ColumnDesc> schema) {
+    public static String getPrimaryKey(Map<String, Object> row, List<Common.ColumnKey> columnKeyList, List<ColumnDesc> schema) {
         String pkColName = "";
         for (int i = 0; i < columnKeyList.size(); i++) {
             Common.ColumnKey columnKey = columnKeyList.get(i);
             if (columnKey.hasIndexType() &&
-                    columnKey.getIndexType() == IndexType.valueFrom(IndexType.kPrimaryKey)) {
+                    columnKey.getIndexType() == IndexType.valueFrom(IndexType.PrimaryKey)) {
                 pkColName = columnKey.getIndexName();
             }
         }
@@ -80,10 +86,10 @@ public class RowCodecCommon {
         for (int i = 0; i < schema.size(); i++) {
             ColumnDesc columnDesc = schema.get(i);
             if (columnDesc.getName().equals(pkColName)) {
-                if (row[i] == null) {
+                if (row.get(columnDesc.getName()) == null) {
                     pk = RTIDBClientConfig.NULL_STRING;
                 } else {
-                    pk = String.valueOf(row[i]);
+                    pk = String.valueOf(row.get(columnDesc.getName()));
                 }
                 if (pk.isEmpty()) {
                     pk = RTIDBClientConfig.EMPTY_STRING;

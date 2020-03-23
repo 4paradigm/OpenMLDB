@@ -13,6 +13,11 @@
 namespace rtidb {
 namespace base {
 
+struct ResultMsg {
+    int code;
+    std::string msg;
+};
+
 class Status {
 public:
     // Create a success status.
@@ -164,7 +169,8 @@ enum ReturnCode {
     kTsNameNotFound = 137,
     kFailToGetDbRootPath = 138,
     kFailToGetRecycleRootPath = 139,
-    kFailToCreateFile = 140,
+    kUpdateFailed = 140,
+    kFailToCreateFile = 141,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,

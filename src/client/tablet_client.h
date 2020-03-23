@@ -14,6 +14,7 @@
 #include "base/kv_iterator.h"
 #include "base/schema_codec.h"
 
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 namespace rtidb {
 
 const uint32_t INVALID_TID = UINT32_MAX;
@@ -55,6 +56,16 @@ public:
     bool CreateTable(const ::rtidb::api::TableMeta& table_meta);
    
     bool UpdateTableMetaForAddField(uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc, const std::string& schema, std::string& msg);
+
+    bool Update(uint32_t tid, uint32_t pid, 
+            const Schema& new_cd_schema, const Schema& new_value_schema, 
+            const std::string& cd_value, const std::string& value, 
+            std::string& msg); 
+
+    bool Put(uint32_t tid,
+             uint32_t pid,
+             const std::string& value, 
+             std::string& msg);
 
     bool Put(uint32_t tid,
              uint32_t pid,
@@ -230,6 +241,8 @@ public:
 
     bool GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>& tid_pid_offset);
 
+    bool BatchQuery(uint32_t tid, uint32_t pid, const std::string& idx_name, const std::vector<std::string>& keys, std::string* msg, std::string* data, bool* is_finish, uint32_t* count);
+
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
     bool ConnectZK();
@@ -237,6 +250,9 @@ public:
 
     ::rtidb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name, 
                 const std::string& pk, uint64_t ts, uint32_t limit, uint32_t& count);
+
+    bool Traverse(uint32_t tid, uint32_t pid, const std::string& pk, uint32_t limit,
+                uint32_t* count, std::string* msg, std::string* data, bool* is_finish);
 
     void ShowTp();
 

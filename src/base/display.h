@@ -23,22 +23,9 @@ DECLARE_uint32(max_col_display_length);
 namespace rtidb {
 namespace base {
 
-static const std::unordered_map<::rtidb::type::DataType, std::string> DATA_TYPE_STR_MAP = {
-    {::rtidb::type::kBool, "bool"},
-    {::rtidb::type::kSmallInt, "smallInt"},
-    {::rtidb::type::kInt, "int"},
-    {::rtidb::type::kBigInt, "bigInt"},
-    {::rtidb::type::kFloat, "float"},
-    {::rtidb::type::kDouble, "double"},
-    {::rtidb::type::kTimestamp, "timestamp"},
-    {::rtidb::type::kDate, "date"},
-    {::rtidb::type::kVarchar, "varchar"},
-    {::rtidb::type::kBlob, "blob"}
-};
-
 static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
-    const auto& iter = DATA_TYPE_STR_MAP.find(data_type);
-    if (iter == DATA_TYPE_STR_MAP.end()) {
+    auto iter = ::rtidb::base::DATA_TYPE_STR_MAP.find(data_type);
+    if (iter == ::rtidb::base::DATA_TYPE_STR_MAP.end()) {
         return "-";
     } else {
         return iter->second;

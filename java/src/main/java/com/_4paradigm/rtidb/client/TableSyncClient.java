@@ -95,7 +95,7 @@ public interface TableSyncClient {
 
     public RelationalIterator traverse(String tableName, ReadOption ro) throws TimeoutException, TabletException;
 
-    public RelationalIterator batchQuery(String tableName, ReadOption ro) throws TimeoutException, TabletException;
+    public RelationalIterator batchQuery(String tableName, List<ReadOption> ros) throws TimeoutException, TabletException;
 
     RelationalIterator query(String tableName, ReadOption ro) throws TimeoutException, TabletException;
 

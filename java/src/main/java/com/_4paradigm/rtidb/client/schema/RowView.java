@@ -13,7 +13,7 @@ import java.util.List;
 public class RowView {
 
     private final static Logger logger = LoggerFactory.getLogger(RowView.class);
-    private ByteBuffer row;
+    private ByteBuffer row = null;
     private int size = 0;
     List<ColumnDesc> schema = new ArrayList<>();
     private int string_field_cnt = 0;
@@ -181,6 +181,10 @@ public class RowView {
         }
     }
 
+    public Object getValue(int idx, DataType type) throws TabletException {
+        return getValue(this.row, idx, type);
+    }
+
     public Object getValue(ByteBuffer row, int idx, DataType type) throws TabletException {
         if (schema.size() == 0 || row == null || idx >= schema.size()) {
             throw new TabletException("input mistake");
@@ -305,7 +309,7 @@ public class RowView {
         }
         byte[] arr = new byte[len];
         row.position(str_offset);
-        row.get(arr, 0, len);
+        row.get(arr);
         return new String(arr, RowCodecCommon.CHARSET);
     }
 }

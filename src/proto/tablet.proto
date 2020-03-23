@@ -633,6 +633,32 @@ message DumpIndexDataRequest {
     optional rtidb.common.ColumnKey column_key = 5;
 }
 
+message Columns {
+    repeated string name = 1;
+    optional bytes value = 2;
+}
+
+message UpdateRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional Columns condition_columns = 3;
+    optional Columns value_columns = 4;
+}
+
+message BatchQueryRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    repeated string query_key = 3;
+}
+
+message BatchQueryResponse {
+    optional bytes pairs = 1;
+    optional string msg = 2;
+    optional int32 code = 3;
+    optional bool is_finish = 4;
+    optional uint32 count = 5;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -642,6 +668,8 @@ service TabletServer {
     rpc Delete(DeleteRequest) returns (GeneralResponse);
     rpc Count(CountRequest) returns (CountResponse);
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
+    rpc Update(UpdateRequest) returns (GeneralResponse);
+    rpc BatchQuery(BatchQueryRequest) returns (BatchQueryResponse);
 
     // table api for master
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);

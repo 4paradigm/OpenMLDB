@@ -3,6 +3,7 @@ package com._4paradigm.rtidb.client.ha;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.type.DataType;
+import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.type.Type;
 
@@ -19,6 +20,7 @@ public class TableHandler {
     private Map<Integer, List<ColumnDesc>> schemaMap = new TreeMap<>();
     private ReadStrategy readStrategy = ReadStrategy.kReadLeader;
     private boolean hasTsCol = false;
+    private String autoGenPkName = "";
     public TableHandler(TableInfo tableInfo) {
         this.tableInfo = tableInfo;
         int schemaSize = 0;
@@ -142,6 +144,16 @@ public class TableHandler {
                 schemaMap.put(schemaSize + i + 1, new ArrayList<>(tempList));
             }
         }
+        if (tableInfo.hasTableType() &&
+                tableInfo.getTableType() == Type.TableType.kRelational) {
+            for (int i = 0; i < tableInfo.getColumnKeyList().size(); i++) {
+                Common.ColumnKey columnKey = tableInfo.getColumnKeyList().get(i);
+                if (columnKey.hasIndexType() && columnKey.getIndexType() == Type.IndexType.kAutoGen) {
+                    autoGenPkName = columnKey.getIndexName();
+                    break;
+                }
+            }
+        }
     }
     
     public ReadStrategy getReadStrategy() {
@@ -222,4 +234,11 @@ public class TableHandler {
         return schemaMap;
     }
 
+    public String getAutoGenPkName() {
+        return autoGenPkName;
+    }
+
+    public void setAutoGenPkName(String autoGenPkName) {
+        this.autoGenPkName = autoGenPkName;
+    }
 }

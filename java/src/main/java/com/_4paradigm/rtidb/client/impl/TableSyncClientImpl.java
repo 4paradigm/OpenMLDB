@@ -289,18 +289,30 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
         }
-        //TODO
-        return new RelationalIterator();
+        Set<String> colSet = ro.getColSet();
+        return new RelationalIterator(client, th, colSet);
     }
 
     @Override
-    public RelationalIterator batchQuery(String tableName, ReadOption ro) throws TimeoutException, TabletException {
+    public RelationalIterator batchQuery(String tableName, List<ReadOption> ros) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tableName);
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
         }
-        //TODO
-        return new RelationalIterator();
+        if (ros.size() < 1) {
+            throw new TabletException("read option list size is o");
+        }
+        Set<String> colSet = ros.get(0).getColSet();
+        List<String> keys = new ArrayList<String>();
+        for (int i = 0; i < ros.size(); i++) {
+            Iterator<Map.Entry<String, Object>> it = ros.get(i).getIndex().entrySet().iterator();
+            if (it.hasNext()) {
+                Map.Entry<String, Object> next = it.next();
+                Object value = next.getValue();
+                keys.add(value.toString());
+            }
+        }
+        return new RelationalIterator(client, th, keys, colSet);
     }
 
     @Override
@@ -988,31 +1000,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         return ret;
     }
 
-    private boolean putRelationTable(String name, Object[] row) throws TabletException {
-        TableHandler th = client.getHandler(name);
-        if (th == null) {
-            throw new TabletException("no table with name " + name);
-        }
-        if (row == null) {
-            throw new TabletException("putting data is null");
-        }
-        ByteBuffer buffer;
-        List<ColumnDesc> schema;
-        if (row.length == th.getSchema().size()) {
-            schema = th.getSchema();
-            buffer = RowBuilder.encode(row, th.getSchema());
-        } else {
-            schema = th.getSchemaMap().get(row.length);
-            if (schema == null) {
-                throw new TabletException("no schema for column count " + row.length);
-            }
-            buffer = RowBuilder.encode(row, schema);
-        }
-        String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
-        int pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
-        return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
-    }
-
     private boolean put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException {
         return put(tid, pid, key, time, null, null, ByteBuffer.wrap(bytes), th);
     }
@@ -1139,26 +1126,106 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row == null) {
             throw new TabletException("putting data is null");
         }
-        Object[] arrayRow = null;
-        if (wo.isUpdateIfEqual() && wo.isUpdateIfExist()) {
-            if (row.size() > th.getSchema().size() && th.getSchemaMap().size() > 0) {
-                int columnSize = row.size();
-                if (row.size() > th.getSchema().size() + th.getSchemaMap().size()) {
-                    columnSize = th.getSchema().size() + th.getSchemaMap().size();
-                }
-                arrayRow = new Object[columnSize];
-                List<ColumnDesc> schema = th.getSchemaMap().get(columnSize);
-                for (int i = 0; i < schema.size(); i++) {
-                    arrayRow[i] = row.get(schema.get(i).getName());
-                }
-            } else {
-                arrayRow = new Object[th.getSchema().size()];
-                for (int i = 0; i < th.getSchema().size(); i++) {
-                    arrayRow[i] = row.get(th.getSchema().get(i).getName());
-                }
+        //TODO: resolve wo
+
+        String indexName = th.getAutoGenPkName();
+
+        if (!indexName.isEmpty() &&
+                (row.size() == th.getSchema().size() || row.containsKey(indexName))) {
+            throw new TabletException("should not input autoGenPk column");
+        }
+        if (!indexName.isEmpty()) {
+            row.put(indexName, RowCodecCommon.DEFAULT_LONG);
+        }
+
+        ByteBuffer buffer;
+        List<ColumnDesc> schema;
+        if (row.size() == th.getSchema().size()) {
+            schema = th.getSchema();
+        } else {
+            schema = th.getSchemaMap().get(row.size());
+            if (schema.isEmpty()) {
+                throw new TabletException("no schema for column count " + row.size());
             }
         }
-        return putRelationTable(tname, arrayRow);
+        buffer = RowBuilder.encode(row, schema);
+
+        int pid = 0;
+        if (indexName.isEmpty()) {
+            String pk = RowCodecCommon.getPrimaryKey(row, th.getTableInfo().getColumnKeyList(), schema);
+            pid = TableClientCommon.computePidByKey(pk, th.getPartitions().length);
+        } else {
+            pid = new Random().nextInt() % th.getPartitions().length;
+        }
+        return putRelationTable(th.getTableInfo().getTid(), pid, buffer, th);
+
+    }
+
+    private boolean updateRequest(TableHandler th, int pid, List<ColumnDesc> newCdSchema, List<ColumnDesc> newValueSchema,
+                                  ByteBuffer conditionBuffer, ByteBuffer valueBuffer) throws TabletException {
+        PartitionHandler ph = th.getHandler(pid);
+        if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+            byte[] data = conditionBuffer.array();
+            byte[] compressed = Compress.snappyCompress(data);
+            if (compressed == null) {
+                throw new TabletException("snappy compress error");
+            }
+            conditionBuffer = ByteBuffer.wrap(compressed);
+
+            byte[] data2 = valueBuffer.array();
+            byte[] compressed2 = Compress.snappyCompress(data2);
+            if (compressed2 == null) {
+                throw new TabletException("snappy compress error");
+            }
+            valueBuffer = ByteBuffer.wrap(compressed2);
+        }
+        TabletServer tablet = ph.getLeader();
+        int tid = th.getTableInfo().getTid();
+        if (tablet == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.UpdateRequest.Builder builder = Tablet.UpdateRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(pid);
+        {
+            Tablet.Columns.Builder conditionBuilder = Tablet.Columns.newBuilder();
+            for (ColumnDesc col : newCdSchema) {
+                conditionBuilder.addName(col.getName());
+            }
+            conditionBuffer.rewind();
+            conditionBuilder.setValue(ByteBufferNoCopy.wrap(conditionBuffer.asReadOnlyBuffer()));
+            builder.setConditionColumns(conditionBuilder.build());
+        }
+        {
+            Tablet.Columns.Builder valueBuilder = Tablet.Columns.newBuilder();
+            for (ColumnDesc col : newValueSchema) {
+                valueBuilder.addName(col.getName());
+            }
+            valueBuffer.rewind();
+            valueBuilder.setValue(ByteBufferNoCopy.wrap(valueBuffer.asReadOnlyBuffer()));
+            builder.setValueColumns(valueBuilder.build());
+        }
+        Tablet.UpdateRequest request = builder.build();
+        Tablet.GeneralResponse response = tablet.update(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        }
+        if (response != null) {
+            throw new TabletException(response.getCode(), response.getMsg());
+        }
+        return false;
+    }
+
+    private List<ColumnDesc> getSchemaData(Map<String, Object> columns, List<ColumnDesc> schema) {
+        List<ColumnDesc> newSchema = new ArrayList<>();
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
+            String colName = columnDesc.getName();
+            if (columns.containsKey(colName)) {
+                newSchema.add(columnDesc);
+            }
+        }
+        return newSchema;
     }
 
     @Override
@@ -1167,6 +1234,12 @@ public class TableSyncClientImpl implements TableSyncClient {
         TableHandler th = client.getHandler(tableName);
         if (th == null) {
             throw new TabletException("no table with name " + tableName);
+        }
+        if (conditionColumns == null || conditionColumns.isEmpty()) {
+            throw new TabletException("conditionColumns is null or empty");
+        }
+        if (valueColumns == null || valueColumns.isEmpty()) {
+            throw new TabletException("valueColumns is null or empty");
         }
         String idxName = "";
         String idxValue = "";
@@ -1178,34 +1251,15 @@ public class TableSyncClientImpl implements TableSyncClient {
             break;
         }
         idxValue = validateKey(idxValue);
-        Map<String, Object> index = new HashMap<>();
-        index.put(idxName, idxValue);
-        ReadOption ro = new ReadOption(index, null, null, 1);
-        RelationalIterator kvIterator = query(tableName, ro);
-        if (!kvIterator.valid()) {
-            throw new TabletException("KvIterator is invalid " + tableName);
-        }
-        Map<String, Object> objectMap = new HashMap<>();
-        while (kvIterator.valid()) {
-            objectMap = kvIterator.getDecodedValue();
-            break;
-        }
-        Map<String, Object> updateMap = updateInternel(objectMap, valueColumns, th);
+        int pid = TableClientCommon.computePidByKey(idxValue, th.getPartitions().length);
 
-        return put(tableName, updateMap, wo);
-    }
+        List<ColumnDesc> newCdSchema = getSchemaData(conditionColumns, th.getSchema());
+        ByteBuffer conditionBuffer = RowBuilder.encode(conditionColumns, newCdSchema);
 
-    public Map<String, Object> updateInternel(Map<String, Object> inMap, Map<String, Object> valueColumns, TableHandler th) {
-        Map<String, Object> map = new HashMap<>();
-        for (int i = 0; i < th.getSchema().size(); i++) {
-            String colName = th.getSchema().get(i).getName();
-            if (valueColumns.containsKey(colName)) {
-                map.put(colName, valueColumns.get(colName));
-            } else {
-                map.put(colName, inMap.get(colName));
-            }
-        }
-        return map;
+        List<ColumnDesc> newValueSchema = getSchemaData(valueColumns, th.getSchema());
+        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema);
+
+        return updateRequest(th, pid, newCdSchema, newValueSchema, conditionBuffer, valueBuffer);
     }
 
     @Override

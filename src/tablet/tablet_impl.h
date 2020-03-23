@@ -62,6 +62,11 @@ public:
 
     bool RegisterZK();
 
+    void Update(RpcController* controller,
+            const ::rtidb::api::UpdateRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void Put(RpcController* controller,
              const ::rtidb::api::PutRequest* request,
              ::rtidb::api::PutResponse* response,
@@ -252,11 +257,6 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
-    void AlignTable(RpcController* controller,
-            const ::rtidb::api::GeneralRequest* request,
-            ::rtidb::api::GeneralResponse* response,
-            Closure* done);
-
     void DeleteIndex(RpcController* controller,
             const ::rtidb::api::DeleteIndexRequest* request,
             ::rtidb::api::GeneralResponse* response,
@@ -266,6 +266,11 @@ public:
             const ::rtidb::api::DumpIndexDataRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
+
+    void BatchQuery(RpcController* controller,
+            const rtidb::api::BatchQueryRequest* request,
+            rtidb::api::BatchQueryResponse* response,
+            Closure*done);
 
     inline void SetServer(brpc::Server* server) {
         server_ = server;
