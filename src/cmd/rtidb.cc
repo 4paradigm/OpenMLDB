@@ -1332,6 +1332,159 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
 
 }
 
+bool GetCondAndPrintColumns(const std::vector<std::string>& parts, std::map<std::string, std::string>& condition_columns_map,
+                  std::vector<std::string>& print_column) {
+    std::string delimiter = "=";
+    std::vector<std::string> temp_vec;
+    uint64_t size = parts.size();
+    if (parts[size-2] != "where") {
+        return false;
+    }
+    rtidb::base::SplitString(parts[size-1], delimiter, temp_vec);
+    if (temp_vec.size() != 2 || temp_vec[1].empty()) {
+        return false;
+    }
+    condition_columns_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+    if (parts[2] == "*") {
+        print_column.clear();
+        return true;
+    }
+    for (uint32_t i = 2; i < size - 2; i++) {
+        print_column.push_back(parts[i]);
+    }
+    return true;
+}
+
+void HandleNSQuery(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 5) {
+        std::cout << "query format error. eg: query table_name=xxx col1 col2 ... where coln=xxx" << std::endl;
+        std::cout << "                    eg: query table_name=xxx * where coln=xxx" << std::endl;
+        return;
+    }
+    std::string table_name;
+    std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1], "=", temp_vec);
+    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" && !temp_vec[1].empty()) {
+        table_name = temp_vec[1];
+    } else {
+        std::cout << "query format error. eg: query table_name=xxx col1 col2 ... where coln=xxx" << std::endl;
+        std::cout << "                    eg: query table_name=xxx * where coln=xxx" << std::endl;
+        return;
+    }
+    std::map<std::string, std::string> condition_columns_map;
+    std::vector<std::string> print_column;
+    if (!GetCondAndPrintColumns(parts, condition_columns_map, print_column)) {
+        std::cout << "query format error. eg: query table_name=xxx col1 col2 ... where coln=xxx" << std::endl;
+        std::cout << "                    eg: query table_name=xxx * where coln=xxx" << std::endl;
+        return;
+    }
+    if (condition_columns_map.empty()) {
+        std::cout << "query format error. eg: query table_name=xxx col1 col2 ... where coln=xxx" << std::endl;
+        std::cout << "                    eg: query table_name=xxx * where coln=xxx" << std::endl;
+        return;
+    }
+    auto cd_iter = condition_columns_map.begin();
+    std::string pk = cd_iter->second;
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(table_name, tables, msg);
+    if (!ret) {
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables.empty()) {
+        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        return;
+    }
+    if (tables[0].column_desc_v1_size() == 0) {
+        std::cout << "column_desc_v1_size is 0"<< std::endl;
+        return;
+    }
+    uint32_t tid = tables[0].tid();
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) % tables[0].table_partition_size());
+    std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+    if (!tablet_client) {
+        std::cout << "failed to get. error msg: " << msg << std::endl;
+        return;
+    }
+    Schema  schema;
+    rtidb::base::RowSchemaCodec::ConvertColumnDesc(tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
+    if (print_column.size() > 0) {
+        std::set<std::string> columns;
+        for (int i = 0; i < schema.size(); i++) {
+            columns.insert(schema.Get(i).name());
+        }
+        for (uint64_t i = 0; i < print_column.size(); i++) {
+            if (columns.find(print_column[i]) == columns.end()) {
+                std::cerr << "query error, because column " << print_column[i] << " is not member of table columns" << std::endl;
+                return;
+            }
+        }
+    }
+    std::string value;
+    uint64_t ts;
+    bool ok = tablet_client->Get(tid, pid, pk, 0, "", "", value, ts, msg);
+    if (!ok) {
+        std::cout << "query error: " << msg << std::endl;
+        return;
+    }
+    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+        std::string compressed;
+        ::snappy::Compress(value.c_str(), value.length(), &compressed);
+        value = compressed;
+    }
+    std::vector<std::string> value_vec;
+    rtidb::base::RowSchemaCodec::Decode(schema, value, value_vec);
+    std::vector<std::string> row;
+    row.push_back("#");
+    ::baidu::common::TPrinter* tp;
+    if (print_column.size() == 0) {
+        tp = new baidu::common::TPrinter(schema.size() + 1, FLAGS_max_col_display_length);
+        for (int i = 0; i < schema.size(); i++) {
+            row.push_back(schema.Get(i).name());
+        }
+        tp->AddRow(row);
+        row.clear();
+        row.push_back("1");
+        for (int i = 0; i < schema.size(); i++) {
+            std::string val = "null";
+            if (value_vec[i] != rtidb::base::NONETOKEN) {
+                val = value_vec[i];
+            }
+            row.push_back(val);
+        }
+    } else {
+        tp = new baidu::common::TPrinter(print_column.size() + 1, FLAGS_max_col_display_length);
+        std::map<std::string, uint64_t> column_position;
+        int index_array[print_column.size()];
+        for (uint64_t i = 0; i < print_column.size(); i++) {
+            row.push_back(print_column[i]);
+            column_position.insert(std::make_pair(print_column[i], i));
+        }
+        tp->AddRow(row);
+        row.clear();
+        row.push_back("1");
+        for (int i = 0; i < schema.size(); i++) {
+            auto iter = column_position.find(schema.Get(i).name());
+            if (iter == column_position.end()) {
+                continue;
+            }
+            index_array[iter->second] = i;
+        }
+        for (uint64_t i = 0; i < print_column.size(); i++) {
+            int schema_index = index_array[i];
+            std::string val = "null";
+            if (value_vec[schema_index] != rtidb::base::NONETOKEN) {
+                val = value_vec[i];
+            }
+            row.push_back(val);
+        }
+    }
+    tp->AddRow(row);
+    tp->Print(true);
+    delete tp;
+}
+
 void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "get format error. eg: get table_name key ts | get table_name key idx_name ts | get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
@@ -2813,6 +2966,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("synctable - synctable from leader cluster to replica cluster\n");
         printf("deleteindx - delete index of specified table");
         printf("update - update record of specified table");
+        printf("query - query record from relational table");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -3018,6 +3172,11 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("desc: update record of table\n");
             printf("usage: update table_name=xxx col1=xxx col2=xxx where col=xxx\n");
             printf("eg: update table_name=test1 mcc=mcc2 where card=card0\n");
+        } else if (parts[1] == "query") {
+            printf("desc: query record from relation table\n");
+            printf("usage: query table_name=xxx col1 col2 where col3=xxx\n");
+            printf("eg: query table_name=test1 card mcc where card=card0\n");
+            printf("eg: query table_name=test1 * where card=card0\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -5223,8 +5382,9 @@ void StartNsClient() {
             HandleNSClientDeleteIndex(parts, &client);
         } else if (parts[0] == "update") {
             HandleNSUpdate(parts, &client);
-        }
-        else if (parts[0] == "exit" || parts[0] == "quit") {
+        } else if (parts[0] == "query") {
+            HandleNSQuery(parts, &client);
+        } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
         } else if (parts[0] == "help" || parts[0] == "man") {
