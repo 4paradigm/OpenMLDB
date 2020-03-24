@@ -64,8 +64,6 @@ DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(skiplist_max_height);
-DECLARE_uint32(latest_default_skiplist_height);
-DECLARE_uint32(absolute_default_skiplist_height);
 DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
@@ -2506,7 +2504,6 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     ns_table_info.set_name(table_info.name());
     std::string ttl_type = table_info.ttl_type();
     std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
-    uint32_t default_skiplist_height = FLAGS_absolute_default_skiplist_height;
     uint64_t abs_ttl = table_info.has_ttl_desc()?table_info.ttl_desc().abs_ttl():table_info.ttl();
     uint64_t lat_ttl = table_info.has_ttl_desc()?table_info.ttl_desc().lat_ttl():table_info.ttl();
     ::rtidb::api::TTLDesc* ttl_desc = ns_table_info.mutable_ttl_desc();
@@ -2518,14 +2515,12 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
         } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
             ns_table_info.set_ttl_type("kLatestTime");
-            default_skiplist_height = FLAGS_latest_default_skiplist_height;
             ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
         } else if (ttl_type == "kabsandlat") {
             ns_table_info.set_ttl_type("kAbsAndlLat");
             ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsAndLat);
         } else if (ttl_type == "kabsorlat") {
             ns_table_info.set_ttl_type("kAbsOrLat");
-            default_skiplist_height = FLAGS_latest_default_skiplist_height;
             ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
         } else {
             printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
@@ -2537,7 +2532,6 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
         } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
             ns_table_info.set_ttl_type("kLatestTime");
-            default_skiplist_height = FLAGS_latest_default_skiplist_height;
             ttl_desc->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
         } else {
             printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
@@ -2594,9 +2588,6 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             return -1;
         }
         ns_table_info.set_key_entry_max_height(table_info.key_entry_max_height());
-    } else {
-        // config default height
-        ns_table_info.set_key_entry_max_height(default_skiplist_height);
     }
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
 
