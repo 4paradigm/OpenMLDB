@@ -4420,7 +4420,7 @@ void TabletImpl::DumpIndexData(RpcController* controller,
     for (int i=0;i<request->partition_num();++i) {
         std::string index_file_name = std::to_string(request->pid()) + "_" + std::to_string(i) + "_index.data";
         std::string index_data_path = index_path + index_file_name;
-        FILE* fd = fopen(index_data_path.c_str(), "ab+");
+        FILE* fd = fopen(index_data_path.c_str(), "wb+");
         if (fd == NULL) {
             PDLOG(WARNING, "fail to create file %s", index_data_path.c_str());
             response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
@@ -4430,6 +4430,7 @@ void TabletImpl::DumpIndexData(RpcController* controller,
         ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
         whs.push_back(wh);
     }
+    task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this, tid, pid, task_ptr));
     uint64_t offset = 0;
     std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
     if (memtable_snapshot->DumpSnapshotIndexData(table, request->column_key(), request->idx(), whs, offset) && binlog.DumpBinlogIndexData(table, request->column_key(), request->idx(), whs, offset)) {
@@ -4447,6 +4448,26 @@ void TabletImpl::DumpIndexData(RpcController* controller,
         wh = NULL;
     }
 }
+
+void TabletImpl::DumpIndexDataInternal() {
+    uint64_t offset = 0;
+    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
+    if (memtable_snapshot->DumpSnapshotIndexData(table, request->column_key(), request->idx(), whs, offset) && binlog.DumpBinlogIndexData(table, request->column_key(), request->idx(), whs, offset)) {
+        PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+    } else {
+        PDLOG(WARNING, "fail to dump index on table tid[%u] pid[%u]", request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kDumpIndexDataFailed);
+        response->set_msg("dump index data failed");
+    }
+    for (auto& wh : whs) {
+        wh->EndLog();
+        delete wh;
+        wh = NULL;
+    }
+}
+
 
 }
 }

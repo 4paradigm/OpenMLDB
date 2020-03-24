@@ -1339,7 +1339,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
 
 }
 
-TEST_F(TabletImplTest, MultiGet) { //
+TEST_F(TabletImplTest, MultiGet) {
     TabletImpl tablet;
     tablet.Init();
     uint32_t id = counter++;
@@ -5445,9 +5445,6 @@ TEST_F(TabletImplTest, DumpIndex) {
         ::rtidb::api::GeneralResponse dump_response;
         tablet.DumpIndexData(NULL, &dump_request, &dump_response, &closure);
         ASSERT_EQ(0, dump_response.code());
-    }
-    {
-
     }
     FLAGS_make_snapshot_threshold_offset = old_offset;
 }
