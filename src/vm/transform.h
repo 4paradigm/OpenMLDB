@@ -9,9 +9,6 @@
 
 #ifndef SRC_VM_TRANSFORM_H_
 #define SRC_VM_TRANSFORM_H_
-#include <node/node_manager.h>
-#include <node/plan_node.h>
-#include <node/sql_node.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -20,6 +17,9 @@
 #include "base/status.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/raw_ostream.h"
+#include "node/node_manager.h"
+#include "node/plan_node.h"
+#include "node/sql_node.h"
 #include "vm/physical_op.h"
 namespace fesql {
 namespace vm {

@@ -18,7 +18,6 @@
 #ifndef SRC_CODEGEN_BUF_IR_BUILDER_H_
 #define SRC_CODEGEN_BUF_IR_BUILDER_H_
 
-#include <node/node_enum.h>
 #include <map>
 #include <string>
 #include <utility>
@@ -27,6 +26,7 @@
 #include "codegen/scope_var.h"
 #include "codegen/variable_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
+#include "node/node_enum.h"
 #include "proto/type.pb.h"
 #include "vm/catalog.h"
 

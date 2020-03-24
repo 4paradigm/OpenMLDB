@@ -7,7 +7,6 @@
  *--------------------------------------------------------------------------
  **/
 
-#include <llvm/Transforms/Utils.h>
 #include <string>
 #include "codegen/fn_ir_builder.h"
 #include "gtest/gtest.h"
@@ -17,6 +16,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Utils.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
 

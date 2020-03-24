@@ -16,14 +16,14 @@
  */
 
 #include "vm/op_generator.h"
-#include <codegen/buf_ir_builder.h>
-#include <proto/common.pb.h>
 #include <memory>
 #include <stack>
+#include "codegen/buf_ir_builder.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "node/node_manager.h"
 #include "plan/planner.h"
+#include "proto/common.pb.h"
 
 namespace fesql {
 namespace vm {
@@ -473,7 +473,6 @@ bool OpGenerator::GenFnDef(::llvm::Module* module,
     }
     return ok;
 }
-
 
 }  // namespace vm
 }  // namespace fesql

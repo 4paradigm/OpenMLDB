@@ -10,12 +10,12 @@
 #ifndef SRC_SDK_BASE_STRUCT_H_
 #define SRC_SDK_BASE_STRUCT_H_
 
-#include <proto/type.pb.h>
 #include <stdint.h>
 #include <string.h>
 #include <memory>
 #include <string>
 #include <vector>
+#include "proto/type.pb.h"
 namespace fesql {
 namespace sdk {
 

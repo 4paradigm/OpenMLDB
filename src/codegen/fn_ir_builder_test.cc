@@ -16,8 +16,6 @@
  */
 
 #include "codegen/fn_ir_builder.h"
-#include <llvm/Transforms/Utils.h>
-#include <storage/window.h>
 #include <memory>
 #include <string>
 #include <utility>
@@ -35,8 +33,10 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Utils.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
+#include "storage/window.h"
 #include "udf/udf.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)

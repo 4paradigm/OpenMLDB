@@ -16,10 +16,10 @@
 
 #ifndef SRC_SDK_DBMS_SDK_H_
 #define SRC_SDK_DBMS_SDK_H_
-#include <proto/type.pb.h>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
+#include "proto/type.pb.h"
 #include "sdk/base_struct.h"
 
 namespace fesql {
@@ -30,7 +30,7 @@ class Schema {
     Schema() {}
     virtual ~Schema() {}
     virtual const uint32_t GetColumnCnt() const = 0;
-    virtual const std::string& GetColumnName(uint32_t i) const = 0;
+    virtual const std::string &GetColumnName(uint32_t i) const = 0;
     virtual const DataType GetColumnType(uint32_t i) const = 0;
     virtual const bool IsColumnNotNull(uint32_t i) const = 0;
 };

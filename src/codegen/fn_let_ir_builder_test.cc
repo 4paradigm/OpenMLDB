@@ -16,7 +16,6 @@
  */
 
 #include "codegen/fn_let_ir_builder.h"
-#include <vm/jit.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -40,6 +39,7 @@
 #include "storage/codec.h"
 #include "storage/window.h"
 #include "udf/udf.h"
+#include "vm/jit.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT

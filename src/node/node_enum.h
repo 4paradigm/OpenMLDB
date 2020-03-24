@@ -10,9 +10,9 @@
 #ifndef SRC_NODE_NODE_ENUM_H_
 #define SRC_NODE_NODE_ENUM_H_
 
-#include <proto/type.pb.h>
 #include <string>
 #include "proto/common.pb.h"
+#include "proto/type.pb.h"
 namespace fesql {
 namespace node {
 
@@ -165,10 +165,7 @@ enum JoinType {
     kJoinTypeConcat,
 };
 
-enum UnoinType {
-    kUnionTypeDistinct,
-    kUnionTypeAll
-};
+enum UnoinType { kUnionTypeDistinct, kUnionTypeAll };
 enum CmdType {
     kCmdCreateGroup,
     kCmdCreateDatabase,

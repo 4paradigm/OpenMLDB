@@ -7,7 +7,6 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/transform.h"
-#include <udf/udf.h>
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -33,6 +32,7 @@
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
+#include "udf/udf.h"
 #include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT

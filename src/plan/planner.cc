@@ -7,13 +7,13 @@
  *--------------------------------------------------------------------------
  **/
 #include "plan/planner.h"
-#include <proto/common.pb.h>
 #include <map>
 #include <random>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+#include "proto/common.pb.h"
 namespace fesql {
 namespace plan {
 
@@ -399,8 +399,9 @@ bool Planner::CreateWindowPlanNode(
             w_node_ptr->SetOrders(w_ptr->GetOrders());
         } else {
             status.code = common::kPlanError;
-            status.msg = "fail to create project list node: right frame "
-                            "can't be unbound ";
+            status.msg =
+                "fail to create project list node: right frame "
+                "can't be unbound ";
             LOG(WARNING) << status.msg;
             return false;
         }

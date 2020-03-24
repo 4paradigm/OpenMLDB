@@ -16,7 +16,6 @@
  */
 
 #include "vm/op_generator.h"
-#include <udf/udf.h>
 #include <memory>
 #include <string>
 #include <utility>
@@ -36,6 +35,7 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "plan/planner.h"
 #include "tablet/tablet_catalog.h"
+#include "udf/udf.h"
 #include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT
@@ -343,8 +343,6 @@ TEST_F(OpGeneratorTest, test_op_generator_error) {
         AssertOpGen(table_def, &op, sql, exp_status);
     }
 }
-
-
 
 }  // namespace vm
 }  // namespace fesql

@@ -11,12 +11,12 @@
 #define SRC_NODE_PLAN_NODE_H_
 
 #include <glog/logging.h>
-#include <node/sql_node.h>
 #include <list>
 #include <string>
 #include <utility>
 #include <vector>
 #include "node/node_enum.h"
+#include "node/sql_node.h"
 namespace fesql {
 namespace node {
 
@@ -216,8 +216,7 @@ class LimitPlanNode : public UnaryPlanNode {
 
 class ProjectNode : public LeafPlanNode {
  public:
-    ProjectNode(int32_t pos, const std::string &name,
-                const bool is_aggregation,
+    ProjectNode(int32_t pos, const std::string &name, const bool is_aggregation,
                 node::ExprNode *expression)
         : LeafPlanNode(kProjectNode),
           is_aggregation_(is_aggregation),
