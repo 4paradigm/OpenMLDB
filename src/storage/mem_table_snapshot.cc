@@ -610,13 +610,12 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
             }
             std::string buff;
             if (table->GetCompressType() == ::rtidb::api::kSnappy) {
-                std::string uncompressed;
                 ::snappy::Uncompress(entry.value().c_str(), entry.value().size(), &buff);
             } else {
                 buff = entry.value();
             }
             std::vector<std::string> row;
-            ::rtidb::base::FillTableRow(columns, buff.c_str(), buff.size(), row);
+            ::rtidb::base::FillTableRow(index_cols.back() + 1, columns, buff.c_str(), buff.size(), row);
             std::string cur_key;
             for (uint32_t i : index_cols) {
                 if (cur_key.empty()) {
