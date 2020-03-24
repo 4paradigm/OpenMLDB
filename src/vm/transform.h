@@ -171,9 +171,8 @@ class Transform {
     virtual ~Transform();
     bool AddDefaultPasses();
     bool TransformPhysicalPlan(::fesql::node::PlanNode* node,
-                                    ::fesql::vm::PhysicalOpNode** output,
-                                    ::fesql::base::Status& status);  // NOLINT
-
+                               ::fesql::vm::PhysicalOpNode** output,
+                               ::fesql::base::Status& status);  // NOLINT
 
     bool AddPass(PhysicalPlanPassType type);
 
@@ -231,8 +230,8 @@ class Transform {
                                            PhysicalOpNode** output,
                                            base::Status& status);  // NOLINT
     virtual bool ValidatePrimaryPath(node::PlanNode* node,
-                                      node::PlanNode** output,
-                                      base::Status& status);  // NOLINT
+                                     node::PlanNode** output,
+                                     base::Status& status);  // NOLINT
     virtual bool TransformProjectOp(node::ProjectListNode* node,
                                     PhysicalOpNode* depend,
                                     PhysicalOpNode** output,
@@ -244,8 +243,6 @@ class Transform {
     const std::shared_ptr<Catalog> catalog_;
 
  private:
-
-
     bool GenProjects(const Schema& input_schema,
                      const node::PlanNodeList& projects, const bool row_mode,
                      std::string& fn_name,   // NOLINT
@@ -256,7 +253,6 @@ class Transform {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
-
 };
 
 class TransformRequestMode : public Transform {
@@ -265,9 +261,9 @@ class TransformRequestMode : public Transform {
                          const std::shared_ptr<Catalog>& catalog,
                          ::llvm::Module* module);
     virtual ~TransformRequestMode();
-    virtual bool TransformPhysicalPlan(::fesql::node::PlanNode* node,
-                                      ::fesql::vm::PhysicalOpNode** output,
-                                      ::fesql::base::Status& status);  // NOLINT
+    virtual bool TransformPhysicalPlan(
+        ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
+        ::fesql::base::Status& status);  // NOLINT
 
  protected:
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
@@ -281,8 +277,7 @@ class TransformRequestMode : public Transform {
                                          const node::ExprListNode* groups,
                                          const node::OrderByNode* orders,
                                          PhysicalOpNode** output,
-                                         base::Status& status);
-
+                                         base::Status& status);  // NOLINT
 };
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,

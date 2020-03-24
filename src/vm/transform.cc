@@ -580,8 +580,8 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
         case kWindowAggregation: {
             auto group_srot_op = dynamic_cast<PhysicalGroupAndSortNode*>(node);
             op = new PhysicalWindowAggrerationNode(
-                group_srot_op, group_srot_op->groups_, group_srot_op->orders_, fn_name, output_schema,
-                project_list->w_ptr_->GetStartOffset(),
+                group_srot_op, group_srot_op->groups_, group_srot_op->orders_,
+                fn_name, output_schema, project_list->w_ptr_->GetStartOffset(),
                 project_list->w_ptr_->GetEndOffset());
             break;
         }
@@ -699,16 +699,15 @@ bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
             LOG(WARNING) << status.msg;
             return false;
         }
-        if (!TransformGroupAndSortOp(depend, groups, orders, &depend,
-                                     status)) {
+        if (!TransformGroupAndSortOp(depend, groups, orders, &depend, status)) {
             return false;
         }
     }
 
     switch (depend->output_type) {
         case kSchemaTypeRow:
-            return CreatePhysicalProjectNode(kRowProject, depend,
-                                             project_list, output, status);
+            return CreatePhysicalProjectNode(kRowProject, depend, project_list,
+                                             output, status);
         case kSchemaTypeGroup:
             if (nullptr != project_list->w_ptr_) {
                 return CreatePhysicalProjectNode(kWindowAggregation, depend,
@@ -726,7 +725,6 @@ bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
                                                  project_list, output, status);
             }
     }
-
 }
 void Transform::ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) {
     auto physical_plan = node;
@@ -1298,7 +1296,8 @@ bool TransformRequestMode::TransformProjecPlantOp(
             node_manager_->RegisterNode(join);
         }
 
-        auto project_list = node_manager_->MakeProjectListPlanNode(nullptr, false);
+        auto project_list =
+            node_manager_->MakeProjectListPlanNode(nullptr, false);
         uint32_t pos = 0;
         for (auto iter = node->pos_mapping_.cbegin();
              iter != node->pos_mapping_.cend(); iter++) {

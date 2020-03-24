@@ -69,7 +69,8 @@ class NodeManager {
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
-    ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w, const bool need_agg);
+    ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w,
+                                             const bool need_agg);
     FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
                                        const ExprNode *condition);
 
@@ -148,8 +149,8 @@ class NodeManager {
                                  FnOperator op);
     ExprNode *MakeUnaryExprNode(ExprNode *left, FnOperator op);
     ExprNode *MakeExprFrom(const ExprNode *node,
-                               const std::string relation_name,
-                               const std::string db_name);
+                           const std::string relation_name,
+                           const std::string db_name);
     ExprNode *MakeExprIdNode(const std::string &name);
     // Make Fn Node
     ExprNode *MakeConstNode(int value);

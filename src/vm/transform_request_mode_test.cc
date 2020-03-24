@@ -528,7 +528,7 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
     }
 }
 //
-//TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
+// TEST_F(TransformRequestModeTest, pass_join_optimized_test) {
 //    std::vector<std::pair<std::string, std::string>> in_outs;
 //    in_outs.push_back(std::make_pair(
 //        "SELECT "
