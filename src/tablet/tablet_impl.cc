@@ -4363,6 +4363,17 @@ void TabletImpl::DumpIndexData(RpcController* controller,
     std::shared_ptr<Snapshot> snapshot;
     std::shared_ptr<LogReplicator> replicator;
     std::string db_root_path;
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDumpIndexData, task_ptr) < 0) {
+            response->set_code(-1);
+            response->set_msg("add task failed");
+            return;
+        }
+    }
+    if (task_ptr) {
+        task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+    }
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         table = GetTableUnLock(request->tid(), request->pid());
@@ -4415,7 +4426,6 @@ void TabletImpl::DumpIndexData(RpcController* controller,
         return;
     }
     std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
-    ::rtidb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
     std::vector<::rtidb::log::WriteHandle*> whs;
     for (int i=0;i<request->partition_num();++i) {
         std::string index_file_name = std::to_string(request->pid()) + "_" + std::to_string(i) + "_index.data";
@@ -4430,17 +4440,30 @@ void TabletImpl::DumpIndexData(RpcController* controller,
         ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
         whs.push_back(wh);
     }
-    task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this, tid, pid, task_ptr));
-    uint64_t offset = 0;
     std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
-    if (memtable_snapshot->DumpSnapshotIndexData(table, request->column_key(), request->idx(), whs, offset) && binlog.DumpBinlogIndexData(table, request->column_key(), request->idx(), whs, offset)) {
-        PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::kOk);
-        response->set_msg("ok");
+    task_pool_.AddTask(boost::bind(&TabletImpl::DumpIndexDataInternal, this, table, memtable_snapshot, replicator, binlog_path, request->column_key(), request->idx(), whs, task_ptr));
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
+    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
+    std::string& binlog_path, ::rtidb::common::ColumnKey& column_key, 
+    uint32_t idx, std::vector<::rtidb::log::WriteHandle*> whs, std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    ::rtidb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
+    uint64_t offset = 0;
+    if (memtable_snapshot->DumpSnapshotIndexData(table, column_key, idx, whs, offset) && binlog.DumpBinlogIndexData(table, column_key, idx, whs, offset)) {
+        PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", table->GetId(), table->GetPid());
+        if (task) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task->set_status(::rtidb::api::kDone);
+        }
     } else {
-        PDLOG(WARNING, "fail to dump index on table tid[%u] pid[%u]", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::kDumpIndexDataFailed);
-        response->set_msg("dump index data failed");
+        PDLOG(WARNING, "fail to dump index on table tid[%u] pid[%u]", table->GetId(), table->GetPid());
+        if (task) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task->set_status(::rtidb::api::kFailed);
+        }
     }
     for (auto& wh : whs) {
         wh->EndLog();
@@ -4448,26 +4471,6 @@ void TabletImpl::DumpIndexData(RpcController* controller,
         wh = NULL;
     }
 }
-
-void TabletImpl::DumpIndexDataInternal() {
-    uint64_t offset = 0;
-    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
-    if (memtable_snapshot->DumpSnapshotIndexData(table, request->column_key(), request->idx(), whs, offset) && binlog.DumpBinlogIndexData(table, request->column_key(), request->idx(), whs, offset)) {
-        PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::kOk);
-        response->set_msg("ok");
-    } else {
-        PDLOG(WARNING, "fail to dump index on table tid[%u] pid[%u]", request->tid(), request->pid());
-        response->set_code(::rtidb::base::ReturnCode::kDumpIndexDataFailed);
-        response->set_msg("dump index data failed");
-    }
-    for (auto& wh : whs) {
-        wh->EndLog();
-        delete wh;
-        wh = NULL;
-    }
-}
-
 
 }
 }

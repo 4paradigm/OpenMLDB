@@ -97,6 +97,7 @@ enum TaskType {
     kCreateTableRemote = 19; 
     kDropTableRemote = 20; 
     kAddReplicaNSRemote = 21; 
+    kDumpIndexData = 22;
 }
 
 enum TaskStatus {
@@ -631,6 +632,7 @@ message DumpIndexDataRequest {
     optional uint32 partition_num = 3;
     optional uint32 idx = 4;
     optional rtidb.common.ColumnKey column_key = 5;
+    optional TaskInfo task_info = 6;
 }
 
 message Columns {
