@@ -461,6 +461,11 @@ public:
     static void Decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, const std::string& value,
                 std::vector<std::string>& value_vec) {
         rtidb::base::RowView rv(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&value[0])), value.size());
+        Decode(schema, rv, value_vec);
+    }
+
+    static void Decode(google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>& schema, rtidb::base::RowView& rv,
+                       std::vector<std::string>& value_vec) {
         for (int32_t i = 0; i < schema.size(); i++) {
             if (rv.IsNULL(i)) {
                 value_vec.push_back(NONETOKEN);

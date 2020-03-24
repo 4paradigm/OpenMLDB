@@ -1953,7 +1953,64 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
         return;
     }
     uint32_t tid = tables[0].tid();
-    std::vector<::rtidb::base::ColumnDesc> columns;
+    if (tables[0].table_type() == rtidb::type::kRelational) {
+        Schema schema;
+        rtidb::base::RowSchemaCodec::ConvertColumnDesc(tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
+        rtidb::base::RowView rv(schema);
+        std::vector<std::string> row;
+        row.push_back("#");
+        for(int i = 0; i < schema.size(); i++) {
+            row.push_back(schema.Get(i).name());
+        }
+        baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
+        uint64_t seq = 0;
+        std::string data;
+        for (int pid = 0; pid < tables[0].table_partition_size(); pid++) {
+            if (limit == 0) {
+                break;
+            }
+            std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+            if (!tablet_client) {
+                std::cout << "failed to preview. error msg: " << msg << std::endl;
+                return;
+            }
+            uint32_t count = 0;
+            bool is_finish = false;
+            std::string err_msg;
+            bool ok = tablet_client->Traverse(tid, pid, "", limit, &count, &err_msg, &data, &is_finish);
+            if (!ok) {
+                std::cerr << "Fail to preview table" << std::endl;
+            }
+            limit -= count;
+            uint32_t offset = 0;
+            for (uint32_t i = 0; i < count; i++) {
+                const char* ch = data.c_str();
+                ch += offset;
+                row.push_back(std::to_string(seq++));
+                uint32_t value_size = 0;
+                memcpy(static_cast<void*>(&value_size), ch, 4);
+                ch += 4;
+                ok = rv.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(ch)), value_size);
+                if (!ok) {
+                    std::cerr << "reset decode data error" << std::endl;
+                    return;
+                }
+                offset += 4 + value_size;
+                rtidb::base::RowSchemaCodec::Decode(schema, rv, row);
+                for (uint64_t i = 0; i < row.size(); i++) {
+                    if (row[i] == rtidb::base::NONETOKEN) {
+                        row[i] = "null";
+                    }
+                }
+                tp.AddRow(row);
+                row.clear();
+            }
+            data.clear();
+        }
+        tp.Print(true);
+        return;
+    }
+        std::vector<::rtidb::base::ColumnDesc> columns;
     if (tables[0].column_desc_v1_size() > 0 || tables[0].column_desc_size() > 0) {
         if (tables[0].added_column_desc_size() > 0) {
             if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns, tables[0].added_column_desc_size()) < 0) {
