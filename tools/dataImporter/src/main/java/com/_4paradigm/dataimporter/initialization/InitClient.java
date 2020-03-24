@@ -38,6 +38,7 @@ public class InitClient {
     private static final String TTL_TYPE = Constant.TTL_TYPE;
     private static final int COMPRESS_TYPE = Constant.COMPRESS_TPYE;
     private static final long TTL = Constant.TTL;
+    private static final boolean handleNull = Constant.HANDLE_NULL;
 
 
     private static TableSyncClient[] tableSyncClient = new TableSyncClient[MAX_THREAD_NUM];
@@ -53,6 +54,8 @@ public class InitClient {
             nsc.init();
             config.setZkEndpoints(ZKENDPOINTS);
             config.setZkRootPath(ZKROOTPATH);
+            config.setHandleNull(handleNull);
+
             //初始化最大线程个数的client
             for (int i = 0; i < MAX_THREAD_NUM; i++) {
                 clusterClient[i] = new RTIDBClusterClient(config);

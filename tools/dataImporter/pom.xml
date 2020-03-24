@@ -24,7 +24,7 @@
         <dependency>
             <groupId>com._4paradigm</groupId>
             <artifactId>rtidb-client</artifactId>
-            <version>1.4.2.0-RELEASE</version>
+            <version>1.4.2.1-RELEASE</version>
             <exclusions>
                 <exclusion>
                     <artifactId>log4j</artifactId>
