@@ -598,8 +598,15 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
             ::rtidb::api::LogEntry entry;
             entry.ParseFromString(*sp);
             std::set<uint32_t> pid_set;
+            bool has_main_index = false;
             for (const auto& dim : entry.dimensions()) {
+                if (dim.idx() == 0) {
+                    has_main_index = true;
+                }
                 pid_set.insert(::rtidb::base::hash64(dim.key())%partition_num);
+            }
+            if (!has_main_index) {
+                continue;
             }
             std::string buff;
             if (table->GetCompressType() == ::rtidb::api::kSnappy) {
