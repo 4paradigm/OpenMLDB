@@ -74,8 +74,6 @@ class PhysicalOpNode {
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
         : type_(type), is_block_(is_block), is_lazy_(is_lazy) {}
     virtual ~PhysicalOpNode() {}
-    virtual bool consume() { return true; }
-    virtual bool produce() { return true; }
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
@@ -83,10 +81,6 @@ class PhysicalOpNode {
     virtual void PrintSchema();
     std::vector<PhysicalOpNode *> &GetProducers() { return producers_; }
     void UpdateProducer(int i, PhysicalOpNode *producer);
-
-    void AddConsumer(PhysicalOpNode *consumer) {
-        consumers_.push_back(consumer);
-    }
 
     void AddProducer(PhysicalOpNode *producer) {
         producers_.push_back(producer);
@@ -97,7 +91,6 @@ class PhysicalOpNode {
     vm::Schema output_schema;
 
  protected:
-    std::vector<PhysicalOpNode *> consumers_;
     std::vector<PhysicalOpNode *> producers_;
 };
 
@@ -107,7 +100,6 @@ class PhysicalUnaryNode : public PhysicalOpNode {
                       bool is_lazy)
         : PhysicalOpNode(type, is_block, is_lazy) {
         AddProducer(node);
-        producers_[0]->AddConsumer(this);
         InitSchema();
     }
     virtual ~PhysicalUnaryNode() {}
@@ -124,8 +116,6 @@ class PhysicalBinaryNode : public PhysicalOpNode {
         : PhysicalOpNode(type, is_block, is_lazy) {
         AddProducer(left);
         AddProducer(right);
-        left->AddConsumer(this);
-        right->AddConsumer(this);
         InitSchema();
     }
     bool InitSchema() override;
