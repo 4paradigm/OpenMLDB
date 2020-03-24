@@ -725,6 +725,7 @@ bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
                                                  project_list, output, status);
             }
     }
+    return false;
 }
 void Transform::ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) {
     auto physical_plan = node;
