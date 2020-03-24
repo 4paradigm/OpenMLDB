@@ -4948,6 +4948,20 @@ TEST_F(TabletImplTest, ScanAtLeastWithAbsAndLat) {
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, srp.count());
     }
+    for (int i=0;i<10;++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test"+std::to_string(i));
+        sr.set_st(now-30*60*1000);
+        sr.set_et(now-50*60*1000);
+        sr.set_ts_name("ts1");
+        sr.set_limit(7);
+        sr.set_atleast(5);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(5, srp.count());
+    }
 }
 
 TEST_F(TabletImplTest, ScanAtLeastWithAbsOrLat) {

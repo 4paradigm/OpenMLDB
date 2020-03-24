@@ -338,8 +338,10 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
                     break;
                 }
                 case ::rtidb::api::TTLType::kAbsAndLat: {
-                    if (!SeekWithCount(it, st, st_type, 0, cnt)) {
-                        return 1;
+                    if (!SeekWithCount(it, st, st_type, expire_cnt, cnt)) {
+                        if (!Seek(it, st, st_type)) {
+                            return 1;
+                        }
                     }
                     break;
                 }
@@ -848,7 +850,9 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
                     Seek(it, st, real_st_type);
                     break;
                 case ::rtidb::api::TTLType::kAbsAndLat:
-                    SeekWithCount(it, st, real_st_type, 0, cnt);
+                    if (!SeekWithCount(it, st, real_st_type, expire_cnt, cnt)) {
+                        Seek(it, st, real_st_type);
+                    }
                     break;
                 default:
                     SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
@@ -980,7 +984,9 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
                     Seek(it, st, real_st_type);
                     break;
                 case ::rtidb::api::TTLType::kAbsAndLat:
-                    SeekWithCount(it, st, real_st_type, 0, cnt);
+                    if (!SeekWithCount(it, st, real_st_type, expire_cnt, cnt)) {
+                        Seek(it, st, real_st_type);
+                    }
                     break;
                 default:
                     SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
