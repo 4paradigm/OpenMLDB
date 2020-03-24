@@ -162,9 +162,14 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
         column_desc_map.insert(std::make_pair(columns[i].name, i));
     }
     std::vector<uint32_t> index_cols;
+    uint32_t max_idx = 0;
     for (const auto& name : column_key.col_name()) {
         if (column_desc_map.count(name)) {
-            index_cols.push_back(column_desc_map[name]);
+            uint32_t idx = column_desc_map[name];
+            index_cols.push_back(idx);
+            if (idx > max_idx) {
+                max_idx = idx;
+            }
         } else {
             PDLOG(WARNING, "fail to find column_desc %s", name.c_str());
             return false;
@@ -238,7 +243,7 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
             buff = entry.value();
         }
         std::vector<std::string> row;
-        ::rtidb::base::FillTableRow(index_cols.back() + 1, columns, buff.c_str(), buff.size(), row);
+        ::rtidb::base::FillTableRow(max_idx + 1, columns, buff.c_str(), buff.size(), row);
         std::string cur_key;
         for (uint32_t i : index_cols) {
             if (cur_key.empty()) {
