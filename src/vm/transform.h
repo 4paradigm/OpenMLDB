@@ -170,12 +170,10 @@ class Transform {
               const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module);
     virtual ~Transform();
     bool AddDefaultPasses();
-    bool TransformBatchPhysicalPlan(::fesql::node::PlanNode* node,
+    bool TransformPhysicalPlan(::fesql::node::PlanNode* node,
                                     ::fesql::vm::PhysicalOpNode** output,
                                     ::fesql::base::Status& status);  // NOLINT
-    bool TransformRequestPhysicalPlan(::fesql::node::PlanNode* node,
-                                      ::fesql::vm::PhysicalOpNode** output,
-                                      ::fesql::base::Status& status);  // NOLINT
+
 
     bool AddPass(PhysicalPlanPassType type);
 
@@ -184,65 +182,70 @@ class Transform {
         LogicalOpMap;
 
  protected:
-    bool TransformPlanOp(const ::fesql::node::PlanNode* node,
-                         ::fesql::vm::PhysicalOpNode** ouput,
-                         ::fesql::base::Status& status);  // NOLINT
-    bool TransformLimitOp(const node::LimitPlanNode* node,
-                          PhysicalOpNode** output,
-                          base::Status& status);  // NOLINT
+    virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,
+                                 ::fesql::vm::PhysicalOpNode** ouput,
+                                 ::fesql::base::Status& status);  // NOLINT
+    virtual bool TransformLimitOp(const node::LimitPlanNode* node,
+                                  PhysicalOpNode** output,
+                                  base::Status& status);  // NOLINT
 
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
                                         base::Status& status);  // NOLINT
-    bool TransformGroupAndSortOp(const node::ProjectListNode* project_list,
-                                 PhysicalOpNode* depend,
+    virtual bool TransformGroupAndSortOp(PhysicalOpNode* depend,
+                                         const node::ExprListNode* groups,
+                                         const node::OrderByNode* orders,
+                                         PhysicalOpNode** output,
+                                         base::Status& status);  // NOLINT
+
+    virtual bool TransformJoinOp(const node::JoinPlanNode* node,
                                  PhysicalOpNode** output,
                                  base::Status& status);  // NOLINT
-
-    bool TransformJoinOp(const node::JoinPlanNode* node,
-                         PhysicalOpNode** output,
-                         base::Status& status);  // NOLINT
-    bool TransformUnionOp(const node::UnionPlanNode* node,
-                          PhysicalOpNode** output,
-                          base::Status& status);  // NOLINT
-    bool TransformGroupOp(const node::GroupPlanNode* node,
-                          PhysicalOpNode** output,
-                          base::Status& status);  // NOLINT
-    bool TransformSortOp(const node::SortPlanNode* node,
-                         PhysicalOpNode** output,
-                         base::Status& status);  // NOLINT
-    bool TransformFilterOp(const node::FilterPlanNode* node,
-                           PhysicalOpNode** output,
-                           base::Status& status);  // NOLINT
-    bool TransformScanOp(const node::TablePlanNode* node,
-                         PhysicalOpNode** output,
-                         base::Status& status);  // NOLINT
-    bool TransformRenameOp(const node::RenamePlanNode* node,
-                           PhysicalOpNode** output,
-                           base::Status& status);  // NOLINT
-    bool TransformQueryPlan(const node::QueryPlanNode* node,
-                            PhysicalOpNode** output,
-                            base::Status& status);  // NOLINT
-    bool TransformDistinctOp(const node::DistinctPlanNode* node,
-                             PhysicalOpNode** output,
-                             base::Status& status);  // NOLINT
-    bool CreatePhysicalProjectNode(const ProjectType project_type,
-                                   PhysicalOpNode* node,
-                                   node::ProjectListNode* project_list,
+    virtual bool TransformUnionOp(const node::UnionPlanNode* node,
+                                  PhysicalOpNode** output,
+                                  base::Status& status);  // NOLINT
+    virtual bool TransformGroupOp(const node::GroupPlanNode* node,
+                                  PhysicalOpNode** output,
+                                  base::Status& status);  // NOLINT
+    virtual bool TransformSortOp(const node::SortPlanNode* node,
+                                 PhysicalOpNode** output,
+                                 base::Status& status);  // NOLINT
+    virtual bool TransformFilterOp(const node::FilterPlanNode* node,
                                    PhysicalOpNode** output,
                                    base::Status& status);  // NOLINT
-    bool ValidatePriimaryPath(node::PlanNode* node, node::PlanNode** output,
-                              base::Status& status);  // NOLINT
+    virtual bool TransformScanOp(const node::TablePlanNode* node,
+                                 PhysicalOpNode** output,
+                                 base::Status& status);  // NOLINT
+    virtual bool TransformRenameOp(const node::RenamePlanNode* node,
+                                   PhysicalOpNode** output,
+                                   base::Status& status);  // NOLINT
+    virtual bool TransformQueryPlan(const node::QueryPlanNode* node,
+                                    PhysicalOpNode** output,
+                                    base::Status& status);  // NOLINT
+    virtual bool TransformDistinctOp(const node::DistinctPlanNode* node,
+                                     PhysicalOpNode** output,
+                                     base::Status& status);  // NOLINT
+    virtual bool CreatePhysicalProjectNode(const ProjectType project_type,
+                                           PhysicalOpNode* node,
+                                           node::ProjectListNode* project_list,
+                                           PhysicalOpNode** output,
+                                           base::Status& status);  // NOLINT
+    virtual bool ValidatePrimaryPath(node::PlanNode* node,
+                                      node::PlanNode** output,
+                                      base::Status& status);  // NOLINT
     virtual bool TransformProjectOp(node::ProjectListNode* node,
                                     PhysicalOpNode* depend,
                                     PhysicalOpNode** output,
                                     base::Status& status);  // NOLINT
+    virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
 
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
 
  private:
+
+
     bool GenProjects(const Schema& input_schema,
                      const node::PlanNodeList& projects, const bool row_mode,
                      std::string& fn_name,   // NOLINT
@@ -253,19 +256,33 @@ class Transform {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
+
 };
 
-class TransformRequestQuery : public Transform {
+class TransformRequestMode : public Transform {
  public:
-    TransformRequestQuery(node::NodeManager* node_manager,
-                          const std::string& db,
-                          const std::shared_ptr<Catalog>& catalog,
-                          ::llvm::Module* module)
-        : Transform(node_manager, db, catalog, module) {}
-    virtual ~TransformRequestQuery();
+    TransformRequestMode(node::NodeManager* node_manager, const std::string& db,
+                         const std::shared_ptr<Catalog>& catalog,
+                         ::llvm::Module* module);
+    virtual ~TransformRequestMode();
+    virtual bool TransformPhysicalPlan(::fesql::node::PlanNode* node,
+                                      ::fesql::vm::PhysicalOpNode** output,
+                                      ::fesql::base::Status& status);  // NOLINT
+
+ protected:
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
                                         base::Status& status);  // NOLINT
+    virtual bool TransformGroupOp(const node::GroupPlanNode* node,
+                                  PhysicalOpNode** output,
+                                  base::Status& status);  // NOLINT
+
+    virtual bool TransformGroupAndSortOp(PhysicalOpNode* depend,
+                                         const node::ExprListNode* groups,
+                                         const node::OrderByNode* orders,
+                                         PhysicalOpNode** output,
+                                         base::Status& status);
+
 };
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,

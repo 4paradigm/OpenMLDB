@@ -221,7 +221,7 @@ bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
         depend = project_op;
     }
 
-    auto project_list = node_manager_->MakeProjectListPlanNode(nullptr);
+    auto project_list = node_manager_->MakeProjectListPlanNode(nullptr, false);
     uint32_t pos = 0;
     for (auto iter = node->pos_mapping_.cbegin();
          iter != node->pos_mapping_.cend(); iter++) {
@@ -254,40 +254,14 @@ bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
     return CreatePhysicalProjectNode(kTableProject, depend, project_list,
                                      output, status);
 }
-bool Transform::TransformGroupAndSortOp(
-    const node::ProjectListNode* project_list, PhysicalOpNode* depend,
-    PhysicalOpNode** output, base::Status& status) {
-    if (nullptr == project_list || nullptr == project_list->w_ptr_ ||
-        nullptr == output) {
-        status.msg = "project node or window node or output node is null";
+bool Transform::TransformGroupAndSortOp(PhysicalOpNode* depend,
+                                        const node::ExprListNode* groups,
+                                        const node::OrderByNode* orders,
+                                        PhysicalOpNode** output,
+                                        base::Status& status) {
+    if (nullptr == depend || nullptr == output) {
+        status.msg = "depend node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-
-    node::OrderByNode* orders = nullptr;
-    node::ExprListNode* groups = nullptr;
-    if (!project_list->w_ptr_->GetOrders().empty()) {
-        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-        node::ExprListNode* expr = new node::ExprListNode();
-        for (auto id : project_list->w_ptr_->GetOrders()) {
-            expr->AddChild(new node::ColumnRefNode(id, ""));
-        }
-        orders = dynamic_cast<node::OrderByNode*>(
-            node_manager_->MakeOrderByNode(expr, true));
-    }
-
-    if (!project_list->w_ptr_->GetKeys().empty()) {
-        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
-        groups = node_manager_->MakeExprList();
-        for (auto id : project_list->w_ptr_->GetKeys()) {
-            groups->AddChild(node_manager_->MakeColumnRefNode(id, ""));
-        }
-    }
-
-    if (nullptr == orders && nullptr == groups) {
-        status.msg =
-            "fail to transform window aggeration: gourps and orders is null";
         LOG(WARNING) << status.msg;
         return false;
     }
@@ -399,22 +373,32 @@ bool Transform::TransformScanOp(const node::TablePlanNode* node,
         LOG(WARNING) << status.msg;
         return false;
     }
-    auto table = catalog_->GetTable(db_, node->table_);
-    if (table) {
-        if (node->IsPrimary()) {
+    if (node->IsPrimary()) {
+        auto table = catalog_->GetTable("request", node->table_);
+        if (table) {
             *output = new PhysicalRequestProviderNode(table);
+            node_manager_->RegisterNode(*output);
         } else {
-            *output = new PhysicalTableProviderNode(table);
+            status.msg = "fail to transform data_provider op: request." +
+                         node->table_ + " not exist!";
+            status.code = common::kPlanError;
+            LOG(WARNING) << status.msg;
+            return false;
         }
-        node_manager_->RegisterNode(*output);
-        return true;
     } else {
-        status.msg = "fail to transform scan op: table " + db_ + "." +
-                     node->table_ + " not exist!";
-        status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
-        return false;
+        auto table = catalog_->GetTable(db_, node->table_);
+        if (table) {
+            *output = new PhysicalTableProviderNode(table);
+            node_manager_->RegisterNode(*output);
+        } else {
+            status.msg = "fail to transform data_provider op: table " + db_ +
+                         "." + node->table_ + " not exist!";
+            status.code = common::kPlanError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
     }
+    return true;
 }
 
 bool Transform::TransformRenameOp(const node::RenamePlanNode* node,
@@ -459,39 +443,15 @@ bool Transform::TransformDistinctOp(const node::DistinctPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformBatchPhysicalPlan(::fesql::node::PlanNode* node,
-                                           ::fesql::vm::PhysicalOpNode** output,
-                                           ::fesql::base::Status& status) {
+bool Transform::TransformPhysicalPlan(::fesql::node::PlanNode* node,
+                                      ::fesql::vm::PhysicalOpNode** output,
+                                      ::fesql::base::Status& status) {
     PhysicalOpNode* physical_plan;
     if (!TransformPlanOp(node, &physical_plan, status)) {
         return false;
     }
 
-    for (auto type : passes) {
-        switch (type) {
-            case kPassGroupAndSortOptimized: {
-                GroupAndSortOptimized pass(node_manager_, db_, catalog_);
-                PhysicalOpNode* new_op;
-                if (pass.Apply(physical_plan, &new_op)) {
-                    physical_plan = new_op;
-                }
-                break;
-            }
-            case kPassLeftJoinOptimized: {
-                LeftJoinOptimized pass(node_manager_, db_, catalog_);
-                PhysicalOpNode* new_op;
-                if (pass.Apply(physical_plan, &new_op)) {
-                    physical_plan = new_op;
-                }
-                break;
-            }
-            default: {
-                LOG(WARNING) << "can't not handle pass: "
-                             << PhysicalPlanPassTypeName(type);
-            }
-        }
-    }
-    *output = physical_plan;
+    ApplyPasses(physical_plan, output);
     return true;
 }
 bool Transform::AddPass(PhysicalPlanPassType type) {
@@ -618,15 +578,10 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
             break;
         }
         case kWindowAggregation: {
-            PhysicalOpNode* depend = nullptr;
-            if (!TransformGroupAndSortOp(project_list, node, &depend, status)) {
-                return false;
-            }
+            auto group_srot_op = dynamic_cast<PhysicalGroupAndSortNode*>(node);
             op = new PhysicalWindowAggrerationNode(
-                depend,
-                dynamic_cast<PhysicalGroupAndSortNode*>(depend)->groups_,
-                dynamic_cast<PhysicalGroupAndSortNode*>(depend)->orders_,
-                fn_name, output_schema, project_list->w_ptr_->GetStartOffset(),
+                group_srot_op, group_srot_op->groups_, group_srot_op->orders_, fn_name, output_schema,
+                project_list->w_ptr_->GetStartOffset(),
                 project_list->w_ptr_->GetEndOffset());
             break;
         }
@@ -636,29 +591,32 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
     return true;
 }
 
-bool Transform::TransformRequestPhysicalPlan(
+bool TransformRequestMode::TransformPhysicalPlan(
     ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
     ::fesql::base::Status& status) {
     // return false if Primary path check fail
     ::fesql::node::PlanNode* primary_node;
-    if (!ValidatePriimaryPath(node, &primary_node, status)) {
+    if (!ValidatePrimaryPath(node, &primary_node, status)) {
         return false;
     }
+    dynamic_cast<node::TablePlanNode*>(primary_node)->SetIsPrimary(true);
+    DLOG(INFO) << "plan after primary check:\n" << *node << "\n";
 
     PhysicalOpNode* physical_plan;
     if (!TransformPlanOp(node, &physical_plan, status)) {
         return false;
     }
 
-    *output = physical_plan;
+    ApplyPasses(physical_plan, output);
     return true;
 }
-bool Transform::ValidatePriimaryPath(node::PlanNode* node,
-                                     node::PlanNode** output,
-                                     base::Status& status) {
+bool Transform::ValidatePrimaryPath(node::PlanNode* node,
+                                    node::PlanNode** output,
+                                    base::Status& status) {
     if (nullptr == node) {
         status.msg = "primary path validate fail: node or output is null";
         status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
         return false;
     }
 
@@ -667,34 +625,43 @@ bool Transform::ValidatePriimaryPath(node::PlanNode* node,
         case node::kPlanTypeUnion: {
             auto binary_op = dynamic_cast<node::BinaryPlanNode*>(node);
             node::PlanNode* left_primary_table = nullptr;
-            if (!ValidatePriimaryPath(binary_op->GetLeft(), &left_primary_table,
-                                      status)) {
+            if (!ValidatePrimaryPath(binary_op->GetLeft(), &left_primary_table,
+                                     status)) {
+                status.msg =
+                    "primary path validate fail: left path isn't valid";
+                status.code = common::kPlanError;
+                LOG(WARNING) << status.msg;
                 return false;
             }
 
+            if (node::kPlanTypeTable == binary_op->GetRight()->type_) {
+                *output = left_primary_table;
+                return true;
+            }
             node::PlanNode* right_primary_table = nullptr;
-            if (!ValidatePriimaryPath(binary_op->GetRight(),
-                                      &right_primary_table, status)) {
+            if (!ValidatePrimaryPath(binary_op->GetRight(),
+                                     &right_primary_table, status)) {
                 status.msg =
                     "primary path validate fail: right path isn't valid";
                 status.code = common::kPlanError;
+                LOG(WARNING) << status.msg;
                 return false;
             }
 
-            if (left_primary_table == right_primary_table) {
+            if (node::PlanEquals(left_primary_table, right_primary_table)) {
                 *output = left_primary_table;
                 return true;
             } else {
                 status.msg =
-                    "primary path validate fial: left path and right path has "
+                    "primary path validate fail: left path and right path has "
                     "different source";
                 status.code = common::kPlanError;
+                LOG(WARNING) << status.msg;
                 return false;
             }
         }
         case node::kPlanTypeTable: {
-            auto table_op = dynamic_cast<node::TablePlanNode*>(node);
-            table_op->SetIsPrimary(true);
+            *output = node;
             return true;
         }
         case node::kPlanTypeCreate:
@@ -706,30 +673,88 @@ bool Transform::ValidatePriimaryPath(node::PlanNode* node,
             status.msg =
                 "primary path validate fail: invalid node of primary path";
             status.code = common::kPlanError;
+            LOG(WARNING) << status.msg;
             return false;
         }
         default: {
             auto unary_op = dynamic_cast<const node::UnaryPlanNode*>(node);
-            return ValidatePriimaryPath(unary_op->GetDepend(), output, status);
+            return ValidatePrimaryPath(unary_op->GetDepend(), output, status);
         }
     }
-    return false;
 }
 bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
-                                   PhysicalOpNode* depend,
+                                   PhysicalOpNode* node,
                                    PhysicalOpNode** output,
                                    base::Status& status) {
-    if (project_list->is_window_agg_ && nullptr != project_list->w_ptr_) {
-        return CreatePhysicalProjectNode(kWindowAggregation, depend,
-                                         project_list, output, status);
-    } else if (kPhysicalOpGroupBy == depend->type_) {
-        // TODO(chenjing): 基于聚合函数分组
-        return CreatePhysicalProjectNode(kGroupAggregation, depend,
-                                         project_list, output, status);
-    } else {
-        return CreatePhysicalProjectNode(kTableProject, depend, project_list,
-                                         output, status);
+    auto depend = node;
+    if (nullptr != project_list->w_ptr_) {
+        node::OrderByNode* orders = nullptr;
+        node::ExprListNode* groups = nullptr;
+
+        if (!project_list->w_ptr_->ExtractWindowGroupsAndOrders(&groups,
+                                                                &orders)) {
+            status.msg =
+                "fail to transform window aggeration: gourps and orders is "
+                "null";
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        if (!TransformGroupAndSortOp(depend, groups, orders, &depend,
+                                     status)) {
+            return false;
+        }
     }
+
+    switch (depend->output_type) {
+        case kSchemaTypeRow:
+            return CreatePhysicalProjectNode(kRowProject, depend,
+                                             project_list, output, status);
+        case kSchemaTypeGroup:
+            if (nullptr != project_list->w_ptr_) {
+                return CreatePhysicalProjectNode(kWindowAggregation, depend,
+                                                 project_list, output, status);
+            } else {
+                return CreatePhysicalProjectNode(kGroupAggregation, depend,
+                                                 project_list, output, status);
+            }
+        case kSchemaTypeTable:
+            if (project_list->is_window_agg_) {
+                return CreatePhysicalProjectNode(kAggregation, depend,
+                                                 project_list, output, status);
+            } else {
+                return CreatePhysicalProjectNode(kTableProject, depend,
+                                                 project_list, output, status);
+            }
+    }
+
+}
+void Transform::ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) {
+    auto physical_plan = node;
+    for (auto type : passes) {
+        switch (type) {
+            case kPassGroupAndSortOptimized: {
+                GroupAndSortOptimized pass(node_manager_, db_, catalog_);
+                PhysicalOpNode* new_op;
+                if (pass.Apply(physical_plan, &new_op)) {
+                    physical_plan = new_op;
+                }
+                break;
+            }
+            case kPassLeftJoinOptimized: {
+                LeftJoinOptimized pass(node_manager_, db_, catalog_);
+                PhysicalOpNode* new_op;
+                if (pass.Apply(physical_plan, &new_op)) {
+                    physical_plan = new_op;
+                }
+                break;
+            }
+            default: {
+                LOG(WARNING) << "can't not handle pass: "
+                             << PhysicalPlanPassTypeName(type);
+            }
+        }
+    }
+    *output = physical_plan;
 }
 
 bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
@@ -803,6 +828,42 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                 scan_index_op, new_groups, new_orders);
                         *output = new_group_sort_op;
                     }
+                    return true;
+                }
+            }
+            break;
+        }
+        case kPhysicalOpRequestUnoin: {
+            PhysicalRequestUnionNode* union_op =
+                dynamic_cast<PhysicalRequestUnionNode*>(in);
+            if (kPhysicalOpDataProvider == in->GetProducers()[1]->type_) {
+                auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(
+                    in->GetProducers()[1]);
+                if (kProviderTypeTable == scan_op->provider_type_) {
+                    std::string index_name;
+                    const node::ExprListNode* new_groups;
+                    const node::OrderByNode* new_orders;
+                    auto& index_hint = scan_op->table_handler_->GetIndex();
+                    if (!TransformGroupExpr(union_op->groups_, index_hint,
+                                            &index_name, &new_groups)) {
+                        return false;
+                    }
+
+                    auto index_st = index_hint.at(index_name);
+                    TransformOrderExpr(union_op->orders_,
+                                       scan_op->table_handler_->GetSchema(),
+                                       index_st, &new_orders);
+
+                    PhysicalScanIndexNode* scan_index_op =
+                        new PhysicalScanIndexNode(scan_op->table_handler_,
+                                                  index_name);
+                    node_manager_->RegisterNode(scan_index_op);
+
+                    PhysicalRequestUnionNode* new_group_sort_op =
+                        new PhysicalRequestUnionNode(
+                            union_op->GetProducers()[0], scan_index_op,
+                            new_groups, new_orders);
+                    *output = new_group_sort_op;
                     return true;
                 }
             }
@@ -958,8 +1019,9 @@ bool GroupAndSortOptimized::TransformOrderExpr(
     const node::OrderByNode* order, const Schema& schema,
     const IndexSt& index_st, const node::OrderByNode** output) {
     if (nullptr == order || nullptr == output) {
-        LOG(WARNING) << "fail to transform order expr : order expr or scan op "
-                        "or output is null";
+        LOG(WARNING)
+            << "fail to transform order expr : order expr or data_provider op "
+               "or output is null";
         return false;
     }
 
@@ -1178,8 +1240,15 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     return true;
 }
 
+TransformRequestMode::TransformRequestMode(
+    node::NodeManager* node_manager, const std::string& db,
+    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module)
+    : Transform(node_manager, db, catalog, module) {}
+
+TransformRequestMode::~TransformRequestMode() {}
+
 // transform project plan in request mode
-bool TransformRequestQuery::TransformProjecPlantOp(
+bool TransformRequestMode::TransformProjecPlantOp(
     const node::ProjectPlanNode* node, PhysicalOpNode** output,
     base::Status& status) {
     if (nullptr == node || nullptr == output) {
@@ -1229,7 +1298,7 @@ bool TransformRequestQuery::TransformProjecPlantOp(
             node_manager_->RegisterNode(join);
         }
 
-        auto project_list = node_manager_->MakeProjectListPlanNode(nullptr);
+        auto project_list = node_manager_->MakeProjectListPlanNode(nullptr, false);
         uint32_t pos = 0;
         for (auto iter = node->pos_mapping_.cbegin();
              iter != node->pos_mapping_.cend(); iter++) {
@@ -1263,6 +1332,78 @@ bool TransformRequestQuery::TransformProjecPlantOp(
         return CreatePhysicalProjectNode(kTableProject, join, project_list,
                                          output, status);
     }
+}
+bool TransformRequestMode::TransformGroupOp(const node::GroupPlanNode* node,
+                                            PhysicalOpNode** output,
+                                            base::Status& status) {
+    PhysicalOpNode* left = nullptr;
+    if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
+        return false;
+    }
+
+    if (kPhysicalOpDataProvider == left->type_) {
+        auto data_op = dynamic_cast<PhysicalDataProviderNode*>(left);
+        if (kProviderTypeRequest == data_op->provider_type_) {
+            auto name = data_op->table_handler_->GetName();
+            auto table = catalog_->GetTable(db_, name);
+            if (table) {
+                auto right = new PhysicalTableProviderNode(table);
+                node_manager_->RegisterNode(right);
+                *output = new PhysicalRequestUnionNode(left, right,
+                                                       node->by_list_, nullptr);
+                node_manager_->RegisterNode(*output);
+                return true;
+            } else {
+                status.code = common::kPlanError;
+                status.msg = "fail to transform data provider op: table " +
+                             name + "not exists";
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+        }
+    }
+    *output = new PhysicalGroupNode(left, node->by_list_);
+    node_manager_->RegisterNode(*output);
+    return true;
+}
+
+bool TransformRequestMode::TransformGroupAndSortOp(
+    PhysicalOpNode* depend, const node::ExprListNode* groups,
+    const node::OrderByNode* orders, PhysicalOpNode** output,
+    base::Status& status) {
+    if (nullptr == depend || nullptr == output) {
+        status.msg = "depend node or output node is null";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (kPhysicalOpDataProvider == depend->type_) {
+        auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend);
+        if (kProviderTypeRequest == data_op->provider_type_) {
+            auto name = data_op->table_handler_->GetName();
+            auto table = catalog_->GetTable(db_, name);
+            if (table) {
+                auto right = new PhysicalTableProviderNode(table);
+                node_manager_->RegisterNode(right);
+                *output =
+                    new PhysicalRequestUnionNode(depend, right, groups, orders);
+                node_manager_->RegisterNode(*output);
+                return true;
+            } else {
+                status.code = common::kPlanError;
+                status.msg = "fail to transform data provider op: table " +
+                             name + "not exists";
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+        }
+    }
+
+    PhysicalGroupAndSortNode* group_sort_op =
+        new PhysicalGroupAndSortNode(depend, groups, orders);
+    node_manager_->RegisterNode(group_sort_op);
+    *output = group_sort_op;
+    return true;
 }
 }  // namespace vm
 }  // namespace fesql

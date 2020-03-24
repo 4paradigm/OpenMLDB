@@ -372,7 +372,8 @@ void TablePlanNode::Print(std::ostream &output,
     PlanNode::Print(output, org_tab);
     output << "\n";
 
-    PrintValue(output, org_tab + "\t", table_, "table", true);
+    PrintValue(output, org_tab + "\t", table_,
+               is_primary_ ? "primary_table" : "table", true);
 }
 bool TablePlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
@@ -438,6 +439,31 @@ bool WindowPlanNode::Equals(const PlanNode *node) const {
            this->start_offset_ == that->end_offset_ &&
            this->orders_ == that->orders_ && this->keys_ == that->keys_ &&
            LeafPlanNode::Equals(node);
+}
+const bool WindowPlanNode::ExtractWindowGroupsAndOrders(
+    ExprListNode **groups_output, OrderByNode **orders_output) const {
+    if (orders_.empty() && keys_.empty()) {
+        LOG(WARNING) << "fail extract window's groups and orders";
+        return false;
+    }
+    if (!orders_.empty()) {
+        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
+        node::ExprListNode *expr = new node::ExprListNode();
+        for (auto id : orders_) {
+            expr->AddChild(new node::ColumnRefNode(id, ""));
+        }
+        *orders_output = new OrderByNode(expr, true);
+    }
+
+    if (!keys_.empty()) {
+        // TODO(chenjing): remove 临时适配, 有mem泄漏问题
+        auto groups = new node::ExprListNode();
+        for (auto id : keys_) {
+            groups->AddChild(new ColumnRefNode(id, ""));
+        }
+        *groups_output = groups;
+    }
+    return true;
 }
 
 void SortPlanNode::Print(std::ostream &output,

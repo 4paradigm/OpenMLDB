@@ -165,6 +165,9 @@ enum JoinType {
     kJoinTypeConcat,
 };
 
+enum UnionType {
+    kUnionTypeLeft
+};
 enum UnoinType { kUnionTypeDistinct, kUnionTypeAll };
 enum CmdType {
     kCmdCreateGroup,

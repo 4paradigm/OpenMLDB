@@ -69,12 +69,12 @@ class NodeManager {
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
-    ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w);
+    ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w, const bool need_agg);
     FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
                                        const ExprNode *condition);
 
     ProjectNode *MakeRowProjectNode(const int32_t pos, const std::string &name,
-                                 node::ExprNode *expression);
+                                    node::ExprNode *expression);
     ProjectNode *MakeAggProjectNode(const int32_t pos, const std::string &name,
                                     node::ExprNode *expression);
     PlanNode *MakeTablePlanNode(const std::string &node);
@@ -138,11 +138,18 @@ class NodeManager {
                            fesql::node::DataType v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
                            fesql::node::DataType v2);
+
+    ExprNode *MakeColumnRefNode(const std::string &column_name,
+                                const std::string &relation_name,
+                                const std::string &db_name);
     ExprNode *MakeColumnRefNode(const std::string &column_name,
                                 const std::string &relation_name);
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
                                  FnOperator op);
     ExprNode *MakeUnaryExprNode(ExprNode *left, FnOperator op);
+    ExprNode *MakeExprFrom(const ExprNode *node,
+                               const std::string relation_name,
+                               const std::string db_name);
     ExprNode *MakeExprIdNode(const std::string &name);
     // Make Fn Node
     ExprNode *MakeConstNode(int value);
@@ -155,6 +162,8 @@ class NodeManager {
     ExprNode *MakeConstNode();
 
     ExprNode *MakeAllNode(const std::string &relation_name);
+    ExprNode *MakeAllNode(const std::string &relation_name,
+                          const std::string &db_name);
 
     FnNode *MakeFnNode(const SQLNodeType &type);
     FnNodeList *MakeFnListNode();
@@ -228,6 +237,12 @@ class NodeManager {
         physical_plan_node_list_.push_back(node_ptr);
         return node_ptr;
     }
+
+    node::ExprNode *MakeEqualCondition(const std::string &db1,
+                                       const std::string &table1,
+                                       const std::string &db2,
+                                       const std::string &table2,
+                                       const node::ExprListNode *expr_list);
 
  private:
     ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,

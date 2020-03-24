@@ -195,11 +195,15 @@ bool QueryNode::Equals(const SQLNode *node) const {
 }
 
 const std::string AllNode::GetExprString() const {
-    if (relation_name_.empty()) {
-        return "*";
-    } else {
-        return relation_name_ + ".*";
+    std::string str = "";
+    if (!db_name_.empty()) {
+        str.append(db_name_).append(".");
     }
+    if (!relation_name_.empty()) {
+        str.append(relation_name_).append(".");
+    }
+    str.append("*");
+    return str;
 }
 bool AllNode::Equals(const ExprNode *node) const {
     if (this == node) {
@@ -290,7 +294,10 @@ void ColumnRefNode::Print(std::ostream &output,
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, relation_name_, "relation_name", false);
+    PrintValue(
+        output, tab,
+        db_name_.empty() ? relation_name_ : db_name_ + "." + relation_name_,
+        "relation_name", false);
     output << "\n";
     PrintValue(output, tab, column_name_, "column_name", true);
 }
@@ -664,7 +671,7 @@ std::string ExprString(const ExprNode *expr) {
     return nullptr == expr ? std::string() : expr->GetExprString();
 }
 
-bool ExprListNullOrEmpty(const ExprListNode* expr) {
+bool ExprListNullOrEmpty(const ExprListNode *expr) {
     return nullptr == expr || expr->IsEmpty();
 }
 void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {

@@ -638,8 +638,14 @@ class AllNode : public ExprNode {
 
     explicit AllNode(const std::string &relation_name)
         : ExprNode(kExprAll), relation_name_(relation_name) {}
+    explicit AllNode(const std::string &relation_name,
+                     const std::string &db_name)
+        : ExprNode(kExprAll),
+          relation_name_(relation_name),
+          db_name_(db_name) {}
 
     std::string GetRelationName() const { return relation_name_; }
+    std::string GetDBName() const { return db_name_; }
 
     void SetRelationName(const std::string &relation_name) {
         relation_name_ = relation_name;
@@ -649,6 +655,7 @@ class AllNode : public ExprNode {
 
  private:
     std::string relation_name_;
+    std::string db_name_;
 };
 class CallExprNode : public ExprNode {
  public:
@@ -841,7 +848,19 @@ class ColumnRefNode : public ExprNode {
                   const std::string &relation_name)
         : ExprNode(kExprColumnRef),
           column_name_(column_name),
-          relation_name_(relation_name) {}
+          relation_name_(relation_name),
+          db_name_("") {}
+
+    ColumnRefNode(const std::string &column_name,
+                  const std::string &relation_name, const std::string &db_name)
+        : ExprNode(kExprColumnRef),
+          column_name_(column_name),
+          relation_name_(relation_name),
+          db_name_(db_name) {}
+
+    std::string GetDBName() const { return db_name_; }
+
+    void SetDBName(const std::string &db_name) { db_name_ = db_name; }
 
     std::string GetRelationName() const { return relation_name_; }
 
@@ -862,6 +881,7 @@ class ColumnRefNode : public ExprNode {
  private:
     std::string column_name_;
     std::string relation_name_;
+    std::string db_name_;
 };
 
 class ResTarget : public SQLNode {
@@ -1277,8 +1297,9 @@ class StructExpr : public ExprNode {
     FnNodeList *methods_;
 };
 
-std::string ExprString(const ExprNode* expr);
-bool ExprListNullOrEmpty(const ExprListNode* expr);
+std::string ExprString(const ExprNode *expr);
+std::string MakeExprWithTable(const ExprNode *expr, const std::string db);
+bool ExprListNullOrEmpty(const ExprListNode *expr);
 bool SQLEquals(const SQLNode *left, const SQLNode *right);
 bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);
