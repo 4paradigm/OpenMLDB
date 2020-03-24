@@ -1405,11 +1405,11 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
 }  // namespace fesql
 
 int main(int argc, char** argv) {
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::testing::InitGoogleTest(&argc, argv);
     InitLLVM X(argc, argv);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-    ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();
 }

@@ -34,12 +34,12 @@ class DBMSServerImplTest : public ::testing::Test {
     DBMSServerImplTest() {}
     ~DBMSServerImplTest() {}
     void SetUp() {
-        tablet_endpoint = "127.0.0.1:8120";
+        tablet_endpoint = "127.0.0.1:7121";
         tablet_ = new tablet::TabletServerImpl();
         tablet_->Init();
         brpc::ServerOptions options;
         server_.AddService(tablet_, brpc::SERVER_DOESNT_OWN_SERVICE);
-        int32_t port = 8120;
+        int32_t port = 7121;
         server_.Start(port, &options);
         dbms_ = new ::fesql::dbms::DBMSServerImpl();
         {
@@ -549,8 +549,8 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
 }  // namespace dbms
 }  // namespace fesql
 int main(int argc, char** argv) {
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();
 }

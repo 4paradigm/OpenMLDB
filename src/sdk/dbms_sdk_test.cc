@@ -6,6 +6,8 @@
  * Date: 2019/11/7
  *--------------------------------------------------------------------------
  **/
+
+#include  <unistd.h>
 #include "sdk/dbms_sdk.h"
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
@@ -61,13 +63,14 @@ class DBMSSdkTest : public ::testing::Test {
  public:
     brpc::Server dbms_server_;
     brpc::Server tablet_server_;
-    int tablet_port = 8200;
-    int dbms_port = 8200;
+    int tablet_port = 7212;
+    int dbms_port = 7211;
     tablet::TabletServerImpl *tablet_;
     dbms::DBMSServerImpl *dbms_;
 };
 
 TEST_F(DBMSSdkTest, DatabasesAPITest) {
+    usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
@@ -112,6 +115,7 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
 }
 
 TEST_F(DBMSSdkTest, TableAPITest) {
+    usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
@@ -202,6 +206,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
 }
 
 TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
+    usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     ASSERT_TRUE(nullptr != dbms_sdk);
@@ -250,8 +255,8 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
 }  // namespace sdk
 }  // namespace fesql
 int main(int argc, char *argv[]) {
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();
 }
