@@ -561,7 +561,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     return true;
 }
 
-RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx) {
+RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint64_t start_offset) {
     if (idx >= idx_cnt_) {
         PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return NULL;
@@ -570,12 +570,14 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx) {
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;
     ro.pin_data = true;
+    ro.iter_start_seqnum = start_offset;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
     return new RelationalTableTraverseIterator(db_, it, snapshot);
 }
 
 RelationalTableTraverseIterator::RelationalTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
         const rocksdb::Snapshot* snapshot):db_(db), it_(it), snapshot_(snapshot), traverse_cnt_(0) {
+    seqnum_ = snapshot_->GetSequenceNumber();
 }
 
 RelationalTableTraverseIterator::~RelationalTableTraverseIterator() {
@@ -608,6 +610,14 @@ uint64_t RelationalTableTraverseIterator::GetCount() {
 rtidb::base::Slice RelationalTableTraverseIterator::GetValue() {
     rocksdb::Slice spk = it_->value();
     return rtidb::base::Slice(spk.data(), spk.size());
+}
+
+uint64_t RelationalTableTraverseIterator::GetSeq() {
+    return seqnum_;
+}
+
+rocksdb::Slice RelationalTableTraverseIterator::GetKey() {
+    return it_->key();
 }
 
 }

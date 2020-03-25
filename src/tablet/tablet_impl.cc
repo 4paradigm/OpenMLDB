@@ -1387,11 +1387,21 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_is_finish(is_finish);
     } else {
         uint32_t index = 0;
+        uint64_t start_offset = 0;
+        bool has_end = false;
+        if (request->has_end_seq() && request->end_seq() > 0) {
+            start_offset = request->end_seq();
+            has_end = true;
+        }
         rtidb::storage::RelationalTableTraverseIterator* it =
-            r_table->NewTraverse(index);
+            r_table->NewTraverse(index, start_offset);
         if (it == NULL) {
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
+        }
+        rocksdb::Slice end_key;
+        if (has_end && it->Valid()) {
+            end_key = it->GetKey();
         }
         if (request->has_pk()) {
             it->Seek(request->pk());
@@ -1402,6 +1412,7 @@ void TabletImpl::Traverse(RpcController* controller,
         uint32_t scount = 0;
         std::vector<rtidb::base::Slice> value_vec;
         uint32_t total_block_size = 0;
+        bool reach_end = false;
         for (; it->Valid(); it->Next()) {
             if (request->limit() > 0 && scount > request->limit() - 1) {
                 PDLOG(DEBUG, "reache the limit %u", request->limit());
@@ -1416,11 +1427,21 @@ void TabletImpl::Traverse(RpcController* controller,
                       it->GetCount(), FLAGS_max_traverse_cnt);
                 break;
             }
+            if (has_end && end_key.size() > 0) {
+                rocksdb::Slice key = it->GetKey();
+                if (key.compare(end_key) == 0) {
+                    reach_end = true;
+                    break;
+                }
+            }
         }
 
         bool is_finish = false;
-        if (!it->Valid()) {
+        if (!it->Valid() || reach_end) {
             is_finish = true;
+        }
+        if (!request->has_end_seq()) {
+            response->set_end_seq(it->GetSeq());
         }
         delete it;
         uint32_t total_size = scount * 4 + total_block_size;
@@ -1571,7 +1592,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
     }
     uint32_t index = 0;
     rtidb::storage::RelationalTableTraverseIterator* it =
-            r_table->NewTraverse(index);
+            r_table->NewTraverse(index, 0);
     if (it == NULL) {
         response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
         response->set_msg("idx name not found");

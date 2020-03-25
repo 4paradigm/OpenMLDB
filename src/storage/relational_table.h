@@ -45,12 +45,15 @@ class RelationalTableTraverseIterator {
     void Seek(const std::string& pk);
     uint64_t GetCount();
     rtidb::base::Slice GetValue();
+    uint64_t GetSeq();
+    rocksdb::Slice GetKey();
 
  private:
     rocksdb::DB* db_;
     rocksdb::Iterator* it_;
     const rocksdb::Snapshot* snapshot_;
     uint64_t traverse_cnt_;
+    uint64_t seqnum_;
 };
 
 class RelationalTable {
@@ -93,7 +96,7 @@ public:
 
     bool Delete(const std::string& pk, uint32_t idx);
 
-    rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx);
+    rtidb::storage::RelationalTableTraverseIterator* NewTraverse(uint32_t idx, uint64_t start_offset);
 
     bool Update(const ::rtidb::api::Columns& cd_columns, 
             const ::rtidb::api::Columns& col_columns);
