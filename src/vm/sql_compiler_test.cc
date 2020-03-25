@@ -35,6 +35,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "tablet/tablet_catalog.h"
+#include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -97,12 +98,23 @@ TEST_F(SQLCompilerTest, test_normal) {
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
+    ASSERT_TRUE(nullptr != sql_context.plan);
+    std::ostringstream oss;
+    sql_context.plan->Print(oss, "");
+    std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
+
+    std::ostringstream oss_schema;
+    PrintSchema(oss_schema, sql_context.schema);
+    std::cout << "schema:\n" << oss_schema.str();
+
 }
 
 }  // namespace vm
 }  // namespace fesql
 
 int main(int argc, char** argv) {
+    ::testing::GTEST_FLAG(color) = "yes";
+    testing::InitGoogleTest(&argc, argv);
     ::testing::InitGoogleTest(&argc, argv);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();

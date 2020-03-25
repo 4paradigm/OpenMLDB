@@ -174,7 +174,7 @@ class BatchModeTransformer {
     bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
                                ::fesql::vm::PhysicalOpNode** output,
                                ::fesql::base::Status& status);
-    bool TransformQueryPlan(::fesql::node::PlanNode* node,
+    virtual bool TransformQueryPlan(const ::fesql::node::PlanNode* node,
                             ::fesql::vm::PhysicalOpNode** output,
                             ::fesql::base::Status& status);  // NOLINT
 
@@ -222,9 +222,6 @@ class BatchModeTransformer {
     virtual bool TransformRenameOp(const node::RenamePlanNode* node,
                                    PhysicalOpNode** output,
                                    base::Status& status);  // NOLINT
-    virtual bool TransformQueryPlan(const node::QueryPlanNode* node,
-                                    PhysicalOpNode** output,
-                                    base::Status& status);  // NOLINT
     virtual bool TransformDistinctOp(const node::DistinctPlanNode* node,
                                      PhysicalOpNode** output,
                                      base::Status& status);  // NOLINT
@@ -233,14 +230,12 @@ class BatchModeTransformer {
                                            node::ProjectListNode* project_list,
                                            PhysicalOpNode** output,
                                            base::Status& status);  // NOLINT
-    virtual bool ValidatePrimaryPath(node::PlanNode* node,
-                                     node::PlanNode** output,
-                                     base::Status& status);  // NOLINT
     virtual bool TransformProjectOp(node::ProjectListNode* node,
                                     PhysicalOpNode* depend,
                                     PhysicalOpNode** output,
                                     base::Status& status);  // NOLINT
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
+    bool GenFnDef(const node::FuncDefPlanNode* fn_plan, base::Status& status);
 
     node::NodeManager* node_manager_;
     const std::string db_;
@@ -257,7 +252,6 @@ class BatchModeTransformer {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
-    bool GenFnDef(const node::FuncDefPlanNode* fn_plan, base::Status& status);
 };
 
 class RequestModeransformer : public BatchModeTransformer {
@@ -267,10 +261,6 @@ class RequestModeransformer : public BatchModeTransformer {
                           const std::shared_ptr<Catalog>& catalog,
                           ::llvm::Module* module);
     virtual ~RequestModeransformer();
-    virtual bool TransformQueryPlan(::fesql::node::PlanNode* node,
-                                    ::fesql::vm::PhysicalOpNode** output,
-                                    ::fesql::base::Status& status);  // NOLINT
-
  protected:
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,

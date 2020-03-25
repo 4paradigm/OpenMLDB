@@ -263,14 +263,19 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
                         const Schema &schema, ProjectType project_type)
         : PhysicalUnaryNode(node, kPhysicalOpProject, false, false),
           project_type_(project_type),
-          fn_name_(fn_name) {
+          fn_name_(fn_name),
+          fn_(nullptr) {
         output_schema.CopyFrom(schema);
     }
     virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     bool InitSchema() override;
+    void SetFn(int8_t *fn) { fn_ = fn; }
     const ProjectType project_type_;
     const std::string fn_name_;
+
+ private:
+    int8_t *fn_;
 };
 
 class PhysicalRowProjectNode : public PhysicalProjectNode {

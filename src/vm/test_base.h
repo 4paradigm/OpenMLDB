@@ -62,7 +62,7 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
 }
 
 
-void PrintSchema(std::stringstream& ss, const Schema& schema) {
+void PrintSchema(std::ostringstream& ss, const Schema& schema) {
     for (int32_t i = 0; i < schema.size(); i++) {
         if (i > 0) {
             ss << "\n";
@@ -73,7 +73,7 @@ void PrintSchema(std::stringstream& ss, const Schema& schema) {
 }
 
 void PrintSchema(const Schema& schema) {
-    std::stringstream ss;
+    std::ostringstream ss;
     PrintSchema(ss, schema);
     LOG(INFO) << "\n" << ss.str();
 }

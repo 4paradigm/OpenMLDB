@@ -63,7 +63,8 @@ BatchModeTransformer::BatchModeTransformer(
       module_(module),
       id_(0) {}
 
-BatchModeTransformer::~BatchModeTransformer() {}
+BatchModeTransformer::~BatchModeTransformer() {
+}
 
 bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
                                            ::fesql::vm::PhysicalOpNode** ouput,
@@ -457,16 +458,7 @@ bool BatchModeTransformer::TransformRenameOp(const node::RenamePlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool BatchModeTransformer::TransformQueryPlan(const node::QueryPlanNode* node,
-                                              PhysicalOpNode** output,
-                                              base::Status& status) {
-    if (nullptr == node || nullptr == output) {
-        status.msg = "input node or output node is null";
-        status.code = common::kPlanError;
-        return false;
-    }
-    return TransformPlanOp(node->GetChildren()[0], output, status);
-}
+
 bool BatchModeTransformer::TransformDistinctOp(
     const node::DistinctPlanNode* node, PhysicalOpNode** output,
     base::Status& status) {
@@ -484,14 +476,16 @@ bool BatchModeTransformer::TransformDistinctOp(
     return true;
 }
 bool BatchModeTransformer::TransformQueryPlan(
-    ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
+    const ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
     ::fesql::base::Status& status) {
-    PhysicalOpNode* physical_plan;
-    if (!TransformPlanOp(node, &physical_plan, status)) {
+    if (nullptr == node || nullptr == output) {
+        status.msg = "input node or output node is null";
+        status.code = common::kPlanError;
         return false;
     }
-
-    ApplyPasses(physical_plan, output);
+    if (!TransformPlanOp(node->GetChildren()[0], output, status)) {
+        return false;
+    }
     return true;
 }
 bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
@@ -630,97 +624,7 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     return true;
 }
 
-bool RequestModeransformer::TransformQueryPlan(
-    ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
-    ::fesql::base::Status& status) {
-    // return false if Primary path check fail
-    ::fesql::node::PlanNode* primary_node;
-    if (!ValidatePrimaryPath(node, &primary_node, status)) {
-        return false;
-    }
-    dynamic_cast<node::TablePlanNode*>(primary_node)->SetIsPrimary(true);
-    DLOG(INFO) << "plan after primary check:\n" << *node << "\n";
 
-    PhysicalOpNode* physical_plan;
-    if (!TransformPlanOp(node, &physical_plan, status)) {
-        return false;
-    }
-
-    ApplyPasses(physical_plan, output);
-    return true;
-}
-bool BatchModeTransformer::ValidatePrimaryPath(node::PlanNode* node,
-                                               node::PlanNode** output,
-                                               base::Status& status) {
-    if (nullptr == node) {
-        status.msg = "primary path validate fail: node or output is null";
-        status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-
-    switch (node->type_) {
-        case node::kPlanTypeJoin:
-        case node::kPlanTypeUnion: {
-            auto binary_op = dynamic_cast<node::BinaryPlanNode*>(node);
-            node::PlanNode* left_primary_table = nullptr;
-            if (!ValidatePrimaryPath(binary_op->GetLeft(), &left_primary_table,
-                                     status)) {
-                status.msg =
-                    "primary path validate fail: left path isn't valid";
-                status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-
-            if (node::kPlanTypeTable == binary_op->GetRight()->type_) {
-                *output = left_primary_table;
-                return true;
-            }
-            node::PlanNode* right_primary_table = nullptr;
-            if (!ValidatePrimaryPath(binary_op->GetRight(),
-                                     &right_primary_table, status)) {
-                status.msg =
-                    "primary path validate fail: right path isn't valid";
-                status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-
-            if (node::PlanEquals(left_primary_table, right_primary_table)) {
-                *output = left_primary_table;
-                return true;
-            } else {
-                status.msg =
-                    "primary path validate fail: left path and right path has "
-                    "different source";
-                status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-        }
-        case node::kPlanTypeTable: {
-            *output = node;
-            return true;
-        }
-        case node::kPlanTypeCreate:
-        case node::kPlanTypeInsert:
-        case node::kPlanTypeCmd:
-        case node::kPlanTypeWindow:
-        case node::kProjectList:
-        case node::kProjectNode: {
-            status.msg =
-                "primary path validate fail: invalid node of primary path";
-            status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
-            return false;
-        }
-        default: {
-            auto unary_op = dynamic_cast<const node::UnaryPlanNode*>(node);
-            return ValidatePrimaryPath(unary_op->GetDepend(), output, status);
-        }
-    }
-}
 bool BatchModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* node,
     PhysicalOpNode** output, base::Status& status) {
@@ -804,24 +708,26 @@ bool BatchModeTransformer::TransformPhysicalPlan(
         return false;
     }
 
-    auto it = trees.cbegin();
+    auto it = trees.begin();
     for (; it != trees.end(); ++it) {
         const ::fesql::node::PlanNode* node = *it;
         switch (node->GetType()) {
             case ::fesql::node::kPlanTypeFuncDef: {
                 const ::fesql::node::FuncDefPlanNode* func_def_plan =
-                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
-                if (GenFnDef(func_def_plan, status)) {
+                    dynamic_cast< const::fesql::node::FuncDefPlanNode*>(node);
+                if (!GenFnDef(func_def_plan, status)) {
                     return false;
                 }
                 break;
             }
             case ::fesql::node::kPlanTypeQuery: {
-                const ::fesql::node::QueryPlanNode* query_plan =
+                const::fesql::node::QueryPlanNode* query_plan =
                     dynamic_cast<const ::fesql::node::QueryPlanNode*>(node);
-                if (TransformQueryPlan(query_plan, output, status)) {
+                PhysicalOpNode* physical_plan = nullptr;
+                if (!TransformQueryPlan(query_plan, &physical_plan, status)) {
                     return false;
                 }
+                ApplyPasses(physical_plan, output);
                 break;
             }
             default: {
@@ -838,6 +744,7 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
         nullptr == fn_plan->fn_def_) {
         status.msg = "fail to codegen function: module or fn_def node is null";
         status.code = common::kOpGenError;
+        LOG(WARNING) << status.msg;
         return false;
     }
 
@@ -846,6 +753,7 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
     if (!ok) {
         status.msg = "fail to codegen function: " + status.msg;
         status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
         return false;
     }
     return true;

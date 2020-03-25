@@ -397,7 +397,7 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     physical_plan->Print(oos, "");
     std::cout << oos.str() << std::endl;
 
-    std::stringstream ss;
+    std::ostringstream ss;
     PrintSchema(ss, physical_plan->output_schema);
     std::cout << "schema:\n" << ss.str() << std::endl;
 

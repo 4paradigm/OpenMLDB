@@ -359,7 +359,7 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
-        ::fesql::plan::SimplePlanner planner(&manager);
+        ::fesql::plan::SimplePlanner planner(&manager, node::kPlanModeRequest);
         ::fesql::parser::FeSQLParser parser;
         ::fesql::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);

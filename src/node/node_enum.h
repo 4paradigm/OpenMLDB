@@ -211,6 +211,7 @@ enum PlanType {
 // batch plan node type
 enum BatchPlanNodeType { kBatchDataset, kBatchPartition, kBatchMap };
 
+enum PlanModeType { kPlanModeBatch, kPlanModeRequest };
 }  // namespace node
 }  // namespace fesql
 

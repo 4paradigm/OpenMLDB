@@ -20,6 +20,8 @@ using fesql::node::PlanNode;
 using fesql::node::SQLNode;
 using fesql::node::SQLNodeList;
 // TODO(chenjing): add ut: 检查SQL的语法树节点预期 2019.10.23
+// TODO(chenjing): add ut batch mode plan and request mode plan
+// TODO(chenjing): add ut for validate primary path
 class PlannerTest : public ::testing::TestWithParam<std::string> {
  public:
     PlannerTest() {
@@ -1026,10 +1028,30 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
         dynamic_cast<node::LimitPlanNode *>(plan_ptr);
     ASSERT_EQ(1, limit_plan->GetLimitCnt());
 }
+
+TEST_F(PlannerTest, RequestModePlanErrorTest) {
+    const std::vector<std::string> sql_list = {
+        "select col1, col2 from t1 union select col1, col2 from t2;",
+        "select col1, col2 from t1 left join (select col1, col2 from tt) as t2 on t1.col1 = t2.col1;"
+    };
+
+    for(auto sql: sql_list) {
+        base::Status status;
+        node::NodePointVector parser_trees;
+        int ret = parser_->parse(sql, parser_trees, manager_, status);
+        ASSERT_EQ(0, ret);
+        SimplePlanner planner_ptr(manager_, node::kPlanModeRequest);
+        node::PlanNodeList plan_trees;
+        ASSERT_FALSE(0 ==  planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
+    }
+
+}
+
 }  // namespace plan
 }  // namespace fesql
 
 int main(int argc, char **argv) {
+    ::testing::GTEST_FLAG(color) = "yes";
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
