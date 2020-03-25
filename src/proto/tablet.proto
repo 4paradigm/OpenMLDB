@@ -608,6 +608,12 @@ message CheckFileRequest {
     optional rtidb.common.StorageMode storage_mode = 6 [default = kMemory];
 }
 
+message AddIndexRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional rtidb.common.ColumnKey column_key = 3;
+}
+
 message SetModeRequest {
     optional bool follower = 1;
 }
@@ -702,5 +708,6 @@ service TabletServer {
     rpc UpdateTableMetaForAddField (UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
     rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
+    rpc AddIndex(AddIndexRequest) returns(GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
 }

@@ -4330,8 +4330,8 @@ void TabletImpl::DeleteIndex(RpcController* controller,
             std::string root_path;
             MemTable* mem_table = dynamic_cast<MemTable*>(kv.second.get());
             if (!mem_table->DeleteIndex(request->idx_name())) {
-                response->set_code(::rtidb::base::ReturnCode::kIndexDeleteFailed);
-                response->set_msg("delete index fail!");
+                response->set_code(::rtidb::base::ReturnCode::kDeleteIndexFailed);
+                response->set_msg("delete index failed");
                 PDLOG(WARNING, "delete index %s failed. tid %u pid %u", 
                         request->idx_name().c_str(), request->tid(), kv.first);
                 return;
@@ -4351,11 +4351,35 @@ void TabletImpl::DeleteIndex(RpcController* controller,
         }
     }
     PDLOG(INFO, "delete index %s success. tid %u", request->idx_name().c_str(), request->tid());
-    response->set_code(0);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
+void TabletImpl::AddIndex(RpcController* controller,
+        const ::rtidb::api::AddIndexRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
+    }
+    MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+    if (!mem_table->AddIndex(request->column_key())) {
+        PDLOG(WARNING, "add index %s failed. tid %u, pid %u", 
+                request->column_key().index_name(), request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kAddIndexFailed);
+        response->set_msg("add index failed");
+        return;
+    }
+    PDLOG(INFO, "add index %s ok. tid %u pid %u", 
+            request->column_key().index_name().c_str(), request->tid(), request->pid());
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}    
+
 }
 }
-
-
