@@ -1434,7 +1434,7 @@ TEST_F(TabletImplTest, MultiGet) {
     deleteindex_request.set_idx_name("pk");
     deleteindex_request.set_tid(id);
     tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
-    ASSERT_EQ(601, deleteindex_response.code());
+    ASSERT_EQ(142, deleteindex_response.code());
     // delete other index
     deleteindex_request.set_idx_name("amt");
     deleteindex_request.set_tid(id);

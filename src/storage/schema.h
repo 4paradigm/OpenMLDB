@@ -99,12 +99,13 @@ public:
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
     void AddIndex(std::shared_ptr<IndexDef> index_def);
     void SetAllIndex(const std::vector<std::shared_ptr<IndexDef>>& index_vec);
-    inline const std::vector<std::shared_ptr<IndexDef>>& GetAllIndex() {
-        return indexs_;
+    std::vector<std::shared_ptr<IndexDef>> GetAllIndex();
+    inline uint32_t Size() {
+        return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->size();
     }
 
 private:
-    std::vector<std::shared_ptr<IndexDef>> indexs_;
+    std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
 };
 
 }

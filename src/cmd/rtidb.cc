@@ -902,6 +902,38 @@ void HandleNSClientSyncTable(const std::vector<std::string>& parts, ::rtidb::cli
     }
 }
 
+void HandleNSClientAddIndex(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad format for addindex! eg. addindex table_name index_name [col_name] [ts_name]" << std::endl;
+        return;
+    }
+    ::rtidb::common::ColumnKey column_key;
+    column_key.set_index_name(parts[2]);
+    if (parts.size() > 3) {
+        std::vector<std::string> col_vec;
+        ::rtidb::base::SplitString(parts[3], ",", col_vec);
+        for (const auto& col_name : col_vec) {
+            column_key.add_col_name(col_name);
+        }
+        if (parts.size() > 4) {
+            std::vector<std::string> ts_vec;
+            ::rtidb::base::SplitString(parts[4], ",", ts_vec);
+            for (const auto& ts_name : ts_vec) {
+                column_key.add_ts_name(ts_name);
+            }
+        }
+    } else {
+        column_key.add_col_name(parts[2]);
+    }
+    std::string msg;
+    bool ret = client->AddIndex(parts[1], column_key, msg);
+    if (!ret) {
+        std::cout << "failed to addindex. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "addindex ok" << std::endl;
+}
+
 void HandleNSClientConfSet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
@@ -2772,6 +2804,8 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
 
 void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() == 1) {
+        printf("addindex - add index to table \n");
+        printf("addtablefield - add field to the schema table \n");
         printf("addreplica - add replica to leader\n");
         printf("cancelop - cancel the op\n");
         printf("create - create table\n");
@@ -2804,7 +2838,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("settablepartition - update partition info\n");
         printf("setttl - set table ttl\n");
         printf("updatetablealive - update table alive status\n");
-        printf("addtablefield - add field to the schema table \n");
         printf("info - show information of the table\n");
         printf("addrepcluster - add remote replica cluster\n");
         printf("showrepcluster - show remote replica cluster\n");
@@ -3010,6 +3043,12 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: synctable table_name cluster_alias [pid]\n");
             printf("ex: synctable test bj\n");
             printf("ex: synctable test bj 0\n");
+        } else if (parts[1] == "addindex") {
+            printf("desc: add new index to table\n");
+            printf("usage: addindex table_name index_name [col_name] [ts_name]\n");
+            printf("ex: addindex test card\n");
+            printf("ex: addindex test combine1 card,mcc\n");
+            printf("ex: addindex test combine2 id,name ts1,ts2\n");
         } else if (parts[1] == "deleteindex") {
             printf("desc: delete index of specified index\n");
             printf("usage: deleteindex table_name index_name");
@@ -5218,13 +5257,14 @@ void StartNsClient() {
         } else if (parts[0] == "switchmode") {
             HandleNSSwitchMode(parts, &client);
         } else if (parts[0] == "synctable") {
-            HandleNSClientSyncTable(parts, &client); 
+           HandleNSClientSyncTable(parts, &client); 
+        } else if (parts[0] == "addindex") {
+           HandleNSClientAddIndex(parts, &client); 
         } else if (parts[0] == "deleteindex") {
             HandleNSClientDeleteIndex(parts, &client);
         } else if (parts[0] == "update") {
             HandleNSUpdate(parts, &client);
-        }
-        else if (parts[0] == "exit" || parts[0] == "quit") {
+        } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
         } else if (parts[0] == "help" || parts[0] == "man") {

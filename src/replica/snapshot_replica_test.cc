@@ -94,9 +94,7 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     sleep(1);
 
     ::rtidb::api::TableStatus table_status;
-    if (client.GetTableStatus(tid, pid, table_status) < 0) {
-        ASSERT_TRUE(0);
-    }
+    ASSERT_TRUE(client.GetTableStatus(tid, pid, table_status));
     ASSERT_EQ(::rtidb::api::kTableNormal, table_status.state());
 
     ret = client.DelReplica(tid, pid, end_point);

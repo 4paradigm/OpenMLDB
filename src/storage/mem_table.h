@@ -161,6 +161,8 @@ public:
 
     bool DeleteIndex(std::string idx_name);
 
+    bool AddIndex(const ::rtidb::common::ColumnKey& column_key);
+
 private:
 
     inline bool CheckAbsolute(const LogEntry& entry, const std::map<uint32_t, uint64_t>& ts_dimemsions_map);

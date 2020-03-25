@@ -14,7 +14,6 @@ namespace rtidb {
 namespace storage {
 
 Table::Table() {
-    table_index_ = std::make_shared<TableIndex>();
 }
 
 Table::Table(::rtidb::common::StorageMode storage_mode, const std::string& name, uint32_t id, uint32_t pid,
@@ -34,9 +33,8 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string& name,
         ttl_desc->set_lat_ttl(ttl/(60*1000));
     }
     last_make_snapshot_time_ = 0;
-    table_index_ = std::make_shared<TableIndex>();
     for (const auto& kv : mapping) {
-        table_index_->AddIndex(std::make_shared<IndexDef>(kv.first, kv.second));
+        table_index_.AddIndex(std::make_shared<IndexDef>(kv.first, kv.second));
     }
 }
 
@@ -60,7 +58,7 @@ int Table::InitColumnDesc() {
         uint32_t ts_idx = 0;
         for (const auto &column_desc : table_meta_.column_desc()) {
             if (column_desc.add_ts_idx()) {
-                table_index_->AddIndex(std::make_shared<IndexDef>(column_desc.name(), key_idx));
+                table_index_.AddIndex(std::make_shared<IndexDef>(column_desc.name(), key_idx));
                 key_idx++;
             } else if (column_desc.is_ts_col()) {
                 ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
@@ -86,20 +84,20 @@ int Table::InitColumnDesc() {
             }
         }
         if (ts_mapping_.size() > 1) {
-            table_index_->ReSet();
+            table_index_.ReSet();
         }
         if (table_meta_.column_key_size() > 0) {
-            table_index_->ReSet();;
+            table_index_.ReSet();;
             key_idx = 0;
             for (const auto &column_key : table_meta_.column_key()) {
                 std::string name = column_key.index_name();
-                if (table_index_->GetIndex(name)) {
+                if (table_index_.GetIndex(name)) {
                     return -1;
                 }
                 if (column_key.flag()) {
-                    table_index_->AddIndex(std::make_shared<IndexDef>(name, key_idx, ::rtidb::storage::kDeleted));
+                    table_index_.AddIndex(std::make_shared<IndexDef>(name, key_idx, ::rtidb::storage::kDeleted));
                 } else {
-                    table_index_->AddIndex(std::make_shared<IndexDef>(name, key_idx, ::rtidb::storage::kReady));
+                    table_index_.AddIndex(std::make_shared<IndexDef>(name, key_idx, ::rtidb::storage::kReady));
                 }
                 key_idx++;
                 if (ts_mapping_.empty()) {
@@ -121,11 +119,11 @@ int Table::InitColumnDesc() {
                         }
                     }
                 }
-                table_index_->GetIndex(name)->SetTsColumn(ts_vec);
+                table_index_.GetIndex(name)->SetTsColumn(ts_vec);
             }
         } else {
             if (!ts_mapping_.empty()) {
-                auto indexs = table_index_->GetAllIndex();
+                auto indexs = table_index_.GetAllIndex();
                 std::vector<uint32_t> ts_vec;
                 ts_vec.push_back(ts_mapping_.begin()->second);
                 for (auto &index_def : indexs) {
@@ -139,15 +137,15 @@ int Table::InitColumnDesc() {
         }
     } else {
         for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
-            table_index_->AddIndex(std::make_shared<IndexDef>(table_meta_.dimensions(i), (uint32_t)i));
+            table_index_.AddIndex(std::make_shared<IndexDef>(table_meta_.dimensions(i), (uint32_t)i));
             PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u",
                   table_meta_.dimensions(i).c_str(), i, table_meta_.name().c_str(), id_, pid_);
         }
     }
     // add default dimension
-    auto indexs = table_index_->GetAllIndex();
+    auto indexs = table_index_.GetAllIndex();
     if (indexs.empty()) {
-        table_index_->AddIndex(std::make_shared<IndexDef>("idx0", 0));
+        table_index_.AddIndex(std::make_shared<IndexDef>("idx0", 0));
         PDLOG(INFO, "no index specified with default");
     }
     if (table_meta_.column_key_size() == 0) {
@@ -223,7 +221,7 @@ bool Table::InitFromMeta() {
     }
     if (table_meta_.has_schema()) schema_ = table_meta_.schema();
     if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
-    idx_cnt_ = table_index_->GetAllIndex().size();
+    idx_cnt_ = table_index_.Size();
     return true;
 }
 
