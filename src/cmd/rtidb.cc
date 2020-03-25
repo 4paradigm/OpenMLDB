@@ -1959,12 +1959,24 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
         rtidb::base::RowView rv(schema);
         std::vector<std::string> row;
         row.push_back("#");
+        std::string pk_col_name;
+        for (const auto& column_key : tables[0].column_key()) {
+            if (column_key.index_type() == rtidb::type::kPrimaryKey) {
+                pk_col_name = column_key.index_name();
+                break;
+            }
+        }
+        int pk_index = 0;
         for(int i = 0; i < schema.size(); i++) {
             row.push_back(schema.Get(i).name());
+            if(schema.Get(i).name() == pk_col_name) {
+                pk_index = i;
+            }
         }
         baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
         uint64_t seq = 0;
         std::string data;
+        std::string last_pk = "";
         for (int pid = 0; pid < tables[0].table_partition_size(); pid++) {
             if (limit == 0) {
                 break;
@@ -1977,7 +1989,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
             uint32_t count = 0;
             bool is_finish = false;
             std::string err_msg;
-            bool ok = tablet_client->Traverse(tid, pid, "", limit, &count, &err_msg, &data, &is_finish);
+            bool ok = tablet_client->Traverse(tid, pid, last_pk, limit, &count, &err_msg, &data, &is_finish);
             if (!ok) {
                 std::cerr << "Fail to preview table" << std::endl;
             }
@@ -2001,11 +2013,15 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
                     if (row[i] == rtidb::base::NONETOKEN) {
                         row[i] = "null";
                     }
+                    if (i == static_cast<uint64_t>(pk_index)) {
+                        last_pk = row[i];
+                    }
                 }
                 tp.AddRow(row);
                 row.clear();
             }
             data.clear();
+            last_key = "";
         }
         tp.Print(true);
         return;
