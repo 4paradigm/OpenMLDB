@@ -97,7 +97,7 @@ bool OpGenerator::GenSQL(const ::fesql::node::QueryPlanNode* tree,
         return false;
     }
     std::vector<OpNode*> tmp;
-    if (false == RoutingNode(tree->GetChildren()[0], db, module, ops_map, ops,
+    if (false == RoutingNode(tree, db, module, ops_map, ops,
                              tmp, status)) {
         LOG(WARNING) << "Fail to gen op";
         return false;

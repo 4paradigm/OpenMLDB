@@ -164,13 +164,13 @@ inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
     }
     return "";
 }
-class Transform {
+class BatchModeTransformer {
  public:
-    Transform(node::NodeManager* node_manager, const std::string& db,
+    BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
               const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module);
-    virtual ~Transform();
+    virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
-    bool TransformPhysicalPlan(::fesql::node::PlanNode* node,
+    bool TransformQueryPlan(::fesql::node::PlanNode* node,
                                ::fesql::vm::PhysicalOpNode** output,
                                ::fesql::base::Status& status);  // NOLINT
 
@@ -255,13 +255,13 @@ class Transform {
     LogicalOpMap op_map_;
 };
 
-class TransformRequestMode : public Transform {
+class RequestModeransformer : public BatchModeTransformer {
  public:
-    TransformRequestMode(node::NodeManager* node_manager, const std::string& db,
+    RequestModeransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
                          ::llvm::Module* module);
-    virtual ~TransformRequestMode();
-    virtual bool TransformPhysicalPlan(
+    virtual ~RequestModeransformer();
+    virtual bool TransformQueryPlan(
         ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
         ::fesql::base::Status& status);  // NOLINT
 

@@ -114,10 +114,10 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    TransformRequestMode transform(&manager, "db", catalog, m.get());
+    RequestModeransformer transform(&manager, "db", catalog, m.get());
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformPhysicalPlan(
+    ASSERT_TRUE(transform.TransformQueryPlan(
         dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
         base_status));
     std::ostringstream oss;
@@ -381,9 +381,9 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
-    TransformRequestMode transform(&manager, "db", catalog, m.get());
+    RequestModeransformer transform(&manager, "db", catalog, m.get());
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformPhysicalPlan(
+    ASSERT_TRUE(transform.TransformQueryPlan(
         dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
         base_status));
     std::ostringstream oss;

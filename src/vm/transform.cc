@@ -53,7 +53,7 @@ bool TransformLogicalTreeToLogicalGraph(
     return true;
 }
 
-Transform::Transform(node::NodeManager* node_manager, const std::string& db,
+BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                      const std::shared_ptr<Catalog>& catalog,
                      ::llvm::Module* module)
     : node_manager_(node_manager),
@@ -62,9 +62,9 @@ Transform::Transform(node::NodeManager* node_manager, const std::string& db,
       module_(module),
       id_(0) {}
 
-Transform::~Transform() {}
+BatchModeTransformer::~BatchModeTransformer() {}
 
-bool Transform::TransformPlanOp(const ::fesql::node::PlanNode* node,
+bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
                                 ::fesql::vm::PhysicalOpNode** ouput,
                                 ::fesql::base::Status& status) {
     if (nullptr == node || nullptr == ouput) {
@@ -155,7 +155,7 @@ bool Transform::TransformPlanOp(const ::fesql::node::PlanNode* node,
     return true;
 }
 
-bool Transform::TransformLimitOp(const node::LimitPlanNode* node,
+bool BatchModeTransformer::TransformLimitOp(const node::LimitPlanNode* node,
                                  PhysicalOpNode** output,
                                  base::Status& status) {
     if (nullptr == node || nullptr == output) {
@@ -173,7 +173,7 @@ bool Transform::TransformLimitOp(const node::LimitPlanNode* node,
     return true;
 }
 
-bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
+bool BatchModeTransformer::TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                        PhysicalOpNode** output,
                                        base::Status& status) {
     if (nullptr == node || nullptr == output) {
@@ -254,7 +254,7 @@ bool Transform::TransformProjecPlantOp(const node::ProjectPlanNode* node,
     return CreatePhysicalProjectNode(kTableProject, depend, project_list,
                                      output, status);
 }
-bool Transform::TransformGroupAndSortOp(PhysicalOpNode* depend,
+bool BatchModeTransformer::TransformGroupAndSortOp(PhysicalOpNode* depend,
                                         const node::ExprListNode* groups,
                                         const node::OrderByNode* orders,
                                         PhysicalOpNode** output,
@@ -293,7 +293,7 @@ bool Transform::TransformGroupAndSortOp(PhysicalOpNode* depend,
     *output = group_sort_op;
     return true;
 }
-bool Transform::TransformJoinOp(const node::JoinPlanNode* node,
+bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
                                 PhysicalOpNode** output, base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
@@ -314,7 +314,7 @@ bool Transform::TransformJoinOp(const node::JoinPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformUnionOp(const node::UnionPlanNode* node,
+bool BatchModeTransformer::TransformUnionOp(const node::UnionPlanNode* node,
                                  PhysicalOpNode** output,
                                  base::Status& status) {
     if (nullptr == node || nullptr == output) {
@@ -335,7 +335,7 @@ bool Transform::TransformUnionOp(const node::UnionPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformGroupOp(const node::GroupPlanNode* node,
+bool BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
                                  PhysicalOpNode** output,
                                  base::Status& status) {
     PhysicalOpNode* left = nullptr;
@@ -368,7 +368,7 @@ bool Transform::TransformGroupOp(const node::GroupPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformSortOp(const node::SortPlanNode* node,
+bool BatchModeTransformer::TransformSortOp(const node::SortPlanNode* node,
                                 PhysicalOpNode** output, base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
@@ -384,7 +384,7 @@ bool Transform::TransformSortOp(const node::SortPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformFilterOp(const node::FilterPlanNode* node,
+bool BatchModeTransformer::TransformFilterOp(const node::FilterPlanNode* node,
                                   PhysicalOpNode** output,
                                   base::Status& status) {
     if (nullptr == node || nullptr == output) {
@@ -402,7 +402,7 @@ bool Transform::TransformFilterOp(const node::FilterPlanNode* node,
     return true;
 }
 
-bool Transform::TransformScanOp(const node::TablePlanNode* node,
+bool BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
                                 PhysicalOpNode** output, base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
@@ -438,7 +438,7 @@ bool Transform::TransformScanOp(const node::TablePlanNode* node,
     return true;
 }
 
-bool Transform::TransformRenameOp(const node::RenamePlanNode* node,
+bool BatchModeTransformer::TransformRenameOp(const node::RenamePlanNode* node,
                                   PhysicalOpNode** output,
                                   base::Status& status) {
     if (nullptr == node || nullptr == output) {
@@ -454,7 +454,7 @@ bool Transform::TransformRenameOp(const node::RenamePlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformQueryPlan(const node::QueryPlanNode* node,
+bool BatchModeTransformer::TransformQueryPlan(const node::QueryPlanNode* node,
                                    PhysicalOpNode** output,
                                    base::Status& status) {
     if (nullptr == node || nullptr == output) {
@@ -464,7 +464,7 @@ bool Transform::TransformQueryPlan(const node::QueryPlanNode* node,
     }
     return TransformPlanOp(node->GetChildren()[0], output, status);
 }
-bool Transform::TransformDistinctOp(const node::DistinctPlanNode* node,
+bool BatchModeTransformer::TransformDistinctOp(const node::DistinctPlanNode* node,
                                     PhysicalOpNode** output,
                                     base::Status& status) {
     if (nullptr == node || nullptr == output) {
@@ -480,7 +480,7 @@ bool Transform::TransformDistinctOp(const node::DistinctPlanNode* node,
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool Transform::TransformPhysicalPlan(::fesql::node::PlanNode* node,
+bool BatchModeTransformer::TransformQueryPlan(::fesql::node::PlanNode* node,
                                       ::fesql::vm::PhysicalOpNode** output,
                                       ::fesql::base::Status& status) {
     PhysicalOpNode* physical_plan;
@@ -491,11 +491,11 @@ bool Transform::TransformPhysicalPlan(::fesql::node::PlanNode* node,
     ApplyPasses(physical_plan, output);
     return true;
 }
-bool Transform::AddPass(PhysicalPlanPassType type) {
+bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     passes.push_back(type);
     return true;
 }
-bool Transform::GenProjects(const Schema& input_schema,
+bool BatchModeTransformer::GenProjects(const Schema& input_schema,
                             const node::PlanNodeList& projects,
                             const bool row_project,
                             std::string& fn_name,    // NOLINT
@@ -513,13 +513,13 @@ bool Transform::GenProjects(const Schema& input_schema,
     }
     return true;
 }
-bool Transform::AddDefaultPasses() {
+bool BatchModeTransformer::AddDefaultPasses() {
     AddPass(kPassLeftJoinOptimized);
     AddPass(kPassGroupAndSortOptimized);
     return false;
 }
 
-bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
+bool BatchModeTransformer::CreatePhysicalProjectNode(const ProjectType project_type,
                                           PhysicalOpNode* node,
                                           node::ProjectListNode* project_list,
                                           PhysicalOpNode** output,
@@ -628,7 +628,7 @@ bool Transform::CreatePhysicalProjectNode(const ProjectType project_type,
     return true;
 }
 
-bool TransformRequestMode::TransformPhysicalPlan(
+bool RequestModeransformer::TransformQueryPlan(
     ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
     ::fesql::base::Status& status) {
     // return false if Primary path check fail
@@ -647,7 +647,7 @@ bool TransformRequestMode::TransformPhysicalPlan(
     ApplyPasses(physical_plan, output);
     return true;
 }
-bool Transform::ValidatePrimaryPath(node::PlanNode* node,
+bool BatchModeTransformer::ValidatePrimaryPath(node::PlanNode* node,
                                     node::PlanNode** output,
                                     base::Status& status) {
     if (nullptr == node) {
@@ -719,7 +719,7 @@ bool Transform::ValidatePrimaryPath(node::PlanNode* node,
         }
     }
 }
-bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
+bool BatchModeTransformer::TransformProjectOp(node::ProjectListNode* project_list,
                                    PhysicalOpNode* node,
                                    PhysicalOpNode** output,
                                    base::Status& status) {
@@ -764,7 +764,7 @@ bool Transform::TransformProjectOp(node::ProjectListNode* project_list,
     }
     return false;
 }
-void Transform::ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) {
+void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) {
     auto physical_plan = node;
     for (auto type : passes) {
         switch (type) {
@@ -1276,15 +1276,15 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     return true;
 }
 
-TransformRequestMode::TransformRequestMode(
+RequestModeransformer::RequestModeransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module)
-    : Transform(node_manager, db, catalog, module) {}
+    : BatchModeTransformer(node_manager, db, catalog, module) {}
 
-TransformRequestMode::~TransformRequestMode() {}
+RequestModeransformer::~RequestModeransformer() {}
 
 // transform project plan in request mode
-bool TransformRequestMode::TransformProjecPlantOp(
+bool RequestModeransformer::TransformProjecPlantOp(
     const node::ProjectPlanNode* node, PhysicalOpNode** output,
     base::Status& status) {
     if (nullptr == node || nullptr == output) {
