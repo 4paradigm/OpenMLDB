@@ -265,6 +265,27 @@ bool Transform::TransformGroupAndSortOp(PhysicalOpNode* depend,
         LOG(WARNING) << status.msg;
         return false;
     }
+    if (kPhysicalOpDataProvider == depend->type_) {
+        auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend);
+        if (kProviderTypeRequest == data_op->provider_type_) {
+            auto name = data_op->table_handler_->GetName();
+            auto table = catalog_->GetTable(db_, name);
+            if (table) {
+                auto right = new PhysicalTableProviderNode(table);
+                node_manager_->RegisterNode(right);
+                *output =
+                    new PhysicalRequestUnionNode(depend, right, groups, orders);
+                node_manager_->RegisterNode(*output);
+                return true;
+            } else {
+                status.code = common::kPlanError;
+                status.msg = "fail to transform data provider op: table " +
+                    name + "not exists";
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+        }
+    }
 
     PhysicalGroupAndSortNode* group_sort_op =
         new PhysicalGroupAndSortNode(depend, groups, orders);
@@ -317,15 +338,31 @@ bool Transform::TransformUnionOp(const node::UnionPlanNode* node,
 bool Transform::TransformGroupOp(const node::GroupPlanNode* node,
                                  PhysicalOpNode** output,
                                  base::Status& status) {
-    if (nullptr == node || nullptr == output) {
-        status.msg = "input node or output node is null";
-        status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
     PhysicalOpNode* left = nullptr;
     if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
+    }
+
+    if (kPhysicalOpDataProvider == left->type_) {
+        auto data_op = dynamic_cast<PhysicalDataProviderNode*>(left);
+        if (kProviderTypeRequest == data_op->provider_type_) {
+            auto name = data_op->table_handler_->GetName();
+            auto table = catalog_->GetTable(db_, name);
+            if (table) {
+                auto right = new PhysicalTableProviderNode(table);
+                node_manager_->RegisterNode(right);
+                *output = new PhysicalRequestUnionNode(left, right,
+                                                       node->by_list_, nullptr);
+                node_manager_->RegisterNode(*output);
+                return true;
+            } else {
+                status.code = common::kPlanError;
+                status.msg = "fail to transform data provider op: table " +
+                    name + "not exists";
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+        }
     }
     *output = new PhysicalGroupNode(left, node->by_list_);
     node_manager_->RegisterNode(*output);
@@ -1332,78 +1369,6 @@ bool TransformRequestMode::TransformProjecPlantOp(
         return CreatePhysicalProjectNode(kTableProject, join, project_list,
                                          output, status);
     }
-}
-bool TransformRequestMode::TransformGroupOp(const node::GroupPlanNode* node,
-                                            PhysicalOpNode** output,
-                                            base::Status& status) {
-    PhysicalOpNode* left = nullptr;
-    if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
-        return false;
-    }
-
-    if (kPhysicalOpDataProvider == left->type_) {
-        auto data_op = dynamic_cast<PhysicalDataProviderNode*>(left);
-        if (kProviderTypeRequest == data_op->provider_type_) {
-            auto name = data_op->table_handler_->GetName();
-            auto table = catalog_->GetTable(db_, name);
-            if (table) {
-                auto right = new PhysicalTableProviderNode(table);
-                node_manager_->RegisterNode(right);
-                *output = new PhysicalRequestUnionNode(left, right,
-                                                       node->by_list_, nullptr);
-                node_manager_->RegisterNode(*output);
-                return true;
-            } else {
-                status.code = common::kPlanError;
-                status.msg = "fail to transform data provider op: table " +
-                             name + "not exists";
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-        }
-    }
-    *output = new PhysicalGroupNode(left, node->by_list_);
-    node_manager_->RegisterNode(*output);
-    return true;
-}
-
-bool TransformRequestMode::TransformGroupAndSortOp(
-    PhysicalOpNode* depend, const node::ExprListNode* groups,
-    const node::OrderByNode* orders, PhysicalOpNode** output,
-    base::Status& status) {
-    if (nullptr == depend || nullptr == output) {
-        status.msg = "depend node or output node is null";
-        status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    if (kPhysicalOpDataProvider == depend->type_) {
-        auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend);
-        if (kProviderTypeRequest == data_op->provider_type_) {
-            auto name = data_op->table_handler_->GetName();
-            auto table = catalog_->GetTable(db_, name);
-            if (table) {
-                auto right = new PhysicalTableProviderNode(table);
-                node_manager_->RegisterNode(right);
-                *output =
-                    new PhysicalRequestUnionNode(depend, right, groups, orders);
-                node_manager_->RegisterNode(*output);
-                return true;
-            } else {
-                status.code = common::kPlanError;
-                status.msg = "fail to transform data provider op: table " +
-                             name + "not exists";
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-        }
-    }
-
-    PhysicalGroupAndSortNode* group_sort_op =
-        new PhysicalGroupAndSortNode(depend, groups, orders);
-    node_manager_->RegisterNode(group_sort_op);
-    *output = group_sort_op;
-    return true;
 }
 }  // namespace vm
 }  // namespace fesql

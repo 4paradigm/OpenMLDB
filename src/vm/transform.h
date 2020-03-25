@@ -269,15 +269,6 @@ class TransformRequestMode : public Transform {
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
                                         base::Status& status);  // NOLINT
-    virtual bool TransformGroupOp(const node::GroupPlanNode* node,
-                                  PhysicalOpNode** output,
-                                  base::Status& status);  // NOLINT
-
-    virtual bool TransformGroupAndSortOp(PhysicalOpNode* depend,
-                                         const node::ExprListNode* groups,
-                                         const node::OrderByNode* orders,
-                                         PhysicalOpNode** output,
-                                         base::Status& status);  // NOLINT
 };
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,
