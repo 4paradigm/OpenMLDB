@@ -8528,9 +8528,11 @@ void NameServerImpl::AddIndex(RpcController* controller,
         bool has_index = false;
         if (table_info->column_key_size() == 0) {
             for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
-                if (table_info->column_desc_v1(i).name() == index_name && table_info->column_desc_v1(i).add_ts_idx()) {
+                if (table_info->column_desc_v1(i).name() == index_name) {
+                    if (table_info->column_desc_v1(i).add_ts_idx()) {
+                        has_index = true;
+                    }
                     index_pos = i;
-                    has_index = true;
                     break;
                 }
             }
@@ -8587,7 +8589,7 @@ void NameServerImpl::AddIndex(RpcController* controller,
         ::rtidb::common::ColumnKey* column_key = table_info->add_column_key();
         column_key->CopyFrom(request->column_key());
     } else {
-        table_info->mutable_column_desc_v1(index_pos)->set_add_ts_idx(false);
+        table_info->mutable_column_desc_v1(index_pos)->set_add_ts_idx(true);
     }
     PDLOG(INFO, "add index ok. table[%s] index[%s]", 
             request->name().c_str(), index_name.c_str());
