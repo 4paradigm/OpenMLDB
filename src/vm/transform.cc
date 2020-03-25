@@ -10,6 +10,7 @@
 #include <set>
 #include <stack>
 #include <unordered_map>
+#include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "vm/physical_op.h"
 
@@ -53,9 +54,9 @@ bool TransformLogicalTreeToLogicalGraph(
     return true;
 }
 
-BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
-                     const std::shared_ptr<Catalog>& catalog,
-                     ::llvm::Module* module)
+BatchModeTransformer::BatchModeTransformer(
+    node::NodeManager* node_manager, const std::string& db,
+    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
@@ -65,8 +66,8 @@ BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, cons
 BatchModeTransformer::~BatchModeTransformer() {}
 
 bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
-                                ::fesql::vm::PhysicalOpNode** ouput,
-                                ::fesql::base::Status& status) {
+                                           ::fesql::vm::PhysicalOpNode** ouput,
+                                           ::fesql::base::Status& status) {
     if (nullptr == node || nullptr == ouput) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -156,8 +157,8 @@ bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
 }
 
 bool BatchModeTransformer::TransformLimitOp(const node::LimitPlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status) {
+                                            PhysicalOpNode** output,
+                                            base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -173,9 +174,9 @@ bool BatchModeTransformer::TransformLimitOp(const node::LimitPlanNode* node,
     return true;
 }
 
-bool BatchModeTransformer::TransformProjecPlantOp(const node::ProjectPlanNode* node,
-                                       PhysicalOpNode** output,
-                                       base::Status& status) {
+bool BatchModeTransformer::TransformProjecPlantOp(
+    const node::ProjectPlanNode* node, PhysicalOpNode** output,
+    base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -254,11 +255,10 @@ bool BatchModeTransformer::TransformProjecPlantOp(const node::ProjectPlanNode* n
     return CreatePhysicalProjectNode(kTableProject, depend, project_list,
                                      output, status);
 }
-bool BatchModeTransformer::TransformGroupAndSortOp(PhysicalOpNode* depend,
-                                        const node::ExprListNode* groups,
-                                        const node::OrderByNode* orders,
-                                        PhysicalOpNode** output,
-                                        base::Status& status) {
+bool BatchModeTransformer::TransformGroupAndSortOp(
+    PhysicalOpNode* depend, const node::ExprListNode* groups,
+    const node::OrderByNode* orders, PhysicalOpNode** output,
+    base::Status& status) {
     if (nullptr == depend || nullptr == output) {
         status.msg = "depend node or output node is null";
         status.code = common::kPlanError;
@@ -280,7 +280,7 @@ bool BatchModeTransformer::TransformGroupAndSortOp(PhysicalOpNode* depend,
             } else {
                 status.code = common::kPlanError;
                 status.msg = "fail to transform data provider op: table " +
-                    name + "not exists";
+                             name + "not exists";
                 LOG(WARNING) << status.msg;
                 return false;
             }
@@ -294,7 +294,8 @@ bool BatchModeTransformer::TransformGroupAndSortOp(PhysicalOpNode* depend,
     return true;
 }
 bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
-                                PhysicalOpNode** output, base::Status& status) {
+                                           PhysicalOpNode** output,
+                                           base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -315,8 +316,8 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     return true;
 }
 bool BatchModeTransformer::TransformUnionOp(const node::UnionPlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status) {
+                                            PhysicalOpNode** output,
+                                            base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -336,8 +337,8 @@ bool BatchModeTransformer::TransformUnionOp(const node::UnionPlanNode* node,
     return true;
 }
 bool BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status) {
+                                            PhysicalOpNode** output,
+                                            base::Status& status) {
     PhysicalOpNode* left = nullptr;
     if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
@@ -358,7 +359,7 @@ bool BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
             } else {
                 status.code = common::kPlanError;
                 status.msg = "fail to transform data provider op: table " +
-                    name + "not exists";
+                             name + "not exists";
                 LOG(WARNING) << status.msg;
                 return false;
             }
@@ -369,7 +370,8 @@ bool BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
     return true;
 }
 bool BatchModeTransformer::TransformSortOp(const node::SortPlanNode* node,
-                                PhysicalOpNode** output, base::Status& status) {
+                                           PhysicalOpNode** output,
+                                           base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -385,8 +387,8 @@ bool BatchModeTransformer::TransformSortOp(const node::SortPlanNode* node,
     return true;
 }
 bool BatchModeTransformer::TransformFilterOp(const node::FilterPlanNode* node,
-                                  PhysicalOpNode** output,
-                                  base::Status& status) {
+                                             PhysicalOpNode** output,
+                                             base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -403,7 +405,8 @@ bool BatchModeTransformer::TransformFilterOp(const node::FilterPlanNode* node,
 }
 
 bool BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
-                                PhysicalOpNode** output, base::Status& status) {
+                                           PhysicalOpNode** output,
+                                           base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -439,8 +442,8 @@ bool BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
 }
 
 bool BatchModeTransformer::TransformRenameOp(const node::RenamePlanNode* node,
-                                  PhysicalOpNode** output,
-                                  base::Status& status) {
+                                             PhysicalOpNode** output,
+                                             base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -455,8 +458,8 @@ bool BatchModeTransformer::TransformRenameOp(const node::RenamePlanNode* node,
     return true;
 }
 bool BatchModeTransformer::TransformQueryPlan(const node::QueryPlanNode* node,
-                                   PhysicalOpNode** output,
-                                   base::Status& status) {
+                                              PhysicalOpNode** output,
+                                              base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -464,9 +467,9 @@ bool BatchModeTransformer::TransformQueryPlan(const node::QueryPlanNode* node,
     }
     return TransformPlanOp(node->GetChildren()[0], output, status);
 }
-bool BatchModeTransformer::TransformDistinctOp(const node::DistinctPlanNode* node,
-                                    PhysicalOpNode** output,
-                                    base::Status& status) {
+bool BatchModeTransformer::TransformDistinctOp(
+    const node::DistinctPlanNode* node, PhysicalOpNode** output,
+    base::Status& status) {
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
@@ -480,9 +483,9 @@ bool BatchModeTransformer::TransformDistinctOp(const node::DistinctPlanNode* nod
     node_manager_->RegisterNode(*output);
     return true;
 }
-bool BatchModeTransformer::TransformQueryPlan(::fesql::node::PlanNode* node,
-                                      ::fesql::vm::PhysicalOpNode** output,
-                                      ::fesql::base::Status& status) {
+bool BatchModeTransformer::TransformQueryPlan(
+    ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
+    ::fesql::base::Status& status) {
     PhysicalOpNode* physical_plan;
     if (!TransformPlanOp(node, &physical_plan, status)) {
         return false;
@@ -496,11 +499,11 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     return true;
 }
 bool BatchModeTransformer::GenProjects(const Schema& input_schema,
-                            const node::PlanNodeList& projects,
-                            const bool row_project,
-                            std::string& fn_name,    // NOLINT
-                            Schema& output_schema,   // NOLINT
-                            base::Status& status) {  // NOLINT
+                                       const node::PlanNodeList& projects,
+                                       const bool row_project,
+                                       std::string& fn_name,    // NOLINT
+                                       Schema& output_schema,   // NOLINT
+                                       base::Status& status) {  // NOLINT
     // TODO(wangtaize) use ops end op output schema
     ::fesql::codegen::RowFnLetIRBuilder builder(input_schema, module_);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
@@ -519,11 +522,10 @@ bool BatchModeTransformer::AddDefaultPasses() {
     return false;
 }
 
-bool BatchModeTransformer::CreatePhysicalProjectNode(const ProjectType project_type,
-                                          PhysicalOpNode* node,
-                                          node::ProjectListNode* project_list,
-                                          PhysicalOpNode** output,
-                                          base::Status& status) {
+bool BatchModeTransformer::CreatePhysicalProjectNode(
+    const ProjectType project_type, PhysicalOpNode* node,
+    node::ProjectListNode* project_list, PhysicalOpNode** output,
+    base::Status& status) {
     if (nullptr == project_list || nullptr == output) {
         status.msg = "project node or output node is null";
         status.code = common::kPlanError;
@@ -648,8 +650,8 @@ bool RequestModeransformer::TransformQueryPlan(
     return true;
 }
 bool BatchModeTransformer::ValidatePrimaryPath(node::PlanNode* node,
-                                    node::PlanNode** output,
-                                    base::Status& status) {
+                                               node::PlanNode** output,
+                                               base::Status& status) {
     if (nullptr == node) {
         status.msg = "primary path validate fail: node or output is null";
         status.code = common::kPlanError;
@@ -719,10 +721,9 @@ bool BatchModeTransformer::ValidatePrimaryPath(node::PlanNode* node,
         }
     }
 }
-bool BatchModeTransformer::TransformProjectOp(node::ProjectListNode* project_list,
-                                   PhysicalOpNode* node,
-                                   PhysicalOpNode** output,
-                                   base::Status& status) {
+bool BatchModeTransformer::TransformProjectOp(
+    node::ProjectListNode* project_list, PhysicalOpNode* node,
+    PhysicalOpNode** output, base::Status& status) {
     auto depend = node;
     if (nullptr != project_list->w_ptr_) {
         node::OrderByNode* orders = nullptr;
@@ -764,7 +765,8 @@ bool BatchModeTransformer::TransformProjectOp(node::ProjectListNode* project_lis
     }
     return false;
 }
-void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) {
+void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
+                                       PhysicalOpNode** output) {
     auto physical_plan = node;
     for (auto type : passes) {
         switch (type) {
@@ -791,6 +793,62 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** ou
         }
     }
     *output = physical_plan;
+}
+bool BatchModeTransformer::TransformPhysicalPlan(
+    const ::fesql::node::PlanNodeList& trees,
+    ::fesql::vm::PhysicalOpNode** output, base::Status& status) {
+    if (nullptr == module_ || trees.empty()) {
+        status.msg = "module or logical trees is empty";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    auto it = trees.cbegin();
+    for (; it != trees.end(); ++it) {
+        const ::fesql::node::PlanNode* node = *it;
+        switch (node->GetType()) {
+            case ::fesql::node::kPlanTypeFuncDef: {
+                const ::fesql::node::FuncDefPlanNode* func_def_plan =
+                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
+                if (GenFnDef(func_def_plan, status)) {
+                    return false;
+                }
+                break;
+            }
+            case ::fesql::node::kPlanTypeQuery: {
+                const ::fesql::node::QueryPlanNode* query_plan =
+                    dynamic_cast<const ::fesql::node::QueryPlanNode*>(node);
+                if (TransformQueryPlan(query_plan, output, status)) {
+                    return false;
+                }
+                break;
+            }
+            default: {
+                LOG(WARNING) << "not supported";
+                return false;
+            }
+        }
+    }
+    return true;
+}
+bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
+                                    base::Status& status) {
+    if (nullptr == module_ || nullptr == fn_plan ||
+        nullptr == fn_plan->fn_def_) {
+        status.msg = "fail to codegen function: module or fn_def node is null";
+        status.code = common::kOpGenError;
+        return false;
+    }
+
+    ::fesql::codegen::FnIRBuilder builder(module_);
+    bool ok = builder.Build(fn_plan->fn_def_, status);
+    if (!ok) {
+        status.msg = "fail to codegen function: " + status.msg;
+        status.code = common::kCodegenError;
+        return false;
+    }
+    return true;
 }
 
 bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,

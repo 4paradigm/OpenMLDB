@@ -117,9 +117,8 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     RequestModeransformer transform(&manager, "db", catalog, m.get());
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformQueryPlan(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
-        base_status));
+    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
+                                                base_status));
     std::ostringstream oss;
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
@@ -383,9 +382,8 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RequestModeransformer transform(&manager, "db", catalog, m.get());
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformQueryPlan(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
-        base_status));
+    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
+                                                base_status));
     std::ostringstream oss;
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sqlstr << "\n" << oss.str() << std::endl;

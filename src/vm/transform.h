@@ -167,12 +167,16 @@ inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
 class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
-              const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module);
+                         const std::shared_ptr<Catalog>& catalog,
+                         ::llvm::Module* module);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
-    bool TransformQueryPlan(::fesql::node::PlanNode* node,
+    bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
                                ::fesql::vm::PhysicalOpNode** output,
-                               ::fesql::base::Status& status);  // NOLINT
+                               ::fesql::base::Status& status);
+    bool TransformQueryPlan(::fesql::node::PlanNode* node,
+                            ::fesql::vm::PhysicalOpNode** output,
+                            ::fesql::base::Status& status);  // NOLINT
 
     bool AddPass(PhysicalPlanPassType type);
 
@@ -253,17 +257,19 @@ class BatchModeTransformer {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
+    bool GenFnDef(const node::FuncDefPlanNode* fn_plan, base::Status& status);
 };
 
 class RequestModeransformer : public BatchModeTransformer {
  public:
-    RequestModeransformer(node::NodeManager* node_manager, const std::string& db,
-                         const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module);
+    RequestModeransformer(node::NodeManager* node_manager,
+                          const std::string& db,
+                          const std::shared_ptr<Catalog>& catalog,
+                          ::llvm::Module* module);
     virtual ~RequestModeransformer();
-    virtual bool TransformQueryPlan(
-        ::fesql::node::PlanNode* node, ::fesql::vm::PhysicalOpNode** output,
-        ::fesql::base::Status& status);  // NOLINT
+    virtual bool TransformQueryPlan(::fesql::node::PlanNode* node,
+                                    ::fesql::vm::PhysicalOpNode** output,
+                                    ::fesql::base::Status& status);  // NOLINT
 
  protected:
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,

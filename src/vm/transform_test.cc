@@ -348,9 +348,8 @@ TEST_P(TransformTest, transform_physical_plan) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     BatchModeTransformer transform(&manager, "db", catalog, m.get());
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformQueryPlan(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
-        base_status));
+    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
+                                                base_status));
     physical_plan->Print(std::cout, "");
 }
 
@@ -389,9 +388,8 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
 
-    bool ok = transform.TransformQueryPlan(
-        dynamic_cast<node::PlanNode*>(plan_trees[0]), &physical_plan,
-        base_status);
+    bool ok = transform.TransformPhysicalPlan(plan_trees, &physical_plan,
+                                              base_status);
     std::cout << base_status.msg << std::endl;
     ASSERT_TRUE(ok);
 
