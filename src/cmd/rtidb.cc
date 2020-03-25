@@ -2021,7 +2021,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
                 row.clear();
             }
             data.clear();
-            last_key = "";
+            last_pk = "";
         }
         tp.Print(true);
         return;
