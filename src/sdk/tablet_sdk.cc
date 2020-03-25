@@ -46,7 +46,7 @@ class TabletSdkImpl : public TabletSdk {
 
     bool Init();
 
-    std::unique_ptr<ResultSet> Query(const std::string& db,
+    std::shared_ptr<ResultSet> Query(const std::string& db,
                                      const std::string& sql,
                                      sdk::Status* status);
 
@@ -98,10 +98,10 @@ void TabletSdkImpl::Insert(const tablet::InsertRequest& request, sdk::Status* st
     status->code = 0;
 }
 
-std::unique_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db, 
+std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db, 
         const std::string& sql, sdk::Status* status) { 
     if (status == NULL) {
-        return std::unique_ptr<ResultSet>();
+        return std::shared_ptr<ResultSet>();
     }
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::QueryRequest request;
@@ -114,17 +114,17 @@ std::unique_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
     if (cntl.Failed()) {
         status->code = common::kConnError;
         status->msg = "Rpc control error";
-        return std::unique_ptr<ResultSet>();
+        return std::shared_ptr<ResultSet>();
     }
     if (response->status().code() != common::kOk) {
         status->code = response->status().code();
         status->msg = response->status().msg();
-        return std::unique_ptr<ResultSet>();
+        return std::shared_ptr<ResultSet>();
     }
     status->code = 0;
-    std::unique_ptr<ResultSetImpl> impl(new ResultSetImpl(std::move(response)));
+    std::shared_ptr<ResultSetImpl> impl(new ResultSetImpl(std::move(response)));
     impl->Init();
-    return std::move(impl);
+    return impl;
 }
 
 bool TabletSdkImpl::GetSchema(const std::string& db, const std::string& table,
@@ -331,14 +331,14 @@ void TabletSdkImpl::Insert(const std::string& db, const std::string& sql,
     }
 }
 
-std::unique_ptr<TabletSdk> CreateTabletSdk(const std::string& endpoint) {
+std::shared_ptr<TabletSdk> CreateTabletSdk(const std::string& endpoint) {
     TabletSdkImpl* sdk = new TabletSdkImpl(endpoint);
     bool ok = sdk->Init();
     if (!ok) {
         delete sdk;
-        return std::unique_ptr<TabletSdk>();
+        return std::shared_ptr<TabletSdk>();
     }
-    return std::move(std::unique_ptr<TabletSdk>(sdk));
+    return std::shared_ptr<TabletSdk>(sdk);
 }
 
 }  // namespace sdk

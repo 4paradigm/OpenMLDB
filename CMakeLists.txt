@@ -30,6 +30,7 @@ set(FESQL_VERSION_MINOR 0)
 set(FESQL_VERSION_BUG 0)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
 
@@ -64,12 +65,23 @@ add_definitions('-g')
 add_definitions('-Wall')
 add_definitions('-std=c++14')
 add_definitions(${LLVM_DEFINITIONS})
+find_package(SWIG REQUIRED)
+include(UseSWIG)
+
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib64)
-find_package(SWIG REQUIRED)
-include(UseSWIG)
+
+set(Python_ADDITIONAL_VERSIONS "3.8;3.7;3.6;3.5;2.7" CACHE STRING "Python to use for binding")
+find_package(PythonInterp REQUIRED)
+message(STATUS "Found Python: ${PYTHON_EXECUTABLE} (found version \"${PYTHON_VERSION_STRING}\")")
+# Find Python Library
+# Force PythonLibs to find the same version than the python interpreter (or nothing).
+set(Python_ADDITIONAL_VERSIONS "${PYTHON_VERSION_STRING}")
+find_package(PythonLibs REQUIRED)
+message(STATUS "Found Python Include: ${PYTHON_INCLUDE_DIRS} (found version \"${PYTHONLIBS_VERSION_STRING}\")")
+
 add_subdirectory(src)
 #TODO add flag
 add_subdirectory(experiments)

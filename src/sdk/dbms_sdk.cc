@@ -38,13 +38,13 @@ class DBMSSdkImpl : public DBMSSdk {
     void CreateDatabase(const std::string& catalog,
                         sdk::Status *status);
 
-    std::unique_ptr<TableSet> GetTables(
+    std::shared_ptr<TableSet> GetTables(
                        const std::string& catalog,
                        sdk::Status *status); 
 
     std::vector<std::string> GetDatabases(sdk::Status *status); 
 
-    std::unique_ptr<ResultSet> ExecuteQuery(const std::string& catalog,
+    std::shared_ptr<ResultSet> ExecuteQuery(const std::string& catalog,
                       const std::string& sql,
                       sdk::Status *status);
 
@@ -68,11 +68,11 @@ bool DBMSSdkImpl::Init() {
     return true;
 }
 
-std::unique_ptr<TableSet> DBMSSdkImpl::GetTables(
+std::shared_ptr<TableSet> DBMSSdkImpl::GetTables(
     const std::string& catalog,
     sdk::Status *status) {  
     if (status == NULL) {
-        return std::unique_ptr<TableSetImpl>();
+        return std::shared_ptr<TableSetImpl>();
     }
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::GetTablesRequest request;
@@ -83,9 +83,9 @@ std::unique_ptr<TableSet> DBMSSdkImpl::GetTables(
     if (cntl.Failed()) {
         status->code = common::kRpcError;
         status->msg = "fail to call remote";
-        return std::unique_ptr<TableSetImpl>();
+        return std::shared_ptr<TableSetImpl>();
     } else {
-        std::unique_ptr<TableSetImpl> table_set(new TableSetImpl(response.tables()));
+        std::shared_ptr<TableSetImpl> table_set(new TableSetImpl(response.tables()));
         status->code = response.status().code();
         status->msg = response.status().msg();
         return table_set;
@@ -117,10 +117,10 @@ std::vector<std::string> DBMSSdkImpl::GetDatabases(
 }
 
 
-std::unique_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(
+std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(
     const std::string& catalog, const std::string& sql,
     sdk::Status *status) {
-    std::unique_ptr<ResultSetImpl> empty;
+    std::shared_ptr<ResultSetImpl> empty;
     node::NodeManager node_manager;
     parser::FeSQLParser parser;
     analyser::FeSQLAnalyser analyser(&node_manager);
@@ -221,12 +221,12 @@ void DBMSSdkImpl::CreateDatabase(
     }
 }
 
-DBMSSdk *CreateDBMSSdk(const std::string &endpoint) {
+std::shared_ptr<DBMSSdk> CreateDBMSSdk(const std::string &endpoint) {
     DBMSSdkImpl *sdk_impl = new DBMSSdkImpl(endpoint);
     if (sdk_impl->Init()) {
-        return sdk_impl;
+        return std::shared_ptr<DBMSSdkImpl>(sdk_impl);
     }
-    return nullptr;
+    return std::shared_ptr<DBMSSdk>();
 }
 
 }  // namespace sdk

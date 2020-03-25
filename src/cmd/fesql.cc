@@ -47,8 +47,8 @@ DEFINE_string(role, "tablet | dbms | client ", "Set the fesql role");
 namespace fesql {
 namespace cmd {
 
-static ::fesql::sdk::DBMSSdk *dbms_sdk = NULL;
-static std::unique_ptr<::fesql::sdk::TabletSdk> table_sdk;
+static std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk;
+static std::shared_ptr<::fesql::sdk::TabletSdk> table_sdk;
 
 struct DBContxt {
     std::string name;
@@ -243,7 +243,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     stream << result_set->Size() << " rows in set" << std::endl;
 }
 
-void PrintTableSchema(std::ostream &stream, const std::unique_ptr<fesql::sdk::Schema>& schema) {
+void PrintTableSchema(std::ostream &stream, const std::shared_ptr<fesql::sdk::Schema>& schema) {
     if (nullptr == schema || schema->GetColumnCnt() == 0) {
         stream << "Empty set" << std::endl;
         return;
@@ -297,9 +297,9 @@ void PrintItems(std::ostream &stream, const std::string &head,
 void HandleSQLScript(
     const std::string &script,
     fesql::sdk::Status &status) {  // NOLINT (runtime/references)
-    if (dbms_sdk == NULL) {
+    if (!dbms_sdk) {
         dbms_sdk = ::fesql::sdk::CreateDBMSSdk(FLAGS_endpoint);
-        if (dbms_sdk == NULL) {
+        if (!dbms_sdk) {
             status.code = fesql::common::kRpcError;
             status.msg = "Fail to connect to dbms";
             return;
@@ -375,7 +375,7 @@ void HandleSQLScript(
                     status.msg = " Fail to create tablet sdk";
                     return;
                 }
-                std::unique_ptr<::fesql::sdk::ResultSet> rs =
+                std::shared_ptr<::fesql::sdk::ResultSet> rs =
                     table_sdk->Query(cmd_client_db.name, script, &status);
                 if (!rs) {
                     std::cout << "Fail to query sql: " << status.msg
@@ -413,7 +413,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node,
             return;
         }
         case fesql::node::kCmdShowTables: {
-           std::unique_ptr<fesql::sdk::TableSet> rs = std::move(dbms_sdk->GetTables(db, &status));
+           std::shared_ptr<fesql::sdk::TableSet> rs = std::move(dbms_sdk->GetTables(db, &status));
             if (status.code == 0) {
                 std::ostringstream oss;
                 std::vector<std::string> names;
@@ -425,7 +425,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node,
             return;
         }
         case fesql::node::kCmdDescTable: {
-            std::unique_ptr<fesql::sdk::TableSet> rs = std::move(dbms_sdk->GetTables(db, &status));
+            std::shared_ptr<fesql::sdk::TableSet> rs = std::move(dbms_sdk->GetTables(db, &status));
             if (rs) {
                 while(rs->Next()) {
                     if (rs->GetTable()->GetName() == cmd_node->GetArgs()[0]) {

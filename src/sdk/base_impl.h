@@ -53,7 +53,7 @@ class TableImpl : public Table {
     const std::string& GetName();
     const std::string& GetCatalog();
     uint64_t GetCreateTime();
-    const std::unique_ptr<Schema> GetSchema();
+    const std::shared_ptr<Schema> GetSchema();
  private:
     const type::TableDef& table_def_;
 };
@@ -63,7 +63,7 @@ class TableSetImpl : public TableSet {
     TableSetImpl(const Tables& tables);
     ~TableSetImpl();
     bool Next();
-    const std::unique_ptr<Table> GetTable();
+    const std::shared_ptr<Table> GetTable();
     int32_t Size();
  private:
     const Tables tables_;

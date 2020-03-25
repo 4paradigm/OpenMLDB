@@ -57,8 +57,7 @@ const bool SchemaImpl::IsColumnNotNull(uint32_t index) const {
     return schema_.Get(index).is_not_null();
 }
 
-TableImpl::TableImpl(const type::TableDef& table_def):table_def_(table_def){
-}
+TableImpl::TableImpl(const type::TableDef& table_def):table_def_(table_def){}
 
 TableImpl::~TableImpl() {}
 
@@ -74,9 +73,9 @@ uint64_t TableImpl::GetCreateTime() {
     return table_def_.ctime();
 }
 
-const std::unique_ptr<Schema> TableImpl::GetSchema() {
-    std::unique_ptr<SchemaImpl> impl(new SchemaImpl(table_def_.columns()));
-    return std::move(impl);
+const std::shared_ptr<Schema> TableImpl::GetSchema() {
+    std::shared_ptr<SchemaImpl> schema(new SchemaImpl(table_def_.columns()));
+    return schema;
 }
 
 TableSetImpl::TableSetImpl(const Tables& tables):tables_(tables), index_(-1){}
@@ -92,9 +91,9 @@ int32_t TableSetImpl::Size() {
     return tables_.size();
 }
 
-const std::unique_ptr<Table> TableSetImpl::GetTable() {
-    std::unique_ptr<TableImpl> impl(new TableImpl(tables_.Get(index_)));
-    return std::move(impl);
+const std::shared_ptr<Table> TableSetImpl::GetTable() {
+    std::shared_ptr<TableImpl> impl(new TableImpl(tables_.Get(index_)));
+    return impl;
 }
 
 }  // namespace sdk

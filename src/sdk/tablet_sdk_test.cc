@@ -132,7 +132,7 @@ TEST_P(TabletSdkTest, test_normal) {
     common::Status status;
     interal_sdk.CreateTable(&req, status);
     ASSERT_EQ(status.code(), common::kOk);
-    std::unique_ptr<TabletSdk> sdk =
+    std::shared_ptr<TabletSdk> sdk =
         CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
@@ -148,7 +148,7 @@ TEST_P(TabletSdkTest, test_normal) {
     {
         std::string sql = "select col1, col2, col3, col4, col5 from t1 limit 1;";
         sdk::Status query_status;
-        std::unique_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
 
             const Schema& schema = rs->GetSchema();
@@ -200,7 +200,7 @@ TEST_P(TabletSdkTest, test_normal) {
     {
         sdk::Status query_status;
         std::string sql = "select col1, col5 from t1 limit 1;";
-        std::unique_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
             const Schema& schema = rs->GetSchema();
             ASSERT_EQ(2u, schema.GetColumnCnt());
@@ -228,8 +228,7 @@ TEST_P(TabletSdkTest, test_create_and_query) {
     usleep(4000 * 1000);
     ParamType mode = GetParam();
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    ASSERT_TRUE(nullptr != dbms_sdk);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     // create database db1
     {
         fesql::sdk::Status status;
@@ -256,7 +255,7 @@ TEST_P(TabletSdkTest, test_create_and_query) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
-    std::unique_ptr<TabletSdk> sdk =
+    std::shared_ptr<TabletSdk> sdk =
         CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
@@ -272,7 +271,7 @@ TEST_P(TabletSdkTest, test_create_and_query) {
         sdk::Status query_status;
         std::string db = "db_1";
         std::string sql = "select column1, column2 from t1 limit 1;";
-        std::unique_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
             const Schema& schema = rs->GetSchema();
             ASSERT_EQ(2u, schema.GetColumnCnt());
@@ -302,7 +301,7 @@ TEST_P(TabletSdkTest, test_create_and_query) {
             "return d\nend\n%%sql\nSELECT column1, column2, "
             "test(column1,column5) as f1, column1 + column5 as f2 FROM t1 "
             "limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
             const Schema& schema = rs->GetSchema();
             ASSERT_EQ(4u, schema.GetColumnCnt());
@@ -342,7 +341,7 @@ TEST_P(TabletSdkTest, test_create_and_query) {
         std::string sql =
             "select column1, column2, column3, column4, column5 from t1 limit "
             "1;";
-        std::unique_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
             const Schema& schema = rs->GetSchema();
             ASSERT_EQ(5, schema.GetColumnCnt());
@@ -387,8 +386,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
     usleep(2000 * 1000);
     ParamType mode = GetParam();
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    ASSERT_TRUE(nullptr != dbms_sdk);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_2";
     // create database db1
     {
@@ -414,7 +412,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
-    std::unique_ptr<TabletSdk> sdk =
+    std::shared_ptr<TabletSdk> sdk =
         CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
@@ -436,7 +434,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
             "select column1, column2, column3, column4, column5, column6 from "
             "t1 limit "
             "1;";
-        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
             const Schema& schema = rs->GetSchema();
             ASSERT_EQ(6u, schema.GetColumnCnt());
@@ -490,7 +488,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
             "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    "
             "return d\nend\n%%sql\nSELECT column1, column2, "
             "test(column1,column5) as f1 FROM t1 limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
             const Schema& schema = rs->GetSchema();
             ASSERT_EQ(3u, schema.GetColumnCnt());
@@ -521,8 +519,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
 TEST_F(TabletSdkTest, test_window_udf_query) {
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    ASSERT_TRUE(nullptr != dbms_sdk);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_3";
     // create database db1
     {
@@ -548,7 +545,7 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
-    std::unique_ptr<TabletSdk> sdk =
+    std::shared_ptr<TabletSdk> sdk =
         CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
@@ -600,7 +597,7 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
             "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
             "BETWEEN 3000"
             "PRECEDING AND CURRENT ROW) limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
             const Schema& schema = rs->GetSchema();
             ASSERT_EQ(5, schema.GetColumnCnt());
@@ -739,8 +736,7 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
 
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    ASSERT_TRUE(nullptr != dbms_sdk);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_4";
     // create database db1
     {
@@ -766,7 +762,7 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
-    std::unique_ptr<TabletSdk> sdk =
+    std::shared_ptr<TabletSdk> sdk =
         CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
@@ -819,7 +815,7 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
             "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
             "BETWEEN 3000"
             "PRECEDING AND CURRENT ROW) limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
             const Schema& schema = rs->GetSchema();
             ASSERT_EQ(5u, schema.GetColumnCnt());
@@ -932,8 +928,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
 
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    ASSERT_TRUE(nullptr != dbms_sdk);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_5";
 
     // create database db1
@@ -960,7 +955,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
-    std::unique_ptr<TabletSdk> sdk =
+    std::shared_ptr<TabletSdk> sdk =
         CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
@@ -1014,7 +1009,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
             "BETWEEN 3s "
             "PRECEDING AND CURRENT ROW) limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
             const Schema& schema =rs->GetSchema();
             ASSERT_EQ(5u, schema.GetColumnCnt());
@@ -1169,8 +1164,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
 
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    ::fesql::sdk::DBMSSdk* dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    ASSERT_TRUE(nullptr != dbms_sdk);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     // create database db1
     std::string name = "db_6";
     {
@@ -1196,7 +1190,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
-    std::unique_ptr<TabletSdk> sdk =
+    std::shared_ptr<TabletSdk> sdk =
         CreateTabletSdk("127.0.0.1:" + std::to_string(base_tablet_port_));
     if (sdk) {
         ASSERT_TRUE(true);
@@ -1250,7 +1244,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
             "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
             "BETWEEN 3s "
             "PRECEDING AND CURRENT ROW) limit 10;";
-        std::unique_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
+        std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
             const Schema& schema = rs->GetSchema();
             ASSERT_EQ(5, schema.GetColumnCnt());

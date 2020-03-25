@@ -35,6 +35,7 @@ enum DataType {
     kTypeTimestamp,
     kTypeUnknow
 };
+
 inline const std::string DataTypeName(const DataType& type) {
     switch (type) {
         case kTypeBool:
@@ -60,32 +61,57 @@ inline const std::string DataTypeName(const DataType& type) {
 
 class Schema {
  public:
-    Schema() {}
-    ~Schema() {}
-    virtual int32_t GetColumnCnt() const = 0;
-    virtual const std::string& GetColumnName(uint32_t index) const = 0;
-    virtual const DataType GetColumnType(uint32_t index) const = 0;
-    virtual const bool IsColumnNotNull(uint32_t index) const = 0;
-
+    Schema():empty() {}
+    virtual ~Schema() {}
+    virtual int32_t GetColumnCnt() const {
+        return 0;
+    }
+    virtual const std::string& GetColumnName(uint32_t index) const {
+        return empty;
+    }
+    virtual const DataType GetColumnType(uint32_t index) const {
+        return kTypeUnknow;
+    }
+    virtual const bool IsColumnNotNull(uint32_t index) const {
+        return false;
+    }
+ private:
+    std::string empty;
 };
 
 class Table {
  public:
-    Table() {}
-    ~Table() {}
-    virtual const std::string& GetName() = 0;
-    virtual const std::string& GetCatalog() = 0;
-    virtual uint64_t GetCreateTime() = 0;
-    virtual const std::unique_ptr<Schema> GetSchema() = 0;
+    Table(): empty(){}
+    virtual ~Table() {}
+    virtual const std::string& GetName()  {
+        return empty;
+    }
+    virtual const std::string& GetCatalog() {
+        return empty;
+    }
+    virtual uint64_t GetCreateTime() {
+        return 0;
+    }
+    virtual const std::shared_ptr<Schema> GetSchema() {
+        return std::shared_ptr<Schema>();
+    }
+ private:
+    std::string empty;
 };
 
 class TableSet {
  public:
     TableSet() {}
-    ~TableSet() {}
-    virtual bool Next() = 0;
-    virtual const std::unique_ptr<Table> GetTable() = 0;
-    virtual int32_t Size() = 0;
+    virtual ~TableSet() {}
+    virtual bool Next() {
+        return false;
+    }
+    virtual const std::shared_ptr<Table> GetTable() {
+        return std::shared_ptr<Table>();
+    }
+    virtual int32_t Size() {
+        return 0;
+    }
 };
 
 }  // namespace sdk

@@ -29,27 +29,33 @@ namespace sdk {
 
 class DBMSSdk {
  public:
+    DBMSSdk() {}
     virtual ~DBMSSdk() {}
-
     virtual void CreateDatabase(
         const std::string& catalog,
-        sdk::Status *status) = 0;
+        sdk::Status *status) {}
 
-    virtual std::unique_ptr<TableSet> GetTables(
+    virtual std::shared_ptr<TableSet> GetTables(
         const std::string& catalog,
-        sdk::Status *status) = 0;
+        sdk::Status *status) {
+        return std::shared_ptr<TableSet>();
+    }
 
     virtual std::vector<std::string> GetDatabases(
-        sdk::Status *status) = 0;
+        sdk::Status *status) {
+        return std::vector<std::string>();
+    }
 
-    virtual std::unique_ptr<ResultSet>  ExecuteQuery(const std::string& catalog,
+    virtual std::shared_ptr<ResultSet>  ExecuteQuery(const std::string& catalog,
             const std::string& sql,
-            sdk::Status *status) = 0; 
+            sdk::Status *status) {
+        return std::shared_ptr<ResultSet>();
+    }
 };
 
 // create a new dbms sdk with a endpoint
 // failed return NULL
-DBMSSdk *CreateDBMSSdk(const std::string &endpoint);
+std::shared_ptr<DBMSSdk> CreateDBMSSdk(const std::string &endpoint);
 
 }  // namespace sdk
 }  // namespace fesql

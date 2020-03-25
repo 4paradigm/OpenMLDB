@@ -72,8 +72,7 @@ class DBMSSdkTest : public ::testing::Test {
 TEST_F(DBMSSdkTest, DatabasesAPITest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    ASSERT_TRUE(nullptr != dbms_sdk);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     {
         Status status;
         std::vector<std::string> names = dbms_sdk->GetDatabases(&status);
@@ -117,8 +116,7 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
 TEST_F(DBMSSdkTest, TableAPITest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    ASSERT_TRUE(nullptr != dbms_sdk);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
     // create database db1
     {
         Status status;
@@ -191,7 +189,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         // show db_1 tables
         std::string name = "db_1";
         Status status;
-        std::unique_ptr<TableSet> tablet_set = dbms_sdk->GetTables(name, &status);
+        std::shared_ptr<TableSet> tablet_set = dbms_sdk->GetTables(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(3u, tablet_set->Size());
     }
@@ -199,7 +197,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         // show tables empty
         std::string name = "db_2";
         Status status;
-        std::unique_ptr<TableSet> ts = dbms_sdk->GetTables(name, &status);
+        std::shared_ptr<TableSet> ts = dbms_sdk->GetTables(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(0u, ts->Size());
     }
@@ -208,8 +206,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
 TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    ::fesql::sdk::DBMSSdk *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    ASSERT_TRUE(nullptr != dbms_sdk);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
 
     {
         Status status;

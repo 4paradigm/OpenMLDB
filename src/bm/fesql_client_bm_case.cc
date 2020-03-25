@@ -33,15 +33,10 @@ const std::string host = "127.0.0.1";    // NOLINT
 const static size_t dbms_port = 6603;    // NOLINT
 const static size_t tablet_port = 7703;  // NOLINT
 
-static bool feql_dbms_sdk_init(::fesql::sdk::DBMSSdk **dbms_sdk) {
+static std::shared_ptr<fesql::sdk::DBMSSdk> feql_dbms_sdk_init() {
     DLOG(INFO) << "Connect to Tablet dbms sdk... ";
     const std::string endpoint = host + ":" + std::to_string(dbms_port);
-    *dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
-    if (nullptr == *dbms_sdk) {
-        LOG(WARNING) << "Fail to create dbms sdk";
-        return false;
-    }
-    return true;
+    return fesql::sdk::CreateDBMSSdk(endpoint);
 }
 
 static bool fesql_server_init(brpc::Server &tablet_server,  // NOLINT
@@ -81,7 +76,7 @@ static bool fesql_server_init(brpc::Server &tablet_server,  // NOLINT
     return true;
 }
 
-static bool init_db(::fesql::sdk::DBMSSdk *dbms_sdk, std::string db_name) {
+static bool init_db(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk, std::string db_name) {
     LOG(INFO) << "Creating database " << db_name;
     // create database
     fesql::sdk::Status status;
@@ -94,7 +89,7 @@ static bool init_db(::fesql::sdk::DBMSSdk *dbms_sdk, std::string db_name) {
     return true;
 }
 
-static bool init_tbl(::fesql::sdk::DBMSSdk *dbms_sdk,
+static bool init_tbl(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
                      const std::string &db_name,
                      const std::string &schema_sql) {
     DLOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
@@ -108,7 +103,7 @@ static bool init_tbl(::fesql::sdk::DBMSSdk *dbms_sdk,
     }
     return true;
 }
-static bool repeated_insert_tbl(::fesql::sdk::TabletSdk *tablet_sdk,
+static bool repeated_insert_tbl(std::shared_ptr<::fesql::sdk::TabletSdk> tablet_sdk,
                                 const std::string &db_name,
                                 const std::string &insert_sql,
                                 int32_t record_size) {
@@ -153,7 +148,6 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
     brpc::Server dbms_server;
     ::fesql::tablet::TabletServerImpl table_server_impl;
     ::fesql::dbms::DBMSServerImpl dbms_server_impl;
-    ::fesql::sdk::DBMSSdk *dbms_sdk = nullptr;
 
     if (!fesql_server_init(tablet_server, dbms_server, &table_server_impl,
                            &dbms_server_impl)) {
@@ -163,8 +157,8 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         }
         return;
     }
-
-    if (!feql_dbms_sdk_init(&dbms_sdk)) {
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = feql_dbms_sdk_init();
+    if (!dbms_sdk) {
         LOG(WARNING) << "Fail to create to dbms sdk";
         if (TEST == mode) {
             FAIL();
@@ -172,7 +166,7 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         return;
     }
 
-    std::unique_ptr<::fesql::sdk::TabletSdk> sdk =
+    std::shared_ptr<::fesql::sdk::TabletSdk> sdk =
         ::fesql::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
     if (!sdk) {
         LOG(WARNING) << "Fail to create to tablet sdk";
@@ -230,7 +224,7 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
             sdk::Status query_status;
             const std::string db = "test";
             const std::string sql = select_sql;
-            std::unique_ptr<::fesql::sdk::ResultSet> rs =
+            std::shared_ptr<::fesql::sdk::ResultSet> rs =
                 sdk->Query(db, sql, &query_status);
             ASSERT_TRUE(0 != rs);  // NOLINT
             ASSERT_EQ(0, query_status.code);
@@ -238,9 +232,6 @@ static void SIMPLE_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         }
     }
 failure:
-    if (nullptr != dbms_sdk) {
-        delete dbms_sdk;
-    }
     if (TEST == mode) {
         ASSERT_FALSE(failure_flag);
     }
@@ -267,7 +258,6 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
     brpc::Server dbms_server;
     ::fesql::tablet::TabletServerImpl table_server_impl;
     ::fesql::dbms::DBMSServerImpl dbms_server_impl;
-    ::fesql::sdk::DBMSSdk *dbms_sdk = nullptr;
 
     if (!fesql_server_init(tablet_server, dbms_server, &table_server_impl,
                            &dbms_server_impl)) {
@@ -277,8 +267,8 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         }
         return;
     }
-
-    if (!feql_dbms_sdk_init(&dbms_sdk)) {
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = feql_dbms_sdk_init();
+    if (!dbms_sdk) {
         LOG(WARNING) << "Fail to create to dbms sdk";
         if (TEST == mode) {
             FAIL();
@@ -286,7 +276,7 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
         return;
     }
 
-    std::unique_ptr<::fesql::sdk::TabletSdk> sdk =
+    std::shared_ptr<::fesql::sdk::TabletSdk> sdk =
         ::fesql::sdk::CreateTabletSdk(host + ":" + std::to_string(tablet_port));
     if (!sdk) {
         LOG(WARNING) << "Fail to create to tablet sdk";
@@ -369,7 +359,7 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
             sdk::Status query_status;
             const std::string db = "test";
             const std::string sql = select_sql;
-            std::unique_ptr<::fesql::sdk::ResultSet> rs =
+            std::shared_ptr<::fesql::sdk::ResultSet> rs =
                 sdk->Query(db, sql, &query_status);
             ASSERT_TRUE(0 != rs);  // NOLINT
             ASSERT_EQ(0, query_status.code);
@@ -378,9 +368,6 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
     }
 
 failure:
-    if (nullptr != dbms_sdk) {
-        delete dbms_sdk;
-    }
     if (TEST == mode) {
         ASSERT_FALSE(failure_flag);
     }

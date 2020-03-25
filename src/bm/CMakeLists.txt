@@ -16,32 +16,26 @@ add_library(fesql_client_bm_case STATIC fesql_client_bm_case.cc)
 
 add_executable(fesql_client_bm_case_test fesql_client_bm_case_test.cc)
 target_link_libraries(fesql_client_bm_case_test fesql_client_bm_case
-        fesql_sdk
-        fesql_dbms
-        fesql_tablet
-        fesql_storage fesql_vm fesql_analyser fesql_parser fesql_planner fesql_codegen fesql_udf
-        fesql_node fesql_codec fesql_flags
-        fesql_proto brpc protobuf benchmark gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread rt)
-
+    fesql_dbms
+    fesql_tablet 
+    fesql_storage fesql_vm fesql_codegen fesql_udf
+    fesql_flags
+    gtest fesql_sdk benchmark ${COMMON_LIBS} ${llvm_libs})
 add_test(fesql_client_bm_case_test fesql_client_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/fesql_client_bm_case_test.xml)
 list(APPEND test_list fesql_client_bm_case_test)
 
 add_executable(fesql_client_bm fesql_client_bm.cc)
-target_link_libraries(fesql_client_bm
-        fesql_client_bm_case
-        fesql_sdk
-        fesql_dbms
-        fesql_tablet
-        fesql_storage fesql_vm fesql_analyser fesql_parser fesql_planner fesql_codegen fesql_udf
-        fesql_node fesql_codec fesql_flags
-        fesql_proto brpc protobuf benchmark gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread rt)
+target_link_libraries(fesql_client_bm fesql_client_bm_case
+    fesql_dbms
+    fesql_tablet 
+    fesql_storage fesql_vm fesql_codegen fesql_udf
+    fesql_flags
+    gtest fesql_sdk benchmark ${COMMON_LIBS} ${llvm_libs})
 
 add_executable(fesql_client_batch_run_bm fesql_client_batch_run_bm.cc)
-target_link_libraries(fesql_client_batch_run_bm
-        fesql_client_bm_case
-        fesql_sdk
-        fesql_dbms
-        fesql_tablet
-        fesql_storage fesql_vm fesql_analyser fesql_parser fesql_planner fesql_codegen fesql_udf
-        fesql_node fesql_codec fesql_flags
-        fesql_proto brpc protobuf benchmark gtest ${COMMON_LIBS} ${llvm_libs} leveldb z snappy ssl crypto dl pthread rt)
+target_link_libraries(fesql_client_batch_run_bm fesql_client_bm_case
+    fesql_dbms
+    fesql_tablet 
+    fesql_storage fesql_vm fesql_codegen fesql_udf
+    fesql_flags
+    gtest fesql_sdk benchmark ${COMMON_LIBS} ${llvm_libs})
