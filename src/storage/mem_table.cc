@@ -669,6 +669,38 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     return true;
 }
 
+bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
+    std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
+    if (index_def) {
+        if (index_def->GetStatus() != IndexStatus::kDeleted) {
+            PDLOG(WARNING, "index %s is exist. tid %u pid %u", 
+                    column_key.index_name().c_str(), id_, pid_);
+            return false;
+        }
+        index_def->SetStatus(IndexStatus::kReady);
+        return true;
+    }
+    index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.Size());
+    std::vector<uint32_t> ts_vec;
+    for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
+        auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
+        if (ts_iter == ts_mapping_.end()) {
+            PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", 
+                    column_key.ts_name(idx).c_str(), id_, pid_);
+            return false;
+        }
+        if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
+            PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", 
+                    column_key.ts_name(idx).c_str(), id_, pid_);
+            return false;
+        }
+        ts_vec.push_back(ts_iter->second);
+    }
+    index_def->SetTsColumn(ts_vec);
+    table_index_.AddIndex(index_def);
+    return true;
+}
+
 bool MemTable::DeleteIndex(std::string idx_name) {
     std::shared_ptr<IndexDef> index_def = GetIndex(idx_name);
     if (!index_def) {
@@ -686,7 +718,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
                 idx_name.c_str(), id_, pid_);
         return false;
     }
-    if ((uint32_t)index_def->GetId() <table_meta_.column_key_size()) {
+    if ((int32_t)index_def->GetId() < table_meta_.column_key_size()) {
         table_meta_.mutable_column_key(index_def->GetId())->set_flag(1);
     }
     index_def->SetStatus(IndexStatus::kWaiting);

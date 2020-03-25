@@ -664,7 +664,7 @@ bool NsClient::RemoveReplicaCluster(const std::string& alias, std::string& msg) 
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RemoveReplicaCluster,
         &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
-    if (ok && (response.code() == 0)) {
+    if (ok && response.code() == 0) {
         return true;
     }
     return false;
@@ -682,8 +682,7 @@ bool NsClient::RemoveReplicaClusterByNs(const std::string& alias, const std::str
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RemoveReplicaClusterByNs,
         &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
-    code = response.code();
-    if (ok && (code == 0)) {
+    if (ok && response.code() == 0) {
         return true;
     }
     return false;
@@ -696,12 +695,27 @@ bool NsClient::SwitchMode(const ::rtidb::nameserver::ServerMode mode, std::strin
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::SwitchMode,
         &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
-    int code = response.code();
-    if (ok && (code == 0)) {
+    if (ok && response.code() == 0) {
         return true;
     }
     return false;
 }
+
+bool NsClient::AddIndex(const std::string& table_name, const ::rtidb::common::ColumnKey& column_key, 
+        std::string& msg) {
+    ::rtidb::nameserver::AddIndexRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    ::rtidb::common::ColumnKey* cur_column_key = request.mutable_column_key();
+    request.set_name(table_name);
+    cur_column_key->CopyFrom(column_key);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddIndex,
+        &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}    
 
 bool NsClient::DeleteIndex(const std::string& table_name, const std::string & idx_name, std::string& msg) {
     ::rtidb::nameserver::DeleteIndexRequest request;
@@ -714,9 +728,5 @@ bool NsClient::DeleteIndex(const std::string& table_name, const std::string & id
     return ok && code == 0;
 }
 
-
 }
 }
-
-
-

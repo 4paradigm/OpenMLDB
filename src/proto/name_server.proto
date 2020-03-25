@@ -375,6 +375,11 @@ message SyncTableRequest {
     optional uint32 pid = 3;
 }
 
+message AddIndexRequest {
+    optional string name = 1;
+    optional rtidb.common.ColumnKey column_key = 2;
+}
+
 message DeleteIndexRequest {
     optional string table_name = 1;
     optional string idx_name = 2;
@@ -417,5 +422,6 @@ service NameServer {
     rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
     rpc AddReplicaNSFromRemote(AddReplicaNSRequest) returns (GeneralResponse);
     rpc SyncTable(SyncTableRequest) returns (GeneralResponse);
+    rpc AddIndex(AddIndexRequest) returns (GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
 }

@@ -8418,7 +8418,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
         return;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    uint32_t idx = 0;
+    uint32_t index_pos = 0;
     bool has_column_key = true;
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_client_map;
     {
@@ -8436,7 +8436,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             has_column_key = false;
             for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
                 if (table_info->column_desc_v1(i).name() == request->idx_name() && table_info->column_desc_v1(i).add_ts_idx()) {
-                    idx = i;
+                    index_pos = i;
                     flag = false;
                     break;
                 }
@@ -8445,7 +8445,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             for (int i = 0; i < table_info->column_key_size(); i++) {
                 if (table_info->column_key(i).index_name() == request->idx_name() &&
                     !table_info->column_key(i).flag()) {
-                    idx = i;
+                    index_pos = i;
                     flag = false;
                     break;
                 }
@@ -8473,7 +8473,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
             if (table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                 tablets.insert(table_info->table_partition(idx).partition_meta(meta_idx).endpoint());
             } else {
-                response->set_code(::rtidb::base::ReturnCode::kTableHasANoAliveLeaderPartition);
+                response->set_code(::rtidb::base::ReturnCode::kTableHasNoAliveLeaderPartition);
                 response->set_msg("partition is not alive!");
                 PDLOG(WARNING, "partition[%s][%d] is not alive!", 
                     table_info->table_partition(idx).partition_meta(meta_idx).endpoint().c_str(), 
@@ -8484,18 +8484,113 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
     }
     for(const auto &endpoint : tablets) {
         if(!tablet_client_map[endpoint]->DeleteIndex(table_info->tid(), request->idx_name())) {
-            response->set_code(::rtidb::base::ReturnCode::kIndexDeleteFailed);
+            response->set_code(::rtidb::base::ReturnCode::kRequestTabletFailed);
             response->set_msg("delete index on tablet failed!");
             PDLOG(WARNING, "tablet[%s] delete index failed!", endpoint.c_str());
             return;
         }
     }
     if (has_column_key) {
-        table_info->mutable_column_key(idx)->set_flag(1);
+        table_info->mutable_column_key(index_pos)->set_flag(1);
     } else {
-        table_info->mutable_column_desc_v1(idx)->set_add_ts_idx(false);
+        table_info->mutable_column_desc_v1(index_pos)->set_add_ts_idx(false);
     }
     PDLOG(INFO, "delete index : table[%s] index[%s]", request->table_name().c_str(), request->idx_name().c_str());
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::AddIndex(RpcController* controller,
+        const AddIndexRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    uint32_t index_pos = 0;
+    std::string index_name = request->column_key().index_name();
+    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_client_map;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto table_iter = table_info_.find(request->name());
+        if (table_iter == table_info_.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+            response->set_msg("table is not exist!");
+            PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
+            return;
+        }
+        table_info = table_iter->second;
+        bool has_index = false;
+        if (table_info->column_key_size() == 0) {
+            for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
+                if (table_info->column_desc_v1(i).name() == index_name && table_info->column_desc_v1(i).add_ts_idx()) {
+                    index_pos = i;
+                    has_index = true;
+                    break;
+                }
+            }
+        } else {
+            for (int i = 0; i < table_info->column_key_size(); i++) {
+                if (table_info->column_key(i).index_name() == index_name) {
+                    has_index = true;
+                    break;
+                }
+            }
+        }
+        if (has_index) {
+            response->set_code(::rtidb::base::ReturnCode::kIndexAlreadyExists);
+            response->set_msg("index has already exist!");
+            PDLOG(WARNING, "index %s has already exist! table name %s", 
+                index_name.c_str(), request->name().c_str());
+            return;
+        }
+        for (const auto& kv : tablets_) {
+            if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
+                response->set_msg("tablet is offline!");
+                PDLOG(WARNING, "tablet[%s] is offline!", kv.second->client_->GetEndpoint().c_str());
+                return;
+            }
+            tablet_client_map.insert(std::make_pair(kv.second->client_->GetEndpoint(), kv.second->client_));
+        }
+    }
+    std::set<std::string> tablets;
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                tablets.insert(table_info->table_partition(idx).partition_meta(meta_idx).endpoint());
+            } else {
+                response->set_code(::rtidb::base::ReturnCode::kTableHasNoAliveLeaderPartition);
+                response->set_msg("partition is not alive!");
+                PDLOG(WARNING, "partition[%s][%d] is not alive!", 
+                    table_info->table_partition(idx).partition_meta(meta_idx).endpoint().c_str(), 
+                    table_info->table_partition(idx).pid());
+                return;
+            }
+        }
+    }
+    for(const auto &endpoint : tablets) {
+        // TODO @denglong set pid later
+        if(!tablet_client_map[endpoint]->AddIndex(table_info->tid(), 0, request->column_key())) {
+            response->set_code(::rtidb::base::ReturnCode::kRequestTabletFailed);
+            response->set_msg("add index failed");
+            PDLOG(WARNING, "add index failed. tablet %s", endpoint.c_str());
+            return;
+        }
+    }
+    if (table_info->column_key_size() > 0) {
+        ::rtidb::common::ColumnKey* column_key = table_info->add_column_key();
+        column_key->CopyFrom(request->column_key());
+    } else {
+        table_info->mutable_column_desc_v1(index_pos)->set_add_ts_idx(false);
+    }
+    PDLOG(INFO, "add index ok. table[%s] index[%s]", 
+            request->name().c_str(), index_name.c_str());
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
