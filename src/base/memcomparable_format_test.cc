@@ -1,7 +1,6 @@
 /*
  * memcomparable_format_test.cc
-*/
-
+ */
 
 #include "base/memcomparable_format.h"
 #include "gtest/gtest.h"
@@ -10,9 +9,8 @@ namespace rtidb {
 namespace base {
 
 class MemComFormatTest : public ::testing::Test {
-
-public:
-    MemComFormatTest(){}
+ public:
+    MemComFormatTest() {}
     ~MemComFormatTest() {}
 };
 
@@ -88,8 +86,8 @@ TEST_F(MemComFormatTest, TestFloatingNum) {
 
 TEST_F(MemComFormatTest, TestVarchar) {
     int arr_len = 6;
-    std::string arr[arr_len] 
-        = {"", " ", "1234567", "12345678", "123456789", "1234567890123456789"};
+    std::string arr[arr_len] = {"",         " ",         "1234567",
+                                "12345678", "123456789", "1234567890123456789"};
     for (int i = 0; i < arr_len; i++) {
         /* pack varchar*/
         std::string str = arr[i];
@@ -111,8 +109,8 @@ TEST_F(MemComFormatTest, TestVarchar) {
     }
 }
 
-}
-}
+}  // namespace base
+}  // namespace rtidb
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
