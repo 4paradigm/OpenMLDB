@@ -31,6 +31,8 @@ import org.testng.annotations.Test;
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableSyncClientTest extends TestCaseBase {
