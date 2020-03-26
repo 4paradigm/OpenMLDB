@@ -39,6 +39,14 @@ typedef unsigned int  uint;
 namespace rtidb {
 namespace base {
 
+    static int32_t GetDstStrSize(int32_t size) {
+        if (size == 0) {
+            return RDB_ESCAPE_LENGTH;
+        }
+        int32_t byte_num = (((size) >> 3) + !!((size)&0x07));
+        return byte_num * RDB_ESCAPE_LENGTH;
+    }
+
     static void RdbSwapFloatBytes(uchar *const dst, const uchar *const src) {
         dst[0] = src[3];
         dst[1] = src[2];
@@ -68,7 +76,7 @@ namespace base {
             to[i] = from[j];
     }
     
-    static int MakeSortKeyInteger(const void* from, uint length, 
+    static int PackInteger(const void* from, uint length, 
             bool unsigned_flag, void *to) {
         if (from == nullptr || length < 2) {
             return -1;      
@@ -79,7 +87,7 @@ namespace base {
         return 0;
     }
 
-    static int MakeSortKeyFloat(const void* from, uint length, void *to) {
+    static int PackFloat(const void* from, uint length, void *to) {
         if (from == nullptr || length != sizeof(float)) {
             return -1;      
         }
@@ -108,6 +116,7 @@ namespace base {
                 tmp[1] = (uchar)exp_part;
             }
         }
+        return 0;
     }
 
     /*
@@ -137,7 +146,7 @@ namespace base {
     }
 
     /* The following should work for IEEE */
-    static int MakeSortKeyDouble(const void* from, uint length, void *to) {
+    static int PackDouble(const void* from, uint length, void *to) {
         const uchar* ptr = (uchar*)from;
         double nr;
         memcpy(&nr, ptr, length);
@@ -173,10 +182,10 @@ namespace base {
        - 9 bytes  is encoded as X X X X X X X X 9 X 0 0 0 0 0 0 0 1
        - 10 bytes is encoded as X X X X X X X X 9 X X 0 0 0 0 0 0 2
      */
-    static void PackVariableFormat(
+    static int PackString( 
             const void *src,  // The data to encode
             size_t src_len,    // The length of the data to encode
-            void **dst) {     // The location to encode the data 
+            void **dst) {      // The encoded data 
         const uchar* usrc = (uchar*)src;
         uchar *ptr = (uchar*)*dst;
 
@@ -203,7 +212,8 @@ namespace base {
             // We have more data - put the flag byte (N) in and continue
             *(ptr++) = RDB_ESCAPE_LENGTH;
         }
-        *dst = ptr;
+        //*dst = ptr;
+        return 0;
     }
     
     static int UnpackInteger(const void* from, uint length, bool unsigned_flag, void *to) {
@@ -324,7 +334,7 @@ namespace base {
     /*
        Function of type rdb_index_field_unpack_t
     */
-    static int UnpackBinaryVarchar(const void *src, void *dst, int32_t *size) {
+    static int UnpackString(const void *src, void *dst, int32_t *size) {
         const uchar *usrc = (uchar*)src;
         uchar *udst = (uchar*)dst;
         const uchar *ptr;
@@ -347,7 +357,7 @@ namespace base {
             }
         }
         if (!finished) {
-            return -1;
+            return -2;
         }
         /* Save the length */
         *size = len;
