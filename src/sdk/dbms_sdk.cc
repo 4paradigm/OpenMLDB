@@ -49,9 +49,7 @@ class DBMSSdkImpl : public DBMSSdk {
                                             sdk::Status *status);
 
  private:
-
     bool InitTabletSdk();
-    
 
  private:
     ::brpc::Channel *channel_;
@@ -187,15 +185,13 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
     }
 
     switch (plan->GetType()) {
-        case node::kPlanTypeSelect:
-            {
-                return tablet_sdk_->Query(catalog, sql, status);
-            }
-        case node::kPlanTypeInsert:
-            {
-                tablet_sdk_->Insert(catalog, sql, status);
-                return empty;
-            }
+        case node::kPlanTypeSelect: {
+            return tablet_sdk_->Query(catalog, sql, status);
+        }
+        case node::kPlanTypeInsert: {
+            tablet_sdk_->Insert(catalog, sql, status);
+            return empty;
+        }
         case node::kPlanTypeCreate: {
             node::CreatePlanNode *create =
                 dynamic_cast<node::CreatePlanNode *>(plan);

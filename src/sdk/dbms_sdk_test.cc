@@ -14,10 +14,9 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "tablet/tablet_server_impl.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
-
+#include "tablet/tablet_server_impl.h"
 
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
@@ -26,7 +25,6 @@ DECLARE_bool(enable_keep_alive);
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
-
 
 namespace fesql {
 namespace sdk {
@@ -219,14 +217,12 @@ TEST_F(DBMSSdkTest, ExecuteSQLTest) {
         ::fesql::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_2";
     {
-
         Status status;
         dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
     {
-
         Status status;
         // create table db1
         std::string sql =
@@ -242,9 +238,7 @@ TEST_F(DBMSSdkTest, ExecuteSQLTest) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 
-    
     {
-
         Status status;
         // insert
         std::string sql = "insert into test3 values(1, 4000, 2, \"hello\", 3);";
@@ -253,13 +247,15 @@ TEST_F(DBMSSdkTest, ExecuteSQLTest) {
     }
 
     {
-
         Status status;
-        std::string sql = "select column1, column2, column3, column4, column5 from test3 limit 1;";
-        std::shared_ptr<ResultSet> rs = dbms_sdk->ExecuteQuery(name, sql, &status);
+        std::string sql =
+            "select column1, column2, column3, column4, column5 from test3 "
+            "limit 1;";
+        std::shared_ptr<ResultSet> rs =
+            dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         if (rs) {
-            const Schema& schema = rs->GetSchema();
+            const Schema &schema = rs->GetSchema();
             ASSERT_EQ(5, schema.GetColumnCnt());
             ASSERT_EQ("column1", schema.GetColumnName(0));
             ASSERT_EQ("column2", schema.GetColumnName(1));
@@ -289,7 +285,7 @@ TEST_F(DBMSSdkTest, ExecuteSQLTest) {
                 ASSERT_TRUE(rs->GetInt32(2, &val));
                 ASSERT_EQ(val, 2);
             }
-           
+
             {
                 int val = 0;
                 ASSERT_TRUE(rs->GetInt32(4, &val));
@@ -297,19 +293,17 @@ TEST_F(DBMSSdkTest, ExecuteSQLTest) {
             }
 
             {
-                char* val = NULL;
+                char *val = NULL;
                 uint32_t size = 0;
                 ASSERT_TRUE(rs->GetString(3, &val, &size));
                 ASSERT_EQ(size, 5);
                 std::string str(val, 5);
                 ASSERT_EQ(str, "hello");
             }
-        }else{
+        } else {
             ASSERT_FALSE(true);
         }
-
     }
-
 }
 
 TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
@@ -358,7 +352,6 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
 }
-
 
 }  // namespace sdk
 }  // namespace fesql
