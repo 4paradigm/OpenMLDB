@@ -18,14 +18,13 @@
 #ifndef SRC_SDK_RESULT_SET_IMPL_H_
 #define SRC_SDK_RESULT_SET_IMPL_H_
 
-#include "sdk/result_set.h"
-#include "proto/tablet.pb.h"
 #include "codec/row_codec.h"
+#include "proto/tablet.pb.h"
 #include "sdk/base_impl.h"
+#include "sdk/result_set.h"
 
 namespace fesql {
 namespace sdk {
-
 
 class ResultSetImpl : public ResultSet {
  public:

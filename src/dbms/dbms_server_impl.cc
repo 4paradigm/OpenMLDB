@@ -22,8 +22,7 @@
 namespace fesql {
 namespace dbms {
 
-DBMSServerImpl::DBMSServerImpl()
-    : tablet_sdk(nullptr), tid_(0), tablets_() {}
+DBMSServerImpl::DBMSServerImpl() : tablet_sdk(nullptr), tid_(0), tablets_() {}
 DBMSServerImpl::~DBMSServerImpl() { delete tablet_sdk; }
 
 void DBMSServerImpl::AddTable(RpcController* ctr,
@@ -209,7 +208,8 @@ void DBMSServerImpl::AddDatabase(RpcController* ctr,
 
 void DBMSServerImpl::GetDatabases(RpcController* controller,
                                   const GetDatabasesRequest* request,
-                                  GetDatabasesResponse* response, Closure* done) {
+                                  GetDatabasesResponse* response,
+                                  Closure* done) {
     brpc::ClosureGuard done_guard(done);
     // TODO(chenjing): case intensive
     ::fesql::common::Status* status = response->mutable_status();
@@ -278,9 +278,9 @@ type::Database* DBMSServerImpl::GetDatabase(const std::string db_name,
     return &it->second;
 }
 
-void DBMSServerImpl::KeepAlive(RpcController* ctrl, 
-        const KeepAliveRequest *request,
-    KeepAliveResponse *response, Closure* done) {
+void DBMSServerImpl::KeepAlive(RpcController* ctrl,
+                               const KeepAliveRequest* request,
+                               KeepAliveResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::lock_guard<std::mutex> lock(mu_);
     tablets_.insert(request->endpoint());
@@ -289,9 +289,8 @@ void DBMSServerImpl::KeepAlive(RpcController* ctrl,
 }
 
 void DBMSServerImpl::GetTablet(RpcController* ctrl,
-        const GetTabletRequest *request,
-        GetTabletResponse *response,
-        Closure *done) {
+                               const GetTabletRequest* request,
+                               GetTabletResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::lock_guard<std::mutex> lock(mu_);
     std::set<std::string>::iterator it = tablets_.begin();

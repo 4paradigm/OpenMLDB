@@ -61,40 +61,32 @@ inline const std::string DataTypeName(const DataType& type) {
 
 class Schema {
  public:
-    Schema():empty() {}
+    Schema() : empty() {}
     virtual ~Schema() {}
-    virtual int32_t GetColumnCnt() const {
-        return 0;
-    }
+    virtual int32_t GetColumnCnt() const { return 0; }
     virtual const std::string& GetColumnName(uint32_t index) const {
         return empty;
     }
     virtual const DataType GetColumnType(uint32_t index) const {
         return kTypeUnknow;
     }
-    virtual const bool IsColumnNotNull(uint32_t index) const {
-        return false;
-    }
+    virtual const bool IsColumnNotNull(uint32_t index) const { return false; }
+
  private:
     std::string empty;
 };
 
 class Table {
  public:
-    Table(): empty(){}
+    Table() : empty() {}
     virtual ~Table() {}
-    virtual const std::string& GetName()  {
-        return empty;
-    }
-    virtual const std::string& GetCatalog() {
-        return empty;
-    }
-    virtual uint64_t GetCreateTime() {
-        return 0;
-    }
+    virtual const std::string& GetName() { return empty; }
+    virtual const std::string& GetCatalog() { return empty; }
+    virtual uint64_t GetCreateTime() { return 0; }
     virtual const std::shared_ptr<Schema> GetSchema() {
         return std::shared_ptr<Schema>();
     }
+
  private:
     std::string empty;
 };
@@ -103,15 +95,11 @@ class TableSet {
  public:
     TableSet() {}
     virtual ~TableSet() {}
-    virtual bool Next() {
-        return false;
-    }
+    virtual bool Next() { return false; }
     virtual const std::shared_ptr<Table> GetTable() {
         return std::shared_ptr<Table>();
     }
-    virtual int32_t Size() {
-        return 0;
-    }
+    virtual int32_t Size() { return 0; }
 };
 
 }  // namespace sdk

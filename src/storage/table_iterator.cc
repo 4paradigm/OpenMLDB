@@ -42,9 +42,9 @@ bool WindowInternalIterator::Valid() { return ts_it_->Valid(); }
 void WindowInternalIterator::Next() { ts_it_->Next(); }
 
 const base::Slice WindowInternalIterator::GetValue() {
-    return base::Slice(
-        ts_it_->GetValue()->data,
-        codec::RowView::GetSize(reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+    return base::Slice(ts_it_->GetValue()->data,
+                       codec::RowView::GetSize(reinterpret_cast<int8_t*>(
+                           ts_it_->GetValue()->data)));
 }
 
 const uint64_t WindowInternalIterator::GetKey() { return ts_it_->GetKey(); }
@@ -233,9 +233,9 @@ bool FullTableIterator::Valid() {
 void FullTableIterator::Next() { GoToNext(); }
 
 const base::Slice FullTableIterator::GetValue() {
-    return base::Slice(
-        ts_it_->GetValue()->data,
-        codec::RowView::GetSize(reinterpret_cast<int8_t*>(ts_it_->GetValue()->data)));
+    return base::Slice(ts_it_->GetValue()->data,
+                       codec::RowView::GetSize(reinterpret_cast<int8_t*>(
+                           ts_it_->GetValue()->data)));
 }
 
 }  // namespace storage

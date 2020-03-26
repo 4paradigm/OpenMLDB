@@ -18,11 +18,11 @@
 #ifndef SRC_CODEC_SCHEMA_CODEC_H_
 #define SRC_CODEC_SCHEMA_CODEC_H_
 
-#include <vector>
-#include <map>
-#include <string>
 #include <cstring>
 #include <iostream>
+#include <map>
+#include <string>
+#include <vector>
 #include "vm/catalog.h"
 
 namespace fesql {
@@ -34,11 +34,10 @@ const uint16_t HEADER_SIZE = 2;
 
 class SchemaCodec {
  public:
-    static bool Encode(const vm::Schema& schema,
-                std::string* buffer) {
+    static bool Encode(const vm::Schema& schema, std::string* buffer) {
         if (buffer == NULL) return false;
-        uint32_t byte_size = GetSize(schema); 
-        if (byte_size >  MAX_ROW_BYTE_SIZE) {
+        uint32_t byte_size = GetSize(schema);
+        if (byte_size > MAX_ROW_BYTE_SIZE) {
             return false;
         }
         buffer->resize(byte_size);
@@ -47,7 +46,7 @@ class SchemaCodec {
         memcpy(cbuffer, static_cast<const void*>(&cnt), 2);
         cbuffer += 2;
         vm::Schema::const_iterator it = schema.begin();
-        for (;it != schema.end(); ++it) {
+        for (; it != schema.end(); ++it) {
             uint8_t type = static_cast<uint8_t>(it->type());
             memcpy(cbuffer, static_cast<const void*>(&type), 1);
             cbuffer += 1;
@@ -57,7 +56,8 @@ class SchemaCodec {
             uint8_t name_size = (uint8_t)(it->name().size());
             memcpy(cbuffer, static_cast<const void*>(&name_size), 1);
             cbuffer += 1;
-            memcpy(cbuffer, static_cast<const void*>(it->name().c_str()), name_size);
+            memcpy(cbuffer, static_cast<const void*>(it->name().c_str()),
+                   name_size);
             cbuffer += name_size;
         }
         return true;
@@ -105,7 +105,7 @@ class SchemaCodec {
     static uint32_t GetSize(const vm::Schema& schema) {
         uint32_t byte_size = HEADER_SIZE;
         vm::Schema::const_iterator it = schema.begin();
-        for (;it != schema.end(); ++it) {
+        for (; it != schema.end(); ++it) {
             byte_size += (FIELD_BYTE_SIZE + it->name().size());
         }
         return byte_size;
@@ -114,4 +114,4 @@ class SchemaCodec {
 
 }  // namespace codec
 }  // namespace fesql
-#endif  //SRC_CODEC_SCHEMA_CODEC_H_
+#endif  // SRC_CODEC_SCHEMA_CODEC_H_

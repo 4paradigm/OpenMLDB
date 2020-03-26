@@ -33,10 +33,9 @@ class TabletSdk {
     virtual ~TabletSdk() {}
     virtual void Insert(const std::string& db, const std::string& sql,
                         sdk::Status* status) = 0;
-    virtual std::shared_ptr<ResultSet> Query(
-        const std::string& db, 
-        const std::string& sql,
-        sdk::Status* status) = 0;
+    virtual std::shared_ptr<ResultSet> Query(const std::string& db,
+                                             const std::string& sql,
+                                             sdk::Status* status) = 0;
 };
 
 // create a new tablet sdk with a endpoint
@@ -46,4 +45,3 @@ std::shared_ptr<TabletSdk> CreateTabletSdk(const std::string& endpoint);
 }  // namespace sdk
 }  // namespace fesql
 #endif  // SRC_SDK_TABLET_SDK_H_
-

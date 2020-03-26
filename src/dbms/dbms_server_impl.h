@@ -20,8 +20,8 @@
 
 #include <map>
 #include <mutex>  // NOLINT (build/c++11)
-#include <string>
 #include <set>
+#include <string>
 #include "proto/dbms.pb.h"
 #include "proto/type.pb.h"
 #include "tablet/tablet_internal_sdk.h"
@@ -50,17 +50,19 @@ class DBMSServerImpl : public DBMSServer {
     void GetSchema(RpcController* controller, const GetSchemaRequest* request,
                    GetSchemaResponse* response, Closure* done);
 
-    void GetDatabases(RpcController* controller, const GetDatabasesRequest* request,
+    void GetDatabases(RpcController* controller,
+                      const GetDatabasesRequest* request,
                       GetDatabasesResponse* response, Closure* done);
 
     void GetTables(RpcController* controller, const GetTablesRequest* request,
                    GetTablesResponse* response, Closure* done);
 
-    void KeepAlive(RpcController* controller, const KeepAliveRequest *request,
-            KeepAliveResponse *response, Closure* done);
+    void KeepAlive(RpcController* controller, const KeepAliveRequest* request,
+                   KeepAliveResponse* response, Closure* done);
 
-    void GetTablet(RpcController* ctrl, const GetTabletRequest *request,
-            GetTabletResponse *response, Closure* done);
+    void GetTablet(RpcController* ctrl, const GetTabletRequest* request,
+                   GetTabletResponse* response, Closure* done);
+
  private:
     std::mutex mu_;
     Groups groups_;

@@ -11,9 +11,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "gflags/gflags.h"
 
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
@@ -43,7 +43,6 @@ static bool fesql_server_init(brpc::Server &tablet_server,  // NOLINT
                               brpc::Server &dbms_server,    // NOLINT
                               ::fesql::tablet::TabletServerImpl *tablet,
                               ::fesql::dbms::DBMSServerImpl *dbms) {
-
     FLAGS_enable_keep_alive = false;
     DLOG(INFO) << ("Start FeSQL tablet server...");
     if (!tablet->Init()) {
@@ -65,7 +64,8 @@ static bool fesql_server_init(brpc::Server &tablet_server,  // NOLINT
         exit(1);
     }
     {
-        std::string tablet_endpoint = "127.0.0.1:" + std::to_string(tablet_port);
+        std::string tablet_endpoint =
+            "127.0.0.1:" + std::to_string(tablet_port);
         MockClosure closure;
         dbms::KeepAliveRequest request;
         request.set_endpoint(tablet_endpoint);
@@ -76,7 +76,8 @@ static bool fesql_server_init(brpc::Server &tablet_server,  // NOLINT
     return true;
 }
 
-static bool init_db(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk, std::string db_name) {
+static bool init_db(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
+                    std::string db_name) {
     LOG(INFO) << "Creating database " << db_name;
     // create database
     fesql::sdk::Status status;
@@ -103,10 +104,10 @@ static bool init_tbl(std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk,
     }
     return true;
 }
-static bool repeated_insert_tbl(std::shared_ptr<::fesql::sdk::TabletSdk> tablet_sdk,
-                                const std::string &db_name,
-                                const std::string &insert_sql,
-                                int32_t record_size) {
+static bool repeated_insert_tbl(
+    std::shared_ptr<::fesql::sdk::TabletSdk> tablet_sdk,
+    const std::string &db_name, const std::string &insert_sql,
+    int32_t record_size) {
     DLOG(INFO) << ("Running inserts ...\n");
     int32_t fail = 0;
     for (int i = 0; i < record_size; ++i) {
@@ -350,7 +351,6 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
                 if (0 != query_status.code) {
                     fail++;
                 }
-
             }
             DLOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
             break;
@@ -439,7 +439,6 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
     WINDOW_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
                       window_max_size);
 }
-
 
 void WINDOW_CASE2_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode, int64_t group_size,

@@ -8,10 +8,10 @@
  **/
 #include "dbms/dbms_server_impl.h"
 #include "brpc/server.h"
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "node/node_enum.h"
 #include "tablet/tablet_server_impl.h"
-#include "gflags/gflags.h"
 
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
@@ -55,6 +55,7 @@ class DBMSServerImplTest : public ::testing::Test {
         delete dbms_;
         delete tablet_;
     }
+
  public:
     std::string tablet_endpoint;
     brpc::Server server_;
@@ -259,7 +260,6 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
 }
 
 TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
-
     MockClosure closure;
     // show database
     {
@@ -549,7 +549,6 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
 }  // namespace dbms
 }  // namespace fesql
 int main(int argc, char** argv) {
-
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;

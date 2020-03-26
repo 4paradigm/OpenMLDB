@@ -17,26 +17,24 @@
 
 #include "sdk/result_set_impl.h"
 
+#include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
-#include "codec/row_codec.h"
 
 namespace fesql {
 namespace sdk {
 
-class ResultSetImplTest : public ::testing::TestWithParam<tablet::QueryResponse> {
+class ResultSetImplTest
+    : public ::testing::TestWithParam<tablet::QueryResponse> {
  public:
     ResultSetImplTest() {}
     ~ResultSetImplTest() {}
 };
 
-
 std::vector<tablet::QueryResponse> GetTestCase() {
     std::vector<tablet::QueryResponse> responses;
     // empty
-    {
-        responses.push_back(tablet::QueryResponse());
-    }
+    { responses.push_back(tablet::QueryResponse()); }
     {
         tablet::QueryResponse response;
         type::ColumnDef* col1 = response.mutable_schema()->Add();
@@ -87,7 +85,8 @@ std::vector<tablet::QueryResponse> GetTestCase() {
 
 TEST_P(ResultSetImplTest, test_normal) {
     auto response = GetParam();
-    std::unique_ptr<tablet::QueryResponse> resp_ptr(new tablet::QueryResponse());
+    std::unique_ptr<tablet::QueryResponse> resp_ptr(
+        new tablet::QueryResponse());
     resp_ptr->CopyFrom(response);
     ResultSetImpl rs(std::move(resp_ptr));
     rs.Init();
@@ -95,10 +94,11 @@ TEST_P(ResultSetImplTest, test_normal) {
     for (int32_t i = 0; i < response.result_set_size(); i++) {
         const std::string& row = response.result_set(i);
         ASSERT_TRUE(rs.Next());
-        row_view.Reset(reinterpret_cast<const int8_t*>(row.c_str()), row.size());
-        for (int32_t j = 0;  j < response.schema().size(); j++) {
+        row_view.Reset(reinterpret_cast<const int8_t*>(row.c_str()),
+                       row.size());
+        for (int32_t j = 0; j < response.schema().size(); j++) {
             const type::ColumnDef& column = response.schema().Get(j);
-            switch(column.type()) {
+            switch (column.type()) {
                 case type::kBool: {
                     bool left = false;
                     bool right = true;
@@ -150,15 +150,14 @@ TEST_P(ResultSetImplTest, test_normal) {
                     ASSERT_EQ(left_ptr, right_ptr);
                     break;
                 }
-                default:{}
+                default: {
+                }
             }
         }
     }
-
 }
-INSTANTIATE_TEST_CASE_P(ResultSetImplTestPrefix,
-                         ResultSetImplTest, 
-                         testing::ValuesIn(GetTestCase()));
+INSTANTIATE_TEST_CASE_P(ResultSetImplTestPrefix, ResultSetImplTest,
+                        testing::ValuesIn(GetTestCase()));
 
 }  // namespace sdk
 }  // namespace fesql
@@ -167,4 +166,3 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-

@@ -22,15 +22,14 @@
 #include <utility>
 #include "analyser/analyser.h"
 #include "base/strings.h"
+#include "brpc/channel.h"
+#include "codec/row_codec.h"
+#include "glog/logging.h"
 #include "node/node_enum.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "brpc/channel.h"
-#include "glog/logging.h"
 #include "proto/tablet.pb.h"
-#include "codec/row_codec.h"
 #include "sdk/result_set_impl.h"
-#include "glog/logging.h"
 
 namespace fesql {
 namespace sdk {
@@ -54,17 +53,14 @@ class TabletSdkImpl : public TabletSdk {
                 sdk::Status* status);
 
  private:
+    void BuildInsertRequest(const node::InsertPlanNode* iplan,
+                            const std::string& db,
+                            tablet::InsertRequest* request, Status* status);
 
-    void BuildInsertRequest(const node::InsertPlanNode* iplan, const std::string& db,
-            tablet::InsertRequest* request, Status* status);
+    void Insert(const tablet::InsertRequest& request, sdk::Status* status);
 
-    void Insert(const tablet::InsertRequest& request,
-                sdk::Status* status);
-
-    bool GetSchema(const std::string& db, 
-                   const std::string& table,
-                   type::TableDef* schema,
-                   sdk::Status* status);
+    bool GetSchema(const std::string& db, const std::string& table,
+                   type::TableDef* schema, sdk::Status* status);
 
     void GetSqlPlan(
         const std::string& db, const std::string& sql,
@@ -86,7 +82,8 @@ bool TabletSdkImpl::Init() {
     return true;
 }
 
-void TabletSdkImpl::Insert(const tablet::InsertRequest& request, sdk::Status* status) {
+void TabletSdkImpl::Insert(const tablet::InsertRequest& request,
+                           sdk::Status* status) {
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::InsertResponse response;
     brpc::Controller cntl;
@@ -98,14 +95,16 @@ void TabletSdkImpl::Insert(const tablet::InsertRequest& request, sdk::Status* st
     status->code = 0;
 }
 
-std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db, 
-        const std::string& sql, sdk::Status* status) { 
+std::shared_ptr<ResultSet> TabletSdkImpl::Query(const std::string& db,
+                                                const std::string& sql,
+                                                sdk::Status* status) {
     if (status == NULL) {
         return std::shared_ptr<ResultSet>();
     }
     ::fesql::tablet::TabletServer_Stub stub(channel_);
     ::fesql::tablet::QueryRequest request;
-    std::unique_ptr<tablet::QueryResponse> response(new tablet::QueryResponse());
+    std::unique_ptr<tablet::QueryResponse> response(
+        new tablet::QueryResponse());
     request.set_sql(sql);
     request.set_db(db);
     request.set_is_batch(true);
@@ -187,8 +186,10 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
     }
 }
 
-void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan, const std::string& db,
-        tablet::InsertRequest* request, sdk::Status *status) {
+void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan,
+                                       const std::string& db,
+                                       tablet::InsertRequest* request,
+                                       sdk::Status* status) {
     const node::InsertStmt* insert_stmt = iplan->GetInsertNode();
     if (nullptr == insert_stmt) {
         status->code = common::kNullPointer;
@@ -205,7 +206,7 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan, const 
     }
     request->set_table(insert_stmt->table_name_);
     request->set_db(db);
-    uint32_t str_size =  0;
+    uint32_t str_size = 0;
     for (auto value : insert_stmt->values_) {
         switch (value->GetExprType()) {
             case node::kExprPrimary: {
@@ -225,7 +226,7 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan, const 
             default: {
                 status->code = common::kTypeError;
                 status->msg = "can not insert value with type " +
-                             node::ExprTypeName(value->GetExprType());
+                              node::ExprTypeName(value->GetExprType());
                 return;
             }
         }
@@ -238,15 +239,15 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan, const 
     rb.SetBuffer(reinterpret_cast<int8_t*>(buf), row_size);
     auto it = schema.columns().begin();
     uint32_t index = 0;
-    for(; it != schema.columns().end(); ++it) {
+    for (; it != schema.columns().end(); ++it) {
         if (index >= insert_stmt->values_.size()) {
             break;
         }
-        const node::ConstNode* primary = 
-            dynamic_cast<const node::ConstNode*>(insert_stmt->values_.at(index));
+        const node::ConstNode* primary = dynamic_cast<const node::ConstNode*>(
+            insert_stmt->values_.at(index));
         index++;
         bool ok = false;
-        switch(it->type()) {
+        switch (it->type()) {
             case type::kInt16: {
                 ok = rb.AppendInt16(primary->GetSmallInt());
                 break;
@@ -268,13 +269,14 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan, const 
                 break;
             }
             case type::kVarchar: {
-                ok = rb.AppendString(primary->GetStr(), strlen(primary->GetStr()));
+                ok = rb.AppendString(primary->GetStr(),
+                                     strlen(primary->GetStr()));
                 break;
             }
-            default : {
+            default: {
                 status->code = common::kTypeError;
                 status->msg = "can not handle data type " +
-                               node::DataTypeName(primary->GetDataType());
+                              node::DataTypeName(primary->GetDataType());
                 LOG(WARNING) << status->msg;
                 return;
             }
@@ -282,7 +284,7 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan, const 
         if (!ok) {
             status->code = common::kTypeError;
             status->msg = "can not handle data type " +
-                               node::DataTypeName(primary->GetDataType());
+                          node::DataTypeName(primary->GetDataType());
 
             LOG(WARNING) << status->msg;
             return;
@@ -292,7 +294,7 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan, const 
 }
 
 void TabletSdkImpl::Insert(const std::string& db, const std::string& sql,
-                               sdk::Status *status) {
+                           sdk::Status* status) {
     if (status == NULL) {
         LOG(WARNING) << "status is null";
         return;
@@ -325,7 +327,7 @@ void TabletSdkImpl::Insert(const std::string& db, const std::string& sql,
         default: {
             status->code = common::kUnSupport;
             status->msg = "can not execute plan type " +
-                         node::NameOfPlanNodeType(plan->GetType());
+                          node::NameOfPlanNodeType(plan->GetType());
             return;
         }
     }

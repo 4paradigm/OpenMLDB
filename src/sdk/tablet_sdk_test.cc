@@ -15,18 +15,18 @@
  * limitations under the License.
  */
 
-#include  <unistd.h>
 #include "sdk/tablet_sdk.h"
+#include <unistd.h>
 #include "base/strings.h"
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "sdk/dbms_sdk.h"
 #include "tablet/tablet_internal_sdk.h"
 #include "tablet/tablet_server_impl.h"
-#include "gflags/gflags.h"
 
 DECLARE_bool(enable_keep_alive);
 using namespace llvm;       // NOLINT
@@ -44,9 +44,13 @@ class MockClosure : public ::google::protobuf::Closure {
 enum EngineRunMode { RUN, RUNBATCH, RUNONE };
 class TabletSdkTest : public ::testing::TestWithParam<EngineRunMode> {
  public:
-    TabletSdkTest():base_tablet_port_(8300), base_dbms_port_(9500), tablet_server_(),
-    tablet_(NULL), dbms_server_(), dbms_(NULL){
-    }
+    TabletSdkTest()
+        : base_tablet_port_(8300),
+          base_dbms_port_(9500),
+          tablet_server_(),
+          tablet_(NULL),
+          dbms_server_(),
+          dbms_(NULL) {}
     ~TabletSdkTest() {}
 
     void SetUp() {
@@ -60,7 +64,8 @@ class TabletSdkTest : public ::testing::TestWithParam<EngineRunMode> {
         dbms_server_.AddService(dbms_, brpc::SERVER_DOESNT_OWN_SERVICE);
         dbms_server_.Start(base_dbms_port_, &options);
         {
-            std::string tablet_endpoint = "127.0.0.1:" + std::to_string(base_tablet_port_);
+            std::string tablet_endpoint =
+                "127.0.0.1:" + std::to_string(base_tablet_port_);
             MockClosure closure;
             dbms::KeepAliveRequest request;
             request.set_endpoint(tablet_endpoint);
@@ -82,7 +87,7 @@ class TabletSdkTest : public ::testing::TestWithParam<EngineRunMode> {
     brpc::Server tablet_server_;
     tablet::TabletServerImpl* tablet_;
     brpc::Server dbms_server_;
-    dbms::DBMSServerImpl *dbms_;
+    dbms::DBMSServerImpl* dbms_;
 };
 
 INSTANTIATE_TEST_CASE_P(TabletRUNAndBatchMode, TabletSdkTest,
@@ -146,11 +151,11 @@ TEST_P(TabletSdkTest, test_normal) {
     sdk->Insert(db, sql, &insert_status);
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
     {
-        std::string sql = "select col1, col2, col3, col4, col5 from t1 limit 1;";
+        std::string sql =
+            "select col1, col2, col3, col4, col5 from t1 limit 1;";
         sdk::Status query_status;
         std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
-
             const Schema& schema = rs->GetSchema();
             ASSERT_EQ(5, schema.GetColumnCnt());
             ASSERT_EQ("col1", schema.GetColumnName(0));
@@ -228,7 +233,8 @@ TEST_P(TabletSdkTest, test_create_and_query) {
     usleep(4000 * 1000);
     ParamType mode = GetParam();
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
     // create database db1
     {
         fesql::sdk::Status status;
@@ -265,7 +271,7 @@ TEST_P(TabletSdkTest, test_create_and_query) {
 
     ::fesql::sdk::Status insert_status;
     sdk->Insert("db_1", "insert into t1 values(1, 2.2, 3.3, 4, 5);",
-                  &insert_status);
+                &insert_status);
     ASSERT_EQ(0, static_cast<int>(insert_status.code));
     {
         sdk::Status query_status;
@@ -386,7 +392,8 @@ TEST_P(TabletSdkTest, test_udf_query) {
     usleep(2000 * 1000);
     ParamType mode = GetParam();
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_2";
     // create database db1
     {
@@ -421,9 +428,8 @@ TEST_P(TabletSdkTest, test_udf_query) {
     }
 
     ::fesql::sdk::Status insert_status;
-    sdk->Insert(name,
-                "insert into t1 values(1, 2, 3.3, 4, 5, \"hello\");",
-                 &insert_status);
+    sdk->Insert(name, "insert into t1 values(1, 2, 3.3, 4, 5, \"hello\");",
+                &insert_status);
     if (0 != insert_status.code) {
         std::cout << insert_status.msg << std::endl;
     }
@@ -519,7 +525,8 @@ TEST_P(TabletSdkTest, test_udf_query) {
 TEST_F(TabletSdkTest, test_window_udf_query) {
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_3";
     // create database db1
     {
@@ -556,32 +563,32 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
     ::fesql::sdk::Status insert_status;
     {
         sdk->Insert(name,
-                        "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
-                        &insert_status);
+                    "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
+                    &insert_status);
         ASSERT_EQ(0, insert_status.code);
     }
     {
         sdk->Insert(name,
-                        "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
-                        &insert_status);
+                    "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
+                    &insert_status);
         ASSERT_EQ(0, insert_status.code);
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(11, 4, 5.5, 3000, 7, \"string1\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(11, 4, 5.5, 3000, 7, \"string1\");",
+                    &insert_status);
         ASSERT_EQ(0, insert_status.code);
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(11, 5, 6.6, 4000, 8, \"string2\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(11, 5, 6.6, 4000, 8, \"string2\");",
+                    &insert_status);
         ASSERT_EQ(0, insert_status.code);
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(11, 6, 7.7, 5000, 9, \"string3\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(11, 6, 7.7, 5000, 9, \"string3\");",
+                    &insert_status);
         ASSERT_EQ(0, insert_status.code);
     }
 
@@ -733,10 +740,10 @@ TEST_F(TabletSdkTest, test_window_udf_query) {
 }
 
 TEST_F(TabletSdkTest, test_window_udf_batch_query) {
-
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_4";
     // create database db1
     {
@@ -773,35 +780,34 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
     ::fesql::sdk::Status insert_status;
     {
         sdk->Insert(name,
-                        "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
+                    "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
                     &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
         sdk->Insert(name,
-                        "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
-                       &insert_status);
+                    "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(11, 4, 5.5, 3000, 7, \"string1\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(11, 4, 5.5, 3000, 7, \"string1\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(11, 5, 6.6, 4000, 8, \"string2\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(11, 5, 6.6, 4000, 8, \"string2\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(11, 6, 7.7, 5000, 9, \"string3\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(11, 6, 7.7, 5000, 9, \"string3\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
-
 
     {
         sdk::Status query_status;
@@ -925,10 +931,10 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
 }
 
 TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
-
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
     std::string name = "db_5";
 
     // create database db1
@@ -967,35 +973,33 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
     {
         sdk->Insert(name,
                     "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
-                     &insert_status);
-        ASSERT_EQ(0, static_cast<int>(insert_status.code));
-    }
-    {
-        sdk->Insert(name,
-                   "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
                     &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->Insert(
-            name, 
-            "insert into t1 values(1, 4, 5.5, 3000, 7, \"string1\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(1, 5, 6.6, 4000, 8, \"string2\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(1, 4, 5.5, 3000, 7, \"string1\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(1, 6, 7.7, 5000, 9, \"string3\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(1, 5, 6.6, 4000, 8, \"string2\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
-
+    {
+        sdk->Insert(name,
+                    "insert into t1 values(1, 6, 7.7, 5000, 9, \"string3\");",
+                    &insert_status);
+        ASSERT_EQ(0, static_cast<int>(insert_status.code));
+    }
 
     {
         sdk::Status query_status;
@@ -1011,7 +1015,7 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
             "PRECEDING AND CURRENT ROW) limit 10;";
         std::shared_ptr<ResultSet> rs = sdk->Query(name, sql, &query_status);
         if (rs) {
-            const Schema& schema =rs->GetSchema();
+            const Schema& schema = rs->GetSchema();
             ASSERT_EQ(5u, schema.GetColumnCnt());
             ASSERT_EQ("w1_col1_sum", schema.GetColumnName(0));
             ASSERT_EQ("w1_col2_sum", schema.GetColumnName(1));
@@ -1161,10 +1165,10 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
 }
 
 TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
-
     usleep(4000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(base_dbms_port_);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
     // create database db1
     std::string name = "db_6";
     {
@@ -1201,36 +1205,35 @@ TEST_F(TabletSdkTest, test_window_udf_no_partition_batch_query) {
     ::fesql::sdk::Status insert_status;
     {
         sdk->Insert(name,
-                        "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
-                        &insert_status);
+                    "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
+                    &insert_status);
 
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
         sdk->Insert(name,
-                        "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
-                        &insert_status);
+                    "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(1, 4, 5.5, 3000, 7, \"string1\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(1, 4, 5.5, 3000, 7, \"string1\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(1, 5, 6.6, 4000, 8, \"string2\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(1, 5, 6.6, 4000, 8, \"string2\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
     {
-        sdk->Insert(
-            name, "insert into t1 values(1, 6, 7.7, 5000, 9, \"string3\");",
-            &insert_status);
+        sdk->Insert(name,
+                    "insert into t1 values(1, 6, 7.7, 5000, 9, \"string3\");",
+                    &insert_status);
         ASSERT_EQ(0, static_cast<int>(insert_status.code));
     }
-
 
     {
         sdk::Status query_status;

@@ -22,8 +22,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "gflags/gflags.h"
 #include "base/strings.h"
+#include "gflags/gflags.h"
 
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
@@ -33,11 +33,10 @@ DECLARE_bool(enable_keep_alive);
 namespace fesql {
 namespace tablet {
 
-TabletServerImpl::TabletServerImpl() : slock_(), engine_(), catalog_(), dbms_ch_(NULL) {}
+TabletServerImpl::TabletServerImpl()
+    : slock_(), engine_(), catalog_(), dbms_ch_(NULL) {}
 
-TabletServerImpl::~TabletServerImpl() {
-    delete dbms_ch_;
-}
+TabletServerImpl::~TabletServerImpl() { delete dbms_ch_; }
 
 bool TabletServerImpl::Init() {
     catalog_ = std::shared_ptr<TabletCatalog>(new TabletCatalog());

@@ -30,13 +30,13 @@
 #include "base/linenoise.h"
 #include "base/strings.h"
 #include "brpc/server.h"
-#include "version.h"
 #include "dbms/dbms_server_impl.h"
 #include "glog/logging.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "sdk/dbms_sdk.h"
 #include "tablet/tablet_server_impl.h"
+#include "version.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(tablet_endpoint);
@@ -95,7 +95,7 @@ void StartTablet(int argc, char *argv[]) {
     oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
         << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
     DLOG(INFO) << "start tablet on port " << FLAGS_port << " with version "
-              << oss.str();
+               << oss.str();
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
@@ -121,7 +121,7 @@ void StartDBMS(char *argv[]) {
     oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
         << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
     DLOG(INFO) << "start dbms on port " << FLAGS_port << " with version "
-              << oss.str();
+               << oss.str();
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
@@ -185,7 +185,7 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
         return;
     }
     ::fesql::base::TextTable t('-', '|', '+');
-    const ::fesql::sdk::Schema& schema = result_set->GetSchema();
+    const ::fesql::sdk::Schema &schema = result_set->GetSchema();
     // Add Header
     for (int32_t i = 0; i < schema.GetColumnCnt(); i++) {
         t.add(schema.GetColumnName(i));
@@ -243,7 +243,8 @@ void PrintResultSet(std::ostream &stream, ::fesql::sdk::ResultSet *result_set) {
     stream << result_set->Size() << " rows in set" << std::endl;
 }
 
-void PrintTableSchema(std::ostream &stream, const std::shared_ptr<fesql::sdk::Schema>& schema) {
+void PrintTableSchema(std::ostream &stream,
+                      const std::shared_ptr<fesql::sdk::Schema> &schema) {
     if (nullptr == schema || schema->GetColumnCnt() == 0) {
         stream << "Empty set" << std::endl;
         return;
@@ -413,11 +414,12 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node,
             return;
         }
         case fesql::node::kCmdShowTables: {
-           std::shared_ptr<fesql::sdk::TableSet> rs = std::move(dbms_sdk->GetTables(db, &status));
+            std::shared_ptr<fesql::sdk::TableSet> rs =
+                std::move(dbms_sdk->GetTables(db, &status));
             if (status.code == 0) {
                 std::ostringstream oss;
                 std::vector<std::string> names;
-                while(rs->Next()) {
+                while (rs->Next()) {
                     names.push_back(rs->GetTable()->GetName());
                 }
                 PrintItems(std::cout, "Tables_In_" + cmd_client_db.name, names);
@@ -425,11 +427,13 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node,
             return;
         }
         case fesql::node::kCmdDescTable: {
-            std::shared_ptr<fesql::sdk::TableSet> rs = std::move(dbms_sdk->GetTables(db, &status));
+            std::shared_ptr<fesql::sdk::TableSet> rs =
+                std::move(dbms_sdk->GetTables(db, &status));
             if (rs) {
-                while(rs->Next()) {
+                while (rs->Next()) {
                     if (rs->GetTable()->GetName() == cmd_node->GetArgs()[0]) {
-                        PrintTableSchema(std::cout, rs->GetTable()->GetSchema());
+                        PrintTableSchema(std::cout,
+                                         rs->GetTable()->GetSchema());
                     }
                 }
             }
@@ -475,8 +479,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node,
                 }
             }
 
-            std::cout << "Database '" <<name << "' not exists"
-                      << std::endl;
+            std::cout << "Database '" << name << "' not exists" << std::endl;
             break;
         }
         case fesql::node::kCmdExit: {

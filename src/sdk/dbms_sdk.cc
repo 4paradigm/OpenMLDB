@@ -16,14 +16,14 @@
  */
 
 #include "sdk/dbms_sdk.h"
-#include <utility>
 #include <iostream>
 #include <memory>
-#include "plan/planner.h"
+#include <utility>
 #include "analyser/analyser.h"
 #include "brpc/channel.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
+#include "plan/planner.h"
 #include "proto/dbms.pb.h"
 #include "sdk/result_set_impl.h"
 namespace fesql {
@@ -35,18 +35,16 @@ class DBMSSdkImpl : public DBMSSdk {
     ~DBMSSdkImpl();
     bool Init();
 
-    void CreateDatabase(const std::string& catalog,
-                        sdk::Status *status);
+    void CreateDatabase(const std::string &catalog, sdk::Status *status);
 
-    std::shared_ptr<TableSet> GetTables(
-                       const std::string& catalog,
-                       sdk::Status *status); 
+    std::shared_ptr<TableSet> GetTables(const std::string &catalog,
+                                        sdk::Status *status);
 
-    std::vector<std::string> GetDatabases(sdk::Status *status); 
+    std::vector<std::string> GetDatabases(sdk::Status *status);
 
-    std::shared_ptr<ResultSet> ExecuteQuery(const std::string& catalog,
-                      const std::string& sql,
-                      sdk::Status *status);
+    std::shared_ptr<ResultSet> ExecuteQuery(const std::string &catalog,
+                                            const std::string &sql,
+                                            sdk::Status *status);
 
  private:
     ::brpc::Channel *channel_;
@@ -68,9 +66,8 @@ bool DBMSSdkImpl::Init() {
     return true;
 }
 
-std::shared_ptr<TableSet> DBMSSdkImpl::GetTables(
-    const std::string& catalog,
-    sdk::Status *status) {  
+std::shared_ptr<TableSet> DBMSSdkImpl::GetTables(const std::string &catalog,
+                                                 sdk::Status *status) {
     if (status == NULL) {
         return std::shared_ptr<TableSetImpl>();
     }
@@ -85,15 +82,15 @@ std::shared_ptr<TableSet> DBMSSdkImpl::GetTables(
         status->msg = "fail to call remote";
         return std::shared_ptr<TableSetImpl>();
     } else {
-        std::shared_ptr<TableSetImpl> table_set(new TableSetImpl(response.tables()));
+        std::shared_ptr<TableSetImpl> table_set(
+            new TableSetImpl(response.tables()));
         status->code = response.status().code();
         status->msg = response.status().msg();
         return table_set;
     }
 }
 
-std::vector<std::string> DBMSSdkImpl::GetDatabases(
-    sdk::Status *status) { 
+std::vector<std::string> DBMSSdkImpl::GetDatabases(sdk::Status *status) {
     if (status == NULL) {
         return std::vector<std::string>();
     }
@@ -116,10 +113,9 @@ std::vector<std::string> DBMSSdkImpl::GetDatabases(
     return names;
 }
 
-
-std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(
-    const std::string& catalog, const std::string& sql,
-    sdk::Status *status) {
+std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
+                                                     const std::string &sql,
+                                                     sdk::Status *status) {
     std::shared_ptr<ResultSetImpl> empty;
     node::NodeManager node_manager;
     parser::FeSQLParser parser;
@@ -196,15 +192,14 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(
 
         default: {
             status->msg = "fail to execute script with unSuppurt type" +
-                         node::NameOfPlanNodeType(plan->GetType());
+                          node::NameOfPlanNodeType(plan->GetType());
             status->code = fesql::common::kUnSupport;
             return empty;
         }
     }
 }
-void DBMSSdkImpl::CreateDatabase(
-    const std::string& catalog,
-    sdk::Status *status) { 
+void DBMSSdkImpl::CreateDatabase(const std::string &catalog,
+                                 sdk::Status *status) {
     if (status == NULL) return;
     ::fesql::dbms::DBMSServer_Stub stub(channel_);
     ::fesql::dbms::AddDatabaseRequest request;

@@ -33,15 +33,14 @@ class SchemaImpl : public Schema {
 
     ~SchemaImpl();
 
-    inline void SetSchema(const vm::Schema& schema) {
-        schema_ = schema;
-    }
+    inline void SetSchema(const vm::Schema& schema) { schema_ = schema; }
     int32_t GetColumnCnt() const;
 
     const std::string& GetColumnName(uint32_t index) const;
 
     const DataType GetColumnType(uint32_t index) const;
     const bool IsColumnNotNull(uint32_t index) const;
+
  private:
     vm::Schema schema_;
 };
@@ -54,6 +53,7 @@ class TableImpl : public Table {
     const std::string& GetCatalog();
     uint64_t GetCreateTime();
     const std::shared_ptr<Schema> GetSchema();
+
  private:
     const type::TableDef& table_def_;
 };
@@ -65,6 +65,7 @@ class TableSetImpl : public TableSet {
     bool Next();
     const std::shared_ptr<Table> GetTable();
     int32_t Size();
+
  private:
     const Tables tables_;
     int32_t index_;

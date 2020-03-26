@@ -22,12 +22,11 @@
 namespace fesql {
 namespace codec {
 
-
-class SchemaCodecTest : public ::testing::TestWithParam<std::pair<vm::Schema, uint32_t>> {
+class SchemaCodecTest
+    : public ::testing::TestWithParam<std::pair<vm::Schema, uint32_t>> {
  public:
     SchemaCodecTest() {}
     ~SchemaCodecTest() {}
-
 };
 
 std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
@@ -46,7 +45,7 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
     }
 
     {
-        // int16 
+        // int16
         vm::Schema schema;
         {
             ::fesql::type::ColumnDef* column = schema.Add();
@@ -56,7 +55,7 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
         inputs.push_back(std::make_pair(schema, 8));
     }
     {
-        // int32 
+        // int32
         vm::Schema schema;
         {
             ::fesql::type::ColumnDef* column = schema.Add();
@@ -138,8 +137,7 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
     return inputs;
 }
 
-void CompareSchema(const vm::Schema& left, 
-        const vm::Schema& right) {
+void CompareSchema(const vm::Schema& left, const vm::Schema& right) {
     ASSERT_EQ(left.size(), right.size());
     for (int32_t i = 0; i < left.size(); i++) {
         const type::ColumnDef& left_column = left.Get(i);
@@ -161,9 +159,8 @@ TEST_P(SchemaCodecTest, test_normal) {
     CompareSchema(pair.first, schema);
 }
 
-INSTANTIATE_TEST_CASE_P(SchemaCodecTestPrefix,
-                         SchemaCodecTest, 
-                         testing::ValuesIn(GenTestInput()));
+INSTANTIATE_TEST_CASE_P(SchemaCodecTestPrefix, SchemaCodecTest,
+                        testing::ValuesIn(GenTestInput()));
 
 }  // namespace codec
 }  // namespace fesql
@@ -172,4 +169,3 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-

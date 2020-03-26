@@ -23,27 +23,33 @@
 namespace fesql {
 namespace sdk {
 
-ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response):response_(std::move(response)),index_(-1),
-    size_(0), row_view_(), schema_() {
-   if (response_) {
-       schema_.SetSchema(response_->schema());
-       size_ = response_->result_set().size();
-   }
+ResultSetImpl::ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response)
+    : response_(std::move(response)),
+      index_(-1),
+      size_(0),
+      row_view_(),
+      schema_() {
+    if (response_) {
+        schema_.SetSchema(response_->schema());
+        size_ = response_->result_set().size();
+    }
 }
 
 ResultSetImpl::~ResultSetImpl() {}
 
 bool ResultSetImpl::Init() {
-    std::unique_ptr<codec::RowView> row_view(new codec::RowView(response_->schema()));
+    std::unique_ptr<codec::RowView> row_view(
+        new codec::RowView(response_->schema()));
     row_view_ = std::move(row_view);
     return true;
 }
 
 bool ResultSetImpl::Next() {
     index_++;
-    if (index_ < size_){
+    if (index_ < size_) {
         const std::string& row = response_->result_set(index_);
-        row_view_->Reset(reinterpret_cast<const int8_t*>(row.c_str()), row.size());
+        row_view_->Reset(reinterpret_cast<const int8_t*>(row.c_str()),
+                         row.size());
         return true;
     }
     return false;
@@ -68,9 +74,7 @@ bool ResultSetImpl::GetBool(uint32_t index, bool* val) {
     return ret == 0;
 }
 
-bool ResultSetImpl::GetChar(uint32_t index, char* result) {
-    return false;
-}
+bool ResultSetImpl::GetChar(uint32_t index, char* result) { return false; }
 
 bool ResultSetImpl::GetInt16(uint32_t index, int16_t* result) {
     if (result == NULL) {
@@ -80,7 +84,6 @@ bool ResultSetImpl::GetInt16(uint32_t index, int16_t* result) {
     int32_t ret = row_view_->GetInt16(index, result);
     return ret == 0;
 }
-
 
 bool ResultSetImpl::GetInt32(uint32_t index, int32_t* result) {
     if (result == NULL) {
@@ -110,7 +113,6 @@ bool ResultSetImpl::GetFloat(uint32_t index, float* result) {
 }
 
 bool ResultSetImpl::GetDouble(uint32_t index, double* result) {
-
     if (result == NULL) {
         LOG(WARNING) << "input ptr is null pointer";
         return false;
@@ -127,7 +129,7 @@ bool ResultSetImpl::GetDate(uint32_t index, uint32_t* days) {
     return false;
 }
 
-bool ResultSetImpl::GetTime(uint32_t index, int64_t *mills) {
+bool ResultSetImpl::GetTime(uint32_t index, int64_t* mills) {
     if (mills == NULL) {
         LOG(WARNING) << "input ptr is null pointer";
         return false;
@@ -136,16 +138,9 @@ bool ResultSetImpl::GetTime(uint32_t index, int64_t *mills) {
     return ret == 0;
 }
 
-const Schema& ResultSetImpl::GetSchema() {
-    return schema_;
-}
+const Schema& ResultSetImpl::GetSchema() { return schema_; }
 
-int32_t ResultSetImpl::Size() {
-    return size_;
-}
+int32_t ResultSetImpl::Size() { return size_; }
 
-}  // namespace of sdk
-}  // namespace of fesql
-
-
-
+}  // namespace sdk
+}  // namespace fesql

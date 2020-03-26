@@ -25,7 +25,6 @@ namespace fesql {
 namespace sdk {
 
 class ResultSet {
-
  public:
     ResultSet() {}
 

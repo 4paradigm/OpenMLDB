@@ -7,20 +7,19 @@
  *--------------------------------------------------------------------------
  **/
 
-#include  <unistd.h>
 #include "sdk/dbms_sdk.h"
+#include <unistd.h>
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "tablet/tablet_server_impl.h"
-#include "gflags/gflags.h"
 
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
 DECLARE_int32(port);
 DECLARE_bool(enable_keep_alive);
-
 
 namespace fesql {
 namespace sdk {
@@ -32,8 +31,8 @@ class MockClosure : public ::google::protobuf::Closure {
 };
 class DBMSSdkTest : public ::testing::Test {
  public:
-    DBMSSdkTest():dbms_server_(), tablet_server_(), tablet_(NULL),
-    dbms_(NULL){}
+    DBMSSdkTest()
+        : dbms_server_(), tablet_server_(), tablet_(NULL), dbms_(NULL) {}
     ~DBMSSdkTest() {}
     void SetUp() {
         brpc::ServerOptions options;
@@ -45,7 +44,8 @@ class DBMSSdkTest : public ::testing::Test {
         dbms_server_.AddService(dbms_, brpc::SERVER_DOESNT_OWN_SERVICE);
         dbms_server_.Start(dbms_port, &options);
         {
-            std::string tablet_endpoint = "127.0.0.1:" + std::to_string(tablet_port);
+            std::string tablet_endpoint =
+                "127.0.0.1:" + std::to_string(tablet_port);
             MockClosure closure;
             dbms::KeepAliveRequest request;
             request.set_endpoint(tablet_endpoint);
@@ -60,6 +60,7 @@ class DBMSSdkTest : public ::testing::Test {
         delete tablet_;
         delete dbms_;
     }
+
  public:
     brpc::Server dbms_server_;
     brpc::Server tablet_server_;
@@ -72,7 +73,8 @@ class DBMSSdkTest : public ::testing::Test {
 TEST_F(DBMSSdkTest, DatabasesAPITest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
     {
         Status status;
         std::vector<std::string> names = dbms_sdk->GetDatabases(&status);
@@ -110,13 +112,13 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(3u, names.size());
     }
-
 }
 
 TEST_F(DBMSSdkTest, TableAPITest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
     // create database db1
     {
         Status status;
@@ -133,7 +135,6 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
     {
-
         Status status;
         // create table test1
         std::string sql =
@@ -189,7 +190,8 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         // show db_1 tables
         std::string name = "db_1";
         Status status;
-        std::shared_ptr<TableSet> tablet_set = dbms_sdk->GetTables(name, &status);
+        std::shared_ptr<TableSet> tablet_set =
+            dbms_sdk->GetTables(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(3u, tablet_set->Size());
     }
@@ -206,7 +208,8 @@ TEST_F(DBMSSdkTest, TableAPITest) {
 TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
-    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk = ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
 
     {
         Status status;
