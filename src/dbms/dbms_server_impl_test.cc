@@ -549,6 +549,7 @@ TEST_F(DBMSServerImplTest, GetTableTest) {
 }  // namespace dbms
 }  // namespace fesql
 int main(int argc, char** argv) {
+
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;
