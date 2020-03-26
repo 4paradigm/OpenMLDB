@@ -26,6 +26,8 @@
 #include "plan/planner.h"
 #include "proto/dbms.pb.h"
 #include "sdk/result_set_impl.h"
+#include "sdk/tablet_sdk.h"
+
 namespace fesql {
 namespace sdk {
 
@@ -47,12 +49,18 @@ class DBMSSdkImpl : public DBMSSdk {
                                             sdk::Status *status);
 
  private:
+
+    bool InitTabletSdk();
+    
+
+ private:
     ::brpc::Channel *channel_;
     std::string endpoint_;
+    std::shared_ptr<TabletSdk> tablet_sdk_;
 };
 
 DBMSSdkImpl::DBMSSdkImpl(const std::string &endpoint)
-    : channel_(NULL), endpoint_(endpoint) {}
+    : channel_(NULL), endpoint_(endpoint), tablet_sdk_() {}
 
 DBMSSdkImpl::~DBMSSdkImpl() { delete channel_; }
 
@@ -63,7 +71,24 @@ bool DBMSSdkImpl::Init() {
     if (ret != 0) {
         return false;
     }
-    return true;
+    return InitTabletSdk();
+}
+
+bool DBMSSdkImpl::InitTabletSdk() {
+    ::fesql::dbms::DBMSServer_Stub stub(channel_);
+    ::fesql::dbms::GetTabletRequest request;
+    ::fesql::dbms::GetTabletResponse response;
+    brpc::Controller cntl;
+    stub.GetTablet(&cntl, &request, &response, NULL);
+    if (cntl.Failed()) {
+        return false;
+    }
+    if (response.endpoints_size() <= 0) {
+        return false;
+    }
+    tablet_sdk_ = CreateTabletSdk(response.endpoints().Get(0));
+    if (tablet_sdk_) return true;
+    return false;
 }
 
 std::shared_ptr<TableSet> DBMSSdkImpl::GetTables(const std::string &catalog,
@@ -122,7 +147,6 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
     analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
     DLOG(INFO) << "start to execute script from dbms:\n" << sql;
-    // TODO(chenjing): init with db
 
     base::Status sql_status;
     node::NodePointVector parser_trees;
@@ -133,16 +157,18 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
         status->msg = sql_status.msg;
         return empty;
     }
-    node::NodePointVector query_trees;
+
+    /*node::NodePointVector query_trees;
     analyser.Analyse(parser_trees, query_trees, sql_status);
     if (0 != sql_status.code) {
         status->code = sql_status.code;
         status->msg = sql_status.msg;
         LOG(WARNING) << status->msg;
         return empty;
-    }
+    }*/
+
     node::PlanNodeList plan_trees;
-    planner.CreatePlanTree(query_trees, plan_trees, sql_status);
+    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
 
     if (0 != sql_status.code) {
         status->code = sql_status.code;
@@ -159,7 +185,17 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
         LOG(WARNING) << status->msg;
         return empty;
     }
+
     switch (plan->GetType()) {
+        case node::kPlanTypeSelect:
+            {
+                return tablet_sdk_->Query(catalog, sql, status);
+            }
+        case node::kPlanTypeInsert:
+            {
+                tablet_sdk_->Insert(catalog, sql, status);
+                return empty;
+            }
         case node::kPlanTypeCreate: {
             node::CreatePlanNode *create =
                 dynamic_cast<node::CreatePlanNode *>(plan);

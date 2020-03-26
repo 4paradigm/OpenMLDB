@@ -99,13 +99,6 @@ void FeSQLAnalyser::TransformSingleTableSelectNode(
         return;
     }
 
-    if (false == IsTableExist(table_ref->GetOrgTableName())) {
-        status.msg = "can not query select when table " +
-                     table_ref->GetOrgTableName() + " is not exist in db";
-        status.code = common::kTableNotFound;
-        return;
-    }
-
     for (auto node : parser_tree->GetSelectList()) {
         if (node::kResTarget != node->GetType()) {
             status.msg = "Fail to handle select list node type " +

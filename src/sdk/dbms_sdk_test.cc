@@ -15,11 +15,18 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "tablet/tablet_server_impl.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/TargetSelect.h"
+
 
 DECLARE_string(dbms_endpoint);
 DECLARE_string(endpoint);
 DECLARE_int32(port);
 DECLARE_bool(enable_keep_alive);
+
+using namespace llvm;       // NOLINT
+using namespace llvm::orc;  // NOLINT
+
 
 namespace fesql {
 namespace sdk {
@@ -205,6 +212,106 @@ TEST_F(DBMSSdkTest, TableAPITest) {
     }
 }
 
+TEST_F(DBMSSdkTest, ExecuteSQLTest) {
+    usleep(2000 * 1000);
+    const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
+    std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
+        ::fesql::sdk::CreateDBMSSdk(endpoint);
+    std::string name = "db_2";
+    {
+
+        Status status;
+        dbms_sdk->CreateDatabase(name, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    {
+
+        Status status;
+        // create table db1
+        std::string sql =
+            "create table test3(\n"
+            "    column1 int NOT NULL,\n"
+            "    column2 bigint NOT NULL,\n"
+            "    column3 int NOT NULL,\n"
+            "    column4 string NOT NULL,\n"
+            "    column5 int NOT NULL,\n"
+            "    index(key=column4, ts=column2)\n"
+            ");";
+        dbms_sdk->ExecuteQuery(name, sql, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    
+    {
+
+        Status status;
+        // insert
+        std::string sql = "insert into test3 values(1, 4000, 2, \"hello\", 3);";
+        dbms_sdk->ExecuteQuery(name, sql, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+    }
+
+    {
+
+        Status status;
+        std::string sql = "select column1, column2, column3, column4, column5 from test3 limit 1;";
+        std::shared_ptr<ResultSet> rs = dbms_sdk->ExecuteQuery(name, sql, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+        if (rs) {
+            const Schema& schema = rs->GetSchema();
+            ASSERT_EQ(5, schema.GetColumnCnt());
+            ASSERT_EQ("column1", schema.GetColumnName(0));
+            ASSERT_EQ("column2", schema.GetColumnName(1));
+            ASSERT_EQ("column3", schema.GetColumnName(2));
+            ASSERT_EQ("column4", schema.GetColumnName(3));
+            ASSERT_EQ("column5", schema.GetColumnName(4));
+
+            ASSERT_EQ(kTypeInt32, schema.GetColumnType(0));
+            ASSERT_EQ(kTypeInt64, schema.GetColumnType(1));
+            ASSERT_EQ(kTypeInt32, schema.GetColumnType(2));
+            ASSERT_EQ(kTypeString, schema.GetColumnType(3));
+            ASSERT_EQ(kTypeInt32, schema.GetColumnType(4));
+
+            ASSERT_TRUE(rs->Next());
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(0, &val));
+                ASSERT_EQ(val, 1);
+            }
+            {
+                int64_t val = 0;
+                ASSERT_TRUE(rs->GetInt64(1, &val));
+                ASSERT_EQ(val, 4000);
+            }
+            {
+                int32_t val = 0;
+                ASSERT_TRUE(rs->GetInt32(2, &val));
+                ASSERT_EQ(val, 2);
+            }
+           
+            {
+                int val = 0;
+                ASSERT_TRUE(rs->GetInt32(4, &val));
+                ASSERT_EQ(val, 3);
+            }
+
+            {
+                char* val = NULL;
+                uint32_t size = 0;
+                ASSERT_TRUE(rs->GetString(3, &val, &size));
+                ASSERT_EQ(size, 5);
+                std::string str(val, 5);
+                ASSERT_EQ(str, "hello");
+            }
+        }else{
+            ASSERT_FALSE(true);
+        }
+
+    }
+
+}
+
 TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
     usleep(2000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
@@ -252,10 +359,15 @@ TEST_F(DBMSSdkTest, ExecuteScriptAPITest) {
     }
 }
 
+
 }  // namespace sdk
 }  // namespace fesql
 int main(int argc, char *argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
+    InitLLVM X(argc, argv);
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();

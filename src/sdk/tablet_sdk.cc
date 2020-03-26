@@ -274,6 +274,10 @@ void TabletSdkImpl::BuildInsertRequest(const node::InsertPlanNode* iplan,
                                      strlen(primary->GetStr()));
                 break;
             }
+            case type::kTimestamp: {
+                ok = rb.AppendTimestamp(primary->GetInt());
+                break;
+            }
             default: {
                 status->code = common::kTypeError;
                 status->msg = "can not handle data type " +
