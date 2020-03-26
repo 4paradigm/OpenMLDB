@@ -22,14 +22,12 @@
 */
 
 
-#include <stdlib.h>
+#include<stdint.h>
 #include<algorithm>
 #include<float.h>
 #include<string.h>
 
 typedef unsigned char  uchar;  /* Short for unsigned char */
-typedef unsigned short  ushort;        
-typedef unsigned int  uint;
 
 #define FLT_EXP_DIG (sizeof(float) * 8 - FLT_MANT_DIG)
 #define DBL_EXP_DIG (sizeof(double) * 8 - DBL_MANT_DIG)
@@ -76,7 +74,7 @@ namespace base {
             to[i] = from[j];
     }
     
-    static int PackInteger(const void* from, uint length, 
+    static int PackInteger(const void* from, uint32_t length, 
             bool unsigned_flag, void *to) {
         if (from == nullptr || length < 2) {
             return -1;      
@@ -87,7 +85,7 @@ namespace base {
         return 0;
     }
 
-    static int PackFloat(const void* from, uint length, void *to) {
+    static int PackFloat(const void* from, uint32_t length, void *to) {
         if (from == nullptr || length != sizeof(float)) {
             return -1;      
         }
@@ -105,13 +103,13 @@ namespace base {
             RdbSwapFloatBytes(tmp, ptr);
             if (tmp[0] & 128) {
                 /* Negative */
-                uint i;
+                uint32_t i;
                 for (i = 0; i < sizeof(nr); i++)
                     tmp[i] = (uchar)(tmp[i] ^ (uchar)255);
             } else {
-                ushort exp_part = (((ushort)tmp[0] << 8) | (ushort)tmp[1] |
-                        (ushort)32768);
-                exp_part += (ushort)1 << (16 - 1 - FLT_EXP_DIG);
+                uint16_t exp_part = (((uint16_t)tmp[0] << 8) | (uint16_t)tmp[1] |
+                        (uint16_t)32768);
+                exp_part += (uint16_t)1 << (16 - 1 - FLT_EXP_DIG);
                 tmp[0] = (uchar)(exp_part >> 8);
                 tmp[1] = (uchar)exp_part;
             }
@@ -132,13 +130,13 @@ namespace base {
             uchar *ptr = (uchar*) &nr;
             RdbSwapDoubleBytes(tmp, ptr);
             if (tmp[0] & 128) {/* Negative */
-                uint i;
+                uint32_t i;
                 for (i = 0; i < sizeof(nr); i++)
                     tmp[i] = tmp[i] ^ (uchar)255;
             } else {/* Set high and move exponent one up */
-                ushort exp_part = (((ushort)tmp[0] << 8) | (ushort) tmp[1] |
-                        (ushort)32768);
-                exp_part += (ushort)1 << (16 - 1 - DBL_EXP_DIG);
+                uint16_t exp_part = (((uint16_t)tmp[0] << 8) | (uint16_t) tmp[1] |
+                        (uint16_t)32768);
+                exp_part += (uint16_t)1 << (16 - 1 - DBL_EXP_DIG);
                 tmp[0] = (uchar)(exp_part >> 8);
                 tmp[1] = (uchar)exp_part;
             }
@@ -146,7 +144,7 @@ namespace base {
     }
 
     /* The following should work for IEEE */
-    static int PackDouble(const void* from, uint length, void *to) {
+    static int PackDouble(const void* from, uint32_t length, void *to) {
         const uchar* ptr = (uchar*)from;
         double nr;
         memcpy(&nr, ptr, length);
@@ -216,7 +214,7 @@ namespace base {
         return 0;
     }
     
-    static int UnpackInteger(const void* from, uint length, bool unsigned_flag, void *to) {
+    static int UnpackInteger(const void* from, uint32_t length, bool unsigned_flag, void *to) {
         const uchar *ufrom = (uchar*)from;
         uchar* uto = (uchar*)to;
         const int sign_byte = ufrom[0];
@@ -225,7 +223,7 @@ namespace base {
         } else {
             uto[length - 1] = static_cast<char>(sign_byte ^ 128);  // Reverse the sign bit.
         }
-        for (uint i = 0, j = length - 1; i < length - 1; ++i, --j) 
+        for (uint32_t i = 0, j = length - 1; i < length - 1; ++i, --j) 
             uto[i] = ufrom[j];
         return 0;
     }
@@ -253,9 +251,9 @@ namespace base {
         if (tmp[0] & 0x80) {
             // If the high bit is set the original value was positive so
             // remove the high bit and subtract one from the exponent.
-            ushort exp_part = ((ushort)tmp[0] << 8) | (ushort)tmp[1];
+            uint16_t exp_part = ((uint16_t)tmp[0] << 8) | (uint16_t)tmp[1];
             exp_part &= 0x7FFF;                             // clear high bit;
-            exp_part -= (ushort)1 << (16 - 1 - exp_digit);  // subtract from exponent
+            exp_part -= (uint16_t)1 << (16 - 1 - exp_digit);  // subtract from exponent
             tmp[0] = (uchar)(exp_part >> 8);
             tmp[1] = (uchar)exp_part;
         } else {
@@ -303,7 +301,7 @@ namespace base {
     /*
        Read the next @param size bytes. 
     */
-    static const uchar *Read(const uint size, const uchar **usrc) {
+    static const uchar *Read(const uint32_t size, const uchar **usrc) {
         const uchar *res;
         res = *usrc;
         *usrc += size;
@@ -315,10 +313,10 @@ namespace base {
        last chunk in the input.  This is based on the new format - see
        pack_variable_format.
     */
-    static uint CalcUnpackVariableFormat(uchar flag, bool *done) {
+    static uint32_t CalcUnpackVariableFormat(uchar flag, bool *done) {
         // Check for invalid flag values
         if (flag > RDB_ESCAPE_LENGTH) {
-            return (uint)-1;
+            return (uint32_t)-1;
         }
         // Values from 1 to N-1 indicate this is the last chunk and that is how
         // many bytes were used
@@ -342,8 +340,8 @@ namespace base {
         bool finished = false;
         /* Decode the length-emitted encoding here */
         while ((ptr = Read(RDB_ESCAPE_LENGTH, &usrc))) {
-            uint used_bytes = CalcUnpackVariableFormat(ptr[RDB_ESCAPE_LENGTH - 1], &finished);
-            if (used_bytes == (uint)-1) {
+            uint32_t used_bytes = CalcUnpackVariableFormat(ptr[RDB_ESCAPE_LENGTH - 1], &finished);
+            if (used_bytes == (uint32_t)-1) {
                 return -1;  
             }
             /*
