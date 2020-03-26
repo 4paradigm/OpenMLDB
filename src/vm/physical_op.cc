@@ -86,7 +86,7 @@ void PhysicalRequestProviderNode::Print(std::ostream& output,
 void PhysicalScanIndexNode::Print(std::ostream& output,
                                   const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(type=" << ScanTypeName(provider_type_)
+    output << "(type=" << DataProviderTypeName(provider_type_)
            << ", table=" << table_handler_->GetName()
            << ", index=" << index_name_ << ")";
 }

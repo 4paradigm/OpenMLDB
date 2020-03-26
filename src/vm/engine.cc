@@ -23,11 +23,14 @@
 #include "codegen/buf_ir_builder.h"
 #include "storage/codec.h"
 #include "storage/window.h"
+#include "vm/mem_catalog.h"
 
 namespace fesql {
 namespace vm {
 
-Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog) {}
+Engine::Engine(const std::shared_ptr<Catalog>& catalog,
+               const node::PlanModeType mode)
+    : cl_(catalog), mode_(mode) {}
 
 Engine::~Engine() {}
 
@@ -46,12 +49,14 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     std::shared_ptr<CompileInfo> info(new CompileInfo());
     info->sql_ctx.sql = sql;
     info->sql_ctx.db = db;
-    SQLCompiler compiler(cl_);
+    info->sql_ctx.mode = mode_;
+    SQLCompiler compiler(cl_, &nm_);
     bool ok = compiler.Compile(info->sql_ctx, status);
     if (!ok || 0 != status.code) {
         // do clean
         return false;
     }
+
     {
         session.SetCatalog(cl_);
         // check
@@ -89,7 +94,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 RunSession::RunSession() {}
 RunSession::~RunSession() {}
 
-int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
+int32_t RequestRunSession::Run(const Row& in_row, Row& out_row) {
     int op_size = compile_info_->sql_ctx.ops.ops.size();
     std::vector<std::vector<storage::Row>> temp_buffers(op_size);
     for (auto op : compile_info_->sql_ctx.ops.ops) {
@@ -358,436 +363,494 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
     }
     return 0;
 }
-int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
-    int op_size = compile_info_->sql_ctx.ops.ops.size();
-    std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
-    for (auto op : compile_info_->sql_ctx.ops.ops) {
-        switch (op->type) {
-            case kOpScan: {
-                break;
-            }
-            case kOpProject: {
-                ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
-
-                // op function
-                int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-                    (int32_t(*)(int8_t*, int8_t*, int32_t,
-                                int8_t**))project_op->fn;
-
-                std::unique_ptr<storage::RowView> row_view = std::move(
-                    std::unique_ptr<storage::RowView>(new storage::RowView(
-                        project_op->table_handler->GetSchema())));
-
-                // out buffers
-                std::vector<::fesql::storage::Row>& out_buffers =
-                    temp_buffers[project_op->idx];
-                uint64_t min = limit > 0 ? limit : INT64_MAX;
-                if (project_op->scan_limit != 0 &&
-                    min > project_op->scan_limit) {
-                    min = project_op->scan_limit;
-                }
-                if (min != 0 && INT64_MAX != min) {
-                    out_buffers.reserve(min);
-                }
-
-                if (project_op->window_agg) {
-                    // iterator whole table
-                    auto it = project_op->table_handler->GetWindowIterator(
-                        project_op->w.index_name);
-                    it->SeekToFirst();
-                    uint64_t count = 0;
-                    while (it->Valid() && count < min) {
-                        std::vector<std::pair<uint64_t, Row>> buffer;
-                        // TODO(chenjing): resize or reserve with getCount()
-                        // from storage api
-                        buffer.reserve(10000);
-                        auto wit = it->GetValue();
-                        wit->SeekToFirst();
-                        while (wit->Valid()) {
-                            base::Slice value = wit->GetValue();
-                            ::fesql::storage::Row row(
-                                {.buf = reinterpret_cast<int8_t*>(
-                                     const_cast<char*>(value.data())),
-                                 .size = value.size()});
-                            buffer.push_back(
-                                std::make_pair(wit->GetKey(), row));
-                            wit->Next();
-                        }
-                        it->Next();
-                        DLOG(INFO) << "buffer size: " << buffer.size();
-                        // TODO(chenjing): decide window type
-                        ::fesql::storage::CurrentHistoryWindow window(
-                            project_op->w.start_offset);
-                        window.Reserve(buffer.size());
-                        for (auto iter = buffer.rbegin();
-                             count < min && iter != buffer.rend(); iter++) {
-                            window.BufferData(iter->first, iter->second);
-                            int8_t* output = NULL;
-                            size_t output_size = 0;
-                            // handle window
-                            fesql::storage::WindowImpl impl(window);
-                            uint32_t ret = udf(iter->second.buf,
-                                               reinterpret_cast<int8_t*>(&impl),
-                                               0, &output);
-                            if (ret != 0) {
-                                LOG(WARNING) << "fail to run udf " << ret;
-                                return 1;
-                            }
-                            out_buffers.push_back(::fesql::storage::Row{
-                                .buf = output, .size = output_size});
-                            count++;
-                        }
-                    }
-                } else {
-                    auto it = project_op->table_handler->GetIterator();
-                    // iterator whole table
-                    it->SeekToFirst();
-                    uint64_t count = 0;
-                    while (it->Valid() && count++ < min) {
-                        base::Slice value = it->GetValue();
-                        ::fesql::storage::Row row(
-                            {.buf = reinterpret_cast<int8_t*>(
-                                 const_cast<char*>(value.data())),
-                             .size = value.size()});
-                        int8_t* output = NULL;
-                        size_t output_size = 0;
-                        // handle window
-                        uint32_t ret = udf(row.buf, nullptr, row.size, &output);
-                        if (ret != 0) {
-                            LOG(WARNING) << "fail to run udf " << ret;
-                            return 1;
-                        }
-                        out_buffers.push_back(::fesql::storage::Row{
-                            .buf = output, .size = output_size});
-                        it->Next();
-                    }
-                }
-                // TODO(chenjing): handle multi keys
-                break;
-            }
-            case kOpMerge: {
-                MergeOp* merge_op = reinterpret_cast<MergeOp*>(op);
-                if (merge_op->children.size() <= 1) {
-                    LOG(WARNING)
-                        << "fail to merge when children size less than 2";
-                    return 1;
-                }
-                // TODO(chenjing): add merge execute logic
-
-                break;
-            }
-            case kOpLimit: {
-                // TODO(chenjing): limit optimized.
-                LimitOp* limit_op = reinterpret_cast<LimitOp*>(op);
-                OpNode* prev = limit_op->children[0];
-                std::vector<::fesql::storage::Row>& in_buffers =
-                    temp_buffers[prev->idx];
-                std::vector<::fesql::storage::Row>& out_buffers =
-                    temp_buffers[limit_op->idx];
-                uint32_t cnt = 0;
-                for (uint32_t i = 0; i < in_buffers.size(); ++i) {
-                    if (cnt >= limit_op->limit) {
-                        break;
-                    }
-                    out_buffers.push_back(in_buffers[i]);
-                    cnt++;
-                }
-                break;
-            }
-        }
+int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
+    compile_info_->sql_ctx.plan->Print(std::cout, "");
+    auto output = RunBatchPlan(compile_info_->sql_ctx.plan);
+    if (!output) {
+        LOG(WARNING) << "run batch plan output is null";
+        return -1;
     }
-    buf.reserve(temp_buffers[op_size - 1].size());
-    for (auto row : temp_buffers[op_size - 1]) {
-        buf.push_back(row.buf);
+    auto iter = output->GetIterator();
+    while (iter->Valid()) {
+        buf.push_back(reinterpret_cast<int8_t*>(
+            const_cast<char*>(iter->GetValue().data())));
+        iter->Next();
     }
     return 0;
 }
-int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
-    int op_size = compile_info_->sql_ctx.ops.ops.size();
-    std::vector<std::vector<::fesql::storage::Row>> temp_buffers(op_size);
-    for (auto op : compile_info_->sql_ctx.ops.ops) {
-        switch (op->type) {
-            case kOpScan: {
-                ScanOp* scan_op = reinterpret_cast<ScanOp*>(op);
-                std::vector<int8_t*> output_rows;
-                std::unique_ptr<Iterator> it =
-                    scan_op->table_handler->GetIterator();
-                it->SeekToFirst();
-                uint64_t min = limit;
-                if (min > scan_op->limit) {
-                    min = scan_op->limit;
+
+std::shared_ptr<TableHandler> RunSession::RunBatchPlan(
+    const PhysicalOpNode* node) {
+    auto fail_ptr = std::shared_ptr<TableHandler>();
+    if (nullptr == node) {
+        LOG(WARNING) << "run fail: null node";
+        return fail_ptr;
+    }
+    switch (node->type_) {
+        case kPhysicalOpDataProvider: {
+            auto op = dynamic_cast<const PhysicalDataProviderNode*>(node);
+            switch (op->provider_type_) {
+                case kProviderTypeTable: {
+                    auto provider =
+                        dynamic_cast<const PhysicalTableProviderNode*>(node);
+                    return provider->table_handler_;
                 }
-                uint32_t count = 0;
-                std::vector<::fesql::storage::Row>& out_buffers =
-                    temp_buffers[scan_op->idx];
-                while (it->Valid() && count++ < min) {
-                    base::Slice value = it->GetValue();
-                    out_buffers.push_back(::fesql::storage::Row{
-                        .buf = reinterpret_cast<int8_t*>(
-                            const_cast<char*>(value.data())),
-                        .size = value.size()});
-                    it->Next();
+                case kProviderTypeIndexScan: {
+                    auto provider =
+                        dynamic_cast<const PhysicalScanIndexNode*>(node);
+                    return std::shared_ptr<PartitionHandler>(
+                        new PartitionHandler(provider->table_handler_,
+                                             provider->index_name_));
                 }
-                break;
-            }
-            case kOpProject: {
-                ProjectOp* project_op = reinterpret_cast<ProjectOp*>(op);
-                std::vector<int8_t*> output_rows;
-                int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-                    (int32_t(*)(int8_t*, int8_t*, int32_t,
-                                int8_t**))project_op->fn;
-                OpNode* prev = project_op->children[0];
-                std::unique_ptr<storage::RowView> row_view = std::move(
-                    std::unique_ptr<storage::RowView>(new storage::RowView(
-                        project_op->table_handler->GetSchema())));
-
-                std::vector<::fesql::storage::Row>& in_buffers =
-                    temp_buffers[prev->idx];
-
-                std::vector<::fesql::storage::Row>& out_buffers =
-                    temp_buffers[project_op->idx];
-
-                if (project_op->window_agg) {
-                    auto key_iter = project_op->w.keys.cbegin();
-                    ::fesql::type::Type key_type = key_iter->type;
-                    uint32_t key_idx = key_iter->pos;
-                    for (auto row : in_buffers) {
-                        row_view->Reset(row.buf, row.size);
-                        int8_t* output = NULL;
-                        size_t output_size = 0;
-                        // handle window
-                        std::string key_name;
-                        {
-                            switch (key_type) {
-                                case fesql::type::kInt32: {
-                                    int32_t value;
-                                    if (0 ==
-                                        row_view->GetInt32(key_idx, &value)) {
-                                        key_name = std::to_string(value);
-                                    } else {
-                                        LOG(WARNING) << "fail to get partition "
-                                                        "for current row";
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                case fesql::type::kInt64: {
-                                    int64_t value;
-                                    if (0 ==
-                                        row_view->GetInt64(key_idx, &value)) {
-                                        key_name = std::to_string(value);
-                                    } else {
-                                        LOG(WARNING) << "fail to get partition "
-                                                        "for current row";
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                case fesql::type::kInt16: {
-                                    int16_t value;
-                                    if (0 ==
-                                        row_view->GetInt16(key_idx, &value)) {
-                                        key_name = std::to_string(value);
-                                    } else {
-                                        LOG(WARNING) << "fail to get partition "
-                                                        "for current row";
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                case fesql::type::kFloat: {
-                                    float value;
-                                    if (0 ==
-                                        row_view->GetFloat(key_idx, &value)) {
-                                        key_name = std::to_string(value);
-                                    } else {
-                                        LOG(WARNING) << "fail to get partition "
-                                                        "for current row";
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                case fesql::type::kDouble: {
-                                    double value;
-                                    if (0 ==
-                                        row_view->GetDouble(key_idx, &value)) {
-                                        key_name = std::to_string(value);
-                                    } else {
-                                        LOG(WARNING) << "fail to get partition "
-                                                        "for current row";
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                case fesql::type::kVarchar: {
-                                    char* str;
-                                    uint32_t str_size;
-                                    if (0 == row_view->GetString(key_idx, &str,
-                                                                 &str_size)) {
-                                        key_name = std::string(str, str_size);
-                                    } else {
-                                        LOG(WARNING) << "fail to get partition "
-                                                        "for current row";
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                default: {
-                                    LOG(WARNING) << "fail to get partition for "
-                                                    "current row";
-                                    break;
-                                }
-                            }
-                        }
-                        int64_t ts = 0;
-                        if (project_op->w.has_order) {
-                            // TODO(chenjing): handle null ts or
-                            // timestamp/date ts
-                            switch (project_op->w.order.type) {
-                                case fesql::type::kInt64: {
-                                    if (0 ==
-                                        row_view->GetInt64(
-                                            project_op->w.order.pos, &ts)) {
-                                    } else {
-                                        LOG(WARNING) << "fail to get order "
-                                                        "for current row";
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                case fesql::type::kInt32: {
-                                    int32_t v;
-                                    if (0 == row_view->GetInt32(
-                                                 project_op->w.order.pos, &v)) {
-                                        ts = static_cast<int64_t>(v);
-                                    } else {
-                                        LOG(WARNING) << "fail to get order "
-                                                        "for current row";
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                case fesql::type::kInt16: {
-                                    int16_t v;
-                                    if (0 == row_view->GetInt16(
-                                                 project_op->w.order.pos, &v)) {
-                                        ts = static_cast<int64_t>(v);
-                                    } else {
-                                        LOG(WARNING) << "fail to get order "
-                                                        "for current row";
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                default: {
-                                    LOG(WARNING) << "fail to get order for "
-                                                    "current row";
-                                    continue;
-                                }
-                            }
-                        }
-                        // scan window with single key
-                        auto window_it =
-                            project_op->table_handler->GetWindowIterator(
-                                project_op->w.index_name);
-                        window_it->Seek(key_name);
-                        if (!window_it->Valid()) {
-                            LOG(WARNING)
-                                << "fail get table iterator when index_name: "
-                                << project_op->w.index_name
-                                << " key: " << key_name;
-                            return 1;
-                        }
-                        auto single_window_it = window_it->GetValue();
-                        std::vector<::fesql::storage::Row> window;
-                        if (project_op->w.has_order) {
-                            single_window_it->Seek(ts);
-                        } else {
-                            single_window_it->SeekToFirst();
-                        }
-                        while (single_window_it->Valid()) {
-                            int64_t current_ts = single_window_it->GetKey();
-                            if (current_ts > ts + project_op->w.end_offset) {
-                                single_window_it->Next();
-                                continue;
-                            }
-                            if (current_ts <= ts + project_op->w.start_offset) {
-                                break;
-                            }
-                            base::Slice value = single_window_it->GetValue();
-                            storage::Row w_row;
-                            w_row.buf = reinterpret_cast<int8_t*>(
-                                const_cast<char*>(value.data()));
-                            window.push_back(w_row);
-                            single_window_it->Next();
-                        }
-                        fesql::storage::WindowImpl impl(&window);
-                        uint32_t ret =
-                            udf(row.buf, reinterpret_cast<int8_t*>(&impl),
-                                row.size, &output);
-                        if (ret != 0) {
-                            LOG(WARNING) << "fail to run udf " << ret;
-                            return 1;
-                        }
-                        out_buffers.push_back(::fesql::storage::Row{
-                            .buf = output, .size = output_size});
-                    }
-                } else {
-                    for (auto row : in_buffers) {
-                        row_view->Reset(row.buf, row.size);
-                        int8_t* output = NULL;
-                        size_t output_size = 0;
-                        // handle window
-                        uint32_t ret = udf(row.buf, nullptr, row.size, &output);
-
-                        if (ret != 0) {
-                            LOG(WARNING) << "fail to run udf " << ret;
-                            return 1;
-                        }
-                        out_buffers.push_back(::fesql::storage::Row{
-                            .buf = output, .size = output_size});
-                    }
-                }
-
-                // TODO(chenjing): handle multi keys
-
-                break;
-            }
-            case kOpMerge: {
-                MergeOp* merge_op = reinterpret_cast<MergeOp*>(op);
-                if (merge_op->children.size() <= 1) {
+                default: {
                     LOG(WARNING)
-                        << "fail to merge when children size less than 2";
-                    return 1;
+                        << "batch mode doesn't support data provider type "
+                        << vm::DataProviderTypeName(op->provider_type_);
+                    return fail_ptr;
                 }
-                // TODO(chenjing): add merge execute logic
-
-                break;
-            }
-            case kOpLimit: {
-                // TODO(chenjing): limit optimized.
-                LimitOp* limit_op = reinterpret_cast<LimitOp*>(op);
-                OpNode* prev = limit_op->children[0];
-                std::vector<::fesql::storage::Row>& in_buffers =
-                    temp_buffers[prev->idx];
-                std::vector<::fesql::storage::Row>& out_buffers =
-                    temp_buffers[limit_op->idx];
-                uint32_t cnt = 0;
-                for (uint32_t i = 0; i < in_buffers.size(); ++i) {
-                    if (cnt >= limit_op->limit) {
-                        break;
-                    }
-                    out_buffers.push_back(in_buffers[i]);
-                    cnt++;
-                }
-                break;
             }
         }
+        case kPhysicalOpProject: {
+            auto input = RunBatchPlan(node->GetProducers().at(0));
+            if (!input) {
+                return fail_ptr;
+            }
+            auto op = dynamic_cast<const PhysicalProjectNode*>(node);
+            switch (op->project_type_) {
+                case kTableProject: {
+                    auto iter = input->GetIterator();
+                    auto output_table = std::shared_ptr<MemTableHandler>(
+                        new MemTableHandler(op->output_schema));
+                    while (iter->Valid()) {
+                        const base::Slice slice =
+                            RowProject(op->GetFn(), iter->GetValue());
+                        output_table->AddRow(
+                            Row{.buf = reinterpret_cast<int8_t*>(
+                                    const_cast<char*>(slice.data())),
+                                .size = slice.size()});
+                        iter->Next();
+                    }
+                    return output_table;
+                }
+                case kWindowAggregation: {
+                    auto output_table = std::shared_ptr<MemTableHandler>(
+                        new MemTableHandler(op->output_schema));
+
+                    auto op =
+                        dynamic_cast<const PhysicalWindowAggrerationNode*>(
+                            node);
+                    if (input->IsPartitionTable()) {
+                        auto partitions =
+                            dynamic_cast<PartitionHandler*>(input.get());
+                        auto iter = partitions->GetWindowIterator();
+                        while (iter->Valid()) {
+                            auto segment = iter->GetValue();
+                            while (segment->Valid()) {
+                                storage::CurrentHistoryWindow window(
+                                    op->start_offset_);
+                                const base::Slice slice = WindowProject(
+                                    op->GetFn(), segment->GetKey(), segment->GetValue(), &window);
+                                output_table->AddRow(
+                                    Row{.buf = reinterpret_cast<int8_t*>(
+                                            const_cast<char*>(slice.data())),
+                                        .size = slice.size()});
+                                segment->Next();
+                            }
+                            iter->Next();
+                        }
+                    } else {
+
+                    }
+
+                    return output_table;
+                }
+                default: {
+                    LOG(WARNING)
+                        << "batch mode doesn't support data provider type "
+                        << vm::ProjectTypeName(op->project_type_);
+                    return fail_ptr;
+                }
+            }
+        }
+        case kPhysicalOpGroupBy: {
+            auto input = RunBatchPlan(node->GetProducers().at(0));
+            if (!input) {
+                return fail_ptr;
+            }
+            auto op = dynamic_cast<const PhysicalGroupNode*>(node);
+            if (node::ExprListNullOrEmpty(op->groups_)) {
+                return input;
+            }
+
+            std::vector<int> col_idxs;
+            for (int j = 0; j < int(op->groups_->children_.size()); ++j) {
+                col_idxs.push_back(j++);
+            }
+            if (input->IsPartitionTable()) {
+                return PartitionGroup(input, op->GetFnSchema(), op->GetFn(),
+                                      col_idxs);
+            } else {
+                return TableGroup(input, op->GetFnSchema(), op->GetFn(),
+                                  col_idxs);
+            }
+        }
+        case kPhysicalOpGroupAndSort: {
+            auto input = RunBatchPlan(node->GetProducers().at(0));
+            if (!input) {
+                return fail_ptr;
+            }
+            auto op = dynamic_cast<const PhysicalGroupAndSortNode*>(node);
+            if (node::ExprListNullOrEmpty(op->groups_) &&
+                (nullptr == op->orders_ ||
+                 node::ExprListNullOrEmpty(op->orders_->order_by_))) {
+                return input;
+            }
+
+            return TableSortGroup(input, op->GetFnSchema(), op->GetFn(),
+                                  op->groups_, op->orders_);
+        }
+        case kPhysicalOpLimit: {
+            auto input = RunBatchPlan(node->GetProducers().at(0));
+            if (!input) {
+                return fail_ptr;
+            }
+            auto op = dynamic_cast<const PhysicalLimitNode*>(node);
+            auto iter = input->GetIterator();
+            auto output_table = std::shared_ptr<MemTableHandler>(
+                new MemTableHandler(op->output_schema));
+            int32_t cnt = 0;
+            while (cnt++ < op->limit_cnt && iter->Valid()) {
+                auto value = iter->GetValue();
+                output_table->AddRow(Row{.buf = reinterpret_cast<int8_t*>(
+                                             const_cast<char*>(value.data())),
+                                         .size = value.size()});
+                iter->Next();
+            }
+            return output_table;
+        }
+        default: {
+            LOG(WARNING) << "can't handle node "
+                         << vm::PhysicalOpTypeName(node->type_);
+            return fail_ptr;
+        }
     }
-    for (auto row : temp_buffers[op_size - 1]) {
-        buf.push_back(row.buf);
+    return fail_ptr;
+}
+
+base::Slice RunSession::WindowProject(const int8_t* fn, uint64_t key,
+                                      const base::Slice slice,
+                                      storage::Window* window) {
+    if (slice.empty()) {
+        return slice;
     }
-    return 0;
+    int8_t* data = reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
+    window->BufferData(key, Row{.buf = data, .size = slice.size()});
+    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
+    int8_t* out_buf;
+    uint32_t ret =
+        udf(data, reinterpret_cast<int8_t*>(&window), slice.size(), &out_buf);
+    if (ret != 0) {
+        LOG(WARNING) << "fail to run udf " << ret;
+        return base::Slice();
+    }
+    return base::Slice(reinterpret_cast<char*>(out_buf));
+}
+base::Slice RunSession::RowProject(const int8_t* fn, const base::Slice slice) {
+    if (slice.empty()) {
+        return slice;
+    }
+    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
+    int8_t* buf;
+    uint32_t ret =
+        udf(reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())), nullptr,
+            slice.size(), &buf);
+    if (ret != 0) {
+        LOG(WARNING) << "fail to run udf " << ret;
+        return base::Slice();
+    }
+    return base::Slice(reinterpret_cast<char*>(buf));
+}
+base::Slice RunSession::AggProject(const int8_t* fn,
+                                   const std::shared_ptr<TableHandler> table) {
+    if (!table) {
+        return base::Slice();
+    }
+    auto iter = table->GetIterator();
+    iter->SeekToFirst();
+    if (!iter->Valid()) {
+        return base::Slice();
+    }
+
+    auto slice = iter->GetValue();
+
+    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
+    int8_t* buf;
+
+    uint32_t ret =
+        udf(reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())),
+            reinterpret_cast<int8_t*>(table->GetIterator().get()), slice.size(),
+            &buf);
+    if (ret != 0) {
+        LOG(WARNING) << "fail to run udf " << ret;
+        return base::Slice();
+    }
+    return base::Slice(reinterpret_cast<char*>(buf));
+}
+std::string RunSession::GetColumnString(fesql::storage::RowView* row_view,
+                                        int key_idx, type::Type key_type) {
+    std::string key = "";
+    switch (key_type) {
+        case fesql::type::kInt32: {
+            int32_t value;
+            if (0 == row_view->GetInt32(key_idx, &value)) {
+                return std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kInt64: {
+            int64_t value;
+            if (0 == row_view->GetInt64(key_idx, &value)) {
+                key = std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kInt16: {
+            int16_t value;
+            if (0 == row_view->GetInt16(key_idx, &value)) {
+                key = std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kFloat: {
+            float value;
+            if (0 == row_view->GetFloat(key_idx, &value)) {
+                key = std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kDouble: {
+            double value;
+            if (0 == row_view->GetDouble(key_idx, &value)) {
+                key = std::to_string(value);
+            }
+            break;
+        }
+        case fesql::type::kVarchar: {
+            char* str;
+            uint32_t str_size;
+            if (0 == row_view->GetString(key_idx, &str, &str_size)) {
+                key = std::string(str, str_size);
+            }
+            break;
+        }
+        default: {
+            LOG(WARNING) << "fail to get partition for "
+                            "current row";
+            break;
+        }
+    }
+    return key;
+}
+
+int64_t RunSession::GetColumnInt64(fesql::storage::RowView* row_view,
+                                   int key_idx, type::Type key_type) {
+    int64_t key = -1;
+    switch (key_type) {
+        case fesql::type::kInt32: {
+            int32_t value;
+            if (0 == row_view->GetInt32(key_idx, &value)) {
+                return static_cast<int64_t>(value);
+            }
+            break;
+        }
+        case fesql::type::kInt64: {
+            int64_t value;
+            if (0 == row_view->GetInt64(key_idx, &value)) {
+                return value;
+            }
+            break;
+        }
+        case fesql::type::kInt16: {
+            int16_t value;
+            if (0 == row_view->GetInt16(key_idx, &value)) {
+                return static_cast<int64_t>(value);
+            }
+            break;
+        }
+        case fesql::type::kFloat: {
+            float value;
+            if (0 == row_view->GetFloat(key_idx, &value)) {
+                return static_cast<int64_t>(value);
+            }
+            break;
+        }
+        case fesql::type::kDouble: {
+            double value;
+            if (0 == row_view->GetDouble(key_idx, &value)) {
+                return static_cast<int64_t>(value);
+            }
+            break;
+        }
+        default: {
+            LOG(WARNING) << "fail to get partition for "
+                            "current row";
+            break;
+        }
+    }
+    return key;
+}
+std::shared_ptr<TableHandler> RunSession::TableGroup(
+    const std::shared_ptr<TableHandler> table, const Schema& schema,
+    const int8_t* fn, const std::vector<int>& idxs) {
+    if (idxs.empty()) {
+        return table;
+    }
+
+    auto output_partitions = std::shared_ptr<MemPartitionHandler>(
+        new MemPartitionHandler(table, ""));
+
+    auto iter = table->GetIterator();
+    while (iter->Valid()) {
+        const base::Slice slice = RowProject(fn, iter->GetValue());
+        int8_t* buf =
+            reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
+        storage::RowView view(schema, buf, slice.size());
+        std::string keys = "";
+        for (auto pos : idxs) {
+            std::string key =
+                GetColumnString(&view, pos, schema.Get(pos).type());
+            if (!keys.empty()) {
+                keys.append("|");
+            }
+            keys.append(key);
+        }
+        output_partitions->AddRow(keys, Row{.buf = buf, .size = slice.size()});
+        iter->Next();
+    }
+    return output_partitions;
+}
+std::shared_ptr<TableHandler> RunSession::PartitionGroup(
+    const std::shared_ptr<TableHandler> table, const Schema& schema,
+    const int8_t* fn, const std::vector<int>& idxs) {
+    if (idxs.empty()) {
+        return table;
+    }
+    auto output_partitions = std::shared_ptr<MemPartitionHandler>(
+        new MemPartitionHandler(table, ""));
+    auto partitions = dynamic_cast<PartitionHandler*>(table.get());
+    auto iter = partitions->GetWindowIterator();
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        auto segment_iter = iter->GetValue();
+        segment_iter->SeekToFirst();
+        while (segment_iter->Valid()) {
+            const base::Slice slice = RowProject(fn, segment_iter->GetValue());
+            int8_t* buf =
+                reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
+            storage::RowView view(schema, buf, slice.size());
+            std::string keys = "";
+            for (auto pos : idxs) {
+                std::string key =
+                    GetColumnString(&view, pos, schema.Get(pos).type());
+                if (!keys.empty()) {
+                    keys.append("|");
+                }
+                keys.append(key);
+            }
+            output_partitions->AddRow(keys, segment_iter->GetKey(),
+                                      Row{.buf = buf, .size = slice.size()});
+        }
+        iter->Next();
+    }
+    return output_partitions;
+}
+std::shared_ptr<TableHandler> RunSession::TableSortGroup(
+    std::shared_ptr<TableHandler> table, const Schema& schema, const int8_t* fn,
+    const node::ExprListNode* groups, const node::OrderByNode* orders) {
+    std::shared_ptr<TableHandler> output;
+    std::vector<int> groups_idxs;
+    std::vector<int> orders_idxs;
+
+    int idx = 0;
+    for (auto group : groups->children_) {
+        groups_idxs.push_back(idx++);
+    }
+
+    for (auto order : orders->order_by_->children_) {
+        orders_idxs.push_back(idx++);
+    }
+
+    if (table->IsPartitionTable()) {
+        output = PartitionSort(table, schema, fn, orders_idxs);
+    } else {
+        output = TableSort(table, schema, fn, orders_idxs);
+    }
+
+    if (output->IsPartitionTable()) {
+        return PartitionGroup(table, schema, fn, groups_idxs);
+    } else {
+        return TableGroup(table, schema, fn, groups_idxs);
+    }
+}
+std::shared_ptr<TableHandler> RunSession::PartitionSort(
+    std::shared_ptr<TableHandler> table, const Schema& schema, const int8_t* fn,
+    std::vector<int> idxs) {
+    if (idxs.empty()) {
+        return table;
+    }
+    auto output_partitions = std::shared_ptr<MemPartitionHandler>(
+        new MemPartitionHandler(table, ""));
+
+    auto partitions = dynamic_cast<PartitionHandler*>(table.get());
+    auto iter = partitions->GetWindowIterator();
+    iter->SeekToFirst();
+
+    while (iter->Valid()) {
+        auto segment_iter = iter->GetValue();
+        segment_iter->SeekToFirst();
+        while (segment_iter->Valid()) {
+            const base::Slice slice = RowProject(fn, segment_iter->GetValue());
+            int8_t* buf =
+                reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
+            storage::RowView view(schema, buf, slice.size());
+            int64_t key =
+                GetColumnInt64(&view, idxs[0], schema.Get(idxs[0]).type());
+
+            output_partitions->AddRow(
+                std::string(iter->GetKey().data(), iter->GetKey().size()), key,
+                Row{.buf = buf, .size = slice.size()});
+        }
+        iter->Next();
+    }
+    output_partitions->Sort();
+    return output_partitions;
+}
+std::shared_ptr<TableHandler> RunSession::TableSort(
+    std::shared_ptr<TableHandler> table, const Schema& schema, const int8_t* fn,
+    std::vector<int> idxs) {
+    if (idxs.empty()) {
+        return table;
+    }
+    auto output_table = std::shared_ptr<MemTableHandler>(
+        new MemTableHandler(table->GetSchema()));
+
+    auto iter = table->GetIterator();
+    while (iter->Valid()) {
+        const base::Slice slice = RowProject(fn, iter->GetValue());
+        int8_t* buf =
+            reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
+        storage::RowView view(schema, buf, slice.size());
+
+        int64_t key =
+            GetColumnInt64(&view, idxs[0], schema.Get(idxs[0]).type());
+        output_table->AddRow(key, Row{.buf = buf, .size = slice.size()});
+        iter->Next();
+    }
+    output_table->Sort();
+    return output_table;
 }
 
 }  // namespace vm

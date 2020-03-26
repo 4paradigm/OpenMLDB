@@ -73,7 +73,6 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "UNKNOW";
     }
 }
-class PhysicalOpNode;
 
 class PhysicalOpNode {
  public:
@@ -81,18 +80,37 @@ class PhysicalOpNode {
         : type_(type),
           is_block_(is_block),
           is_lazy_(is_lazy),
-          output_type(kSchemaTypeTable) {}
+          output_type(kSchemaTypeTable),
+          fn_name_(""),
+          fn_(nullptr) {}
     virtual ~PhysicalOpNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
     virtual bool InitSchema() = 0;
     virtual void PrintSchema();
+    const std::vector<PhysicalOpNode *> &GetProducers() const {
+        return producers_;
+    }
     std::vector<PhysicalOpNode *> &GetProducers() { return producers_; }
     void UpdateProducer(int i, PhysicalOpNode *producer);
 
     void AddProducer(PhysicalOpNode *producer) {
         producers_.push_back(producer);
+    }
+
+    void SetFn(int8_t *fn) { fn_ = fn; }
+    const int8_t *GetFn() const { return fn_; }
+
+    void SetFnName(const std::string &fn_name) { fn_name_ = fn_name; }
+    const std::string &GetFnName() const { return fn_name_; }
+
+    void SetFnSchema(const Schema schema) {
+        fn_schema_ = schema;
+    }
+
+    const vm::Schema& GetFnSchema() const {
+        return fn_schema_;
     }
     const PhysicalOpType type_;
     const bool is_block_;
@@ -101,6 +119,9 @@ class PhysicalOpNode {
     vm::Schema output_schema;
 
  protected:
+    std::string fn_name_;
+    int8_t *fn_;
+    vm::Schema fn_schema_;
     std::vector<PhysicalOpNode *> producers_;
 };
 
@@ -138,18 +159,15 @@ class PhysicalBinaryNode : public PhysicalOpNode {
 enum DataProviderType {
     kProviderTypeTable,
     kProviderTypeIndexScan,
-    kProviderTypeIndexSeek,
     kProviderTypeRequest
 };
 
-inline const std::string ScanTypeName(const DataProviderType &type) {
+inline const std::string DataProviderTypeName(const DataProviderType &type) {
     switch (type) {
         case kProviderTypeTable:
             return "Table";
         case kProviderTypeIndexScan:
             return "IndexScan";
-        case kProviderTypeIndexSeek:
-            return "IndexSeek";
         case kProviderTypeRequest:
             return "Request";
         default:
@@ -215,6 +233,7 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
+
 };
 
 class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
@@ -262,20 +281,15 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
     PhysicalProjectNode(PhysicalOpNode *node, const std::string &fn_name,
                         const Schema &schema, ProjectType project_type)
         : PhysicalUnaryNode(node, kPhysicalOpProject, false, false),
-          project_type_(project_type),
-          fn_name_(fn_name),
-          fn_(nullptr) {
+          project_type_(project_type) {
         output_schema.CopyFrom(schema);
+        SetFnName(fn_name);
+        SetFnSchema(schema);
     }
     virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     bool InitSchema() override;
-    void SetFn(int8_t *fn) { fn_ = fn; }
     const ProjectType project_type_;
-    const std::string fn_name_;
-
- private:
-    int8_t *fn_;
 };
 
 class PhysicalRowProjectNode : public PhysicalProjectNode {

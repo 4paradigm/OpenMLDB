@@ -18,6 +18,7 @@
 #ifndef SRC_VM_ENGINE_H_
 #define SRC_VM_ENGINE_H_
 
+#include <storage/codec.h>
 #include <map>
 #include <memory>
 #include <mutex>  //NOLINT
@@ -45,28 +46,65 @@ class RunSession {
 
     ~RunSession();
 
-    inline const Schema& GetSchema() const {
+    virtual inline const Schema& GetSchema() const {
         return compile_info_->sql_ctx.schema;
     }
 
-    int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
-
-    int32_t RunOne(const Row& in_row, Row& out_row);  // NOLINT
-
-    int32_t RunBatch(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
-
- private:
+ protected:
     inline void SetCompileInfo(
         const std::shared_ptr<CompileInfo>& compile_info) {
         compile_info_ = compile_info;
     }
-
     inline void SetCatalog(const std::shared_ptr<Catalog>& cl) { cl_ = cl; }
-
- private:
     std::shared_ptr<CompileInfo> compile_info_;
     std::shared_ptr<Catalog> cl_;
     friend Engine;
+    std::shared_ptr<TableHandler> RunBatchPlan(const PhysicalOpNode* node);
+    base::Slice WindowProject(const int8_t* fn,
+                                          const uint64_t key,
+                                          const base::Slice slice,
+                                          storage::Window* window);
+    base::Slice RowProject(const int8_t* fn, const base::Slice slice);
+    base::Slice AggProject(const int8_t* fn,
+                           const std::shared_ptr<TableHandler> table);
+    std::string GetColumnString(fesql::storage::RowView* view, int pos,
+                                type::Type type);
+    int64_t GetColumnInt64(fesql::storage::RowView* view, int pos,
+                           type::Type type);
+    std::shared_ptr<TableHandler> TableGroup(
+        const std::shared_ptr<TableHandler> table, const Schema& schema,
+        const int8_t* fn, const std::vector<int>& idxs);
+    std::shared_ptr<TableHandler> PartitionGroup(
+        const std::shared_ptr<TableHandler> partitions, const Schema& schema,
+        const int8_t* fn, const std::vector<int>& idxs);
+    std::shared_ptr<TableHandler> TableSortGroup(
+        std::shared_ptr<TableHandler> table, const Schema& schema,
+        const int8_t* fn, const node::ExprListNode* groups,
+        const node::OrderByNode* orders);
+    std::shared_ptr<TableHandler> PartitionSort(
+        std::shared_ptr<TableHandler> table, const Schema& schema,
+        const int8_t* fn, std::vector<int> idxs);
+    std::shared_ptr<TableHandler> TableSort(std::shared_ptr<TableHandler> table,
+                                            const Schema& schema,
+                                            const int8_t* fn,
+                                            std::vector<int> idxs);
+};
+
+class BatchRunSession : public RunSession {
+ public:
+    BatchRunSession(bool mini_batch_ = false)
+        : RunSession(), mini_batch_(mini_batch_) {}
+    ~BatchRunSession() {}
+    virtual int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
+ private:
+    const bool mini_batch_;
+};
+
+class RequestRunSession : public RunSession {
+ public:
+    RequestRunSession() : RunSession() {}
+    ~RequestRunSession() {}
+    virtual int32_t Run(const Row& in_row, Row& out_row);  // NOLINT
 };
 
 typedef std::map<std::string,
@@ -74,7 +112,8 @@ typedef std::map<std::string,
     EngineCache;
 class Engine {
  public:
-    explicit Engine(const std::shared_ptr<Catalog>& cl);
+    explicit Engine(const std::shared_ptr<Catalog>& cl,
+                    const node::PlanModeType mode = node::kPlanModeBatch);
 
     ~Engine();
 
@@ -87,8 +126,10 @@ class Engine {
 
  private:
     const std::shared_ptr<Catalog> cl_;
+    const node::PlanModeType mode_;
     base::SpinMutex mu_;
     EngineCache cache_;
+    ::fesql::node::NodeManager nm_;
 };
 
 }  // namespace vm

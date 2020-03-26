@@ -91,7 +91,8 @@ TEST_F(SQLCompilerTest, test_normal) {
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
-    SQLCompiler sql_compiler(catalog);
+    node::NodeManager nm;
+    SQLCompiler sql_compiler(catalog, &nm);
     SQLContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
@@ -114,7 +115,6 @@ TEST_F(SQLCompilerTest, test_normal) {
 
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";
-    testing::InitGoogleTest(&argc, argv);
     ::testing::InitGoogleTest(&argc, argv);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();

@@ -31,8 +31,8 @@ class Slice {
     // Return the length (in bytes) of the referenced data
     size_t size() const { return size_; }
 
-    // Return true iff the length of the referenced data is zero
-    bool empty() const { return size_ == 0; }
+    // Return true if the length of the referenced data is zero
+    bool empty() const { return 0 == size_; }
 
     void reset(const char* d, size_t size) {
         // TODO(wangtaize) if need free is true, reset is forbidden

@@ -124,7 +124,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
     common::Status* status = response->mutable_status();
     status->set_code(common::kOk);
     status->set_msg("ok");
-    vm::RunSession session;
+    vm::BatchRunSession session;
 
     {
         base::Status base_status;
@@ -140,7 +140,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
     std::vector<int8_t*> buf;
     int32_t code;
     if (request->is_batch()) {
-        code = session.RunBatch(buf, UINT32_MAX);
+        code = session.Run(buf, UINT32_MAX);
     } else {
         code = session.Run(buf, UINT32_MAX);
     }

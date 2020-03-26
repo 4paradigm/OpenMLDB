@@ -45,6 +45,7 @@ struct SQLContext {
     OpVector ops;
     // the physical plan
     PhysicalOpNode* plan;
+    int8_t* runner;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
@@ -55,7 +56,8 @@ struct SQLContext {
 
 class SQLCompiler {
  public:
-    explicit SQLCompiler(const std::shared_ptr<Catalog>& cl,
+    SQLCompiler(const std::shared_ptr<Catalog>& cl,
+                         ::fesql::node::NodeManager* nm,
                          bool keep_ir = false);
 
     ~SQLCompiler();
@@ -67,14 +69,14 @@ class SQLCompiler {
     void KeepIR(SQLContext& ctx, llvm::Module* m);                     // NOLINT
     bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT
                ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT
-    bool ResolveProjectFnAddress(PhysicalOpNode* node,
+    bool ResolvePlanFnAddress(PhysicalOpNode* node,
                                  std::unique_ptr<FeSQLJIT>& jit,
                                  Status& status);  // NOLINT
 
  private:
     const std::shared_ptr<Catalog> cl_;
+    ::fesql::node::NodeManager* nm_;
     bool keep_ir_;
-    ::fesql::node::NodeManager nm;
 };
 }  // namespace vm
 }  // namespace fesql

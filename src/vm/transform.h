@@ -252,6 +252,11 @@ class BatchModeTransformer {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
+    bool CodeGenExprList(Schema input_schema,
+                         const node::ExprListNode* expr_list, bool row_mode,
+                         std::string& fn_name, Schema& output_schema,
+                         base::Status& status);
+    bool GenPlanNode(PhysicalOpNode* node, base::Status &status);
 };
 
 class RequestModeransformer : public BatchModeTransformer {

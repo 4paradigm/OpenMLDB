@@ -63,8 +63,7 @@ BatchModeTransformer::BatchModeTransformer(
       module_(module),
       id_(0) {}
 
-BatchModeTransformer::~BatchModeTransformer() {
-}
+BatchModeTransformer::~BatchModeTransformer() {}
 
 bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
                                            ::fesql::vm::PhysicalOpNode** ouput,
@@ -157,6 +156,117 @@ bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
     return true;
 }
 
+bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
+                                       base::Status& status) {
+    if (nullptr == node) {
+        status.msg = "input node is null";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    for (auto producer : node->GetProducers()) {
+        if (!GenPlanNode(producer, status)) {
+            return false;
+        }
+    }
+
+    if (!node->GetFnName().empty()) {
+        DLOG(INFO) << "already gen code for node";
+        return true;
+    }
+    std::string fn_name;
+    vm::Schema fn_schema;
+    switch (node->type_) {
+        case kPhysicalOpGroupBy: {
+            auto group = dynamic_cast<PhysicalGroupNode*>(node)->groups_;
+            if (!CodeGenExprList(node->output_schema, group, true, fn_name,
+                                 fn_schema, status)) {
+                return false;
+            }
+            break;
+        }
+        case kPhysicalOpSortBy: {
+            auto order_op = dynamic_cast<PhysicalSortNode*>(node);
+            if (nullptr == order_op->order_ ||
+                !CodeGenExprList(node->output_schema,
+                                 order_op->order_->order_by_, true, fn_name,
+                                 fn_schema, status)) {
+                return false;
+            }
+            break;
+        }
+        case kPhysicalOpGroupAndSort: {
+            auto group_sort_op = dynamic_cast<PhysicalGroupAndSortNode*>(node);
+            node::ExprListNode expr_list;
+
+            if (!node::ExprListNullOrEmpty(group_sort_op->groups_)) {
+                for (auto expr : group_sort_op->groups_->children_) {
+                    expr_list.AddChild(expr);
+                }
+            }
+            if (nullptr != group_sort_op->orders_ &&
+                !node::ExprListNullOrEmpty(group_sort_op->orders_->order_by_)) {
+                for (auto expr : group_sort_op->orders_->order_by_->children_) {
+                    expr_list.AddChild(expr);
+                }
+            }
+            if (!CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
+                                 fn_schema, status)) {
+                return false;
+            }
+            break;
+        }
+        case kPhysicalOpFilter: {
+            auto filter_op = dynamic_cast<PhysicalFliterNode*>(node);
+            node::ExprListNode expr_list;
+            expr_list.AddChild(
+                const_cast<node::ExprNode*>(filter_op->condition_));
+            if (!CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
+                                 fn_schema, status)) {
+                return false;
+            }
+            break;
+        }
+        case kPhysicalOpJoin: {
+            auto join_op = dynamic_cast<PhysicalJoinNode*>(node);
+            node::ExprListNode expr_list;
+            expr_list.AddChild(
+                const_cast<node::ExprNode*>(join_op->condition_));
+            if (!CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
+                                 fn_schema, status)) {
+                return false;
+            }
+            break;
+        }
+        case kPhysicalOpRequestUnoin: {
+            auto request_union = dynamic_cast<PhysicalRequestUnionNode*>(node);
+            node::ExprListNode expr_list;
+            if (!node::ExprListNullOrEmpty(request_union->groups_)) {
+                for (auto expr : request_union->groups_->children_) {
+                    expr_list.AddChild(expr);
+                }
+            }
+            if (nullptr != request_union->orders_ &&
+                !node::ExprListNullOrEmpty(request_union->orders_->order_by_)) {
+                for (auto expr : request_union->orders_->order_by_->children_) {
+                    expr_list.AddChild(expr);
+                }
+            }
+            if (!CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
+                                 fn_schema, status)) {
+                return false;
+            }
+            break;
+        }
+        default: {
+            return true;
+        }
+    }
+    node->SetFnSchema(fn_schema);
+    node->SetFnName(fn_name);
+    return true;
+}
 bool BatchModeTransformer::TransformLimitOp(const node::LimitPlanNode* node,
                                             PhysicalOpNode** output,
                                             base::Status& status) {
@@ -366,6 +476,7 @@ bool BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
             }
         }
     }
+
     *output = new PhysicalGroupNode(left, node->by_list_);
     node_manager_->RegisterNode(*output);
     return true;
@@ -624,7 +735,6 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     return true;
 }
 
-
 bool BatchModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* node,
     PhysicalOpNode** output, base::Status& status) {
@@ -714,20 +824,23 @@ bool BatchModeTransformer::TransformPhysicalPlan(
         switch (node->GetType()) {
             case ::fesql::node::kPlanTypeFuncDef: {
                 const ::fesql::node::FuncDefPlanNode* func_def_plan =
-                    dynamic_cast< const::fesql::node::FuncDefPlanNode*>(node);
+                    dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
                 if (!GenFnDef(func_def_plan, status)) {
                     return false;
                 }
                 break;
             }
             case ::fesql::node::kPlanTypeQuery: {
-                const::fesql::node::QueryPlanNode* query_plan =
+                const ::fesql::node::QueryPlanNode* query_plan =
                     dynamic_cast<const ::fesql::node::QueryPlanNode*>(node);
                 PhysicalOpNode* physical_plan = nullptr;
                 if (!TransformQueryPlan(query_plan, &physical_plan, status)) {
                     return false;
                 }
                 ApplyPasses(physical_plan, output);
+                if (!GenPlanNode(*output, status)) {
+                    return false;
+                }
                 break;
             }
             default: {
@@ -757,6 +870,27 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
         return false;
     }
     return true;
+}
+
+bool BatchModeTransformer::CodeGenExprList(Schema input_schema,
+                                           const node::ExprListNode* expr_list,
+                                           bool row_mode, std::string& fn_name,
+                                           Schema& output_schema,
+                                           base::Status& status) {
+    if (node::ExprListNullOrEmpty(expr_list)) {
+        status.msg = "fail to codegen expr list: null or empty list";
+        status.code = common::kCodegenError;
+        return false;
+    }
+    node::PlanNodeList projects;
+    int32_t pos = 0;
+    for (auto expr : expr_list->children_) {
+        projects.push_back(node_manager_->MakeRowProjectNode(
+            pos++, node::ExprString(expr), expr));
+    }
+
+    return GenProjects(input_schema, projects, true, fn_name, output_schema,
+                       status);
 }
 
 bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,

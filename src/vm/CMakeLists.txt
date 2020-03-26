@@ -2,7 +2,8 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(fesql_vm STATIC jit.cc op_generator.cc sql_compiler.cc engine.cc transform.cc physical_op.cc)
+add_library(fesql_vm STATIC jit.cc op_generator.cc sql_compiler.cc engine.cc mem_catalog.cc mem_table_iterator.cc transform.cc physical_op.cc)
+
 add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
         csv_window_iterator.cc)
 
@@ -18,6 +19,10 @@ target_link_libraries(physical_op_test ${COMMON_LIBS} gtest pthread)
 add_test(physical_op_test physical_op_test --gtest_output=xml:${CMAKE_BINARY_DIR}/physical_op_test.xml)
 list(APPEND physical_op_test physical_op_test)
 
+add_executable(mem_catalog_test mem_catalog_test.cc)
+target_link_libraries(mem_catalog_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+add_test(mem_catalog_test mem_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/mem_catalog_test.xml)
+list(APPEND test_list mem_catalog_test)
 
 add_executable(transform_test transform_test.cc)
 target_link_libraries(transform_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} ${Boost_LIBRARIES} gtest pthread)
@@ -38,6 +43,8 @@ list(APPEND logical_graph_test logical_graph_test)
 #target_link_libraries(csv_catalog_test  fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
 #add_test(csv_catalog_test csv_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/csv_catalog_test.xml)
 #list(APPEND test_list csv_catalog_test)
+
+
 
 add_executable(jit_test jit_test.cc)
 target_link_libraries(jit_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)

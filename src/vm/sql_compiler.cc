@@ -33,8 +33,9 @@ namespace fesql {
 namespace vm {
 using ::fesql::base::Status;
 
-SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl, bool keep_ir)
-    : cl_(cl), keep_ir_(keep_ir) {}
+SQLCompiler::SQLCompiler(const std::shared_ptr<Catalog>& cl,
+                         ::fesql::node::NodeManager* nm, bool keep_ir)
+    : cl_(cl), nm_(nm), keep_ir_(keep_ir) {}
 
 SQLCompiler::~SQLCompiler() {}
 
@@ -52,7 +53,7 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     DLOG(INFO) << "start to compile sql " << ctx.sql;
     ::fesql::node::PlanNodeList trees;
-    bool ok = Parse(ctx, nm, trees, status);
+    bool ok = Parse(ctx, (*nm_), trees, status);
     if (!ok) {
         return false;
     }
@@ -63,17 +64,17 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
 
     switch (ctx.mode) {
         case node::kPlanModeBatch: {
-            vm::BatchModeTransformer transformer(&nm, ctx.db, cl_, m.get());
+            vm::BatchModeTransformer transformer(nm_, ctx.db, cl_, m.get());
             if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
-                LOG(WARNING)
-                    << "fail to generate physical plan (batch mode): " << status.msg << " for sql: \n"
-                    << ctx.sql;
+                LOG(WARNING) << "fail to generate physical plan (batch mode): "
+                             << status.msg << " for sql: \n"
+                             << ctx.sql;
                 return false;
             }
             break;
         }
         case node::kPlanModeRequest: {
-            vm::RequestModeransformer transformer(&nm, ctx.db, cl_, m.get());
+            vm::RequestModeransformer transformer(nm_, ctx.db, cl_, m.get());
             if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
                 LOG(WARNING) << "fail to generate physical plan (request mode) "
                                 "for sql: \n"
@@ -96,6 +97,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         LOG(WARNING) << status.msg;
         return false;
     }
+
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
     {
@@ -128,7 +130,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     storage::InitCodecSymbol(ctx.jit.get());
     udf::InitUDFSymbol(ctx.jit.get());
 
-    if (!ResolveProjectFnAddress(ctx.plan, ctx.jit, status)) {
+    if (!ResolvePlanFnAddress(ctx.plan, ctx.jit, status)) {
         return false;
     }
 
@@ -158,35 +160,30 @@ bool SQLCompiler::Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,
 
     return true;
 }
-bool SQLCompiler::ResolveProjectFnAddress(PhysicalOpNode* node,
+bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
                                           std::unique_ptr<FeSQLJIT>& jit,
                                           Status& status) {
     if (nullptr == node) {
         status.msg = "fail to resolve project fn address: node is null";
     }
-    switch (node->type_) {
-        case kPhysicalOpProject: {
-            auto project_op = dynamic_cast<PhysicalProjectNode*>(node);
-            ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
-                jit->lookup(project_op->fn_name_));
-            if (symbol.takeError()) {
-                LOG(WARNING) << "fail to resolve fn address "
-                             << project_op->fn_name_ << " not found in jit";
-            }
-            project_op->SetFn(reinterpret_cast<int8_t*>(symbol->getAddress()));
-        }
-        default: {
-            if (node->GetProducers().empty()) {
-                return true;
-            }
 
-            for (auto iter = node->GetProducers().cbegin();
-                 iter != node->GetProducers().cend(); iter++) {
-                if (!ResolveProjectFnAddress(*iter, jit, status)) {
-                    return false;
-                }
+    if (!node->GetProducers().empty()) {
+        for (auto iter = node->GetProducers().cbegin();
+             iter != node->GetProducers().cend(); iter++) {
+            if (!ResolvePlanFnAddress(*iter, jit, status)) {
+                return false;
             }
         }
+    }
+
+    if (!node->GetFnName().empty()) {
+        ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
+            jit->lookup(node->GetFnName()));
+        if (symbol.takeError()) {
+            LOG(WARNING) << "fail to resolve fn address " << node->GetFnName()
+                         << " not found in jit";
+        }
+        node->SetFn(reinterpret_cast<int8_t*>(symbol->getAddress()));
     }
     return true;
 }

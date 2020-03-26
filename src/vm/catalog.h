@@ -18,10 +18,10 @@
 #ifndef SRC_VM_CATALOG_H_
 #define SRC_VM_CATALOG_H_
 
-#include <memory>
-#include <vector>
 #include <map>
+#include <memory>
 #include <string>
+#include <vector>
 #include "base/slice.h"
 #include "proto/type.pb.h"
 
@@ -78,6 +78,7 @@ class WindowIterator {
     virtual const base::Slice GetKey() = 0;
 };
 
+
 class TableHandler {
  public:
     TableHandler() {}
@@ -104,6 +105,46 @@ class TableHandler {
 
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) = 0;
+
+    virtual const bool IsPartitionTable() {
+        return false;
+    };
+};
+
+class PartitionHandler : public TableHandler {
+ public:
+    PartitionHandler(const std::shared_ptr<TableHandler>& table,
+                     const std::string& index_name)
+        : TableHandler(), table_handler_(table), index_name_(index_name) {}
+    ~PartitionHandler() {}
+
+    const Schema& GetSchema() override { return table_handler_->GetSchema(); }
+
+    const std::string& GetName() override { return table_handler_->GetName(); }
+
+    const std::string& GetDatabase() override {
+        return table_handler_->GetDatabase();
+    }
+    const Types& GetTypes() override { return table_handler_->GetTypes(); }
+
+    const IndexHint& GetIndex() override { return index_hint_; }
+    std::unique_ptr<Iterator> GetIterator() override {
+        return table_handler_->GetIterator();
+    }
+    std::unique_ptr<WindowIterator> GetWindowIterator(
+        const std::string& idx_name) override {
+        return std::unique_ptr<WindowIterator>();
+    }
+    const std::string& GetIndexName() { return index_name_; }
+    std::unique_ptr<WindowIterator> GetWindowIterator() {
+        return table_handler_->GetWindowIterator(index_name_);
+    }
+    const bool IsPartitionTable() override { return true; }
+
+ private:
+    std::shared_ptr<TableHandler> table_handler_;
+    const std::string index_name_;
+    const IndexHint index_hint_;
 };
 
 // database/table/schema/type management

@@ -175,7 +175,7 @@ static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
     auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql = "SELECT col4 FROM t1 limit 2;";
     Engine engine(catalog);
-    RunSession session;
+    BatchRunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
@@ -203,7 +203,7 @@ static void BM_EngineSimpleSelectVarchar(benchmark::State& state) {  // NOLINT
     auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql = "SELECT col6 FROM t1 limit 1;";
     Engine engine(catalog);
-    RunSession session;
+    BatchRunSession session(true);
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
@@ -231,7 +231,7 @@ static void BM_EngineSimpleSelectInt32(benchmark::State& state) {  // NOLINT
     auto catalog = BuildCommonCatalog(table_def, table);
     const std::string sql = "SELECT col1 FROM t1 limit 1;";
     Engine engine(catalog);
-    RunSession session;
+    BatchRunSession session(true);
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
@@ -261,7 +261,7 @@ static void BM_EngineSimpleUDF(benchmark::State& state) {  // NOLINT
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 1;";
     Engine engine(catalog);
-    RunSession session;
+    BatchRunSession session(true);
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
@@ -291,7 +291,7 @@ static void BM_EngineWindowSumFeature1(benchmark::State& state) {  // NOLINT
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     Engine engine(catalog);
-    RunSession session;
+    BatchRunSession session(true);
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
@@ -322,12 +322,12 @@ static void BM_EngineRunBatchWindowSumFeature1(
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     Engine engine(catalog);
-    RunSession session;
+    BatchRunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.RunBatch(output, limit_cnt));
+        benchmark::DoNotOptimize(session.Run(output, limit_cnt));
         for (int8_t* row : output) {
             free(row);
         }
@@ -354,12 +354,12 @@ static void BM_EngineRunBatchWindowSumFeature5(
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     Engine engine(catalog);
-    RunSession session;
+    BatchRunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
         std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.RunBatch(output, limit_cnt));
+        benchmark::DoNotOptimize(session.Run(output, limit_cnt));
         for (int8_t* row : output) {
             free(row);
         }
@@ -387,7 +387,7 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
         "PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     Engine engine(catalog);
-    RunSession session;
+    BatchRunSession session(true);
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
