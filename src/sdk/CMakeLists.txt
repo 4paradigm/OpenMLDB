@@ -45,7 +45,7 @@ set_property(SOURCE fesql.i PROPERTY COMPILE_OPTIONS
 swig_add_library(fesql_pysdk
   TYPE SHARED
   LANGUAGE python
-  OUTPUT_DIR ${CMAKE_BINARY_DIR}/python_output/
+  OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/
   SOURCES fesql.i)
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(fesql_pysdk PRIVATE fesql_sdk)
@@ -146,17 +146,18 @@ search_python_module(wheel)
 
 add_custom_target(python_package ALL
 	DEPENDS python/setup.py
-	COMMAND ${CMAKE_COMMAND} -E make_directory python/fesql
-	COMMAND ${CMAKE_COMMAND} -E remove_directory python/dist
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/python_output/fesql.py python/fesql/fesql.py
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py python/fesql/__init__.py
-	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_pysdk> python/fesql/
+	COMMAND ${CMAKE_COMMAND} -E make_directory fesql
+	COMMAND ${CMAKE_COMMAND} -E remove_directory dist
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/python/fesql.py fesql/fesql.py
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py fesql/__init__.py
+	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_pysdk> fesql/
+	COMMAND ${PYTHON_EXECUTABLE} setup.py bdist_wheel
 	BYPRODUCTS
 	  python/${PROJECT_NAME}
 	  python/build
 	  python/dist
 	  python/${PROJECT_NAME}.egg-info
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/python
 	)
 
 add_custom_command(OUTPUT
