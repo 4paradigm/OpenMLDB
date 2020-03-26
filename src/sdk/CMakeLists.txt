@@ -42,10 +42,11 @@ set_property(SOURCE fesql.i PROPERTY COMPILE_OPTIONS
     -py3
 )
 
+
 swig_add_library(fesql_pysdk
   TYPE SHARED
   LANGUAGE python
-  OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/
+  OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/fesql/
   SOURCES fesql.i)
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(fesql_pysdk PRIVATE fesql_sdk)
@@ -98,7 +99,7 @@ add_custom_command(OUTPUT
 	COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  packages=['fesql']," >> setup.py
+    COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  'fesql':['$<TARGET_FILE_NAME:fesql_pysdk>']," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
@@ -148,9 +149,8 @@ add_custom_target(python_package ALL
 	DEPENDS python/setup.py
 	COMMAND ${CMAKE_COMMAND} -E make_directory fesql
 	COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/python/fesql.py fesql/fesql.py
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py fesql/__init__.py
-	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_pysdk> fesql/
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_pysdk> fesql/
 	COMMAND ${PYTHON_EXECUTABLE} setup.py bdist_wheel
 	BYPRODUCTS
 	  python/${PROJECT_NAME}
@@ -159,7 +159,6 @@ add_custom_target(python_package ALL
 	  python/${PROJECT_NAME}.egg-info
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/python
 	)
-
 add_custom_command(OUTPUT
     cp_java_native_so
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/java/src/main/resources/
