@@ -17,6 +17,9 @@
 
 #include "sdk/result_set_impl.h"
 
+#include <memory>
+#include <string>
+#include <utility>
 #include "base/strings.h"
 #include "glog/logging.h"
 

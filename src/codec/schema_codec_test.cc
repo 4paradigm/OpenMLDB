@@ -17,6 +17,7 @@
 
 #include "codec/schema_codec.h"
 
+#include <utility>
 #include "gtest/gtest.h"
 
 namespace fesql {

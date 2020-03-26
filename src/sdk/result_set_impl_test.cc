@@ -17,6 +17,10 @@
 
 #include "sdk/result_set_impl.h"
 
+#include <vector>
+#include <memory>
+#include <utility>
+#include <string>
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"

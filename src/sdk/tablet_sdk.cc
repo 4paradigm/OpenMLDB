@@ -67,6 +67,7 @@ class TabletSdkImpl : public TabletSdk {
         node::NodeManager& node_manager,  // NOLINT (runtime/references)
         node::PlanNodeList& plan_trees,   // NOLINT (runtime/references)
         sdk::Status& status);             // NOLINT (runtime/references)
+
  private:
     std::string endpoint_;
     brpc::Channel* channel_;

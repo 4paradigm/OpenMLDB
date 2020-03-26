@@ -18,6 +18,7 @@
 #ifndef SRC_SDK_RESULT_SET_IMPL_H_
 #define SRC_SDK_RESULT_SET_IMPL_H_
 
+#include <memory>
 #include "codec/row_codec.h"
 #include "proto/tablet.pb.h"
 #include "sdk/base_impl.h"
@@ -28,7 +29,7 @@ namespace sdk {
 
 class ResultSetImpl : public ResultSet {
  public:
-    ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response);
+    explicit ResultSetImpl(std::unique_ptr<tablet::QueryResponse> response);
     ~ResultSetImpl();
 
     bool Init();

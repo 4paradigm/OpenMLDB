@@ -18,6 +18,8 @@
 #ifndef SRC_SDK_BASE_IMPL_H_
 #define SRC_SDK_BASE_IMPL_H_
 
+#include <string>
+#include <memory>
 #include "sdk/base.h"
 #include "vm/catalog.h"
 
@@ -28,7 +30,7 @@ typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::TableDef> Tables;
 
 class SchemaImpl : public Schema {
  public:
-    SchemaImpl(const vm::Schema& schema);
+    explicit SchemaImpl(const vm::Schema& schema);
     SchemaImpl() {}
 
     ~SchemaImpl();
@@ -60,7 +62,7 @@ class TableImpl : public Table {
 
 class TableSetImpl : public TableSet {
  public:
-    TableSetImpl(const Tables& tables);
+    explicit TableSetImpl(const Tables& tables);
     ~TableSetImpl();
     bool Next();
     const std::shared_ptr<Table> GetTable();

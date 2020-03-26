@@ -36,7 +36,7 @@
 #include "llvm/Support/TargetSelect.h"
 #include "sdk/dbms_sdk.h"
 #include "tablet/tablet_server_impl.h"
-#include "version.h"
+#include "version.h"  //NOLINT
 
 DECLARE_string(endpoint);
 DECLARE_string(tablet_endpoint);
