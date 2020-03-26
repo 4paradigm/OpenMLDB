@@ -146,18 +146,17 @@ search_python_module(wheel)
 
 add_custom_target(python_package ALL
 	DEPENDS python/setup.py
-	COMMAND ${CMAKE_COMMAND} -E make_directory fesql
-	COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/python_output/fesql.py fesql/fesql.py
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py fesql/__init__.py
-	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_pysdk> fesql/
-	COMMAND ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+	COMMAND ${CMAKE_COMMAND} -E make_directory python/fesql
+	COMMAND ${CMAKE_COMMAND} -E remove_directory python/dist
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/python_output/fesql.py python/fesql/fesql.py
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py python/fesql/__init__.py
+	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_pysdk> python/fesql/
 	BYPRODUCTS
 	  python/${PROJECT_NAME}
 	  python/build
 	  python/dist
 	  python/${PROJECT_NAME}.egg-info
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/python
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	)
 
 add_custom_command(OUTPUT
