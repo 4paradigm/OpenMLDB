@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.6
+image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.7
 variables:
     GIT_SUBMODULE_STRATEGY: normal
 

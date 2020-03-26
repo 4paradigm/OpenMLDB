@@ -81,6 +81,17 @@ message(STATUS "Found Python: ${PYTHON_EXECUTABLE} (found version \"${PYTHON_VER
 set(Python_ADDITIONAL_VERSIONS "${PYTHON_VERSION_STRING}")
 find_package(PythonLibs REQUIRED)
 message(STATUS "Found Python Include: ${PYTHON_INCLUDE_DIRS} (found version \"${PYTHONLIBS_VERSION_STRING}\")")
+# Find java
+
+set(JAVA_HOME ${PROJECT_SOURCE_DIR}/thirdparty/jdk1.8.0_141)
+find_package(Java COMPONENTS Development REQUIRED)
+message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
+
+find_package(JNI REQUIRED)
+message(STATUS "Found JNI: ${JNI_FOUND}")
+# Find maven
+find_program(MAVEN_EXECUTABLE mvn)
+configure_file(java/pom.xml.in java/pom.xml @ONLY)
 
 add_subdirectory(src)
 #TODO add flag

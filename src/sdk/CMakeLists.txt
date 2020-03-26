@@ -41,29 +41,32 @@ set_property(SOURCE fesql.i PROPERTY SWIG_MODULE_NAME fesql)
 set_property(SOURCE fesql.i PROPERTY COMPILE_OPTIONS
     -py3
 )
+
 swig_add_library(fesql_pysdk
   TYPE SHARED
   LANGUAGE python
   OUTPUT_DIR ${CMAKE_BINARY_DIR}/python_output/
   SOURCES fesql.i)
-
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(fesql_pysdk fesql_sdk)
+target_link_libraries(fesql_pysdk PRIVATE fesql_sdk)
 
+set_property(SOURCE fesql.i PROPERTY COMPILE_OPTIONS 
+    -package com._4paradigm.fesql
+)
+swig_add_library(fesql_jsdk
+  TYPE SHARED
+  LANGUAGE java
+  OUTPUT_DIR ${CMAKE_BINARY_DIR}/java/src/main/java/com/_4paradigm/fesql
+  SOURCES fesql.i)
+target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
+target_link_libraries(fesql_jsdk PRIVATE fesql_sdk)
+if(APPLE)
+  set_target_properties(fesql_jsdk PROPERTIES
+           SUFFIX ".so")
+  set_property(TARGET remote_add APPEND PROPERTY
+    LINK_FLAGS "-flat_namespace -undefined suppress")
+endif()
 
-#add_library(test_lib test.cc)
-#set_property(SOURCE test.i PROPERTY CPLUSPLUS ON)
-#set_property(SOURCE test.i PROPERTY SWIG_MODULE_NAME test)
-#set_property(SOURCE test.i PROPERTY COMPILE_OPTIONS
-#    -py3
-#)
-#swig_add_library(py_test
-#  TYPE SHARED
-#  LANGUAGE python
-#  OUTPUT_DIR ${CMAKE_BINARY_DIR}/python/
-#  SOURCES test.i)
-#target_include_directories(py_test PRIVATE ${PYTHON_INCLUDE_DIRS})
-#target_link_libraries(py_test test_lib)
 
 #######################
 ## Python Packaging  ##
@@ -156,3 +159,18 @@ add_custom_target(python_package ALL
 	  python/${PROJECT_NAME}.egg-info
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/python
 	)
+
+add_custom_command(OUTPUT
+    cp_java_native_so
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/java/src/main/resources/
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_jsdk> ${CMAKE_BINARY_DIR}/java/src/main/resources/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/java/src/main/java/com/_4paradigm/fesql/Test.java ${CMAKE_BINARY_DIR}java/src/main/java/com/_4paradigm/fesql/Test.java)
+
+add_custom_target(java_package ALL
+  DEPENDS
+    ${java_libs}
+    cp_java_native_so
+    ${PROJECT_BINARY_DIR}/java/pom.xml
+    COMMAND ${MAVEN_EXECUTABLE} package
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/java
+  )
