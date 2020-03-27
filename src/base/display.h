@@ -1,9 +1,9 @@
 //
-//// display.h
-//// Copyright (C) 2019 4paradigm.com
-//// Author denglong
-//// Date 2019-05-10
-////
+// display.h
+// Copyright (C) 2019 4paradigm.com
+// Author denglong
+// Date 2019-05-10
+//
 #pragma once
 
 #include <string>

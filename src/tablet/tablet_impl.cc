@@ -4355,6 +4355,29 @@ void TabletImpl::DeleteIndex(RpcController* controller,
     response->set_msg("ok");
 }
 
+void TabletImpl::SendIndexData(RpcController* controller,
+        const ::rtidb::api::SendIndexDataRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+        response->set_msg("table is not exist");
+        return;
+    }
+    MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+    if (mem_table == NULL) {
+        PDLOG(WARNING, "table is not memtable. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableTypeMismatch);
+        response->set_msg("table is not memtable");
+        return;
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
 void TabletImpl::DumpIndexData(RpcController* controller,
         const ::rtidb::api::DumpIndexDataRequest* request,
         ::rtidb::api::GeneralResponse* response,
@@ -4427,7 +4450,7 @@ void TabletImpl::DumpIndexData(RpcController* controller,
     }
     std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
     std::vector<::rtidb::log::WriteHandle*> whs;
-    for (int i=0;i<request->partition_num();++i) {
+    for (uint32_t i = 0; i < request->partition_num(); i++) {
         std::string index_file_name = std::to_string(request->pid()) + "_" + std::to_string(i) + "_index.data";
         std::string index_data_path = index_path + index_file_name;
         FILE* fd = fopen(index_data_path.c_str(), "wb+");
@@ -4485,6 +4508,13 @@ void TabletImpl::AddIndex(RpcController* controller,
         return;
     }
     MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+    if (mem_table == NULL) {
+        PDLOG(WARNING, "table is not memtable. tid %u, pid %u", 
+                request->column_key().index_name(), request->tid(), request->pid());
+        response->set_code(::rtidb::base::ReturnCode::kTableTypeMismatch);
+        response->set_msg("table is not memtable");
+        return;
+    }
     if (!mem_table->AddIndex(request->column_key())) {
         PDLOG(WARNING, "add index %s failed. tid %u, pid %u", 
                 request->column_key().index_name(), request->tid(), request->pid());

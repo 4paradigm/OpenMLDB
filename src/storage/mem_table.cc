@@ -109,8 +109,8 @@ bool MemTable::Init() {
         if (!ts_vec.empty()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(key_entry_max_height_, ts_vec);
-                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u", 
-                    i, j, key_entry_max_height_, ts_vec.size());
+                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", 
+                    i, j, key_entry_max_height_, ts_vec.size(), id_, pid_);
             }
         } else {
             for (uint32_t j = 0; j < seg_cnt_; j++) {

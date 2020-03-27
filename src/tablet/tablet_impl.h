@@ -272,6 +272,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void SendIndexData(RpcController* controller,
+            const ::rtidb::api::SendIndexDataRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void BatchQuery(RpcController* controller,
             const rtidb::api::BatchQueryRequest* request,
             rtidb::api::BatchQueryResponse* response,
