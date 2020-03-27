@@ -1364,26 +1364,84 @@ void HandleNSUpdate(const std::vector<std::string>& parts, ::rtidb::client::NsCl
 
 }
 
+bool ParseCondAndOp(const std::string& source, uint64_t& first_end, uint64_t& value_begin, int32_t& get_type) {
+    for (uint64_t i = 0; i < source.length(); i++) {
+        switch (source[i]) {
+            case '=':
+                first_end = i;
+                value_begin = i + 1;
+                get_type = rtidb::api::kSubKeyEq;
+                return true;
+            case '<':
+                first_end = i;
+                if (source[i+1] == '=') {
+                    value_begin = i + 2;
+                    get_type = rtidb::api::kSubKeyLe;
+                } else {
+                    value_begin = i + 1;
+                    get_type = rtidb::api::kSubKeyLt;
+                }
+                return true;
+            case '>':
+                first_end = i;
+                if (source[i+1] == '=') {
+                    value_begin = i + 2;
+                    get_type = rtidb::api::kSubKeyGe;
+                } else {
+                    value_begin = i + 1;
+                    get_type = rtidb::api::kSubKeyGt;
+                }
+                return true;
+            default:
+                continue;
+        }
+    }
+    return false;
+}
+
 bool GetCondAndPrintColumns(const std::vector<std::string>& parts, std::map<std::string, std::string>& condition_columns_map,
-                  std::vector<std::string>& print_column) {
-    std::string delimiter = "=";
-    std::vector<std::string> temp_vec;
+                  std::vector<std::string>& print_column, rtidb::api::GetType& get_type) {
     uint64_t size = parts.size();
-    if (parts[size-2] != "where") {
-        return false;
-    }
-    rtidb::base::SplitString(parts[size-1], delimiter, temp_vec);
-    if (temp_vec.size() != 2 || temp_vec[1].empty()) {
-        return false;
-    }
-    condition_columns_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-    if (parts[2] == "*") {
+    uint64_t i = 2;
+    if (parts[i] == "*") {
         print_column.clear();
-        return true;
+        i+=1;
+    } else {
+        for (; i < size; i++) {
+            if (parts[i] == "where") {
+                break;
+            }
+            print_column.push_back(parts[i]);
+        }
     }
-    for (uint32_t i = 2; i < size - 2; i++) {
-        print_column.push_back(parts[i]);
+    if (i + 1 >= size) {
+        std::cerr << "not found where condition" << std::endl;
+        return false;
     }
+    int32_t first_type = 0;
+    bool first_parse = true;
+    for (i++; i < size; i++) {
+        int32_t col_type;
+        uint64_t col_end = 0, value_begin = 0;
+        bool ok = ParseCondAndOp(parts[i], col_end, value_begin, col_type);
+        if (!ok) {
+            std::cerr << "parse " << parts[i] << " error" << std::endl;
+            return false;
+        }
+        if (first_parse) {
+            first_type = col_type;
+            first_parse = false;
+        }
+        if (col_type != first_type) {
+            std::cerr << "all relational operator must same" << std::endl;
+            return false;
+        }
+        auto beginner = parts[i].begin();
+        std::string col(beginner, beginner+=col_end);
+        std::string val(beginner+=value_begin, parts[i].end());
+        condition_columns_map.insert(std::make_pair(col, val));
+    }
+    get_type = static_cast<rtidb::api::GetType>(first_type);
     return true;
 }
 
@@ -1405,7 +1463,8 @@ void HandleNSQuery(const std::vector<std::string>& parts, ::rtidb::client::NsCli
     }
     std::map<std::string, std::string> condition_columns_map;
     std::vector<std::string> print_column;
-    if (!GetCondAndPrintColumns(parts, condition_columns_map, print_column)) {
+    rtidb::api::GetType get_type;
+    if (!GetCondAndPrintColumns(parts, condition_columns_map, print_column, get_type)) {
         std::cout << "query format error. eg: query table_name=xxx col1 col2 ... where coln=xxx" << std::endl;
         std::cout << "                    eg: query table_name=xxx * where coln=xxx" << std::endl;
         return;
@@ -1415,6 +1474,11 @@ void HandleNSQuery(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         std::cout << "                    eg: query table_name=xxx * where coln=xxx" << std::endl;
         return;
     }
+    if (get_type != rtidb::api::GetType::kSubKeyEq) {
+        std::cerr << "current only support equal operator" << std::endl;
+        return;
+    }
+    // TODO(kongquan): process multi columns key, and support other operator
     auto cd_iter = condition_columns_map.begin();
     std::string pk = cd_iter->second;
     std::vector<::rtidb::nameserver::TableInfo> tables;
@@ -2045,10 +2109,8 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
                     if (row[i] == rtidb::base::NONETOKEN) {
                         row[i] = "null";
                     }
-                    if (i == static_cast<uint64_t>(pk_index)) {
-                        last_pk = row[i];
-                    }
                 }
+                last_pk = row[pk_index];
                 tp.AddRow(row);
                 row.clear();
             }
@@ -2058,7 +2120,8 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
         tp.Print(true);
         return;
     }
-        std::vector<::rtidb::base::ColumnDesc> columns;
+
+    std::vector<::rtidb::base::ColumnDesc> columns;
     if (tables[0].column_desc_v1_size() > 0 || tables[0].column_desc_size() > 0) {
         if (tables[0].added_column_desc_size() > 0) {
             if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns, tables[0].added_column_desc_size()) < 0) {
