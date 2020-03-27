@@ -10,10 +10,6 @@ cmake .. && make fesql_proto fesql_parser && make -j20 fesql python_package
 cd python && pip install .
 pip install nose
 cd ${WORKDIR}/onebox && sh start_all.sh
-sleep 4
+sleep 10
 cd ${WORKDIR}/python/test && nosetests --with-xunit
-
-
-
-
 

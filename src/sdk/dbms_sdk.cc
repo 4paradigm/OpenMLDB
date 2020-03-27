@@ -253,6 +253,7 @@ std::shared_ptr<DBMSSdk> CreateDBMSSdk(const std::string &endpoint) {
     if (sdk_impl->Init()) {
         return std::shared_ptr<DBMSSdkImpl>(sdk_impl);
     }
+    LOG(WARNING) << "fail to create dbms client with endpoint " << endpoint;
     return std::shared_ptr<DBMSSdk>();
 }
 

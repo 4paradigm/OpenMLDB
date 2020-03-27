@@ -42,4 +42,3 @@ micro_benchmark:
     script:
         - ln -sf /depends/thirdparty thirdparty
         - source /opt/rh/devtoolset-7/enable && bash tools/micro_bench.sh
-
