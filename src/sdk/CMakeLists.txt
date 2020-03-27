@@ -57,7 +57,7 @@ set_property(SOURCE fesql.i PROPERTY COMPILE_OPTIONS
 swig_add_library(fesql_jsdk
   TYPE SHARED
   LANGUAGE java
-  OUTPUT_DIR ${CMAKE_BINARY_DIR}/java/src/main/java/com/_4paradigm/fesql
+  OUTPUT_DIR ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/java/com/_4paradigm/fesql
   SOURCES fesql.i)
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
 target_link_libraries(fesql_jsdk PRIVATE fesql_sdk)
@@ -94,7 +94,7 @@ add_custom_command(OUTPUT
 	COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  name='${PROJECT_NAME}'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  version='0.0.1'," >> setup.py
+    COMMAND ${CMAKE_COMMAND} -E echo "  version='${FESQL_VERSION_MAJOR}.${FESQL_VERSION_MEDIUM}.${FESQL_VERSION_MINOR}.${FESQL_VERSION_BUG}'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
@@ -105,16 +105,10 @@ add_custom_command(OUTPUT
 	COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'Development Status :: 5 - Production/Stable'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'Intended Audience :: Developers'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'License :: OSI Approved :: Apache Software License'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: POSIX :: Linux'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: MacOS :: MacOS X'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: Microsoft :: Windows'," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: C++'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'Topic :: Scientific/Engineering'," >> setup.py
-	COMMAND ${CMAKE_COMMAND} -E echo "  'Topic :: Software Development :: Libraries :: Python Modules'" >> setup.py
+	COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: C++'" >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo "  ]," >> setup.py
 	COMMAND ${CMAKE_COMMAND} -E echo ")" >> setup.py
 	COMMENT "Generate setup.py at build time (to use generator expression)"
@@ -159,17 +153,15 @@ add_custom_target(python_package ALL
 	  python/${PROJECT_NAME}.egg-info
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/python
 	)
+
 add_custom_command(OUTPUT
     cp_java_native_so
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/java/src/main/resources/
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_jsdk> ${CMAKE_BINARY_DIR}/java/src/main/resources/
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/java/src/main/java/com/_4paradigm/fesql/Test.java ${CMAKE_BINARY_DIR}java/src/main/java/com/_4paradigm/fesql/Test.java)
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_jsdk> ${PROJECT_SOURCE_DIR}/java/fesql-native/src/main/resources/)
 
 add_custom_target(java_package ALL
   DEPENDS
     ${java_libs}
     cp_java_native_so
-    ${PROJECT_BINARY_DIR}/java/pom.xml
     COMMAND ${MAVEN_EXECUTABLE} package
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/java
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java
   )

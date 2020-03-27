@@ -4,14 +4,17 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com._4paradigm.fesql</groupId>
-    <artifactId>sdk</artifactId>
+    <artifactId>fesql-sdk</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <modules>
+           <module>fesql-jdbc</module>
+           <module>fesql-native</module>
+    </modules>
+    <packaging>pom</packaging>
     <name>sdk</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-
     <build>
         <pluginManagement>
             <plugins>
@@ -53,5 +56,6 @@
             <url>http://nexus.4paradigm.com:80/nexus/content/repositories/snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
+
 </project>
 

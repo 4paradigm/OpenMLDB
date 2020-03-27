@@ -91,7 +91,6 @@ find_package(JNI REQUIRED)
 message(STATUS "Found JNI: ${JNI_FOUND}")
 # Find maven
 find_program(MAVEN_EXECUTABLE mvn)
-configure_file(java/pom.xml.in java/pom.xml @ONLY)
 
 add_subdirectory(src)
 #TODO add flag
