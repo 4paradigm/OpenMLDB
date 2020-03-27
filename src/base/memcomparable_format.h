@@ -21,20 +21,20 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#pragma once
+
 #include <float.h>
 #include <stdint.h>
 #include <string.h>
 #include <algorithm>
 
-typedef unsigned char uchar; /* Short for unsigned char */
-
-#define FLT_EXP_DIG (sizeof(float) * 8 - FLT_MANT_DIG)
-#define DBL_EXP_DIG (sizeof(double) * 8 - DBL_MANT_DIG)
-#define RDB_ESCAPE_LENGTH 9
-
-#pragma once
 namespace rtidb {
 namespace base {
+
+typedef unsigned char uchar; /* Short for unsigned char */
+static constexpr int FLT_EXP_DIG = sizeof(float) * 8 - FLT_MANT_DIG;
+static constexpr int DBL_EXP_DIG = sizeof(double) * 8 - DBL_MANT_DIG;
+static constexpr int RDB_ESCAPE_LENGTH = 9;
 
 static int32_t GetDstStrSize(int32_t size) {
     if (size == 0) {
@@ -141,6 +141,9 @@ static void ChangeDoubleForSort(double nr, void *to) {
 
 /* The following should work for IEEE */
 static int PackDouble(const void *from, uint32_t length, void *to) {
+    if (from == nullptr) {
+        return -1;
+    }
     const uchar *ptr = (uchar *)from;
     double nr;
     memcpy(&nr, ptr, length);
@@ -179,6 +182,9 @@ static int PackDouble(const void *from, uint32_t length, void *to) {
 static int PackString(const void *src,  // The data to encode
                       size_t src_len,   // The length of the data to encode
                       void **dst) {     // The encoded data
+    if (src == nullptr) {
+        return -1;
+    }
     const uchar *usrc = (uchar *)src;
     uchar *ptr = (uchar *)*dst;
 
@@ -212,6 +218,9 @@ static int PackString(const void *src,  // The data to encode
 
 static int UnpackInteger(const void *from, uint32_t length, bool unsigned_flag,
                          void *to) {
+    if (from == nullptr || length < 2) {
+        return -1;
+    }
     const uchar *ufrom = (uchar *)from;
     uchar *uto = (uchar *)to;
     const int sign_byte = ufrom[0];
@@ -331,6 +340,9 @@ static uint32_t CalcUnpackVariableFormat(uchar flag, bool *done) {
    Function of type rdb_index_field_unpack_t
 */
 static int UnpackString(const void *src, void *dst, int32_t *size) {
+    if (src == nullptr) {
+        return -1;
+    }
     const uchar *usrc = (uchar *)src;
     uchar *udst = (uchar *)dst;
     const uchar *ptr;
@@ -341,7 +353,7 @@ static int UnpackString(const void *src, void *dst, int32_t *size) {
         uint32_t used_bytes =
             CalcUnpackVariableFormat(ptr[RDB_ESCAPE_LENGTH - 1], &finished);
         if (used_bytes == (uint32_t)-1) {
-            return -1;
+            return -2;
         }
         /*
            Now, we need to decode used_bytes of data and append them to the
@@ -355,7 +367,7 @@ static int UnpackString(const void *src, void *dst, int32_t *size) {
         }
     }
     if (!finished) {
-        return -2;
+        return -3;
     }
     /* Save the length */
     *size = len;
