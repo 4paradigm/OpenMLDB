@@ -44,14 +44,14 @@ static int32_t GetDstStrSize(int32_t size) {
     return byte_num * RDB_ESCAPE_LENGTH;
 }
 
-static void RdbSwapFloatBytes(uchar *const dst, const uchar *const src) {
+static void SwapFloatBytes(uchar *const dst, const uchar *const src) {
     dst[0] = src[3];
     dst[1] = src[2];
     dst[2] = src[1];
     dst[3] = src[0];
 }
 
-static void RdbSwapDoubleBytes(uchar *const dst, const uchar *const src) {
+static void SwapDoubleBytes(uchar *const dst, const uchar *const src) {
     dst[0] = src[7];
     dst[1] = src[6];
     dst[2] = src[5];
@@ -83,10 +83,11 @@ static int PackInteger(const void *from, uint32_t length, bool unsigned_flag,
     return 0;
 }
 
-static int PackFloat(const void *from, uint32_t length, void *to) {
-    if (from == nullptr || length != sizeof(float)) {
+static int PackFloat(const void *from, void *to) {
+    if (from == nullptr) {
         return -1;
     }
+    uint32_t length = sizeof(float);
     const uchar *ptr = (uchar *)from;
     float nr;
     memcpy(&nr, ptr, length);
@@ -97,7 +98,7 @@ static int PackFloat(const void *from, uint32_t length, void *to) {
         tmp[0] = (uchar)128;
         memset(tmp + 1, 0, length - 1);
     } else {
-        RdbSwapFloatBytes(tmp, ptr);
+        SwapFloatBytes(tmp, ptr);
         if (tmp[0] & 128) {
             /* Negative */
             uint32_t i;
@@ -114,18 +115,24 @@ static int PackFloat(const void *from, uint32_t length, void *to) {
     return 0;
 }
 
-/*
- * ** functions to change a double or float to a sortable string
- * ** The following should work for IEEE
- * */
-static void ChangeDoubleForSort(double nr, void *to) {
+
+/* The following should work for IEEE */
+static int PackDouble(const void *from, void *to) {
+    if (from == nullptr) {
+        return -1;
+    }
+    uint32_t length = sizeof(double); 
+    const uchar *ptr = (uchar *)from;
+    double nr;
+    memcpy(&nr, ptr, length);
+
     uchar *tmp = (uchar *)to;
     if (nr == 0.0) { /* Change to zero string */
         tmp[0] = (uchar)128;
         memset(tmp + 1, 0, sizeof(nr) - 1);
     } else {
         uchar *ptr = (uchar *)&nr;
-        RdbSwapDoubleBytes(tmp, ptr);
+        SwapDoubleBytes(tmp, ptr);
         if (tmp[0] & 128) { /* Negative */
             uint32_t i;
             for (i = 0; i < sizeof(nr); i++) tmp[i] = tmp[i] ^ (uchar)255;
@@ -137,22 +144,6 @@ static void ChangeDoubleForSort(double nr, void *to) {
             tmp[1] = (uchar)exp_part;
         }
     }
-}
-
-/* The following should work for IEEE */
-static int PackDouble(const void *from, uint32_t length, void *to) {
-    if (from == nullptr) {
-        return -1;
-    }
-    const uchar *ptr = (uchar *)from;
-    double nr;
-    memcpy(&nr, ptr, length);
-    if (length < 8) {
-        uchar buff[8];
-        ChangeDoubleForSort(nr, buff);
-        memcpy(to, buff, length);
-    } else
-        ChangeDoubleForSort(nr, to);
     return 0;
 }
 
@@ -285,7 +276,7 @@ static int UnpackFloat(const void *src, void *dst) {
     static float zero_val = 0.0;
     static const uchar zero_pattern[4] = {128, 0, 0, 0};
     return UnpackFloatingPoint(src, sizeof(float), FLT_EXP_DIG, zero_pattern,
-                               (const uchar *)&zero_val, RdbSwapFloatBytes,
+                               (const uchar *)&zero_val, SwapFloatBytes,
                                dst);
 }
 
@@ -301,7 +292,7 @@ static int UnpackDouble(const void *src, void *dst) {
     static double zero_val = 0.0;
     static const uchar zero_pattern[8] = {128, 0, 0, 0, 0, 0, 0, 0};
     return UnpackFloatingPoint(src, sizeof(double), DBL_EXP_DIG, zero_pattern,
-                               (const uchar *)&zero_val, RdbSwapDoubleBytes,
+                               (const uchar *)&zero_val, SwapDoubleBytes,
                                dst);
 }
 

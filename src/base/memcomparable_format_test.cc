@@ -90,7 +90,7 @@ TEST_F(MemComFormatTest, TestFloatingNum) {
             std::string str;
             str.resize(sizeof(float));
             char* to = const_cast<char*>(str.data());
-            ASSERT_EQ(PackFloat(&f, sizeof(float), to), 0);
+            ASSERT_EQ(PackFloat(&f, to), 0);
             float dst;
             UnpackFloat(to, &dst);
             ASSERT_EQ(dst, (float)arr[i]);
@@ -111,7 +111,7 @@ TEST_F(MemComFormatTest, TestFloatingNum) {
             std::string str;
             str.resize(sizeof(double));
             char* to = const_cast<char*>(str.data());
-            ASSERT_EQ(PackDouble(&d, sizeof(double), to), 0);
+            ASSERT_EQ(PackDouble(&d, to), 0);
             double dst;
             UnpackDouble(to, &dst);
             ASSERT_EQ(dst, arr[i]);
