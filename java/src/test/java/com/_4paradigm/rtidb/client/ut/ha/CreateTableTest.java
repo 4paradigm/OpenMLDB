@@ -423,4 +423,20 @@ public class CreateTableTest extends TestCaseBase {
         ok = nsc.createTable(table);
         Assert.assertFalse(ok);
     }
+
+    @Test
+    public void testCreateTableWithEmptyIndex() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertFalse(ok);
+    }
 }
