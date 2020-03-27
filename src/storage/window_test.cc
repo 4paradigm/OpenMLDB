@@ -66,7 +66,7 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-        rows.push_back(Row{.buf = ptr});
+        rows.push_back(Row(ptr, 28));
     }
 
     {
@@ -76,7 +76,7 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-        rows.push_back(Row{.buf = ptr});
+        rows.push_back(Row(ptr, 28));
     }
 
     {
@@ -86,7 +86,7 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-        rows.push_back(Row{.buf = ptr});
+        rows.push_back(Row(ptr, 28));
     }
 
     ListV<Row> list(&rows);
@@ -103,7 +103,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
-    Row row({.buf = ptr});
+    Row row(ptr, 28);
 
     // history current_ts -1000 ~ current_ts
     {
@@ -177,7 +177,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundWindowTest) {
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
-    Row row({.buf = ptr});
+    Row row(ptr, 28);
 
     // history current_ts -1000 ~ current_ts
     CurrentHistoryUnboundWindow window;
@@ -219,7 +219,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
-    Row row({.buf = ptr});
+    Row row(ptr, 28);
 
 //     history current_ts -1000 ~ current_ts
     {
@@ -399,7 +399,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundSlideWindowTest) {
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
-    Row row({.buf = ptr});
+    Row row(ptr, 28);
 
     {
         std::vector<Row> rows;

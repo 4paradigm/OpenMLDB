@@ -459,9 +459,9 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  PROJECT(type=WindowAggregation, groups=(col1), orders=(col15) ASC, "
-        "start=-3, end=0)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
+        "  PROJECT(type=WindowAggregation, groups=(col1), orders=(col15) ASC, start=-3, end=0)\n"
+        "    GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1, "
@@ -471,9 +471,9 @@ TEST_F(TransformTest, pass_sort_optimized_test) {
         "BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  PROJECT(type=WindowAggregation, groups=(col2,col1), orders=(col15) "
-        "ASC, start=-3, end=0)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
+        "  PROJECT(type=WindowAggregation, groups=(col2,col1), orders=(col15) ASC, start=-3, end=0)\n"
+        "    GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
     //    in_outs.push_back(std::make_pair(
     //        "SELECT "
     //        "col1, "
@@ -523,10 +523,10 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  PROJECT(type=WindowAggregation, groups=(col1), orders=(col15) ASC, "
-        "start=-3, end=0)\n"
+        "  PROJECT(type=WindowAggregation, groups=(col1), orders=(col15) ASC, start=-3, end=0)\n"
         "    JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index1)\n"
+        "      GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
+        "        DATA_PROVIDER(type=IndexScan, table=t1, index=index1)\n"
         "      DATA_PROVIDER(table=t2)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
@@ -537,10 +537,10 @@ TEST_F(TransformTest, pass_join_optimized_test) {
         "WINDOW w1 AS (PARTITION BY col1, col2 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
-        "  PROJECT(type=WindowAggregation, groups=(col1,col2), orders=(col15) "
-        "ASC, start=-3, end=0)\n"
+        "  PROJECT(type=WindowAggregation, groups=(col1,col2), orders=(col15) ASC, start=-3, end=0)\n"
         "    JOIN(type=LeftJoin, condition=t1.col1 = t2.col1)\n"
-        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)\n"
+        "      GROUP_AND_SORT_BY(groups=(), orders=() ASC)\n"
+        "        DATA_PROVIDER(type=IndexScan, table=t1, index=index12)\n"
         "      DATA_PROVIDER(table=t2)"));
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);

@@ -30,16 +30,14 @@ using node::SQLNode;
 
 class Planner {
  public:
-    explicit Planner(node::NodeManager *manager)
-        : mode_(node::kPlanModeBatch), node_manager_(manager) {}
-    Planner(node::NodeManager *manager, node::PlanModeType mode)
-        : mode_(mode), node_manager_(manager) {}
+    Planner(node::NodeManager *manager, const bool is_batch_mode)
+        : is_batch_mode_(is_batch_mode), node_manager_(manager) {}
     virtual ~Planner() {}
     virtual int CreatePlanTree(
         const NodePointVector &parser_trees,
         PlanNodeList &plan_trees,  // NOLINT (runtime/references)
         Status &status) = 0;       // NOLINT (runtime/references)
-    const node::PlanModeType mode_;
+    const bool is_batch_mode_;
 
  protected:
     bool ValidatePrimaryPath(
@@ -82,9 +80,10 @@ class Planner {
 
 class SimplePlanner : public Planner {
  public:
-    explicit SimplePlanner(node::NodeManager *manager) : Planner(manager) {}
-    SimplePlanner(node::NodeManager *manager, node::PlanModeType mode)
-        : Planner(manager, mode) {}
+    explicit SimplePlanner(node::NodeManager *manager)
+        : Planner(manager, true) {}
+    explicit SimplePlanner(node::NodeManager *manager, bool is_batch_mode)
+        : Planner(manager, is_batch_mode) {}
     int CreatePlanTree(const NodePointVector &parser_trees,
                        PlanNodeList &plan_trees,
                        Status &status);  // NOLINT (runtime/references)

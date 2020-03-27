@@ -7,6 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "storage/window.h"
+#include <base/slice.h>
 namespace fesql {
 namespace storage {
 

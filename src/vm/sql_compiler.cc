@@ -62,31 +62,20 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
     ::fesql::udf::RegisterUDFToModule(m.get());
 
-    switch (ctx.mode) {
-        case node::kPlanModeBatch: {
-            vm::BatchModeTransformer transformer(nm_, ctx.db, cl_, m.get());
-            if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
-                LOG(WARNING) << "fail to generate physical plan (batch mode): "
-                             << status.msg << " for sql: \n"
-                             << ctx.sql;
-                return false;
-            }
-            break;
+    if (ctx.is_batch_mode) {
+        vm::BatchModeTransformer transformer(nm_, ctx.db, cl_, m.get());
+        if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
+            LOG(WARNING) << "fail to generate physical plan (batch mode): "
+                         << status.msg << " for sql: \n"
+                         << ctx.sql;
+            return false;
         }
-        case node::kPlanModeRequest: {
-            vm::RequestModeransformer transformer(nm_, ctx.db, cl_, m.get());
-            if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
-                LOG(WARNING) << "fail to generate physical plan (request mode) "
-                                "for sql: \n"
-                             << ctx.sql;
-                return false;
-            }
-            break;
-        }
-        default: {
-            status.msg = "fail to generate physical plan : sql mode invalid";
-            status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
+    } else {
+        vm::RequestModeransformer transformer(nm_, ctx.db, cl_, m.get());
+        if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
+            LOG(WARNING) << "fail to generate physical plan (request mode) "
+                            "for sql: \n"
+                         << ctx.sql;
             return false;
         }
     }
@@ -161,8 +150,8 @@ bool SQLCompiler::Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,
     return true;
 }
 bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
-                                          std::unique_ptr<FeSQLJIT>& jit,
-                                          Status& status) {
+                                       std::unique_ptr<FeSQLJIT>& jit,
+                                       Status& status) {
     if (nullptr == node) {
         status.msg = "fail to resolve project fn address: node is null";
     }

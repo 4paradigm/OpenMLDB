@@ -34,7 +34,7 @@ class UDFTest : public ::testing::Test {
             *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
             *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
             *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-            rows.push_back(storage::Row{.buf = ptr});
+            rows.push_back(storage::Row(ptr, 28));
         }
 
         {
@@ -44,7 +44,7 @@ class UDFTest : public ::testing::Test {
             *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
             *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
             *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-            rows.push_back(storage::Row{.buf = ptr});
+            rows.push_back(storage::Row(ptr, 28));
         }
 
         {
@@ -54,7 +54,7 @@ class UDFTest : public ::testing::Test {
             *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
             *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
             *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-            rows.push_back(storage::Row{.buf = ptr});
+            rows.push_back(storage::Row(ptr, 28));
         }
     }
 

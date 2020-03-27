@@ -175,24 +175,21 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
         DLOG(INFO) << "already gen code for node";
         return true;
     }
-    std::string fn_name;
+    std::string fn_name = "";
     vm::Schema fn_schema;
     switch (node->type_) {
         case kPhysicalOpGroupBy: {
             auto group = dynamic_cast<PhysicalGroupNode*>(node)->groups_;
-            if (!CodeGenExprList(node->output_schema, group, true, fn_name,
-                                 fn_schema, status)) {
-                return false;
-            }
+            CodeGenExprList(node->output_schema, group, true, fn_name,
+                                 fn_schema, status);
             break;
         }
         case kPhysicalOpSortBy: {
             auto order_op = dynamic_cast<PhysicalSortNode*>(node);
-            if (nullptr == order_op->order_ ||
-                !CodeGenExprList(node->output_schema,
-                                 order_op->order_->order_by_, true, fn_name,
-                                 fn_schema, status)) {
-                return false;
+            if (nullptr != order_op->order_) {
+                CodeGenExprList(node->output_schema,
+                                order_op->order_->order_by_, true, fn_name,
+                                fn_schema, status);
             }
             break;
         }
@@ -211,10 +208,8 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     expr_list.AddChild(expr);
                 }
             }
-            if (!CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
-                                 fn_schema, status)) {
-                return false;
-            }
+            CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
+                            fn_schema, status);
             break;
         }
         case kPhysicalOpFilter: {
@@ -222,10 +217,8 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(filter_op->condition_));
-            if (!CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
-                                 fn_schema, status)) {
-                return false;
-            }
+            CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
+                            fn_schema, status);
             break;
         }
         case kPhysicalOpJoin: {
@@ -233,10 +226,8 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(join_op->condition_));
-            if (!CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
-                                 fn_schema, status)) {
-                return false;
-            }
+            CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
+                            fn_schema, status);
             break;
         }
         case kPhysicalOpRequestUnoin: {
@@ -253,10 +244,8 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     expr_list.AddChild(expr);
                 }
             }
-            if (!CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
-                                 fn_schema, status)) {
-                return false;
-            }
+            CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
+                            fn_schema, status);
             break;
         }
         default: {
@@ -830,15 +819,16 @@ bool BatchModeTransformer::TransformPhysicalPlan(
                 }
                 break;
             }
+            case ::fesql::node::kPlanTypeUnion:
             case ::fesql::node::kPlanTypeQuery: {
-                const ::fesql::node::QueryPlanNode* query_plan =
-                    dynamic_cast<const ::fesql::node::QueryPlanNode*>(node);
                 PhysicalOpNode* physical_plan = nullptr;
-                if (!TransformQueryPlan(query_plan, &physical_plan, status)) {
+                if (!TransformQueryPlan(node, &physical_plan, status)) {
                     return false;
                 }
                 ApplyPasses(physical_plan, output);
                 if (!GenPlanNode(*output, status)) {
+                    LOG(WARNING) << "fail to gen plan";
+
                     return false;
                 }
                 break;
@@ -953,17 +943,10 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                                   index_name);
                     node_manager_->RegisterNode(scan_index_op);
 
-                    if ((nullptr == new_groups || new_groups->IsEmpty()) &&
-                        (nullptr == new_orders ||
-                         nullptr == new_orders->order_by_ ||
-                         new_orders->order_by_->IsEmpty())) {
-                        *output = scan_index_op;
-                    } else {
-                        PhysicalGroupAndSortNode* new_group_sort_op =
-                            new PhysicalGroupAndSortNode(
-                                scan_index_op, new_groups, new_orders);
-                        *output = new_group_sort_op;
-                    }
+                    PhysicalGroupAndSortNode* new_group_sort_op =
+                        new PhysicalGroupAndSortNode(scan_index_op, new_groups,
+                                                     new_orders);
+                    *output = new_group_sort_op;
                     return true;
                 }
             }
@@ -1155,9 +1138,9 @@ bool GroupAndSortOptimized::TransformOrderExpr(
     const node::OrderByNode* order, const Schema& schema,
     const IndexSt& index_st, const node::OrderByNode** output) {
     if (nullptr == order || nullptr == output) {
-        LOG(WARNING)
-            << "fail to transform order expr : order expr or data_provider op "
-               "or output is null";
+        LOG(WARNING) << "fail to transform order expr : order expr or "
+                        "data_provider op "
+                        "or output is null";
         return false;
     }
 

@@ -91,7 +91,7 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
-        ::fesql::plan::SimplePlanner planner(&manager);
+        ::fesql::plan::SimplePlanner planner(&manager, false);
         ::fesql::parser::FeSQLParser parser;
         ::fesql::node::NodePointVector parser_trees;
         parser.parse(sql, parser_trees, &manager, base_status);
@@ -122,7 +122,7 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     std::ostringstream oss;
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
-    std::stringstream ss;
+    std::ostringstream ss;
     PrintSchema(ss, physical_plan->output_schema);
     std::cout << "schema:\n" << ss.str() << std::endl;
     ASSERT_EQ(oss.str(), exp);
@@ -359,7 +359,7 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
-        ::fesql::plan::SimplePlanner planner(&manager, node::kPlanModeRequest);
+        ::fesql::plan::SimplePlanner planner(&manager, false);
         ::fesql::parser::FeSQLParser parser;
         ::fesql::node::NodePointVector parser_trees;
         parser.parse(sqlstr, parser_trees, &manager, base_status);
@@ -387,7 +387,7 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     std::ostringstream oss;
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sqlstr << "\n" << oss.str() << std::endl;
-    std::stringstream ss;
+    std::ostringstream ss;
     PrintSchema(ss, physical_plan->output_schema);
     std::cout << "schema:\n" << ss.str() << std::endl;
 }

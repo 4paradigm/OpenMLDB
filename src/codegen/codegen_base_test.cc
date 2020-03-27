@@ -113,7 +113,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -127,7 +127,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -141,7 +141,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -155,7 +155,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -171,7 +171,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(3.1);
         builder.AppendInt64(64);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
 
     ::fesql::storage::ListV<fesql::storage::Row>* w =
@@ -229,7 +229,7 @@ void BuildWindow2(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(4.1);
         builder.AppendInt64(5);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -243,7 +243,7 @@ void BuildWindow2(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(44.1);
         builder.AppendInt64(55);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -257,7 +257,7 @@ void BuildWindow2(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(444.1);
         builder.AppendInt64(555);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -271,7 +271,7 @@ void BuildWindow2(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(4444.1);
         builder.AppendInt64(5555);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -287,7 +287,7 @@ void BuildWindow2(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(44444.1);
         builder.AppendInt64(55555);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
 
     ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(&rows);

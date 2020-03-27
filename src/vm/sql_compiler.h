@@ -36,8 +36,8 @@ using fesql::base::Status;
 
 struct SQLContext {
     // mode: batch|request
-    node::PlanModeType mode = node::kPlanModeBatch;
     // the sql content
+    bool is_batch_mode;
     std::string sql;
     // the database
     std::string db;

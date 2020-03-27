@@ -23,14 +23,13 @@
 #include "codegen/buf_ir_builder.h"
 #include "storage/codec.h"
 #include "storage/window.h"
+#include "tablet/tablet_catalog.h"
 #include "vm/mem_catalog.h"
 
 namespace fesql {
 namespace vm {
 
-Engine::Engine(const std::shared_ptr<Catalog>& catalog,
-               const node::PlanModeType mode)
-    : cl_(catalog), mode_(mode) {}
+Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog) {}
 
 Engine::~Engine() {}
 
@@ -49,7 +48,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     std::shared_ptr<CompileInfo> info(new CompileInfo());
     info->sql_ctx.sql = sql;
     info->sql_ctx.db = db;
-    info->sql_ctx.mode = mode_;
+    info->sql_ctx.is_batch_mode = session.IsBatchRun();
     SQLCompiler compiler(cl_, &nm_);
     bool ok = compiler.Compile(info->sql_ctx, status);
     if (!ok || 0 != status.code) {
@@ -306,8 +305,7 @@ int32_t RequestRunSession::Run(const Row& in_row, Row& out_row) {
                             return 1;
                         }
 
-                        out_buffers.push_back(::fesql::storage::Row{
-                            .buf = output, .size = output_size});
+                        out_buffers.push_back(Row(output, output_size));
                     }
                 } else {
                     for (auto row : in_buffers) {
@@ -321,8 +319,8 @@ int32_t RequestRunSession::Run(const Row& in_row, Row& out_row) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
                         }
-                        out_buffers.push_back(::fesql::storage::Row{
-                            .buf = output, .size = output_size});
+                        out_buffers.push_back(
+                            ::fesql::storage::Row(output, output_size));
                     }
                 }
 
@@ -399,8 +397,8 @@ std::shared_ptr<TableHandler> RunSession::RunBatchPlan(
                     auto provider =
                         dynamic_cast<const PhysicalScanIndexNode*>(node);
                     return std::shared_ptr<PartitionHandler>(
-                        new PartitionHandler(provider->table_handler_,
-                                             provider->index_name_));
+                        new tablet::TabletPartitionHandler(
+                            provider->table_handler_, provider->index_name_));
                 }
                 default: {
                     LOG(WARNING)
@@ -422,12 +420,9 @@ std::shared_ptr<TableHandler> RunSession::RunBatchPlan(
                     auto output_table = std::shared_ptr<MemTableHandler>(
                         new MemTableHandler(op->output_schema));
                     while (iter->Valid()) {
-                        const base::Slice slice =
-                            RowProject(op->GetFn(), iter->GetValue());
-                        output_table->AddRow(
-                            Row{.buf = reinterpret_cast<int8_t*>(
-                                    const_cast<char*>(slice.data())),
-                                .size = slice.size()});
+                        const Row row(
+                            RowProject(op->GetFn(), iter->GetValue()));
+                        output_table->AddRow(row);
                         iter->Next();
                     }
                     return output_table;
@@ -445,21 +440,18 @@ std::shared_ptr<TableHandler> RunSession::RunBatchPlan(
                         auto iter = partitions->GetWindowIterator();
                         while (iter->Valid()) {
                             auto segment = iter->GetValue();
+                            storage::CurrentHistoryWindow window(
+                                op->start_offset_);
                             while (segment->Valid()) {
-                                storage::CurrentHistoryWindow window(
-                                    op->start_offset_);
-                                const base::Slice slice = WindowProject(
-                                    op->GetFn(), segment->GetKey(), segment->GetValue(), &window);
-                                output_table->AddRow(
-                                    Row{.buf = reinterpret_cast<int8_t*>(
-                                            const_cast<char*>(slice.data())),
-                                        .size = slice.size()});
+                                const Row row(WindowProject(
+                                    op->GetFn(), segment->GetKey(),
+                                    segment->GetValue(), &window));
+                                output_table->AddRow(row);
                                 segment->Next();
                             }
                             iter->Next();
                         }
                     } else {
-
                     }
 
                     return output_table;
@@ -520,10 +512,7 @@ std::shared_ptr<TableHandler> RunSession::RunBatchPlan(
                 new MemTableHandler(op->output_schema));
             int32_t cnt = 0;
             while (cnt++ < op->limit_cnt && iter->Valid()) {
-                auto value = iter->GetValue();
-                output_table->AddRow(Row{.buf = reinterpret_cast<int8_t*>(
-                                             const_cast<char*>(value.data())),
-                                         .size = value.size()});
+                output_table->AddRow(iter->GetKey(), Row(iter->GetValue()));
                 iter->Next();
             }
             return output_table;
@@ -544,17 +533,19 @@ base::Slice RunSession::WindowProject(const int8_t* fn, uint64_t key,
         return slice;
     }
     int8_t* data = reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
-    window->BufferData(key, Row{.buf = data, .size = slice.size()});
+    window->BufferData(key, Row(slice));
     int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
         (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
     int8_t* out_buf;
+    fesql::storage::WindowImpl impl(*window);
     uint32_t ret =
-        udf(data, reinterpret_cast<int8_t*>(&window), slice.size(), &out_buf);
+        udf(data, reinterpret_cast<int8_t*>(&impl), slice.size(), &out_buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return base::Slice();
     }
-    return base::Slice(reinterpret_cast<char*>(out_buf));
+    return base::Slice(reinterpret_cast<char*>(out_buf),
+                       ::fesql::storage::RowView::GetSize(out_buf));
 }
 base::Slice RunSession::RowProject(const int8_t* fn, const base::Slice slice) {
     if (slice.empty()) {
@@ -570,7 +561,8 @@ base::Slice RunSession::RowProject(const int8_t* fn, const base::Slice slice) {
         LOG(WARNING) << "fail to run udf " << ret;
         return base::Slice();
     }
-    return base::Slice(reinterpret_cast<char*>(buf));
+    return base::Slice(reinterpret_cast<char*>(buf),
+                       storage::RowView::GetSize(buf));
 }
 base::Slice RunSession::AggProject(const int8_t* fn,
                                    const std::shared_ptr<TableHandler> table) {
@@ -583,16 +575,15 @@ base::Slice RunSession::AggProject(const int8_t* fn,
         return base::Slice();
     }
 
-    auto slice = iter->GetValue();
+    auto row = Row(iter->GetValue());
 
     int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
         (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
     int8_t* buf;
 
     uint32_t ret =
-        udf(reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())),
-            reinterpret_cast<int8_t*>(table->GetIterator().get()), slice.size(),
-            &buf);
+        udf(row.buf, reinterpret_cast<int8_t*>(table->GetIterator().get()),
+            row.size, &buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return base::Slice();
@@ -710,26 +701,29 @@ std::shared_ptr<TableHandler> RunSession::TableGroup(
     }
 
     auto output_partitions = std::shared_ptr<MemPartitionHandler>(
-        new MemPartitionHandler(table, ""));
+        new MemPartitionHandler(table->GetSchema()));
 
     auto iter = table->GetIterator();
+    std::unique_ptr<storage::RowView> row_view = std::move(
+        std::unique_ptr<storage::RowView>(new storage::RowView(schema)));
     while (iter->Valid()) {
-        const base::Slice slice = RowProject(fn, iter->GetValue());
-        int8_t* buf =
-            reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
-        storage::RowView view(schema, buf, slice.size());
+        Row value_row(iter->GetValue());
+        const Row key_row(RowProject(fn, iter->GetValue()));
+        row_view->Reset(key_row.buf, key_row.size);
         std::string keys = "";
         for (auto pos : idxs) {
             std::string key =
-                GetColumnString(&view, pos, schema.Get(pos).type());
+                GetColumnString(row_view.get(), pos, schema.Get(pos).type());
             if (!keys.empty()) {
                 keys.append("|");
             }
             keys.append(key);
         }
-        output_partitions->AddRow(keys, Row{.buf = buf, .size = slice.size()});
+        output_partitions->AddRow(keys, iter->GetKey(), value_row);
         iter->Next();
     }
+
+    output_partitions->Print();
     return output_partitions;
 }
 std::shared_ptr<TableHandler> RunSession::PartitionGroup(
@@ -739,29 +733,29 @@ std::shared_ptr<TableHandler> RunSession::PartitionGroup(
         return table;
     }
     auto output_partitions = std::shared_ptr<MemPartitionHandler>(
-        new MemPartitionHandler(table, ""));
+        new MemPartitionHandler(table->GetSchema()));
     auto partitions = dynamic_cast<PartitionHandler*>(table.get());
     auto iter = partitions->GetWindowIterator();
     iter->SeekToFirst();
+    std::unique_ptr<storage::RowView> row_view = std::move(
+        std::unique_ptr<storage::RowView>(new storage::RowView(schema)));
     while (iter->Valid()) {
         auto segment_iter = iter->GetValue();
         segment_iter->SeekToFirst();
         while (segment_iter->Valid()) {
-            const base::Slice slice = RowProject(fn, segment_iter->GetValue());
-            int8_t* buf =
-                reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
-            storage::RowView view(schema, buf, slice.size());
+            const Row key_row(RowProject(fn, segment_iter->GetValue()));
+            row_view->Reset(key_row.buf, key_row.size);
             std::string keys = "";
             for (auto pos : idxs) {
-                std::string key =
-                    GetColumnString(&view, pos, schema.Get(pos).type());
+                std::string key = GetColumnString(row_view.get(), pos,
+                                                  schema.Get(pos).type());
                 if (!keys.empty()) {
                     keys.append("|");
                 }
                 keys.append(key);
             }
             output_partitions->AddRow(keys, segment_iter->GetKey(),
-                                      Row{.buf = buf, .size = slice.size()});
+                                      Row(segment_iter->GetValue()));
         }
         iter->Next();
     }
@@ -775,36 +769,46 @@ std::shared_ptr<TableHandler> RunSession::TableSortGroup(
     std::vector<int> orders_idxs;
 
     int idx = 0;
-    for (auto group : groups->children_) {
-        groups_idxs.push_back(idx++);
+
+    if (!node::ExprListNullOrEmpty(groups)) {
+        for (size_t j = 0; j < groups->children_.size(); ++j) {
+            groups_idxs.push_back(idx++);
+        }
     }
 
-    for (auto order : orders->order_by_->children_) {
-        orders_idxs.push_back(idx++);
+    if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_by_)) {
+        for (size_t j = 0; j < orders->order_by_->children_.size(); j++) {
+            orders_idxs.push_back(idx++);
+        }
     }
 
     if (table->IsPartitionTable()) {
-        output = PartitionSort(table, schema, fn, orders_idxs);
+        output = PartitionSort(table, schema, fn, orders_idxs, orders->is_asc_);
     } else {
-        output = TableSort(table, schema, fn, orders_idxs);
+        output = TableSort(table, schema, fn, orders_idxs, orders->is_asc_);
     }
 
     if (output->IsPartitionTable()) {
-        return PartitionGroup(table, schema, fn, groups_idxs);
+        return PartitionGroup(output, schema, fn, groups_idxs);
     } else {
-        return TableGroup(table, schema, fn, groups_idxs);
+        return TableGroup(output, schema, fn, groups_idxs);
     }
 }
 std::shared_ptr<TableHandler> RunSession::PartitionSort(
     std::shared_ptr<TableHandler> table, const Schema& schema, const int8_t* fn,
-    std::vector<int> idxs) {
-    if (idxs.empty()) {
+    std::vector<int> idxs, const bool is_asc) {
+    auto partitions = dynamic_cast<PartitionHandler*>(table.get());
+
+    // skip sort, when partition has same order direction
+    if (idxs.empty() && partitions->IsAsc() == is_asc) {
         return table;
     }
-    auto output_partitions = std::shared_ptr<MemPartitionHandler>(
-        new MemPartitionHandler(table, ""));
 
-    auto partitions = dynamic_cast<PartitionHandler*>(table.get());
+    std::unique_ptr<storage::RowView> row_view = std::move(
+        std::unique_ptr<storage::RowView>(new storage::RowView(schema)));
+    auto output_partitions = std::shared_ptr<MemPartitionHandler>(
+        new MemPartitionHandler(table->GetSchema()));
+
     auto iter = partitions->GetWindowIterator();
     iter->SeekToFirst();
 
@@ -812,44 +816,47 @@ std::shared_ptr<TableHandler> RunSession::PartitionSort(
         auto segment_iter = iter->GetValue();
         segment_iter->SeekToFirst();
         while (segment_iter->Valid()) {
-            const base::Slice slice = RowProject(fn, segment_iter->GetValue());
-            int8_t* buf =
-                reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
-            storage::RowView view(schema, buf, slice.size());
-            int64_t key =
-                GetColumnInt64(&view, idxs[0], schema.Get(idxs[0]).type());
-
+            const Row order_row(RowProject(fn, segment_iter->GetValue()));
+            int64_t key = -1;
+            if (idxs.empty()) {
+                key = segment_iter->GetKey();
+            } else {
+                row_view->Reset(order_row.buf, order_row.size);
+                key = GetColumnInt64(row_view.get(), idxs[0],
+                                     schema.Get(idxs[0]).type());
+            }
             output_partitions->AddRow(
                 std::string(iter->GetKey().data(), iter->GetKey().size()), key,
-                Row{.buf = buf, .size = slice.size()});
+                Row(segment_iter->GetValue()));
         }
         iter->Next();
     }
-    output_partitions->Sort();
+    output_partitions->Sort(is_asc);
     return output_partitions;
 }
 std::shared_ptr<TableHandler> RunSession::TableSort(
     std::shared_ptr<TableHandler> table, const Schema& schema, const int8_t* fn,
-    std::vector<int> idxs) {
+    std::vector<int> idxs, const bool is_asc) {
     if (idxs.empty()) {
         return table;
     }
     auto output_table = std::shared_ptr<MemTableHandler>(
         new MemTableHandler(table->GetSchema()));
 
+    std::unique_ptr<storage::RowView> row_view = std::move(
+        std::unique_ptr<storage::RowView>(new storage::RowView(schema)));
     auto iter = table->GetIterator();
     while (iter->Valid()) {
-        const base::Slice slice = RowProject(fn, iter->GetValue());
-        int8_t* buf =
-            reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
-        storage::RowView view(schema, buf, slice.size());
+        const Row order_row(RowProject(fn, iter->GetValue()));
+
+        row_view->Reset(order_row.buf, order_row.size);
 
         int64_t key =
-            GetColumnInt64(&view, idxs[0], schema.Get(idxs[0]).type());
-        output_table->AddRow(key, Row{.buf = buf, .size = slice.size()});
+            GetColumnInt64(row_view.get(), idxs[0], schema.Get(idxs[0]).type());
+        output_table->AddRow(key, Row(iter->GetValue()));
         iter->Next();
     }
-    output_table->Sort();
+    output_table->Sort(is_asc);
     return output_table;
 }
 

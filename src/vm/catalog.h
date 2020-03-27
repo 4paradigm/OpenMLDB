@@ -113,38 +113,19 @@ class TableHandler {
 
 class PartitionHandler : public TableHandler {
  public:
-    PartitionHandler(const std::shared_ptr<TableHandler>& table,
-                     const std::string& index_name)
-        : TableHandler(), table_handler_(table), index_name_(index_name) {}
+    PartitionHandler()
+        : TableHandler() {}
     ~PartitionHandler() {}
-
-    const Schema& GetSchema() override { return table_handler_->GetSchema(); }
-
-    const std::string& GetName() override { return table_handler_->GetName(); }
-
-    const std::string& GetDatabase() override {
-        return table_handler_->GetDatabase();
+    virtual std::unique_ptr<Iterator> GetIterator() {
+        return std::unique_ptr<Iterator>();
     }
-    const Types& GetTypes() override { return table_handler_->GetTypes(); }
-
-    const IndexHint& GetIndex() override { return index_hint_; }
-    std::unique_ptr<Iterator> GetIterator() override {
-        return table_handler_->GetIterator();
-    }
-    std::unique_ptr<WindowIterator> GetWindowIterator(
-        const std::string& idx_name) override {
+    virtual std::unique_ptr<WindowIterator> GetWindowIterator(
+        const std::string& idx_name) {
         return std::unique_ptr<WindowIterator>();
     }
-    const std::string& GetIndexName() { return index_name_; }
-    std::unique_ptr<WindowIterator> GetWindowIterator() {
-        return table_handler_->GetWindowIterator(index_name_);
-    }
+    virtual std::unique_ptr<WindowIterator> GetWindowIterator() = 0;
+    virtual const bool IsAsc() = 0;
     const bool IsPartitionTable() override { return true; }
-
- private:
-    std::shared_ptr<TableHandler> table_handler_;
-    const std::string index_name_;
-    const IndexHint index_hint_;
 };
 
 // database/table/schema/type management

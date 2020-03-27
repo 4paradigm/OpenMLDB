@@ -23,12 +23,64 @@ namespace fesql {
 namespace vm {
 
 using fesql::storage::Row;
-typedef std::vector<std::pair<uint64_t, Row>> MemSegment;
-struct Comparor {
+
+struct AscComparor {
+    bool operator() (std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
+        return i.first < j.first;
+    }
+};
+
+struct DescComparor {
     bool operator() (std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
         return i.first > j.first;
     }
 };
+
+typedef std::vector<std::pair<uint64_t, Row>> MemSegment;
+typedef std::vector<std::pair<uint64_t, Row>> MemSegment;
+typedef std::map<std::string, MemSegment, std::greater<std::string>> MemSegmentMap;
+
+class MemTableIterator : public Iterator {
+ public:
+    MemTableIterator(const MemSegment* table, const vm::Schema& schema);
+    ~MemTableIterator();
+    void Seek(uint64_t ts);
+
+    void SeekToFirst();
+
+    const uint64_t GetKey();
+
+    const base::Slice GetValue();
+
+    void Next();
+
+    bool Valid();
+
+ private:
+    const MemSegment* table_;
+    const Schema& schema_;
+    MemSegment::const_iterator iter_;
+};
+
+class MemWindowIterator : public WindowIterator {
+ public:
+    MemWindowIterator(const MemSegmentMap* partitions, const Schema& schema);
+
+    ~MemWindowIterator();
+
+    void Seek(const std::string& key);
+    void SeekToFirst();
+    void Next();
+    bool Valid();
+    std::unique_ptr<Iterator> GetValue();
+    const base::Slice GetKey();
+
+ private:
+    const MemSegmentMap* partitions_;
+    const Schema schema_;
+    MemSegmentMap::const_iterator iter_;
+};
+
 class MemTableHandler : public TableHandler {
  public:
     MemTableHandler(const Schema& schema);
@@ -45,7 +97,7 @@ class MemTableHandler : public TableHandler {
         const std::string& idx_name);
     void AddRow(const Row& row);
     void AddRow(const uint64_t key, const Row& row);
-    void Sort();
+    void Sort(const bool is_asc);
 
  private:
     std::string table_name_;
@@ -62,19 +114,32 @@ typedef std::map<std::string,
 
 typedef std::map<std::string, std::shared_ptr<type::Database>> Databases;
 
+
 class MemPartitionHandler : public PartitionHandler {
  public:
-    MemPartitionHandler(const std::shared_ptr<TableHandler>& table_hander,
-                        const std::string& index_name)
-        : PartitionHandler(table_hander, index_name) {}
+    MemPartitionHandler(const Schema& schema);
+    MemPartitionHandler(const std::string& table_name, const std::string& db,
+                        const Schema& schema);
 
-    ~MemPartitionHandler() {}
-
-    std::unique_ptr<WindowIterator> GetWindowIterator();
-    bool AddRow(const std::string& key, const Row& row);
+    ~MemPartitionHandler();
+    const bool IsAsc() override;
+    const Types& GetTypes() override;
+    const IndexHint& GetIndex() override;
+    const Schema& GetSchema() override;
+    const std::string& GetName() override;
+    const std::string& GetDatabase() override;
+    virtual std::unique_ptr<WindowIterator> GetWindowIterator();
     bool AddRow(const std::string& key, uint64_t ts, const Row& row);
-    void Sort();
-    std::map<std::string, MemSegment> partitions_;
+    void Sort(const bool is_asc);
+    void Print();
+ private:
+    std::string table_name_;
+    std::string db_;
+    const Schema& schema_;
+    MemSegmentMap partitions_;
+    Types types_;
+    IndexHint index_hint_;
+    bool is_asc_;
 };
 
 class MemCatalog : public Catalog {

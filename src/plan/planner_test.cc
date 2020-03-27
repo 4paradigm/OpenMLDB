@@ -1040,7 +1040,7 @@ TEST_F(PlannerTest, RequestModePlanErrorTest) {
         node::NodePointVector parser_trees;
         int ret = parser_->parse(sql, parser_trees, manager_, status);
         ASSERT_EQ(0, ret);
-        SimplePlanner planner_ptr(manager_, node::kPlanModeRequest);
+        SimplePlanner planner_ptr(manager_, false);
         node::PlanNodeList plan_trees;
         ASSERT_FALSE(0 ==  planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
     }

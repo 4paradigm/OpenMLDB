@@ -125,7 +125,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(11.1);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -141,7 +141,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(22.2);
         builder.AppendInt64(2);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -157,7 +157,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(33.3);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -173,7 +173,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(44.4);
         builder.AppendInt64(2);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -191,7 +191,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(55.5);
         builder.AppendInt64(3);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
 
     ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(&rows);
@@ -217,7 +217,7 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(11.1);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -233,7 +233,7 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(22.2);
         builder.AppendInt64(2);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -249,7 +249,7 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(33.3);
         builder.AppendInt64(3);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -265,7 +265,7 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(44.4);
         builder.AppendInt64(4);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -283,7 +283,7 @@ void BuildWindowUnique(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(55.5);
         builder.AppendInt64(5);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::storage::Row(ptr, total_size));
     }
 
     ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(&rows);
@@ -465,11 +465,12 @@ TEST_F(EngineTest, test_window_agg) {
 
     ASSERT_EQ(5u, output.size());
 
-    int8_t* output_1 = output[4];
-    int8_t* output_22 = output[3];
-    int8_t* output_333 = output[2];
+    int8_t* output_1 = output[3];
+    int8_t* output_22 = output[4];
+
+    int8_t* output_333 = output[0];
     int8_t* output_4444 = output[1];
-    int8_t* output_aaa = output[0];
+    int8_t* output_aaa = output[2];
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(5u, output.size());
@@ -492,7 +493,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_EQ(5 + 5, *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
-    ASSERT_EQ(2,
+    ASSERT_EQ(1,
               *(reinterpret_cast<int32_t*>(output_22 + 7 + 4 + 4 + 8 + 2 + 8)));
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8 + 4,
@@ -517,7 +518,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
     ASSERT_EQ(
-        4, *(reinterpret_cast<int32_t*>(output_4444 + 7 + 4 + 4 + 8 + 2 + 8)));
+        3, *(reinterpret_cast<int32_t*>(output_4444 + 7 + 4 + 4 + 8 + 2 + 8)));
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8 + 4,
               *(reinterpret_cast<int32_t*>(output_aaa + 2)));
@@ -531,7 +532,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_EQ(1L + 2L + 3L,
               *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
     ASSERT_EQ(
-        5, *(reinterpret_cast<int32_t*>(output_aaa + 7 + 4 + 4 + 8 + 2 + 8)));
+        3, *(reinterpret_cast<int32_t*>(output_aaa + 7 + 4 + 4 + 8 + 2 + 8)));
     for (auto ptr : output) {
         free(ptr);
     }
@@ -633,6 +634,7 @@ TEST_F(EngineTest, test_window_agg_batch_run) {
         free(ptr);
     }
 }
+
 TEST_F(EngineTest, test_window_agg_with_limit) {
     type::TableDef table_def;
     BuildTableDef(table_def);
@@ -666,9 +668,8 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     int32_t ret = session.Run(output, 100);
 
     ASSERT_EQ(2u, output.size());
-
+    int8_t* output_333 = output[0];
     int8_t* output_4444 = output[1];
-    int8_t* output_aaa = output[0];
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(2u, output.size());
@@ -685,16 +686,13 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
-              *(reinterpret_cast<int32_t*>(output_aaa + 2)));
-    ASSERT_EQ(3 + 4 + 5, *(reinterpret_cast<int32_t*>(output_aaa + 7)));
-    ASSERT_EQ(3.3f + 4.4f + 5.5f,
-              *(reinterpret_cast<float*>(output_aaa + 7 + 4)));
-    ASSERT_EQ(33.3 + 44.4 + 55.5,
-              *(reinterpret_cast<double*>(output_aaa + 7 + 4 + 4)));
-    ASSERT_EQ(55 + 55 + 55,
-              *(reinterpret_cast<int16_t*>(output_aaa + 7 + 4 + 4 + 8)));
-    ASSERT_EQ(1L + 2L + 3L,
-              *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
+              *(reinterpret_cast<int32_t*>(output_333 + 2)));
+    ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
+    ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
+    ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
+    ASSERT_EQ(55, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L,
+              *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
     for (auto ptr : output) {
         free(ptr);
     }
@@ -805,11 +803,11 @@ TEST_F(EngineTest, test_multi_windows_agg) {
     ASSERT_TRUE(ok);
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
-    int8_t* output_1 = output[4];
-    int8_t* output_22 = output[3];
-    int8_t* output_333 = output[2];
+    int8_t* output_1 = output[3];
+    int8_t* output_22 = output[4];
+    int8_t* output_333 = output[0];
     int8_t* output_4444 = output[1];
-    int8_t* output_aaa = output[0];
+    int8_t* output_aaa = output[2];
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(5u, output.size());
@@ -900,11 +898,11 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
     ASSERT_EQ(0, ret);
-    int8_t* output_1 = output[4];
-    int8_t* output_22 = output[3];
+    int8_t* output_1 = output[0];
+    int8_t* output_22 = output[1];
     int8_t* output_333 = output[2];
-    int8_t* output_4444 = output[1];
-    int8_t* output_aaa = output[0];
+    int8_t* output_4444 = output[3];
+    int8_t* output_aaa = output[4];
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(5u, output.size());
@@ -1105,16 +1103,18 @@ TEST_F(EngineTest, test_window_agg_varchar_pk) {
     ASSERT_EQ(0, ret);
     ASSERT_EQ(5u, output.size());
 
-    // pk:0 ts:2
-    int8_t* output_22 = output[0];
     // pk:0 ts:1
-    int8_t* output_1 = output[1];
+    int8_t* output_1 = output[3];
+    // pk:0 ts:2
+    int8_t* output_22 = output[4];
+
+    // pk:1 ts:1
+    int8_t* output_333 = output[1];
     // pk:1 ts:2
     int8_t* output_4444 = output[2];
-    // pk:1 ts:1
-    int8_t* output_333 = output[3];
+
     // pk:2 ts:3
-    int8_t* output_aaa = output[4];
+    int8_t* output_aaa = output[0];
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(5u, output.size());
@@ -1205,17 +1205,17 @@ TEST_F(EngineTest, test_window_agg_varchar_pk_batch_run) {
     ASSERT_EQ(5u, output.size());
 
     // pk:0 ts:1
-    int8_t* output_1 = output[0];
+    int8_t* output_1 = output[3];
     // pk:0 ts:2
-    int8_t* output_22 = output[1];
+    int8_t* output_22 = output[4];
 
     // pk:1 ts:1
-    int8_t* output_333 = output[2];
+    int8_t* output_333 = output[1];
     // pk:1 ts:2
-    int8_t* output_4444 = output[3];
+    int8_t* output_4444 = output[2];
 
     // pk:2 ts:3
-    int8_t* output_aaa = output[4];
+    int8_t* output_aaa = output[0];
 
     ASSERT_EQ(0, ret);
     ASSERT_EQ(5u, output.size());

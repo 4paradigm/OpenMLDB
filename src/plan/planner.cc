@@ -514,7 +514,7 @@ int SimplePlanner::CreatePlanTree(
                     return status.code;
                 }
 
-                if (node::kPlanModeRequest == mode_) {
+                if (!is_batch_mode_) {
                     // return false if Primary path check fail
                     ::fesql::node::PlanNode* primary_node;
                     if (!ValidatePrimaryPath(query_plan, &primary_node, status)) {
