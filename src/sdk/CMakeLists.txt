@@ -149,7 +149,7 @@ add_custom_target(python_package ALL
 	DEPENDS python/setup.py
 	COMMAND ${CMAKE_COMMAND} -E make_directory fesql
 	COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py fesql/__init__.py
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/__init__.py.in fesql/__init__.py
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:fesql_pysdk> fesql/
 	COMMAND ${PYTHON_EXECUTABLE} setup.py bdist_wheel
 	BYPRODUCTS
