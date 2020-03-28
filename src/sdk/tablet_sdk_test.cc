@@ -588,7 +588,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
     delete tablet;
 }
 
-//TEST_F(TabletSdkTest, test_window_udf_query) {
+// TEST_F(TabletSdkTest, test_window_udf_query) {
 //    // prepare servive
 //    brpc::Server server;
 //    brpc::Server tablet_server;
@@ -661,40 +661,40 @@ TEST_P(TabletSdkTest, test_udf_query) {
 //    ::fesql::sdk::Status insert_status;
 //    {
 //        sdk->SyncInsert("db_1",
-//                        "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
-//                        insert_status);
+//                        "insert into t1 values(1, 2, 3.3, 1000, 5,
+//                        \"hello\");", insert_status);
 //        if (0 != insert_status.code) {
 //            std::cout << insert_status.msg << std::endl;
 //        }
 //    }
 //    {
 //        sdk->SyncInsert("db_1",
-//                        "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
-//                        insert_status);
+//                        "insert into t1 values(1, 3, 4.4, 2000, 6,
+//                        \"world\");", insert_status);
 //        if (0 != insert_status.code) {
 //            std::cout << insert_status.msg << std::endl;
 //        }
 //    }
 //    {
 //        sdk->SyncInsert(
-//            "db_1", "insert into t1 values(11, 4, 5.5, 3000, 7, \"string1\");",
-//            insert_status);
+//            "db_1", "insert into t1 values(11, 4, 5.5, 3000, 7,
+//            \"string1\");", insert_status);
 //        if (0 != insert_status.code) {
 //            std::cout << insert_status.msg << std::endl;
 //        }
 //    }
 //    {
 //        sdk->SyncInsert(
-//            "db_1", "insert into t1 values(11, 5, 6.6, 4000, 8, \"string2\");",
-//            insert_status);
+//            "db_1", "insert into t1 values(11, 5, 6.6, 4000, 8,
+//            \"string2\");", insert_status);
 //        if (0 != insert_status.code) {
 //            std::cout << insert_status.msg << std::endl;
 //        }
 //    }
 //    {
 //        sdk->SyncInsert(
-//            "db_1", "insert into t1 values(11, 6, 7.7, 5000, 9, \"string3\");",
-//            insert_status);
+//            "db_1", "insert into t1 values(11, 6, 7.7, 5000, 9,
+//            \"string3\");", insert_status);
 //        if (0 != insert_status.code) {
 //            std::cout << insert_status.msg << std::endl;
 //        }
@@ -713,9 +713,8 @@ TEST_P(TabletSdkTest, test_udf_query) {
 //            "sum(column3) OVER w1 as w1_col3_sum, "
 //            "sum(column4) OVER w1 as w1_col4_sum, "
 //            "sum(column5) OVER w1 as w1_col5_sum "
-//            "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
-//            "BETWEEN 3000"
-//            "PRECEDING AND CURRENT ROW) limit 10;";
+//            "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS
+//            " "BETWEEN 3000" "PRECEDING AND CURRENT ROW) limit 10;";
 //        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
 //        if (rs) {
 //            ASSERT_EQ(5u, rs->GetColumnCnt());
@@ -1096,7 +1095,7 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
     delete tablet;
 }
 
-//TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
+// TEST_F(TabletSdkTest, test_window_udf_no_partition_query) {
 //    // prepare servive
 //    brpc::Server server;
 //    brpc::Server tablet_server;
@@ -1169,16 +1168,16 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
 //    ::fesql::sdk::Status insert_status;
 //    {
 //        sdk->SyncInsert("db_1",
-//                        "insert into t1 values(1, 2, 3.3, 1000, 5, \"hello\");",
-//                        insert_status);
+//                        "insert into t1 values(1, 2, 3.3, 1000, 5,
+//                        \"hello\");", insert_status);
 //        if (0 != insert_status.code) {
 //            std::cout << insert_status.msg << std::endl;
 //        }
 //    }
 //    {
 //        sdk->SyncInsert("db_1",
-//                        "insert into t1 values(1, 3, 4.4, 2000, 6, \"world\");",
-//                        insert_status);
+//                        "insert into t1 values(1, 3, 4.4, 2000, 6,
+//                        \"world\");", insert_status);
 //        if (0 != insert_status.code) {
 //            std::cout << insert_status.msg << std::endl;
 //        }
@@ -1221,9 +1220,8 @@ TEST_F(TabletSdkTest, test_window_udf_batch_query) {
 //            "sum(column3) OVER w1 as w1_col3_sum, "
 //            "sum(column4) OVER w1 as w1_col4_sum, "
 //            "sum(column5) OVER w1 as w1_col5_sum "
-//            "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS "
-//            "BETWEEN 3s "
-//            "PRECEDING AND CURRENT ROW) limit 10;";
+//            "FROM t1 WINDOW w1 AS (PARTITION BY column1 ORDER BY column4 ROWS
+//            " "BETWEEN 3s " "PRECEDING AND CURRENT ROW) limit 10;";
 //        std::unique_ptr<ResultSet> rs = sdk->SyncQuery(query, query_status);
 //        if (rs) {
 //            ASSERT_EQ(5u, rs->GetColumnCnt());

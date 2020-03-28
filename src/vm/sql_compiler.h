@@ -57,8 +57,7 @@ struct SQLContext {
 class SQLCompiler {
  public:
     SQLCompiler(const std::shared_ptr<Catalog>& cl,
-                         ::fesql::node::NodeManager* nm,
-                         bool keep_ir = false);
+                ::fesql::node::NodeManager* nm, bool keep_ir = false);
 
     ~SQLCompiler();
 
@@ -70,8 +69,8 @@ class SQLCompiler {
     bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT
                ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT
     bool ResolvePlanFnAddress(PhysicalOpNode* node,
-                                 std::unique_ptr<FeSQLJIT>& jit,
-                                 Status& status);  // NOLINT
+                              std::unique_ptr<FeSQLJIT>& jit,  // NOLINT
+                              Status& status);                 // NOLINT
 
  private:
     const std::shared_ptr<Catalog> cl_;

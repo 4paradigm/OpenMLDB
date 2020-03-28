@@ -78,7 +78,6 @@ class WindowIterator {
     virtual const base::Slice GetKey() = 0;
 };
 
-
 class TableHandler {
  public:
     TableHandler() {}
@@ -106,15 +105,12 @@ class TableHandler {
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) = 0;
 
-    virtual const bool IsPartitionTable() {
-        return false;
-    };
+    virtual const bool IsPartitionTable() { return false; }
 };
 
 class PartitionHandler : public TableHandler {
  public:
-    PartitionHandler()
-        : TableHandler() {}
+    PartitionHandler() : TableHandler() {}
     ~PartitionHandler() {}
     virtual std::unique_ptr<Iterator> GetIterator() {
         return std::unique_ptr<Iterator>();

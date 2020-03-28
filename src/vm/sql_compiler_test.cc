@@ -107,7 +107,6 @@ TEST_F(SQLCompilerTest, test_normal) {
     std::ostringstream oss_schema;
     PrintSchema(oss_schema, sql_context.schema);
     std::cout << "schema:\n" << oss_schema.str();
-
 }
 
 }  // namespace vm

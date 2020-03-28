@@ -475,7 +475,8 @@ std::shared_ptr<TableHandler> RunSession::RunBatchPlan(
             }
 
             std::vector<int> col_idxs;
-            for (int j = 0; j < int(op->groups_->children_.size()); ++j) {
+            for (int j = 0; j < static_cast<int>(op->groups_->children_.size());
+                 ++j) {
                 col_idxs.push_back(j++);
             }
             if (input->IsPartitionTable()) {

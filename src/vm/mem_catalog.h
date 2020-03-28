@@ -12,6 +12,9 @@
 
 #include <map>
 #include <memory>
+#include <vector>
+#include <functional>
+#include <utility>
 #include <string>
 #include "base/slice.h"
 #include "glog/logging.h"
@@ -25,20 +28,21 @@ namespace vm {
 using fesql::storage::Row;
 
 struct AscComparor {
-    bool operator() (std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
+    bool operator()(std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
         return i.first < j.first;
     }
 };
 
 struct DescComparor {
-    bool operator() (std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
+    bool operator()(std::pair<uint64_t, Row> i, std::pair<uint64_t, Row> j) {
         return i.first > j.first;
     }
 };
 
 typedef std::vector<std::pair<uint64_t, Row>> MemSegment;
 typedef std::vector<std::pair<uint64_t, Row>> MemSegment;
-typedef std::map<std::string, MemSegment, std::greater<std::string>> MemSegmentMap;
+typedef std::map<std::string, MemSegment, std::greater<std::string>>
+    MemSegmentMap;
 
 class MemTableIterator : public Iterator {
  public:
@@ -83,7 +87,7 @@ class MemWindowIterator : public WindowIterator {
 
 class MemTableHandler : public TableHandler {
  public:
-    MemTableHandler(const Schema& schema);
+    explicit MemTableHandler(const Schema& schema);
     MemTableHandler(const std::string& table_name, const std::string& db,
                     const Schema& schema);
     const Types& GetTypes() override;
@@ -114,10 +118,9 @@ typedef std::map<std::string,
 
 typedef std::map<std::string, std::shared_ptr<type::Database>> Databases;
 
-
 class MemPartitionHandler : public PartitionHandler {
  public:
-    MemPartitionHandler(const Schema& schema);
+    explicit MemPartitionHandler(const Schema& schema);
     MemPartitionHandler(const std::string& table_name, const std::string& db,
                         const Schema& schema);
 
@@ -132,6 +135,7 @@ class MemPartitionHandler : public PartitionHandler {
     bool AddRow(const std::string& key, uint64_t ts, const Row& row);
     void Sort(const bool is_asc);
     void Print();
+
  private:
     std::string table_name_;
     std::string db_;
@@ -144,7 +148,7 @@ class MemPartitionHandler : public PartitionHandler {
 
 class MemCatalog : public Catalog {
  public:
-    explicit MemCatalog();
+    MemCatalog();
 
     ~MemCatalog();
 

@@ -22,7 +22,7 @@ class IteratorImpl;
 struct Row {
     Row() : buf(nullptr), size(0) {}
     Row(int8_t *buf, size_t size) : buf(buf), size(size) {}
-    Row(const base::Slice slice)
+    explicit Row(const base::Slice slice)
         : buf(reinterpret_cast<int8_t *>(const_cast<char *>(slice.data()))),
           size(slice.size()) {}
     int8_t *buf;

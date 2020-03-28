@@ -1032,19 +1032,19 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
 TEST_F(PlannerTest, RequestModePlanErrorTest) {
     const std::vector<std::string> sql_list = {
         "select col1, col2 from t1 union select col1, col2 from t2;",
-        "select col1, col2 from t1 left join (select col1, col2 from tt) as t2 on t1.col1 = t2.col1;"
-    };
+        "select col1, col2 from t1 left join (select col1, col2 from tt) as t2 "
+        "on t1.col1 = t2.col1;"};
 
-    for(auto sql: sql_list) {
+    for (auto sql : sql_list) {
         base::Status status;
         node::NodePointVector parser_trees;
         int ret = parser_->parse(sql, parser_trees, manager_, status);
         ASSERT_EQ(0, ret);
         SimplePlanner planner_ptr(manager_, false);
         node::PlanNodeList plan_trees;
-        ASSERT_FALSE(0 ==  planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
+        ASSERT_EQ(0,
+                  planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
     }
-
 }
 
 }  // namespace plan

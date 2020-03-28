@@ -116,7 +116,6 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         need_agg = true;
     }
 
-
     // select target_list
     if (nullptr == root->GetSelectList() ||
         root->GetSelectList()->GetList().empty()) {
@@ -208,8 +207,8 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         auto first_window_project =
             dynamic_cast<node::ProjectListNode *>(project_list_vec[1]);
         node::ProjectListNode *merged_project =
-            node_manager_->MakeProjectListPlanNode(
-                first_window_project->GetW(), true);
+            node_manager_->MakeProjectListPlanNode(first_window_project->GetW(),
+                                                   true);
 
         if (MergeProjectList(simple_project, first_window_project,
                              merged_project)) {
@@ -421,9 +420,8 @@ bool Planner::CreateCreateTablePlan(
     return true;
 }
 
-bool Planner::ValidatePrimaryPath(node::PlanNode* node,
-                                               node::PlanNode** output,
-                                               base::Status& status) {
+bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
+                                  base::Status &status) {
     if (nullptr == node) {
         status.msg = "primary path validate fail: node or output is null";
         status.code = common::kPlanError;
@@ -434,8 +432,8 @@ bool Planner::ValidatePrimaryPath(node::PlanNode* node,
     switch (node->type_) {
         case node::kPlanTypeJoin:
         case node::kPlanTypeUnion: {
-            auto binary_op = dynamic_cast<node::BinaryPlanNode*>(node);
-            node::PlanNode* left_primary_table = nullptr;
+            auto binary_op = dynamic_cast<node::BinaryPlanNode *>(node);
+            node::PlanNode *left_primary_table = nullptr;
             if (!ValidatePrimaryPath(binary_op->GetLeft(), &left_primary_table,
                                      status)) {
                 status.msg =
@@ -449,7 +447,7 @@ bool Planner::ValidatePrimaryPath(node::PlanNode* node,
                 *output = left_primary_table;
                 return true;
             }
-            node::PlanNode* right_primary_table = nullptr;
+            node::PlanNode *right_primary_table = nullptr;
             if (!ValidatePrimaryPath(binary_op->GetRight(),
                                      &right_primary_table, status)) {
                 status.msg =
@@ -488,7 +486,7 @@ bool Planner::ValidatePrimaryPath(node::PlanNode* node,
             return false;
         }
         default: {
-            auto unary_op = dynamic_cast<const node::UnaryPlanNode*>(node);
+            auto unary_op = dynamic_cast<const node::UnaryPlanNode *>(node);
             return ValidatePrimaryPath(unary_op->GetDepend(), output, status);
         }
     }
@@ -516,11 +514,13 @@ int SimplePlanner::CreatePlanTree(
 
                 if (!is_batch_mode_) {
                     // return false if Primary path check fail
-                    ::fesql::node::PlanNode* primary_node;
-                    if (!ValidatePrimaryPath(query_plan, &primary_node, status)) {
+                    ::fesql::node::PlanNode *primary_node;
+                    if (!ValidatePrimaryPath(query_plan, &primary_node,
+                                             status)) {
                         return status.code;
                     }
-                    dynamic_cast<node::TablePlanNode*>(primary_node)->SetIsPrimary(true);
+                    dynamic_cast<node::TablePlanNode *>(primary_node)
+                        ->SetIsPrimary(true);
                     DLOG(INFO) << "plan after primary check:\n" << *query_plan;
                 }
 

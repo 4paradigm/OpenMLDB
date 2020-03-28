@@ -62,10 +62,8 @@ class RunSession {
     std::shared_ptr<Catalog> cl_;
     friend Engine;
     std::shared_ptr<TableHandler> RunBatchPlan(const PhysicalOpNode* node);
-    base::Slice WindowProject(const int8_t* fn,
-                                          const uint64_t key,
-                                          const base::Slice slice,
-                                          storage::Window* window);
+    base::Slice WindowProject(const int8_t* fn, const uint64_t key,
+                              const base::Slice slice, storage::Window* window);
     base::Slice RowProject(const int8_t* fn, const base::Slice slice);
     base::Slice AggProject(const int8_t* fn,
                            const std::shared_ptr<TableHandler> table);
@@ -95,13 +93,12 @@ class RunSession {
 
 class BatchRunSession : public RunSession {
  public:
-    BatchRunSession(bool mini_batch_ = false)
-        : RunSession(), mini_batch_(mini_batch_) {}
+    explicit BatchRunSession(bool mini_batch = false)
+        : RunSession(), mini_batch_(mini_batch) {}
     ~BatchRunSession() {}
-    virtual int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);
-    const bool IsBatchRun() const override {
-        return true;
-    }
+    virtual int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
+    const bool IsBatchRun() const override { return true; }
+
  private:
     const bool mini_batch_;
 };
@@ -111,9 +108,7 @@ class RequestRunSession : public RunSession {
     RequestRunSession() : RunSession() {}
     ~RequestRunSession() {}
     virtual int32_t Run(const Row& in_row, Row& out_row);  // NOLINT
-    const bool IsBatchRun() const override {
-        return false;
-    }
+    const bool IsBatchRun() const override { return false; }
 };
 
 typedef std::map<std::string,
@@ -122,7 +117,6 @@ typedef std::map<std::string,
 class Engine {
  public:
     explicit Engine(const std::shared_ptr<Catalog>& cl);
-
 
     ~Engine();
 

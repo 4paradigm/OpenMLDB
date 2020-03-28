@@ -173,10 +173,10 @@ class BatchModeTransformer {
     bool AddDefaultPasses();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
                                ::fesql::vm::PhysicalOpNode** output,
-                               ::fesql::base::Status& status);
+                               ::fesql::base::Status& status);  // NOLINT
     virtual bool TransformQueryPlan(const ::fesql::node::PlanNode* node,
-                            ::fesql::vm::PhysicalOpNode** output,
-                            ::fesql::base::Status& status);  // NOLINT
+                                    ::fesql::vm::PhysicalOpNode** output,
+                                    ::fesql::base::Status& status);  // NOLINT
 
     bool AddPass(PhysicalPlanPassType type);
 
@@ -235,7 +235,8 @@ class BatchModeTransformer {
                                     PhysicalOpNode** output,
                                     base::Status& status);  // NOLINT
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
-    bool GenFnDef(const node::FuncDefPlanNode* fn_plan, base::Status& status);
+    bool GenFnDef(const node::FuncDefPlanNode* fn_plan,
+                  base::Status& status);  // NOLINT
 
     node::NodeManager* node_manager_;
     const std::string db_;
@@ -254,9 +255,9 @@ class BatchModeTransformer {
     LogicalOpMap op_map_;
     bool CodeGenExprList(Schema input_schema,
                          const node::ExprListNode* expr_list, bool row_mode,
-                         std::string& fn_name, Schema& output_schema,
-                         base::Status& status);
-    bool GenPlanNode(PhysicalOpNode* node, base::Status &status);
+                         std::string& fn_name, Schema& output_schema,  // NOLINT
+                         base::Status& status);                        // NOLINT
+    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
 };
 
 class RequestModeransformer : public BatchModeTransformer {
@@ -266,6 +267,7 @@ class RequestModeransformer : public BatchModeTransformer {
                           const std::shared_ptr<Catalog>& catalog,
                           ::llvm::Module* module);
     virtual ~RequestModeransformer();
+
  protected:
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,

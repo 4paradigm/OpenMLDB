@@ -105,13 +105,9 @@ class PhysicalOpNode {
     void SetFnName(const std::string &fn_name) { fn_name_ = fn_name; }
     const std::string &GetFnName() const { return fn_name_; }
 
-    void SetFnSchema(const Schema schema) {
-        fn_schema_ = schema;
-    }
+    void SetFnSchema(const Schema schema) { fn_schema_ = schema; }
 
-    const vm::Schema& GetFnSchema() const {
-        return fn_schema_;
-    }
+    const vm::Schema &GetFnSchema() const { return fn_schema_; }
     const PhysicalOpType type_;
     const bool is_block_;
     const bool is_lazy_;
@@ -233,7 +229,6 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
-
 };
 
 class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
