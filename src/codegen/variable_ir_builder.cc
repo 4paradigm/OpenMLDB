@@ -38,7 +38,7 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
         // store value into memory address
         ::llvm::IRBuilder<> builder(block_);
         // get value addr
-        ::llvm::Value* addr == nullptr;
+        ::llvm::Value* addr = nullptr;
         bool is_reg = false;
         if (!sv_->FindVar(name, &addr, &is_reg)) {
             addr = builder.CreateAlloca(value->getType());
