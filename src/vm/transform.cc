@@ -803,7 +803,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     in->GetProducers()[0]);
                 if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
-                    const node::ExprListNode* new_groups;
+                    const node::ExprListNode* new_groups = nullptr;
                     if (!TransformGroupExpr(group_op->groups_,
                                             scan_op->table_handler_->GetIndex(),
                                             &index_name, &new_groups)) {
@@ -835,8 +835,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     in->GetProducers()[0]);
                 if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
-                    const node::ExprListNode* new_groups;
-                    const node::OrderByNode* new_orders;
+                    const node::ExprListNode* new_groups = nullptr;
+                    const node::OrderByNode* new_orders = nullptr;
                     auto& index_hint = scan_op->table_handler_->GetIndex();
                     if (!TransformGroupExpr(group_sort_op->groups_, index_hint,
                                             &index_name, &new_groups)) {
@@ -877,8 +877,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     in->GetProducers()[1]);
                 if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
-                    const node::ExprListNode* new_groups;
-                    const node::OrderByNode* new_orders;
+                    const node::ExprListNode* new_groups = nullptr;
+                    const node::OrderByNode* new_orders = nullptr;
                     auto& index_hint = scan_op->table_handler_->GetIndex();
                     if (!TransformGroupExpr(union_op->groups_, index_hint,
                                             &index_name, &new_groups)) {
