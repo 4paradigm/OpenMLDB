@@ -1042,7 +1042,7 @@ TEST_F(PlannerTest, RequestModePlanErrorTest) {
         ASSERT_EQ(0, ret);
         SimplePlanner planner_ptr(manager_, false);
         node::PlanNodeList plan_trees;
-        ASSERT_EQ(0,
+        ASSERT_EQ(common::kPlanError,
                   planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
     }
 }

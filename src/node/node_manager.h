@@ -26,7 +26,8 @@ class NodeManager {
         : parser_node_list_(),
           sql_node_list_list_(),
           plan_node_list_(),
-          batch_plan_node_list_() {}
+          batch_plan_node_list_(),
+          physical_plan_node_list_() {}
 
     ~NodeManager() {
         for (auto sql_node_ite = parser_node_list_.begin();
@@ -35,17 +36,17 @@ class NodeManager {
             sql_node_ite = parser_node_list_.erase(sql_node_ite);
         }
 
-        for (auto plan_node_ite = plan_node_list_.begin();
-             plan_node_ite != plan_node_list_.end(); ++plan_node_ite) {
-            delete (*plan_node_ite);
-            plan_node_ite = plan_node_list_.erase(plan_node_ite);
-        }
-
         for (auto sql_node_list_iter = sql_node_list_list_.begin();
              sql_node_list_iter != sql_node_list_list_.end();
              ++sql_node_list_iter) {
             delete (*sql_node_list_iter);
             sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
+        }
+
+        for (auto plan_node_ite = plan_node_list_.begin();
+             plan_node_ite != plan_node_list_.end(); ++plan_node_ite) {
+            delete (*plan_node_ite);
+            plan_node_ite = plan_node_list_.erase(plan_node_ite);
         }
 
         for (auto physical_node_list_iter = physical_plan_node_list_.begin();
