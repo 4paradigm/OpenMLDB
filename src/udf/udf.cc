@@ -50,7 +50,6 @@ V sum_list(int8_t *input) {
     while (iter.Valid()) {
         result += iter.Next();
     }
-    std::cout << "sum: " << std::to_string(result) << std::endl;
     return result;
 }
 
