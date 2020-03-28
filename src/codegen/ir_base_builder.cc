@@ -305,7 +305,7 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
                                     data_type->generics_.size();
                 return false;
             }
-            ::llvm::Type* list_type;
+            ::llvm::Type* list_type = nullptr;
             if (false ==
                 GetLLVMListType(m, data_type->generics_[0], &list_type)) {
                 return false;
@@ -321,7 +321,7 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
                            data_type->generics_.size();
                 return false;
             }
-            ::llvm::Type* list_type;
+            ::llvm::Type* list_type = nullptr;
             if (false ==
                 GetLLVMIteratorType(m, data_type->generics_[0], &list_type)) {
                 return false;

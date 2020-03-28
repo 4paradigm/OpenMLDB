@@ -196,7 +196,7 @@ int32_t RequestRunSession::Run(const Row& in_row, Row& out_row) {
                                     break;
                                 }
                                 case fesql::type::kVarchar: {
-                                    char* str;
+                                    char* str = nullptr;
                                     uint32_t str_size;
                                     if (0 == row_view->GetString(key_idx, &str,
                                                                  &str_size)) {
@@ -362,7 +362,6 @@ int32_t RequestRunSession::Run(const Row& in_row, Row& out_row) {
     return 0;
 }
 int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
-    compile_info_->sql_ctx.plan->Print(std::cout, "");
     auto output = RunBatchPlan(compile_info_->sql_ctx.plan);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
@@ -537,7 +536,7 @@ base::Slice RunSession::WindowProject(const int8_t* fn, uint64_t key,
     window->BufferData(key, Row(slice));
     int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
         (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
-    int8_t* out_buf;
+    int8_t* out_buf = nullptr;
     fesql::storage::WindowImpl impl(*window);
     uint32_t ret =
         udf(data, reinterpret_cast<int8_t*>(&impl), slice.size(), &out_buf);
@@ -554,7 +553,7 @@ base::Slice RunSession::RowProject(const int8_t* fn, const base::Slice slice) {
     }
     int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
         (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
-    int8_t* buf;
+    int8_t* buf = nullptr;
     uint32_t ret =
         udf(reinterpret_cast<int8_t*>(const_cast<char*>(slice.data())), nullptr,
             slice.size(), &buf);
@@ -580,7 +579,7 @@ base::Slice RunSession::AggProject(const int8_t* fn,
 
     int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
         (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
-    int8_t* buf;
+    int8_t* buf = nullptr;
 
     uint32_t ret =
         udf(row.buf, reinterpret_cast<int8_t*>(table->GetIterator().get()),
@@ -631,7 +630,7 @@ std::string RunSession::GetColumnString(fesql::storage::RowView* row_view,
             break;
         }
         case fesql::type::kVarchar: {
-            char* str;
+            char* str = nullptr;
             uint32_t str_size;
             if (0 == row_view->GetString(key_idx, &str, &str_size)) {
                 key = std::string(str, str_size);
@@ -723,8 +722,6 @@ std::shared_ptr<TableHandler> RunSession::TableGroup(
         output_partitions->AddRow(keys, iter->GetKey(), value_row);
         iter->Next();
     }
-
-    output_partitions->Print();
     return output_partitions;
 }
 std::shared_ptr<TableHandler> RunSession::PartitionGroup(

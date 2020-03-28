@@ -43,7 +43,7 @@ ExitOnError ExitOnErr;
 
 struct TestString {
     int32_t size;
-    char* data;
+    char* data = nullptr;
 };
 
 void AssertStrEq(std::string exp, int8_t* ptr) {
@@ -171,7 +171,7 @@ void GetListAtPos(T* result, const ::fesql::type::Type& type,
     bool ok = buf_builder.BuildGetCol(col, arg0, &column);
     ASSERT_TRUE(ok);
 
-    ::llvm::Value* val;
+    ::llvm::Value* val = nullptr;
     base::Status status;
     ASSERT_TRUE(
         list_builder.BuildAt(column, builder.getInt32(pos), &val, status));
@@ -280,7 +280,7 @@ void GetListIterator(T expected, const ::fesql::type::Type& type,
     bool ok = buf_builder.BuildGetCol(col, arg0, &column);
     ASSERT_TRUE(ok);
 
-    ::llvm::Value* val;
+    ::llvm::Value* val = nullptr;
     base::Status status;
     ASSERT_TRUE(list_builder.BuildIterator(column, &val, status));
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
@@ -468,7 +468,7 @@ void GetListIteratorNext(T expected, const ::fesql::type::Type& type,
     bool ok = buf_builder.BuildGetCol(col, arg0, &column);
     ASSERT_TRUE(ok);
 
-    ::llvm::Value* iter;
+    ::llvm::Value* iter = nullptr;
     base::Status status;
     ASSERT_TRUE(list_builder.BuildIterator(column, &iter, status));
     ::llvm::Value* next1;
@@ -477,7 +477,7 @@ void GetListIteratorNext(T expected, const ::fesql::type::Type& type,
     ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next2, status));
 
     ArithmeticIRBuilder arithmetic_ir_builder(builder.GetInsertBlock());
-    ::llvm::Value* res;
+    ::llvm::Value* res = nullptr;
     ASSERT_TRUE(arithmetic_ir_builder.BuildAddExpr(next1, next2, &res, status));
     ::llvm::Value* next3;
     ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next3, status));

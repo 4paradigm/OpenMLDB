@@ -365,7 +365,7 @@ TEST_P(EngineTest, test_normal) {
 
     row_view->Reset(output[0]);
     {
-        char* v;
+        char* v = nullptr;
         uint32_t size;
         row_view->GetString(0, &v, &size);
         ASSERT_EQ("0", std::string(v, size));
@@ -381,7 +381,7 @@ TEST_P(EngineTest, test_normal) {
         ASSERT_EQ(16, v);
     }
     {
-        char* v;
+        char* v = nullptr;
         uint32_t size;
         row_view->GetString(3, &v, &size);
         ASSERT_EQ("1", std::string(v, size));
@@ -389,7 +389,7 @@ TEST_P(EngineTest, test_normal) {
 
     row_view->Reset(output[1]);
     {
-        char* v;
+        char* v = nullptr;
         uint32_t size;
         row_view->GetString(0, &v, &size);
         ASSERT_EQ("0", std::string(v, size));
@@ -405,7 +405,7 @@ TEST_P(EngineTest, test_normal) {
         ASSERT_EQ(16, v);
     }
     {
-        char* v;
+        char* v = nullptr;
         uint32_t size;
         row_view->GetString(3, &v, &size);
         ASSERT_EQ("1", std::string(v, size));

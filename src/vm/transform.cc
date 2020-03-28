@@ -315,7 +315,7 @@ bool BatchModeTransformer::TransformProjecPlantOp(
                 node_manager_->MakeAllNode("")));
         }
 
-        PhysicalOpNode* project_op;
+        PhysicalOpNode* project_op = nullptr;
         if (!TransformProjectOp(project_list, depend, &project_op, status)) {
             return false;
         }
@@ -775,7 +775,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
         switch (type) {
             case kPassGroupAndSortOptimized: {
                 GroupAndSortOptimized pass(node_manager_, db_, catalog_);
-                PhysicalOpNode* new_op;
+                PhysicalOpNode* new_op = nullptr;
                 if (pass.Apply(physical_plan, &new_op)) {
                     physical_plan = new_op;
                 }
@@ -783,7 +783,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
             }
             case kPassLeftJoinOptimized: {
                 LeftJoinOptimized pass(node_manager_, db_, catalog_);
-                PhysicalOpNode* new_op;
+                PhysicalOpNode* new_op = nullptr;
                 if (pass.Apply(physical_plan, &new_op)) {
                     physical_plan = new_op;
                 }
@@ -1126,7 +1126,7 @@ bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
     }
     auto producer = in->GetProducers();
     for (size_t j = 0; j < producer.size(); ++j) {
-        PhysicalOpNode* output;
+        PhysicalOpNode* output = nullptr;
         if (Apply(producer[j], &output)) {
             in->UpdateProducer(j, output);
         }
@@ -1387,7 +1387,7 @@ bool RequestModeransformer::TransformProjecPlantOp(
         fesql::node::ProjectListNode* project_list =
             dynamic_cast<fesql::node::ProjectListNode*>(*iter);
 
-        PhysicalOpNode* project_op;
+        PhysicalOpNode* project_op = nullptr;
         if (!TransformProjectOp(project_list, depend, &project_op, status)) {
             return false;
         }

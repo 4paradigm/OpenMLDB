@@ -68,7 +68,7 @@ void DBMSServerImpl::AddTable(RpcController* ctr,
         return;
     }
 
-    type::Database* db;
+    type::Database* db = nullptr;
     {
         common::Status get_db_status;
         db = GetDatabase(request->db_name(), get_db_status);
@@ -172,7 +172,7 @@ void DBMSServerImpl::GetSchema(RpcController* ctr,
         return;
     }
 
-    type::Database* db;
+    type::Database* db = nullptr;
     {
         common::Status get_db_status;
         db = GetDatabase(request->db_name(), get_db_status);
@@ -284,7 +284,7 @@ void DBMSServerImpl::GetTables(RpcController* controller,
                                GetItemsResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
 
-    type::Database* db;
+    type::Database* db = nullptr;
     {
         common::Status get_db_status;
         db = GetDatabase(request->db_name(), get_db_status);

@@ -275,7 +275,6 @@ TEST_F(MemCataLogTest, mem_partition_test) {
         auto iter = window_iter->GetValue();
         ASSERT_EQ(base::Slice("group2"), window_iter->GetKey());
         while (iter->Valid()) {
-            std::cout << iter->GetKey() << " ,";
             iter->Next();
         }
         std::cout << std::endl;
@@ -331,7 +330,6 @@ TEST_F(MemCataLogTest, mem_partition_test) {
         auto iter = window_iter->GetValue();
         ASSERT_EQ(base::Slice("group1"), window_iter->GetKey());
         while (iter->Valid()) {
-            std::cout << iter->GetKey() << " ,";
             iter->Next();
         }
         std::cout << std::endl;

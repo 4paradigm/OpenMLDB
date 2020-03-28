@@ -33,7 +33,7 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
         LOG(WARNING) << status.msg;
         return false;
     }
-    ::llvm::Value* casted_pos;
+    ::llvm::Value* casted_pos = nullptr;
     if (false == castExprIrBuilder.UnSafeCast(
                      pos, ::llvm::Type::getInt32Ty(block_->getContext()),
                      &casted_pos, status)) {

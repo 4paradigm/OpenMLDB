@@ -87,16 +87,8 @@ const Types& MemTableHandler::GetTypes() { return types_; }
 
 void MemTableHandler::Sort(const bool is_asc) {
     if (is_asc) {
-        for (auto iter = table_.cbegin(); iter != table_.cend(); iter++) {
-            std::cout << iter->first << ", ";
-        }
-        std::cout << std::endl;
         AscComparor comparor;
         std::sort(table_.begin(), table_.end(), comparor);
-        for (auto iter = table_.cbegin(); iter != table_.cend(); iter++) {
-            std::cout << iter->first << ", ";
-        }
-        std::cout << std::endl;
     } else {
         DescComparor comparor;
         std::sort(table_.begin(), table_.end(), comparor);

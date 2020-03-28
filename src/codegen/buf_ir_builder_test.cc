@@ -49,7 +49,7 @@ ExitOnError ExitOnErr;
 
 struct TestString {
     int32_t size;
-    char* data;
+    char* data = nullptr;
 };
 
 void PrintInt16(int16_t val) { std::cout << "int16_" << val << std::endl; }
