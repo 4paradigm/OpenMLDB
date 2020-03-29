@@ -49,16 +49,16 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT MIN(COL1) FROM t1;", "SELECT min(COL1) FROM t1;",
         "SELECT MAX(COL1) FROM t1;", "SELECT max(COL1) as max_col1 FROM t1;",
         "SELECT SUM(COL1) FROM t1;", "SELECT sum(COL1) as sum_col1 FROM t1;",
-        "SELECT COL1, COL2, `TS`, AVG(AMT) OVER w, SUM(AMT) OVER w FROM t \n"
+        "SELECT COL1, COL2, `TS`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `TS` ROWS BETWEEN UNBOUNDED PRECEDING AND "
         "UNBOUNDED FOLLOWING);",
         "SELECT COL1, trim(COL2), `TS`, AVG(AMT) OVER w, SUM(AMT) OVER w FROM "
-        "t \n"
+        "t1 \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",
-        "SELECT COL1, SUM(AMT) OVER w as w_amt_sum FROM t \n"
+        "SELECT COL1, SUM(COL3) OVER w as w_amt_sum FROM t \n"
         "WINDOW w AS (PARTITION BY COL2\n"
         "              ORDER BY `TS` ROWS BETWEEN 3 PRECEDING AND 3 "
         "FOLLOWING);",

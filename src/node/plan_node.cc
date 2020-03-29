@@ -195,14 +195,6 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return std::string("kWindow");
         case kProjectNode:
             return std::string("kProjectNode");
-        case kScalarFunction:
-            return std::string("kScalarFunction");
-        case kAggFunction:
-            return std::string("kAggFunction");
-        case kAggWindowFunction:
-            return std::string("kAggWindowFunction");
-        case kOpExpr:
-            return std::string("kOpExpr");
         case kPlanTypeFuncDef:
             return "kPlanTypeFuncDef";
         case kUnknowPlan:
@@ -286,7 +278,6 @@ bool ProjectListNode::Equals(const PlanNode *node) const {
     }
 
     return this->is_window_agg_ == that->is_window_agg_ &&
-           this->scan_limit_ == that->scan_limit_ &&
            node::PlanEquals(this->w_ptr_, that->w_ptr_) &&
            PlanListEquals(this->projects, that->projects) &&
            LeafPlanNode::Equals(node);

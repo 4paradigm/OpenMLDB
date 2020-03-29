@@ -660,6 +660,9 @@ WindowDefNode *WindowOfExpression(
             return w_ptr;
     }
 }
+std::string ExprString(const ExprNode *expr) {
+    return nullptr == expr ? std::string() : expr->GetExprString();
+}
 
 void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
@@ -1089,9 +1092,7 @@ bool QueryExpr::Equals(const ExprNode *node) const {
     const QueryExpr *that = dynamic_cast<const QueryExpr *>(node);
     return SQLEquals(this->query_, that->query_) && ExprNode::Equals(node);
 }
-const std::string QueryExpr::GetExprString() const {
-    return "query expr";
-}
+const std::string QueryExpr::GetExprString() const { return "query expr"; }
 
 void TableRefNode::Print(std::ostream &output,
                          const std::string &org_tab) const {

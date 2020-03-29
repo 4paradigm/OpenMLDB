@@ -339,7 +339,7 @@ bool OpGenerator::GenProjectListOp(const ::fesql::node::ProjectListNode* node,
     pop->fn_name = fn_name;
     pop->fn = NULL;
     pop->table_handler = table_handler;
-    pop->scan_limit = node->GetScanLimit();
+    pop->scan_limit = -1;
     // handle window info
     if (nullptr != node->GetW()) {
         pop->window_agg = true;

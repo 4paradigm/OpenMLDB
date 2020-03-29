@@ -161,7 +161,8 @@ enum JoinType {
     kJoinTypeFull,
     kJoinTypeLeft,
     kJoinTypeRight,
-    kJoinTypeInner
+    kJoinTypeInner,
+    kJoinTypeConcat,
 };
 
 enum UnoinType {
@@ -204,12 +205,6 @@ enum PlanType {
     kProjectList,
     kPlanTypeWindow,
     kProjectNode,
-    kScalarFunction,
-    kOpExpr,
-    kAggFunction,
-    kAggWindowFunction,
-    kScanTypeSeqScan,
-    kScanTypeIndexScan,
     kUnknowPlan = 100,
 };
 
