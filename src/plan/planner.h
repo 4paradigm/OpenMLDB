@@ -54,9 +54,6 @@ class Planner {
     bool CreateTableReferencePlanNode(
         const node::TableRefNode *root, node::PlanNode **output,
         Status &status);  // NOLINT (runtime/references)
-    void CreateProjectPlanNode(const node::SQLNode *root, const uint32_t pos,
-                               node::ProjectNode **output,
-                               Status &status);  // NOLINT (runtime/references)
     bool CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
                        Status &status);  // NOLINT (runtime/references)
     bool CreateInsertPlan(const SQLNode *root, node::PlanNode **output,
@@ -64,13 +61,16 @@ class Planner {
 
     bool CreateFuncDefPlan(const SQLNode *root, node::PlanNode **output,
                            Status &status);  // NOLINT (runtime/references)
-    void CreateWindowPlanNode(node::WindowDefNode *w_ptr,
+    bool CreateWindowPlanNode(node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,
                               Status &status);  // NOLINT (runtime/references)
     int64_t CreateFrameOffset(const node::FrameBound *bound,
                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
     std::string MakeTableName(const PlanNode *node) const;
+    bool MergeProjectList(node::ProjectListNode *project_list1,
+                          node::ProjectListNode *project_list2,
+                          node::ProjectListNode *merged_project);
 };
 
 class SimplePlanner : public Planner {

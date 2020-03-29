@@ -16,6 +16,7 @@
 #include "node/batch_plan_node.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "vm/physical_op.h"
 
 namespace fesql {
 namespace node {
@@ -46,6 +47,14 @@ class NodeManager {
             delete (*sql_node_list_iter);
             sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
         }
+
+        for (auto physical_node_list_iter = physical_plan_node_list_.begin();
+             physical_node_list_iter != physical_plan_node_list_.end();
+             ++physical_node_list_iter) {
+            delete (*physical_node_list_iter);
+            physical_node_list_iter =
+                physical_plan_node_list_.erase(physical_node_list_iter);
+        }
     }
 
     int GetParserNodeListSize() { return parser_node_list_.size(); }
@@ -60,11 +69,14 @@ class NodeManager {
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
-    ProjectListNode *MakeProjectListPlanNode(WindowPlanNode *w);
+    ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w);
     FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
                                        const ExprNode *condition);
-    ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
+
+    ProjectNode *MakeRowProjectNode(const int32_t pos, const std::string &name,
                                  node::ExprNode *expression);
+    ProjectNode *MakeAggProjectNode(const int32_t pos, const std::string &name,
+                                    node::ExprNode *expression);
     PlanNode *MakeTablePlanNode(const std::string &node);
     PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
                            const ExprNode *condition);
@@ -212,7 +224,16 @@ class NodeManager {
 
     PlanNode *MakeDistinctPlanNode(PlanNode *node);
 
+    vm::PhysicalOpNode *RegisterNode(vm::PhysicalOpNode *node_ptr) {
+        physical_plan_node_list_.push_back(node_ptr);
+        return node_ptr;
+    }
+
  private:
+    ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
+                                 const bool is_aggregation,
+                                 node::ExprNode *expression);
+
     SQLNode *RegisterNode(SQLNode *node_ptr) {
         parser_node_list_.push_back(node_ptr);
         return node_ptr;
@@ -241,6 +262,7 @@ class NodeManager {
     std::list<SQLNodeList *> sql_node_list_list_;
     std::list<node::PlanNode *> plan_node_list_;
     std::list<node::BatchPlanNode *> batch_plan_node_list_;
+    std::list<vm::PhysicalOpNode *> physical_plan_node_list_;
 };
 
 }  // namespace node

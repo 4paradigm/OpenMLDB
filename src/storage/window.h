@@ -40,7 +40,7 @@ class ListV {
     virtual const V At(int32_t pos) const {
         return buffer_->at(pos);
     }
-    virtual const uint32_t Count() const { return end_ - start_; }
+    virtual const int64_t Count() const { return int64_t(end_ - start_); }
     virtual const uint32_t GetStart() const { return start_; }
     virtual const uint32_t GetEnd() const { return end_; }
     friend IteratorImpl<V>;
@@ -58,7 +58,7 @@ class WrapListImpl : public ListV<V> {
     ~WrapListImpl() {}
     virtual const V GetField(R row) const = 0;
     virtual const V At(int32_t pos) const { return GetField(root_.At(pos)); }
-    virtual const uint32_t Count() const { return root_.Count(); }
+    virtual const int64_t Count() const { return root_.Count(); }
     virtual const uint32_t GetStart() const { return root_.GetStart(); }
     virtual const uint32_t GetEnd() const { return root_.GetEnd(); }
 

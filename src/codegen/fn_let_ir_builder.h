@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 #include "codegen/variable_ir_builder.h"
+#include "codegen/expr_ir_builder.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/plan_node.h"
 #include "proto/type.pb.h"
@@ -34,12 +35,15 @@ class RowFnLetIRBuilder {
  public:
     RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module,
                       bool is_window_agg);
+    RowFnLetIRBuilder(const vm::Schema& schema, ::llvm::Module* module);
 
     ~RowFnLetIRBuilder();
 
-    bool Build(const std::string& name,
-               const ::fesql::node::ProjectListNode* node,
-               vm::Schema& schema);  // NOLINT (runtime/references)
+    bool Build(const std::string& name, const node::ProjectListNode* projects,
+               vm::Schema& output_schema);  // NOLINT (runtime/references)
+    bool Build(const std::string& name, const node::PlanNodeList& projects,
+               const bool row_mode,
+               vm::Schema& output_schema);  // NOLINT (runtime/references)
 
  private:
     bool BuildFnHeader(const std::string& name, ::llvm::Function** fn);
@@ -48,22 +52,26 @@ class RowFnLetIRBuilder {
                        const std::vector<::llvm::Type*>& args_type,
                        ::llvm::Type* ret_type, ::llvm::Function** fn);
 
-    bool FillArgs(const std::string& row_ptr_name,
-                  const std::string& row_size_name,
-                  const std::string& output_ptr_name, ::llvm::Function* fn,
+    bool FillArgs(const std::vector<std::string>& args, ::llvm::Function* fn,
                   ScopeVar& sv);  // NOLINT
 
-    bool EncodeBuf(const std::map<uint32_t, ::llvm::Value*>* values,
-                   const vm::Schema& schema,
-                   VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
-                   ::llvm::BasicBlock* block,
-                   const std::string& output_ptr_name);
+    bool EncodeBuf(
+        const std::map<uint32_t, ::llvm::Value*>* values,
+        const vm::Schema& schema,
+        VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
+        ::llvm::BasicBlock* block, const std::string& output_ptr_name);
+
+    bool BuildProject(
+        const uint32_t index, const node::ExprNode* expr,
+        const std::string& col_name, std::map<uint32_t, ::llvm::Value*>* output,
+        ExprIRBuilder& expr_ir_builder,  // NOLINT (runtime/references)
+        vm::Schema& output_schema,       // NOLINT (runtime/references)
+        base::Status& status);           // NOLINT (runtime/references)
 
  private:
     // input schema
     vm::Schema schema_;
     ::llvm::Module* module_;
-    bool is_window_agg_;
 };
 
 }  // namespace codegen

@@ -7,13 +7,13 @@
  *--------------------------------------------------------------------------
  **/
 #include "plan/planner.h"
-#include <proto/common.pb.h>
 #include <map>
 #include <random>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+#include "proto/common.pb.h"
 namespace fesql {
 namespace plan {
 
@@ -140,30 +140,53 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
 
     for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
         auto expr = select_expr_list[pos];
-        node::ProjectNode *project_node_ptr = nullptr;
+        std::string project_name;
+        node::ExprNode *project_expr;
+        switch (expr->GetType()) {
+            case node::kResTarget: {
+                const node::ResTarget *target_ptr =
+                    (const node::ResTarget *)expr;
 
-        CreateProjectPlanNode(expr, pos, &project_node_ptr, status);
-        if (0 != status.code) {
-            return false;
+                project_name = target_ptr->GetName();
+                if (project_name.empty()) {
+                    project_name = target_ptr->GetVal()->GetExprString();
+                }
+                project_expr = target_ptr->GetVal();
+                break;
+            }
+            default: {
+                status.msg = "can not create project plan node with type " +
+                             node::NameOfSQLNodeType(root->GetType());
+                status.code = common::kPlanError;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
         }
-        node::WindowDefNode *w_ptr = node::WindowOfExpression(
-            windows, project_node_ptr->GetExpression());
+
+        node::WindowDefNode *w_ptr =
+            node::WindowOfExpression(windows, project_expr);
 
         if (project_list_map.find(w_ptr) == project_list_map.end()) {
             if (w_ptr == nullptr) {
                 project_list_map[w_ptr] =
                     node_manager_->MakeProjectListPlanNode(nullptr);
+
             } else {
                 node::WindowPlanNode *w_node_ptr =
                     node_manager_->MakeWindowPlanNode(w_id++);
-                CreateWindowPlanNode(w_ptr, w_node_ptr, status);
-                if (common::kOk != status.code) {
+                if (!CreateWindowPlanNode(w_ptr, w_node_ptr, status)) {
                     return status.code;
                 }
                 project_list_map[w_ptr] =
                     node_manager_->MakeProjectListPlanNode(w_node_ptr);
             }
         }
+        node::ProjectNode *project_node_ptr =
+            nullptr == w_ptr ? node_manager_->MakeRowProjectNode(
+                                   pos, project_name, project_expr)
+                             : node_manager_->MakeAggProjectNode(
+                                   pos, project_name, project_expr);
+
         project_list_map[w_ptr]->AddProject(project_node_ptr);
     }
     // add MergeNode if multi ProjectionLists exist
@@ -174,7 +197,25 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             nullptr == project_list->GetW() ? 0 : project_list->GetW()->GetId();
         project_list_vec[pos] = project_list;
     }
-    PlanNodeList project_list_vec2;
+
+    // merge simple project with 1st window project
+    if (nullptr != project_list_vec[0] && project_list_vec.size() > 1) {
+        auto simple_project =
+            dynamic_cast<node::ProjectListNode *>(project_list_vec[0]);
+        auto first_window_project =
+            dynamic_cast<node::ProjectListNode *>(project_list_vec[1]);
+        node::ProjectListNode *merged_project =
+            node_manager_->MakeProjectListPlanNode(
+                first_window_project->GetW());
+
+        if (MergeProjectList(simple_project, first_window_project,
+                             merged_project)) {
+            project_list_vec[0] = nullptr;
+            project_list_vec[1] = merged_project;
+        }
+    }
+
+    PlanNodeList project_list_without_null;
     std::vector<std::pair<uint32_t, uint32_t>> pos_mapping(
         select_expr_list.size());
     int project_list_id = 0;
@@ -190,12 +231,12 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                 std::make_pair(project_list_id, project_pos);
             project_pos++;
         }
-        project_list_vec2.push_back(v);
+        project_list_without_null.push_back(v);
         project_list_id++;
     }
 
     current_node = node_manager_->MakeProjectPlanNode(
-        current_node, table_name, project_list_vec2, pos_mapping);
+        current_node, table_name, project_list_without_null, pos_mapping);
 
     // distinct
     if (root->distinct_opt_) {
@@ -318,7 +359,7 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
     return negtive ? -1 * offset : offset;
 }
 
-void Planner::CreateWindowPlanNode(
+bool Planner::CreateWindowPlanNode(
     node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
     Status &status) {  // NOLINT (runtime/references)
 
@@ -335,19 +376,13 @@ void Planner::CreateWindowPlanNode(
             if (common::kOk != status.code) {
                 LOG(WARNING)
                     << "fail to create project list node: " << status.msg;
-                return;
+                return false;
             }
             end_offset = CreateFrameOffset(end, status);
             if (common::kOk != status.code) {
                 LOG(WARNING)
                     << "fail to create project list node: " << status.msg;
-                return;
-            }
-
-            if (end_offset == INT64_MAX) {
-                LOG(WARNING) << "fail to create project list node: end frame "
-                                "can't be unbound ";
-                return;
+                return false;
             }
 
             if (w_ptr->GetName().empty()) {
@@ -363,43 +398,15 @@ void Planner::CreateWindowPlanNode(
             w_node_ptr->SetKeys(w_ptr->GetPartitions());
             w_node_ptr->SetOrders(w_ptr->GetOrders());
         } else {
-            LOG(WARNING) << "fail to create project list node: right frame "
-                            "can't be unbound ";
-            return;
-        }
-    }
-}
-
-void Planner::CreateProjectPlanNode(
-    const SQLNode *root, const uint32_t pos, node::ProjectNode **output,
-    Status &status) {  // NOLINT (runtime/references)
-    if (nullptr == root) {
-        status.msg = "fail to create project node: query tree node it null";
-        status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
-        return;
-    }
-
-    switch (root->GetType()) {
-        case node::kResTarget: {
-            const node::ResTarget *target_ptr = (const node::ResTarget *)root;
-
-            std::string name = target_ptr->GetName();
-            if (name.empty()) {
-                name = target_ptr->GetVal()->GetExprString();
-            }
-            *output =
-                node_manager_->MakeProjectNode(pos, name, target_ptr->GetVal());
-            return;
-        }
-        default: {
-            status.msg = "can not create project plan node with type " +
-                         node::NameOfSQLNodeType(root->GetType());
             status.code = common::kPlanError;
+            status.msg =
+                "fail to create project list node: right frame "
+                "can't be unbound ";
             LOG(WARNING) << status.msg;
-            return;
+            return false;
         }
     }
+    return true;
 }
 
 bool Planner::CreateCreateTablePlan(
@@ -645,6 +652,42 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
         }
     }
 
+    return true;
+}
+bool Planner::MergeProjectList(node::ProjectListNode *project_list1,
+                               node::ProjectListNode *project_list2,
+                               node::ProjectListNode *merged_project) {
+    if (nullptr == project_list1 || nullptr == project_list2 ||
+        nullptr == merged_project) {
+        LOG(WARNING) << "can't merge project list: input projects or output "
+                        "projects is null";
+        return false;
+    }
+    auto iter1 = project_list1->GetProjects().cbegin();
+    auto end1 = project_list1->GetProjects().cend();
+    auto iter2 = project_list2->GetProjects().cbegin();
+    auto end2 = project_list2->GetProjects().cend();
+    while (iter1 != end1 && iter2 != end2) {
+        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
+        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
+        if (project1->GetPos() < project2->GetPos()) {
+            merged_project->AddProject(project1);
+            iter1++;
+        } else {
+            merged_project->AddProject(project2);
+            iter2++;
+        }
+    }
+    while (iter1 != end1) {
+        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
+        merged_project->AddProject(project1);
+        iter1++;
+    }
+    while (iter2 != end2) {
+        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
+        merged_project->AddProject(project2);
+        iter2++;
+    }
     return true;
 }
 

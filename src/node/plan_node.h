@@ -11,12 +11,12 @@
 #define SRC_NODE_PLAN_NODE_H_
 
 #include <glog/logging.h>
-#include <node/sql_node.h>
 #include <list>
 #include <string>
 #include <utility>
 #include <vector>
 #include "node/node_enum.h"
+#include "node/sql_node.h"
 namespace fesql {
 namespace node {
 
@@ -71,6 +71,7 @@ class UnaryPlanNode : public PlanNode {
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
     virtual bool Equals(const PlanNode *that) const;
+    PlanNode *GetDepend() const { return children_[0]; }
 };
 
 class BinaryPlanNode : public PlanNode {
@@ -87,6 +88,8 @@ class BinaryPlanNode : public PlanNode {
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
     virtual bool Equals(const PlanNode *that) const;
+    PlanNode *GetLeft() const { return children_[0]; }
+    PlanNode *GetRight() const { return children_[1]; }
 };
 
 class MultiChildPlanNode : public PlanNode {
@@ -112,11 +115,20 @@ class RenamePlanNode : public UnaryPlanNode {
 class TablePlanNode : public LeafPlanNode {
  public:
     TablePlanNode(const std::string &db, const std::string &table)
-        : LeafPlanNode(kPlanTypeTable), db_(db), table_(table) {}
+        : LeafPlanNode(kPlanTypeTable),
+          db_(db),
+          table_(table),
+          is_primary_(false) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const PlanNode *that) const;
+    const bool IsPrimary() const { return is_primary_; }
+    void SetIsPrimary(bool is_primary) { is_primary_ = is_primary; }
+
     const std::string db_;
     const std::string table_;
+
+ private:
+    bool is_primary_;
 };
 
 class DistinctPlanNode : public UnaryPlanNode {
@@ -204,9 +216,10 @@ class LimitPlanNode : public UnaryPlanNode {
 
 class ProjectNode : public LeafPlanNode {
  public:
-    ProjectNode(int32_t pos, const std::string &name,
+    ProjectNode(int32_t pos, const std::string &name, const bool is_aggregation,
                 node::ExprNode *expression)
         : LeafPlanNode(kProjectNode),
+          is_aggregation_(is_aggregation),
           pos_(pos),
           name_(name),
           expression_(expression) {}
@@ -217,6 +230,7 @@ class ProjectNode : public LeafPlanNode {
     std::string GetName() const { return name_; }
     node::ExprNode *GetExpression() const { return expression_; }
     virtual bool Equals(const PlanNode *node) const;
+    const bool is_aggregation_;
 
  private:
     uint32_t pos_;
