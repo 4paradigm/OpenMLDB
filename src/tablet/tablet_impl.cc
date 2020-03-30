@@ -1433,7 +1433,6 @@ void TabletImpl::Traverse(RpcController* controller,
             is_finish = true;
             it->Finish(true);
         } else {
-            it->GetSeq();
             response->set_snapshot_id(it->GetSeq());
         }
         uint32_t total_size = scount * 4 + total_block_size;
