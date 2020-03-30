@@ -8,8 +8,8 @@
  **/
 
 #include "codegen/codegen_base_test.h"
-#include <proto/type.pb.h>
-#include <storage/codec.h>
+#include "proto/type.pb.h"
+#include "storage/codec.h"
 namespace fesql {
 namespace codegen {
 

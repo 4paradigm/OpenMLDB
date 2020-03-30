@@ -18,15 +18,17 @@
 #ifndef SRC_VM_OP_GENERATOR_H_
 #define SRC_VM_OP_GENERATOR_H_
 
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 #include "base/status.h"
-#include "vm/catalog.h"
 #include "llvm/IR/Module.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "vm/catalog.h"
 #include "vm/op.h"
+#include "base/graph.h"
+#include "vm/physical_op.h"
 
 namespace fesql {
 namespace vm {
@@ -52,29 +54,24 @@ class OpGenerator {
                   const ::fesql::node::FuncDefPlanNode* plan,
                   base::Status& status);  // NOLINT
 
-    bool GenSQL(const ::fesql::node::SelectPlanNode* node,
-                const std::string& db, ::llvm::Module* module,
+    bool GenSQL(const ::fesql::node::QueryPlanNode* node, const std::string& db,
+                ::llvm::Module* module,
                 OpVector* ops,          // NOLINT
                 base::Status& status);  // NOLINT
 
-    bool GenProject(const ::fesql::node::ProjectListPlanNode* node,
+    bool GenProject(const ::fesql::node::ProjectPlanNode* node,
                     const std::string& db, ::llvm::Module* module, OpNode** op,
                     Status& status);  // NOLINT
-
-    bool GenConstProject(const ::fesql::node::ProjectListPlanNode* node,
-                         ::llvm::Module* module, OpNode** op, Status& status); // NOLINT
-
-    bool GenScan(const ::fesql::node::ScanPlanNode* node, const std::string& db,
-                 ::llvm::Module* module, OpNode** op,
+    bool GenProjectListOp(const ::fesql::node::ProjectListNode* node,
+                          const std::string& db, const std::string& table,
+                          ::llvm::Module* module, OpNode** op,
+                          Status& status);  // NOLINT
+    bool GenScan(const ::fesql::node::TablePlanNode* node,
+                 const std::string& db, ::llvm::Module* module, OpNode** op,
                  Status& status);  // NOLINT
 
     bool GenLimit(const ::fesql::node::LimitPlanNode* node,
                   const std::string& db, ::llvm::Module* module, OpNode** op,
-                  Status& status);  // NOLINT
-
-    bool GenMerge(const ::fesql::node::MergePlanNode* node,
-                  const std::vector<OpNode*> children, ::llvm::Module* module,
-                  OpNode** op,
                   Status& status);  // NOLINT
 
     bool RoutingNode(const ::fesql::node::PlanNode* node, const std::string& db,

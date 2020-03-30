@@ -65,7 +65,7 @@ int64_t parse_string(const char *src, char *dest, int64_t len, int quote_type) {
 %}
 
 space [ \t]
-newline [\n\r]
+newlines [\n\r]+
 non_newline [^\n\r]
 comment ("#"{non_newline}*)
 indent {space}*
@@ -182,6 +182,7 @@ FORCE	{ return FORCE; }
 FOREIGN	{ return FOREIGN; }
 FROM	{ return FROM; }
 FULLTEXT	{ return FULLTEXT; }
+FULL        { return FULL; }
 GRANT	{ return GRANT; }
 GROUP	{ return GROUP; }
 HAVING	{ return HAVING; }
@@ -212,10 +213,10 @@ LEAVE	{ return LEAVE; }
 LEFT	{ return LEFT; }
 LIKE	{ return LIKE; }
 LIST    { return LIST; }
-LOAD	{ return LOAD; }
 LIMIT	{ return LIMIT; }
 LINES	{ return LINES; }
 LOAD	{ return LOAD; }
+LOGICAL { return LOGICAL; }
 LOCALTIME	{ return LOCALTIME; }
 LOCALTIMESTAMP	{ return LOCALTIMESTAMP; }
 LOCK	{ return LOCK; }
@@ -265,7 +266,6 @@ REAL	{ return REAL; }
 REFERENCES	{ return REFERENCES; }
 REGEXP|RLIKE	{ return REGEXP; }
 RELEASE	{ return RELEASE; }
-REIDNENTIFIER	{ return REIDNENTIFIER; }
 REPEAT	{ return REPEAT; }
 REPLACE	{ return REPLACE; }
 REQUIRE	{ return REQUIRE; }
@@ -284,7 +284,6 @@ SET	{ return SET; }
 SHOW	{ return SHOW; }
 INT2|SMALLINT	{ return SMALLINT; }
 SOME	{ return SOME; }
-SOIDNENTIFIER	{ return SOIDNENTIFIER; }
 SPATIAL	{ return SPATIAL; }
 SPECIFIC	{ return SPECIFIC; }
 SQL	{ return SQL; }
@@ -357,12 +356,12 @@ ZEROFILL	{ return ZEROFILL; }
     }
 
 
-<FUN>{newline} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINE;}
-<FUN_INDENT>{newline} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINE;}
+<FUN>{newlines} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINES;}
+<FUN_INDENT>{newlines} { columnpos = 1; BEGIN FUN_INDENT; return NEWLINES;}
 
 <FUN_INDENT>{indent} {
         int space_cnt = 0;
-        for(uint32_t i=0; i < strlen(yytext); i++) {
+        for(int i=0; i < static_cast<int>(strlen(yytext)); i++) {
             if (yytext[i] == '\t') {
                 space_cnt += 4;
             } else {
@@ -451,10 +450,10 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
                           return FUN_IDENTIFIER; }
 
 [A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
-                          return IDNENTIFIER; }
+                          return SQL_IDENTIFIER; }
 `[^`/\\.\n]+`           { yylval->strval = strdup(yytext+1);
                           yylval->strval[yyleng-2] = 0;
-                          return IDNENTIFIER; }
+                          return SQL_IDENTIFIER; }
 
 `[^`\n]*$               { yyerror("unterminated quoted name %s", yytext); }
 

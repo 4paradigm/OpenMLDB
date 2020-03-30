@@ -405,7 +405,6 @@ BENCHMARK(BM_EngineSimpleSelectInt32);
 BENCHMARK(BM_EngineSimpleUDF);
 BENCHMARK(BM_EngineWindowSumFeature1)
     ->Args({1, 2})
-    ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})
     ->Args({1, 1000})

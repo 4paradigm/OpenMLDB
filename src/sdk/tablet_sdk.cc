@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include "analyser/analyser.h"
 #include "base/strings.h"
 #include "node/node_enum.h"
 #include "parser/parser.h"
@@ -324,7 +323,6 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
                                node::PlanNodeList& plan_trees,
                                sdk::Status& status) {
     parser::FeSQLParser parser;
-    analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
     base::Status sql_status;
 
@@ -337,15 +335,7 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
         LOG(WARNING) << status.msg;
         return;
     }
-    node::NodePointVector query_trees;
-    analyser.Analyse(parser_trees, query_trees, sql_status);
-    if (0 != sql_status.code) {
-        status.code = sql_status.code;
-        status.msg = sql_status.msg;
-        LOG(WARNING) << status.msg;
-        return;
-    }
-    planner.CreatePlanTree(query_trees, plan_trees, sql_status);
+    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
 
     if (0 != sql_status.code) {
         status.code = sql_status.code;
@@ -385,13 +375,7 @@ void TabletSdkImpl::SyncInsert(const std::string& db, const std::string& sql,
             insert.table = insert_stmt->table_name_;
             insert.columns = insert_stmt->columns_;
 
-            size_t row_size = 0;
-            for (auto item : insert.values) {
-                row_size += item.GetSize();
-            }
-
             type::TableDef schema;
-
             if (false == GetSchema(insert.db, insert.table, schema, status)) {
                 if (0 == status.code) {
                     status.code = -1;

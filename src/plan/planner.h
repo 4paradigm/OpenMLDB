@@ -10,7 +10,7 @@
 #define SRC_PLAN_PLANNER_H_
 
 #include <string>
-#include "analyser/analyser.h"
+#include <vector>
 #include "base/status.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
@@ -40,36 +40,37 @@ class Planner {
  protected:
     void CreatePlanRecurse(const node::SQLNode *root, PlanNode *plan_tree,
                            Status &status);  // NOLINT (runtime/references)
-    int CreateSelectPlan(const node::SQLNode *root, PlanNode *plan_tree,
+    bool CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
                          Status &status);  // NOLINT (runtime/references)
-    void CreateCreateTablePlan(const node::SQLNode *root,
-                               node::CreatePlanNode *plan_tree,
+    bool CreateSelectQueryPlan(const node::SelectQueryNode *root,
+                               PlanNode **plan_tree,
                                Status &status);  // NOLINT (runtime/references)
-    void CreateProjectPlanNode(const node::SQLNode *root, const uint32_t pos,
-                               const std::string &table_name,
-                               node::ProjectPlanNode *plan_tree,
+    bool CreateUnionQueryPlan(const node::UnionQueryNode *root,
+                              PlanNode **plan_tree,
+                              Status &status);  // NOLINT (runtime/references)
+    bool CreateCreateTablePlan(const node::SQLNode *root,
+                               node::PlanNode **output,
                                Status &status);  // NOLINT (runtime/references)
-    void CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan_tree,
+    bool CreateTableReferencePlanNode(
+        const node::TableRefNode *root, node::PlanNode **output,
+        Status &status);  // NOLINT (runtime/references)
+    bool CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
                        Status &status);  // NOLINT (runtime/references)
-    void CreateInsertPlan(const SQLNode *root, node::InsertPlanNode *plan_tree,
+    bool CreateInsertPlan(const SQLNode *root, node::PlanNode **output,
                           Status &status);  // NOLINT (runtime/references)
 
-    void CreateFuncDefPlan(const SQLNode *root,
-                           node::FuncDefPlanNode *plan_tree,
+    bool CreateFuncDefPlan(const SQLNode *root, node::PlanNode **output,
                            Status &status);  // NOLINT (runtime/references)
-    void CreateWindowPlanNode(node::WindowDefNode *w_ptr,
+    bool CreateWindowPlanNode(node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,
                               Status &status);  // NOLINT (runtime/references)
     int64_t CreateFrameOffset(const node::FrameBound *bound,
                               Status &status);  // NOLINT (runtime/references)
-    void CreateDataProviderPlanNode(const node::SQLNode *root,
-                                    PlanNode *plan_tree,
-                                    Status &status);  // NOLINT
-                                                      // (runtime/references)
-    void CreateDataCollectorPlanNode(
-        const node::SQLNode *root, PlanNode *plan_tree,
-        Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
+    std::string MakeTableName(const PlanNode *node) const;
+    bool MergeProjectList(node::ProjectListNode *project_list1,
+                          node::ProjectListNode *project_list2,
+                          node::ProjectListNode *merged_project);
 };
 
 class SimplePlanner : public Planner {
@@ -79,8 +80,6 @@ class SimplePlanner : public Planner {
                        PlanNodeList &plan_trees,
                        Status &status);  // NOLINT (runtime/references)
 };
-
-
 
 // TODO(chenjing): move to executor module
 bool TransformTableDef(const std::string &table_name,

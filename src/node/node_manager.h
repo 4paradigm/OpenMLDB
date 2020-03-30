@@ -11,9 +11,12 @@
 #include <ctype.h>
 #include <list>
 #include <string>
+#include <utility>
+#include <vector>
 #include "node/batch_plan_node.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "vm/physical_op.h"
 
 namespace fesql {
 namespace node {
@@ -44,6 +47,14 @@ class NodeManager {
             delete (*sql_node_list_iter);
             sql_node_list_iter = sql_node_list_list_.erase(sql_node_list_iter);
         }
+
+        for (auto physical_node_list_iter = physical_plan_node_list_.begin();
+             physical_node_list_iter != physical_plan_node_list_.end();
+             ++physical_node_list_iter) {
+            delete (*physical_node_list_iter);
+            physical_node_list_iter =
+                physical_plan_node_list_.erase(physical_node_list_iter);
+        }
     }
 
     int GetParserNodeListSize() { return parser_node_list_.size(); }
@@ -51,36 +62,48 @@ class NodeManager {
     int GetPlanNodeListSize() { return plan_node_list_.size(); }
 
     // Make xxxPlanNode
-    PlanNode *MakePlanNode(const PlanType &type);
+    //    PlanNode *MakePlanNode(const PlanType &type);
     PlanNode *MakeLeafPlanNode(const PlanType &type);
     PlanNode *MakeUnaryPlanNode(const PlanType &type);
     PlanNode *MakeBinaryPlanNode(const PlanType &type);
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
-    ProjectListPlanNode *MakeProjectListPlanNode(const std::string &table,
-                                                 WindowPlanNode *w);
-    WindowPlanNode *MakeWindowPlanNode(int64_t start, int64_t end,
-                                       bool is_range_between);
-    ScanPlanNode *MakeSeqScanPlanNode(const std::string &table);
-    ScanPlanNode *MakeIndexScanPlanNode(const std::string &table);
-    ProjectPlanNode *MakeProjectPlanNode(node::SQLNode *expression,
-                                         const std::string &name,
-                                         const std::string &table,
-                                         const std::string &w);
+    ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w);
+    FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
+                                       const ExprNode *condition);
+
+    ProjectNode *MakeRowProjectNode(const int32_t pos, const std::string &name,
+                                 node::ExprNode *expression);
+    ProjectNode *MakeAggProjectNode(const int32_t pos, const std::string &name,
+                                    node::ExprNode *expression);
+    PlanNode *MakeTablePlanNode(const std::string &node);
+    PlanNode *MakeJoinNode(PlanNode *left, PlanNode *right, JoinType join_type,
+                           const ExprNode *condition);
     // Make SQLxxx Node
-    SQLNode *MakeSQLNode(const SQLNodeType &type);
-    SQLNode *MakeSelectStmtNode(SQLNodeList *select_list_ptr_,
-                                SQLNodeList *tableref_list_ptr,
-                                SQLNodeList *window_clause_ptr,
-                                SQLNode *limit_clause_ptr);
-    SQLNode *MakeTableNode(const std::string &name, const std::string &alias);
-    ExprNode *MakeFuncNode(const std::string &name, SQLNodeList *args,
-                           SQLNode *over);
+    QueryNode *MakeSelectQueryNode(
+        bool is_distinct, SQLNodeList *select_list_ptr,
+        SQLNodeList *tableref_list_ptr, ExprNode *where_expr,
+        ExprListNode *group_expr_list, ExprNode *having_expr,
+        ExprNode *order_expr_list, SQLNodeList *window_list_ptr,
+        SQLNode *limit_ptr);
+    QueryNode *MakeUnionQueryNode(QueryNode *left, QueryNode *right,
+                                  bool is_all);
+    TableRefNode *MakeTableNode(const std::string &name,
+                                const std::string &alias);
+    TableRefNode *MakeJoinNode(const TableRefNode *left,
+                               const TableRefNode *right, const JoinType type,
+                               const ExprNode *condition,
+                               const std::string alias);
+    TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
+                                   const std::string &alias);
+    ExprNode *MakeFuncNode(const std::string &name, const ExprListNode *args,
+                           const SQLNode *over);
+    ExprNode *MakeQueryExprNode(const QueryNode *query);
     SQLNode *MakeWindowDefNode(const std::string &name);
-    SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprListNode *orders,
+    SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame);
-    SQLNode *MakeOrderByNode(SQLNode *node_ptr);
+    ExprNode *MakeOrderByNode(ExprListNode *node_ptr, const bool is_asc);
     SQLNode *MakeFrameNode(SQLNode *start, SQLNode *end);
     SQLNode *MakeFrameBound(SQLNodeType bound_type);
     SQLNode *MakeFrameBound(SQLNodeType bound_type, ExprNode *offset);
@@ -120,7 +143,7 @@ class NodeManager {
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
                                  FnOperator op);
     ExprNode *MakeUnaryExprNode(ExprNode *left, FnOperator op);
-    ExprNode *MakeFnIdNode(const std::string &name);
+    ExprNode *MakeExprIdNode(const std::string &name);
     // Make Fn Node
     ExprNode *MakeConstNode(int value);
     ExprNode *MakeConstNode(int64_t value, DataType unit);
@@ -159,6 +182,8 @@ class NodeManager {
     SQLNode *MakeCmdNode(node::CmdType cmd_type);
     SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
     // Make NodeList
+    SQLNode *MakeExplainNode(const QueryNode *query,
+                             node::ExplainType explain_type);
     SQLNodeList *MakeNodeList(SQLNode *node_ptr);
     SQLNodeList *MakeNodeList();
 
@@ -170,7 +195,45 @@ class NodeManager {
     node::FnForInBlock *MakeForInBlock(FnForInNode *for_in_node,
                                        FnNodeList *block);
 
+    PlanNode *MakeSelectPlanNode(PlanNode *node);
+
+    PlanNode *MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list);
+
+    PlanNode *MakeProjectPlanNode(
+        PlanNode *node, const std::string &table,
+        const PlanNodeList &project_list,
+        const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping);
+
+    PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
+
+    CreatePlanNode *MakeCreateTablePlanNode(std::string table_name,
+                                            const NodePointVector &column_list);
+
+    CmdPlanNode *MakeCmdPlanNode(const CmdNode *node);
+
+    InsertPlanNode *MakeInsertPlanNode(const InsertStmt *node);
+
+    FuncDefPlanNode *MakeFuncPlanNode(const FnNodeFnDef *node);
+
+    PlanNode *MakeRenamePlanNode(PlanNode *node, const std::string alias_name);
+
+    PlanNode *MakeSortPlanNode(PlanNode *node, const OrderByNode *order_list);
+
+    PlanNode *MakeUnionPlanNode(PlanNode *left, PlanNode *right,
+                                const bool is_all);
+
+    PlanNode *MakeDistinctPlanNode(PlanNode *node);
+
+    vm::PhysicalOpNode *RegisterNode(vm::PhysicalOpNode *node_ptr) {
+        physical_plan_node_list_.push_back(node_ptr);
+        return node_ptr;
+    }
+
  private:
+    ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
+                                 const bool is_aggregation,
+                                 node::ExprNode *expression);
+
     SQLNode *RegisterNode(SQLNode *node_ptr) {
         parser_node_list_.push_back(node_ptr);
         return node_ptr;
@@ -199,6 +262,7 @@ class NodeManager {
     std::list<SQLNodeList *> sql_node_list_list_;
     std::list<node::PlanNode *> plan_node_list_;
     std::list<node::BatchPlanNode *> batch_plan_node_list_;
+    std::list<vm::PhysicalOpNode *> physical_plan_node_list_;
 };
 
 }  // namespace node

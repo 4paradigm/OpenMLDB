@@ -12,6 +12,7 @@ set(FESQL_VERSION_BUG 0)
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 #set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
+set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")
 
 set(COMMON_LIBS glog gflags unwind lzma)
 set(g_libs glog gflags unwind lzma)
@@ -39,6 +40,7 @@ endif()
 set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc 
     brotlicommon
     thrift lz4 z zstd double-conversion boost_filesystem snappy)
+set(boost_libs boost_graph)
 llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
 add_definitions('-g')
 add_definitions('-Wall')

@@ -22,7 +22,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include "analyser/analyser.h"
 #include "base/texttable.h"
 #include "plan/planner.h"
 #include "sdk/tablet_sdk.h"
@@ -42,7 +41,6 @@ DECLARE_string(endpoint);
 DECLARE_string(tablet_endpoint);
 DECLARE_int32(port);
 DECLARE_int32(thread_pool_size);
-
 DEFINE_string(role, "tablet | dbms | client ", "Set the fesql role");
 
 namespace fesql {
@@ -92,7 +90,7 @@ void StartTablet(int argc, char *argv[]) {
     oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
         << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
     DLOG(INFO) << "start tablet on port " << FLAGS_port << " with version "
-              << oss.str();
+               << oss.str();
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
@@ -119,7 +117,7 @@ void StartDBMS(char *argv[]) {
     oss << FESQL_VERSION_MAJOR << "." << FESQL_VERSION_MEDIUM << "."
         << FESQL_VERSION_MINOR << "." << FESQL_VERSION_BUG;
     DLOG(INFO) << "start dbms on port " << FLAGS_port << " with version "
-              << oss.str();
+               << oss.str();
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
@@ -313,8 +311,6 @@ void HandleSQLScript(
     {
         fesql::node::NodeManager node_manager;
         fesql::parser::FeSQLParser parser;
-        fesql::analyser::FeSQLAnalyser analyser(&node_manager);
-        fesql::plan::SimplePlanner planner(&node_manager);
         fesql::base::Status sql_status;
 
         // TODO(chenjing): init with db
@@ -371,8 +367,18 @@ void HandleSQLScript(
                 std::cout << "Insert success" << std::endl;
                 return;
             }
+            case fesql::node::kExplainSmt: {
+                fesql::plan::SimplePlanner planner(&node_manager);
+                fesql::node::PlanNodeList plan_trees;
+                if (!planner.CreatePlanTree(parser_trees, plan_trees,
+                                            sql_status)) {
+                    return;
+                }
+                std::cout << "Logical plan: \n" << plan_trees[0];
+                return;
+            }
             case fesql::node::kFnList:
-            case fesql::node::kSelectStmt: {
+            case fesql::node::kQuery: {
                 if (!table_sdk) {
                     table_sdk =
                         ::fesql::sdk::CreateTabletSdk(FLAGS_tablet_endpoint);

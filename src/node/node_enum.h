@@ -10,9 +10,9 @@
 #ifndef SRC_NODE_NODE_ENUM_H_
 #define SRC_NODE_NODE_ENUM_H_
 
-#include <proto/type.pb.h>
 #include <string>
 #include "proto/common.pb.h"
+#include "proto/type.pb.h"
 namespace fesql {
 namespace node {
 
@@ -23,14 +23,15 @@ const char INDENT[] = " \t";
 
 enum SQLNodeType {
     // SQL
-    kSelectStmt = 0,
     kCreateStmt,
     kInsertStmt,
     kCmdStmt,
+    kExplainSmt,
     kExpr,
     kType,
     kResTarget,
-    kTable,
+    kTableRef,
+    kQuery,
     kWindowFunc,
     kWindowDef,
     kFrameBound,
@@ -44,10 +45,6 @@ enum SQLNodeType {
     kName,
     kConst,
     kLimit,
-    kOrderBy,
-
-    kDesc,
-    kAsc,
 
     kFrameRange,
     kFrameRows,
@@ -77,6 +74,17 @@ enum SQLNodeType {
     kUnknow
 };
 
+enum TableRefType {
+    kRefTable,
+    kRefQuery,
+    kRefJoin,
+};
+
+enum QueryType {
+    kQuerySelect,
+    kQuerySub,
+    kQueryUnion,
+};
 enum ExprType {
     kExprBinary,
     kExprUnary,
@@ -92,6 +100,8 @@ enum ExprType {
     kExprRange,
     kExprAll,
     kExprStruct,
+    kExprQuery,
+    kExprOrder,
     kExprUnknow = 9999
 };
 // typedef fesql::type::Type DataType;
@@ -142,10 +152,20 @@ enum FnOperator {
     kFnOpGe,
     kFnOpDot,
     kFnOpAt,
+    kFnOpLike,
     kFnOpBracket,
     kFnOpNone
 };
 
+enum JoinType {
+    kJoinTypeFull,
+    kJoinTypeLeft,
+    kJoinTypeRight,
+    kJoinTypeInner,
+    kJoinTypeConcat,
+};
+
+enum UnoinType { kUnionTypeDistinct, kUnionTypeAll };
 enum CmdType {
     kCmdCreateGroup,
     kCmdCreateDatabase,
@@ -157,28 +177,32 @@ enum CmdType {
     kCmdDropTable,
     kCmdExit
 };
-
+enum ExplainType {
+    kExplainLogical,
+    kExplainPhysical,
+};
 enum PlanType {
     kPlanTypeCmd,
     kPlanTypeFuncDef,
-    kPlanTypeSelect,
     kPlanTypeCreate,
     kPlanTypeInsert,
     kPlanTypeScan,
-    kPlanTypeMerge,
+    kPlanTypeQuery,
     kPlanTypeLimit,
     kPlanTypeFilter,
+    kPlanTypeTable,
+    kPlanTypeJoin,
+    kPlanTypeUnion,
+    kPlanTypeSort,
+    kPlanTypeGroup,
+    kPlanTypeDistinct,
+    kPlanTypeProject,
+    kPlanTypeRename,
+
     kProjectList,
     kPlanTypeWindow,
-    kProject,
-    kScalarFunction,
-    kOpExpr,
-    kAggFunction,
-    kAggWindowFunction,
-    kUnknowPlan,
-
-    kScanTypeSeqScan,
-    kScanTypeIndexScan,
+    kProjectNode,
+    kUnknowPlan = 100,
 };
 
 // batch plan node type

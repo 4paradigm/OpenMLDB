@@ -20,7 +20,6 @@
 #include <memory>
 #include <utility>
 #include <vector>
-#include "analyser/analyser.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
@@ -134,7 +133,6 @@ bool SQLCompiler::Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,
         return false;
     }
 
-    // TODO(chenjing): ADD analyser
     ret = planer.CreatePlanTree(parser_trees, plan_trees, status);
     if (ret != 0) {
         LOG(WARNING) << "Fail create sql plan: " << status.msg;

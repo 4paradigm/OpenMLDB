@@ -11,12 +11,12 @@
 #define SRC_NODE_PLAN_NODE_H_
 
 #include <glog/logging.h>
-#include <node/sql_node.h>
 #include <list>
 #include <string>
 #include <utility>
 #include <vector>
 #include "node/node_enum.h"
+#include "node/sql_node.h"
 namespace fesql {
 namespace node {
 
@@ -33,14 +33,17 @@ class PlanNode {
     PlanType GetType() const { return type_; }
 
     const std::vector<PlanNode *> &GetChildren() const { return children_; }
-
     int GetChildrenSize() const { return children_.size(); }
     friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
 
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    virtual void PrintChildren(std::ostream &output,
+                               const std::string &tab) const;
+
+    virtual bool Equals(const PlanNode *that) const;
+    const PlanType type_;
 
  protected:
-    PlanType type_;
     std::vector<PlanNode *> children_;
 };
 
@@ -51,22 +54,42 @@ class LeafPlanNode : public PlanNode {
     explicit LeafPlanNode(PlanType type) : PlanNode(type) {}
     ~LeafPlanNode() {}
     virtual bool AddChild(PlanNode *node);
+    virtual void PrintChildren(std::ostream &output,
+                               const std::string &tab) const;
+    virtual bool Equals(const PlanNode *that) const;
 };
 
 class UnaryPlanNode : public PlanNode {
  public:
     explicit UnaryPlanNode(PlanType type) : PlanNode(type) {}
+    explicit UnaryPlanNode(PlanNode *node, PlanType type) : PlanNode(type) {
+        AddChild(node);
+    }
     ~UnaryPlanNode() {}
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual void PrintChildren(std::ostream &output,
+                               const std::string &tab) const;
+    virtual bool Equals(const PlanNode *that) const;
+    PlanNode *GetDepend() const { return children_[0]; }
 };
 
 class BinaryPlanNode : public PlanNode {
  public:
     explicit BinaryPlanNode(PlanType type) : PlanNode(type) {}
+    explicit BinaryPlanNode(PlanType type, PlanNode *left, PlanNode *right)
+        : PlanNode(type) {
+        AddChild(left);
+        AddChild(right);
+    }
     ~BinaryPlanNode() {}
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual void PrintChildren(std::ostream &output,
+                               const std::string &tab) const;
+    virtual bool Equals(const PlanNode *that) const;
+    PlanNode *GetLeft() const { return children_[0]; }
+    PlanNode *GetRight() const { return children_[1]; }
 };
 
 class MultiChildPlanNode : public PlanNode {
@@ -75,113 +98,144 @@ class MultiChildPlanNode : public PlanNode {
     ~MultiChildPlanNode() {}
     virtual bool AddChild(PlanNode *node);
     virtual void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual void PrintChildren(std::ostream &output,
+                               const std::string &tab) const;
+    virtual bool Equals(const PlanNode *that) const;
 };
 
-class SelectPlanNode : public MultiChildPlanNode {
+class RenamePlanNode : public UnaryPlanNode {
  public:
-    SelectPlanNode() : MultiChildPlanNode(kPlanTypeSelect), limit_cnt_(-1) {}
-    ~SelectPlanNode() {}
-    int GetLimitCount() { return limit_cnt_; }
-    void SetLimitCount(int count) { limit_cnt_ = count; }
- private:
-    int limit_cnt_;
+    RenamePlanNode(PlanNode *node, const std::string table_name)
+        : UnaryPlanNode(node, kPlanTypeRename), table_(table_name) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const PlanNode *that) const;
+
+    const std::string table_;
 };
-
-class ScanPlanNode : public UnaryPlanNode {
+class TablePlanNode : public LeafPlanNode {
  public:
-    ScanPlanNode(const std::string &table_name, PlanType scan_type)
-        : UnaryPlanNode(kPlanTypeScan),
-          scan_type_(scan_type),
-          table_name_(table_name),
-          condition_(nullptr),
-          limit_cnt_(-1) {}
-    ~ScanPlanNode() {}
+    TablePlanNode(const std::string &db, const std::string &table)
+        : LeafPlanNode(kPlanTypeTable),
+          db_(db),
+          table_(table),
+          is_primary_(false) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *that) const;
+    const bool IsPrimary() const { return is_primary_; }
+    void SetIsPrimary(bool is_primary) { is_primary_ = is_primary; }
 
-    PlanType GetScanType() { return scan_type_; }
-
-    const int GetLimit() const { return limit_cnt_; }
-
-    const std::string &GetTable() const { return table_name_; }
-
-    void SetLimit(int limit) { limit_cnt_ = limit; }
-    const SQLNode *GetCondition() const { return condition_; }
-    void SetCondition(SQLNode *condition) { condition_ = condition; }
+    const std::string db_;
+    const std::string table_;
 
  private:
-    // TODO(chenjing): OP tid
-    PlanType scan_type_;
-    std::string table_name_;
-    SQLNode *condition_;
-    int limit_cnt_;
+    bool is_primary_;
 };
 
-class LimitPlanNode : public MultiChildPlanNode {
+class DistinctPlanNode : public UnaryPlanNode {
  public:
-    LimitPlanNode() : MultiChildPlanNode(kPlanTypeLimit) {}
-    explicit LimitPlanNode(int limit_cnt)
-        : MultiChildPlanNode(kPlanTypeLimit), limit_cnt_(limit_cnt) {}
-
-    ~LimitPlanNode() {}
-
-    const int GetLimitCnt() const { return limit_cnt_; }
-
-    void SetLimitCnt(int limit_cnt) { limit_cnt_ = limit_cnt; }
-
- private:
-    int limit_cnt_;
+    explicit DistinctPlanNode(PlanNode *node)
+        : UnaryPlanNode(node, kPlanTypeDistinct) {}
 };
 
-// TODO(chenjing):
-// where 过滤: 暂时不用考虑
-// having: 对结果过滤
+class JoinPlanNode : public BinaryPlanNode {
+ public:
+    JoinPlanNode(PlanNode *left, PlanNode *right, JoinType join_type,
+                 const ExprNode *expression)
+        : BinaryPlanNode(kPlanTypeJoin, left, right),
+          join_type_(join_type),
+          condition_(expression) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *that) const;
+    const JoinType join_type_;
+    const ExprNode *condition_;
+};
+
+class UnionPlanNode : public BinaryPlanNode {
+ public:
+    UnionPlanNode(PlanNode *left, PlanNode *right, bool is_all)
+        : BinaryPlanNode(kPlanTypeUnion, left, right), is_all(is_all) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *that) const;
+    const bool is_all;
+};
+
+class CrossProductPlanNode : public BinaryPlanNode {
+ public:
+    CrossProductPlanNode(PlanNode *left, PlanNode *right)
+        : BinaryPlanNode(kPlanTypeJoin, left, right) {}
+};
+
+class SortPlanNode : public UnaryPlanNode {
+ public:
+    SortPlanNode(PlanNode *node, const OrderByNode *order_list)
+        : UnaryPlanNode(node, kPlanTypeSort), order_list_(order_list) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *that) const;
+    const OrderByNode *order_list_;
+};
+
+class GroupPlanNode : public UnaryPlanNode {
+ public:
+    GroupPlanNode(PlanNode *node, const ExprListNode *by_list)
+        : UnaryPlanNode(node, kPlanTypeGroup), by_list_(by_list) {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *node) const;
+    const ExprListNode *by_list_;
+};
+
+class QueryPlanNode : public UnaryPlanNode {
+ public:
+    explicit QueryPlanNode(PlanNode *node)
+        : UnaryPlanNode(node, kPlanTypeQuery) {}
+    ~QueryPlanNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *node) const;
+};
+
 class FilterPlanNode : public UnaryPlanNode {
  public:
-    FilterPlanNode() : UnaryPlanNode(kPlanTypeFilter), condition_(nullptr) {}
-    ~FilterPlanNode();
-
- private:
-    SQLNode *condition_;
+    FilterPlanNode(PlanNode *node, const ExprNode *condition)
+        : UnaryPlanNode(node, kPlanTypeFilter), condition_(condition) {}
+    ~FilterPlanNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *node) const;
+    const ExprNode *condition_;
 };
 
-class ProjectPlanNode : public LeafPlanNode {
+class LimitPlanNode : public UnaryPlanNode {
  public:
-    ProjectPlanNode()
-        : LeafPlanNode(kProject),
-          pos_(0),
-          expression_(nullptr),
-          name_(""),
-          table_(""),
-          w_("") {}
+    LimitPlanNode(PlanNode *node, int32_t limit_cnt)
+        : UnaryPlanNode(node, kPlanTypeLimit), limit_cnt_(limit_cnt) {}
 
-    ~ProjectPlanNode() {}
+    ~LimitPlanNode() {}
+    const int GetLimitCnt() const { return limit_cnt_; }
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const PlanNode *node) const;
+    const int32_t limit_cnt_;
+};
+
+class ProjectNode : public LeafPlanNode {
+ public:
+    ProjectNode(int32_t pos, const std::string &name, const bool is_aggregation,
+                node::ExprNode *expression)
+        : LeafPlanNode(kProjectNode),
+          is_aggregation_(is_aggregation),
+          pos_(pos),
+          name_(name),
+          expression_(expression) {}
+
+    ~ProjectNode() {}
     void Print(std::ostream &output, const std::string &orgTab) const;
-
     const uint32_t GetPos() const { return pos_; }
-
-    void SetPos(uint32_t pos) { pos_ = pos; }
-    void SetW(const std::string w) { w_ = w; }
-    std::string GetW() const { return w_; }
-
-    std::string GetTable() const { return table_; }
-
-    void SetTable(const std::string table) { table_ = table; }
-
     std::string GetName() const { return name_; }
-
-    void SetName(const std::string name) { name_ = name; }
-
     node::ExprNode *GetExpression() const { return expression_; }
-
-    void SetExpression(node::ExprNode *expression) { expression_ = expression; }
-
-    bool IsWindowProject() { return !w_.empty(); }
+    virtual bool Equals(const PlanNode *node) const;
+    const bool is_aggregation_;
 
  private:
     uint32_t pos_;
-    node::ExprNode *expression_;
     std::string name_;
-    std::string table_;
-    std::string w_;
+    node::ExprNode *expression_;
 };
 
 class WindowPlanNode : public LeafPlanNode {
@@ -196,6 +250,7 @@ class WindowPlanNode : public LeafPlanNode {
           keys_(),
           orders_() {}
     ~WindowPlanNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
     int64_t GetStartOffset() const { return start_offset_; }
     void SetStartOffset(int64_t startOffset) { start_offset_ = startOffset; }
     int64_t GetEndOffset() const { return end_offset_; }
@@ -211,6 +266,7 @@ class WindowPlanNode : public LeafPlanNode {
     const std::string &GetName() const { return name; }
     void SetName(const std::string &name) { WindowPlanNode::name = name; }
     const int GetId() const { return id; }
+    virtual bool Equals(const PlanNode *node) const;
 
  private:
     int id;
@@ -222,79 +278,62 @@ class WindowPlanNode : public LeafPlanNode {
     std::vector<std::string> orders_;
 };
 
-class ProjectListPlanNode : public MultiChildPlanNode {
+class ProjectListNode : public LeafPlanNode {
  public:
-    ProjectListPlanNode()
-        : MultiChildPlanNode(kProjectList),
-          w_ptr_(nullptr),
+    ProjectListNode()
+        : LeafPlanNode(kProjectList),
           is_window_agg_(false),
-          scan_limit_(0L) {}
-    ProjectListPlanNode(const std::string &table, WindowPlanNode *w_ptr,
-                        const bool is_window_agg)
-        : MultiChildPlanNode(kProjectList),
-          table_(table),
-          w_ptr_(w_ptr),
+          w_ptr_(nullptr),
+          projects({}) {}
+    ProjectListNode(const WindowPlanNode *w_ptr, const bool is_window_agg)
+        : LeafPlanNode(kProjectList),
           is_window_agg_(is_window_agg),
-          scan_limit_(0L) {}
-    ~ProjectListPlanNode() {}
+          w_ptr_(w_ptr),
+          projects({}) {}
+    ~ProjectListNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const PlanNodeList &GetProjects() const { return projects; }
-    void AddProject(ProjectPlanNode *project) { projects.push_back(project); }
+    void AddProject(ProjectNode *project) { projects.push_back(project); }
 
-    const std::string GetTable() const { return table_; }
-
-    WindowPlanNode *GetW() const { return w_ptr_; }
+    const WindowPlanNode *GetW() const { return w_ptr_; }
 
     const bool IsWindowAgg() const { return is_window_agg_; }
 
-    void SetScanLimit(int scan_limit) { scan_limit_ = scan_limit; }
-    const uint64_t GetScanLimit() const { return scan_limit_; }
+    virtual bool Equals(const PlanNode *node) const;
+
+    const bool is_window_agg_;
+    const WindowPlanNode *w_ptr_;
 
  private:
     PlanNodeList projects;
-    std::string table_;
-    WindowPlanNode *w_ptr_;
-    bool is_window_agg_;
-    uint64_t scan_limit_;
 };
 
-class MergePlanNode : public MultiChildPlanNode {
+class ProjectPlanNode : public UnaryPlanNode {
  public:
-    explicit MergePlanNode(uint32_t columns_size)
-        : MultiChildPlanNode(kPlanTypeMerge) {
-        pos_mapping_.resize(columns_size);
-    }
-    ~MergePlanNode() {}
+    explicit ProjectPlanNode(
+        PlanNode *node, const std::string &table,
+        const PlanNodeList &project_list_vec,
+        const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping)
+        : UnaryPlanNode(node, kPlanTypeProject),
+          table_(table),
+          project_list_vec_(project_list_vec),
+          pos_mapping_(pos_mapping) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const PlanNode *node) const;
 
-    bool AddChild(PlanNode *node) {
-        children_.push_back(node);
-        uint32_t project_list_idx = children_.size() - 1;
-        ProjectListPlanNode *project_list =
-            dynamic_cast<ProjectListPlanNode *>(node);
-        for (uint32_t i = 0; i < project_list->GetProjects().size(); ++i) {
-            ProjectPlanNode *project =
-                dynamic_cast<ProjectPlanNode *>(project_list->GetProjects()[i]);
-            uint32_t dis_pos = project->GetPos();
-            if (dis_pos >= pos_mapping_.size()) {
-                pos_mapping_.resize(dis_pos + 1);
-            }
-            pos_mapping_[dis_pos] = std::make_pair(project_list_idx, i);
-        }
-        return true;
-    }
-
-    const std::vector<std::pair<uint32_t, uint32_t>> &GetPosMapping() const {
-        return pos_mapping_;
-    }
-
- private:
-    std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
+    const std::string table_;
+    const PlanNodeList project_list_vec_;
+    const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
 };
+
 class CreatePlanNode : public LeafPlanNode {
  public:
-    CreatePlanNode()
-        : LeafPlanNode(kPlanTypeCreate), database_(""), table_name_("") {}
+    CreatePlanNode(const std::string &table_name, NodePointVector column_list)
+        : LeafPlanNode(kPlanTypeCreate),
+          database_(""),
+          table_name_(table_name),
+          column_desc_list_(column_list) {}
     ~CreatePlanNode() {}
 
     std::string GetDatabase() const { return database_; }
@@ -320,13 +359,10 @@ class CreatePlanNode : public LeafPlanNode {
 
 class CmdPlanNode : public LeafPlanNode {
  public:
-    CmdPlanNode() : LeafPlanNode(kPlanTypeCmd) {}
+    CmdPlanNode(const node::CmdType cmd_type,
+                const std::vector<std::string> &args)
+        : LeafPlanNode(kPlanTypeCmd), cmd_type_(cmd_type), args_(args) {}
     ~CmdPlanNode() {}
-
-    void SetCmdNode(const CmdNode *node) {
-        cmd_type_ = node->GetCmdType();
-        args_ = node->GetArgs();
-    }
 
     const node::CmdType GetCmdType() const { return cmd_type_; }
     const std::vector<std::string> &GetArgs() const { return args_; }
@@ -338,10 +374,9 @@ class CmdPlanNode : public LeafPlanNode {
 
 class InsertPlanNode : public LeafPlanNode {
  public:
-    InsertPlanNode() : LeafPlanNode(kPlanTypeInsert), insert_node_(nullptr) {}
+    explicit InsertPlanNode(const InsertStmt *insert_node)
+        : LeafPlanNode(kPlanTypeInsert), insert_node_(insert_node) {}
     ~InsertPlanNode() {}
-    void SetInsertNode(const InsertStmt *node) { insert_node_ = node; }
-
     const InsertStmt *GetInsertNode() const { return insert_node_; }
 
  private:
@@ -350,22 +385,22 @@ class InsertPlanNode : public LeafPlanNode {
 
 class FuncDefPlanNode : public LeafPlanNode {
  public:
-    FuncDefPlanNode() : LeafPlanNode(kPlanTypeFuncDef) {}
+    explicit FuncDefPlanNode(const FnNodeFnDef *fn_def)
+        : LeafPlanNode(kPlanTypeFuncDef), fn_def_(fn_def) {}
     ~FuncDefPlanNode() {}
-
-    void SetDef(const FnNodeFnDef * fn_def) {
-        fn_def_ = fn_def;
-    }
     void Print(std::ostream &output, const std::string &orgTab) const;
-    const FnNodeFnDef* fn_def_;
+    const FnNodeFnDef *fn_def_;
 };
 
+bool PlanEquals(const PlanNode *left, const PlanNode *right);
+bool PlanListEquals(const std::vector<PlanNode *> &list1,
+                    const std::vector<PlanNode *> &list2);
 void PrintPlanVector(std::ostream &output, const std::string &tab,
                      PlanNodeList vec, const std::string vector_name,
                      bool last_item);
 
 void PrintPlanNode(std::ostream &output, const std::string &org_tab,
-                   PlanNode *node_ptr, const std::string &item_name,
+                   const PlanNode *node_ptr, const std::string &item_name,
                    bool last_child);
 
 }  // namespace node

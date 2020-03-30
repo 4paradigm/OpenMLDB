@@ -240,7 +240,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         ASSERT_EQ(0, static_cast<int>(status.code));
         bool ok = rs != NULL;
         ASSERT_TRUE(ok);
-        ASSERT_EQ(5, rs.get()->GetColumnCnt());
+        ASSERT_EQ(5u, rs.get()->GetColumnCnt());
         ASSERT_EQ("column1", rs.get()->GetColumnName(0));
         ASSERT_EQ("column2", rs.get()->GetColumnName(1));
         ASSERT_EQ("column3", rs.get()->GetColumnName(2));

@@ -7,163 +7,293 @@
  *--------------------------------------------------------------------------
  **/
 #include "plan/planner.h"
-#include <proto/common.pb.h>
 #include <map>
+#include <random>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
+#include "proto/common.pb.h"
 namespace fesql {
 namespace plan {
 
-// create simple select plan node:
-//  simple select:
-//       + from_list
-//          + from_node
-//              + table_ref_node
-//      + project_list
-//          + project_node
-//              + expression
-//                  +   op_expr
-//                      | function
-//                      | const
-//                      | column ref node
-//              + name
-//          + project_node
-//          + project_node
-//          + ..
-//      + limit_count
-// param select_tree
-// param plan_tree
-// param status
-// return
-int Planner::CreateSelectPlan(const node::SQLNode *select_tree,
-                              PlanNode *plan_tree,
-                              Status &status) {  // NOLINT (runtime/references)
-    const node::SelectStmt *root = (const node::SelectStmt *)select_tree;
-    node::SelectPlanNode *select_plan = (node::SelectPlanNode *)plan_tree;
-    const node::NodePointVector &table_ref_list = root->GetTableRefList();
-    if (table_ref_list.empty()) {
+bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
+                              Status &status) {
+    if (nullptr == root) {
+        status.msg = "can not create query plan node with null query node";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    switch (root->query_type_) {
+        case node::kQuerySelect:
+            if (!CreateSelectQueryPlan(
+                    dynamic_cast<const node::SelectQueryNode *>(root),
+                    plan_tree, status)) {
+                return false;
+            }
+            break;
+        case node::kQueryUnion:
+            if (!CreateUnionQueryPlan(
+                    dynamic_cast<const node::UnionQueryNode *>(root), plan_tree,
+                    status)) {
+                return false;
+            }
+            break;
+        default: {
+            status.msg =
+                "can not create query plan node with invalid query type " +
+                node::QueryTypeName(root->query_type_);
+            status.code = common::kPlanError;
+            return false;
+        }
+    }
+    return true;
+}
+bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
+                                    PlanNode **plan_tree, Status &status) {
+    if (nullptr == root->GetTableRefList() ||
+        root->GetTableRefList()->GetList().empty()) {
         status.msg =
-            "can not create select plan node with empty table references";
+            "can not create select plan node with null or empty table "
+            "references";
         status.code = common::kSQLError;
-        return status.code;
+        return false;
     }
-    if (table_ref_list.size() > 1) {
+
+    const node::NodePointVector &table_ref_list =
+        root->GetTableRefList()->GetList();
+    std::vector<node::PlanNode *> relation_nodes;
+    for (node::SQLNode *node : table_ref_list) {
+        node::PlanNode *table_ref_plan = nullptr;
+        if (nullptr == node) {
+            status.msg =
+                "can not create select plan node: table reference node is "
+                "null";
+            status.code = common::kPlanError;
+            return false;
+        }
+        if (node::kTableRef != node->GetType()) {
+            status.msg =
+                "can not create select plan node: table reference node "
+                "type is "
+                "invalid" +
+                node::NameOfSQLNodeType(node->GetType());
+            status.code = common::kSQLError;
+            return false;
+        }
+        if (!CreateTableReferencePlanNode(
+                dynamic_cast<node::TableRefNode *>(node), &table_ref_plan,
+                status)) {
+            return false;
+        }
+        relation_nodes.push_back(table_ref_plan);
+    }
+
+    // from tables
+    auto iter = relation_nodes.cbegin();
+    node::PlanNode *current_node = *iter;
+    iter++;
+    // cross product if there are multi tables
+    for (; iter != relation_nodes.cend(); iter++) {
+        current_node = node_manager_->MakeJoinNode(
+            current_node, *iter, node::JoinType::kJoinTypeFull, nullptr);
+    }
+
+    // TODO(chenjing): 处理子查询
+    std::string table_name = MakeTableName(current_node);
+    // where condition
+    if (nullptr != root->where_clause_ptr_) {
+        current_node = node_manager_->MakeFilterPlanNode(
+            current_node, root->where_clause_ptr_);
+    }
+
+    // group by
+    if (nullptr != root->group_clause_ptr_) {
+        current_node = node_manager_->MakeGroupPlanNode(
+            current_node, root->group_clause_ptr_);
+    }
+
+    // select target_list
+    if (nullptr == root->GetSelectList() ||
+        root->GetSelectList()->GetList().empty()) {
         status.msg =
-            "can not create select plan node based on more than 2 tables";
-        status.code = common::kUnSupport;
-        return status.code;
+            "fail to create select query plan: select expr list is null or "
+            "empty";
+        status.code = common::kPlanError;
+        return false;
     }
+    const node::NodePointVector &select_expr_list =
+        root->GetSelectList()->GetList();
 
-    const node::TableNode *table_node_ptr =
-        (const node::TableNode *)table_ref_list.at(0);
-    node::PlanNode *current_node = select_plan;
-    std::map<const node::WindowDefNode *, node::ProjectListPlanNode *>
-        project_list_map;
-
+    // prepare window list
+    std::map<node::WindowDefNode *, node::ProjectListNode *> project_list_map;
     // prepare window def
     int w_id = 1;
     std::map<std::string, node::WindowDefNode *> windows;
-    if (!root->GetWindowList().empty()) {
-        for (auto node : root->GetWindowList()) {
+    if (nullptr != root->GetWindowList() && !root->GetWindowList()->IsEmpty()) {
+        for (auto node : root->GetWindowList()->GetList()) {
             node::WindowDefNode *w = dynamic_cast<node::WindowDefNode *>(node);
             windows[w->GetName()] = w;
         }
     }
 
-    // prepare project list plan node
-    const node::NodePointVector &select_expr_list = root->GetSelectList();
-    if (false == select_expr_list.empty()) {
-        for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
-            auto expr = select_expr_list[pos];
-            node::ProjectPlanNode *project_node_ptr =
-                (node::ProjectPlanNode *)(node_manager_->MakePlanNode(
-                    node::kProject));
+    for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
+        auto expr = select_expr_list[pos];
+        std::string project_name;
+        node::ExprNode *project_expr;
+        switch (expr->GetType()) {
+            case node::kResTarget: {
+                const node::ResTarget *target_ptr =
+                    (const node::ResTarget *)expr;
 
-            CreateProjectPlanNode(expr, pos, table_node_ptr->GetOrgTableName(),
-                                  project_node_ptr, status);
-            if (0 != status.code) {
-                return status.code;
-            }
-            node::WindowDefNode *w_ptr = node::WindowOfExpression(
-                windows, project_node_ptr->GetExpression());
-
-            if (project_list_map.find(w_ptr) == project_list_map.end()) {
-                if (w_ptr == nullptr) {
-                    project_list_map[w_ptr] =
-                        node_manager_->MakeProjectListPlanNode(
-                            project_node_ptr->GetTable(), nullptr);
-                } else {
-                    node::WindowPlanNode *w_node_ptr =
-                        node_manager_->MakeWindowPlanNode(w_id++);
-                    CreateWindowPlanNode(w_ptr, w_node_ptr, status);
-                    if (common::kOk != status.code) {
-                        return status.code;
-                    }
-                    project_list_map[w_ptr] =
-                        node_manager_->MakeProjectListPlanNode(
-                            project_node_ptr->GetTable(), w_node_ptr);
+                project_name = target_ptr->GetName();
+                if (project_name.empty()) {
+                    project_name = target_ptr->GetVal()->GetExprString();
                 }
+                project_expr = target_ptr->GetVal();
+                break;
             }
-            project_list_map[w_ptr]->AddProject(project_node_ptr);
+            default: {
+                status.msg = "can not create project plan node with type " +
+                             node::NameOfSQLNodeType(root->GetType());
+                status.code = common::kPlanError;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
         }
 
-        // TODO(chenjing): apply limit optimized rule, remove limit node, fill
-        // limit_cnt into Scan node
-        bool optimized_limit = true;
-        // TODO(chenjing): handle multi table scan
-        // TODO(chenjing): Scan optimized
-        node::ScanPlanNode *scan_node_ptr = node_manager_->MakeSeqScanPlanNode(
-            table_node_ptr->GetOrgTableName());
-        // set limit
-        if (nullptr != root->GetLimit()) {
-            const node::LimitNode *limit_ptr =
-                (node::LimitNode *)root->GetLimit();
-            if (optimized_limit) {
-                scan_node_ptr->SetLimit(limit_ptr->GetLimitCount());
+        node::WindowDefNode *w_ptr =
+            node::WindowOfExpression(windows, project_expr);
+
+        if (project_list_map.find(w_ptr) == project_list_map.end()) {
+            if (w_ptr == nullptr) {
+                project_list_map[w_ptr] =
+                    node_manager_->MakeProjectListPlanNode(nullptr);
+
             } else {
-                node::LimitPlanNode *limit_plan_ptr =
-                    (node::LimitPlanNode *)node_manager_->MakePlanNode(
-                        node::kPlanTypeLimit);
-                limit_plan_ptr->SetLimitCnt(limit_ptr->GetLimitCount());
-                current_node->AddChild(limit_plan_ptr);
-                current_node = limit_plan_ptr;
+                node::WindowPlanNode *w_node_ptr =
+                    node_manager_->MakeWindowPlanNode(w_id++);
+                if (!CreateWindowPlanNode(w_ptr, w_node_ptr, status)) {
+                    return status.code;
+                }
+                project_list_map[w_ptr] =
+                    node_manager_->MakeProjectListPlanNode(w_node_ptr);
             }
         }
+        node::ProjectNode *project_node_ptr =
+            nullptr == w_ptr ? node_manager_->MakeRowProjectNode(
+                                   pos, project_name, project_expr)
+                             : node_manager_->MakeAggProjectNode(
+                                   pos, project_name, project_expr);
 
-        // add MergeNode if multi ProjectionLists exist
-        int32_t project_list_size = project_list_map.size();
-        if (project_list_size > 1) {
-            uint32_t columns_size = 0;
-            for (auto project : project_list_map) {
-                columns_size += project.second->GetProjects().size();
-            }
-            node::PlanNode *merge_node =
-                node_manager_->MakeMergeNode(columns_size);
-            current_node->AddChild(merge_node);
-            current_node = merge_node;
-        }
-        std::vector<node::ProjectListPlanNode *> project_list_vec(w_id);
-        for (auto &v : project_list_map) {
-            node::ProjectListPlanNode *project_list = v.second;
-            int pos = nullptr == project_list->GetW()
-                          ? 0
-                          : project_list->GetW()->GetId();
-            if (1 == project_list_size) {
-                project_list->SetScanLimit(scan_node_ptr->GetLimit());
-            }
-            project_list->AddChild(scan_node_ptr);
-            project_list_vec[pos] = project_list;
-        }
-        for (auto project_list : project_list_vec) {
-            if (nullptr != project_list) {
-                current_node->AddChild(project_list);
-            }
+        project_list_map[w_ptr]->AddProject(project_node_ptr);
+    }
+    // add MergeNode if multi ProjectionLists exist
+    PlanNodeList project_list_vec(w_id);
+    for (auto &v : project_list_map) {
+        node::ProjectListNode *project_list = v.second;
+        int pos =
+            nullptr == project_list->GetW() ? 0 : project_list->GetW()->GetId();
+        project_list_vec[pos] = project_list;
+    }
+
+    // merge simple project with 1st window project
+    if (nullptr != project_list_vec[0] && project_list_vec.size() > 1) {
+        auto simple_project =
+            dynamic_cast<node::ProjectListNode *>(project_list_vec[0]);
+        auto first_window_project =
+            dynamic_cast<node::ProjectListNode *>(project_list_vec[1]);
+        node::ProjectListNode *merged_project =
+            node_manager_->MakeProjectListPlanNode(
+                first_window_project->GetW());
+
+        if (MergeProjectList(simple_project, first_window_project,
+                             merged_project)) {
+            project_list_vec[0] = nullptr;
+            project_list_vec[1] = merged_project;
         }
     }
 
-    return 0;
+    PlanNodeList project_list_without_null;
+    std::vector<std::pair<uint32_t, uint32_t>> pos_mapping(
+        select_expr_list.size());
+    int project_list_id = 0;
+    for (auto &v : project_list_vec) {
+        if (nullptr == v) {
+            continue;
+        }
+        auto project_list =
+            dynamic_cast<node::ProjectListNode *>(v)->GetProjects();
+        int project_pos = 0;
+        for (auto project : project_list) {
+            pos_mapping[dynamic_cast<node::ProjectNode *>(project)->GetPos()] =
+                std::make_pair(project_list_id, project_pos);
+            project_pos++;
+        }
+        project_list_without_null.push_back(v);
+        project_list_id++;
+    }
+
+    current_node = node_manager_->MakeProjectPlanNode(
+        current_node, table_name, project_list_without_null, pos_mapping);
+
+    // distinct
+    if (root->distinct_opt_) {
+        current_node = node_manager_->MakeDistinctPlanNode(current_node);
+    }
+    // having
+    if (nullptr != root->having_clause_ptr_) {
+        current_node = node_manager_->MakeFilterPlanNode(
+            current_node, root->having_clause_ptr_);
+    }
+    // order
+    if (nullptr != root->order_clause_ptr_) {
+        current_node = node_manager_->MakeSortPlanNode(current_node,
+                                                       root->order_clause_ptr_);
+    }
+    // limit
+    if (nullptr != root->GetLimit()) {
+        const node::LimitNode *limit_ptr = (node::LimitNode *)root->GetLimit();
+        current_node = node_manager_->MakeLimitPlanNode(
+            current_node, limit_ptr->GetLimitCount());
+    }
+    current_node = node_manager_->MakeSelectPlanNode(current_node);
+    *plan_tree = current_node;
+    return true;
 }
+
+bool Planner::CreateUnionQueryPlan(const node::UnionQueryNode *root,
+                                   PlanNode **plan_tree, Status &status) {
+    if (nullptr == root) {
+        status.msg = "can not create query plan node with null query node";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    node::PlanNode *left_plan = nullptr;
+    node::PlanNode *right_plan = nullptr;
+    if (!CreateQueryPlan(root->left_, &left_plan, status)) {
+        status.msg =
+            "can not create union query plan left query: " + status.msg;
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (!CreateQueryPlan(root->right_, &right_plan, status)) {
+        status.msg =
+            "can not create union query plan right query: " + status.msg;
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    *plan_tree =
+        node_manager_->MakeUnionPlanNode(left_plan, right_plan, root->is_all_);
+    return true;
+}
+
 int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
                                    Status &status) {
     bool negtive = false;
@@ -181,7 +311,8 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
         }
         default: {
             status.msg =
-                "cannot create window frame with unrecognized bound type, only "
+                "cannot create window frame with unrecognized bound type, "
+                "only "
                 "support CURRENT|PRECEDING|FOLLOWING";
             status.code = common::kUnSupport;
             return -1;
@@ -228,7 +359,7 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
     return negtive ? -1 * offset : offset;
 }
 
-void Planner::CreateWindowPlanNode(
+bool Planner::CreateWindowPlanNode(
     node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr,
     Status &status) {  // NOLINT (runtime/references)
 
@@ -245,19 +376,13 @@ void Planner::CreateWindowPlanNode(
             if (common::kOk != status.code) {
                 LOG(WARNING)
                     << "fail to create project list node: " << status.msg;
-                return;
+                return false;
             }
             end_offset = CreateFrameOffset(end, status);
             if (common::kOk != status.code) {
                 LOG(WARNING)
                     << "fail to create project list node: " << status.msg;
-                return;
-            }
-
-            if (end_offset == INT64_MAX) {
-                LOG(WARNING) << "fail to create project list node: end frame "
-                                "can't be unbound ";
-                return;
+                return false;
             }
 
             if (w_ptr->GetName().empty()) {
@@ -273,67 +398,24 @@ void Planner::CreateWindowPlanNode(
             w_node_ptr->SetKeys(w_ptr->GetPartitions());
             w_node_ptr->SetOrders(w_ptr->GetOrders());
         } else {
-            LOG(WARNING) << "fail to create project list node: right frame "
-                            "can't be unbound ";
-            return;
-        }
-    }
-}  // namespace plan
-void Planner::CreateProjectPlanNode(
-    const SQLNode *root, const uint32_t pos, const std::string &table_name,
-    node::ProjectPlanNode *plan_tree,
-    Status &status) {  // NOLINT (runtime/references)
-    if (nullptr == root) {
-        status.msg = "fail to create project node: query tree node it null";
-        status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
-        return;
-    }
-
-    switch (root->GetType()) {
-        case node::kResTarget: {
-            const node::ResTarget *target_ptr = (const node::ResTarget *)root;
-
-            if (target_ptr->GetName().empty()) {
-                if (target_ptr->GetVal()->GetExprType() ==
-                    node::kExprColumnRef) {
-                    plan_tree->SetName(dynamic_cast<node::ColumnRefNode *>(
-                                           target_ptr->GetVal())
-                                           ->GetColumnName());
-                }
-            } else {
-                plan_tree->SetName(target_ptr->GetName());
-            }
-            plan_tree->SetPos(pos);
-            plan_tree->SetExpression(target_ptr->GetVal());
-            plan_tree->SetTable(table_name);
-            return;
-        }
-        default: {
-            status.msg = "can not create project plan node with type " +
-                         node::NameOfSQLNodeType(root->GetType());
             status.code = common::kPlanError;
+            status.msg =
+                "fail to create project list node: right frame "
+                "can't be unbound ";
             LOG(WARNING) << status.msg;
-            return;
+            return false;
         }
     }
+    return true;
 }
 
-void Planner::CreateDataProviderPlanNode(
-    const SQLNode *root, PlanNode *plan_tree,
-    Status &status) {  // NOLINT (runtime/references)
-}
-
-void Planner::CreateDataCollectorPlanNode(
-    const SQLNode *root, PlanNode *plan_tree,
-    Status &status) {  // NOLINT (runtime/references)
-}
-void Planner::CreateCreateTablePlan(
-    const node::SQLNode *root, node::CreatePlanNode *plan_tree,
+bool Planner::CreateCreateTablePlan(
+    const node::SQLNode *root, node::PlanNode **output,
     Status &status) {  // NOLINT (runtime/references)
     const node::CreateStmt *create_tree = (const node::CreateStmt *)root;
-    plan_tree->SetColumnDescList(create_tree->GetColumnDefList());
-    plan_tree->setTableName(create_tree->GetTableName());
+    *output = node_manager_->MakeCreateTablePlanNode(
+        create_tree->GetTableName(), create_tree->GetColumnDefList());
+    return true;
 }
 
 int SimplePlanner::CreatePlanTree(
@@ -348,55 +430,45 @@ int SimplePlanner::CreatePlanTree(
 
     for (auto parser_tree : parser_trees) {
         switch (parser_tree->GetType()) {
-            case node::kSelectStmt: {
-                PlanNode *select_plan =
-                    node_manager_->MakePlanNode(node::kPlanTypeSelect);
-                CreateSelectPlan(parser_tree, select_plan, status);
-                if (0 != status.code) {
+            case node::kQuery: {
+                PlanNode *select_plan = nullptr;
+                if (!CreateQueryPlan(
+                        dynamic_cast<node::QueryNode *>(parser_tree),
+                        &select_plan, status)) {
                     return status.code;
                 }
                 plan_trees.push_back(select_plan);
                 break;
             }
             case node::kCreateStmt: {
-                PlanNode *plan =
-                    node_manager_->MakePlanNode(node::kPlanTypeCreate);
-                CreateCreateTablePlan(
-                    parser_tree, dynamic_cast<node::CreatePlanNode *>(plan),
-                    status);
-                if (0 != status.code) {
+                PlanNode *plan = nullptr;
+                if (!CreateCreateTablePlan(parser_tree, &plan, status)) {
                     return status.code;
                 }
                 plan_trees.push_back(plan);
                 break;
             }
             case node::kCmdStmt: {
-                node::PlanNode *cmd_plan =
-                    node_manager_->MakePlanNode(node::kPlanTypeCmd);
-                CreateCmdPlan(parser_tree,
-                              dynamic_cast<node::CmdPlanNode *>(cmd_plan),
-                              status);
-                if (0 != status.code) {
+                node::PlanNode *cmd_plan = nullptr;
+                if (!CreateCmdPlan(parser_tree, &cmd_plan, status)) {
                     return status.code;
                 }
                 plan_trees.push_back(cmd_plan);
                 break;
             }
             case node::kInsertStmt: {
-                node::PlanNode *insert_plan =
-                    node_manager_->MakePlanNode(node::kPlanTypeInsert);
-                CreateInsertPlan(
-                    parser_tree,
-                    dynamic_cast<node::InsertPlanNode *>(insert_plan), status);
+                node::PlanNode *insert_plan = nullptr;
+                if (!CreateInsertPlan(parser_tree, &insert_plan, status)) {
+                    return false;
+                }
                 plan_trees.push_back(insert_plan);
                 break;
             }
             case ::fesql::node::kFnDef: {
-                node::PlanNode *fn_plan =
-                    node_manager_->MakePlanNode(node::kPlanTypeFuncDef);
-                CreateFuncDefPlan(
-                    parser_tree, dynamic_cast<node::FuncDefPlanNode *>(fn_plan),
-                    status);
+                node::PlanNode *fn_plan = nullptr;
+                if (!CreateFuncDefPlan(parser_tree, &fn_plan, status)) {
+                    return status.code;
+                }
                 plan_trees.push_back(fn_plan);
                 break;
             }
@@ -422,65 +494,201 @@ int SimplePlanner::CreatePlanTree(
  * @param plan
  * @param status
  */
-void Planner::CreateFuncDefPlan(
-    const SQLNode *root, node::FuncDefPlanNode *plan,
+bool Planner::CreateFuncDefPlan(
+    const SQLNode *root, node::PlanNode **output,
     Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg =
             "fail to create func def plan node: query tree node it null";
         status.code = common::kSQLError;
         LOG(WARNING) << status.msg;
-        return;
+        return false;
     }
 
     if (root->GetType() != node::kFnDef) {
         status.code = common::kSQLError;
         status.msg =
-            "fail to create cmd plan node: query tree node it not function def "
+            "fail to create cmd plan node: query tree node it not function "
+            "def "
             "type";
         LOG(WARNING) << status.msg;
-        return;
+        return false;
     }
-    plan->fn_def_ = dynamic_cast<const node::FnNodeFnDef *>(root);
+    *output = node_manager_->MakeFuncPlanNode(
+        dynamic_cast<const node::FnNodeFnDef *>(root));
+    return true;
 }
 
-void Planner::CreateInsertPlan(const node::SQLNode *root,
-                               node::InsertPlanNode *plan,
+bool Planner::CreateInsertPlan(const node::SQLNode *root,
+                               node::PlanNode **output,
                                Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kSQLError;
         LOG(WARNING) << status.msg;
-        return;
+        return false;
     }
 
     if (root->GetType() != node::kInsertStmt) {
         status.msg =
-            "fail to create cmd plan node: query tree node it not insert type";
+            "fail to create cmd plan node: query tree node it not insert "
+            "type";
         status.code = common::kSQLError;
-        return;
+        return false;
     }
-
-    plan->SetInsertNode(dynamic_cast<const node::InsertStmt *>(root));
+    *output = node_manager_->MakeInsertPlanNode(
+        dynamic_cast<const node::InsertStmt *>(root));
+    return true;
 }
 
-void Planner::CreateCmdPlan(const SQLNode *root, node::CmdPlanNode *plan,
+bool Planner::CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
                             Status &status) {  // NOLINT (runtime/references)
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
-        return;
+        return false;
     }
 
     if (root->GetType() != node::kCmdStmt) {
         status.msg =
             "fail to create cmd plan node: query tree node it not cmd type";
         status.code = common::kPlanError;
-        return;
+        return false;
+    }
+    *output = node_manager_->MakeCmdPlanNode(
+        dynamic_cast<const node::CmdNode *>(root));
+    return true;
+}
+std::string Planner::MakeTableName(const PlanNode *node) const {
+    switch (node->GetType()) {
+        case node::kPlanTypeTable: {
+            const node::TablePlanNode *table_node =
+                dynamic_cast<const node::TablePlanNode *>(node);
+            return table_node->table_;
+        }
+        case node::kPlanTypeRename: {
+            const node::RenamePlanNode *table_node =
+                dynamic_cast<const node::RenamePlanNode *>(node);
+            return table_node->table_;
+        }
+        case node::kPlanTypeJoin: {
+            return "";
+        }
+        case node::kPlanTypeQuery: {
+            return "";
+        }
+        default: {
+            LOG(WARNING) << "fail to get or generate table name for given plan "
+                            "node type "
+                         << node::NameOfPlanNodeType(node->GetType());
+            return "";
+        }
+    }
+    return "";
+}
+bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
+                                           node::PlanNode **output,
+                                           Status &status) {
+    node::PlanNode *plan_node = nullptr;
+    switch (root->ref_type_) {
+        case node::kRefTable: {
+            const node::TableNode *table_node =
+                dynamic_cast<const node::TableNode *>(root);
+            plan_node =
+                node_manager_->MakeTablePlanNode(table_node->org_table_name_);
+            if (!table_node->alias_table_name_.empty()) {
+                *output = node_manager_->MakeRenamePlanNode(
+                    plan_node, table_node->alias_table_name_);
+            } else {
+                *output = plan_node;
+            }
+            break;
+        }
+        case node::kRefJoin: {
+            const node::JoinNode *join_node =
+                dynamic_cast<const node::JoinNode *>(root);
+            node::PlanNode *left = nullptr;
+            node::PlanNode *right = nullptr;
+            if (!CreateTableReferencePlanNode(join_node->left_, &left,
+                                              status)) {
+                return false;
+            }
+            if (!CreateTableReferencePlanNode(join_node->right_, &right,
+                                              status)) {
+                return false;
+            }
+            plan_node = node_manager_->MakeJoinNode(
+                left, right, join_node->join_type_, join_node->condition_);
+            if (!join_node->alias_table_name_.empty()) {
+                *output = node_manager_->MakeRenamePlanNode(
+                    plan_node, join_node->alias_table_name_);
+            } else {
+                *output = plan_node;
+            }
+            break;
+        }
+        case node::kRefQuery: {
+            const node::QueryRefNode *sub_query_node =
+                dynamic_cast<const node::QueryRefNode *>(root);
+            if (!CreateQueryPlan(sub_query_node->query_, &plan_node, status)) {
+                return false;
+            }
+            if (!sub_query_node->alias_table_name_.empty()) {
+                *output = node_manager_->MakeRenamePlanNode(
+                    plan_node, sub_query_node->alias_table_name_);
+            } else {
+                *output = plan_node;
+            }
+            break;
+        }
+        default: {
+            status.msg =
+                "fail to create table reference node, unrecognized type " +
+                node::NameOfSQLNodeType(root->GetType());
+            status.code = common::kPlanError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
     }
 
-    plan->SetCmdNode(dynamic_cast<const node::CmdNode *>(root));
+    return true;
+}
+bool Planner::MergeProjectList(node::ProjectListNode *project_list1,
+                               node::ProjectListNode *project_list2,
+                               node::ProjectListNode *merged_project) {
+    if (nullptr == project_list1 || nullptr == project_list2 ||
+        nullptr == merged_project) {
+        LOG(WARNING) << "can't merge project list: input projects or output "
+                        "projects is null";
+        return false;
+    }
+    auto iter1 = project_list1->GetProjects().cbegin();
+    auto end1 = project_list1->GetProjects().cend();
+    auto iter2 = project_list2->GetProjects().cbegin();
+    auto end2 = project_list2->GetProjects().cend();
+    while (iter1 != end1 && iter2 != end2) {
+        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
+        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
+        if (project1->GetPos() < project2->GetPos()) {
+            merged_project->AddProject(project1);
+            iter1++;
+        } else {
+            merged_project->AddProject(project2);
+            iter2++;
+        }
+    }
+    while (iter1 != end1) {
+        auto project1 = dynamic_cast<node::ProjectNode *>(*iter1);
+        merged_project->AddProject(project1);
+        iter1++;
+    }
+    while (iter2 != end2) {
+        auto project2 = dynamic_cast<node::ProjectNode *>(*iter2);
+        merged_project->AddProject(project2);
+        iter2++;
+    }
+    return true;
 }
 
 bool TransformTableDef(const std::string &table_name,
@@ -600,7 +808,5 @@ std::string GenerateName(const std::string prefix, int id) {
     return name;
 }
 
-
-
-}  // namespace  plan
+}  // namespace plan
 }  // namespace fesql
