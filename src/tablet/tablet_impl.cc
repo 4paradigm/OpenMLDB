@@ -1387,21 +1387,21 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_is_finish(is_finish);
     } else {
         uint32_t index = 0;
-        uint64_t start_offset = 0;
-        bool has_end = false;
-        if (request->has_end_seq() && request->end_seq() > 0) {
-            start_offset = request->end_seq();
-            has_end = true;
+        rtidb::storage::RelationalTableTraverseIterator* it;
+        if (request->has_snapshot_id() && request->snapshot_id() > 0) {
+            it = r_table->NewTraverse(index, request->snapshot_id());
+        } else {
+            it = r_table->NewTraverse(index, 0);
         }
-        rtidb::storage::RelationalTableTraverseIterator* it =
-            r_table->NewTraverse(index, start_offset);
         if (it == NULL) {
+            delete it;
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
-        }
-        rocksdb::Slice end_key;
-        if (has_end && it->Valid()) {
-            end_key = it->GetKey();
+            if (request->has_snapshot_id()) {
+                response->set_code(rtidb::base::ReturnCode::kIdxNameNotFound); // TODO(kongquan): add new message and code, snapshot has benn recycle
+                response->set_msg("snapshot hsa benn recycle");
+            }
+            return;
         }
         if (request->has_pk()) {
             it->Seek(request->pk());
@@ -1427,23 +1427,16 @@ void TabletImpl::Traverse(RpcController* controller,
                       it->GetCount(), FLAGS_max_traverse_cnt);
                 break;
             }
-            if (has_end && end_key.size() > 0) {
-                rocksdb::Slice key = it->GetKey();
-                if (key.compare(end_key) == 0) {
-                    reach_end = true;
-                    break;
-                }
-            }
         }
 
         bool is_finish = false;
-        if (!it->Valid() || reach_end) {
+        if (!it->Valid()) {
             is_finish = true;
+            it->Finish(true);
+        } else {
+            it->GetSeq();
+            response->set_snapshot_id(it->GetSeq());
         }
-        if (!request->has_end_seq()) {
-            response->set_end_seq(it->GetSeq());
-        }
-        delete it;
         uint32_t total_size = scount * 4 + total_block_size;
         std::string* pairs = response->mutable_pairs();
         if (scount <= 0) {
@@ -1458,6 +1451,7 @@ void TabletImpl::Traverse(RpcController* controller,
             offset += (4 + value.size());
         }
         PDLOG(DEBUG, "tid %u pid %u, traverse count %d.", request->tid(), request->pid(), scount);
+        delete it;
         response->set_code(0);
         response->set_count(scount);
         response->set_is_finish(is_finish);

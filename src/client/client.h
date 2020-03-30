@@ -271,7 +271,7 @@ public:
         msg_ = err_msg;
     }
 
-    void Init(RtidbClient* client, std::string* table_name, struct ReadOption* ro, uint32_t count);
+    void Init(RtidbClient* client, std::string* table_name, struct ReadOption* ro, uint32_t count, uint64_t snapshot_id);
 
     ~TraverseResult();
 
@@ -297,6 +297,7 @@ private:
     std::shared_ptr<std::string> table_name_;
     uint32_t count_;
     std::string last_pk_;
+    uint64_t snapshot_id_;
 };
 
 class BatchQueryResult: public ViewResult {
@@ -344,7 +345,7 @@ public:
     GeneralResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
     TraverseResult Traverse(const std::string& name, const struct ReadOption& ro);
     bool Traverse(const std::string& name, const struct ReadOption& ro, std::string* data, uint32_t* count,
-                               const std::string& last_key, bool* is_finish);
+                               const std::string& last_key, bool* is_finish, uint64_t* snapshot_id_);
     BatchQueryResult BatchQuery(const std::string& name, const std::vector<ReadOption>& ros);
     bool BatchQuery(const std::string& name, const std::vector<std::string>& keys, std::string* data, bool* is_finish, uint32_t* count);
     void SetZkCheckInterval(int32_t interval);
