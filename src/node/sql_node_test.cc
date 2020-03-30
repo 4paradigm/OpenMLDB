@@ -124,8 +124,9 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
         node_manager_->MakeFrameBound(kPreceding, NULL),
         node_manager_->MakeFrameBound(kPreceding,
                                       node_manager_->MakeConstNode(val)));
-    WindowDefNode *node_ptr = dynamic_cast<WindowDefNode *>(
-        node_manager_->MakeWindowDefNode(partitions, orders, frame));
+    WindowDefNode *node_ptr =
+        dynamic_cast<WindowDefNode *>(node_manager_->MakeWindowDefNode(
+            partitions, node_manager_->MakeOrderByNode(orders, true), frame));
     std::cout << *node_ptr << std::endl;
     ASSERT_EQ(kWindowDef, node_ptr->GetType());
     //

@@ -42,6 +42,7 @@ class ExprIRBuilder {
     ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                   const vm::Schema& schema, const bool row_mode,
                   const std::string& row_ptr_name,
+                  const std::string& window_ptr_name,
                   const std::string& row_size_name, ::llvm::Module* module);
 
     ~ExprIRBuilder();
@@ -84,6 +85,7 @@ class ExprIRBuilder {
     vm::Schema schema_;
     bool row_mode_;
     std::string row_ptr_name_;
+    std::string window_ptr_name_;
     std::string row_size_name_;
     VariableIRBuilder variable_ir_builder_;
     // TODO(chenjing): remove following ir builder member
@@ -92,6 +94,7 @@ class ExprIRBuilder {
     ::llvm::Module* module_;
     std::unique_ptr<RowDecodeIRBuilder> row_ir_builder_;
     std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
+    bool IsUADF(std::string function_name);
 };
 }  // namespace codegen
 }  // namespace fesql

@@ -4,7 +4,6 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc)
 target_link_libraries(fesql_sdk fesql_analyser fesql_parser fesql_planner fesql_node fesql_codec fesql_proto brpc ${g_libs} protobuf leveldb ${OS_LIB} z snappy ssl crypto dl)
-
 add_executable(dbms_sdk_test dbms_sdk_test.cc)
 target_link_libraries(dbms_sdk_test  
     fesql_dbms
@@ -22,6 +21,7 @@ target_link_libraries(tablet_sdk_test
     fesql_storage fesql_vm fesql_codegen fesql_udf
     fesql_flags
     gtest fesql_sdk ${COMMON_LIBS} ${llvm_libs})
+
 add_test(tablet_sdk_test tablet_sdk_test
     --gtest_output=xml:${CMAKE_BINARY_DIR}/tablet_sdk_test.xml)
 list(APPEND test_list tablet_sdk_test)

@@ -21,6 +21,7 @@ target_link_libraries(fesql_client_bm_case_test fesql_client_bm_case
     fesql_storage fesql_vm fesql_codegen fesql_udf
     fesql_flags
     gtest fesql_sdk benchmark ${COMMON_LIBS} ${llvm_libs})
+
 add_test(fesql_client_bm_case_test fesql_client_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/fesql_client_bm_case_test.xml)
 list(APPEND test_list fesql_client_bm_case_test)
 
@@ -39,3 +40,4 @@ target_link_libraries(fesql_client_batch_run_bm fesql_client_bm_case
     fesql_storage fesql_vm fesql_codegen fesql_udf
     fesql_flags
     gtest fesql_sdk benchmark ${COMMON_LIBS} ${llvm_libs})
+

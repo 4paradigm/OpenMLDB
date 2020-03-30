@@ -22,18 +22,16 @@ class NodeManagerTest : public ::testing::Test {
 
 TEST_F(NodeManagerTest, MakeSQLNode) {
     NodeManager *manager = new NodeManager();
-    manager->MakeSQLNode(node::kSelectStmt);
-    manager->MakeSQLNode(node::kOrderBy);
-    manager->MakeSQLNode(node::kLimit);
+    manager->MakeTableNode("", "table1");
+    manager->MakeTableNode("", "table2");
+    manager->MakeLimitNode(10);
 
-    manager->MakePlanNode(node::kPlanTypeSelect);
-    manager->MakePlanNode(node::kProjectList);
-    manager->MakePlanNode(node::kProject);
-    manager->MakePlanNode(node::kProject);
-    manager->MakePlanNode(node::kOpExpr);
+    manager->MakeTablePlanNode("t1");
+    manager->MakeTablePlanNode("t2");
+    manager->MakeTablePlanNode("t3");
 
     ASSERT_EQ(3, manager->GetParserNodeListSize());
-    ASSERT_EQ(5, manager->GetPlanNodeListSize());
+    ASSERT_EQ(3, manager->GetPlanNodeListSize());
     delete manager;
 }
 

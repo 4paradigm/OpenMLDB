@@ -597,6 +597,10 @@ bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
 bool DataType2SchemaType(const ::fesql::node::DataType type,
                          ::fesql::type::Type* output) {
     switch (type) {
+        case ::fesql::node::kBool: {
+            *output = ::fesql::type::kBool;
+            break;
+        }
         case ::fesql::node::kInt16: {
             *output = ::fesql::type::kInt16;
             break;

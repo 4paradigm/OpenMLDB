@@ -57,7 +57,7 @@ void GenAddExpr(node::NodeManager *manager, ::fesql::node::ExprNode **expr) {
     new ::fesql::node::BinaryExpr(::fesql::node::kFnOpAdd);
 
     ::fesql::node::ExprNode *i32_node = (manager->MakeConstNode(1));
-    ::fesql::node::ExprNode *id_node = (manager->MakeFnIdNode("a"));
+    ::fesql::node::ExprNode *id_node = (manager->MakeExprIdNode("a"));
     ::fesql::node::ExprNode *bexpr =
         (manager->MakeBinaryExprNode(i32_node, id_node, fesql::node::kFnOpAdd));
     *expr = bexpr;

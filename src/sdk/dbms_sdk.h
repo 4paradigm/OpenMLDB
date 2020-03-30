@@ -17,7 +17,6 @@
 #ifndef SRC_SDK_DBMS_SDK_H_
 #define SRC_SDK_DBMS_SDK_H_
 
-#include <string>
 #include <vector>
 #include <memory>
 #include "sdk/base.h"

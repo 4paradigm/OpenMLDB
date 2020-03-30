@@ -56,6 +56,34 @@ V sum_list(int8_t *input) {
 }
 
 template <class V>
+double avg_list(int8_t *input) {
+    V result = 0;
+    if (nullptr == input) {
+        return result;
+    }
+    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListV<V> *col =
+        (::fesql::codec::ListV<V> *)(list_ref->list);
+    IteratorImpl<V> iter(*col);
+    int32_t cnt = 0;
+    while (iter.Valid()) {
+        result += iter.Next();
+        cnt++;
+    }
+    return static_cast<double>(result) / cnt;
+}
+template <class V>
+int64_t count_list(int8_t *input) {
+    if (nullptr == input) {
+        return 0L;
+    }
+    ::fesql::codec::ListRef *list_ref = (::fesql::codec::ListRef *)(input);
+    ::fesql::codec::ListV<V> *col =
+        (::fesql::codec::ListV<V> *)(list_ref->list);
+    return col->Count();
+}
+
+template <class V>
 V max_list(int8_t *input) {
     V result = 0;
     if (nullptr == input) {
@@ -166,16 +194,40 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "sum_list_float",
               reinterpret_cast<void *>(&v1::sum_list<float>));
 
+    AddSymbol(jd, mi, "count_list_int16",
+              reinterpret_cast<void *>(&v1::count_list<int16_t>));
+    AddSymbol(jd, mi, "count_list_int32",
+              reinterpret_cast<void *>(&v1::count_list<int32_t>));
+    AddSymbol(jd, mi, "count_list_int64",
+              reinterpret_cast<void *>(&v1::count_list<int64_t>));
+    AddSymbol(jd, mi, "count_list_double",
+              reinterpret_cast<void *>(&v1::count_list<double>));
+    AddSymbol(jd, mi, "count_list_float",
+              reinterpret_cast<void *>(&v1::count_list<float>));
+    AddSymbol(jd, mi, "count_list_row",
+              reinterpret_cast<void *>(&v1::count_list<fesql::codec::Row>));
+
+    AddSymbol(jd, mi, "avg_list_int16",
+              reinterpret_cast<void *>(&v1::avg_list<int16_t>));
+    AddSymbol(jd, mi, "avg_list_int32",
+              reinterpret_cast<void *>(&v1::avg_list<int32_t>));
+    AddSymbol(jd, mi, "avg_list_int64",
+              reinterpret_cast<void *>(&v1::avg_list<int64_t>));
+    AddSymbol(jd, mi, "avg_list_double",
+              reinterpret_cast<void *>(&v1::avg_list<double>));
+    AddSymbol(jd, mi, "avg_list_float",
+              reinterpret_cast<void *>(&v1::avg_list<float>));
+
     AddSymbol(jd, mi, "max_list_int16",
-              reinterpret_cast<void *>(&v1::max_list<int16_t >));
+              reinterpret_cast<void *>(&v1::max_list<int16_t>));
     AddSymbol(jd, mi, "max_list_int32",
-    reinterpret_cast<void *>(&v1::max_list<int32_t >));
+              reinterpret_cast<void *>(&v1::max_list<int32_t>));
     AddSymbol(jd, mi, "max_list_int64",
               reinterpret_cast<void *>(&v1::max_list<int64_t>));
     AddSymbol(jd, mi, "max_list_float",
               reinterpret_cast<void *>(&v1::max_list<float>));
     AddSymbol(jd, mi, "max_list_double",
-              reinterpret_cast<void *>(&v1::max_list< double>));
+              reinterpret_cast<void *>(&v1::max_list<double>));
 
     AddSymbol(jd, mi, "min_list_int16",
               reinterpret_cast<void *>(&v1::min_list<int16_t>));
@@ -191,9 +243,9 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "at_list_int16",
               reinterpret_cast<void *>(&v1::at_list<int16_t>));
     AddSymbol(jd, mi, "at_list_int32",
-              reinterpret_cast<void *>(&v1::at_list<int32_t >));
+              reinterpret_cast<void *>(&v1::at_list<int32_t>));
     AddSymbol(jd, mi, "at_list_int64",
-              reinterpret_cast<void *>(&v1::at_list<int64_t >));
+              reinterpret_cast<void *>(&v1::at_list<int64_t>));
     AddSymbol(jd, mi, "at_list_float",
               reinterpret_cast<void *>(&v1::at_list<float>));
     AddSymbol(jd, mi, "at_list_double",
@@ -265,6 +317,30 @@ void RegisterUDFToModule(::llvm::Module *m) {
             ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
                                    type.second, llvm_type->getPointerTo());
+        }
+    }
+
+    {
+        std::string prefix =
+            "count_" + node::DataTypeName(fesql::node::kList) + "_";
+
+        for (auto type : number_types) {
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
+            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
+                                   i64_ty, llvm_type->getPointerTo());
+        }
+    }
+
+    {
+        std::string prefix =
+            "avg_" + node::DataTypeName(fesql::node::kList) + "_";
+
+        for (auto type : number_types) {
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMListType(m, type.first, &llvm_type);
+            m->getOrInsertFunction(prefix + node::DataTypeName(type.first),
+                                   double_ty, llvm_type->getPointerTo());
         }
     }
     {

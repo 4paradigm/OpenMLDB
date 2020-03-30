@@ -55,20 +55,49 @@ inline const std::string CmdTypeName(const CmdType &type) {
     }
 }
 
+inline const std::string ExplainTypeName(const ExplainType &type) {
+    switch (type) {
+        case kExplainLogical:
+            return "logical";
+        case kExplainPhysical:
+            return "physical";
+        default: {
+            return "Unknow";
+        }
+    }
+}
+
+inline const std::string JoinTypeName(const JoinType &type) {
+    switch (type) {
+        case kJoinTypeFull:
+            return "FullJoin";
+        case kJoinTypeLeft:
+            return "LeftJoin";
+        case kJoinTypeRight:
+            return "RightJoin";
+        case kJoinTypeInner:
+            return "InnerJoin";
+        case kJoinTypeConcat:
+            return "kJoinTypeConcat";
+        default: {
+            return "Unknow";
+        }
+    }
+}
 inline const std::string ExprOpTypeName(const FnOperator &op) {
     switch (op) {
         case kFnOpAdd:
-            return "ADD";
+            return "+";
         case kFnOpMinus:
-            return "Minus";
+            return "-";
         case kFnOpMulti:
-            return "MULTI";
+            return "*";
         case kFnOpDiv:
             return "DIV";
         case kFnOpFDiv:
-            return "FDIV";
+            return "/";
         case kFnOpMod:
-            return "MOD";
+            return "%";
         case kFnOpAnd:
             return "AND";
         case kFnOpOr:
@@ -76,21 +105,23 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
         case kFnOpNot:
             return "NOT";
         case kFnOpEq:
-            return "EQ";
+            return "=";
         case kFnOpNeq:
-            return "NEQ";
+            return "!=";
         case kFnOpGt:
-            return "GT";
+            return ">";
         case kFnOpGe:
-            return "GE";
+            return ">=";
         case kFnOpLt:
-            return "LT";
+            return "<";
         case kFnOpLe:
-            return "LE";
+            return "<=";
         case kFnOpAt:
             return "[]";
         case kFnOpDot:
             return ".";
+        case kFnOpLike:
+            return "LIKE";
         case kFnOpBracket:
             return "()";
         case kFnOpNone:
@@ -99,7 +130,32 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "UNKNOWN";
     }
 }
-
+inline const std::string TableRefTypeName(const TableRefType &type) {
+    switch (type) {
+        case kRefQuery:
+            return "kQuery";
+        case kRefJoin:
+            return "kJoin";
+        case kRefTable:
+            return "kTable";
+        default: {
+            return "unknow";
+        }
+    }
+}
+inline const std::string QueryTypeName(const QueryType &type) {
+    switch (type) {
+        case kQuerySelect:
+            return "kQuerySelect";
+        case kQueryUnion:
+            return "kQueryUnion";
+        case kQuerySub:
+            return "kQuerySub";
+        default: {
+            return "unknow";
+        }
+    }
+}
 inline const std::string ExprTypeName(const ExprType &type) {
     switch (type) {
         case kExprPrimary:
@@ -124,6 +180,10 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "all";
         case kExprStruct:
             return "struct";
+        case kExprQuery:
+            return "query";
+        case kExprOrder:
+            return "order";
         case kExprUnknow:
             return "unknow";
         default:
@@ -202,10 +262,11 @@ class SQLNode {
 
     uint32_t GetLocation() const { return location_; }
 
+    virtual bool Equals(const SQLNode *node) const;
     friend std::ostream &operator<<(std::ostream &output, const SQLNode &thiz);
+    const SQLNodeType type_;
 
  private:
-    SQLNodeType type_;
     uint32_t line_num_;
     uint32_t location_;
 };
@@ -215,11 +276,13 @@ typedef std::vector<SQLNode *> NodePointVector;
 class SQLNodeList {
  public:
     SQLNodeList() {}
-    ~SQLNodeList() {}
+    virtual ~SQLNodeList() {}
     void PushBack(SQLNode *node_ptr) { list_.push_back(node_ptr); }
+    const bool IsEmpty() const { return list_.empty(); }
     const int GetSize() const { return list_.size(); }
-    std::vector<SQLNode *> GetList() const { return list_; }
+    const std::vector<SQLNode *> &GetList() const { return list_; }
     void Print(std::ostream &output, const std::string &tab) const;
+    virtual bool Equals(const SQLNodeList *that) const;
 
  private:
     std::vector<SQLNode *> list_;
@@ -249,23 +312,32 @@ class TypeNode : public SQLNode {
     fesql::node::DataType base_;
     std::vector<fesql::node::DataType> generics_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual bool Equals(const SQLNode *node) const;
 };
+
 class ExprNode : public SQLNode {
  public:
     explicit ExprNode(ExprType expr_type)
         : SQLNode(kExpr, 0, 0), expr_type_(expr_type) {}
     ~ExprNode() {}
-    void AddChild(ExprNode *expr) { children.push_back(expr); }
+    void AddChild(ExprNode *expr) { children_.push_back(expr); }
     const ExprType GetExprType() const { return expr_type_; }
-    void PushBack(ExprNode *node_ptr) { children.push_back(node_ptr); }
+    void PushBack(ExprNode *node_ptr) { children_.push_back(node_ptr); }
 
-    std::vector<ExprNode *> children;
+    std::vector<ExprNode *> children_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    virtual const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
 
- private:
-    ExprType expr_type_;
+    const ExprType expr_type_;
 };
-
+class ExprListNode : public ExprNode {
+ public:
+    ExprListNode() : ExprNode(kExprList) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const bool IsEmpty() const { return children_.empty(); }
+    const std::string GetExprString() const;
+};
 class FnNode : public SQLNode {
  public:
     FnNode() : SQLNode(kFn, 0, 0), indent(0) {}
@@ -274,7 +346,6 @@ class FnNode : public SQLNode {
  public:
     int32_t indent;
 };
-
 class FnNodeList : public FnNode {
  public:
     FnNodeList() : FnNode(kFnList) {}
@@ -285,6 +356,148 @@ class FnNodeList : public FnNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     std::vector<FnNode *> children;
 };
+
+class TableRefNode : public SQLNode {
+ public:
+    explicit TableRefNode(TableRefType ref_type, std::string alias_table_name)
+        : SQLNode(kTableRef, 0, 0),
+          ref_type_(ref_type),
+          alias_table_name_(alias_table_name) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+
+    const TableRefType ref_type_;
+    const std::string alias_table_name_;
+};
+
+class QueryNode : public SQLNode {
+ public:
+    explicit QueryNode(QueryType query_type)
+        : SQLNode(node::kQuery, 0, 0), query_type_(query_type) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+    const QueryType query_type_;
+};
+
+class TableNode : public TableRefNode {
+ public:
+    TableNode() : TableRefNode(kRefTable, ""), org_table_name_("") {}
+
+    TableNode(const std::string &name, const std::string &alias)
+        : TableRefNode(kRefTable, alias), org_table_name_(name) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+    const std::string org_table_name_;
+};
+
+class QueryRefNode : public TableRefNode {
+ public:
+    QueryRefNode(const QueryNode *query, const std::string &alias)
+        : TableRefNode(kRefQuery, alias), query_(query) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+    const QueryNode *query_;
+};
+
+class JoinNode : public TableRefNode {
+ public:
+    JoinNode(const TableRefNode *left, const TableRefNode *right,
+             const JoinType join_type, const ExprNode *condition,
+             const std::string &alias_name)
+        : TableRefNode(kRefJoin, alias_name),
+          left_(left),
+          right_(right),
+          join_type_(join_type),
+          condition_(condition) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+    const TableRefNode *left_;
+    const TableRefNode *right_;
+    const JoinType join_type_;
+    const ExprNode *condition_;
+};
+
+class OrderByNode : public ExprNode {
+ public:
+    explicit OrderByNode(ExprListNode *order, bool is_asc)
+        : ExprNode(kExprOrder), is_asc_(is_asc), order_by_(order) {}
+    ~OrderByNode() {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+    const bool is_asc_;
+    const ExprListNode *order_by_;
+};
+class SelectQueryNode : public QueryNode {
+ public:
+    SelectQueryNode(bool is_distinct, SQLNodeList *select_list,
+                    SQLNodeList *tableref_list, ExprNode *where_expr,
+                    ExprListNode *group_expr_list, ExprNode *having_expr,
+                    OrderByNode *order_expr_list, SQLNodeList *window_list,
+                    SQLNode *limit_ptr)
+        : QueryNode(kQuerySelect),
+          distinct_opt_(is_distinct),
+          where_clause_ptr_(where_expr),
+          group_clause_ptr_(group_expr_list),
+          having_clause_ptr_(having_expr),
+          order_clause_ptr_(order_expr_list),
+          limit_ptr_(limit_ptr),
+          select_list_(select_list),
+          tableref_list_(tableref_list),
+          window_list_(window_list) {}
+
+    ~SelectQueryNode() {}
+
+    // Getter and Setter
+    const SQLNodeList *GetSelectList() const { return select_list_; }
+
+    SQLNodeList *GetSelectList() { return select_list_; }
+
+    const SQLNode *GetLimit() const { return limit_ptr_; }
+
+    const SQLNodeList *GetTableRefList() const { return tableref_list_; }
+
+    SQLNodeList *GetTableRefList() { return tableref_list_; }
+
+    const SQLNodeList *GetWindowList() const { return window_list_; }
+
+    SQLNodeList *GetWindowList() { return window_list_; }
+
+    void SetLimit(SQLNode *limit) { limit_ptr_ = limit; }
+
+    int GetDistinctOpt() const { return distinct_opt_; }
+    // Print
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+
+    const bool distinct_opt_;
+    const ExprNode *where_clause_ptr_;
+    const ExprListNode *group_clause_ptr_;
+    const ExprNode *having_clause_ptr_;
+    const OrderByNode *order_clause_ptr_;
+    const SQLNode *limit_ptr_;
+
+ private:
+    SQLNodeList *select_list_;
+    SQLNodeList *tableref_list_;
+    SQLNodeList *window_list_;
+    void PrintSQLNodeList(std::ostream &output, const std::string &tab,
+                          SQLNodeList *list, const std::string &name,
+                          bool last_item) const;
+};
+
+class UnionQueryNode : public QueryNode {
+ public:
+    UnionQueryNode(const QueryNode *left, const QueryNode *right, bool is_all)
+        : QueryNode(kQueryUnion), left_(left), right_(right), is_all_(is_all) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
+    const QueryNode *left_;
+    const QueryNode *right_;
+    const bool is_all_;
+};
+
 class NameNode : public SQLNode {
  public:
     NameNode() : SQLNode(kName, 0, 0), name_("") {}
@@ -293,10 +506,12 @@ class NameNode : public SQLNode {
     ~NameNode() {}
 
     std::string GetName() const { return name_; }
+    virtual bool Equals(const SQLNode *node) const;
 
  private:
     std::string name_;
 };
+
 class LimitNode : public SQLNode {
  public:
     LimitNode() : SQLNode(kLimit, 0, 0), limit_cnt_(0) {}
@@ -307,46 +522,12 @@ class LimitNode : public SQLNode {
     int GetLimitCount() const { return limit_cnt_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
 
  private:
     int limit_cnt_;
 };
-class TableNode : public SQLNode {
- public:
-    TableNode()
-        : SQLNode(kTable, 0, 0), org_table_name_(""), alias_table_name_("") {}
 
-    TableNode(const std::string &name, const std::string &alias)
-        : SQLNode(kTable, 0, 0),
-          org_table_name_(name),
-          alias_table_name_(alias) {}
-
-    const std::string& GetOrgTableName() const { return org_table_name_; }
-
-    const std::string& GetAliasTableName() const { return alias_table_name_; }
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-
- private:
-    std::string org_table_name_;
-    std::string alias_table_name_;
-};
-class OrderByNode : public SQLNode {
- public:
-    explicit OrderByNode(SQLNode *order)
-        : SQLNode(kOrderBy, 0, 0), sort_type_(kDesc), order_by_(order) {}
-    ~OrderByNode() {}
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-
-    SQLNodeType GetSortType() const { return sort_type_; }
-    SQLNode *GetOrderBy() const { return order_by_; }
-    void SetOrderBy(SQLNode *order_by) { order_by_ = order_by; }
-
- private:
-    SQLNodeType sort_type_;
-    SQLNode *order_by_;
-};
 class FrameBound : public SQLNode {
  public:
     FrameBound()
@@ -383,11 +564,13 @@ class FrameBound : public SQLNode {
     SQLNodeType GetBoundType() const { return bound_type_; }
 
     ExprNode *GetOffset() const { return offset_; }
+    virtual bool Equals(const SQLNode *node) const;
 
  private:
     SQLNodeType bound_type_;
     ExprNode *offset_;
 };
+
 class FrameNode : public SQLNode {
  public:
     FrameNode()
@@ -413,6 +596,7 @@ class FrameNode : public SQLNode {
     FrameBound *GetEnd() const { return end_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
 
  private:
     SQLNodeType frame_type_;
@@ -439,6 +623,7 @@ class WindowDefNode : public SQLNode {
     void SetFrame(FrameNode *frame) { frame_ptr_ = frame; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *that) const;
 
  private:
     std::string window_name_; /* window's own name */
@@ -447,71 +632,88 @@ class WindowDefNode : public SQLNode {
     std::vector<std::string> orders_;     /* ORDER BY (list of SortBy) */
 };
 
-class ExprListNode : public ExprNode {
- public:
-    ExprListNode() : ExprNode(kExprList) {}
-    void Print(std::ostream &output, const std::string &org_tab) const;
-};
-
 class AllNode : public ExprNode {
  public:
     AllNode() : ExprNode(kExprAll), relation_name_("") {}
 
     explicit AllNode(const std::string &relation_name)
         : ExprNode(kExprAll), relation_name_(relation_name) {}
+    explicit AllNode(const std::string &relation_name,
+                     const std::string &db_name)
+        : ExprNode(kExprAll),
+          relation_name_(relation_name),
+          db_name_(db_name) {}
 
     std::string GetRelationName() const { return relation_name_; }
+    std::string GetDBName() const { return db_name_; }
 
     void SetRelationName(const std::string &relation_name) {
         relation_name_ = relation_name;
     }
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
 
  private:
     std::string relation_name_;
+    std::string db_name_;
 };
 class CallExprNode : public ExprNode {
  public:
-    CallExprNode()
-        : ExprNode(kExprCall),
-          is_agg_(true),
-          function_name_(""),
-          over_(nullptr) {}
-    explicit CallExprNode(const std::string &function_name)
+    explicit CallExprNode(const std::string &function_name,
+                          const ExprListNode *args, const WindowDefNode *over)
         : ExprNode(kExprCall),
           is_agg_(true),
           function_name_(function_name),
-          over_(nullptr) {}
+          over_(over),
+          args_(args) {}
 
     ~CallExprNode() {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
 
     std::string GetFunctionName() const { return function_name_; }
 
-    WindowDefNode *GetOver() const { return over_; }
+    const WindowDefNode *GetOver() const { return over_; }
 
     void SetOver(WindowDefNode *over) { over_ = over; }
 
     bool GetIsAgg() const { return is_agg_; }
 
     void SetAgg(bool is_agg) { is_agg_ = is_agg; }
-    NodePointVector &GetArgs() { return args_; }
-    const NodePointVector &GetArgs() const { return args_; }
+    const ExprListNode *GetArgs() const { return args_; }
 
-    const int GetArgsSize() const { return args_.size(); }
+    const int GetArgsSize() const {
+        return nullptr == args_ ? 0 : args_->children_.size();
+    }
 
  private:
     bool is_agg_;
-    std::string function_name_;
-    WindowDefNode *over_;
-    NodePointVector args_;
+    const std::string function_name_;
+    const WindowDefNode *over_;
+    const ExprListNode *args_;
 };
+
+class QueryExpr : public ExprNode {
+ public:
+    explicit QueryExpr(const QueryNode *query)
+        : ExprNode(kExprQuery), query_(query) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const ExprNode *node) const;
+    const std::string GetExprString() const;
+
+    const QueryNode *query_;
+};
+
 class BinaryExpr : public ExprNode {
  public:
     BinaryExpr() : ExprNode(kExprBinary) {}
     explicit BinaryExpr(FnOperator op) : ExprNode(kExprBinary), op_(op) {}
     FnOperator GetOp() const { return op_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *node) const;
 
  private:
     FnOperator op_;
@@ -522,6 +724,8 @@ class UnaryExpr : public ExprNode {
     explicit UnaryExpr(FnOperator op) : ExprNode(kExprUnary), op_(op) {}
     FnOperator GetOp() const { return op_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *node) const;
 
  private:
     FnOperator op_;
@@ -533,6 +737,8 @@ class ExprIdNode : public ExprNode {
         : ExprNode(kExprId), name_(name) {}
     const std::string GetName() const { return name_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *node) const;
 
  private:
     std::string name_;
@@ -586,6 +792,10 @@ class ConstNode : public ExprNode {
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
 
+    virtual bool Equals(const ExprNode *node) const;
+
+    const std::string GetExprString() const;
+
     int16_t GetSmallInt() const { return val_.vsmallint; }
 
     int GetInt() const { return val_.vint; }
@@ -630,7 +840,6 @@ class ConstNode : public ExprNode {
         double vdouble;
     } val_;
 };
-
 class ColumnRefNode : public ExprNode {
  public:
     ColumnRefNode()
@@ -640,7 +849,19 @@ class ColumnRefNode : public ExprNode {
                   const std::string &relation_name)
         : ExprNode(kExprColumnRef),
           column_name_(column_name),
-          relation_name_(relation_name) {}
+          relation_name_(relation_name),
+          db_name_("") {}
+
+    ColumnRefNode(const std::string &column_name,
+                  const std::string &relation_name, const std::string &db_name)
+        : ExprNode(kExprColumnRef),
+          column_name_(column_name),
+          relation_name_(relation_name),
+          db_name_(db_name) {}
+
+    std::string GetDBName() const { return db_name_; }
+
+    void SetDBName(const std::string &db_name) { db_name_ = db_name; }
 
     std::string GetRelationName() const { return relation_name_; }
 
@@ -655,10 +876,13 @@ class ColumnRefNode : public ExprNode {
     }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *node) const;
 
  private:
     std::string column_name_;
     std::string relation_name_;
+    std::string db_name_;
 };
 
 class ResTarget : public SQLNode {
@@ -675,59 +899,12 @@ class ResTarget : public SQLNode {
     ExprNode *GetVal() const { return val_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const SQLNode *node) const;
 
  private:
     std::string name_; /* column name or NULL */
     ExprNode *val_;    /* the value expression to compute or assign */
     NodePointVector indirection_; /* subscripts, field names, and '*', or NIL */
-};
-
-class SelectStmt : public SQLNode {
- public:
-    SelectStmt()
-        : SQLNode(kSelectStmt, 0, 0),
-          distinct_opt_(0),
-          where_clause_ptr_(nullptr),
-          group_clause_ptr_(nullptr),
-          having_clause_ptr_(nullptr),
-          order_clause_ptr_(nullptr),
-          limit_ptr_(nullptr) {}
-
-    ~SelectStmt() {}
-
-    // Getter and Setter
-    const NodePointVector &GetSelectList() const { return select_list_ptr_; }
-
-    NodePointVector &GetSelectList() { return select_list_ptr_; }
-
-    SQLNode *GetLimit() const { return limit_ptr_; }
-
-    const NodePointVector &GetTableRefList() const {
-        return tableref_list_ptr_;
-    }
-
-    NodePointVector &GetTableRefList() { return tableref_list_ptr_; }
-
-    const NodePointVector &GetWindowList() const { return window_list_ptr_; }
-
-    NodePointVector &GetWindowList() { return window_list_ptr_; }
-
-    void SetLimit(SQLNode *limit) { limit_ptr_ = limit; }
-
-    int GetDistinctOpt() const { return distinct_opt_; }
-    // Print
-    void Print(std::ostream &output, const std::string &org_tab) const;
-
- private:
-    int distinct_opt_;
-    SQLNode *where_clause_ptr_;
-    SQLNode *group_clause_ptr_;
-    SQLNode *having_clause_ptr_;
-    SQLNode *order_clause_ptr_;
-    SQLNode *limit_ptr_;
-    NodePointVector select_list_ptr_;
-    NodePointVector tableref_list_ptr_;
-    NodePointVector window_list_ptr_;
 };
 
 class ColumnDefNode : public SQLNode {
@@ -953,6 +1130,15 @@ class CmdNode : public SQLNode {
     std::vector<std::string> args_;
 };
 
+class ExplainNode : public SQLNode {
+ public:
+    explicit ExplainNode(const QueryNode *query, node::ExplainType type)
+        : SQLNode(kExplainSmt, 0, 0), type_(type), query_(query) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const node::ExplainType type_;
+    const node::QueryNode *query_;
+};
+
 class FnParaNode : public FnNode {
  public:
     FnParaNode(const std::string &name, const TypeNode *para_type)
@@ -1004,6 +1190,7 @@ class FnAssignNode : public FnNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string name_;
     const ExprNode *expression_;
+
  private:
     bool is_ssa_;
 };
@@ -1111,6 +1298,12 @@ class StructExpr : public ExprNode {
     FnNodeList *methods_;
 };
 
+std::string ExprString(const ExprNode *expr);
+std::string MakeExprWithTable(const ExprNode *expr, const std::string db);
+bool ExprListNullOrEmpty(const ExprListNode *expr);
+bool SQLEquals(const SQLNode *left, const SQLNode *right);
+bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);
+bool ExprEquals(const ExprNode *left, const ExprNode *right);
 WindowDefNode *WindowOfExpression(
     std::map<std::string, WindowDefNode *> windows, ExprNode *node_ptr);
 void FillSQLNodeList2NodeVector(

@@ -180,7 +180,7 @@ TEST_P(TabletSdkTest, test_normal) {
             {
                 int16_t val = 0;
                 ASSERT_TRUE(rs->GetInt16(1, &val));
-                ASSERT_EQ(val, 2u);
+                ASSERT_EQ(val, 2);
             }
             {
                 int64_t val = 0;
@@ -208,7 +208,7 @@ TEST_P(TabletSdkTest, test_normal) {
         std::shared_ptr<ResultSet> rs = sdk->Query(db, sql, &query_status);
         if (rs) {
             const Schema& schema = rs->GetSchema();
-            ASSERT_EQ(2u, schema.GetColumnCnt());
+            ASSERT_EQ(2, schema.GetColumnCnt());
             ASSERT_EQ("col1", schema.GetColumnName(0));
             ASSERT_EQ("col5", schema.GetColumnName(1));
             ASSERT_EQ(1, rs->Size());
@@ -480,7 +480,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
                 char* val = NULL;
                 uint32_t size = 0;
                 ASSERT_TRUE(rs->GetString(5, &val, &size));
-                ASSERT_EQ(size, 5);
+                ASSERT_EQ(size, 5u);
                 std::string str(val, 5);
                 ASSERT_EQ(str, "hello");
             }

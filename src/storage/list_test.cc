@@ -197,7 +197,7 @@ TEST_F(ListTest, LinkListEqualItem) {
     int count = 0;
     while (iter->Valid()) {
         if (count > 0) {
-            ASSERT_EQ(iter->GetValue(), 4 - count);
+            ASSERT_EQ(iter->GetValue(), static_cast<uint64_t >(4 - count));
         }
         iter->Next();
         count++;
@@ -221,7 +221,7 @@ TEST_F(ListTest, ArrayListEqualItem) {
     int count = 0;
     while (iter->Valid()) {
         if (count > 0) {
-            ASSERT_EQ(iter->GetValue(), 4 - count);
+            ASSERT_EQ(iter->GetValue(), static_cast<uint64_t >(4 - count));
         }
         iter->Next();
         count++;
