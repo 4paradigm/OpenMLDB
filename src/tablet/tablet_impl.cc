@@ -1412,7 +1412,6 @@ void TabletImpl::Traverse(RpcController* controller,
         uint32_t scount = 0;
         std::vector<rtidb::base::Slice> value_vec;
         uint32_t total_block_size = 0;
-        bool reach_end = false;
         for (; it->Valid(); it->Next()) {
             if (request->limit() > 0 && scount > request->limit() - 1) {
                 PDLOG(DEBUG, "reache the limit %u", request->limit());
@@ -1614,7 +1613,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
             break;
         }
     }
-
+    it->Finish(true);
     delete it;
     if (total_block_size == 0) {
         PDLOG(DEBUG, "tid %u pid %u, batchQuery not key found.", request->tid(), request->pid());
