@@ -615,15 +615,22 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint
         }
     } else {
         const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
-        sc = new SnapshotCounter;
-        sc->snapshot = snapshot;
-        sc->unfinish_count = 1;
-        sc->iterator_count = 1;
-        sc->atime_ = baidu::common::timer::get_micros() / 1000;
-        std::lock_guard<std::mutex> lock(mu_);
         uint64_t snapshot_id = snapshot->GetSequenceNumber();
-        PDLOG(INFO, "table[%s] create new snapshot[%lu]", name_.c_str(), snapshot_id);
-        snapshots_.insert(std::make_pair(snapshot_id, sc));
+        auto iter = snapshots_.find(snapshot_id);
+        if (iter != snapshots_.end()) {
+            sc = iter->second;
+            sc->iterator_count++;
+            sc->unfinish_count++;
+            db_->ReleaseSnapshot(snapshot); // TODO(kongquan): write case test if this snapshot deleted, does it effeat sc->snapshot
+        } else {
+            sc = new SnapshotCounter;
+            sc->snapshot = snapshot;
+            sc->unfinish_count = 1;
+            sc->iterator_count = 1;
+            sc->atime_ = baidu::common::timer::get_micros() / 1000;
+            PDLOG(INFO, "table[%s] create new snapshot[%lu]", name_.c_str(), snapshot_id);
+            snapshots_.insert(std::make_pair(snapshot_id, sc));
+        }
     }
     ro.snapshot = sc->snapshot;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
