@@ -1612,8 +1612,6 @@ void TabletImpl::BatchQuery(RpcController* controller,
             break;
         }
     }
-    it->Finish(true);
-    delete it;
     if (total_block_size == 0) {
         PDLOG(DEBUG, "tid %u pid %u, batchQuery not key found.", request->tid(), request->pid());
         response->set_code(rtidb::base::ReturnCode::kOk);
@@ -1637,6 +1635,8 @@ void TabletImpl::BatchQuery(RpcController* controller,
         offset += (4 + value.size());
     }
     PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(), request->pid(), scount);
+    it->Finish(true);
+    delete it;
     response->set_code(rtidb::base::ReturnCode::kOk);
     response->set_is_finish(is_finish);
     response->set_count(scount);

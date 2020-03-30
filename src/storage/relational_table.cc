@@ -576,7 +576,6 @@ void RelationalTable::ReleaseSnpashot(uint64_t seq, bool finish) {
         sc->unfinish_count--;
     }
     if (sc->iterator_count == 0 && sc->unfinish_count == 0) {
-        std::lock_guard<std::mutex> lock(mu_);
         PDLOG(INFO, "table[%s] release snapshot[%lu]", name_.c_str(), iter->first);
         snapshots_.erase(iter);
         db_->ReleaseSnapshot(sc->snapshot);
