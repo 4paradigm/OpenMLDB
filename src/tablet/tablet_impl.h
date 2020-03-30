@@ -262,6 +262,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void DumpIndexData(RpcController* controller,
+            const ::rtidb::api::DumpIndexDataRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void AddIndex(RpcController* controller,
             const ::rtidb::api::AddIndexRequest* request,
             ::rtidb::api::GeneralResponse* response,
@@ -322,11 +327,15 @@ private:
 
     int CreateRelationalTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
 
-
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
                         uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task);
+
+    void DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
+    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
+    std::string& binlog_path, ::rtidb::common::ColumnKey& column_key, 
+    uint32_t idx, std::vector<::rtidb::log::WriteHandle*> whs, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();
 

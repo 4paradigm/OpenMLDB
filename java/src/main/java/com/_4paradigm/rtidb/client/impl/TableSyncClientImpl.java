@@ -962,8 +962,12 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
             row = Arrays.copyOf(row, th.getSchema().size() + th.getSchemaMap().size());
         }
+        long ts = 0;
         List<Tablet.TSDimension> tsDimensions = TableClientCommon.parseArrayInput(row, th);
-        return put(name, 0, row, tsDimensions);
+        if (tsDimensions.size() <= 0) {
+            ts = System.currentTimeMillis();
+        }
+        return put(name, ts, row, tsDimensions);
     }
 
     private boolean put(String name, long time, Object[] row, List<Tablet.TSDimension> ts) throws TimeoutException, TabletException {
@@ -1113,8 +1117,12 @@ public class TableSyncClientImpl implements TableSyncClient {
         } else {
             arrayRow = new Object[th.getSchema().size()];
         }
+        long ts = 0;
         TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
-        return put(tname, 0, arrayRow, tsDimensions);
+        if (tsDimensions.size() == 0) {
+            ts = System.currentTimeMillis();
+        }
+        return put(tname, ts, arrayRow, tsDimensions);
     }
 
     @Override

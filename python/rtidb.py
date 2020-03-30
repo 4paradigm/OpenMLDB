@@ -175,10 +175,11 @@ class RTIDBClient:
     resp = self.__client.Delete(table_name, v)
     if resp.code != 0:
       raise Exception(resp.code, resp.msg)
-    return true
+    return True
 
   def traverse(self, table_name: str, read_option: ReadOption = None):
     mid_map = {}
+    ro = interclient.ReadOption(mid_map)
     if read_option != None:
       for k in read_option.index:
         mid_map.update({k: str(read_option.index[k])})

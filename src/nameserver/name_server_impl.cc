@@ -1869,7 +1869,7 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
+        response->set_code(::rtidb::base::ReturnCode::kAutoFailoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -1971,16 +1971,21 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
 }
 
 int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
+    bool has_index = false;
     if (table_info.column_desc_v1_size() > 0) {
         std::map<std::string, std::string> column_map;
         for (const auto& column_desc : table_info.column_desc_v1()) {
-           if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
-               PDLOG(WARNING, "float or double type column can not be index, column is: %s", column_desc.name().c_str());
-               return -1;
-           }
-           column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
+            if (column_desc.add_ts_idx()) {
+                has_index = true;
+            }
+            if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
+                PDLOG(WARNING, "float or double type column can not be index, column is: %s", column_desc.name().c_str());
+                return -1;
+            }
+            column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
         }
         if (table_info.column_key_size() > 0) {
+            has_index = true;
             for (const auto &column_key : table_info.column_key()) {
                 bool has_iter = false;
                 for (const auto &column_name : column_key.col_name()) {
@@ -2005,15 +2010,25 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
                 }
             }
         }
+        if (!has_index) {
+            PDLOG(WARNING, "no index in table_meta");
+            return -1;
+        }
     } else if (table_info.column_desc_size() > 0) {
         for (const auto& column_desc : table_info.column_desc()) {
+            if (column_desc.add_ts_idx()) {
+                has_index = true;
+            }
             if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
                 PDLOG(WARNING, "float or double type column can not be index, column is: %s", column_desc.name().c_str());
                 return -1;
             }
         }
+        if (!has_index) {
+            PDLOG(WARNING, "no index in table_meta");
+            return -1;
+        }
     }
-
     return 0;
 }
 
@@ -2386,7 +2401,7 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
+        response->set_code(::rtidb::base::ReturnCode::kAutoFailoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -2466,7 +2481,7 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
+        response->set_code(::rtidb::base::ReturnCode::kAutoFailoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -2553,7 +2568,7 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
+        response->set_code(::rtidb::base::ReturnCode::kAutoFailoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -2606,7 +2621,7 @@ void NameServerImpl::RecoverTable(RpcController* controller,
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
+        response->set_code(::rtidb::base::ReturnCode::kAutoFailoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -2683,7 +2698,7 @@ void NameServerImpl::CancelOP(RpcController* controller,
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
+        response->set_code(::rtidb::base::ReturnCode::kAutoFailoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -2825,7 +2840,7 @@ void NameServerImpl::DropTable(RpcController* controller,
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
+            response->set_code(::rtidb::base::ReturnCode::kZoneInfoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -2992,7 +3007,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         if (table_info->column_desc_v1_size() > 0) {
             for (const auto& column : table_info->column_desc_v1()) {
                 if (column.name() == col_name) {
-                    response->set_code(::rtidb::base::ReturnCode::kFieldNameRepeatedInTable_info);
+                    response->set_code(::rtidb::base::ReturnCode::kFieldNameRepeatedInTableInfo);
                     response->set_msg("field name repeated in table_info!");
                     PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
                     return;
@@ -3001,7 +3016,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         } else {
             for (const auto& column : table_info->column_desc()) {
                 if (column.name() == col_name) {
-                    response->set_code(::rtidb::base::ReturnCode::kFieldNameRepeatedInTable_info);
+                    response->set_code(::rtidb::base::ReturnCode::kFieldNameRepeatedInTableInfo);
                     response->set_msg("field name repeated in table_info!");
                     PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
                     return;
@@ -3010,7 +3025,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
         }
         for (const auto& column : table_info->added_column_desc()) {
             if (column.name() == col_name) {
-                response->set_code(::rtidb::base::ReturnCode::kFieldNameRepeatedInTable_info);
+                response->set_code(::rtidb::base::ReturnCode::kFieldNameRepeatedInTableInfo);
                 response->set_msg("field name repeated in table_info!");
                 PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
                 return;
@@ -3165,7 +3180,7 @@ void NameServerImpl::LoadTable(RpcController* controller,
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
+            response->set_code(::rtidb::base::ReturnCode::kZoneInfoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -3201,7 +3216,7 @@ void NameServerImpl::LoadTable(RpcController* controller,
         response->set_msg("ok");
     } else {
         PDLOG(WARNING, "request has no zone_info or task_info!"); 
-        response->set_code(::rtidb::base::ReturnCode::kRequestHasNoZone_infoOrTask_info);
+        response->set_code(::rtidb::base::ReturnCode::kRequestHasNoZoneInfoOrTaskInfo);
         response->set_msg("request has no zone_info or task_info");
     }
 } 
@@ -3227,7 +3242,7 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller,
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
+            response->set_code(::rtidb::base::ReturnCode::kZoneInfoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -3329,7 +3344,7 @@ void NameServerImpl::CreateTableInfo(RpcController* controller,
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
+            response->set_code(::rtidb::base::ReturnCode::kZoneInfoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -3480,7 +3495,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
+            response->set_code(::rtidb::base::ReturnCode::kZoneInfoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -3502,7 +3517,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     if (!table_info->has_table_type() || table_info->table_type() == ::rtidb::type::kTimeSeries) {
         if (CheckTableMeta(*table_info) < 0) {
             response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
-            response->set_msg("check TableMeta failed, index column type can not float or double");
+            response->set_msg("check TableMeta failed");
             return;
         }
         if (table_info->has_ttl_desc()) {
@@ -4032,7 +4047,7 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller,
             return;
         } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
                 request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::rtidb::base::ReturnCode::kZone_infoMismathch);
+            response->set_code(::rtidb::base::ReturnCode::kZoneInfoMismathch);
             response->set_msg("zone_info mismathch");
             PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]", 
                     zone_info_.zone_name().c_str(), zone_info_.zone_term(),
@@ -4230,7 +4245,7 @@ void NameServerImpl::Migrate(RpcController* controller,
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
+        response->set_code(::rtidb::base::ReturnCode::kAutoFailoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -4238,14 +4253,14 @@ void NameServerImpl::Migrate(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
     auto pos = tablets_.find(request->src_endpoint());
     if (pos == tablets_.end() || pos->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        response->set_code(::rtidb::base::ReturnCode::kSrc_endpointIsNotExistOrNotHealthy);
+        response->set_code(::rtidb::base::ReturnCode::kSrcEndpointIsNotExistOrNotHealthy);
         response->set_msg("src_endpoint is not exist or not healthy");
         PDLOG(WARNING, "src_endpoint[%s] is not exist or not healthy", request->src_endpoint().c_str());
         return;
     }
     pos = tablets_.find(request->des_endpoint());
     if (pos == tablets_.end() || pos->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        response->set_code(::rtidb::base::ReturnCode::kDes_endpointIsNotExistOrNotHealthy);
+        response->set_code(::rtidb::base::ReturnCode::kDesEndpointIsNotExistOrNotHealthy);
         response->set_msg("des_endpoint is not exist or not healthy");
         PDLOG(WARNING, "des_endpoint[%s] is not exist or not healthy", request->des_endpoint().c_str());
         return;
@@ -7081,7 +7096,7 @@ void NameServerImpl::UpdateTableAliveStatus(RpcController* controller,
         return;
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kAuto_failoverIsEnabled);
+        response->set_code(::rtidb::base::ReturnCode::kAutoFailoverIsEnabled);
         response->set_msg("auto_failover is enabled");
         PDLOG(WARNING, "auto_failover is enabled");
         return;
@@ -8495,6 +8510,17 @@ void NameServerImpl::DeleteIndex(RpcController* controller,
     } else {
         table_info->mutable_column_desc_v1(index_pos)->set_add_ts_idx(false);
     }
+    std::string table_value;
+    table_info->SerializeToString(&table_value);
+    if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + request->table_name(), table_value)) {
+        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
+                        zk_table_data_path_.c_str(), request->table_name().c_str(), table_value.c_str());
+        response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
+        response->set_msg("set zk failed");
+    }
+    PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
+                zk_table_data_path_.c_str(), request->table_name().c_str(), table_value.c_str());
+    NotifyTableChanged();
     PDLOG(INFO, "delete index : table[%s] index[%s]", request->table_name().c_str(), request->idx_name().c_str());
     response->set_code(0);
     response->set_msg("ok");

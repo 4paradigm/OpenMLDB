@@ -325,26 +325,34 @@ int32_t TabletImpl::GetIndex(uint64_t expire_time, uint64_t expire_cnt,
             PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
             return -1;
         }
-        switch(ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: {
-                if (!Seek(it, st, st_type)) {
-                    return 1;
-                }
-                break;
+        if (expire_cnt == 0) {
+            if (!Seek(it, st, st_type)) {
+                return 1;
             }
-            case ::rtidb::api::TTLType::kAbsAndLat: {
-                if (st < expire_time) {
-                    if (!SeekWithCount(it, st, st_type, expire_cnt, cnt)) { return 1; }
-                } else {
-                    if (!Seek(it, st, st_type)) { return 1;}
+        } else {
+            switch(ttl_type) {
+                case ::rtidb::api::TTLType::kAbsoluteTime: {
+                    if (!Seek(it, st, st_type)) {
+                        return 1;
+                    }
+                    break;
                 }
-                break;
-            }
-            default: {
-                if (!SeekWithCount(it, st, st_type, expire_cnt, cnt)) {
-                    return 1; 
+                case ::rtidb::api::TTLType::kAbsAndLat: {
+                    if (!SeekWithCount(it, st, st_type, expire_cnt, cnt)) {
+                        if (!Seek(it, st, st_type)) {
+                            return 1;
+                        } else if (it->GetKey() < expire_time) {
+                            return 1;
+                        }
+                    }
+                    break;
                 }
-                break;
+                default: {
+                    if (!SeekWithCount(it, st, st_type, expire_cnt, cnt)) {
+                        return 1;
+                    }
+                    break;
+                }
             }
         }
     } else {
@@ -836,13 +844,22 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
             return -1;
         }
-        switch (ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: 
-                Seek(it, st, real_st_type);
-                break;
-            default: 
-                SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
-                break;
+        if (expire_cnt == 0) {
+            Seek(it, st, real_st_type);
+        } else {
+            switch (ttl_type) {
+                case ::rtidb::api::TTLType::kAbsoluteTime: 
+                    Seek(it, st, real_st_type);
+                    break;
+                case ::rtidb::api::TTLType::kAbsAndLat:
+                    if (!SeekWithCount(it, st, real_st_type, expire_cnt, cnt)) {
+                        Seek(it, st, real_st_type);
+                    }
+                    break;
+                default:
+                    SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
+                    break;
+            }
         }
     } else {
         it->SeekToFirst();
@@ -961,13 +978,22 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
             PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
             return -1;
         }
-        switch (ttl_type) {
-            case ::rtidb::api::TTLType::kAbsoluteTime: 
-                Seek(it, st, real_st_type);
-                break;
-            default: 
-                SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
-                break;
+        if (expire_cnt == 0) {
+            Seek(it, st, real_st_type);
+        } else {
+            switch (ttl_type) {
+                case ::rtidb::api::TTLType::kAbsoluteTime: 
+                    Seek(it, st, real_st_type);
+                    break;
+                case ::rtidb::api::TTLType::kAbsAndLat:
+                    if (!SeekWithCount(it, st, real_st_type, expire_cnt, cnt)) {
+                        Seek(it, st, real_st_type);
+                    }
+                    break;
+                default:
+                    SeekWithCount(it, st, real_st_type, expire_cnt, cnt);
+                    break;
+            }
         }
     } else {
         it->SeekToFirst();
@@ -2400,7 +2426,7 @@ void TabletImpl::SendData(RpcController* controller,
         response->set_msg("block_id mismatch");
         PDLOG(WARNING, "block_id mismatch. tid %u, pid %u, file_name %s, request block_id %lu cur block_id %lu", 
                 tid, pid, request->file_name().c_str(), request->block_id(), receiver->GetBlockId());
-        response->set_code(::rtidb::base::ReturnCode::kBlock_idMismatch);
+        response->set_code(::rtidb::base::ReturnCode::kBlockIdMismatch);
         return;
     }
     std::string data = cntl->request_attachment().to_string();
@@ -4368,6 +4394,123 @@ void TabletImpl::DeleteIndex(RpcController* controller,
     response->set_msg("ok");
 }
 
+void TabletImpl::DumpIndexData(RpcController* controller,
+        const ::rtidb::api::DumpIndexDataRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    std::shared_ptr<Table> table;
+    std::shared_ptr<Snapshot> snapshot;
+    std::shared_ptr<LogReplicator> replicator;
+    std::string db_root_path;
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDumpIndexData, task_ptr) < 0) {
+            response->set_code(-1);
+            response->set_msg("add task failed");
+            return;
+        }
+    }
+    if (task_ptr) {
+        task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+    }
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        table = GetTableUnLock(request->tid(), request->pid());
+        if (!table) {
+            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+            response->set_msg("table is not exist");
+            return;
+        }
+        if (table->GetStorageMode() != ::rtidb::common::kMemory) {
+            response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
+            response->set_msg("only support mem_table");
+            return;
+        }
+        if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+            PDLOG(WARNING, "table state is %d, cannot dump index data. %u, pid %u", 
+                    table->GetTableStat(), request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
+            response->set_msg("table status is not kNormal");
+            return;
+        }
+        snapshot = GetSnapshotUnLock(request->tid(), request->pid());
+        if (!snapshot) {
+            PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kSnapshotIsNotExist);
+            response->set_msg("table snapshot is not exist");
+            return;
+        }
+        replicator = GetReplicatorUnLock(request->tid(), request->pid());
+        if (!replicator) {
+            PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", 
+                request->tid(),request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
+            response->set_msg("replicator is not exist");
+            return;
+        }
+        bool ok = ChooseDBRootPath(request->tid(), request->pid(), table->GetStorageMode(), db_root_path);
+        if (!ok) {
+            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
+            response->set_msg("fail to get db root path");
+            return;
+        }
+    }
+    std::string index_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/index/";
+    if (!::rtidb::base::MkdirRecur(index_path)) {
+        PDLOG(WARNING, "fail to create path %s", index_path.c_str());
+        response->set_code(::rtidb::base::ReturnCode::kFailToCreateFile);
+        response->set_msg("fail to create path");
+        return;
+    }
+    std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
+    std::vector<::rtidb::log::WriteHandle*> whs;
+    for (int i=0;i<request->partition_num();++i) {
+        std::string index_file_name = std::to_string(request->pid()) + "_" + std::to_string(i) + "_index.data";
+        std::string index_data_path = index_path + index_file_name;
+        FILE* fd = fopen(index_data_path.c_str(), "wb+");
+        if (fd == NULL) {
+            PDLOG(WARNING, "fail to create file %s", index_data_path.c_str());
+            response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
+            response->set_msg("fail to get db root path");
+            return;
+        }
+        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
+        whs.push_back(wh);
+    }
+    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
+    task_pool_.AddTask(boost::bind(&TabletImpl::DumpIndexDataInternal, this, table, memtable_snapshot, replicator, binlog_path, request->column_key(), request->idx(), whs, task_ptr));
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
+    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot, std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
+    std::string& binlog_path, ::rtidb::common::ColumnKey& column_key, 
+    uint32_t idx, std::vector<::rtidb::log::WriteHandle*> whs, std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    ::rtidb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
+    uint64_t offset = 0;
+    if (memtable_snapshot->DumpSnapshotIndexData(table, column_key, idx, whs, offset) && binlog.DumpBinlogIndexData(table, column_key, idx, whs, offset)) {
+        PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", table->GetId(), table->GetPid());
+        if (task) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task->set_status(::rtidb::api::kDone);
+        }
+    } else {
+        PDLOG(WARNING, "fail to dump index on table tid[%u] pid[%u]", table->GetId(), table->GetPid());
+        if (task) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task->set_status(::rtidb::api::kFailed);
+        }
+    }
+    for (auto& wh : whs) {
+        wh->EndLog();
+        delete wh;
+        wh = NULL;
+    }
+}
+
 void TabletImpl::AddIndex(RpcController* controller,
         const ::rtidb::api::AddIndexRequest* request,
         ::rtidb::api::GeneralResponse* response,
@@ -4392,7 +4535,7 @@ void TabletImpl::AddIndex(RpcController* controller,
             request->column_key().index_name().c_str(), request->tid(), request->pid());
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
-}    
+}
 
 }
 }
