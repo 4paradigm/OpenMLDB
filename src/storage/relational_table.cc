@@ -619,7 +619,6 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint
         if (iter != snapshots_.end()) {
             sc = iter->second;
             sc->iterator_count.fetch_add(1, std::memory_order_relaxed);
-            sc->unfinish_count.fetch_add(1, std::memory_order_relaxed);
             uint64_t atime = baidu::common::timer::get_micros() / 1000;
             sc->atime.store(atime, std::memory_order_relaxed);
         } else {
