@@ -4507,7 +4507,7 @@ void TabletImpl::LoadIndexData(RpcController* controller,
     std::string db_root_path;
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDumpIndexData, task_ptr) < 0) {
+        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kLoadIndexData, task_ptr) < 0) {
             response->set_code(-1);
             response->set_msg("add task failed");
             return;
@@ -4531,7 +4531,7 @@ void TabletImpl::LoadIndexData(RpcController* controller,
             return;
         }
         if (table->GetTableStat() != ::rtidb::storage::kNormal) {
-            PDLOG(WARNING, "table state is %d, cannot dump index data. %u, pid %u", 
+            PDLOG(WARNING, "table state is %d, cannot load index data. %u, pid %u", 
                     table->GetTableStat(), request->tid(), request->pid());
             response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
             response->set_msg("table status is not kNormal");
@@ -4604,7 +4604,7 @@ void TabletImpl::LoadIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> 
             table->Put(entry);
             replicator->AppendEntry(entry);
         }
-        if (!failed_cnt.load(std::memory_order_release)) {
+        if (failed_cnt.load(std::memory_order_release)) {
             PDLOG(WARNING, "fail to load index on table tid[%u] pid[%u]", tid, pid);
             if (task) {
                 std::lock_guard<std::mutex> lock(mu_);
@@ -4624,6 +4624,77 @@ void TabletImpl::ExtractIndexData(RpcController* controller,
         const ::rtidb::api::ExtractIndexDataRequest* request,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
+    std::shared_ptr<Table> table;
+    std::shared_ptr<LogReplicator> replicator;
+    std::shared_ptr<Snapshot> snapshot;
+    std::string db_root_path;
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kExtractIndexData, task_ptr) < 0) {
+            response->set_code(-1);
+            response->set_msg("add task failed");
+            return;
+        }
+    }
+    if (task_ptr) {
+        task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+    }
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        table = GetTableUnLock(request->tid(), request->pid());
+        if (!table) {
+            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
+            response->set_msg("table is not exist");
+            return;
+        }
+        if (table->GetStorageMode() != ::rtidb::common::kMemory) {
+            response->set_code(::rtidb::base::ReturnCode::kOperatorNotSupport);
+            response->set_msg("only support mem_table");
+            return;
+        }
+        if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+            PDLOG(WARNING, "table state is %d, cannot extract index data. %u, pid %u", 
+                    table->GetTableStat(), request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kTableStatusIsNotKnormal);
+            response->set_msg("table status is not kNormal");
+            return;
+        }
+        replicator = GetReplicatorUnLock(request->tid(), request->pid());
+        if (!replicator) {
+            PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", 
+                request->tid(),request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
+            response->set_msg("replicator is not exist");
+            return;
+        }
+        snapshot = GetSnapshotUnLock(request->tid(), request->pid());
+        if (!snapshot) {
+            PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kSnapshotIsNotExist);
+            response->set_msg("table snapshot is not exist");
+            return;
+        }
+        bool ok = ChooseDBRootPath(request->tid(), request->pid(), table->GetStorageMode(), db_root_path);
+        if (!ok) {
+            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", request->tid(), request->pid());
+            response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
+            response->set_msg("fail to get db root path");
+            return;
+        }
+    }
+    std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
+    std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
+    task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, memtable_snapshot, replicator, binlog_path, request->column_key(), request->idx(), request->partition_num(), task_ptr));
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
+        std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
+        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
+        std::string& binlog_path, ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+        uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task) {
     
 }
 
