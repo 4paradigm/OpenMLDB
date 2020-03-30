@@ -74,6 +74,8 @@ DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(max_traverse_cnt);
+DECLARE_uint32(put_slow_log_threshold);
+DECLARE_uint32(query_slow_log_threshold);
 
 namespace rtidb {
 namespace tablet {
@@ -421,6 +423,7 @@ void TabletImpl::Get(RpcController* controller,
         }
     }
     if (table) {
+        uint64_t start_time = ::baidu::common::timer::get_micros();
         if (table->GetTableStat() == ::rtidb::storage::kLoading) {
             PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                     request->tid(), request->pid());
@@ -476,6 +479,15 @@ void TabletImpl::Get(RpcController* controller,
         delete it;
         response->set_ts(ts);
         response->set_code(code);
+        uint64_t end_time = ::baidu::common::timer::get_micros();
+        if (start_time + FLAGS_query_slow_log_threshold < end_time) {
+            std::string index_name;
+            if (request->has_idx_name() && request->idx_name().size() > 0) {
+                index_name = request->idx_name();
+            }
+            PDLOG(INFO, "slow log[get]. key %s index_name %s time %lu. tid %u, pid %u", 
+                    request->key().c_str(), index_name.c_str(), end_time - start_time, request->tid(), request->pid());
+        }
         switch(code) {
             case 1:
                 response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
@@ -566,6 +578,7 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
+    uint64_t start_time = ::baidu::common::timer::get_micros();
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<RelationalTable> r_table;
     if (!table) {
@@ -665,6 +678,17 @@ void TabletImpl::Put(RpcController* controller,
         }
         done->Run();
         response->set_code(::rtidb::base::ReturnCode::kOk);
+    }
+    uint64_t end_time = ::baidu::common::timer::get_micros();
+    if (start_time + FLAGS_put_slow_log_threshold < end_time) {
+        std::string key;
+        if (request->dimensions_size() > 0) {
+            key = request->dimensions(0).key();
+        } else {
+            key = request->pk();
+        }
+        PDLOG(INFO, "slow log[put]. key %s time %lu. tid %u, pid %u", 
+                key.c_str(), end_time - start_time, request->tid(), request->pid());
     }
 }
 
@@ -1064,6 +1088,7 @@ void TabletImpl::Scan(RpcController* controller,
         ::rtidb::api::ScanResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    uint64_t start_time = ::baidu::common::timer::get_micros();
     if (request->st() < request->et()) {
         response->set_code(::rtidb::base::ReturnCode::kStLessThanEt);
         response->set_msg("starttime less than endtime");
@@ -1133,6 +1158,15 @@ void TabletImpl::Scan(RpcController* controller,
     delete it;
     response->set_code(code);
     response->set_count(count);
+    uint64_t end_time = ::baidu::common::timer::get_micros();
+    if (start_time + FLAGS_query_slow_log_threshold < end_time) {
+        std::string index_name;
+        if (request->has_idx_name() && request->idx_name().size() > 0) {
+            index_name = request->idx_name();
+        }
+        PDLOG(INFO, "slow log[scan]. key %s index_name %s time %lu. tid %u, pid %u", 
+                request->pk().c_str(), index_name.c_str(), end_time - start_time, request->tid(), request->pid());
+    }
     switch(code) {
         case 0:
             return;
@@ -4453,7 +4487,7 @@ void TabletImpl::DumpIndexData(RpcController* controller,
     }
     std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
     std::vector<::rtidb::log::WriteHandle*> whs;
-    for (int i=0;i<request->partition_num();++i) {
+    for (uint32_t i = 0; i < request->partition_num(); i++) {
         std::string index_file_name = std::to_string(request->pid()) + "_" + std::to_string(i) + "_index.data";
         std::string index_data_path = index_path + index_file_name;
         FILE* fd = fopen(index_data_path.c_str(), "wb+");
