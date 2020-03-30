@@ -17,7 +17,6 @@
 
 #include "codegen/fn_ir_builder.h"
 #include <llvm/Transforms/Utils.h>
-#include <codec/window.h>
 #include <memory>
 #include <string>
 #include <utility>
@@ -35,10 +34,12 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Utils.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
 #include "udf/udf.h"
 #include "vm/sql_compiler.h"
+#include "codec/window.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)

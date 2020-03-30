@@ -75,7 +75,7 @@ TEST_F(UDFTest, UDF_sum_test) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
                                             2, fesql::type::kInt32, buf));
-        ASSERT_EQ(1 + 11 + 111, fesql::udf::v1::sum_list<int32_t >(col));
+        ASSERT_EQ(1 + 11 + 111, fesql::udf::v1::sum_list<int32_t>(col));
     }
 
     {
@@ -87,7 +87,7 @@ TEST_F(UDFTest, UDF_sum_test) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
                                             2 + 4, fesql::type::kInt16, buf));
-        ASSERT_EQ(2 + 22 + 222, fesql::udf::v1::sum_list<int16_t >(col));
+        ASSERT_EQ(2 + 22 + 222, fesql::udf::v1::sum_list<int16_t>(col));
     }
 
     {
@@ -123,7 +123,7 @@ TEST_F(UDFTest, UDF_sum_test) {
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
                          reinterpret_cast<int8_t*>(&window), 2 + 4 + 2 + 4 + 8,
                          fesql::type::kInt64, buf));
-        ASSERT_EQ(5L + 55L + 555L, fesql::udf::v1::sum_list<int64_t >(col));
+        ASSERT_EQ(5L + 55L + 555L, fesql::udf::v1::sum_list<int64_t>(col));
     }
 }
 
@@ -139,7 +139,7 @@ TEST_F(UDFTest, UDF_max_test) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2,
                                             fesql::type::kInt32, buf));
-        ASSERT_EQ(111, fesql::udf::v1::max_list<int32_t >(col));
+        ASSERT_EQ(111, fesql::udf::v1::max_list<int32_t>(col));
     }
 
     {
@@ -151,7 +151,7 @@ TEST_F(UDFTest, UDF_max_test) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl),
                                             2 + 4, fesql::type::kInt16, buf));
-        ASSERT_EQ(222, fesql::udf::v1::max_list<int16_t >(col));
+        ASSERT_EQ(222, fesql::udf::v1::max_list<int16_t>(col));
     }
 
     {
@@ -187,7 +187,7 @@ TEST_F(UDFTest, UDF_max_test) {
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
                          reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4 + 8,
                          fesql::type::kInt64, buf));
-        ASSERT_EQ(555L, fesql::udf::v1::max_list<int64_t >(col));
+        ASSERT_EQ(555L, fesql::udf::v1::max_list<int64_t>(col));
     }
 }
 
@@ -203,7 +203,7 @@ TEST_F(UDFTest, UDF_min_test) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2,
                                             fesql::type::kInt32, buf));
-        ASSERT_EQ(1, fesql::udf::v1::min_list<int32_t >(col));
+        ASSERT_EQ(1, fesql::udf::v1::min_list<int32_t>(col));
     }
 
     {
@@ -215,7 +215,7 @@ TEST_F(UDFTest, UDF_min_test) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl),
                                             2 + 4, fesql::type::kInt16, buf));
-        ASSERT_EQ(2, fesql::udf::v1::min_list<int16_t >(col));
+        ASSERT_EQ(2, fesql::udf::v1::min_list<int16_t>(col));
     }
 
     {
@@ -227,7 +227,7 @@ TEST_F(UDFTest, UDF_min_test) {
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
                          reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2,
                          fesql::type::kFloat, buf));
-        ASSERT_EQ(3.1f, fesql::udf::v1::min_list<float >(col));
+        ASSERT_EQ(3.1f, fesql::udf::v1::min_list<float>(col));
     }
 
     {
@@ -251,7 +251,7 @@ TEST_F(UDFTest, UDF_min_test) {
         ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
                          reinterpret_cast<int8_t*>(&impl), 2 + 4 + 2 + 4 + 8,
                          fesql::type::kInt64, buf));
-        ASSERT_EQ(5L, fesql::udf::v1::min_list<int64_t >(col));
+        ASSERT_EQ(5L, fesql::udf::v1::min_list<int64_t>(col));
     }
 }
 TEST_F(UDFTest, GetColTest) {
@@ -269,11 +269,11 @@ TEST_F(UDFTest, GetColTest) {
                 list_ref.list);
         ::fesql::codec::IteratorImpl<int16_t> col_iterator(*col);
         ASSERT_TRUE(col_iterator.Valid());
-        ASSERT_EQ(1u, col_iterator.Next());
+        ASSERT_EQ(1, col_iterator.Next());
         ASSERT_TRUE(col_iterator.Valid());
-        ASSERT_EQ(11u, col_iterator.Next());
+        ASSERT_EQ(11, col_iterator.Next());
         ASSERT_TRUE(col_iterator.Valid());
-        ASSERT_EQ(111u, col_iterator.Next());
+        ASSERT_EQ(111, col_iterator.Next());
         ASSERT_FALSE(col_iterator.Valid());
     }
 }
@@ -288,6 +288,10 @@ TEST_F(UDFTest, GetColHeapTest) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 2,
                                             fesql::type::kInt32, buf));
+        ::fesql::codec::ColumnImpl<int16_t>* impl =
+            reinterpret_cast<::fesql::codec::ColumnImpl<int16_t>*>(
+                list_ref.list);
+        ASSERT_EQ(3u, impl->Count());
     }
 }
 

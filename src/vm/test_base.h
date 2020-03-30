@@ -27,6 +27,19 @@
 namespace fesql {
 namespace vm {
 
+bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
+              const fesql::type::TableDef& table_def,
+              std::shared_ptr<fesql::storage::Table> table) {
+    std::shared_ptr<tablet::TabletTableHandler> handler(
+        new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
+                                       table_def.catalog(), table_def.indexes(),
+                                       table));
+    bool ok = handler->Init();
+    if (!ok) {
+        return false;
+    }
+    return catalog->AddTable(handler);
+}
 std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     const fesql::type::TableDef& table_def,
     std::shared_ptr<fesql::storage::Table> table) {
@@ -35,16 +48,9 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     if (!ok) {
         return std::shared_ptr<tablet::TabletCatalog>();
     }
-
-    std::shared_ptr<tablet::TabletTableHandler> handler(
-        new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
-                                       table_def.catalog(), table_def.indexes(),
-                                       table));
-    ok = handler->Init();
-    if (!ok) {
+    if (!AddTable(catalog, table_def, table)) {
         return std::shared_ptr<tablet::TabletCatalog>();
     }
-    catalog->AddTable(handler);
     return catalog;
 }
 
@@ -55,8 +61,8 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     return BuildCommonCatalog(table_def, table);
 }
 
-void PrintSchema(const Schema& schema) {
-    std::stringstream ss;
+
+void PrintSchema(std::stringstream& ss, const Schema& schema) {
     for (int32_t i = 0; i < schema.size(); i++) {
         if (i > 0) {
             ss << "\n";
@@ -64,6 +70,11 @@ void PrintSchema(const Schema& schema) {
         const type::ColumnDef& column = schema.Get(i);
         ss << column.name() << " " << type::Type_Name(column.type());
     }
+}
+
+void PrintSchema(const Schema& schema) {
+    std::stringstream ss;
+    PrintSchema(ss, schema);
     LOG(INFO) << "\n" << ss.str();
 }
 

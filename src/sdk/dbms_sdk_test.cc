@@ -97,7 +97,7 @@ TEST_F(DBMSSdkTest, DatabasesAPITest) {
     // create database db2
     {
         Status status;
-        std::string name = "db_2";
+        std::string name = "db_2xxx";
         dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -135,7 +135,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
     // create database db2
     {
         Status status;
-        std::string name = "db_2";
+        std::string name = "db_2x";
         dbms_sdk->CreateDatabase(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
@@ -155,7 +155,6 @@ TEST_F(DBMSSdkTest, TableAPITest) {
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
-
     {
         // create table test2
         std::string sql =
@@ -202,7 +201,7 @@ TEST_F(DBMSSdkTest, TableAPITest) {
     }
     {
         // show tables empty
-        std::string name = "db_2";
+        std::string name = "db_2x";
         Status status;
         std::shared_ptr<TableSet> ts = dbms_sdk->GetTables(name, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
@@ -360,7 +359,6 @@ int main(int argc, char *argv[]) {
     InitLLVM X(argc, argv);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
-
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_enable_keep_alive = false;
     return RUN_ALL_TESTS();

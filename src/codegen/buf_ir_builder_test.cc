@@ -575,7 +575,7 @@ TEST_F(BufIRBuilderTest, encode_ir_builder) {
     bool ok = ptr != NULL;
     ASSERT_TRUE(ok);
     uint32_t size = *reinterpret_cast<uint32_t*>(ptr + 2);
-    ASSERT_EQ(size, 39);
+    ASSERT_EQ(size, 39u);
     ASSERT_EQ(16, *reinterpret_cast<int16_t*>(ptr + 7));
     ASSERT_EQ(32, *reinterpret_cast<int32_t*>(ptr + 9));
     ASSERT_EQ(32.1f, *reinterpret_cast<float*>(ptr + 13));

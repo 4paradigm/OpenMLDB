@@ -19,11 +19,10 @@
 #include <iostream>
 #include <memory>
 #include <utility>
-#include "analyser/analyser.h"
+#include "plan/planner.h"
 #include "brpc/channel.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
-#include "plan/planner.h"
 #include "proto/dbms.pb.h"
 #include "sdk/result_set_impl.h"
 #include "sdk/tablet_sdk.h"
@@ -142,7 +141,6 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
     std::shared_ptr<ResultSetImpl> empty;
     node::NodeManager node_manager;
     parser::FeSQLParser parser;
-    analyser::FeSQLAnalyser analyser(&node_manager);
     plan::SimplePlanner planner(&node_manager);
     DLOG(INFO) << "start to execute script from dbms:\n" << sql;
 
@@ -155,16 +153,6 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
         status->msg = sql_status.msg;
         return empty;
     }
-
-    /*node::NodePointVector query_trees;
-    analyser.Analyse(parser_trees, query_trees, sql_status);
-    if (0 != sql_status.code) {
-        status->code = sql_status.code;
-        status->msg = sql_status.msg;
-        LOG(WARNING) << status->msg;
-        return empty;
-    }*/
-
     node::PlanNodeList plan_trees;
     planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
 
@@ -185,7 +173,7 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
     }
 
     switch (plan->GetType()) {
-        case node::kPlanTypeSelect: {
+        case node::kPlanTypeQuery: {
             return tablet_sdk_->Query(catalog, sql, status);
         }
         case node::kPlanTypeInsert: {
@@ -226,6 +214,7 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
             status->msg = "fail to execute script with unSuppurt type" +
                           node::NameOfPlanNodeType(plan->GetType());
             status->code = fesql::common::kUnSupport;
+            LOG(WARNING) << status->msg;
             return empty;
         }
     }
