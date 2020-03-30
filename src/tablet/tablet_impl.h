@@ -353,8 +353,7 @@ private:
 
     void ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
-        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
-        std::string& binlog_path, ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+        ::rtidb::common::ColumnKey& column_key, uint32_t idx,
         uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();

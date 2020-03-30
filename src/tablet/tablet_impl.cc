@@ -4625,7 +4625,6 @@ void TabletImpl::ExtractIndexData(RpcController* controller,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
     std::shared_ptr<Table> table;
-    std::shared_ptr<LogReplicator> replicator;
     std::shared_ptr<Snapshot> snapshot;
     std::string db_root_path;
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
@@ -4660,14 +4659,6 @@ void TabletImpl::ExtractIndexData(RpcController* controller,
             response->set_msg("table status is not kNormal");
             return;
         }
-        replicator = GetReplicatorUnLock(request->tid(), request->pid());
-        if (!replicator) {
-            PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", 
-                request->tid(),request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kReplicatorIsNotExist);
-            response->set_msg("replicator is not exist");
-            return;
-        }
         snapshot = GetSnapshotUnLock(request->tid(), request->pid());
         if (!snapshot) {
             PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", request->tid(), request->pid());
@@ -4683,19 +4674,36 @@ void TabletImpl::ExtractIndexData(RpcController* controller,
             return;
         }
     }
-    std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
     std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot = std::static_pointer_cast<::rtidb::storage::MemTableSnapshot>(snapshot);
-    task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, memtable_snapshot, replicator, binlog_path, request->column_key(), request->idx(), request->partition_num(), task_ptr));
+    task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, memtable_snapshot, request->column_key(), request->idx(), request->partition_num(), task_ptr));
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
 void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
-        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
-        std::string& binlog_path, ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+        ::rtidb::common::ColumnKey& column_key, uint32_t idx,
         uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task) {
-    
+    uint64_t offset = 0;
+    uint32_t tid = table->GetId();
+    uint32_t pid = table->GetPid();
+    if (memtable_snapshot->ExtractIndexData(table, column_key, idx, partition_num, offset)) {
+        PDLOG(INFO, "extract index on table tid[%u] pid[%u] succeed", tid, pid);
+        if (task) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task->set_status(::rtidb::api::kDone);
+        }
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        if (replicator) {
+            replicator->SetSnapshotLogPartIndex(offset);
+        }
+    } else {
+        PDLOG(WARNING, "fail to extract index on table tid[%u] pid[%u]", tid, pid);
+        if (task) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task->set_status(::rtidb::api::kFailed);
+        }
+    }
 }
 
 void TabletImpl::AddIndex(RpcController* controller,
