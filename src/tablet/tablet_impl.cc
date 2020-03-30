@@ -662,6 +662,17 @@ void TabletImpl::Put(RpcController* controller,
             }
             replicator->AppendEntry(entry);
         } while(false);
+        uint64_t end_time = ::baidu::common::timer::get_micros();
+        if (start_time + FLAGS_put_slow_log_threshold < end_time) {
+            std::string key;
+            if (request->dimensions_size() > 0) {
+                key = request->dimensions(0).key();
+            } else {
+                key = request->pk();
+            }
+            PDLOG(INFO, "slow log[put]. key %s time %lu. tid %u, pid %u", 
+                    key.c_str(), end_time - start_time, request->tid(), request->pid());
+        }
         done->Run();
         if (replicator) {
             if (FLAGS_binlog_notify_on_put) {
@@ -678,17 +689,6 @@ void TabletImpl::Put(RpcController* controller,
         }
         done->Run();
         response->set_code(::rtidb::base::ReturnCode::kOk);
-    }
-    uint64_t end_time = ::baidu::common::timer::get_micros();
-    if (start_time + FLAGS_put_slow_log_threshold < end_time) {
-        std::string key;
-        if (request->dimensions_size() > 0) {
-            key = request->dimensions(0).key();
-        } else {
-            key = request->pk();
-        }
-        PDLOG(INFO, "slow log[put]. key %s time %lu. tid %u, pid %u", 
-                key.c_str(), end_time - start_time, request->tid(), request->pid());
     }
 }
 
