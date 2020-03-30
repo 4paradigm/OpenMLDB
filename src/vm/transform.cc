@@ -178,10 +178,16 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
     std::string fn_name = "";
     vm::Schema fn_schema;
     switch (node->type_) {
+        case kPhysicalOpIndexSeek: {
+            auto seek_op = dynamic_cast<PhysicalSeekIndexNode*>(node);
+            CodeGenExprList(node->output_schema, seek_op->keys_, true, fn_name,
+                            fn_schema, status);
+            break;
+        }
         case kPhysicalOpGroupBy: {
             auto group = dynamic_cast<PhysicalGroupNode*>(node)->groups_;
             CodeGenExprList(node->output_schema, group, true, fn_name,
-                                 fn_schema, status);
+                            fn_schema, status);
             break;
         }
         case kPhysicalOpSortBy: {
@@ -355,16 +361,26 @@ bool BatchModeTransformer::TransformProjecPlantOp(
     return CreatePhysicalProjectNode(kTableProject, depend, project_list,
                                      output, status);
 }
-bool BatchModeTransformer::TransformGroupAndSortOp(
-    PhysicalOpNode* depend, const node::ExprListNode* groups,
-    const node::OrderByNode* orders, PhysicalOpNode** output,
-    base::Status& status) {
-    if (nullptr == depend || nullptr == output) {
+bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
+                                             const node::WindowPlanNode* w_ptr,
+                                             PhysicalOpNode** output,
+                                             base::Status& status) {
+    if (nullptr == depend || nullptr == w_ptr || nullptr == output) {
         status.msg = "depend node or output node is null";
         status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
         return false;
     }
+    node::OrderByNode* orders = nullptr;
+    node::ExprListNode* groups = nullptr;
+    if (!w_ptr->ExtractWindowGroupsAndOrders(&groups, &orders)) {
+        status.msg =
+            "fail to transform window aggeration: gourps and orders is "
+            "null";
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
     if (kPhysicalOpDataProvider == depend->type_) {
         auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend);
         if (kProviderTypeRequest == data_op->provider_type_) {
@@ -373,8 +389,9 @@ bool BatchModeTransformer::TransformGroupAndSortOp(
             if (table) {
                 auto right = new PhysicalTableProviderNode(table);
                 node_manager_->RegisterNode(right);
-                *output =
-                    new PhysicalRequestUnionNode(depend, right, groups, orders);
+                *output = new PhysicalRequestUnionNode(
+                    depend, right, groups, orders, w_ptr->GetStartOffset(),
+                    w_ptr->GetEndOffset());
                 node_manager_->RegisterNode(*output);
                 return true;
             } else {
@@ -452,8 +469,8 @@ bool BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
             if (table) {
                 auto right = new PhysicalTableProviderNode(table);
                 node_manager_->RegisterNode(right);
-                *output = new PhysicalRequestUnionNode(left, right,
-                                                       node->by_list_, nullptr);
+                *output = new PhysicalRequestUnionNode(
+                    left, right, node->by_list_, nullptr, -1, -1);
                 node_manager_->RegisterNode(*output);
                 return true;
             } else {
@@ -673,13 +690,7 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
             break;
         }
         case kAggregation:
-        case kGroupAggregation: {
-            if (!GenProjects(node->output_schema, projects, false, fn_name,
-                             output_schema, status)) {
-                return false;
-            }
-            break;
-        }
+        case kGroupAggregation:
         case kWindowAggregation: {
             // TODO(chenjing): gen window aggregation
             if (!GenProjects(node->output_schema, projects, false, fn_name,
@@ -722,25 +733,14 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     node_manager_->RegisterNode(op);
     *output = op;
     return true;
-}
+}  // namespace vm
 
 bool BatchModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* node,
     PhysicalOpNode** output, base::Status& status) {
     auto depend = node;
     if (nullptr != project_list->w_ptr_) {
-        node::OrderByNode* orders = nullptr;
-        node::ExprListNode* groups = nullptr;
-
-        if (!project_list->w_ptr_->ExtractWindowGroupsAndOrders(&groups,
-                                                                &orders)) {
-            status.msg =
-                "fail to transform window aggeration: gourps and orders is "
-                "null";
-            LOG(WARNING) << status.msg;
-            return false;
-        }
-        if (!TransformGroupAndSortOp(depend, groups, orders, &depend, status)) {
+        if (!TransformWindowOp(depend, project_list->w_ptr_, &depend, status)) {
             return false;
         }
     }
@@ -894,9 +894,10 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
                     const node::ExprListNode* new_groups = nullptr;
+                    const node::ExprListNode* keys = nullptr;
                     if (!TransformGroupExpr(group_op->groups_,
                                             scan_op->table_handler_->GetIndex(),
-                                            &index_name, &new_groups)) {
+                                            &index_name, &keys, &new_groups)) {
                         return false;
                     }
 
@@ -926,10 +927,11 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
                     const node::ExprListNode* new_groups = nullptr;
+                    const node::ExprListNode* keys = nullptr;
                     const node::OrderByNode* new_orders = nullptr;
                     auto& index_hint = scan_op->table_handler_->GetIndex();
                     if (!TransformGroupExpr(group_sort_op->groups_, index_hint,
-                                            &index_name, &new_groups)) {
+                                            &index_name, &keys, &new_groups)) {
                         return false;
                     }
 
@@ -961,10 +963,11 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 if (kProviderTypeTable == scan_op->provider_type_) {
                     std::string index_name;
                     const node::ExprListNode* new_groups = nullptr;
+                    const node::ExprListNode* keys = nullptr;
                     const node::OrderByNode* new_orders = nullptr;
                     auto& index_hint = scan_op->table_handler_->GetIndex();
                     if (!TransformGroupExpr(union_op->groups_, index_hint,
-                                            &index_name, &new_groups)) {
+                                            &index_name, &keys, &new_groups)) {
                         return false;
                     }
 
@@ -976,12 +979,16 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     PhysicalScanIndexNode* scan_index_op =
                         new PhysicalScanIndexNode(scan_op->table_handler_,
                                                   index_name);
+                    PhysicalSeekIndexNode* seek_index_op =
+                        new PhysicalSeekIndexNode(union_op->GetProducers()[0],
+                                                  scan_index_op, keys);
                     node_manager_->RegisterNode(scan_index_op);
 
                     PhysicalRequestUnionNode* new_group_sort_op =
                         new PhysicalRequestUnionNode(
-                            union_op->GetProducers()[0], scan_index_op,
-                            new_groups, new_orders);
+                            union_op->GetProducers()[0], seek_index_op,
+                            new_groups, new_orders, union_op->start_offset_,
+                            union_op->end_offset_);
                     *output = new_group_sort_op;
                     return true;
                 }
@@ -996,7 +1003,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
 }
 bool GroupAndSortOptimized::TransformGroupExpr(
     const node::ExprListNode* groups, const IndexHint& index_hint,
-    std::string* index_name, const node::ExprListNode** output) {
+    std::string* index_name, const node::ExprListNode** keys,
+    const node::ExprListNode** output) {
     if (nullptr == groups || nullptr == output || nullptr == index_name) {
         LOG(WARNING) << "fail to transform group expr : group exor or output "
                         "or index_name ptr is null";

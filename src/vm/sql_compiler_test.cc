@@ -45,10 +45,7 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace vm {
 
-class SQLCompilerTest : public ::testing::Test {};
-
-TEST_F(SQLCompilerTest, test_normal) {
-    type::TableDef table_def;
+void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
     table_def.set_name("t1");
     table_def.set_catalog("db");
     {
@@ -78,16 +75,28 @@ TEST_F(SQLCompilerTest, test_normal) {
         column->set_type(::fesql::type::kInt64);
         column->set_name("col15");
     }
+}
+class SQLCompilerTest : public ::testing::TestWithParam<bool> {};
+INSTANTIATE_TEST_CASE_P(SQLCompilerBatchAndRunTest, SQLCompilerTest,
+                        testing::Values(true, false));
+
+TEST_P(SQLCompilerTest, test_normal) {
+    auto is_batch_mode = GetParam();
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
     std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
-    std::shared_ptr<tablet::TabletCatalog> catalog(new tablet::TabletCatalog());
-    ASSERT_TRUE(catalog->Init());
-    std::shared_ptr<tablet::TabletTableHandler> handler(
-        new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
-                                       table_def.catalog(), table_def.indexes(),
-                                       table));
-    ASSERT_TRUE(handler->Init());
-    ASSERT_TRUE(catalog->AddTable(handler));
+    auto catalog = BuildCommonCatalog(table_def, table);
+
+    fesql::type::TableDef request_def;
+    BuildTableDef(request_def);
+    request_def.set_name("t1");
+    request_def.set_catalog("request");
+    std::shared_ptr<::fesql::storage::Table> request(
+        new ::fesql::storage::Table(1, 1, request_def));
+    AddTable(catalog, request_def, request);
+
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;";
@@ -96,6 +105,7 @@ TEST_F(SQLCompilerTest, test_normal) {
     SQLContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
+    sql_context.is_batch_mode = is_batch_mode;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);

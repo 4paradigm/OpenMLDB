@@ -132,7 +132,7 @@ bool SQLCompiler::Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,
                         ::fesql::base::Status& status) {          // NOLINT
     ::fesql::node::NodePointVector parser_trees;
     ::fesql::parser::FeSQLParser parser;
-    ::fesql::plan::SimplePlanner planer(&node_mgr);
+    ::fesql::plan::SimplePlanner planer(&node_mgr, ctx.is_batch_mode);
 
     int ret = parser.parse(ctx.sql, parser_trees, &node_mgr, status);
     if (ret != 0) {

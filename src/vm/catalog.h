@@ -78,9 +78,35 @@ class WindowIterator {
     virtual const base::Slice GetKey() = 0;
 };
 
-class TableHandler {
+enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };
+
+class DataHandler {
  public:
-    TableHandler() {}
+    DataHandler() {}
+    virtual ~DataHandler() {}
+    // get the schema of table
+    virtual const Schema& GetSchema() = 0;
+
+    // get the table name
+    virtual const std::string& GetName() = 0;
+
+    // get the db name
+    virtual const std::string& GetDatabase() = 0;
+
+    virtual const HandlerType GetHanlderType() = 0;
+};
+
+class RowHandler : public DataHandler {
+ public:
+    RowHandler() {}
+    virtual ~RowHandler() {}
+    const HandlerType GetHanlderType() override { return kRowHandler; }
+    virtual const base::Slice GetValue() const = 0;
+};
+
+class TableHandler : public DataHandler {
+ public:
+    TableHandler() : DataHandler() {}
 
     virtual ~TableHandler() {}
 
@@ -99,13 +125,13 @@ class TableHandler {
     // get the index information
     virtual const IndexHint& GetIndex() = 0;
 
+    virtual const base::Slice Get(int32_t pos) = 0;
     // get the table iterator
     virtual std::unique_ptr<Iterator> GetIterator() = 0;
 
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) = 0;
-
-    virtual const bool IsPartitionTable() { return false; }
+    const HandlerType GetHanlderType() override { return kTableHandler; }
 };
 
 class PartitionHandler : public TableHandler {
@@ -121,7 +147,7 @@ class PartitionHandler : public TableHandler {
     }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator() = 0;
     virtual const bool IsAsc() = 0;
-    const bool IsPartitionTable() override { return true; }
+    const HandlerType GetHanlderType() override { return kPartitionHandler; }
 };
 
 // database/table/schema/type management

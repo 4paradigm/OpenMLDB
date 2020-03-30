@@ -77,7 +77,7 @@ bool TabletTableHandler::Init() {
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
     DLOG(INFO) << "init table handler for table " << name_ << " in db " << db_
-              << " done";
+               << " done";
     return true;
 }
 
@@ -100,6 +100,16 @@ std::unique_ptr<vm::WindowIterator> TabletTableHandler::GetWindowIterator(
                                          table_->GetSegCnt(),
                                          iter->second.index, table_));
     return std::move(it);
+}
+
+//TODP(chenjing): 基于segment 优化Get(int pos) 操作
+const base::Slice TabletTableHandler::Get(int32_t pos) {
+    auto iter = GetIterator();
+
+    while (pos-- > 0 && iter->Valid()) {
+        iter->Next();
+    }
+    return iter->Valid() ? iter->GetValue() : base::Slice();
 }
 
 TabletCatalog::TabletCatalog() : tables_(), db_() {}
@@ -157,5 +167,19 @@ bool TabletCatalog::AddDB(const type::Database& db) {
     return true;
 }
 
+TabletSegmentHandler::TabletSegmentHandler(
+    std::shared_ptr<vm::PartitionHandler> partition_hander,
+    const std::string& key)
+    : TableHandler(), partition_hander_(partition_hander), key_(key) {}
+TabletSegmentHandler::~TabletSegmentHandler() {}
+std::unique_ptr<vm::Iterator> TabletSegmentHandler::GetIterator() {
+    auto iter = partition_hander_->GetWindowIterator();
+    iter->Seek(key_);
+    return iter->GetValue();
+}
+std::unique_ptr<vm::WindowIterator> TabletSegmentHandler::GetWindowIterator(
+    const std::string& idx_name) {
+    return std::unique_ptr<vm::WindowIterator>();
+}
 }  // namespace tablet
 }  // namespace fesql

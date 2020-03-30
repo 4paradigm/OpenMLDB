@@ -124,6 +124,7 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
 
     bool TransformGroupExpr(const node::ExprListNode* group,
                             const IndexHint& index_hint, std::string* index,
+                            const node::ExprListNode** keys,
                             const node::ExprListNode** output);
     bool TransformOrderExpr(const node::OrderByNode* order,
                             const Schema& schema, const IndexSt& index_st,
@@ -195,9 +196,8 @@ class BatchModeTransformer {
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
                                         base::Status& status);  // NOLINT
-    virtual bool TransformGroupAndSortOp(PhysicalOpNode* depend,
-                                         const node::ExprListNode* groups,
-                                         const node::OrderByNode* orders,
+    virtual bool TransformWindowOp(PhysicalOpNode* depend,
+                                   const node::WindowPlanNode* w_ptr,
                                          PhysicalOpNode** output,
                                          base::Status& status);  // NOLINT
 

@@ -33,6 +33,7 @@ enum PhysicalOpType {
     kPhysicalOpDistinct,
     kPhysicalOpJoin,
     kPhysicalOpUnoin,
+    kPhysicalOpIndexSeek,
     kPhysicalOpRequestUnoin,
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
@@ -392,20 +393,39 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
     const bool is_all_;
 };
 
+class PhysicalSeekIndexNode : public PhysicalBinaryNode {
+ public:
+    PhysicalSeekIndexNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                          const node::ExprListNode *keys)
+        : PhysicalBinaryNode(left, right, kPhysicalOpIndexSeek, false, true),
+          keys_(keys) {
+        output_type = kSchemaTypeGroup;
+    }
+    virtual ~PhysicalSeekIndexNode() {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    const node::ExprListNode *keys_;
+};
+
 class PhysicalRequestUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const node::ExprListNode *groups,
-                             const node::OrderByNode *orders)
+                             const node::OrderByNode *orders,
+                             const int64_t start_offset,
+                             const int64_t end_offset)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
           groups_(groups),
-          orders_(orders) {
+          orders_(orders),
+          start_offset_(start_offset),
+          end_offset_(end_offset) {
         output_type = kSchemaTypeTable;
     }
     virtual ~PhysicalRequestUnionNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
     const node::OrderByNode *orders_;
+    const int64_t start_offset_;
+    const int64_t end_offset_;
 };
 
 class PhysicalSortNode : public PhysicalUnaryNode {

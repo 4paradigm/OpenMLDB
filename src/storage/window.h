@@ -12,8 +12,8 @@
 #include <cstdint>
 #include <iostream>
 #include <vector>
-#include "storage/type_native_fn.h"
 #include "base/slice.h"
+#include "storage/type_native_fn.h"
 namespace fesql {
 namespace storage {
 template <class V>

@@ -10,12 +10,12 @@
 #ifndef SRC_VM_MEM_CATALOG_H_
 #define SRC_VM_MEM_CATALOG_H_
 
+#include <functional>
 #include <map>
 #include <memory>
-#include <vector>
-#include <functional>
-#include <utility>
 #include <string>
+#include <utility>
+#include <vector>
 #include "base/slice.h"
 #include "glog/logging.h"
 #include "storage/codec.h"
@@ -85,6 +85,29 @@ class MemWindowIterator : public WindowIterator {
     MemSegmentMap::const_iterator iter_;
 };
 
+class MemRowHandler : public RowHandler {
+ public:
+    MemRowHandler(base::Slice slice, const Schema& schema)
+        : RowHandler(), slice_(slice), table_name_(""), db_(""), schema_(schema) {}
+//    MemRowHandler(base::Slice& slice, const std::string& table_name,
+//                  const std::string& db, const Schema& schema)
+//        : RowHandler(),
+//          slice_(slice),
+//          table_name_(table_name),
+//          db_(db),
+//          schema_(schema) {}
+    ~MemRowHandler() {}
+    const base::Slice GetValue() const { return slice_; }
+    const Schema& GetSchema() override { return schema_; }
+    const std::string& GetName() override { return table_name_; }
+    const std::string& GetDatabase() override { return db_; }
+
+ private:
+    const base::Slice slice_;
+    std::string table_name_;
+    std::string db_;
+    const Schema& schema_;
+};
 class MemTableHandler : public TableHandler {
  public:
     explicit MemTableHandler(const Schema& schema);
@@ -102,6 +125,7 @@ class MemTableHandler : public TableHandler {
     void AddRow(const Row& row);
     void AddRow(const uint64_t key, const Row& row);
     void Sort(const bool is_asc);
+    const base::Slice Get(int32_t pos) override;
 
  private:
     std::string table_name_;

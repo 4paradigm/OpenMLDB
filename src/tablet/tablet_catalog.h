@@ -48,6 +48,8 @@ class TabletTableHandler : public vm::TableHandler {
 
     inline const vm::IndexHint& GetIndex() { return index_hint_; }
 
+    const base::Slice Get(int32_t pos);
+
     inline std::shared_ptr<storage::Table> GetTable() { return table_; }
 
     std::unique_ptr<vm::Iterator> GetIterator();
@@ -105,6 +107,33 @@ class TabletPartitionHandler : public vm::PartitionHandler {
     std::shared_ptr<TableHandler> table_handler_;
     std::string index_name_;
     vm::IndexHint index_hint_;
+};
+
+class TabletSegmentHandler : public vm::TableHandler {
+ public:
+    TabletSegmentHandler(std::shared_ptr<vm::PartitionHandler> partition_hander,
+                         const std::string& key);
+
+    ~TabletSegmentHandler();
+
+    inline const vm::Schema& GetSchema() { return partition_hander_->GetSchema(); }
+
+    inline const std::string& GetName() { return partition_hander_->GetName(); }
+
+    inline const std::string& GetDatabase() { return partition_hander_->GetDatabase(); }
+
+    inline const vm::Types& GetTypes() { return partition_hander_->GetTypes(); }
+
+    inline const vm::IndexHint& GetIndex() { return partition_hander_->GetIndex(); }
+
+    std::unique_ptr<vm::Iterator> GetIterator();
+
+    std::unique_ptr<vm::WindowIterator> GetWindowIterator(
+        const std::string& idx_name);
+
+ private:
+    std::shared_ptr<vm::PartitionHandler> partition_hander_;
+    std::string key_;
 };
 
 typedef std::map<std::string,

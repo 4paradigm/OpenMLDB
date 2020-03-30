@@ -48,37 +48,6 @@ class TransformRequestModeTest : public ::testing::TestWithParam<std::string> {
     ~TransformRequestModeTest() {}
 };
 
-void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
-    table_def.set_name("t1");
-    table_def.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
-    }
-
-    {
-        ::fesql::type::ColumnDef* column = table_def.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col15");
-    }
-}
 
 void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
                          std::string sql, std::string exp) {

@@ -317,7 +317,7 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
                 "only "
                 "support CURRENT|PRECEDING|FOLLOWING";
             status.code = common::kUnSupport;
-            return -1;
+            return INT64_MAX;
         }
     }
     if (nullptr == bound->GetOffset()) {
@@ -328,7 +328,7 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
             "cannot create window frame, only support "
             "primary frame";
         status.code = common::kTypeError;
-        return 0;
+        return INT64_MAX;
     }
 
     int64_t offset = 0;
@@ -355,7 +355,7 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
                 "cannot create window frame, only support "
                 "smallint|int|bigint offset of frame";
             status.code = common::kTypeError;
-            return 0;
+            return INT64_MAX;
         }
     }
     return negtive ? -1 * offset : offset;

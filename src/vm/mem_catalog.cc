@@ -95,6 +95,14 @@ void MemTableHandler::Sort(const bool is_asc) {
     }
 }
 
+const base::Slice MemTableHandler::Get(int32_t pos) {
+    if (pos < 0 || table_.size() >= pos) {
+        return base::Slice();
+    }
+    auto slice = table_.at(pos).second;
+    return base::Slice(reinterpret_cast<char*>(slice.buf), slice.size);
+}
+
 MemPartitionHandler::MemPartitionHandler(const Schema& schema)
     : PartitionHandler(),
       table_name_(""),

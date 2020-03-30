@@ -78,6 +78,9 @@ void PrintSchema(const Schema& schema) {
     LOG(INFO) << "\n" << ss.str();
 }
 
+
+
+
 }  // namespace vm
 }  // namespace fesql
 

@@ -61,34 +61,50 @@ class RunSession {
     std::shared_ptr<CompileInfo> compile_info_;
     std::shared_ptr<Catalog> cl_;
     friend Engine;
-    std::shared_ptr<TableHandler> RunBatchPlan(const PhysicalOpNode* node);
+    std::shared_ptr<DataHandler> RunPhysicalPlan(const PhysicalOpNode* node,
+                                                 const Row* in_row = nullptr);
     base::Slice WindowProject(const int8_t* fn, const uint64_t key,
                               const base::Slice slice, storage::Window* window);
     base::Slice RowProject(const int8_t* fn, const base::Slice slice);
     base::Slice AggProject(const int8_t* fn,
-                           const std::shared_ptr<TableHandler> table);
+                           const std::shared_ptr<DataHandler> table);
     std::string GetColumnString(fesql::storage::RowView* view, int pos,
                                 type::Type type);
     int64_t GetColumnInt64(fesql::storage::RowView* view, int pos,
                            type::Type type);
-    std::shared_ptr<TableHandler> TableGroup(
-        const std::shared_ptr<TableHandler> table, const Schema& schema,
+    std::shared_ptr<DataHandler> TableGroup(
+        const std::shared_ptr<DataHandler> table, const Schema& schema,
         const int8_t* fn, const std::vector<int>& idxs);
-    std::shared_ptr<TableHandler> PartitionGroup(
-        const std::shared_ptr<TableHandler> partitions, const Schema& schema,
+    std::shared_ptr<DataHandler> PartitionGroup(
+        const std::shared_ptr<DataHandler> partitions, const Schema& schema,
         const int8_t* fn, const std::vector<int>& idxs);
-    std::shared_ptr<TableHandler> TableSortGroup(
-        std::shared_ptr<TableHandler> table, const Schema& schema,
-        const int8_t* fn, const node::ExprListNode* groups,
-        const node::OrderByNode* orders);
-    std::shared_ptr<TableHandler> PartitionSort(
-        std::shared_ptr<TableHandler> table, const Schema& schema,
+    std::shared_ptr<DataHandler> TableSortGroup(
+        std::shared_ptr<DataHandler> table, const PhysicalGroupAndSortNode *grouo_sort_op);
+    std::shared_ptr<DataHandler> PartitionSort(
+        std::shared_ptr<DataHandler> table, const Schema& schema,
         const int8_t* fn, std::vector<int> idxs, const bool is_asc);
-    std::shared_ptr<TableHandler> TableSort(std::shared_ptr<TableHandler> table,
+    std::shared_ptr<DataHandler> TableSort(std::shared_ptr<DataHandler> table,
                                             const Schema& schema,
                                             const int8_t* fn,
                                             std::vector<int> idxs,
                                             const bool is_asc);
+    std::shared_ptr<DataHandler> TableProject(
+        const int8_t* fn, std::shared_ptr<DataHandler> table,
+        Schema output_schema);
+    std::shared_ptr<DataHandler> WindowAggProject(
+        const PhysicalWindowAggrerationNode* op, std::shared_ptr<DataHandler> input);
+    std::string GenerateKeys(storage::RowView* row_view,
+                             const Schema& schema, const std::vector<int>& idxs);
+    std::shared_ptr<DataHandler> IndexSeek(
+        std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
+        const PhysicalSeekIndexNode* seek_op);
+    std::shared_ptr<DataHandler> RequestUnion(
+        std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
+        const PhysicalRequestUnionNode* request_union_op);
+    std::shared_ptr<DataHandler> Group(std::shared_ptr<DataHandler> input,
+                                       const PhysicalGroupNode* op);
+    std::shared_ptr<DataHandler> Limit(std::shared_ptr<DataHandler> input,
+                                       const PhysicalLimitNode* op);
 };
 
 class BatchRunSession : public RunSession {
@@ -107,8 +123,10 @@ class RequestRunSession : public RunSession {
  public:
     RequestRunSession() : RunSession() {}
     ~RequestRunSession() {}
-    virtual int32_t Run(const Row& in_row, Row& out_row);  // NOLINT
+    virtual int32_t Run(const Row& in_row, Row* output);  // NOLINT
     const bool IsBatchRun() const override { return false; }
+    std::shared_ptr<TableHandler> RunRequestPlan(const Row& request,
+                                                 PhysicalOpNode* node);
 };
 
 typedef std::map<std::string,

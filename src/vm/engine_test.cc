@@ -18,7 +18,6 @@
 #include "vm/engine.h"
 #include <utility>
 #include <vector>
-
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -38,6 +37,7 @@
 #include "storage/codec.h"
 #include "storage/window.h"
 #include "vm/test_base.h"
+#include "vm/test_base_schema.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -47,7 +47,6 @@ namespace vm {
 
 enum EngineRunMode { RUNBATCH, RUNONE };
 class EngineTest : public ::testing::TestWithParam<EngineRunMode> {};
-
 void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     table.set_catalog("db");
@@ -89,6 +88,7 @@ void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
         column->set_name("col6");
     }
 }
+
 void BuildBuf(int8_t** buf, uint32_t* size) {
     ::fesql::type::TableDef table;
     BuildTableDef(table);
@@ -314,26 +314,41 @@ void StoreData(::fesql::storage::Table* table, int8_t* rows) {
 }
 
 INSTANTIATE_TEST_CASE_P(EngineRUNAndBatchMode, EngineTest,
-                        testing::Values(RUNBATCH));
+                        testing::Values(RUNBATCH, RUNONE));
 
 TEST_P(EngineTest, test_normal) {
-    ParamType mode = GetParam();
+    ParamType is_batch_mode = GetParam();
     int8_t* row1 = NULL;
     uint32_t size1 = 0;
     BuildBuf(&row1, &size1);
+
     type::TableDef table_def;
     BuildTableDef(table_def);
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
     index->add_first_keys("col0");
     index->set_second_key("col5");
+
     std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row1), size1));
+
     auto catalog = BuildCommonCatalog(table_def, table);
+    // add request
+    {
+        fesql::type::TableDef request_def;
+        BuildTableDef(request_def);
+        request_def.set_name("t1");
+        request_def.set_catalog("request");
+        std::shared_ptr<::fesql::storage::Table> request(
+            new ::fesql::storage::Table(1, 1, request_def));
+        AddTable(catalog, request_def, request);
+    }
+
+
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT col0, test(col1,col1), col2 , col6 FROM t1 "
@@ -341,20 +356,40 @@ TEST_P(EngineTest, test_normal) {
     Engine engine(catalog);
     base::Status get_status;
 
-    DLOG(INFO) << "RUN IN MODE: " << mode;
+    DLOG(INFO) << "RUN IN MODE: " << is_batch_mode;
     std::vector<int8_t*> output;
-    int32_t ret = -1;
-    BatchRunSession session;
-    bool ok = engine.Get(sql, "db", session, get_status);
-    ASSERT_TRUE(ok);
-    ret = session.Run(output, 10);
+    vm::Schema schema;
+    if (RUNBATCH == is_batch_mode)
+    {
+        int32_t ret = -1;
+        BatchRunSession session;
+        bool ok = engine.Get(sql, "db", session, get_status);
+        ASSERT_TRUE(ok);
+        ret = session.Run(output, 10);
+        schema = session.GetSchema();
+        PrintSchema(schema);
+        ASSERT_EQ(0, ret);
+    } else {
+        int32_t ret = -1;
+        RequestRunSession session;
+        bool ok = engine.Get(sql, "db", session, get_status);
+        ASSERT_TRUE(ok);
+        schema = session.GetSchema();
+        PrintSchema(schema);
 
-    PrintSchema(session.GetSchema());
-    ASSERT_EQ(0, ret);
+        int32_t limit = 2;
+        auto iter = catalog->GetTable("db", "t1")->GetIterator();
+        while (limit-- >0 && iter->Valid()) {
+            Row row;
+            ret = session.Run(Row(iter->GetValue()),&row);
+            ASSERT_EQ(0, ret);
+            output.push_back(row.buf);
+            iter->Next();
+        }
+    }
     ASSERT_EQ(2u, output.size());
-
     ::fesql::type::TableDef output_schema;
-    for (auto column : session.GetSchema()) {
+    for (auto column : schema) {
         ::fesql::type::ColumnDef* column_def = output_schema.add_columns();
         *column_def = column;
     }
@@ -429,6 +464,16 @@ TEST_F(EngineTest, test_window_agg) {
     std::vector<fesql::storage::Row> windows;
     BuildWindow(windows, &rows);
     StoreData(table.get(), rows);
+    // add request
+    {
+        fesql::type::TableDef request_def;
+        BuildTableDef(request_def);
+        request_def.set_name("t1");
+        request_def.set_catalog("request");
+        std::shared_ptr<::fesql::storage::Table> request(
+            new ::fesql::storage::Table(1, 1, request_def));
+        AddTable(catalog, request_def, request);
+    }
 
     const std::string sql =
         "%%fun\n"
@@ -455,15 +500,22 @@ TEST_F(EngineTest, test_window_agg) {
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
     Engine engine(catalog);
-    BatchRunSession session(true);
+    RequestRunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
     PrintSchema(session.GetSchema());
     std::vector<int8_t*> output;
-    int32_t ret = session.Run(output, 100);
 
-    ASSERT_EQ(5u, output.size());
+    int32_t limit = 2;
+    auto iter = catalog->GetTable("db", "t1")->GetIterator();
+    while (limit-- >0 && iter->Valid()) {
+        Row row;
+        int32_t ret = session.Run(Row(iter->GetValue()),&row);
+        ASSERT_EQ(0, ret);
+        output.push_back(row.buf);
+        iter->Next();
+    }
 
     int8_t* output_1 = output[3];
     int8_t* output_22 = output[4];
@@ -472,7 +524,6 @@ TEST_F(EngineTest, test_window_agg) {
     int8_t* output_4444 = output[1];
     int8_t* output_aaa = output[2];
 
-    ASSERT_EQ(0, ret);
     ASSERT_EQ(5u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8 + 4,

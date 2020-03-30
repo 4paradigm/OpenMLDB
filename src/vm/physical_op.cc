@@ -221,12 +221,19 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(groups=" << node::ExprString(groups_)
-    << " ,orders=" << node::ExprString(orders_)
-    << ")";
+           << " ,orders=" << node::ExprString(orders_)
+           << ", start=" << std::to_string(start_offset_)
+           << ", end=" << std::to_string(end_offset_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
 
-
+void PhysicalSeekIndexNode::Print(std::ostream& output,
+                                  const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(keys=" << node::ExprString(keys_) << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
 }  // namespace vm
 }  // namespace fesql
