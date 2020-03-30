@@ -37,6 +37,11 @@
 			<version>2.8.1</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com._4paradigm.fesql</groupId>
+			<artifactId>fesql-native</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 
 	<build>

@@ -33,18 +33,25 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
-
-set(COMMON_LIBS glog gflags unwind lzma)
-set(g_libs glog gflags unwind lzma)
-
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(COMMON_LIBS glog gflags unwind lzma)
+    set(g_libs glog gflags unwind lzma)
+    set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc 
+    brotlicommon
+    thrift lz4 z zstd double-conversion boost_filesystem snappy)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(COMMON_LIBS glog gflags)
+    set(g_libs glog gflags)
+endif()
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
+
 configure_file (
       "${PROJECT_SOURCE_DIR}/src/version.h.in"
       "${PROJECT_SOURCE_DIR}/src/version.h"
 )
-
 option(TESTING_ENABLE "Enable Test" ON)
 option(COVERAGE_ENABLE "Enable Coverage" ON)
 if (TESTING_ENABLE)
@@ -57,17 +64,28 @@ if (COVERAGE_ENABLE)
     endif()
 endif()
 
-set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc 
-    brotlicommon
-    thrift lz4 z zstd double-conversion boost_filesystem snappy)
-llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(OS_LIB ${OS_LIB}
+        ${CMAKE_THREAD_LIBS_INIT}
+        "-framework CoreFoundation"
+        "-framework CoreGraphics"
+        "-framework CoreData"
+        "-framework CoreText"
+        "-framework Security"
+        "-framework Foundation"
+        "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
+        "-Wl,-U,_ProfilerStart"
+        "-Wl,-U,_ProfilerStop")
+endif()
+
 add_definitions('-g')
 add_definitions('-Wall')
 add_definitions('-std=c++14')
 add_definitions(${LLVM_DEFINITIONS})
 find_package(SWIG REQUIRED)
 include(UseSWIG)
-
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)

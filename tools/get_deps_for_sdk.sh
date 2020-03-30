@@ -11,8 +11,8 @@ set -e -u -E # this script will exit if any sub-command fails
 ########################################
 STAGE="DEBUG"
 WORK_DIR=`pwd`
-DEPS_SOURCE=`pwd`/sdk_thirdsrc
-DEPS_PREFIX=`pwd`/sdk_thirdparty
+DEPS_SOURCE=`pwd`/thirdsrc
+DEPS_PREFIX=`pwd`/thirdparty
 DEPS_CONFIG="--prefix=${DEPS_PREFIX} --disable-shared --with-pic"
 mkdir -p $DEPS_PREFIX/lib $DEPS_PREFIX/include
 export CXXFLAGS="-O3 -fPIC"
@@ -21,6 +21,30 @@ export PATH=${DEPS_PREFIX}/bin:$PATH
 mkdir -p ${DEPS_SOURCE} ${DEPS_PREFIX}
 
 cd ${DEPS_SOURCE}
+
+if [ -f "bison_succ" ]
+then
+    echo "bison exist"
+else
+    wget --no-check-certificate -O bison-3.4.tar.gz http://ftp.gnu.org/gnu/bison/bison-3.4.tar.gz
+    tar zxf bison-3.4.tar.gz
+    cd bison-3.4
+    ./configure --prefix=${DEPS_PREFIX} && make install
+    cd -
+    touch bison_succ
+fi
+
+if [ -f "flex_succ" ]
+then
+    echo "flex exist"
+else
+    wget --no-check-certificate -O flex-2.6.4.tar.gz https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz
+    tar zxf flex-2.6.4.tar.gz
+    cd flex-2.6.4
+    ./autogen.sh && ./configure --prefix=${DEPS_PREFIX} && make install
+    cd -
+    touch flex_succ
+fi
 
 if [ -f "gtest_succ" ]
 then 
@@ -109,7 +133,21 @@ else
     touch gflags_succ
 fi
 
-
+if [ -f "llvm_succ" ]
+then 
+    echo "llvm_exist"
+else
+    if [ ! -d "llvm-9.0.0.src" ]
+    then
+        wget --no-check-certificate -O llvm-9.0.0.src.tar.xz http://releases.llvm.org/9.0.0/llvm-9.0.0.src.tar.xz
+        tar xf llvm-9.0.0.src.tar.xz
+    fi
+    cd llvm-9.0.0.src && mkdir -p build
+    cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC .. >/dev/null
+    make -j12 && make install
+    cd ${DEPS_SOURCE}
+    touch llvm_succ
+fi
 
 if [ -f "leveldb_succ" ]
 then

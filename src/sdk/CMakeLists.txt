@@ -3,7 +3,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_BINARY_DIR}/src)
 
 add_library(fesql_sdk STATIC base_impl.cc dbms_sdk.cc tablet_sdk.cc result_set_impl.cc)
-target_link_libraries(fesql_sdk fesql_analyser fesql_parser fesql_planner fesql_node fesql_codec fesql_proto brpc ${g_libs} protobuf leveldb z snappy ssl crypto dl pthread)
+target_link_libraries(fesql_sdk fesql_analyser fesql_parser fesql_planner fesql_node fesql_codec fesql_proto brpc ${g_libs} protobuf leveldb ${OS_LIB} z snappy ssl crypto dl)
 
 add_executable(dbms_sdk_test dbms_sdk_test.cc)
 target_link_libraries(dbms_sdk_test  
@@ -62,9 +62,9 @@ swig_add_library(fesql_jsdk
 target_include_directories(fesql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
 target_link_libraries(fesql_jsdk PRIVATE fesql_sdk)
 if(APPLE)
-  set_target_properties(fesql_jsdk PROPERTIES
+  set_target_properties(fesql_pysdk PROPERTIES
            SUFFIX ".so")
-  set_property(TARGET remote_add APPEND PROPERTY
+  set_property(TARGET fesql_pysdk APPEND PROPERTY
     LINK_FLAGS "-flat_namespace -undefined suppress")
 endif()
 
