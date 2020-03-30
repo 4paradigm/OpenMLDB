@@ -632,6 +632,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
             uint32_t index_pid = ::rtidb::base::hash64(cur_key)%partition_num;
             if (!pid_set.count(index_pid)) {
                 std::string entry_str;
+                entry.clear_dimensions();
                 ::rtidb::api::Dimension* dim = entry.add_dimensions();
                 dim->set_key(cur_key);
                 dim->set_idx(idx);
