@@ -577,6 +577,7 @@ void RelationalTable::ReleaseSnpashot(uint64_t seq, bool finish) {
     }
     if (sc->iterator_count == 0 && sc->unfinish_count == 0) {
         std::lock_guard<std::mutex> lock(mu_);
+        PDLOG(INFO, "table[%s] release snapshot[%lu]", name_.c_str(), iter->first);
         snapshots_.erase(iter);
         db_->ReleaseSnapshot(sc->snapshot);
         delete sc;
@@ -588,6 +589,7 @@ void RelationalTable::LRUSnapshot() {
     std::lock_guard<std::mutex> lock(mu_);
     for (auto iter = snapshots_.begin(); iter != snapshots_.end(); iter++)  {
         if (cur_time - iter->second->atime_ > 2*60*60) {
+            PDLOG(INFO, "table[%s] release snapshot[%lu]", name_.c_str(), iter->first);
             iter = snapshots_.erase(iter);
         }
     }
@@ -619,7 +621,9 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint
         sc->iterator_count = 1;
         sc->atime_ = baidu::common::timer::get_micros() / 1000;
         std::lock_guard<std::mutex> lock(mu_);
-        snapshots_.insert(std::make_pair(snapshot->GetSequenceNumber(), sc));
+        uint64_t snapshot_id = snapshot->GetSequenceNumber();
+        PDLOG(INFO, "table[%s] create new snapshot[%lu]", name_.c_str(), snapshot_id);
+        snapshots_.insert(std::make_pair(snapshot_id, sc));
     }
     ro.snapshot = sc->snapshot;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
