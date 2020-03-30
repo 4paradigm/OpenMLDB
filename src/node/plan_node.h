@@ -268,6 +268,9 @@ class WindowPlanNode : public LeafPlanNode {
     const int GetId() const { return id; }
     virtual bool Equals(const PlanNode *node) const;
 
+    const bool ExtractWindowGroupsAndOrders(ExprListNode **groups_output,
+                                      OrderByNode **orders_output) const;
+
  private:
     int id;
     std::string name;

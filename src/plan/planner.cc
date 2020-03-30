@@ -109,10 +109,13 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
     }
 
     // group by
+    bool need_agg = false;
     if (nullptr != root->group_clause_ptr_) {
         current_node = node_manager_->MakeGroupPlanNode(
             current_node, root->group_clause_ptr_);
+        need_agg = true;
     }
+
 
     // select target_list
     if (nullptr == root->GetSelectList() ||
@@ -169,7 +172,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         if (project_list_map.find(w_ptr) == project_list_map.end()) {
             if (w_ptr == nullptr) {
                 project_list_map[w_ptr] =
-                    node_manager_->MakeProjectListPlanNode(nullptr);
+                    node_manager_->MakeProjectListPlanNode(nullptr, need_agg);
 
             } else {
                 node::WindowPlanNode *w_node_ptr =
@@ -178,7 +181,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                     return status.code;
                 }
                 project_list_map[w_ptr] =
-                    node_manager_->MakeProjectListPlanNode(w_node_ptr);
+                    node_manager_->MakeProjectListPlanNode(w_node_ptr, true);
             }
         }
         node::ProjectNode *project_node_ptr =
@@ -206,7 +209,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
             dynamic_cast<node::ProjectListNode *>(project_list_vec[1]);
         node::ProjectListNode *merged_project =
             node_manager_->MakeProjectListPlanNode(
-                first_window_project->GetW());
+                first_window_project->GetW(), true);
 
         if (MergeProjectList(simple_project, first_window_project,
                              merged_project)) {

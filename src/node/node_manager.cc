@@ -156,10 +156,17 @@ ExprNode *NodeManager::MakeOrderByNode(ExprListNode *order, const bool is_asc) {
 }
 
 ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
-                                         const std::string &relation_name) {
-    ColumnRefNode *node_ptr = new ColumnRefNode(column_name, relation_name);
+                                         const std::string &relation_name,
+                                         const std::string &db_name) {
+    ColumnRefNode *node_ptr =
+        new ColumnRefNode(column_name, relation_name, db_name);
 
     return RegisterNode(node_ptr);
+}
+
+ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
+                                         const std::string &relation_name) {
+    return MakeColumnRefNode(column_name, relation_name, "");
 }
 
 ExprNode *NodeManager::MakeFuncNode(const std::string &name,
@@ -362,8 +369,8 @@ WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
 }
 
 ProjectListNode *NodeManager::MakeProjectListPlanNode(
-    const WindowPlanNode *w_ptr) {
-    ProjectListNode *node_ptr = new ProjectListNode(w_ptr, w_ptr != nullptr);
+    const WindowPlanNode *w_ptr, const bool need_agg) {
+    ProjectListNode *node_ptr = new ProjectListNode(w_ptr, need_agg);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -501,9 +508,15 @@ SQLNode *NodeManager::MakeCmdNode(node::CmdType cmd_type,
     return RegisterNode(node_ptr);
 }
 ExprNode *NodeManager::MakeAllNode(const std::string &relation_name) {
-    ExprNode *node_ptr = new AllNode(relation_name);
+    return MakeAllNode(relation_name, "");
+}
+
+ExprNode *NodeManager::MakeAllNode(const std::string &relation_name,
+                                   const std::string &db_name) {
+    ExprNode *node_ptr = new AllNode(relation_name, db_name);
     return RegisterNode(node_ptr);
 }
+
 SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
                                           const ExprListNode *columns_expr,
                                           const ExprListNode *values) {
@@ -671,6 +684,117 @@ ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos,
                                              node::ExprNode *expression) {
     return MakeProjectNode(pos, name, false, expression);
 }
+ExprNode *NodeManager::MakeEqualCondition(const std::string &db1,
+                                          const std::string &table1,
+                                          const std::string &db2,
+                                          const std::string &table2,
+                                          const node::ExprListNode *expr_list) {
+    if (nullptr == expr_list || expr_list->children_.empty()) {
+        return nullptr;
+    }
+    auto iter = expr_list->children_.cbegin();
+    auto condition =
+        MakeBinaryExprNode(MakeExprFrom(*iter, table1, db1),
+                           MakeExprFrom(*iter, table2, db2), node::kFnOpEq);
+    iter++;
+    for (; iter != expr_list->children_.cend(); iter++) {
+        auto eq =
+            MakeBinaryExprNode(MakeExprFrom(*iter, table1, db1),
+                               MakeExprFrom(*iter, table2, db2), node::kFnOpEq);
+        condition = MakeBinaryExprNode(condition, eq, kFnOpAnd);
+    }
 
+    return condition;
+}
+
+// TODO(chenjing): WindoNode, FrameNode 支持expr
+ExprNode *NodeManager::MakeExprFrom(const node::ExprNode *expr,
+                                    const std::string relation_name,
+                                    const std::string db_name) {
+    if (nullptr == expr) {
+        return nullptr;
+    }
+
+    switch (expr->expr_type_) {
+        case kExprList: {
+            auto expr_list = dynamic_cast<const ExprListNode *>(expr);
+            auto new_expr_list = MakeExprList();
+            for (auto each : expr_list->children_) {
+                new_expr_list->AddChild(
+                    MakeExprFrom(each, relation_name, db_name));
+            }
+            return new_expr_list;
+        }
+        case kExprAll: {
+            return MakeAllNode(relation_name, db_name);
+        }
+        case kExprColumnRef: {
+            auto expr_column = dynamic_cast<const ColumnRefNode *>(expr);
+            return MakeColumnRefNode(expr_column->GetColumnName(),
+                                     relation_name, db_name);
+        }
+        case kExprBinary: {
+            auto expr_binary_op = dynamic_cast<const BinaryExpr *>(expr);
+            return MakeBinaryExprNode(MakeExprFrom(expr_binary_op->children_[0],
+                                                   relation_name, db_name),
+                                      MakeExprFrom(expr_binary_op->children_[1],
+                                                   relation_name, db_name),
+                                      expr_binary_op->GetOp());
+        }
+        case kExprUnary: {
+            auto expr_unary_op = dynamic_cast<const UnaryExpr *>(expr);
+            return MakeUnaryExprNode(MakeExprFrom(expr_unary_op->children_[0],
+                                                  relation_name, db_name),
+                                     expr_unary_op->GetOp());
+        }
+        case kExprOrder: {
+            auto expr_order = dynamic_cast<const OrderByNode *>(expr);
+            return MakeOrderByNode(
+                dynamic_cast<node::ExprListNode *>(MakeExprFrom(
+                    expr_order->order_by_, relation_name, db_name)),
+                expr_order->is_asc_);
+        }
+        case kExprCall: {
+            auto expr_call = dynamic_cast<const CallExprNode *>(expr);
+            return MakeFuncNode(
+                expr_call->GetFunctionName(),
+                dynamic_cast<node::ExprListNode *>(
+                    MakeExprFrom(expr_call->GetArgs(), relation_name, db_name)),
+                expr_call->GetOver());
+        }
+
+        case kExprPrimary: {
+            auto expr_primary = dynamic_cast<const ConstNode *>(expr);
+            switch (expr_primary->GetDataType()) {
+                case node::kInt16:
+                    return MakeConstNode(expr_primary->GetSmallInt());
+                case node::kInt32:
+                    return MakeConstNode(expr_primary->GetInt());
+                case node::kInt64:
+                    return MakeConstNode(expr_primary->GetLong());
+                case node::kFloat:
+                    return MakeConstNode(expr_primary->GetFloat());
+                case node::kDouble:
+                    return MakeConstNode(expr_primary->GetDouble());
+                case node::kVarchar:
+                    return MakeConstNode(expr_primary->GetStr());
+                case node::kTimestamp:
+                    return MakeConstNode(expr_primary->GetLong(),
+                                         expr_primary->GetDataType());
+                default: {
+                    LOG(WARNING)
+                        << "fail to copy primary expr " +
+                               node::DataTypeName(expr_primary->GetDataType());
+                    return nullptr;
+                }
+            }
+        }
+        default: {
+            LOG(WARNING) << "fail to copy expr " +
+                                node::ExprTypeName(expr->expr_type_);
+            return nullptr;
+        }
+    }
+}
 }  // namespace node
 }  // namespace fesql

@@ -32,9 +32,13 @@ enum PhysicalOpType {
     kPhysicalOpRename,
     kPhysicalOpDistinct,
     kPhysicalOpJoin,
-    kPhysicalOpUnoin
+    kPhysicalOpUnoin,
+    kPhysicalOpRequestUnoin,
+    kPhysicalOpRequestGroup,
+    kPhysicalOpRequestGroupAndSort,
 };
 
+enum PhysicalSchemaType { kSchemaTypeTable, kSchemaTypeRow, kSchemaTypeGroup };
 inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
     switch (type) {
         case kPhysicalOpDataProvider:
@@ -63,6 +67,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "JOIN";
         case kPhysicalOpUnoin:
             return "UNION";
+        case kPhysicalOpRequestUnoin:
+            return "REQUEST_UNION";
         default:
             return "UNKNOW";
     }
@@ -72,7 +78,10 @@ class PhysicalOpNode;
 class PhysicalOpNode {
  public:
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
-        : type_(type), is_block_(is_block), is_lazy_(is_lazy) {}
+        : type_(type),
+          is_block_(is_block),
+          is_lazy_(is_lazy),
+          output_type(kSchemaTypeTable) {}
     virtual ~PhysicalOpNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
@@ -88,6 +97,7 @@ class PhysicalOpNode {
     const PhysicalOpType type_;
     const bool is_block_;
     const bool is_lazy_;
+    PhysicalSchemaType output_type;
     vm::Schema output_schema;
 
  protected:
@@ -128,6 +138,7 @@ class PhysicalBinaryNode : public PhysicalOpNode {
 enum DataProviderType {
     kProviderTypeTable,
     kProviderTypeIndexScan,
+    kProviderTypeIndexSeek,
     kProviderTypeRequest
 };
 
@@ -137,6 +148,8 @@ inline const std::string ScanTypeName(const DataProviderType &type) {
             return "Table";
         case kProviderTypeIndexScan:
             return "IndexScan";
+        case kProviderTypeIndexSeek:
+            return "IndexSeek";
         case kProviderTypeRequest:
             return "Request";
         default:
@@ -171,7 +184,9 @@ class PhysicalRequestProviderNode : public PhysicalDataProviderNode {
  public:
     explicit PhysicalRequestProviderNode(
         const std::shared_ptr<TableHandler> &table_handler)
-        : PhysicalDataProviderNode(table_handler, kProviderTypeRequest) {}
+        : PhysicalDataProviderNode(table_handler, kProviderTypeRequest) {
+        output_type = kSchemaTypeRow;
+    }
     virtual ~PhysicalRequestProviderNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
@@ -181,7 +196,9 @@ class PhysicalScanIndexNode : public PhysicalDataProviderNode {
     PhysicalScanIndexNode(const std::shared_ptr<TableHandler> &table_handler,
                           const std::string &index_name)
         : PhysicalDataProviderNode(table_handler, kProviderTypeIndexScan),
-          index_name_(index_name) {}
+          index_name_(index_name) {
+        output_type = kSchemaTypeGroup;
+    }
     virtual ~PhysicalScanIndexNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const std::string index_name_;
@@ -191,7 +208,9 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
  public:
     PhysicalGroupNode(PhysicalOpNode *node, const node::ExprListNode *groups)
         : PhysicalUnaryNode(node, kPhysicalOpGroupBy, true, false),
-          groups_(groups) {}
+          groups_(groups) {
+        output_type = kSchemaTypeGroup;
+    }
 
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -205,11 +224,11 @@ class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
                              const node::OrderByNode *orders)
         : PhysicalUnaryNode(node, kPhysicalOpGroupAndSort, true, false),
           groups_(groups),
-          orders_(orders) {}
-
+          orders_(orders) {
+        output_type = kSchemaTypeGroup;
+    }
     virtual ~PhysicalGroupAndSortNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-
     const node::ExprListNode *groups_;
     const node::OrderByNode *orders_;
 };
@@ -258,7 +277,9 @@ class PhysicalRowProjectNode : public PhysicalProjectNode {
  public:
     PhysicalRowProjectNode(PhysicalOpNode *node, const std::string fn_name,
                            const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kRowProject) {}
+        : PhysicalProjectNode(node, fn_name, schema, kRowProject) {
+        output_type = kSchemaTypeRow;
+    }
     virtual ~PhysicalRowProjectNode() {}
 };
 
@@ -266,14 +287,18 @@ class PhysicalTableProjectNode : public PhysicalProjectNode {
  public:
     PhysicalTableProjectNode(PhysicalOpNode *node, const std::string fn_name,
                              const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kTableProject) {}
+        : PhysicalProjectNode(node, fn_name, schema, kTableProject) {
+        output_type = kSchemaTypeTable;
+    }
     virtual ~PhysicalTableProjectNode() {}
 };
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalAggrerationNode(PhysicalOpNode *node, const std::string &fn_name,
                             const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kAggregation) {}
+        : PhysicalProjectNode(node, fn_name, schema, kAggregation) {
+        output_type = kSchemaTypeRow;
+    }
     virtual ~PhysicalAggrerationNode() {}
 };
 
@@ -284,7 +309,9 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
                                  const std::string &fn_name,
                                  const Schema &schema)
         : PhysicalProjectNode(node, fn_name, schema, kGroupAggregation),
-          groups_(groups) {}
+          groups_(groups) {
+        output_type = kSchemaTypeTable;
+    }
     virtual ~PhysicalGroupAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
@@ -303,7 +330,9 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
           groups_(groups),
           orders_(orders),
           start_offset_(start_offset),
-          end_offset_(end_offset) {}
+          end_offset_(end_offset) {
+        output_type = kSchemaTypeTable;
+    }
     virtual ~PhysicalWindowAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
@@ -327,7 +356,9 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_type_(join_type),
-          condition_(condition) {}
+          condition_(condition) {
+        output_type = kSchemaTypeTable;
+    }
     virtual ~PhysicalJoinNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::JoinType join_type_;
@@ -337,11 +368,30 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
 class PhysicalUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalUnionNode(PhysicalOpNode *left, PhysicalOpNode *right, bool is_all)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          is_all_(is_all) {}
+        : PhysicalBinaryNode(left, right, kPhysicalOpUnoin, false, true),
+          is_all_(is_all) {
+        output_type = kSchemaTypeTable;
+    }
     virtual ~PhysicalUnionNode() {}
     bool InitSchema() override;
+    virtual void Print(std::ostream &output, const std::string &tab) const;
     const bool is_all_;
+};
+
+class PhysicalRequestUnionNode : public PhysicalBinaryNode {
+ public:
+    PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                             const node::ExprListNode *groups,
+                             const node::OrderByNode *orders)
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
+          groups_(groups),
+          orders_(orders) {
+        output_type = kSchemaTypeTable;
+    }
+    virtual ~PhysicalRequestUnionNode() {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    const node::ExprListNode *groups_;
+    const node::OrderByNode *orders_;
 };
 
 class PhysicalSortNode : public PhysicalUnaryNode {

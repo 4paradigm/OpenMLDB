@@ -72,13 +72,13 @@ bool PhysicalBinaryNode::InitSchema() {
     return false;
 }
 void PhysicalTableProviderNode::Print(std::ostream& output,
-                                  const std::string& tab) const {
+                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(table=" << table_handler_->GetName() << ")";
 }
 
 void PhysicalRequestProviderNode::Print(std::ostream& output,
-                                     const std::string& tab) const {
+                                        const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(request=" << table_handler_->GetName() << ")";
 }
@@ -90,6 +90,7 @@ void PhysicalScanIndexNode::Print(std::ostream& output,
            << ", table=" << table_handler_->GetName()
            << ", index=" << index_name_ << ")";
 }
+
 void PhysicalGroupNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -209,6 +210,23 @@ bool PhysicalUnionNode::InitSchema() {
     PrintSchema();
     return true;
 }
+void PhysicalUnionNode::Print(std::ostream& output,
+                              const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
+void PhysicalRequestUnionNode::Print(std::ostream& output,
+                                     const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(groups=" << node::ExprString(groups_)
+    << " ,orders=" << node::ExprString(orders_)
+    << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
 
 }  // namespace vm
 }  // namespace fesql
