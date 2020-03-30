@@ -21,7 +21,7 @@
 #include <utility>
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
-#include "storage/codec.h"
+#include "codec/row_codec.h"
 
 namespace fesql {
 namespace codegen {
@@ -33,7 +33,7 @@ MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(
       types_(),
       next_str_pos_(),
       str_field_start_offset_(0) {
-    uint32_t offset = storage::GetStartOffset(schema_.size());
+    uint32_t offset = codec::GetStartOffset(schema_.size());
     uint32_t string_field_cnt = 0;
     for (int32_t i = 0; i < schema_.size(); i++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(i);
@@ -50,8 +50,8 @@ MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(
                 std::make_pair(string_field_cnt, string_field_cnt));
             string_field_cnt += 1;
         } else {
-            auto it = storage::TYPE_SIZE_MAP.find(column.type());
-            if (it == storage::TYPE_SIZE_MAP.end()) {
+            auto it = codec::TYPE_SIZE_MAP.find(column.type());
+            if (it == codec::TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << "fail to find column type "
                              << ::fesql::type::Type_Name(column.type());
             } else {

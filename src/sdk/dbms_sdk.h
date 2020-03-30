@@ -16,56 +16,43 @@
 
 #ifndef SRC_SDK_DBMS_SDK_H_
 #define SRC_SDK_DBMS_SDK_H_
+
 #include <memory>
-#include <string>
 #include <vector>
-#include "proto/type.pb.h"
-#include "sdk/base_struct.h"
+#include <string>
+#include "sdk/base.h"
+#include "sdk/base_impl.h"
+#include "sdk/result_set.h"
 
 namespace fesql {
 namespace sdk {
 
-class Schema {
- public:
-    Schema() {}
-    virtual ~Schema() {}
-    virtual const uint32_t GetColumnCnt() const = 0;
-    virtual const std::string &GetColumnName(uint32_t i) const = 0;
-    virtual const DataType GetColumnType(uint32_t i) const = 0;
-    virtual const bool IsColumnNotNull(uint32_t i) const = 0;
-};
-
 class DBMSSdk {
  public:
+    DBMSSdk() {}
     virtual ~DBMSSdk() {}
-    virtual void CreateGroup(
-        const GroupDef &group,
-        sdk::Status &status) = 0;  // NOLINT (runtime/references)
-    virtual void CreateDatabase(
-        const DatabaseDef &database,
-        sdk::Status &status) = 0;  // NOLINT (runtime/references)
-    virtual bool IsExistDatabase(
-        const DatabaseDef &database,
-        sdk::Status &status) = 0;  // NOLINT (runtime/references)
-    virtual std::unique_ptr<Schema> GetSchema(
-        const DatabaseDef &database, const std::string &name,
-        sdk::Status &status) = 0;  // NOLINT (runtime/references)
-    virtual void GetTables(
-        const DatabaseDef &database,
-        std::vector<std::string> &names,  // NOLINT (runtime/references)
-        sdk::Status &status) = 0;         // NOLINT (runtime/references)
-    virtual void GetDatabases(
-        std::vector<std::string> &names,  // NOLINT (runtime/references)
-        sdk::Status &status) = 0;         // NOLINT (runtime/references)
-    virtual void ExecuteScript(
-        const ExecuteRequst &request,
-        ExecuteResult &result,     // NOLINT (runtime/references)
-        sdk::Status &status) = 0;  // NOLINT (runtime/references)
+    virtual void CreateDatabase(const std::string &catalog,
+                                sdk::Status *status) {}
+
+    virtual std::shared_ptr<TableSet> GetTables(const std::string &catalog,
+                                                sdk::Status *status) {
+        return std::shared_ptr<TableSet>();
+    }
+
+    virtual std::vector<std::string> GetDatabases(sdk::Status *status) {
+        return std::vector<std::string>();
+    }
+
+    virtual std::shared_ptr<ResultSet> ExecuteQuery(const std::string &catalog,
+                                                    const std::string &sql,
+                                                    sdk::Status *status) {
+        return std::shared_ptr<ResultSet>();
+    }
 };
 
 // create a new dbms sdk with a endpoint
 // failed return NULL
-DBMSSdk *CreateDBMSSdk(const std::string &endpoint);
+std::shared_ptr<DBMSSdk> CreateDBMSSdk(const std::string &endpoint);
 
 }  // namespace sdk
 }  // namespace fesql

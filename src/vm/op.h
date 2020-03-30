@@ -24,13 +24,13 @@
 #include <vector>
 #include <memory>
 #include "proto/type.pb.h"
-#include "storage/window.h"
 #include "vm/catalog.h"
 
 namespace fesql {
 namespace vm {
 
 enum OpType { kOpProject = 1, kOpScan, kOpLimit, kOpMerge };
+
 
 struct OpNode {
     virtual ~OpNode() {}

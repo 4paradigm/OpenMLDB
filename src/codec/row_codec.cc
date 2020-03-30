@@ -1,5 +1,5 @@
 /*
- * codec.cc
+ * row_codec.cc
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,13 +15,14 @@
  * limitations under the License.
  */
 
-#include "storage/codec.h"
+#include "codec/row_codec.h"
+
 #include <utility>
 #include "glog/logging.h"
-#include "storage/type_native_fn.h"
+#include "codec/type_codec.h"
 
 namespace fesql {
-namespace storage {
+namespace codec {
 
 RowBuilder::RowBuilder(const Schema& schema)
     : schema_(schema),
@@ -572,5 +573,5 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
                            reinterpret_cast<int8_t**>(val), length);
 }
 
-}  // namespace storage
+}  // namespace codec
 }  // namespace fesql

@@ -6,12 +6,14 @@
  * Date: 2019/11/25
  *--------------------------------------------------------------------------
  **/
-#include "storage/window.h"
+#include "codec/window.h"
+
 #include <utility>
 #include "gtest/gtest.h"
 #include "proto/type.pb.h"
+
 namespace fesql {
-namespace storage {
+namespace codec {
 class WindowIteratorTest : public ::testing::Test {
  public:
     WindowIteratorTest() {}
@@ -555,7 +557,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundSlideWindowTest) {
     }
 }
 
-}  // namespace storage
+}  // namespace codec
 }  // namespace fesql
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

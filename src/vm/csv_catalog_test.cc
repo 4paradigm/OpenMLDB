@@ -31,6 +31,7 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
+#include "codec/row_codec.h"
 #include "vm/engine.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
@@ -76,7 +77,7 @@ TEST_F(CSVCatalogTest, test_handler_init) {
     CSVTableHandler handler(table_dir, table_name, db, fs);
     bool ok = handler.Init();
     ASSERT_TRUE(ok);
-    storage::RowView rv(handler.GetSchema());
+    codec::RowView rv(handler.GetSchema());
     auto it = handler.GetIterator();
     while (it->Valid()) {
         auto value = it->GetValue();

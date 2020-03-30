@@ -9,9 +9,13 @@
 #include <sys/time.h>
 #include <string>
 #include "gtest/gtest.h"
+#include "codec/row_codec.h"
 
 namespace fesql {
 namespace storage {
+using codec::RowBuilder;
+using codec::RowView;
+
 class TableTest : public ::testing::Test {
  public:
     TableTest() {}

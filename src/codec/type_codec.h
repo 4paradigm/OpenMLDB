@@ -1,5 +1,5 @@
 /*
- * type_ir_builder.h
+ * type_codec.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,18 +15,17 @@
  * limitations under the License.
  */
 
-#ifndef SRC_STORAGE_TYPE_NATIVE_FN_H_
-#define SRC_STORAGE_TYPE_NATIVE_FN_H_
+#ifndef SRC_CODEC_TYPE_CODEC_H_
+#define SRC_CODEC_TYPE_CODEC_H_
 
 #include <stdint.h>
 #include <cstddef>
 #include <string>
 #include <vector>
 #include "glog/logging.h"
-#include "vm/jit.h"
 
 namespace fesql {
-namespace storage {
+namespace codec {
 
 struct StringRef {
     uint32_t size;
@@ -71,6 +70,7 @@ inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt,
         return total_size + str_field_cnt * 4;
     }
 }
+
 inline int32_t AppendInt16(int8_t* buf_ptr, uint32_t buf_size, int16_t val,
                            uint32_t field_offset) {
     if (field_offset + 2 > buf_size) {
@@ -175,15 +175,12 @@ int32_t GetStrField(const int8_t* row, uint32_t str_field_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size);
 
 int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data);
+
 int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
                   int32_t next_str_field_offset, int32_t str_start_offset,
                   int32_t type_id, int8_t* data);
 
 }  // namespace v1
-void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
-                     ::llvm::orc::MangleAndInterner& mi);  // NOLINT
-void InitCodecSymbol(vm::FeSQLJIT* jit_ptr);
-
-}  // namespace storage
+}  // namespace codec
 }  // namespace fesql
-#endif  // SRC_STORAGE_TYPE_NATIVE_FN_H_
+#endif  // SRC_CODEC_TYPE_CODEC_H_

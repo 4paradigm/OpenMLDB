@@ -24,6 +24,8 @@
 
 namespace fesql {
 namespace storage {
+using codec::RowBuilder;
+using codec::RowView;
 
 void BuildTableSchema(type::TableDef& table_def) {  // NOLINT
     ::fesql::type::ColumnDef* col = table_def.add_columns();

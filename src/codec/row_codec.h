@@ -1,5 +1,5 @@
 /*
- * codec.h
+ * row_codec.h
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_STORAGE_CODEC_H_
-#define SRC_STORAGE_CODEC_H_
+#ifndef SRC_CODEC_ROW_CODEC_H_
+#define SRC_CODEC_ROW_CODEC_H_
 
 #include <map>
 #include <unordered_map>
@@ -25,7 +25,7 @@
 #include "vm/catalog.h"
 
 namespace fesql {
-namespace storage {
+namespace codec {
 
 #define BitMapSize(size) (((size) >> 3) + !!((size)&0x07))
 
@@ -81,7 +81,7 @@ class RowBuilder {
     bool Check(::fesql::type::Type type);
 
  private:
-    const Schema& schema_;
+    const Schema schema_;
     int8_t* buf_;
     uint32_t cnt_;
     uint32_t size_;
@@ -139,10 +139,10 @@ class RowView {
     uint32_t str_field_start_offset_;
     uint32_t size_;
     const int8_t* row_;
-    const Schema& schema_;
+    const Schema schema_;
     std::vector<uint32_t> offset_vec_;
 };
 
-}  // namespace storage
+}  // namespace codec
 }  // namespace fesql
-#endif  // SRC_STORAGE_CODEC_H_
+#endif  // SRC_CODEC_ROW_CODEC_H_

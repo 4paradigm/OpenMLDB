@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.6
+image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.8
 variables:
     GIT_SUBMODULE_STRATEGY: normal
 
@@ -14,6 +14,16 @@ style_check:
         reports:
             junit:
                 - ./style.xml
+
+build_py3sdk_and_case:
+    stage: build
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - source /opt/rh/devtoolset-7/enable && bash tools/run_py3_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - python/test/*.xml
 
 build_fesql_and_case:
     stage: build
@@ -32,6 +42,3 @@ micro_benchmark:
     script:
         - ln -sf /depends/thirdparty thirdparty
         - source /opt/rh/devtoolset-7/enable && bash tools/micro_bench.sh
-
-
-

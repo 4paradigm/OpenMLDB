@@ -32,7 +32,7 @@ namespace vm {
 uint32_t GetRowSize(const Schema& schema, uint64_t chunk_offset,
                     uint64_t array_offset,
                     const std::shared_ptr<arrow::Table>& table,
-                    storage::RowBuilder* rb) {
+                    codec::RowBuilder* rb) {
     uint32_t str_size = 0;
     for (int32_t i = 0; i < schema.size(); i++) {
         const type::ColumnDef& column = schema.Get(i);
@@ -50,7 +50,7 @@ uint32_t GetRowSize(const Schema& schema, uint64_t chunk_offset,
 
 bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
             uint64_t chunk_offset, uint64_t array_offset,
-            storage::RowBuilder* rb) {
+            codec::RowBuilder* rb) {
     std::stringstream ss;
     for (int32_t i = 0; i < schema.size(); i++) {
         const type::ColumnDef& column = schema.Get(i);

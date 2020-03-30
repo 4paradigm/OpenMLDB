@@ -36,8 +36,9 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "storage/codec.h"
-#include "storage/window.h"
+#include "codec/row_codec.h"
+#include "codec/window.h"
+#include "vm/sql_compiler.h"
 #include "udf/udf.h"
 #include "vm/jit.h"
 
@@ -116,7 +117,7 @@ class FnLetIRBuilderTest : public ::testing::Test {
         }
     }
     void BuildBuf(int8_t** buf, uint32_t* size) {
-        storage::RowBuilder builder(table_.columns());
+        codec::RowBuilder builder(table_.columns());
         uint32_t total_size = builder.CalTotalLength(1);
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);
@@ -181,7 +182,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
 
-    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::vm::InitCodecSymbol(jd, mi);
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
@@ -240,7 +241,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
 
-    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::vm::InitCodecSymbol(jd, mi);
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
@@ -293,7 +294,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
 
-    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::vm::InitCodecSymbol(jd, mi);
     ExitOnErr(J->addIRModule(
         std::move(ThreadSafeModule(std::move(m), std::move(ctx)))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_project_fn"));
@@ -344,7 +345,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
 
-    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
     ExitOnErr(J->addIRModule(
@@ -365,7 +366,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     free(ptr);
 }
 
-void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
+void BuildWindow(std::vector<fesql::codec::Row>& rows,  // NOLINT
                  int8_t** buf) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
@@ -403,7 +404,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
     }
 
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "1";
         uint32_t total_size = builder.CalTotalLength(str.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
@@ -415,10 +416,10 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(4.1);
         builder.AppendInt64(5);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "22";
         uint32_t total_size = builder.CalTotalLength(str.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
@@ -429,10 +430,10 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(44.1);
         builder.AppendInt64(55);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "333";
         uint32_t total_size = builder.CalTotalLength(str.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
@@ -443,10 +444,10 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(444.1);
         builder.AppendInt64(555);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str = "4444";
         uint32_t total_size = builder.CalTotalLength(str.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
@@ -457,10 +458,10 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(4444.1);
         builder.AppendInt64(5555);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
     {
-        storage::RowBuilder builder(table.columns());
+        codec::RowBuilder builder(table.columns());
         std::string str =
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             "a";
@@ -473,10 +474,10 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(44444.1);
         builder.AppendInt64(55555);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row{.buf = ptr, .size = total_size});
+        rows.push_back(fesql::codec::Row{.buf = ptr, .size = total_size});
     }
 
-    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(&rows);
+    ::fesql::codec::WindowImpl* w = new ::fesql::codec::WindowImpl(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 
@@ -523,7 +524,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
 
-    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
     ExitOnErr(J->addIRModule(
@@ -534,7 +535,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> window;
+    std::vector<fesql::codec::Row> window;
     BuildWindow(window, &ptr);
     LOG(INFO) << "input ptr " << ptr;
 
@@ -600,7 +601,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
 
-    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
     ExitOnErr(J->addIRModule(
@@ -611,7 +612,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> window;
+    std::vector<fesql::codec::Row> window;
     BuildWindow(window, &ptr);
     LOG(INFO) << "input ptr " << ptr;
 
@@ -676,7 +677,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
 
-    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
     ExitOnErr(J->addIRModule(
@@ -687,7 +688,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> window;
+    std::vector<fesql::codec::Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
@@ -743,7 +744,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
 
-    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
     ExitOnErr(J->addIRModule(
@@ -754,7 +755,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> window;
+    std::vector<fesql::codec::Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
@@ -833,7 +834,7 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
 
-    ::fesql::storage::InitCodecSymbol(jd, mi);
+    ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
     ExitOnErr(J->addIRModule(
@@ -844,7 +845,7 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> window;
+    std::vector<fesql::codec::Row> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(window.back().buf, ptr, 0, &output);

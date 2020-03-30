@@ -90,7 +90,7 @@ static void BuildBuf(int8_t** buf, uint32_t* size,
     index->set_name("index1");
     index->add_first_keys("col6");
     index->set_second_key("col5");
-    storage::RowBuilder builder(table.columns());
+    codec::RowBuilder builder(table.columns());
     uint32_t total_size = builder.CalTotalLength(2);
     int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
     builder.SetBuffer(ptr, total_size);
@@ -142,7 +142,7 @@ static std::shared_ptr<tablet::TabletCatalog> Data_WindowCase1(
     for (int i = 0; i < data_size; ++i) {
         std::string str1 = col0.GetValue();
         std::string str2 = col6.GetValue();
-        storage::RowBuilder builder(table_def.columns());
+        codec::RowBuilder builder(table_def.columns());
         uint32_t total_size = builder.CalTotalLength(str1.size() + str2.size());
         int8_t* ptr = static_cast<int8_t*>(malloc(total_size));
         builder.SetBuffer(ptr, total_size);

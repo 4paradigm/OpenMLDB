@@ -27,11 +27,12 @@
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
 #include "vm/sql_compiler.h"
+#include "codec/window.h"
 
 namespace fesql {
 namespace vm {
 
-using ::fesql::storage::Row;
+using ::fesql::codec::Row;
 
 class Engine;
 

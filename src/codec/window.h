@@ -7,14 +7,17 @@
  *--------------------------------------------------------------------------
  **/
 
-#ifndef SRC_STORAGE_WINDOW_H_
-#define SRC_STORAGE_WINDOW_H_
+#ifndef SRC_CODEC_WINDOW_H_
+#define SRC_CODEC_WINDOW_H_
 #include <cstdint>
 #include <iostream>
 #include <vector>
-#include "storage/type_native_fn.h"
+
+#include "codec/type_codec.h"
+
 namespace fesql {
-namespace storage {
+namespace codec {
+
 template <class V>
 class IteratorImpl;
 
@@ -83,18 +86,18 @@ class ColumnImpl : public WrapListImpl<V, Row> {
     uint32_t offset_;
 };
 
-class StringColumnImpl : public ColumnImpl<fesql::storage::StringRef> {
+class StringColumnImpl : public ColumnImpl<StringRef> {
  public:
     StringColumnImpl(const ListV<Row> &impl, int32_t str_field_offset,
                      int32_t next_str_field_offset, int32_t str_start_offset)
-        : ColumnImpl<::fesql::storage::StringRef>(impl, 0u),
+        : ColumnImpl<StringRef>(impl, 0u),
           str_field_offset_(str_field_offset),
           next_str_field_offset_(next_str_field_offset),
           str_start_offset_(str_start_offset) {}
     const StringRef GetField(Row row) const override {
-        int32_t addr_space = fesql::storage::v1::GetAddrSpace(row.size);
-        fesql::storage::StringRef value;
-        fesql::storage::v1::GetStrField(
+        int32_t addr_space = v1::GetAddrSpace(row.size);
+        StringRef value;
+        v1::GetStrField(
             row.buf, str_field_offset_, next_str_field_offset_,
             str_start_offset_, addr_space,
             reinterpret_cast<int8_t **>(&(value.data)), &(value.size));
@@ -320,7 +323,7 @@ class IteratorImpl : public IteratorV<V> {
 typedef IteratorImpl<Row> WindowIteratorImpl;
 typedef ListV<Row> WindowImpl;
 
-}  // namespace storage
+}  // namespace codec
 }  // namespace fesql
 
-#endif  // SRC_STORAGE_WINDOW_H_
+#endif  // SRC_CODEC_WINDOW_H_

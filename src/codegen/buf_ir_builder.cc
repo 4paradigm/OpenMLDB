@@ -21,7 +21,7 @@
 #include <vector>
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
-#include "storage/codec.h"
+#include "codec/row_codec.h"
 
 namespace fesql {
 namespace codegen {
@@ -32,7 +32,7 @@ BufNativeIRBuilder::BufNativeIRBuilder(const vm::Schema& schema,
     : schema_(schema), block_(block), sv_(scope_var),
 variable_ir_builder_(block, scope_var),
  types_() {
-    uint32_t offset = storage::GetStartOffset(schema_.size());
+    uint32_t offset = codec::GetStartOffset(schema_.size());
     uint32_t string_field_cnt = 0;
     for (int32_t i = 0; i < schema_.size(); i++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(i);
@@ -49,8 +49,8 @@ variable_ir_builder_(block, scope_var),
                 std::make_pair(string_field_cnt, string_field_cnt));
             string_field_cnt += 1;
         } else {
-            auto it = storage::TYPE_SIZE_MAP.find(column.type());
-            if (it == storage::TYPE_SIZE_MAP.end()) {
+            auto it = codec::TYPE_SIZE_MAP.find(column.type());
+            if (it == codec::TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << "fail to find column type "
                              << ::fesql::type::Type_Name(column.type());
             } else {
@@ -249,15 +249,15 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
       offset_vec_(),
       str_field_cnt_(0),
       block_(block) {
-    str_field_start_offset_ = storage::GetStartOffset(schema_.size());
+    str_field_start_offset_ = codec::GetStartOffset(schema_.size());
     for (int32_t idx = 0; idx < schema_.size(); idx++) {
         const ::fesql::type::ColumnDef& column = schema_.Get(idx);
         if (column.type() == ::fesql::type::kVarchar) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
         } else {
-            auto it = storage::TYPE_SIZE_MAP.find(column.type());
-            if (it == storage::TYPE_SIZE_MAP.end()) {
+            auto it = codec::TYPE_SIZE_MAP.find(column.type());
+            if (it == codec::TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << ::fesql::type::Type_Name(column.type())
                              << " is not supported";
             } else {

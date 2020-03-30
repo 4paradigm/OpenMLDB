@@ -1,5 +1,5 @@
 /*
- * codec_test.cc
+ * row_codec_test.cc
  * Copyright (C) 4paradigm.com 2019 denglong <denglong@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,13 +15,14 @@
  * limitations under the License.
  */
 
-#include "storage/codec.h"
+#include "codec/row_codec.h"
 #include <string>
 #include <vector>
 #include "gtest/gtest.h"
 
 namespace fesql {
-namespace storage {
+namespace codec {
+
 class CodecTest : public ::testing::Test {};
 
 TEST_F(CodecTest, NULLTest) {
@@ -332,8 +333,9 @@ TEST_F(CodecTest, ManyCol) {
     }
 }
 
-}  // namespace storage
+}  // namespace codec
 }  // namespace fesql
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

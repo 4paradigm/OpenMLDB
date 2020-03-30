@@ -21,8 +21,7 @@
 #include <string>
 #include <vector>
 #include "node/node_enum.h"
-#include "storage/codec.h"
-#include "codegen/ir_base_builder.h"
+#include "codec/row_codec.h"
 
 namespace fesql {
 namespace codegen {
