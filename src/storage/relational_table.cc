@@ -56,6 +56,12 @@ RelationalTable::~RelationalTable() {
     for (auto handle : cf_hs_) {
         delete handle;
     }
+    for (auto iter = snapshots_.begin(); iter != snapshots_.end(); iter++) {
+        SnapshotCounter* sc;
+        sc = iter->second;
+        iter = snapshots_.erase(iter);
+        delete sc;
+    }
     if (db_ != nullptr) {
         db_->Close();
         delete db_;
@@ -565,19 +571,24 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
 
 void RelationalTable::ReleaseSnpashot(uint64_t seq, bool finish) {
     SnapshotCounter* sc;
-    std::lock_guard<std::mutex> lock(mu_);
-    auto iter = snapshots_.find(seq);
-    if (iter == snapshots_.end()) {
-        return;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = snapshots_.find(seq);
+        if (iter == snapshots_.end()) {
+            return;
+        }
+        sc = iter->second;
     }
-    sc = iter->second;
-    sc->iterator_count--;
+    sc->iterator_count.fetch_sub(1, std::memory_order_relaxed);
     if (finish) {
-        sc->unfinish_count--;
+        sc->unfinish_count.fetch_sub(1, std::memory_order_relaxed);
     }
-    if (sc->iterator_count == 0 && sc->unfinish_count == 0) {
-        PDLOG(INFO, "table[%s] release snapshot[%lu]", name_.c_str(), iter->first);
-        snapshots_.erase(iter);
+    if (sc->iterator_count.load(std::memory_order_relaxed) == 0 && sc->unfinish_count.load(std::memory_order_relaxed)  == 0) {
+        PDLOG(INFO, "table[%s] release snapshot[%lu]", name_.c_str(), seq);
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            snapshots_.erase(seq);
+        }
         db_->ReleaseSnapshot(sc->snapshot);
         delete sc;
     }
@@ -587,7 +598,7 @@ void RelationalTable::LRUSnapshot() {
     uint64_t cur_time = baidu::common::timer::get_micros() / 1000;
     std::lock_guard<std::mutex> lock(mu_);
     for (auto iter = snapshots_.begin(); iter != snapshots_.end(); iter++)  {
-        if (cur_time - iter->second->atime_ > 2*60*60) {
+        if (cur_time - iter->second->atime.load(std::memory_order_relaxed) > 2*60*60) {
             PDLOG(INFO, "table[%s] release snapshot[%lu]", name_.c_str(), iter->first);
             iter = snapshots_.erase(iter);
         }
@@ -607,8 +618,10 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint
         auto iter = snapshots_.find(snapshot_id);
         if (iter != snapshots_.end()) {
             sc = iter->second;
-            sc->iterator_count++;
-            sc->atime_ = baidu::common::timer::get_micros() / 1000;
+            sc->iterator_count.fetch_add(1, std::memory_order_relaxed);
+            sc->unfinish_count.fetch_add(1, std::memory_order_relaxed);
+            uint64_t atime = baidu::common::timer::get_micros() / 1000;
+            sc->atime.store(atime, std::memory_order_relaxed);
         } else {
             return NULL;
         }
@@ -618,15 +631,17 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint
         auto iter = snapshots_.find(snapshot_id);
         if (iter != snapshots_.end()) {
             sc = iter->second;
-            sc->iterator_count++;
-            sc->unfinish_count++;
+            sc->iterator_count.fetch_add(1, std::memory_order_relaxed);
+            sc->unfinish_count.fetch_add(1, std::memory_order_relaxed);
+            uint64_t atime = baidu::common::timer::get_micros() / 1000;
+            sc->atime.store(atime, std::memory_order_relaxed);
             db_->ReleaseSnapshot(snapshot); // TODO(kongquan): write case test if this snapshot deleted, does it effeat sc->snapshot
         } else {
             sc = new SnapshotCounter;
             sc->snapshot = snapshot;
             sc->unfinish_count = 1;
             sc->iterator_count = 1;
-            sc->atime_ = baidu::common::timer::get_micros() / 1000;
+            sc->atime = baidu::common::timer::get_micros() / 1000;
             PDLOG(INFO, "table[%s] create new snapshot[%lu]", name_.c_str(), snapshot_id);
             snapshots_.insert(std::make_pair(snapshot_id, sc));
         }

@@ -61,10 +61,10 @@ class RelationalTableTraverseIterator {
 };
 
 struct SnapshotCounter {
-    uint32_t iterator_count;
-    uint32_t unfinish_count; // should remove this field, because traverse process maybe interrupt by client
+    std::atomic<uint32_t> iterator_count;
+    std::atomic<uint32_t> unfinish_count;
     const rocksdb::Snapshot* snapshot;
-    uint64_t atime_;
+    std::atomic<uint64_t> atime;
 };
 
 class RelationalTable {
