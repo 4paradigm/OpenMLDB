@@ -47,11 +47,23 @@ typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::IndexDef>
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
 
-class Iterator {
+template <class K, class V>
+class IteratorV {
  public:
-    Iterator() {}
+    IteratorV() {}
+    virtual ~IteratorV() {}
+    virtual void Seek(K key) = 0;
+    virtual bool Valid() = 0;
+    virtual void Next() = 0;
+    virtual const V GetValue() = 0;
+    virtual const K GetKey() = 0;
+};
 
-    virtual ~Iterator() {}
+class SliceIterator : public IteratorV<uint64_t, base::Slice> {
+ public:
+    SliceIterator() {}
+
+    virtual ~SliceIterator() {}
 
     virtual void Seek(uint64_t ts) = 0;
 
@@ -74,7 +86,7 @@ class WindowIterator {
     virtual void SeekToFirst() = 0;
     virtual void Next() = 0;
     virtual bool Valid() = 0;
-    virtual std::unique_ptr<Iterator> GetValue() = 0;
+    virtual std::unique_ptr<SliceIterator> GetValue() = 0;
     virtual const base::Slice GetKey() = 0;
 };
 
@@ -125,9 +137,8 @@ class TableHandler : public DataHandler {
     // get the index information
     virtual const IndexHint& GetIndex() = 0;
 
-    virtual const base::Slice Get(int32_t pos) = 0;
     // get the table iterator
-    virtual std::unique_ptr<Iterator> GetIterator() = 0;
+    virtual std::unique_ptr<SliceIterator> GetIterator() = 0;
 
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) = 0;
@@ -138,8 +149,8 @@ class PartitionHandler : public TableHandler {
  public:
     PartitionHandler() : TableHandler() {}
     ~PartitionHandler() {}
-    virtual std::unique_ptr<Iterator> GetIterator() {
-        return std::unique_ptr<Iterator>();
+    virtual std::unique_ptr<SliceIterator> GetIterator() {
+        return std::unique_ptr<SliceIterator>();
     }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) {

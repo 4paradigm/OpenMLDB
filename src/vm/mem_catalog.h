@@ -44,7 +44,7 @@ typedef std::vector<std::pair<uint64_t, Row>> MemSegment;
 typedef std::map<std::string, MemSegment, std::greater<std::string>>
     MemSegmentMap;
 
-class MemTableIterator : public Iterator {
+class MemTableIterator : public SliceIterator {
  public:
     MemTableIterator(const MemSegment* table, const vm::Schema& schema);
     ~MemTableIterator();
@@ -76,7 +76,7 @@ class MemWindowIterator : public WindowIterator {
     void SeekToFirst();
     void Next();
     bool Valid();
-    std::unique_ptr<Iterator> GetValue();
+    std::unique_ptr<SliceIterator> GetValue();
     const base::Slice GetKey();
 
  private:
@@ -118,14 +118,13 @@ class MemTableHandler : public TableHandler {
     inline const Schema& GetSchema() { return schema_; }
     inline const std::string& GetName() { return table_name_; }
     inline const IndexHint& GetIndex() { return index_hint_; }
-    std::unique_ptr<Iterator> GetIterator();
+    std::unique_ptr<SliceIterator> GetIterator();
     inline const std::string& GetDatabase() { return db_; }
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     void AddRow(const Row& row);
     void AddRow(const uint64_t key, const Row& row);
     void Sort(const bool is_asc);
-    const base::Slice Get(int32_t pos) override;
 
  private:
     std::string table_name_;

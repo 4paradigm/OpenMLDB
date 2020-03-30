@@ -51,8 +51,8 @@ void MemWindowIterator::Seek(const std::string& key) {
 void MemWindowIterator::SeekToFirst() { iter_ = partitions_->cbegin(); }
 void MemWindowIterator::Next() { iter_++; }
 bool MemWindowIterator::Valid() { return partitions_->cend() != iter_; }
-std::unique_ptr<Iterator> MemWindowIterator::GetValue() {
-    std::unique_ptr<Iterator> it = std::unique_ptr<Iterator>(
+std::unique_ptr<SliceIterator> MemWindowIterator::GetValue() {
+    std::unique_ptr<SliceIterator> it = std::unique_ptr<SliceIterator>(
         new MemTableIterator(&(iter_->second), schema_));
     return std::move(it);
 }
@@ -67,7 +67,7 @@ MemTableHandler::MemTableHandler(const std::string& table_name,
     : TableHandler(), table_name_(table_name), db_(db), schema_(schema) {}
 
 MemTableHandler::~MemTableHandler() {}
-std::unique_ptr<Iterator> MemTableHandler::GetIterator() {
+std::unique_ptr<SliceIterator> MemTableHandler::GetIterator() {
     std::unique_ptr<MemTableIterator> it(
         new MemTableIterator(&table_, schema_));
     return std::move(it);
@@ -93,14 +93,6 @@ void MemTableHandler::Sort(const bool is_asc) {
         DescComparor comparor;
         std::sort(table_.begin(), table_.end(), comparor);
     }
-}
-
-const base::Slice MemTableHandler::Get(int32_t pos) {
-    if (pos < 0 || table_.size() >= pos) {
-        return base::Slice();
-    }
-    auto slice = table_.at(pos).second;
-    return base::Slice(reinterpret_cast<char*>(slice.buf), slice.size);
 }
 
 MemPartitionHandler::MemPartitionHandler(const Schema& schema)

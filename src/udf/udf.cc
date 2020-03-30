@@ -48,7 +48,8 @@ V sum_list(int8_t *input) {
         (::fesql::storage::ListV<V> *)(list_ref->list);
     IteratorImpl<V> iter(*col);
     while (iter.Valid()) {
-        result += iter.Next();
+        result += iter.GetValue();
+        iter.Next();
     }
     return result;
 }
@@ -65,7 +66,8 @@ double avg_list(int8_t *input) {
     IteratorImpl<V> iter(*col);
     int32_t cnt = 0;
     while (iter.Valid()) {
-        result += iter.Next();
+        result += iter.GetValue();
+        iter.Next();
         cnt++;
     }
     return static_cast<double>(result) / cnt;
@@ -93,10 +95,12 @@ V max_list(int8_t *input) {
     IteratorImpl<V> iter(*col);
 
     if (iter.Valid()) {
-        result = iter.Next();
+        result = iter.GetValue();
+        iter.Next();
     }
     while (iter.Valid()) {
-        V v = iter.Next();
+        V v = iter.GetValue();
+        iter.Next();
         if (v > result) {
             result = v;
         }
@@ -116,10 +120,12 @@ V min_list(int8_t *input) {
     IteratorImpl<V> iter(*col);
 
     if (iter.Valid()) {
-        result = iter.Next();
+        result = iter.GetValue();
+        iter.Next();
     }
     while (iter.Valid()) {
-        V v = iter.Next();
+        V v = iter.GetValue();
+        iter.Next();
         if (v < result) {
             result = v;
         }
@@ -169,7 +175,9 @@ V next_iterator(int8_t *input) {
         (::fesql::storage::IteratorRef *)(input);
     ::fesql::storage::IteratorImpl<V> *iter =
         (::fesql::storage::IteratorImpl<V> *)(iter_ref->iterator);
-    return iter->Next();
+    V v = iter->GetValue();
+    iter->Next();
+    return v;
 }
 
 }  // namespace v1

@@ -295,21 +295,26 @@ void StoreData(::fesql::storage::Table* table, int8_t* rows) {
     ::fesql::storage::WindowIteratorImpl* w =
         new storage::WindowIteratorImpl(*window);
     ASSERT_TRUE(w->Valid());
-    ::fesql::storage::Row row = w->Next();
+    ::fesql::storage::Row row = w->GetValue();
+    w->Next();
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
 
     ASSERT_TRUE(w->Valid());
-    row = w->Next();
+    row = w->GetValue();
+    w->Next();
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
 
     ASSERT_TRUE(w->Valid());
-    row = w->Next();
+    row = w->GetValue();
+    w->Next();
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
     ASSERT_TRUE(w->Valid());
-    row = w->Next();
+    row = w->GetValue();
+    w->Next();
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
     ASSERT_TRUE(w->Valid());
-    row = w->Next();
+    row = w->GetValue();
+    w->Next();
     ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf), row.size));
 }
 

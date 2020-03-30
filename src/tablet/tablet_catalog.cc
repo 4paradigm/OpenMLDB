@@ -81,7 +81,7 @@ bool TabletTableHandler::Init() {
     return true;
 }
 
-std::unique_ptr<vm::Iterator> TabletTableHandler::GetIterator() {
+std::unique_ptr<vm::SliceIterator> TabletTableHandler::GetIterator() {
     std::unique_ptr<storage::FullTableIterator> it(
         new storage::FullTableIterator(table_->GetSegments(),
                                        table_->GetSegCnt(), table_));
@@ -172,7 +172,7 @@ TabletSegmentHandler::TabletSegmentHandler(
     const std::string& key)
     : TableHandler(), partition_hander_(partition_hander), key_(key) {}
 TabletSegmentHandler::~TabletSegmentHandler() {}
-std::unique_ptr<vm::Iterator> TabletSegmentHandler::GetIterator() {
+std::unique_ptr<vm::SliceIterator> TabletSegmentHandler::GetIterator() {
     auto iter = partition_hander_->GetWindowIterator();
     iter->Seek(key_);
     return iter->GetValue();

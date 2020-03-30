@@ -52,7 +52,7 @@ class TabletTableHandler : public vm::TableHandler {
 
     inline std::shared_ptr<storage::Table> GetTable() { return table_; }
 
-    std::unique_ptr<vm::Iterator> GetIterator();
+    std::unique_ptr<vm::SliceIterator> GetIterator();
 
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& idx_name);
@@ -126,7 +126,7 @@ class TabletSegmentHandler : public vm::TableHandler {
 
     inline const vm::IndexHint& GetIndex() { return partition_hander_->GetIndex(); }
 
-    std::unique_ptr<vm::Iterator> GetIterator();
+    std::unique_ptr<vm::SliceIterator> GetIterator();
 
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& idx_name);

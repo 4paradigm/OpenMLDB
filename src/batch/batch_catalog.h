@@ -55,7 +55,7 @@ class BatchTableHandler : public vm::TableHandler {
 
     inline const vm::IndexHint& GetIndex() { return index_hint_; }
 
-    std::unique_ptr<vm::Iterator> GetIterator() {}
+    std::unique_ptr<vm::SliceIterator> GetIterator() {}
 
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& index_name) {}

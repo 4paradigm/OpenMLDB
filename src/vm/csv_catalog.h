@@ -80,7 +80,7 @@ class CSVTableHandler : public TableHandler {
 
     inline const IndexHint& GetIndex() { return index_hint_; }
 
-    std::unique_ptr<Iterator> GetIterator();
+    std::unique_ptr<SliceIterator> GetIterator();
 
     inline const std::string& GetDatabase() { return db_; }
 

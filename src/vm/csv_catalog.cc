@@ -366,7 +366,7 @@ int32_t CSVTableHandler::GetColumnIndex(const std::string& name) {
     }
     return -1;
 }
-std::unique_ptr<Iterator> CSVTableHandler::GetIterator() {
+std::unique_ptr<SliceIterator> CSVTableHandler::GetIterator() {
     std::unique_ptr<CSVTableIterator> it(new CSVTableIterator(table_, schema_));
     return std::move(it);
 }

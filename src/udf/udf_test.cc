@@ -268,11 +268,14 @@ TEST_F(UDFTest, GetColTest) {
                 list_ref.list);
         ::fesql::storage::IteratorImpl<int16_t> col_iterator(*col);
         ASSERT_TRUE(col_iterator.Valid());
-        ASSERT_EQ(1, col_iterator.Next());
+        ASSERT_EQ(1, col_iterator.GetValue());
+        col_iterator.Next();
         ASSERT_TRUE(col_iterator.Valid());
-        ASSERT_EQ(11, col_iterator.Next());
+        ASSERT_EQ(11, col_iterator.GetValue());
+        col_iterator.Next();
         ASSERT_TRUE(col_iterator.Valid());
-        ASSERT_EQ(111, col_iterator.Next());
+        ASSERT_EQ(111, col_iterator.GetValue());
+        col_iterator.Next();
         ASSERT_FALSE(col_iterator.Valid());
     }
 }

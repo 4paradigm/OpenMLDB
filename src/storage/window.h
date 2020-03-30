@@ -14,6 +14,7 @@
 #include <vector>
 #include "base/slice.h"
 #include "storage/type_native_fn.h"
+#include "vm/catalog.h"
 namespace fesql {
 namespace storage {
 template <class V>
@@ -270,17 +271,7 @@ class CurrentHistoryUnboundSlideWindow : public SlideWindow {
 };
 
 template <class V>
-class IteratorV {
- public:
-    IteratorV() {}
-    virtual ~IteratorV() {}
-    virtual const bool Valid() const = 0;
-    virtual V Next() = 0;
-    virtual void reset() = 0;
-};
-
-template <class V>
-class IteratorImpl : public IteratorV<V> {
+class IteratorImpl : public vm::IteratorV<int32_t, V> {
  public:
     explicit IteratorImpl(const ListV<V> &list)
         : list_(list),
@@ -298,12 +289,15 @@ class IteratorImpl : public IteratorV<V> {
         : list_(list), iter_start_(start), iter_end_(end), pos_(start) {}
 
     ~IteratorImpl() {}
-    const bool Valid() const { return pos_ < iter_end_; }
+    void Seek(int32_t key) override {
+        pos_ = key < iter_start_ ? key : key > iter_end_ ? iter_end_ : key;
+    }
 
-    V Next() { return list_.At(pos_++); }
-
+    bool Valid() override { return pos_ < iter_end_; }
+    void Next() override { pos_++; }
+    const V GetValue() override { return list_.At(pos_); }
+    const int32_t GetKey() override { return pos_; }
     void reset() { pos_ = iter_start_; }
-
     IteratorImpl<V> *range(int start, int end) {
         if (start > end || end < iter_start_ || start > iter_end_) {
             return new IteratorImpl(list_, iter_start_, iter_start_);
