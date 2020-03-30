@@ -65,7 +65,6 @@ if (COVERAGE_ENABLE)
     endif()
 endif()
 
-<<<<<<< HEAD
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -82,13 +81,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         "-Wl,-U,_ProfilerStop")
 endif()
 
-=======
-set(arrow_libs parquet arrow_dataset arrow brotlidec brotlienc 
-    brotlicommon
-    thrift lz4 z zstd double-conversion boost_filesystem snappy)
 set(boost_libs boost_graph)
-llvm_map_components_to_libnames(llvm_libs support core orcjit nativecodegen)
->>>>>>> 605a8f3d5f148ad7022e98862ecfc9dcfb87598c
 add_definitions('-g')
 add_definitions('-Wall')
 add_definitions('-std=c++14')
