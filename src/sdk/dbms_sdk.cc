@@ -19,10 +19,11 @@
 #include <iostream>
 #include <memory>
 #include <utility>
-#include "plan/planner.h"
+#include <string>
 #include "brpc/channel.h"
 #include "node/node_manager.h"
 #include "parser/parser.h"
+#include "plan/planner.h"
 #include "proto/dbms.pb.h"
 #include "sdk/result_set_impl.h"
 #include "sdk/tablet_sdk.h"

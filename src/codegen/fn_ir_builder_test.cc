@@ -16,10 +16,10 @@
  */
 
 #include "codegen/fn_ir_builder.h"
-#include <llvm/Transforms/Utils.h>
 #include <memory>
 #include <string>
 #include <utility>
+#include "codec/window.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -39,7 +39,6 @@
 #include "parser/parser.h"
 #include "udf/udf.h"
 #include "vm/sql_compiler.h"
-#include "codec/window.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -243,15 +242,15 @@ TEST_F(FnIRBuilderTest, test_list_at_pos) {
     fesql::codec::ListRef list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 1, &list_ref,
-                                                             0);
+                                                           0);
     CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 3, &list_ref,
-                                                             1);
+                                                           1);
     CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 5, &list_ref,
-                                                             2);
+                                                           2);
     CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 7, &list_ref,
-                                                             3);
+                                                           3);
     CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 9, &list_ref,
-                                                             4);
+                                                           4);
 }
 
 TEST_F(FnIRBuilderTest, test_for_in_sum) {
@@ -289,12 +288,12 @@ TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {
     list_ref.list = reinterpret_cast<int8_t *>(&list);
     CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
         test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
-        test, 3 + 5 + 7 + 9, &list_ref, 1);
-    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(
-        test, 3 + 5 + 7 + 9, &list_ref, 2);
+    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 3 + 5 + 7 + 9,
+                                                           &list_ref, 1);
+    CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 3 + 5 + 7 + 9,
+                                                           &list_ref, 2);
     CheckResult<int32_t, fesql::codec::ListRef *, int32_t>(test, 5 + 7 + 9,
-                                                             &list_ref, 3);
+                                                           &list_ref, 3);
 }
 
 TEST_F(FnIRBuilderTest, test_for_in_condition2_sum) {

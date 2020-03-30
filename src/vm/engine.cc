@@ -20,9 +20,9 @@
 #include <utility>
 #include <vector>
 #include "base/strings.h"
-#include "codegen/buf_ir_builder.h"
 #include "codec/row_codec.h"
 #include "codec/window.h"
+#include "codegen/buf_ir_builder.h"
 
 namespace fesql {
 namespace vm {
@@ -293,8 +293,9 @@ int32_t RunSession::RunOne(const Row& in_row, Row& out_row) {
                         }
                         fesql::codec::ListV<Row> list(&window);
                         fesql::codec::WindowImpl impl(list);
-                        uint32_t ret = udf(row.buf, reinterpret_cast<int8_t*>(&impl),
-                                           row.size, &output);
+                        uint32_t ret =
+                            udf(row.buf, reinterpret_cast<int8_t*>(&impl),
+                                row.size, &output);
                         if (ret != 0) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;
@@ -425,7 +426,8 @@ int32_t RunSession::RunBatch(std::vector<int8_t*>& buf, uint64_t limit) {
                             size_t output_size = 0;
                             // handle window
                             fesql::codec::WindowImpl impl(window);
-                            uint32_t ret = udf(iter->second.buf, reinterpret_cast<int8_t*>(&impl),
+                            uint32_t ret = udf(iter->second.buf,
+                                               reinterpret_cast<int8_t*>(&impl),
                                                0, &output);
                             if (ret != 0) {
                                 LOG(WARNING) << "fail to run udf " << ret;
@@ -720,8 +722,9 @@ int32_t RunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
                             single_window_it->Next();
                         }
                         fesql::codec::WindowImpl impl(&window);
-                        uint32_t ret = udf(row.buf, reinterpret_cast<int8_t*>(&impl),
-                                           row.size, &output);
+                        uint32_t ret =
+                            udf(row.buf, reinterpret_cast<int8_t*>(&impl),
+                                row.size, &output);
                         if (ret != 0) {
                             LOG(WARNING) << "fail to run udf " << ret;
                             return 1;

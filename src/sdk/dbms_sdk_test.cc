@@ -9,6 +9,7 @@
 
 #include "sdk/dbms_sdk.h"
 #include <unistd.h>
+#include <string>
 #include "brpc/server.h"
 #include "dbms/dbms_server_impl.h"
 #include "gflags/gflags.h"

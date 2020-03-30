@@ -17,11 +17,12 @@
 #ifndef SRC_SDK_DBMS_SDK_H_
 #define SRC_SDK_DBMS_SDK_H_
 
-#include <vector>
 #include <memory>
+#include <vector>
+#include <string>
 #include "sdk/base.h"
-#include "sdk/result_set.h"
 #include "sdk/base_impl.h"
+#include "sdk/result_set.h"
 
 namespace fesql {
 namespace sdk {
@@ -30,24 +31,21 @@ class DBMSSdk {
  public:
     DBMSSdk() {}
     virtual ~DBMSSdk() {}
-    virtual void CreateDatabase(
-        const std::string& catalog,
-        sdk::Status *status) {}
+    virtual void CreateDatabase(const std::string &catalog,
+                                sdk::Status *status) {}
 
-    virtual std::shared_ptr<TableSet> GetTables(
-        const std::string& catalog,
-        sdk::Status *status) {
+    virtual std::shared_ptr<TableSet> GetTables(const std::string &catalog,
+                                                sdk::Status *status) {
         return std::shared_ptr<TableSet>();
     }
 
-    virtual std::vector<std::string> GetDatabases(
-        sdk::Status *status) {
+    virtual std::vector<std::string> GetDatabases(sdk::Status *status) {
         return std::vector<std::string>();
     }
 
-    virtual std::shared_ptr<ResultSet>  ExecuteQuery(const std::string& catalog,
-            const std::string& sql,
-            sdk::Status *status) {
+    virtual std::shared_ptr<ResultSet> ExecuteQuery(const std::string &catalog,
+                                                    const std::string &sql,
+                                                    sdk::Status *status) {
         return std::shared_ptr<ResultSet>();
     }
 };
