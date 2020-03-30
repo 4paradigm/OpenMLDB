@@ -59,7 +59,6 @@ public:
     RelationalTable(const std::string& name,
                 uint32_t id,
                 uint32_t pid,
-                const std::map<std::string, uint32_t>& mapping,
                 ::rtidb::common::StorageMode storage_mode,
                 const std::string& db_root_path);
 
@@ -139,8 +138,16 @@ public:
         offset_.store(offset, std::memory_order_relaxed);
     }
 
-    inline std::map<std::string, uint32_t>& GetMapping() {
-        return mapping_;
+    std::vector<std::shared_ptr<IndexDef>> GetAllIndex() {
+        return table_index_.GetAllIndex();
+    }
+
+    std::shared_ptr<IndexDef> GetIndex(const std::string& name) {
+        return table_index_.GetIndex(name);
+    }
+
+    std::shared_ptr<IndexDef> GetIndex(uint32_t idx) {
+        return table_index_.GetIndex(idx);
     }
 
     inline ::rtidb::api::TableMeta& GetTableMeta() {
@@ -157,8 +164,7 @@ private:
     std::atomic<uint64_t> diskused_;
     bool is_leader_;
     std::atomic<uint32_t> table_status_;
-    std::string schema_;
-    std::map<std::string, uint32_t> mapping_;
+    TableIndex table_index_;
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;
     int64_t last_make_snapshot_time_;
@@ -172,6 +178,13 @@ private:
     std::string db_root_path_;
 
     ::rtidb::base::IdGenerator id_generator_;
+    bool has_auto_gen_;
+    int pk_idx_;
+    ::rtidb::type::DataType pk_data_type_;
+    std::string pk_col_name_;
+    std::vector<std::string> unique_col_name_vec_;
+    std::vector<std::string> no_unique_col_name_vec_;
+
 };
 
 }

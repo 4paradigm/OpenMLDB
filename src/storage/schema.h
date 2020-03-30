@@ -64,6 +64,8 @@ class IndexDef {
 public:
     IndexDef(const std::string& name, uint32_t id);
     IndexDef(const std::string& name, uint32_t id, IndexStatus stauts);
+    IndexDef(const std::string& name, uint32_t id, 
+            const ::rtidb::type::IndexType& type, const IndexStatus& stauts);
     ~IndexDef();
     const std::string& GetName() { return name_; }
     const std::vector<uint32_t>& GetTsColumn() { return ts_column_; }
@@ -79,6 +81,9 @@ public:
     }
     IndexStatus GetStatus() { 
         return status_.load(std::memory_order_relaxed);
+    }
+    inline ::rtidb::type::IndexType& GetType() {
+        return type_;
     }
 
 private:
