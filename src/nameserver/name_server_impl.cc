@@ -7629,6 +7629,13 @@ int NameServerImpl::DropTableRemoteTask(std::shared_ptr<OPData> op_data) {
         PDLOG(WARNING, "replica cluster [%s] is not online", alias.c_str());
         return -1;
     }
+    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+        PDLOG(WARNING,
+              "create DropTableRemote task failed for cluster[%s] because "
+              "cluster status is not health. table[%s] pid[%u]",
+              alias.c_str(), name.c_str(), op_data->op_info_.pid());
+        return -1;
+    }
     std::shared_ptr<Task> task =
         DropTableRemoteTask(name, alias, op_data->op_info_.op_id(),
                             ::rtidb::api::OPType::kDropTableRemoteOP);
@@ -7702,6 +7709,14 @@ int NameServerImpl::CreateTableRemoteTask(std::shared_ptr<OPData> op_data) {
     auto it = nsc_.find(alias);
     if (it == nsc_.end()) {
         PDLOG(WARNING, "replica cluster [%s] is not online", alias.c_str());
+        return -1;
+    }
+    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+        PDLOG(WARNING,
+              "create CreateTableRemote task failed for cluster[%s] because "
+              "cluster is not health. table[%s] pid[%u]",
+              alias.c_str(), remote_table_info.name().c_str(),
+              op_data->op_info_.pid());
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
@@ -8150,6 +8165,11 @@ std::shared_ptr<Task> NameServerImpl::DropTableRemoteTask(
     if (it == nsc_.end()) {
         return std::shared_ptr<Task>();
     }
+    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+        PDLOG(WARNING, "replica[%s] not health op_index[%lu]", alias.c_str(),
+              op_index);
+        return std::shared_ptr<Task>();
+    }
     std::shared_ptr<Task> task =
         std::make_shared<Task>(it->second->client_->GetEndpoint(),
                                std::make_shared<::rtidb::api::TaskInfo>());
@@ -8172,6 +8192,11 @@ std::shared_ptr<Task> NameServerImpl::CreateTableRemoteTask(
     uint64_t op_index, ::rtidb::api::OPType op_type) {
     auto it = nsc_.find(alias);
     if (it == nsc_.end()) {
+        return std::shared_ptr<Task>();
+    }
+    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+        PDLOG(WARNING, "replica[%s] not health op_index[%lu]", alias.c_str(),
+              op_index);
         return std::shared_ptr<Task>();
     }
     std::shared_ptr<Task> task =
@@ -8244,6 +8269,11 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableRemoteTask(
     if (it == nsc_.end()) {
         return std::shared_ptr<Task>();
     }
+    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+        PDLOG(WARNING, "replica[%s] not health op_index[%lu]", alias.c_str(),
+              op_index);
+        return std::shared_ptr<Task>();
+    }
     std::shared_ptr<Task> task =
         std::make_shared<Task>(it->second->client_->GetEndpoint(),
                                std::make_shared<::rtidb::api::TaskInfo>());
@@ -8301,6 +8331,11 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaNSRemoteTask(
     uint64_t op_index, ::rtidb::api::OPType op_type) {
     auto it = nsc_.find(alias);
     if (it == nsc_.end()) {
+        return std::shared_ptr<Task>();
+    }
+    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+        PDLOG(WARNING, "replica[%s] not health op_index[%lu]", alias.c_str(),
+              op_index);
         return std::shared_ptr<Task>();
     }
     std::shared_ptr<Task> task =
