@@ -4385,6 +4385,7 @@ void TabletImpl::DumpIndexData(RpcController* controller,
         const ::rtidb::api::DumpIndexDataRequest* request,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
+    brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
     std::shared_ptr<LogReplicator> replicator;
@@ -4502,6 +4503,7 @@ void TabletImpl::LoadIndexData(RpcController* controller,
         const ::rtidb::api::LoadIndexDataRequest* request,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
+    brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table;
     std::shared_ptr<LogReplicator> replicator;
     std::string db_root_path;
@@ -4512,9 +4514,6 @@ void TabletImpl::LoadIndexData(RpcController* controller,
             response->set_msg("add task failed");
             return;
         }
-    }
-    if (task_ptr) {
-        task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
     }
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -4545,38 +4544,34 @@ void TabletImpl::LoadIndexData(RpcController* controller,
             response->set_msg("replicator is not exist");
             return;
         }
-        bool ok = ChooseDBRootPath(request->tid(), request->pid(), table->GetStorageMode(), db_root_path);
-        if (!ok) {
-            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", request->tid(), request->pid());
-            response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
-            response->set_msg("fail to get db root path");
-            return;
-        }
     }
-    std::string index_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/index/";
-    if (!::rtidb::base::MkdirRecur(index_path)) {
-        PDLOG(WARNING, "fail to create path %s", index_path.c_str());
-        response->set_code(::rtidb::base::ReturnCode::kFailToCreateFile);
-        response->set_msg("fail to create path");
-        return;
-    }
-    task_pool_.AddTask(boost::bind(&TabletImpl::LoadIndexDataInternal, this, table, replicator, db_root_path, request->partition_num(), task_ptr));
+    task_pool_.AddTask(boost::bind(&TabletImpl::LoadIndexDataInternal, this, table, replicator, request->partition_num(), task_ptr));
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
 void TabletImpl::LoadIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
-        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, std::string& db_root_path, 
-        uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task) {
+        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, uint32_t partition_num, 
+        std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    std::string db_root_path;
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
+    bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
+    if (!ok) {
+        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
+        if (task) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task->set_status(::rtidb::api::kFailed);
+        }
+        return;
+    }
     std::string binlog_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/binlog/";
     std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
-
     for (uint32_t i = 0; i < partition_num; ++i) {
-        std::string index_file_path = index_path = index_path + std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
+        std::string index_file_path = index_path = index_path + std::to_string(i) + "_" + std::to_string(pid) + "_index.data";
         FILE* fd = fopen(index_file_path.c_str(), "rb");
         if (fd == NULL) {
+            PDLOG(WARNING, "fail to open index file %s, tid %u, pid %u", index_file_path.c_str(), tid, pid);
             continue;
         }
         ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(index_file_path, fd);
@@ -4594,13 +4589,14 @@ void TabletImpl::LoadIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> 
                 break;
             }
             if (!status.ok()) {
-                PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", table->GetId(), table->GetPid(), status.ToString().c_str());
+                PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid, pid, status.ToString().c_str());
                 failed_cnt.fetch_add(1, std::memory_order_relaxed);
                 continue;
             }
             std::string* sp = new std::string(record.data(), record.size());
             ::rtidb::api::LogEntry entry;
             entry.ParseFromString(*sp);
+            delete sp;
             table->Put(entry);
             replicator->AppendEntry(entry);
         }
@@ -4624,6 +4620,7 @@ void TabletImpl::ExtractIndexData(RpcController* controller,
         const ::rtidb::api::ExtractIndexDataRequest* request,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
+    brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
     std::string db_root_path;
@@ -4634,9 +4631,6 @@ void TabletImpl::ExtractIndexData(RpcController* controller,
             response->set_msg("add task failed");
             return;
         }
-    }
-    if (task_ptr) {
-        task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
     }
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);

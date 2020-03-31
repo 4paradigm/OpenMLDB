@@ -633,6 +633,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(std::shared_ptr<Table> table, con
                 }
             }
             uint32_t index_pid = ::rtidb::base::hash64(cur_key)%partition_num;
+            // update entry and write entry into memory
             if (index_pid == pid) {
                 std::string tmp_buf;
                 ::rtidb::api::Dimension* dim = entry.add_dimensions();
@@ -650,26 +651,26 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(std::shared_ptr<Table> table, con
         }
         status = wh->Write(record);
         if (!status.ok()) {
-            PDLOG(WARNING, "fail to write snapshot. status[%s]", 
-                          status.ToString().c_str());
+            PDLOG(WARNING, "fail to extract index from snapshot. status[%s] tid[%u] pid[%u]", 
+                          status.ToString().c_str(), tid, pid);
             has_error = true;
             break;
         }
         if ((count + expired_key_num + deleted_key_num) % KEY_NUM_DISPLAY == 0) {
-            PDLOG(INFO, "tackled key num[%lu] total[%lu]", count + expired_key_num, manifest.count()); 
+            PDLOG(INFO, "tackled key num[%lu] total[%lu] tid[%u] pid[%u]", count + expired_key_num, manifest.count(), tid, pid); 
         }
         count++;
     }
     delete seq_file;
     if (expired_key_num + count + deleted_key_num != manifest.count()) {
-        PDLOG(WARNING, "key num not match! total key num[%lu] load key num[%lu] ttl key num[%lu]",
-                    manifest.count(), count, expired_key_num);
+        PDLOG(WARNING, "key num not match! total key num[%lu] load key num[%lu] ttl key num[%lu] tid[%u] pid[%u]",
+                    manifest.count(), count, expired_key_num, tid, pid);
         has_error = true;
     }
     if (has_error) {
         return -1;
     }
-    PDLOG(INFO, "extract index from snapshot success. extract key num[%lu] load key num[%lu] ttl key num[%lu]", extract_count, count, expired_key_num);
+    PDLOG(INFO, "extract index from snapshot success. extract key num[%lu] load key num[%lu] ttl key num[%lu] tid[%u] pid[%u]", extract_count, count, expired_key_num, tid, pid);
     return 0;
 }
 
@@ -845,6 +846,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
                     }
                 }
                 uint32_t index_pid = ::rtidb::base::hash64(cur_key)%partition_num;
+                // update entry and write entry into memory
                 if (index_pid == pid) {
                     std::string tmp_buf;
                     ::rtidb::api::Dimension* dim = entry.add_dimensions();
@@ -998,9 +1000,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(std::shared_ptr<Table>& table, cons
             std::string* sp = new std::string(record.data(), record.size());
             ::rtidb::api::LogEntry entry;
             entry.ParseFromString(*sp);
-            if (entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete) {
-                continue;
-            }
+            delete sp;
             std::set<uint32_t> pid_set;
             bool has_main_index = false;
             for (const auto& dim : entry.dimensions()) {

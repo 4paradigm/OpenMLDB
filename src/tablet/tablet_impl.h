@@ -348,7 +348,7 @@ private:
     uint32_t idx, std::vector<::rtidb::log::WriteHandle*> whs, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void LoadIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
-        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, std::string& db_root_path, 
+        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
         uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
