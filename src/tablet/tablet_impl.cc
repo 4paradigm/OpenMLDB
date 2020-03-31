@@ -3415,7 +3415,7 @@ void TabletImpl::CheckFile(RpcController* controller,
     }
     full_path += file_name;
     uint64_t size = 0;
-    if (::rtidb::base::GetSize(full_path, size) < 0) {
+    if (!::rtidb::base::GetFileSize(full_path, size)) {
         response->set_code(-1);
         response->set_msg("get size failed");
         PDLOG(WARNING, "get size failed. file[%s]", full_path.c_str());
