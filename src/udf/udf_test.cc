@@ -345,7 +345,34 @@ TEST_F(UDFTest, GetColTest) {
         ASSERT_FALSE(col_iterator->Valid());
     }
 }
+TEST_F(UDFTest, GetWindowColTest) {
+    vm::CurrentHistoryWindow table(-2);
+    uint64_t ts = 1000;
+    for (auto row : rows) {
+        table.BufferData(ts++,row);
+    }
 
+    const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int32_t>);
+    for (int i = 0; i < 10; ++i) {
+        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+        ASSERT_EQ(
+            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&table),
+                                            2, fesql::type::kInt32, buf));
+        ::fesql::storage::ColumnImpl<int32_t>* col =
+            reinterpret_cast<::fesql::storage::ColumnImpl<int32_t>*>(buf);
+        auto col_iterator = col->GetIterator();
+//        ASSERT_TRUE(col_iterator->Valid());
+//        ASSERT_EQ(1, col_iterator->GetValue());
+//        col_iterator->Next();
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(11, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(111, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_FALSE(col_iterator->Valid());
+    }
+}
 TEST_F(UDFTest, GetMemColTest) {
     vm::MemTableHandler table;
     for (auto row : rows) {

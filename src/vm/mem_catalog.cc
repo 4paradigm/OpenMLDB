@@ -24,8 +24,8 @@ MemTableIterator::MemTableIterator(const MemSegment* table,
     : table_(table),
       schema_(schema),
       start_iter_(table_->begin() + start),
-      end_iter_(table->begin() + end),
-      iter_(table->cbegin()) {}
+      end_iter_(table_->begin() + end),
+      iter_(start_iter_) {}
 MemTableIterator::~MemTableIterator() {}
 
 // TODO(chenjing): speed up seek for memory iterator

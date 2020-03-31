@@ -194,8 +194,11 @@ TabletSegmentHandler::TabletSegmentHandler(
 TabletSegmentHandler::~TabletSegmentHandler() {}
 std::unique_ptr<vm::SliceIterator> TabletSegmentHandler::GetIterator() const {
     auto iter = partition_hander_->GetWindowIterator();
-    iter->Seek(key_);
-    return std::move(iter->GetValue());
+    if (iter) {
+        iter->Seek(key_);
+        return iter->Valid() ? std::move(iter->GetValue()) : std::unique_ptr<vm::SliceIterator>();
+    }
+    return std::unique_ptr<vm::SliceIterator>();
 }
 vm::IteratorV<uint64_t, base::Slice>* TabletSegmentHandler::GetIterator(
     int8_t* addr) const {

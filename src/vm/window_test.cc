@@ -197,7 +197,6 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
     ListV<base::Slice> * list =
         reinterpret_cast<ListV<base::Slice>*>(&table);
     new (buf) storage::ColumnImpl<int32_t >(list, 2);
-    new (buf) storage::ColumnImpl<int32_t >(list, 2);
     auto column = reinterpret_cast<fesql::storage::ColumnImpl<int32_t >*>(buf);
     auto impl = column->GetIterator();
     ASSERT_TRUE(impl->Valid());

@@ -262,13 +262,12 @@ base::Slice RunSession::WindowProject(const int8_t* fn, uint64_t key,
     if (slice.empty()) {
         return slice;
     }
-    int8_t* data = reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
     window->BufferData(key, Slice(slice));
     int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
         (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
     int8_t* out_buf = nullptr;
-    uint32_t ret =
-        udf(data, reinterpret_cast<int8_t*>(&window), slice.size(), &out_buf);
+    uint32_t ret = udf(slice.buf(), reinterpret_cast<int8_t*>(window),
+                       slice.size(), &out_buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return base::Slice();
@@ -805,19 +804,28 @@ std::shared_ptr<DataHandler> RunSession::RequestUnion(
         end = (key + request_union_op->end_offset_) < 0
                   ? 0
                   : (key + request_union_op->end_offset_);
+        DLOG(INFO) << "request key: " << key;
     }
 
-    auto table_output = std::dynamic_pointer_cast<TableHandler>(output);
-    auto table_iter = table_output->GetIterator();
-    table_iter->Seek(end);
     window_table->AddRow(Slice(request));
-    while (table_iter->Valid()) {
-        if (table_iter->GetKey() < start) {
-            break;
+
+    DLOG(INFO) << "start make window ";
+    if (output) {
+        auto table_output = std::dynamic_pointer_cast<TableHandler>(output);
+        auto table_iter = table_output->GetIterator();
+        if (table_iter) {
+            table_iter->Seek(end);
+            while (table_iter->Valid()) {
+                DLOG(INFO) << table_iter->GetKey() << " should >= " << start;
+                if (table_iter->GetKey() <= start) {
+                    break;
+                }
+                DLOG(INFO)<< table_iter->GetKey() << " add row ";
+                window_table->AddRow(table_iter->GetKey(),
+                                     Slice(table_iter->GetValue()));
+                table_iter->Next();
+            }
         }
-        window_table->AddRow(table_iter->GetKey(),
-                             Slice(table_iter->GetValue()));
-        table_iter->Next();
     }
     return window_table;
 }

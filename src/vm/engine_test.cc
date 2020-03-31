@@ -292,7 +292,7 @@ void BuildWindowUnique(std::vector<fesql::storage::Slice>& rows,  // NOLINT
 void StoreData(::fesql::storage::Table* table, int8_t* rows) {
     ::fesql::storage::WindowImpl* window =
         reinterpret_cast<::fesql::storage::WindowImpl*>(rows);
-    auto w  = window->GetIterator();
+    auto w = window->GetIterator();
     ASSERT_TRUE(w->Valid());
     ::fesql::storage::Slice row = w->GetValue();
     w->Next();
@@ -352,7 +352,6 @@ TEST_P(EngineTest, test_normal) {
         AddTable(catalog, request_def, request);
     }
 
-
     const std::string sql =
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT col0, test(col1,col1), col2 , col6 FROM t1 "
@@ -363,8 +362,7 @@ TEST_P(EngineTest, test_normal) {
     DLOG(INFO) << "RUN IN MODE: " << is_batch_mode;
     std::vector<int8_t*> output;
     vm::Schema schema;
-    if (RUNBATCH == is_batch_mode)
-    {
+    if (RUNBATCH == is_batch_mode) {
         int32_t ret = -1;
         BatchRunSession session;
         bool ok = engine.Get(sql, "db", session, get_status);
@@ -383,9 +381,9 @@ TEST_P(EngineTest, test_normal) {
 
         int32_t limit = 2;
         auto iter = catalog->GetTable("db", "t1")->GetIterator();
-        while (limit-- >0 && iter->Valid()) {
+        while (limit-- > 0 && iter->Valid()) {
             Slice row;
-            ret = session.Run(Slice(iter->GetValue()),&row);
+            ret = session.Run(Slice(iter->GetValue()), &row);
             ASSERT_EQ(0, ret);
             output.push_back(row.buf());
             iter->Next();
@@ -467,7 +465,6 @@ TEST_F(EngineTest, test_window_agg) {
     int8_t* rows = NULL;
     std::vector<fesql::storage::Slice> windows;
     BuildWindow(windows, &rows);
-    StoreData(table.get(), rows);
     // add request
     {
         fesql::type::TableDef request_def;
@@ -495,12 +492,12 @@ TEST_F(EngineTest, test_window_agg) {
         "end\n"
         "%%sql\n"
         "SELECT "
-        "sum(col1) OVER w1 as w1_col1_sum, "
+        "test_sum(col1) OVER w1 as w1_col1_sum, "
         "sum(col3) OVER w1 as w1_col3_sum, "
         "sum(col4) OVER w1 as w1_col4_sum, "
         "sum(col2) OVER w1 as w1_col2_sum, "
         "sum(col5) OVER w1 as w1_col5_sum, "
-        "col1 as w1_col1_at0 "
+        "test_at_0(col1) OVER w1 as w1_col1_at0 "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
     Engine engine(catalog);
@@ -512,24 +509,26 @@ TEST_F(EngineTest, test_window_agg) {
     std::vector<int8_t*> output;
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
-    std::cout << "physical plan:\n" <<  oss.str() << std::endl;
+    std::cout << "physical plan:\n" << oss.str() << std::endl;
 
-    int32_t limit = 2;
-    auto iter = catalog->GetTable("db", "t1")->GetIterator();
-    while (limit-- >0 && iter->Valid()) {
+    int32_t limit = 10;
+    auto iter = windows.cbegin();
+    while (limit-- > 0 && iter != windows.cend()) {
+        Slice request = *iter;
         Slice row;
-        int32_t ret = session.Run(Slice(iter->GetValue()),&row);
+        int32_t ret = session.Run(request, &row);
         ASSERT_EQ(0, ret);
         output.push_back(row.buf());
-        iter->Next();
+        iter++;
+        ASSERT_TRUE(table->Put(request.data(), request.size()));
     }
 
-    int8_t* output_1 = output[3];
-    int8_t* output_22 = output[4];
+    int8_t* output_1 = output[0];
+    int8_t* output_22 = output[1];
 
-    int8_t* output_333 = output[0];
-    int8_t* output_4444 = output[1];
-    int8_t* output_aaa = output[2];
+    int8_t* output_333 = output[2];
+    int8_t* output_4444 = output[3];
+    int8_t* output_aaa = output[4];
 
     ASSERT_EQ(5u, output.size());
 
@@ -551,7 +550,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_EQ(5 + 5, *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
-    ASSERT_EQ(1,
+    ASSERT_EQ(2,
               *(reinterpret_cast<int32_t*>(output_22 + 7 + 4 + 4 + 8 + 2 + 8)));
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8 + 4,
@@ -576,7 +575,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_EQ(1L + 2L,
               *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
     ASSERT_EQ(
-        3, *(reinterpret_cast<int32_t*>(output_4444 + 7 + 4 + 4 + 8 + 2 + 8)));
+        4, *(reinterpret_cast<int32_t*>(output_4444 + 7 + 4 + 4 + 8 + 2 + 8)));
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8 + 4,
               *(reinterpret_cast<int32_t*>(output_aaa + 2)));
@@ -590,7 +589,7 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_EQ(1L + 2L + 3L,
               *(reinterpret_cast<int64_t*>(output_aaa + 7 + 4 + 4 + 8 + 2)));
     ASSERT_EQ(
-        3, *(reinterpret_cast<int32_t*>(output_aaa + 7 + 4 + 4 + 8 + 2 + 8)));
+        5, *(reinterpret_cast<int32_t*>(output_aaa + 7 + 4 + 4 + 8 + 2 + 8)));
     for (auto ptr : output) {
         free(ptr);
     }
@@ -703,11 +702,22 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
     std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
     ASSERT_TRUE(table->Init());
+
     auto catalog = BuildCommonCatalog(table_def, table);
+    // add request
+    {
+        fesql::type::TableDef request_def;
+        BuildTableDef(request_def);
+        request_def.set_name("t1");
+        request_def.set_catalog("request");
+        std::shared_ptr<::fesql::storage::Table> request(
+            new ::fesql::storage::Table(1, 1, request_def));
+        AddTable(catalog, request_def, request);
+    }
+
     int8_t* rows = NULL;
     std::vector<fesql::storage::Slice> windows;
     BuildWindow(windows, &rows);
-    StoreData(table.get(), rows);
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -718,39 +728,44 @@ TEST_F(EngineTest, test_window_agg_with_limit) {
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 2;";
     Engine engine(catalog);
-    BatchRunSession session(true);
+    RequestRunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
     std::vector<int8_t*> output;
-    int32_t ret = session.Run(output, 100);
-
+    int32_t limit = 2;
+    auto iter = windows.cbegin();
+    while (limit-- > 0 && iter != windows.cend()) {
+        Slice request = *iter;
+        Slice row;
+        int32_t ret = session.Run(request, &row);
+        ASSERT_EQ(0, ret);
+        output.push_back(row.buf());
+        iter++;
+        ASSERT_TRUE(table->Put(request.data(), request.size()));
+    }
     ASSERT_EQ(2u, output.size());
-    int8_t* output_333 = output[0];
-    int8_t* output_4444 = output[1];
+    int8_t* output_1 = output[0];
+    int8_t* output_22 = output[1];
 
-    ASSERT_EQ(0, ret);
     ASSERT_EQ(2u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
-              *(reinterpret_cast<int32_t*>(output_4444 + 2)));
-    ASSERT_EQ(3 + 4, *(reinterpret_cast<int32_t*>(output_4444 + 7)));
-    ASSERT_EQ(3.3f + 4.4f, *(reinterpret_cast<float*>(output_4444 + 7 + 4)));
-    ASSERT_EQ(33.3 + 44.4,
-              *(reinterpret_cast<double*>(output_4444 + 7 + 4 + 4)));
-    ASSERT_EQ(55 + 55,
-              *(reinterpret_cast<int16_t*>(output_4444 + 7 + 4 + 4 + 8)));
+              *(reinterpret_cast<int32_t*>(output_1 + 2)));
+    ASSERT_EQ(1, *(reinterpret_cast<int32_t*>(output_1 + 7)));
+    ASSERT_EQ(1.1f, *(reinterpret_cast<float*>(output_1 + 7 + 4)));
+    ASSERT_EQ(11.1, *(reinterpret_cast<double*>(output_1 + 7 + 4 + 4)));
+    ASSERT_EQ(5, *(reinterpret_cast<int16_t*>(output_1 + 7 + 4 + 4 + 8)));
+    ASSERT_EQ(1L, *(reinterpret_cast<int64_t*>(output_1 + 7 + 4 + 4 + 8 + 2)));
+
+    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
+              *(reinterpret_cast<int32_t*>(output_22 + 2)));
+    ASSERT_EQ(1 + 2, *(reinterpret_cast<int32_t*>(output_22 + 7)));
+    ASSERT_EQ(1.1f + 2.2f, *(reinterpret_cast<float*>(output_22 + 7 + 4)));
+    ASSERT_EQ(11.1 + 22.2, *(reinterpret_cast<double*>(output_22 + 7 + 4 + 4)));
+    ASSERT_EQ(5 + 5, *(reinterpret_cast<int16_t*>(output_22 + 7 + 4 + 4 + 8)));
     ASSERT_EQ(1L + 2L,
-              *(reinterpret_cast<int64_t*>(output_4444 + 7 + 4 + 4 + 8 + 2)));
-
-    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
-              *(reinterpret_cast<int32_t*>(output_333 + 2)));
-    ASSERT_EQ(3, *(reinterpret_cast<int32_t*>(output_333 + 7)));
-    ASSERT_EQ(3.3f, *(reinterpret_cast<float*>(output_333 + 7 + 4)));
-    ASSERT_EQ(33.3, *(reinterpret_cast<double*>(output_333 + 7 + 4 + 4)));
-    ASSERT_EQ(55, *(reinterpret_cast<int16_t*>(output_333 + 7 + 4 + 4 + 8)));
-    ASSERT_EQ(1L,
-              *(reinterpret_cast<int64_t*>(output_333 + 7 + 4 + 4 + 8 + 2)));
+              *(reinterpret_cast<int64_t*>(output_22 + 7 + 4 + 4 + 8 + 2)));
     for (auto ptr : output) {
         free(ptr);
     }
@@ -937,8 +952,18 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
     int8_t* rows = NULL;
     std::vector<fesql::storage::Slice> windows;
     BuildWindowUnique(windows, &rows);
-    StoreData(table.get(), rows);
     auto catalog = BuildCommonCatalog(table_def, table);
+    // add request
+    {
+        fesql::type::TableDef request_def;
+        BuildTableDef(request_def);
+        request_def.set_name("t1");
+        request_def.set_catalog("request");
+        std::shared_ptr<::fesql::storage::Table> request(
+            new ::fesql::storage::Table(1, 1, request_def));
+        AddTable(catalog, request_def, request);
+    }
+
     const std::string sql =
         "SELECT "
         "sum(col1) OVER w1 as w1_col1_sum, "
@@ -949,20 +974,28 @@ TEST_F(EngineTest, test_window_agg_unique_partition) {
         "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;";
     Engine engine(catalog);
-    BatchRunSession session(true);
+    RequestRunSession session;
     base::Status get_status;
     bool ok = engine.Get(sql, "db", session, get_status);
     ASSERT_TRUE(ok);
     std::vector<int8_t*> output;
-    int32_t ret = session.Run(output, 10);
-    ASSERT_EQ(0, ret);
+    int32_t limit = 10;
+    auto iter = windows.cbegin();
+    while (limit-- > 0 && iter != windows.cend()) {
+        Slice request = *iter;
+        Slice row;
+        int32_t ret = session.Run(request, &row);
+        ASSERT_EQ(0, ret);
+        output.push_back(row.buf());
+        iter++;
+        ASSERT_TRUE(table->Put(request.data(), request.size()));
+    }
     int8_t* output_1 = output[0];
     int8_t* output_22 = output[1];
     int8_t* output_333 = output[2];
     int8_t* output_4444 = output[3];
     int8_t* output_aaa = output[4];
 
-    ASSERT_EQ(0, ret);
     ASSERT_EQ(5u, output.size());
 
     ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8,
