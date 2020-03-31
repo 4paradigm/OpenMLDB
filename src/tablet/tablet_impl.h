@@ -329,6 +329,8 @@ private:
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
+    void RelationalTableSnapshotTTL();
+
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
                         uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 

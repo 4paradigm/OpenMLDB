@@ -40,7 +40,7 @@ class RelationalTable;
 class RelationalTableTraverseIterator {
  public:
     RelationalTableTraverseIterator(RelationalTable* db, rocksdb::Iterator* it,
-                                    const rocksdb::Snapshot* snapshot);
+                                    uint64_t id);
     ~RelationalTableTraverseIterator();
     bool Valid();
     void Next();
@@ -55,16 +55,15 @@ class RelationalTableTraverseIterator {
  private:
     RelationalTable* db_;
     rocksdb::Iterator* it_;
-    const rocksdb::Snapshot* snapshot_;
     uint64_t traverse_cnt_;
     bool finish_;
+    uint64_t id_;
 };
 
 struct SnapshotCounter {
-    std::atomic<uint32_t> iterator_count;
-    std::atomic<uint32_t> unfinish_count;
     const rocksdb::Snapshot* snapshot;
     std::atomic<uint64_t> atime;
+    ~SnapshotCounter() {};
 };
 
 class RelationalTable {
@@ -111,7 +110,7 @@ public:
 
     void ReleaseSnpashot(uint64_t seq, bool finish);
 
-    void LRUSnapshot();
+    void TTLSnapshot();
 
     bool Update(const ::rtidb::api::Columns& cd_columns, 
             const ::rtidb::api::Columns& col_columns);
@@ -191,7 +190,8 @@ private:
 
     ::rtidb::base::IdGenerator id_generator_;
 
-    std::map<uint64_t, SnapshotCounter*> snapshots_;
+    std::map<uint64_t, std::shared_ptr<SnapshotCounter>> snapshots_;
+    uint64_t snapshot_index_; // 0 is invalid snapshot_index
 };
 
 }

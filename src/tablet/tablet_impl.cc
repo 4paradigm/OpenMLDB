@@ -74,6 +74,7 @@ DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(max_traverse_cnt);
+DECLARE_uint32(snapshot_ttl_time);
 
 namespace rtidb {
 namespace tablet {
@@ -161,6 +162,7 @@ bool TabletImpl::Init() {
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
+    snapshot_pool_.DelayTask(FLAGS_snapshot_ttl_time * 60 * 1000, boost::bind(&TabletImpl::RelationalTableSnapshotTTL, this));
     task_pool_.AddTask(boost::bind(&TabletImpl::GetDiskused, this));
     if (FLAGS_recycle_ttl != 0) {
         task_pool_.DelayTask(FLAGS_recycle_ttl*60*1000, boost::bind(&TabletImpl::SchedDelRecycle, this));
@@ -1457,7 +1459,6 @@ void TabletImpl::Traverse(RpcController* controller,
         bool is_finish = false;
         if (!it->Valid()) {
             is_finish = true;
-            it->Finish(true);
         } else {
             response->set_snapshot_id(it->GetSeq());
         }
@@ -2340,6 +2341,22 @@ void TabletImpl::SchedMakeDiskTableSnapshot() {
     }
     // delay task one hour later avoid execute  more than one time
     snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
+}
+
+void TabletImpl::RelationalTableSnapshotTTL() {
+    std::vector<std::shared_ptr<RelationalTable>> table_set;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        RelationalTables::iterator table_iter = relational_tables_.begin();
+        for (; table_iter != relational_tables_.end(); table_iter++) {
+            for (auto part_iter = table_iter->second.begin(); part_iter != table_iter->second.end(); part_iter++) {
+                table_set.push_back(part_iter->second);
+            }
+        }
+    }
+    for (auto iter : table_set) {
+        iter->TTLSnapshot();
+    }
 }
 
 void TabletImpl::SendData(RpcController* controller,
