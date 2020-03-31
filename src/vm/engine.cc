@@ -742,7 +742,6 @@ std::shared_ptr<DataHandler> RunSession::RequestUnion(
     auto request = dynamic_cast<RowHandler*>(left.get())->GetValue();
 
     auto groups = request_union_op->groups_;
-    auto orders = request_union_op->orders_;
 
     TableHandler* table = dynamic_cast<TableHandler*>(right.get());
     std::shared_ptr<DataHandler> output = right;

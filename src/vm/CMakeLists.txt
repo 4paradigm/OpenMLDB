@@ -7,11 +7,9 @@ add_library(fesql_vm STATIC jit.cc op_generator.cc sql_compiler.cc engine.cc mem
 add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
         csv_window_iterator.cc)
 
-set(vm_deps_libs fesql_tablet fesql_storage fesql_vm fesql_parser fesql_planner fesql_udf fesql_codegen fesql_proto
+set(vm_deps_libs fesql_vm fesql_tablet fesql_storage fesql_parser fesql_planner fesql_udf fesql_codegen fesql_proto
         fesql_node fesql_base)
 
-add_executable(csv_db csv_db.cc)
-target_link_libraries(csv_db fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
 
 
 add_executable(physical_op_test physical_op_test.cc)
@@ -82,3 +80,5 @@ add_executable(engine_bm engine_bm.cc)
 target_link_libraries(engine_bm ${vm_deps_libs}
         benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
 
+add_executable(csv_db csv_db.cc)
+target_link_libraries(csv_db fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)

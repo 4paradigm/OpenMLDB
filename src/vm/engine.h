@@ -28,7 +28,6 @@
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
 #include "vm/sql_compiler.h"
-
 namespace fesql {
 namespace vm {
 
