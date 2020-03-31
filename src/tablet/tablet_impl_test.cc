@@ -5469,22 +5469,22 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_pk("test"+std::to_string(i));
-        sr.set_st(now-50*60*1000+100);
-        sr.set_et(now-70*60*1000+100);
+        sr.set_st(now-60*60*1000+100);
+        sr.set_et(now-80*60*1000+100);
         sr.set_ts_name("ts2");
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test"+std::to_string(i));
-        cr.set_st(now-50*60*1000+100);
-        cr.set_et(now-70*60*1000+100);
+        cr.set_st(now-60*60*1000+100);
+        cr.set_et(now-80*60*1000+100);
         cr.set_ts_name("ts2");
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
-        ASSERT_EQ(0, crp.code());
+        ASSERT_EQ(307, crp.code());
         ASSERT_EQ(0, crp.count());
     }
     //     time    cnt
