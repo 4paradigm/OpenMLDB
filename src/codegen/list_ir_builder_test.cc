@@ -76,7 +76,8 @@ V IteratorSum(int8_t* input) {
     ::fesql::storage::ArrayListIterator<V>* iter =
         (::fesql::storage::ArrayListIterator<V>*)(iter_ref->iterator);
     while (iter->Valid()) {
-        result += iter->Next();
+        result += iter->GetValue();
+        iter->Next();
     }
     return result;
 }

@@ -48,7 +48,7 @@ ExitOnError ExitOnErr;
 
 namespace fesql {
 namespace codegen {
-
+using fesql::storage::ArrayListV;
 static node::NodeManager manager;
 
 /// Check E. If it's in a success state then return the contained value. If
@@ -172,7 +172,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(4, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -231,7 +231,7 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(2, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -284,7 +284,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     // function will have a return type of "int" and take an argument of "int".
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(1, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -335,7 +335,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(1, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -476,7 +476,8 @@ void BuildWindow(std::vector<fesql::storage::Slice>& rows,  // NOLINT
         rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
 
-    ::fesql::vm::WindowImpl* w = new ::fesql::vm::WindowImpl(&rows);
+    ArrayListV<base::Slice>* w = new ArrayListV<base::Slice>(&rows);
+
     *buf = reinterpret_cast<int8_t*>(w);
 }
 
@@ -514,7 +515,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -539,7 +540,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     LOG(INFO) << "input ptr " << ptr;
 
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
+    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
     ASSERT_EQ(0, ret2);
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7));
@@ -591,7 +592,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(8, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -616,7 +617,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     LOG(INFO) << "input ptr " << ptr;
 
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
+    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
     ASSERT_EQ(0, ret2);
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
@@ -667,7 +668,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -690,7 +691,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     std::vector<fesql::storage::Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
+    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
     ASSERT_EQ(ret2, 0);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
@@ -734,7 +735,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     ::fesql::udf::RegisterUDFToModule(m.get());
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, schema);
+    bool ok = ir_builder.Build("test_project_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
     ASSERT_EQ(5, schema.size());
     m->print(::llvm::errs(), NULL);
@@ -757,7 +758,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     std::vector<fesql::storage::Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
+    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
     ASSERT_EQ(ret2, 0);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
@@ -823,7 +824,7 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
 
     RowFnLetIRBuilder ir_builder(table_.columns(), m.get(), false);
     vm::Schema schema;
-    bool ok = ir_builder.Build("test_at_fn", pp_node_ptr, schema);
+    bool ok = ir_builder.Build("test_at_fn", pp_node_ptr, &schema);
     ASSERT_TRUE(ok);
     LOG(INFO) << "fn let ir build ok";
     ASSERT_EQ(3, schema.size());
@@ -847,7 +848,7 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     std::vector<fesql::storage::Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
-    int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
+    int32_t ret2 = decode(window.back().buf(), ptr, 0, &output);
     ASSERT_EQ(ret2, 0);
     //    ASSERT_EQ(7 + 4 + 4 + 8 + 2 + 8, *reinterpret_cast<uint32_t*>(output +
     //    2));

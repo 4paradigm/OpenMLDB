@@ -13,6 +13,8 @@
 namespace fesql {
 namespace codegen {
 
+using fesql::storage::ArrayListV;
+using fesql::base::Slice;
 void BuildBuf(int8_t** buf, uint32_t* size) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
@@ -290,7 +292,7 @@ void BuildWindow2(std::vector<fesql::storage::Slice>& rows,  // NOLINT
         rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
 
-    ::fesql::vm::WindowImpl* w = new ::fesql::vm::WindowImpl(&rows);
+    ArrayListV<Slice> *w = new ArrayListV<Slice>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 }  // namespace codegen

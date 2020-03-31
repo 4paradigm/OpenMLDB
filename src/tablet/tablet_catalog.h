@@ -82,7 +82,7 @@ class TabletTableHandler : public vm::TableHandler {
 class TabletPartitionHandler : public vm::PartitionHandler {
  public:
     TabletPartitionHandler(std::shared_ptr<TableHandler> table_hander,
-                           const std::string index_name)
+                           const std::string& index_name)
         : vm::PartitionHandler(),
           table_handler_(table_hander),
           index_name_(index_name) {}

@@ -820,7 +820,7 @@ std::shared_ptr<DataHandler> RunSession::RequestUnion(
                 if (table_iter->GetKey() <= start) {
                     break;
                 }
-                DLOG(INFO)<< table_iter->GetKey() << " add row ";
+                DLOG(INFO) << table_iter->GetKey() << " add row ";
                 window_table->AddRow(table_iter->GetKey(),
                                      Slice(table_iter->GetValue()));
                 table_iter->Next();

@@ -130,10 +130,7 @@ class TableHandler : public DataHandler {
 
     // get the index information
     virtual const IndexHint& GetIndex() = 0;
-    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr);
     // get the table iterator
-    virtual std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator()
-        const = 0;
 
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) = 0;
