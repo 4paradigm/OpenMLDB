@@ -28,7 +28,6 @@ namespace v1 {
 
 using fesql::storage::ColumnImpl;
 using fesql::storage::StringColumnImpl;
-using fesql::storage::WindowIteratorImpl;
 
 int32_t GetStrField(const int8_t* row, uint32_t field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
@@ -152,12 +151,12 @@ int32_t GetStrCol(int8_t* input, int32_t str_field_offset,
         return -2;
     }
 
-    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
+    vm::MemTableHandler* w = reinterpret_cast<vm::MemTableHandler*>(input);
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     switch (type) {
         case fesql::type::kVarchar: {
             new (data) StringColumnImpl(
-                *w, str_field_offset, next_str_field_offset, str_start_offset);
+                w, str_field_offset, next_str_field_offset, str_start_offset);
             break;
         }
         default: {
@@ -172,26 +171,26 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
     if (nullptr == input || nullptr == data) {
         return -2;
     }
-    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
+    vm::ListV<base::Slice> *w = reinterpret_cast<vm::ListV<base::Slice>*>(input);
     switch (type) {
         case fesql::type::kInt32: {
-            new (data) ColumnImpl<int>(*w, offset);
+            new (data) ColumnImpl<int>(w, offset);
             break;
         }
         case fesql::type::kInt16: {
-            new (data) ColumnImpl<int16_t>(*w, offset);
+            new (data) ColumnImpl<int16_t>(w, offset);
             break;
         }
         case fesql::type::kInt64: {
-            new (data) ColumnImpl<int64_t>(*w, offset);
+            new (data) ColumnImpl<int64_t>(w, offset);
             break;
         }
         case fesql::type::kFloat: {
-            new (data) ColumnImpl<float>(*w, offset);
+            new (data) ColumnImpl<float>(w, offset);
             break;
         }
         case fesql::type::kDouble: {
-            new (data) ColumnImpl<double>(*w, offset);
+            new (data) ColumnImpl<double>(w, offset);
             break;
         }
         default: {

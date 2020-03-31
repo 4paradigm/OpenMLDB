@@ -34,6 +34,7 @@ namespace codegen {
 ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
+      schema_(nullptr),
       row_mode_(true),
       row_ptr_name_(""),
       window_ptr_name_(""),
@@ -52,7 +53,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                              ::llvm::Module* module)
     : block_(block),
       sv_(scope_var),
-      schema_(schema),
+      schema_(&schema),
       row_mode_(row_mode),
       row_ptr_name_(row_ptr_name),
       window_ptr_name_(window_ptr_name),

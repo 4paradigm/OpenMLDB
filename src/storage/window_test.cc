@@ -7,11 +7,14 @@
  *--------------------------------------------------------------------------
  **/
 #include "storage/window.h"
+#include "vm/mem_catalog.h"
 #include <utility>
 #include "gtest/gtest.h"
 #include "proto/type.pb.h"
 namespace fesql {
 namespace storage {
+using vm::CurrentHistoryWindow;
+using vm::CurrentHistoryUnboundWindow;
 class WindowIteratorTest : public ::testing::Test {
  public:
     WindowIteratorTest() {}
@@ -20,8 +23,8 @@ class WindowIteratorTest : public ::testing::Test {
 
 TEST_F(WindowIteratorTest, IteratorImplTest) {
     std::vector<int> int_vec({1, 2, 3, 4, 5});
-    ListV<int> list(&int_vec);
-    IteratorImpl<int> impl(list);
+    ArrayListV<int> list(&int_vec);
+    ArrayListIterator<int> impl(list);
 
     ASSERT_TRUE(impl.Valid());
     ASSERT_EQ(1, impl.Next());
@@ -38,27 +41,27 @@ TEST_F(WindowIteratorTest, IteratorImplTest) {
     ASSERT_TRUE(impl.Valid());
     ASSERT_EQ(5, impl.Next());
 
-    IteratorImpl<int>* subImpl = impl.range(2, 4);
+    ArrayListIterator<int>* subImpl = impl.range(2, 4);
     ASSERT_TRUE(subImpl->Valid());
     ASSERT_EQ(3, subImpl->Next());
 
     ASSERT_TRUE(subImpl->Valid());
     ASSERT_EQ(4, subImpl->Next());
 
-    IteratorImpl<int>* subImpl2 = impl.range(0, 2);
+    ArrayListIterator<int>* subImpl2 = impl.range(0, 2);
     ASSERT_TRUE(subImpl2->Valid());
     ASSERT_EQ(1, subImpl2->Next());
 
     ASSERT_TRUE(subImpl2->Valid());
     ASSERT_EQ(2, subImpl2->Next());
 
-    IteratorImpl<int>* subImpl3 = impl.range(3, 2);
+    ArrayListIterator<int>* subImpl3 = impl.range(3, 2);
     ASSERT_FALSE(subImpl3->Valid());
 }
 
 TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
     // prepare row buf
-    std::vector<Row> rows;
+    std::vector<Slice> rows;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
         *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
@@ -66,7 +69,7 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-        rows.push_back(Row(ptr, 28));
+        rows.push_back(Slice(ptr, 28));
     }
 
     {
@@ -76,7 +79,7 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-        rows.push_back(Row(ptr, 28));
+        rows.push_back(Slice(ptr, 28));
     }
 
     {
@@ -86,11 +89,11 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-        rows.push_back(Row(ptr, 28));
+        rows.push_back(Slice(ptr, 28));
     }
 
-    ListV<Row> list(&rows);
-    IteratorImpl<Row> impl(list);
+    ArrayListV<Slice> list(&rows);
+    ArrayListIterator<Slice> impl(list);
     ASSERT_TRUE(impl.Valid());
     ASSERT_TRUE(impl.Valid());
     ASSERT_TRUE(impl.Valid());
@@ -99,11 +102,11 @@ TEST_F(WindowIteratorTest, WindowIteratorImplTest) {
 }
 
 TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
-    std::vector<std::pair<uint64_t, Row>> rows;
+    std::vector<std::pair<uint64_t, Slice>> rows;
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
-    Row row(ptr, 28);
+    Slice row(ptr, 28);
 
     // history current_ts -1000 ~ current_ts
     {
@@ -173,11 +176,11 @@ TEST_F(WindowIteratorTest, CurrentHistoryWindowTest) {
 }
 
 TEST_F(WindowIteratorTest, CurrentHistoryUnboundWindowTest) {
-    std::vector<std::pair<uint64_t, Row>> rows;
+    std::vector<std::pair<uint64_t, Slice>> rows;
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
-    Row row(ptr, 28);
+    Slice row(ptr, 28);
 
     // history current_ts -1000 ~ current_ts
     CurrentHistoryUnboundWindow window;
@@ -219,11 +222,11 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
-    Row row(ptr, 28);
+    Slice row(ptr, 28);
 
 //     history current_ts -1000 ~ current_ts
     {
-        std::vector<Row> rows;
+        std::vector<Slice> rows;
         std::vector<uint64_t> keys;
         rows.push_back(row);
         keys.push_back(1L);
@@ -305,7 +308,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
 
     // history current_ts -1000 ~ current_ts max_size = 5
     {
-        std::vector<Row> rows;
+        std::vector<Slice> rows;
         std::vector<uint64_t> keys;
         rows.push_back(row);
         keys.push_back(1L);
@@ -362,7 +365,7 @@ TEST_F(WindowIteratorTest, CurrentHistorySlideWindowTest) {
 
     // history current_ts -1000 ~ current_ts max_size = 3
     {
-        std::vector<Row> rows;
+        std::vector<Slice> rows;
         std::vector<uint64_t> keys;
         rows.reserve(7);
         keys.reserve(7);
@@ -399,10 +402,10 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundSlideWindowTest) {
     int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
     *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
     *(reinterpret_cast<int64_t*>(ptr + 2 + 4)) = 1;
-    Row row(ptr, 28);
+    Slice row(ptr, 28);
 
     {
-        std::vector<Row> rows;
+        std::vector<Slice> rows;
         std::vector<uint64_t> keys;
         rows.push_back(row);
         keys.push_back(1L);
@@ -478,7 +481,7 @@ TEST_F(WindowIteratorTest, CurrentHistoryUnboundSlideWindowTest) {
     }
 
     {
-        std::vector<Row> rows;
+        std::vector<Slice> rows;
         std::vector<uint64_t> keys;
         rows.push_back(row);
         keys.push_back(1L);

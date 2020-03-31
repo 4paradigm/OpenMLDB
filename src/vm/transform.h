@@ -237,7 +237,12 @@ class BatchModeTransformer {
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
     bool GenFnDef(const node::FuncDefPlanNode* fn_plan,
                   base::Status& status);  // NOLINT
-
+    bool CodeGenExprList(const Schema& input_schema,
+                         const node::ExprListNode* expr_list, bool row_mode,
+                         std::string& fn_name, Schema* output_schema,  // NOLINT
+                         base::Status& status);                        // NOLINT
+    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
+    
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
@@ -246,18 +251,14 @@ class BatchModeTransformer {
     bool GenProjects(const Schema& input_schema,
                      const node::PlanNodeList& projects, const bool row_mode,
                      std::string& fn_name,   // NOLINT
-                     Schema& output_schema,  // NOLINT
+                     Schema* output_schema,  // NOLINT
                      base::Status& status);  // NOLINT
 
     ::llvm::Module* module_;
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
-    bool CodeGenExprList(Schema input_schema,
-                         const node::ExprListNode* expr_list, bool row_mode,
-                         std::string& fn_name, Schema& output_schema,  // NOLINT
-                         base::Status& status);                        // NOLINT
-    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
+    
 };
 
 class RequestModeransformer : public BatchModeTransformer {

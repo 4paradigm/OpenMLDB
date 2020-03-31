@@ -108,28 +108,28 @@ bool GetLLVMIteratorSize(const ::fesql::node::DataType& v_type,
 
     switch (v_type) {
         case ::fesql::node::kInt16: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int16_t>);
+            *size = sizeof(::fesql::storage::ColumnIterator<int16_t>);
             break;
         }
         case ::fesql::node::kInt32: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int32_t>);
+            *size = sizeof(::fesql::storage::ColumnIterator<int32_t>);
             break;
         }
         case ::fesql::node::kInt64: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int64_t>);
+            *size = sizeof(::fesql::storage::ColumnIterator<int64_t>);
             break;
         }
         case ::fesql::node::kDouble: {
-            *size = sizeof(::fesql::storage::IteratorImpl<double>);
+            *size = sizeof(::fesql::storage::ColumnIterator<double>);
             break;
         }
         case ::fesql::node::kFloat: {
-            *size = sizeof(::fesql::storage::IteratorImpl<float>);
+            *size = sizeof(::fesql::storage::ColumnIterator<float>);
             break;
         }
         case ::fesql::node::kVarchar: {
             *size = sizeof(
-                ::fesql::storage::IteratorImpl<fesql::storage::StringRef>);
+                ::fesql::storage::ColumnIterator<fesql::storage::StringRef>);
             break;
         }
         default: {

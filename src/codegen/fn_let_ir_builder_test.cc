@@ -365,7 +365,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     free(ptr);
 }
 
-void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
+void BuildWindow(std::vector<fesql::storage::Slice>& rows,  // NOLINT
                  int8_t** buf) {
     ::fesql::type::TableDef table;
     table.set_name("t1");
@@ -415,7 +415,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(4.1);
         builder.AppendInt64(5);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -429,7 +429,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(44.1);
         builder.AppendInt64(55);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -443,7 +443,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(444.1);
         builder.AppendInt64(555);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -457,7 +457,7 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(4444.1);
         builder.AppendInt64(5555);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -473,10 +473,10 @@ void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
         builder.AppendDouble(44444.1);
         builder.AppendInt64(55555);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
 
-    ::fesql::storage::WindowImpl* w = new ::fesql::storage::WindowImpl(&rows);
+    ::fesql::vm::WindowImpl* w = new ::fesql::vm::WindowImpl(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 
@@ -534,7 +534,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> window;
+    std::vector<fesql::storage::Slice> window;
     BuildWindow(window, &ptr);
     LOG(INFO) << "input ptr " << ptr;
 
@@ -611,7 +611,7 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> window;
+    std::vector<fesql::storage::Slice> window;
     BuildWindow(window, &ptr);
     LOG(INFO) << "input ptr " << ptr;
 
@@ -687,7 +687,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> window;
+    std::vector<fesql::storage::Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
@@ -754,7 +754,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> window;
+    std::vector<fesql::storage::Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(window.back().buf, ptr, 0, &output);
@@ -844,7 +844,7 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
         int8_t*, int8_t*, int32_t, int8_t**))load_fn_jit.getAddress();
 
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> window;
+    std::vector<fesql::storage::Slice> window;
     BuildWindow(window, &ptr);
     int8_t* output = NULL;
     int32_t ret2 = decode(window.back().buf, ptr, 0, &output);

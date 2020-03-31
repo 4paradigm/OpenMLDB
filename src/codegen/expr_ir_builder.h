@@ -82,7 +82,7 @@ class ExprIRBuilder {
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
-    vm::Schema schema_;
+    const vm::Schema* schema_;
     bool row_mode_;
     std::string row_ptr_name_;
     std::string window_ptr_name_;

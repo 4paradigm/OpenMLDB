@@ -180,42 +180,75 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
     switch (node->type_) {
         case kPhysicalOpIndexSeek: {
             auto seek_op = dynamic_cast<PhysicalSeekIndexNode*>(node);
-            CodeGenExprList(node->output_schema, seek_op->keys_, true, fn_name,
-                            fn_schema, status);
+            std::vector<int32_t> keys_idxs;
+            int32_t idx = 0;
+            if (!node::ExprListNullOrEmpty(seek_op->keys_)) {
+                while (idx < seek_op->keys_->children_.size()) {
+                    keys_idxs.push_back(idx++);
+                }
+            }
+            CodeGenExprList((node->output_schema), seek_op->keys_, true,
+                            fn_name, &fn_schema, status);
+            seek_op->SetKeysIdxs(keys_idxs);
             break;
         }
         case kPhysicalOpGroupBy: {
-            auto group = dynamic_cast<PhysicalGroupNode*>(node)->groups_;
-            CodeGenExprList(node->output_schema, group, true, fn_name,
-                            fn_schema, status);
+            auto group_op = dynamic_cast<PhysicalGroupNode*>(node);
+            std::vector<int32_t> idxs;
+            int32_t idx = 0;
+            if (!node::ExprListNullOrEmpty(group_op->groups_)) {
+                while (idx < group_op->groups_->children_.size()) {
+                    idxs.push_back(idx++);
+                }
+            }
+            CodeGenExprList((node->output_schema), group_op->groups_, true,
+                            fn_name, &fn_schema, status);
+
+            group_op->SetGroupsIdxs(idxs);
             break;
         }
         case kPhysicalOpSortBy: {
             auto order_op = dynamic_cast<PhysicalSortNode*>(node);
             if (nullptr != order_op->order_) {
-                CodeGenExprList(node->output_schema,
+                std::vector<int32_t> idxs;
+                int32_t idx = 0;
+                if (!node::ExprListNullOrEmpty(order_op->order_->order_by_)) {
+                    while (idx <
+                           order_op->order_->order_by_->children_.size()) {
+                        idxs.push_back(idx++);
+                    }
+                }
+
+                CodeGenExprList((node->output_schema),
                                 order_op->order_->order_by_, true, fn_name,
-                                fn_schema, status);
+                                &fn_schema, status);
+                order_op->SetOrdersIdxs(idxs);
             }
             break;
         }
         case kPhysicalOpGroupAndSort: {
             auto group_sort_op = dynamic_cast<PhysicalGroupAndSortNode*>(node);
             node::ExprListNode expr_list;
-
+            std::vector<int32_t> groups_idxs;
+            std::vector<int32_t> orders_idxs;
+            int32_t idx = 0;
             if (!node::ExprListNullOrEmpty(group_sort_op->groups_)) {
                 for (auto expr : group_sort_op->groups_->children_) {
                     expr_list.AddChild(expr);
+                    groups_idxs.push_back(idx++);
                 }
             }
             if (nullptr != group_sort_op->orders_ &&
                 !node::ExprListNullOrEmpty(group_sort_op->orders_->order_by_)) {
                 for (auto expr : group_sort_op->orders_->order_by_->children_) {
                     expr_list.AddChild(expr);
+                    orders_idxs.push_back(idx++);
                 }
             }
-            CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
-                            fn_schema, status);
+            CodeGenExprList((node->output_schema), &expr_list, true, fn_name,
+                            &fn_schema, status);
+            group_sort_op->SetGroupsIdxs(groups_idxs);
+            group_sort_op->SetOrdersIdxs(orders_idxs);
             break;
         }
         case kPhysicalOpFilter: {
@@ -223,8 +256,9 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(filter_op->condition_));
-            CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
-                            fn_schema, status);
+            CodeGenExprList((node->output_schema), &expr_list, true, fn_name,
+                            &fn_schema, status);
+            filter_op->SetConditionIdxs({0});
             break;
         }
         case kPhysicalOpJoin: {
@@ -232,26 +266,48 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             node::ExprListNode expr_list;
             expr_list.AddChild(
                 const_cast<node::ExprNode*>(join_op->condition_));
-            CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
-                            fn_schema, status);
+            CodeGenExprList((node->output_schema), &expr_list, true, fn_name,
+                            &fn_schema, status);
+            join_op->SetConditionIdxs({0});
             break;
         }
         case kPhysicalOpRequestUnoin: {
             auto request_union = dynamic_cast<PhysicalRequestUnionNode*>(node);
             node::ExprListNode expr_list;
+            std::vector<int32_t> groups_idxs;
+            std::vector<int32_t> orders_idxs;
+            std::vector<int32_t> keys_idxs;
+            int32_t idx = 0;
             if (!node::ExprListNullOrEmpty(request_union->groups_)) {
                 for (auto expr : request_union->groups_->children_) {
                     expr_list.AddChild(expr);
+                    groups_idxs.push_back(idx++);
+                }
+            }
+            if (nullptr != request_union->keys_ &&
+                !node::ExprListNullOrEmpty(request_union->keys_->order_by_)) {
+                for (auto expr : request_union->keys_->order_by_->children_) {
+                    expr_list.AddChild(expr);
+                    keys_idxs.push_back(idx++);
                 }
             }
             if (nullptr != request_union->orders_ &&
                 !node::ExprListNullOrEmpty(request_union->orders_->order_by_)) {
                 for (auto expr : request_union->orders_->order_by_->children_) {
-                    expr_list.AddChild(expr);
+                    for (int32_t key_idx : keys_idxs) {
+                        if (node::ExprEquals(expr_list.children_.at(key_idx),
+                                             expr)) {
+                            orders_idxs.push_back(key_idx);
+                            break;
+                        }
+                    }
                 }
             }
-            CodeGenExprList(node->output_schema, &expr_list, true, fn_name,
-                            fn_schema, status);
+            CodeGenExprList((node->output_schema), &expr_list, true, fn_name,
+                            &fn_schema, status);
+            request_union->SetGroupsIdxs(groups_idxs);
+            request_union->SetOrdersIdxs(orders_idxs);
+            request_union->SetKeysIdxs(keys_idxs);
             break;
         }
         default: {
@@ -390,8 +446,8 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                 auto right = new PhysicalTableProviderNode(table);
                 node_manager_->RegisterNode(right);
                 *output = new PhysicalRequestUnionNode(
-                    depend, right, groups, orders, w_ptr->GetStartOffset(),
-                    w_ptr->GetEndOffset());
+                    depend, right, groups, orders, orders,
+                    w_ptr->GetStartOffset(), w_ptr->GetEndOffset());
                 node_manager_->RegisterNode(*output);
                 return true;
             } else {
@@ -470,7 +526,7 @@ bool BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
                 auto right = new PhysicalTableProviderNode(table);
                 node_manager_->RegisterNode(right);
                 *output = new PhysicalRequestUnionNode(
-                    left, right, node->by_list_, nullptr, -1, -1);
+                    left, right, node->by_list_, nullptr, nullptr, -1, -1);
                 node_manager_->RegisterNode(*output);
                 return true;
             } else {
@@ -613,7 +669,7 @@ bool BatchModeTransformer::GenProjects(const Schema& input_schema,
                                        const node::PlanNodeList& projects,
                                        const bool row_project,
                                        std::string& fn_name,    // NOLINT
-                                       Schema& output_schema,   // NOLINT
+                                       Schema* output_schema,   // NOLINT
                                        base::Status& status) {  // NOLINT
     // TODO(wangtaize) use ops end op output schema
     ::fesql::codegen::RowFnLetIRBuilder builder(input_schema, module_);
@@ -683,8 +739,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     switch (project_type) {
         case kRowProject:
         case kTableProject: {
-            if (!GenProjects(node->output_schema, projects, true, fn_name,
-                             output_schema, status)) {
+            if (!GenProjects((node->output_schema), projects, true, fn_name,
+                             &output_schema, status)) {
                 return false;
             }
             break;
@@ -693,8 +749,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         case kGroupAggregation:
         case kWindowAggregation: {
             // TODO(chenjing): gen window aggregation
-            if (!GenProjects(node->output_schema, projects, false, fn_name,
-                             output_schema, status)) {
+            if (!GenProjects((node->output_schema), projects, false, fn_name,
+                             &output_schema, status)) {
                 return false;
             }
             break;
@@ -862,10 +918,10 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
     return true;
 }
 
-bool BatchModeTransformer::CodeGenExprList(Schema input_schema,
+bool BatchModeTransformer::CodeGenExprList(const Schema& input_schema,
                                            const node::ExprListNode* expr_list,
                                            bool row_mode, std::string& fn_name,
-                                           Schema& output_schema,
+                                           Schema* output_schema,
                                            base::Status& status) {
     if (node::ExprListNullOrEmpty(expr_list)) {
         status.msg = "fail to codegen expr list: null or empty list";
@@ -937,7 +993,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
 
                     auto index_st = index_hint.at(index_name);
                     TransformOrderExpr(group_sort_op->orders_,
-                                       scan_op->table_handler_->GetSchema(),
+                                       *(scan_op->table_handler_->GetSchema()),
                                        index_st, &new_orders);
 
                     PhysicalScanIndexNode* scan_index_op =
@@ -973,7 +1029,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
 
                     auto index_st = index_hint.at(index_name);
                     TransformOrderExpr(union_op->orders_,
-                                       scan_op->table_handler_->GetSchema(),
+                                       *(scan_op->table_handler_->GetSchema()),
                                        index_st, &new_orders);
 
                     PhysicalScanIndexNode* scan_index_op =
@@ -987,8 +1043,9 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     PhysicalRequestUnionNode* new_group_sort_op =
                         new PhysicalRequestUnionNode(
                             union_op->GetProducers()[0], seek_index_op,
-                            new_groups, new_orders, union_op->start_offset_,
-                            union_op->end_offset_);
+                            new_groups, new_orders, union_op->keys_,
+                            union_op->start_offset_, union_op->end_offset_);
+
                     *output = new_group_sort_op;
                     return true;
                 }
@@ -1003,7 +1060,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
 }
 bool GroupAndSortOptimized::TransformGroupExpr(
     const node::ExprListNode* groups, const IndexHint& index_hint,
-    std::string* index_name, const node::ExprListNode** keys,
+    std::string* index_name, const node::ExprListNode** keys_expr,
     const node::ExprListNode** output) {
     if (nullptr == groups || nullptr == output || nullptr == index_name) {
         LOG(WARNING) << "fail to transform group expr : group exor or output "
@@ -1032,10 +1089,37 @@ bool GroupAndSortOptimized::TransformGroupExpr(
         IndexSt index = index_hint.at(*index_name);
         node::ExprListNode* new_groups = node_manager_->MakeExprList();
         std::set<std::string> keys;
+        int32_t pos;
         for (auto iter = index.keys.cbegin(); iter != index.keys.cend();
              iter++) {
             keys.insert(iter->name);
         }
+
+        // generate index keys expr
+        auto key_expr_list = node_manager_->MakeExprList();
+        for (auto iter = index.keys.cbegin(); iter != index.keys.cend();
+             iter++) {
+            for (auto group : groups->children_) {
+                switch (group->expr_type_) {
+                    case node::kExprColumnRef: {
+                        std::string column =
+                            dynamic_cast<node::ColumnRefNode*>(group)
+                                ->GetColumnName();
+                        // skip group when match index keys
+                        if (column == iter->name) {
+                            key_expr_list->AddChild(group);
+                            break;
+                        }
+                        break;
+                    }
+                    default: {
+                        new_groups->AddChild(group);
+                    }
+                }
+            }
+        }
+
+        // generate new groups expr
         for (auto group : groups->children_) {
             switch (group->expr_type_) {
                 case node::kExprColumnRef: {
@@ -1053,6 +1137,7 @@ bool GroupAndSortOptimized::TransformGroupExpr(
                 }
             }
         }
+        *keys_expr = key_expr_list;
         *output = new_groups;
         return true;
     } else {
@@ -1222,7 +1307,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 }
                 if (!CheckExprListFromSchema(
                         group_op->groups_,
-                        join_op->GetProducers()[0]->output_schema)) {
+                        (join_op->GetProducers()[0]->output_schema))) {
                     return false;
                 }
                 auto group_expr = group_op->groups_;
@@ -1301,13 +1386,13 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
 
                     if (!CheckExprListFromSchema(
                             group_sort_op->groups_,
-                            join_op->GetProducers()[0]->output_schema)) {
+                            (join_op->GetProducers()[0]->output_schema))) {
                         return false;
                     }
 
                     if (!CheckExprListFromSchema(
                             group_sort_op->orders_->order_by_,
-                            join_op->GetProducers()[0]->output_schema)) {
+                            (join_op->GetProducers()[0]->output_schema))) {
                         return false;
                     }
 

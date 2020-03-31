@@ -93,7 +93,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 RunSession::RunSession() {}
 RunSession::~RunSession() {}
 
-int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
+int32_t RequestRunSession::Run(const Slice& in_row, Slice* out_row) {
     auto output = RunPhysicalPlan(compile_info_->sql_ctx.plan, &in_row);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
@@ -104,13 +104,13 @@ int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
             auto iter =
                 dynamic_cast<TableHandler*>(output.get())->GetIterator();
             if (iter->Valid()) {
-                Row row(iter->GetValue());
+                Slice row(iter->GetValue());
                 *out_row = row;
             }
             return 0;
         }
         case kRowHandler: {
-            Row row(dynamic_cast<RowHandler*>(output.get())->GetValue());
+            Slice row(dynamic_cast<RowHandler*>(output.get())->GetValue());
             *out_row = row;
             return 0;
         }
@@ -153,7 +153,7 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
 }
 
 std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
-    const PhysicalOpNode* node, const Row* row) {
+    const PhysicalOpNode* node, const Slice* row) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (nullptr == node) {
         LOG(WARNING) << "run fail: null node";
@@ -176,10 +176,8 @@ std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
                             provider->table_handler_, provider->index_name_));
                 }
                 case kProviderTypeRequest: {
-                    return std::shared_ptr<MemRowHandler>(new MemRowHandler(
-                        base::Slice(reinterpret_cast<char*>(row->buf),
-                                    row->size),
-                        op->output_schema));
+                    return std::shared_ptr<MemRowHandler>(
+                        new MemRowHandler(*row, &(op->output_schema)));
                 }
                 default: {
                     LOG(WARNING)
@@ -198,7 +196,7 @@ std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
                 }
                 case kAggregation: {
                     return std::shared_ptr<MemRowHandler>(new MemRowHandler(
-                        AggProject(op->GetFn(), input), op->output_schema));
+                        AggProject(op->GetFn(), input), &(op->output_schema)));
                 }
                 case kWindowAggregation: {
                     auto window_op =
@@ -213,7 +211,7 @@ std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
                     auto row = dynamic_cast<RowHandler*>(input.get());
                     return std::shared_ptr<MemRowHandler>(new MemRowHandler(
                         RowProject(op->GetFn(), row->GetValue()),
-                        op->output_schema));
+                        &(op->output_schema)));
                 }
                 default: {
                     LOG(WARNING) << "fail to support data provider type "
@@ -260,19 +258,17 @@ std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
 }  // namespace vm
 
 base::Slice RunSession::WindowProject(const int8_t* fn, uint64_t key,
-                                      const base::Slice slice,
-                                      storage::Window* window) {
+                                      const base::Slice slice, Window* window) {
     if (slice.empty()) {
         return slice;
     }
     int8_t* data = reinterpret_cast<int8_t*>(const_cast<char*>(slice.data()));
-    window->BufferData(key, Row(slice));
+    window->BufferData(key, Slice(slice));
     int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
         (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
     int8_t* out_buf = nullptr;
-    fesql::storage::WindowImpl impl(*window);
     uint32_t ret =
-        udf(data, reinterpret_cast<int8_t*>(&impl), slice.size(), &out_buf);
+        udf(data, reinterpret_cast<int8_t*>(&window), slice.size(), &out_buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return base::Slice();
@@ -313,16 +309,14 @@ base::Slice RunSession::AggProject(const int8_t* fn,
         return base::Slice();
     }
 
-    auto row = Row(iter->GetValue());
+    auto row = Slice(iter->GetValue());
 
     int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
         (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
     int8_t* buf = nullptr;
 
-    fesql::storage::WindowImpl impl();
     uint32_t ret =
-        udf(row.buf, reinterpret_cast<int8_t*>(table->GetIterator().get()),
-            row.size, &buf);
+        udf(row.buf(), reinterpret_cast<int8_t*>(table), row.size(), &buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return base::Slice();
@@ -452,9 +446,9 @@ std::shared_ptr<DataHandler> RunSession::TableGroup(
     std::unique_ptr<storage::RowView> row_view = std::move(
         std::unique_ptr<storage::RowView>(new storage::RowView(schema)));
     while (iter->Valid()) {
-        Row value_row(iter->GetValue());
-        const Row key_row(RowProject(fn, iter->GetValue()));
-        row_view->Reset(key_row.buf, key_row.size);
+        Slice value_row(iter->GetValue());
+        const Slice key_row(RowProject(fn, iter->GetValue()));
+        row_view->Reset(key_row.buf(), key_row.size());
         std::string keys = GenerateKeys(row_view.get(), schema, idxs);
         output_partitions->AddRow(keys, iter->GetKey(), value_row);
         iter->Next();
@@ -488,11 +482,11 @@ std::shared_ptr<DataHandler> RunSession::PartitionGroup(
         auto segment_iter = iter->GetValue();
         segment_iter->SeekToFirst();
         while (segment_iter->Valid()) {
-            const Row key_row(RowProject(fn, segment_iter->GetValue()));
-            row_view->Reset(key_row.buf, key_row.size);
+            const Slice key_row(RowProject(fn, segment_iter->GetValue()));
+            row_view->Reset(key_row.buf(), key_row.size());
             std::string keys = GenerateKeys(row_view.get(), schema, idxs);
             output_partitions->AddRow(keys, segment_iter->GetKey(),
-                                      Row(segment_iter->GetValue()));
+                                      Slice(segment_iter->GetValue()));
         }
         iter->Next();
     }
@@ -590,18 +584,18 @@ std::shared_ptr<DataHandler> RunSession::PartitionSort(
         auto segment_iter = iter->GetValue();
         segment_iter->SeekToFirst();
         while (segment_iter->Valid()) {
-            const Row order_row(RowProject(fn, segment_iter->GetValue()));
+            const Slice order_row(RowProject(fn, segment_iter->GetValue()));
             int64_t key = -1;
             if (idxs.empty()) {
                 key = segment_iter->GetKey();
             } else {
-                row_view->Reset(order_row.buf, order_row.size);
+                row_view->Reset(order_row.buf(), order_row.size());
                 key = GetColumnInt64(row_view.get(), idxs[0],
                                      schema.Get(idxs[0]).type());
             }
             output_partitions->AddRow(
                 std::string(iter->GetKey().data(), iter->GetKey().size()), key,
-                Row(segment_iter->GetValue()));
+                Slice(segment_iter->GetValue()));
         }
         iter->Next();
     }
@@ -628,13 +622,13 @@ std::shared_ptr<DataHandler> RunSession::TableSort(
         std::unique_ptr<storage::RowView>(new storage::RowView(schema)));
     auto iter = dynamic_cast<TableHandler*>(table.get())->GetIterator();
     while (iter->Valid()) {
-        const Row order_row(RowProject(fn, iter->GetValue()));
+        const Slice order_row(RowProject(fn, iter->GetValue()));
 
-        row_view->Reset(order_row.buf, order_row.size);
+        row_view->Reset(order_row.buf(), order_row.size());
 
         int64_t key =
             GetColumnInt64(row_view.get(), idxs[0], schema.Get(idxs[0]).type());
-        output_table->AddRow(key, Row(iter->GetValue()));
+        output_table->AddRow(key, Slice(iter->GetValue()));
         iter->Next();
     }
     output_table->Sort(is_asc);
@@ -650,10 +644,10 @@ std::shared_ptr<DataHandler> RunSession::TableProject(
         return std::shared_ptr<DataHandler>();
     }
     auto output_table =
-        std::shared_ptr<MemTableHandler>(new MemTableHandler(output_schema));
+        std::shared_ptr<MemTableHandler>(new MemTableHandler(&output_schema));
     auto iter = dynamic_cast<TableHandler*>(table.get())->GetIterator();
     while (iter->Valid()) {
-        const Row row(RowProject(fn, iter->GetValue()));
+        const Slice row(RowProject(fn, iter->GetValue()));
         output_table->AddRow(row);
         iter->Next();
     }
@@ -673,16 +667,16 @@ std::shared_ptr<DataHandler> RunSession::WindowAggProject(
     }
 
     auto output_table = std::shared_ptr<MemTableHandler>(
-        new MemTableHandler(op->output_schema));
+        new MemTableHandler(&(op->output_schema)));
 
     auto partitions = dynamic_cast<PartitionHandler*>(input.get());
     auto iter = partitions->GetWindowIterator();
     while (iter->Valid()) {
         auto segment = iter->GetValue();
-        storage::CurrentHistoryWindow window(op->start_offset_);
+        vm::CurrentHistoryWindow window(op->start_offset_);
         while (segment->Valid()) {
-            const Row row(WindowProject(op->GetFn(), segment->GetKey(),
-                                        segment->GetValue(), &window));
+            const Slice row(WindowProject(op->GetFn(), segment->GetKey(),
+                                          segment->GetValue(), &window));
             output_table->AddRow(row);
             segment->Next();
         }
@@ -714,16 +708,15 @@ std::shared_ptr<DataHandler> RunSession::IndexSeek(
     if (kPartitionHandler != right->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
-
-    auto partition = std::shared_ptr<PartitionHandler>(
-        dynamic_cast<PartitionHandler*>(right.get()));
+    std::shared_ptr<PartitionHandler> partition =
+        std::dynamic_pointer_cast<PartitionHandler>(right);
 
     std::unique_ptr<storage::RowView> row_view =
         std::move(std::unique_ptr<storage::RowView>(
             new storage::RowView(seek_op->GetFnSchema())));
-    auto keys_row = Row(RowProject(
+    auto keys_row = Slice(RowProject(
         seek_op->GetFn(), dynamic_cast<RowHandler*>(left.get())->GetValue()));
-    row_view->Reset(keys_row.buf, keys_row.size);
+    row_view->Reset(keys_row.buf(), keys_row.size());
     std::vector<int> idxs;
     for (int j = 0; j < static_cast<int>(seek_op->keys_->children_.size());
          ++j) {
@@ -757,74 +750,74 @@ std::shared_ptr<DataHandler> RunSession::RequestUnion(
     std::unique_ptr<storage::RowView> row_view =
         std::move(std::unique_ptr<storage::RowView>(
             new storage::RowView(request_union_op->GetFnSchema())));
-    auto request_fn_row = Row(RowProject(request_union_op->GetFn(), request));
+    auto request_fn_row = Slice(RowProject(request_union_op->GetFn(), request));
     // filter by keys if need
     if (!node::ExprListNullOrEmpty(groups)) {
-        row_view->Reset(request_fn_row.buf, request_fn_row.size);
-        std::vector<int> idxs;
-        for (int j = 0; j < static_cast<int>(groups->children_.size()); ++j) {
-            idxs.push_back(j++);
-        }
+        row_view->Reset(request_fn_row.buf(), request_fn_row.size());
         std::string request_keys =
-            GenerateKeys(row_view.get(), request_union_op->GetFnSchema(), idxs);
+            GenerateKeys(row_view.get(), request_union_op->GetFnSchema(),
+                         request_union_op->GetGroupsIdxs());
 
-        auto mem_table = new MemTableHandler(request_union_op->output_schema);
+        auto mem_table =
+            new MemTableHandler(&(request_union_op->output_schema));
         auto iter = table->GetIterator();
         while (iter->Valid()) {
             auto row =
-                Row(RowProject(request_union_op->GetFn(), iter->GetValue()));
-            row_view->Reset(row.buf, row.size);
-            std::string keys = GenerateKeys(
-                row_view.get(), request_union_op->GetFnSchema(), idxs);
+                Slice(RowProject(request_union_op->GetFn(), iter->GetValue()));
+            row_view->Reset(row.buf(), row.size());
+            std::string keys =
+                GenerateKeys(row_view.get(), request_union_op->GetFnSchema(),
+                             request_union_op->GetGroupsIdxs());
             if (request_keys == keys) {
-                mem_table->AddRow(Row(iter->GetValue()));
+                mem_table->AddRow(Slice(iter->GetValue()));
             }
+            iter->Next();
         }
         output = std::shared_ptr<TableHandler>(mem_table);
     }
 
     // sort by orders if need
-    std::vector<int> ts_idxs;
-    if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_by_)) {
-        int j = node::ExprListNullOrEmpty(groups)
-                    ? 0
-                    : static_cast<int>(groups->children_.size());
-        for (; j < static_cast<int>(orders->order_by_->children_.size()); ++j) {
-            ts_idxs.push_back(j++);
-        }
-    }
-    if (!ts_idxs.empty()) {
+    if (!request_union_op->GetOrdersIdxs().empty()) {
         output = TableSort(std::shared_ptr<DataHandler>(output),
                            request_union_op->GetFnSchema(),
-                           request_union_op->GetFn(), ts_idxs, false);
+                           request_union_op->GetFn(),
+                           request_union_op->GetOrdersIdxs(), false);
     }
 
     // build window with start and end offset
     auto window_table = std::shared_ptr<MemTableHandler>(
-        new MemTableHandler(table->GetSchema()));
-    row_view->Reset(request_fn_row.buf, request_fn_row.size);
+        new MemTableHandler(&(request_union_op->output_schema)));
+    row_view->Reset(request_fn_row.buf(), request_fn_row.size());
 
-    int64_t key =
-        GetColumnInt64(row_view.get(), ts_idxs[0],
-                       request_union_op->GetFnSchema().Get(ts_idxs[0]).type());
+    uint64_t start = 0;
+    uint64_t end = UINT64_MAX;
 
-    uint64_t start = (key + request_union_op->start_offset_) < 0
-                         ? 0
-                         : (key + request_union_op->start_offset_);
+    if (!request_union_op->GetKeysIdxs().empty()) {
+        auto ts_idx = request_union_op->GetKeysIdxs()[0];
+        int64_t key =
+            GetColumnInt64(row_view.get(), ts_idx,
+                           request_union_op->GetFnSchema().Get(ts_idx).type());
 
-    uint64_t end = (key + request_union_op->end_offset_) < 0
-                       ? 0
-                       : (key + request_union_op->end_offset_);
+        start = (key + request_union_op->start_offset_) < 0
+                    ? 0
+                    : (key + request_union_op->start_offset_);
 
-    auto table_iter = dynamic_cast<TableHandler*>(output.get())->GetIterator();
+        end = (key + request_union_op->end_offset_) < 0
+                  ? 0
+                  : (key + request_union_op->end_offset_);
+    }
+
+    auto table_output = std::dynamic_pointer_cast<TableHandler>(output);
+    auto table_iter = table_output->GetIterator();
     table_iter->Seek(end);
-
-    window_table->AddRow(Row(request));
+    window_table->AddRow(Slice(request));
     while (table_iter->Valid()) {
         if (table_iter->GetKey() < start) {
             break;
         }
-        window_table->AddRow(table_iter->GetKey(), Row(table_iter->GetValue()));
+        window_table->AddRow(table_iter->GetKey(),
+                             Slice(table_iter->GetValue()));
+        table_iter->Next();
     }
     return window_table;
 }
@@ -867,10 +860,10 @@ std::shared_ptr<DataHandler> RunSession::Limit(
         case kTableHandler: {
             auto iter = dynamic_cast<TableHandler*>(input.get())->GetIterator();
             auto output_table = std::shared_ptr<MemTableHandler>(
-                new MemTableHandler(op->output_schema));
+                new MemTableHandler(&(op->output_schema)));
             int32_t cnt = 0;
             while (cnt++ < op->limit_cnt && iter->Valid()) {
-                output_table->AddRow(iter->GetKey(), Row(iter->GetValue()));
+                output_table->AddRow(iter->GetKey(), Slice(iter->GetValue()));
                 iter->Next();
             }
             return output_table;

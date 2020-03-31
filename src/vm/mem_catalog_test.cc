@@ -60,7 +60,7 @@ void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
 }
 
 void BuildRows(::fesql::type::TableDef& table,            // NOLINT
-               std::vector<fesql::storage::Row>& rows) {  // NOLINT
+               std::vector<fesql::storage::Slice>& rows) {  // NOLINT
     BuildTableDef(table);
     {
         storage::RowBuilder builder(table.columns());
@@ -77,7 +77,7 @@ void BuildRows(::fesql::type::TableDef& table,            // NOLINT
         builder.AppendDouble(11.1);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -93,7 +93,7 @@ void BuildRows(::fesql::type::TableDef& table,            // NOLINT
         builder.AppendDouble(22.2);
         builder.AppendInt64(2);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -109,7 +109,7 @@ void BuildRows(::fesql::type::TableDef& table,            // NOLINT
         builder.AppendDouble(33.3);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -125,7 +125,7 @@ void BuildRows(::fesql::type::TableDef& table,            // NOLINT
         builder.AppendDouble(44.4);
         builder.AppendInt64(2);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -143,12 +143,12 @@ void BuildRows(::fesql::type::TableDef& table,            // NOLINT
         builder.AppendDouble(55.5);
         builder.AppendInt64(3);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
 }
 
 TEST_F(MemCataLogTest, mem_table_handler_test) {
-    std::vector<storage::Row> rows;
+    std::vector<storage::Slice> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
     vm::MemTableHandler table_handler("t1", "temp", table.columns());
@@ -192,7 +192,7 @@ TEST_F(MemCataLogTest, mem_table_handler_test) {
 }
 
 TEST_F(MemCataLogTest, mem_table_iterator_test) {
-    std::vector<storage::Row> rows;
+    std::vector<storage::Slice> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
     vm::MemTableHandler table_handler("t1", "temp", table.columns());
@@ -251,7 +251,7 @@ TEST_F(MemCataLogTest, mem_table_iterator_test) {
 }
 
 TEST_F(MemCataLogTest, mem_partition_test) {
-    std::vector<storage::Row> rows;
+    std::vector<storage::Slice> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
     vm::MemPartitionHandler partition_handler("t1", "temp", table.columns());

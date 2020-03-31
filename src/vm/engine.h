@@ -32,7 +32,7 @@
 namespace fesql {
 namespace vm {
 
-using ::fesql::storage::Row;
+using ::fesql::storage::Slice;
 
 class Engine;
 
@@ -49,6 +49,9 @@ class RunSession {
     virtual inline const Schema& GetSchema() const {
         return compile_info_->sql_ctx.schema;
     }
+    virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
+        return compile_info_->sql_ctx.plan;
+    }
 
     virtual inline const bool IsBatchRun() const = 0;
 
@@ -62,9 +65,9 @@ class RunSession {
     std::shared_ptr<Catalog> cl_;
     friend Engine;
     std::shared_ptr<DataHandler> RunPhysicalPlan(const PhysicalOpNode* node,
-                                                 const Row* in_row = nullptr);
+                                                 const Slice* in_row = nullptr);
     base::Slice WindowProject(const int8_t* fn, const uint64_t key,
-                              const base::Slice slice, storage::Window* window);
+                              const base::Slice slice, Window* window);
     base::Slice RowProject(const int8_t* fn, const base::Slice slice);
     base::Slice AggProject(const int8_t* fn,
                            const std::shared_ptr<DataHandler> table);
@@ -123,9 +126,9 @@ class RequestRunSession : public RunSession {
  public:
     RequestRunSession() : RunSession() {}
     ~RequestRunSession() {}
-    virtual int32_t Run(const Row& in_row, Row* output);  // NOLINT
+    virtual int32_t Run(const Slice& in_row, Slice* output);  // NOLINT
     const bool IsBatchRun() const override { return false; }
-    std::shared_ptr<TableHandler> RunRequestPlan(const Row& request,
+    std::shared_ptr<TableHandler> RunRequestPlan(const Slice& request,
                                                  PhysicalOpNode* node);
 };
 

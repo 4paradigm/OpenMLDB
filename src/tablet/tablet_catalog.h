@@ -30,7 +30,7 @@ namespace tablet {
 
 class TabletTableHandler : public vm::TableHandler {
  public:
-    TabletTableHandler(const vm::Schema& schema, const std::string& name,
+    TabletTableHandler(const vm::Schema schema, const std::string& name,
                        const std::string& db, const vm::IndexList& index_list,
                        std::shared_ptr<storage::Table> table);
 
@@ -38,7 +38,7 @@ class TabletTableHandler : public vm::TableHandler {
 
     bool Init();
 
-    inline const vm::Schema& GetSchema() { return schema_; }
+    inline const vm::Schema* GetSchema() { return &schema_; }
 
     inline const std::string& GetName() { return name_; }
 
@@ -52,10 +52,13 @@ class TabletTableHandler : public vm::TableHandler {
 
     inline std::shared_ptr<storage::Table> GetTable() { return table_; }
 
-    std::unique_ptr<vm::SliceIterator> GetIterator();
-
+    std::unique_ptr<vm::SliceIterator> GetIterator() const;
+    vm::IteratorV<uint64_t, base::Slice>* GetIterator(
+        int8_t* addr) const override;
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& idx_name);
+    virtual const uint64_t GetCount();
+    base::Slice At(uint64_t pos) override;
 
  private:
     inline int32_t GetColumnIndex(const std::string& column) {
@@ -88,7 +91,7 @@ class TabletPartitionHandler : public vm::PartitionHandler {
 
     const bool IsAsc() override { return false; };
 
-    inline const vm::Schema& GetSchema() { return table_handler_->GetSchema(); }
+    inline const vm::Schema* GetSchema() { return table_handler_->GetSchema(); }
 
     inline const std::string& GetName() { return table_handler_->GetName(); }
 
@@ -102,6 +105,7 @@ class TabletPartitionHandler : public vm::PartitionHandler {
     std::unique_ptr<vm::WindowIterator> GetWindowIterator() override {
         return table_handler_->GetWindowIterator(index_name_);
     }
+    const uint64_t GetCount() override;
 
  private:
     std::shared_ptr<TableHandler> table_handler_;
@@ -116,20 +120,29 @@ class TabletSegmentHandler : public vm::TableHandler {
 
     ~TabletSegmentHandler();
 
-    inline const vm::Schema& GetSchema() { return partition_hander_->GetSchema(); }
+    inline const vm::Schema* GetSchema() {
+        return partition_hander_->GetSchema();
+    }
 
     inline const std::string& GetName() { return partition_hander_->GetName(); }
 
-    inline const std::string& GetDatabase() { return partition_hander_->GetDatabase(); }
+    inline const std::string& GetDatabase() {
+        return partition_hander_->GetDatabase();
+    }
 
     inline const vm::Types& GetTypes() { return partition_hander_->GetTypes(); }
 
-    inline const vm::IndexHint& GetIndex() { return partition_hander_->GetIndex(); }
+    inline const vm::IndexHint& GetIndex() {
+        return partition_hander_->GetIndex();
+    }
 
-    std::unique_ptr<vm::SliceIterator> GetIterator();
-
+    std::unique_ptr<vm::SliceIterator> GetIterator() const;
+    vm::IteratorV<uint64_t, base::Slice>* GetIterator(
+        int8_t* addr) const override;
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& idx_name);
+    virtual const uint64_t GetCount();
+    base::Slice At(uint64_t pos) override;
 
  private:
     std::shared_ptr<vm::PartitionHandler> partition_hander_;

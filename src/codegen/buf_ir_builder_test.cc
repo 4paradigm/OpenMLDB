@@ -76,11 +76,11 @@ T PrintList(int8_t* input) {
         reinterpret_cast<::fesql::storage::ListRef*>(input);
     ::fesql::storage::ColumnImpl<T>* column =
         reinterpret_cast<::fesql::storage::ColumnImpl<T>*>(list_ref->list);
-    fesql::storage::IteratorImpl<T> iter(*column);
-    ::fesql::storage::IteratorImpl<T>* col = &iter;
+    auto col = column->GetIterator();
     std::cout << "[";
     while (col->Valid()) {
-        T v = col->Next();
+        T v = col->GetValue();
+        col->Next();
         std::cout << v << ",";
         sum += v;
     }
@@ -104,11 +104,11 @@ int32_t PrintListString(int8_t* input) {
         reinterpret_cast<::fesql::storage::ListRef*>(input);
     ::fesql::storage::StringColumnImpl* column =
         reinterpret_cast<::fesql::storage::StringColumnImpl*>(list_ref->list);
-    fesql::storage::IteratorImpl<::fesql::storage::StringRef> iter(*column);
-    ::fesql::storage::IteratorImpl<::fesql::storage::StringRef>* col = &iter;
+    auto col = column->GetIterator();
     std::cout << "[";
     while (col->Valid()) {
-        ::fesql::storage::StringRef v = col->Next();
+        ::fesql::storage::StringRef v = col->GetValue();
+        col->Next();
         std::string str(v.data, v.size);
         std::cout << str << ", ";
         cnt++;
@@ -589,7 +589,7 @@ TEST_F(BufIRBuilderTest, encode_ir_builder) {
 
 TEST_F(BufIRBuilderTest, native_test_load_int16_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> rows;
+    std::vector<fesql::storage::Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<int16_t>(16 * 5, ::fesql::type::kInt16, "col2", ptr);
     free(ptr);
@@ -597,7 +597,7 @@ TEST_F(BufIRBuilderTest, native_test_load_int16_col) {
 
 TEST_F(BufIRBuilderTest, native_test_load_int32_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> rows;
+    std::vector<fesql::storage::Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<int32_t>(32 * 5, ::fesql::type::kInt32, "col1", ptr);
     free(ptr);
@@ -605,7 +605,7 @@ TEST_F(BufIRBuilderTest, native_test_load_int32_col) {
 
 TEST_F(BufIRBuilderTest, native_test_load_int64_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> rows;
+    std::vector<fesql::storage::Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<int64_t>(64 * 5, ::fesql::type::kInt64, "col5", ptr);
     free(ptr);
@@ -613,7 +613,7 @@ TEST_F(BufIRBuilderTest, native_test_load_int64_col) {
 
 TEST_F(BufIRBuilderTest, native_test_load_float_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> rows;
+    std::vector<fesql::storage::Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<float>(2.1f * 5, ::fesql::type::kFloat, "col3", ptr);
     free(ptr);
@@ -621,7 +621,7 @@ TEST_F(BufIRBuilderTest, native_test_load_float_col) {
 
 TEST_F(BufIRBuilderTest, native_test_load_double_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> rows;
+    std::vector<fesql::storage::Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<double>(3.1f * 5, ::fesql::type::kDouble, "col4", ptr);
     free(ptr);
@@ -629,7 +629,7 @@ TEST_F(BufIRBuilderTest, native_test_load_double_col) {
 
 TEST_F(BufIRBuilderTest, native_test_load_string_col) {
     int8_t* ptr = NULL;
-    std::vector<fesql::storage::Row> rows;
+    std::vector<fesql::storage::Slice> rows;
     BuildWindow(rows, &ptr);
     RunColCase<int32_t>(5, ::fesql::type::kVarchar, "col6", ptr);
     free(ptr);

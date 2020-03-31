@@ -16,6 +16,7 @@ class Slice {
 
     // Create a slice that refers to d[0,n-1].
     Slice(const char* d, size_t n) : need_free_(false), size_(n), data_(d) {}
+    Slice(int8_t * d, size_t n) : need_free_(false), size_(n), data_(reinterpret_cast<char*>(d)) {}
 
     // Create a slice that refers to the contents of "s"
     explicit Slice(const std::string& s)
@@ -27,6 +28,9 @@ class Slice {
         : need_free_(need_free), size_(n), data_(d) {}
     // Return a pointer to the beginning of the referenced data
     const char* data() const { return data_; }
+    int8_t* buf() const {
+        return reinterpret_cast<int8_t*>(const_cast<char*>(data_));
+    }
 
     // Return the length (in bytes) of the referenced data
     size_t size() const { return size_; }

@@ -213,7 +213,7 @@ bool OpGenerator::GenScan(const ::fesql::node::TablePlanNode* node,
     sop->type = kOpScan;
     sop->table_handler = table_handler;
     sop->limit = -1;
-    sop->output_schema = table_handler->GetSchema();
+    sop->output_schema = *(table_handler->GetSchema());
     *op = sop;
     return true;
 }
@@ -286,14 +286,14 @@ bool OpGenerator::GenProjectListOp(const ::fesql::node::ProjectListNode* node,
     }
 
     // TODO(wangtaize) use ops end op output schema
-    ::fesql::codegen::RowFnLetIRBuilder builder(table_handler->GetSchema(),
+    ::fesql::codegen::RowFnLetIRBuilder builder(*(table_handler->GetSchema()),
                                                 module, node->IsWindowAgg());
     std::string fn_name = nullptr == node->GetW() ? "__internal_sql_codegen"
                                                   : "__internal_sql_codegen_" +
                                                         node->GetW()->GetName();
     Schema output_schema;
 
-    bool ok = builder.Build(fn_name, node, output_schema);
+    bool ok = builder.Build(fn_name, node, &output_schema);
 
     if (!ok) {
         status.code = common::kCodegenError;
