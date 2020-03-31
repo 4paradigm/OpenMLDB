@@ -8187,7 +8187,7 @@ std::shared_ptr<Task> NameServerImpl::CreateTableRemoteTask(
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kCreateTableRemote);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(cluster->client_->GetEndpoint());
+    task->task_info_->set_endpoint(cluster_endpoint);
 
     boost::function<bool()> fun =
         boost::bind(&NameServerImpl::CreateTableRemote, this,
