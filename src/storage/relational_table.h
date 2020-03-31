@@ -66,24 +66,10 @@ public:
               const std::string& db_root_path);
     RelationalTable(const RelationalTable&) = delete;
     RelationalTable& operator=(const RelationalTable&) = delete;
-
     ~RelationalTable();
-
-    bool InitColumnFamilyDescriptor();
-
-    int InitColumnDesc();
-    
-    bool InitFromMeta();
-
     bool Init();
 
-    static void initOptionTemplate();
-
     bool Put(const std::string& value); 
-
-    bool PutDB(const std::string& pk,
-             const char* data,
-             uint32_t size);
 
     bool Put(const std::string& value,
              const Dimensions& dimensions);
@@ -96,13 +82,6 @@ public:
 
     bool Update(const ::rtidb::api::Columns& cd_columns, 
             const ::rtidb::api::Columns& col_columns);
-
-    void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
-            std::map<std::string, int>& cd_idx_map, 
-            Schema& condition_schema);
-        
-    bool UpdateDB(const std::map<std::string, int>& cd_idx_map, const std::map<std::string, int>& col_idx_map, const Schema& condition_schema, const Schema& value_schema, 
-            const std::string& cd_value, const std::string& col_value); 
 
     inline ::rtidb::common::StorageMode GetStorageMode() const {
         return storage_mode_;
@@ -153,8 +132,40 @@ public:
     inline ::rtidb::api::TableMeta& GetTableMeta() {
         return table_meta_;
     }
-    
+
 private:
+    static inline rocksdb::Slice CombineNoUniqueAndPk(const std::string& no_unique, 
+            const std::string& pk) {
+        std::string result;
+        result.resize(no_unique.size() + pk.size());
+        char* buf = const_cast<char*>(&(result[0]));
+        memcpy(buf, no_unique.data(), no_unique.size());
+        memcpy(buf + no_unique.size(), pk.data(), pk.size());
+        return rocksdb::Slice(result.data(), result.size());
+    }
+    bool InitColumnFamilyDescriptor();
+    int InitColumnDesc();
+    bool InitFromMeta();
+    static void initOptionTemplate();
+    bool PutDB(uint32_t pk_index_idx, 
+            const std::string& pk,
+            std::map<std::string, uint32_t>& unique_map,
+            std::map<std::string, uint32_t>& no_unique_map,
+            const char* data,
+            uint32_t size);
+    void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
+            std::map<std::string, int>& cd_idx_map, 
+            Schema& condition_schema);
+    bool UpdateDB(const std::map<std::string, int>& cd_idx_map, 
+            const std::map<std::string, int>& col_idx_map, 
+            const Schema& condition_schema, const Schema& value_schema, 
+            const std::string& cd_value, const std::string& col_value); 
+    bool GetStr(::rtidb::base::RowView& view, uint32_t idx, 
+            const ::rtidb::type::DataType& data_type, std::string* key); 
+    bool GetMap(::rtidb::base::RowView& view, 
+            std::map<std::string, uint32_t> *unique_map, 
+            std::map<std::string, uint32_t> *no_unique_map); 
+
     std::mutex mu_;
     ::rtidb::common::StorageMode storage_mode_;
     std::string name_;
@@ -179,11 +190,12 @@ private:
 
     ::rtidb::base::IdGenerator id_generator_;
     bool has_auto_gen_;
+    std::string pk_col_name_;
     int pk_idx_;
     ::rtidb::type::DataType pk_data_type_;
-    std::string pk_col_name_;
-    std::vector<std::string> unique_col_name_vec_;
-    std::vector<std::string> no_unique_col_name_vec_;
+    std::map<std::string, std::map<uint32_t, ::rtidb::type::DataType>> unique_val_map_;
+    std::map<std::string, std::map<uint32_t, ::rtidb::type::DataType>> no_unique_val_map_;
+    std::map<std::string, std::map<uint32_t, ::rtidb::type::IndexType>> index_name_map_;
 
 };
 
