@@ -32,6 +32,7 @@ static std::string DataTypeToStr(::rtidb::type::DataType data_type) {
     }
 }
 
+__attribute__((unused))
 static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field, 
         ::rtidb::type::TableType table_type) {
     std::vector<std::string> row;
@@ -56,10 +57,12 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common
     tp.Print(true);
 }
 
+__attribute__((unused))
 static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field) {
     return PrintSchema(column_desc_field, ::rtidb::type::kTimeSeries);
 }
 
+__attribute__((unused))
 static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
     std::vector<std::string> row;
     row.push_back("#");
@@ -109,6 +112,7 @@ static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
     tp.Print(true);
 }
 
+__attribute__((unused))
 static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::nameserver::ColumnDesc>& column_desc_field) {
     std::vector<std::string> row;
     row.push_back("#");
@@ -130,6 +134,7 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::namese
     tp.Print(true);
 }
 
+__attribute__((unused))
 static void PrintSchema(const std::string& schema, bool has_column_key) {
     std::vector<::rtidb::base::ColumnDesc> raw;
     ::rtidb::base::SchemaCodec codec;
@@ -199,9 +204,12 @@ static void PrintSchema(const std::string& schema, bool has_column_key) {
     tp.Print(true);
 }
 
+__attribute__((unused))
 static void PrintSchema(const std::string& schema) {
     return PrintSchema(schema, false);
 }
+
+__attribute__((unused))
 static void PrintColumnKey(const ::rtidb::api::TTLType& ttl_type, const ::rtidb::storage::TTLDesc& ttl_desc,
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
         const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& column_key_field) {
@@ -430,6 +438,7 @@ static void FillTableRow(uint32_t full_schema_size,
     }
 }
 
+__attribute__((unused))
 static void ShowTableRows(const std::vector<ColumnDesc>& base_columns,
         const std::vector<ColumnDesc>& raw,
         ::rtidb::base::KvIterator* it,
@@ -475,6 +484,7 @@ static void ShowTableRows(const std::vector<ColumnDesc>& base_columns,
     tp.Print(true);
 }
 
+__attribute__((unused))
 static void ShowTableRows(const std::vector<ColumnDesc>& raw,
                    ::rtidb::base::KvIterator* it,
                    const ::rtidb::nameserver::CompressType compress_type) {
@@ -482,6 +492,7 @@ static void ShowTableRows(const std::vector<ColumnDesc>& raw,
     return ShowTableRows(base_columns, raw, it, compress_type);
 }
 
+__attribute__((unused))
 static void ShowTableRows(const std::string& key, ::rtidb::base::KvIterator* it,
                 const ::rtidb::nameserver::CompressType compress_type) {
     ::baidu::common::TPrinter tp(4, FLAGS_max_col_display_length);
@@ -511,6 +522,7 @@ static void ShowTableRows(const std::string& key, ::rtidb::base::KvIterator* it,
     tp.Print(true);
 }
 
+__attribute__((unused))
 static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& tables) {
     std::vector<std::string> row;
     row.push_back("name");
@@ -613,6 +625,7 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
     tp.Print(true);
 }
 
+__attribute__((unused))
 static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& status_vec) {
     std::vector<std::string> row;
     row.push_back("tid");
@@ -678,6 +691,7 @@ static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& statu
     tp.Print(true);
 }
 
+__attribute__((unused))
 static void PrintTableInformation(std::vector<::rtidb::nameserver::TableInfo>& tables) {
     if (tables.size() < 1) {
         return;
