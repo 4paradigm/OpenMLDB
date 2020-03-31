@@ -74,7 +74,7 @@ public:
     bool Put(const std::string& value,
              const Dimensions& dimensions);
 
-    bool Get(uint32_t idx, const std::string& pk, rtidb::base::Slice& slice);
+    bool Get(const std::string& col_name, const std::string& key, rtidb::base::Slice& slice); 
 
     bool Delete(const std::string& pk, uint32_t idx);
 
@@ -142,6 +142,14 @@ private:
         memcpy(buf, no_unique.data(), no_unique.size());
         memcpy(buf + no_unique.size(), pk.data(), pk.size());
         return rocksdb::Slice(result.data(), result.size());
+    }
+    static inline int ParsePk(const rocksdb::Slice& value, const std::string& key, std::string* pk) {
+        if (value.size() < key.size()) {
+            return -1;
+        }
+        char* buf = const_cast<char*>(pk->data());
+        memcpy(buf, value.data() + key.size(), value.size() - key.size());
+        return 0;
     }
     bool InitColumnFamilyDescriptor();
     int InitColumnDesc();

@@ -173,7 +173,7 @@ bool RelationalTable::InitFromMeta() {
         } else if (index_type == ::rtidb::type::kUnique) { 
             unique_val_map_.insert(std::make_pair(col_name, 
                         std::map<uint32_t, ::rtidb::type::DataType>()));
-        } else if (index_type == ::rtidb::type::kNoUinque) { 
+        } else if (index_type == ::rtidb::type::kNoUnique) { 
             no_unique_val_map_.insert(std::make_pair(col_name, 
                         std::map<uint32_t, ::rtidb::type::DataType>()));
         } 
@@ -405,26 +405,84 @@ bool RelationalTable::Get(uint32_t idx, const std::string& pk,
     }
 }
 */
-bool RelationalTable::Get(uint32_t idx, const std::string& pk, rtidb::base::Slice& slice) {
-    if (idx >= idx_cnt_) {
-        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
-        return false;
-    }
+bool RelationalTable::Get(const std::string& col_name, const std::string& key, rtidb::base::Slice& slice) {
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
-    if (it == NULL) {
+
+    auto iter = index_name_map_.find(col_name);
+    if (iter == index_name_map_.end() || iter->second.empty()) {
+        PDLOG(WARNING, "col_name not exist");
         return false;
     }
-    it->Seek(rocksdb::Slice(pk));
-    if (!it->Valid()) {
+    uint32_t idx = iter->second.begin()->first;
+    if (idx >= idx_cnt_) {
+        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return false;
     }
-    rocksdb::Slice value = it->value();
-    slice = rtidb::base::Slice(value.data(), value.size());
+    ::rtidb::type::IndexType& index_type = iter->second.begin()->second; 
+
+    if (index_type == ::rtidb::type::kPrimaryKey ||
+            index_type == ::rtidb::type::kAutoGen) {
+        rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+        if (it == NULL) {
+            delete it;
+            return false;
+        }
+        it->Seek(rocksdb::Slice(key));
+        if (!it->Valid()) {
+            delete it;
+            return false;
+        }
+        rocksdb::Slice value = it->value();
+        slice = rtidb::base::Slice(value.data(), value.size());
+        delete it;
+    } else if (index_type == ::rtidb::type::kUnique) {
+        rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+        if (it == NULL) {
+            delete it;
+            return false;
+        }
+        it->Seek(rocksdb::Slice(key));
+        if (!it->Valid()) {
+            delete it;
+            return false;
+        }
+        rocksdb::Slice pk_value = it->value();
+        const std::string& pk = std::string(pk_value.data(), pk_value.size());
+        
+        rtidb::base::Slice value; 
+        Get(pk_col_name_, pk, value); 
+        slice = rtidb::base::Slice(value.data(), value.size());
+        delete it;
+    } else if (index_type == ::rtidb::type::kNoUnique) {
+        //TODO multi records
+        rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+        if (it == NULL) {
+            delete it;
+            return false;
+        }
+        it->Seek(rocksdb::Slice(key));
+        if (!it->Valid()) {
+            delete it;
+            return false;
+        }
+        rocksdb::Slice pk_value = it->value();
+        
+        std::string pk;
+        if (ParsePk(pk_value, key, &pk) < 0) {
+            PDLOG(WARNING,"ParsePk failed");
+            delete it;
+            return false;
+        }
+
+        rtidb::base::Slice value; 
+        Get(pk_col_name_, pk, value); 
+        slice = rtidb::base::Slice(value.data(), value.size());
+        delete it;
+    }
     return true;
 }
 
@@ -519,7 +577,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
 
     std::lock_guard<std::mutex> lock(mu_);
     rtidb::base::Slice slice;
-    bool ok = Get(0, pk, slice);
+    bool ok = Get(pk_col_name_, pk, slice);
     if (!ok) {
         PDLOG(WARNING, "get failed, update table tid %u pid %u failed", id_, pid_);
         return false;
