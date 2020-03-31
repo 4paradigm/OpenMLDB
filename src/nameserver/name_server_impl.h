@@ -8,6 +8,7 @@
 #define SRC_NAMESERVER_NAME_SERVER_IMPL_H_
 
 #include <brpc/server.h>
+
 #include <atomic>
 #include <condition_variable>  // NOLINT
 #include <list>
@@ -17,6 +18,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "base/hash.h"
 #include "base/random.h"
 #include "base/schema_codec.h"
 #include "client/bs_client.h"
@@ -26,7 +29,6 @@
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
 #include "zk/zk_client.h"
-#include "base/hash.h"
 
 DECLARE_uint32(name_server_task_concurrency);
 DECLARE_uint32(name_server_task_concurrency_for_replica_cluster);
@@ -657,6 +659,10 @@ class NameServerImpl : public NameServer {
         const std::string& name, uint32_t pid,
         const std::string& candidate_leader, bool need_restore,
         uint32_t concurrency = FLAGS_name_server_task_concurrency);
+
+    std::shared_ptr<rtidb::nameserver::ClusterInfo> GetHealthCluster(
+        const std::string& alias);
+
     int CreateRecoverTableOP(const std::string& name, uint32_t pid,
                              const std::string& endpoint, bool is_leader,
                              uint64_t offset_delta, uint32_t concurrency);

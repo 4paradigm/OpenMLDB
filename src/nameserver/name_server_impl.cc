@@ -7624,16 +7624,10 @@ int NameServerImpl::DropTableRemoteOP(const std::string& name,
 int NameServerImpl::DropTableRemoteTask(std::shared_ptr<OPData> op_data) {
     std::string name = op_data->op_info_.name();
     std::string alias = op_data->op_info_.data();
-    auto it = nsc_.find(alias);
-    if (it == nsc_.end()) {
-        PDLOG(WARNING, "replica cluster [%s] is not online", alias.c_str());
-        return -1;
-    }
-    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
-        PDLOG(WARNING,
-              "create DropTableRemote task failed for cluster[%s] because "
-              "cluster status is not health. table[%s] pid[%u]",
-              alias.c_str(), name.c_str(), op_data->op_info_.pid());
+    std::shared_ptr<rtidb::nameserver::ClusterInfo> cluster =
+        GetHealthCluster(alias);
+    if (!cluster) {
+        PDLOG(WARNING, "replica[%s] not available", alias.c_str());
         return -1;
     }
     std::shared_ptr<Task> task =
@@ -7706,19 +7700,6 @@ int NameServerImpl::CreateTableRemoteTask(std::shared_ptr<OPData> op_data) {
     std::string alias = create_table_data.alias();
     ::rtidb::nameserver::TableInfo remote_table_info =
         create_table_data.remote_table_info();
-    auto it = nsc_.find(alias);
-    if (it == nsc_.end()) {
-        PDLOG(WARNING, "replica cluster [%s] is not online", alias.c_str());
-        return -1;
-    }
-    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
-        PDLOG(WARNING,
-              "create CreateTableRemote task failed for cluster[%s] because "
-              "cluster is not health. table[%s] pid[%u]",
-              alias.c_str(), remote_table_info.name().c_str(),
-              op_data->op_info_.pid());
-        return -1;
-    }
     uint64_t op_index = op_data->op_info_.op_id();
     std::shared_ptr<Task> task =
         CreateTableRemoteTask(remote_table_info, alias, op_index,
@@ -8161,27 +8142,27 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(
 std::shared_ptr<Task> NameServerImpl::DropTableRemoteTask(
     const std::string& name, const std::string& alias, uint64_t op_index,
     ::rtidb::api::OPType op_type) {
-    auto it = nsc_.find(alias);
-    if (it == nsc_.end()) {
-        return std::shared_ptr<Task>();
-    }
-    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
-        PDLOG(WARNING, "replica[%s] not health op_index[%lu]", alias.c_str(),
+    std::shared_ptr<rtidb::nameserver::ClusterInfo> cluster =
+        GetHealthCluster(alias);
+    if (!cluster) {
+        PDLOG(WARNING, "replica[%s] not available op_index[%lu]", alias.c_str(),
               op_index);
         return std::shared_ptr<Task>();
     }
-    std::shared_ptr<Task> task =
-        std::make_shared<Task>(it->second->client_->GetEndpoint(),
-                               std::make_shared<::rtidb::api::TaskInfo>());
+    std::string cluster_endpoint =
+        std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed)
+            ->GetEndpoint();
+    std::shared_ptr<Task> task = std::make_shared<Task>(
+        cluster_endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kDropTableRemote);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(it->second->client_->GetEndpoint());
+    task->task_info_->set_endpoint(cluster_endpoint);
 
     boost::function<bool()> fun =
         boost::bind(&NameServerImpl::DropTableRemote, this, *(task->task_info_),
-                    name, it->second);
+                    name, cluster);
     task->fun_ =
         boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
@@ -8190,27 +8171,27 @@ std::shared_ptr<Task> NameServerImpl::DropTableRemoteTask(
 std::shared_ptr<Task> NameServerImpl::CreateTableRemoteTask(
     const ::rtidb::nameserver::TableInfo& table_info, const std::string& alias,
     uint64_t op_index, ::rtidb::api::OPType op_type) {
-    auto it = nsc_.find(alias);
-    if (it == nsc_.end()) {
-        return std::shared_ptr<Task>();
-    }
-    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
-        PDLOG(WARNING, "replica[%s] not health op_index[%lu]", alias.c_str(),
+    std::shared_ptr<rtidb::nameserver::ClusterInfo> cluster =
+        GetHealthCluster(alias);
+    if (!cluster) {
+        PDLOG(WARNING, "replica[%s] not available op_index[%lu]", alias.c_str(),
               op_index);
         return std::shared_ptr<Task>();
     }
-    std::shared_ptr<Task> task =
-        std::make_shared<Task>(it->second->client_->GetEndpoint(),
-                               std::make_shared<::rtidb::api::TaskInfo>());
+    std::string cluster_endpoint =
+        std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed)
+            ->GetEndpoint();
+    std::shared_ptr<Task> task = std::make_shared<Task>(
+        cluster_endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kCreateTableRemote);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(it->second->client_->GetEndpoint());
+    task->task_info_->set_endpoint(cluster->client_->GetEndpoint());
 
     boost::function<bool()> fun =
         boost::bind(&NameServerImpl::CreateTableRemote, this,
-                    *(task->task_info_), table_info, it->second);
+                    *(task->task_info_), table_info, cluster);
     task->fun_ =
         boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
@@ -8265,29 +8246,28 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableRemoteTask(
     const std::string& alias, const std::string& name,
     const std::string& endpoint, uint32_t pid, uint64_t op_index,
     ::rtidb::api::OPType op_type) {
-    auto it = nsc_.find(alias);
-    if (it == nsc_.end()) {
-        return std::shared_ptr<Task>();
-    }
-    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
-        PDLOG(WARNING, "replica[%s] not health op_index[%lu]", alias.c_str(),
+    std::shared_ptr<rtidb::nameserver::ClusterInfo> cluster =
+        GetHealthCluster(alias);
+    if (!cluster) {
+        PDLOG(WARNING, "replica[%s] not available op_index[%lu]", alias.c_str(),
               op_index);
         return std::shared_ptr<Task>();
     }
-    std::shared_ptr<Task> task =
-        std::make_shared<Task>(it->second->client_->GetEndpoint(),
-                               std::make_shared<::rtidb::api::TaskInfo>());
+    std::string cluster_endpoint =
+        std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed)
+            ->GetEndpoint();
+    std::shared_ptr<Task> task = std::make_shared<Task>(
+        cluster_endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kLoadTable);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(it->second->client_->GetEndpoint());
+    task->task_info_->set_endpoint(cluster_endpoint);
 
-    boost::function<bool()> fun =
-        boost::bind(&NsClient::LoadTable,
-                    std::atomic_load_explicit(&it->second->client_,
-                                              std::memory_order_relaxed),
-                    name, endpoint, pid, zone_info_, *(task->task_info_));
+    boost::function<bool()> fun = boost::bind(
+        &NsClient::LoadTable,
+        std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed),
+        name, endpoint, pid, zone_info_, *(task->task_info_));
     task->fun_ =
         boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
@@ -8329,29 +8309,28 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaNSRemoteTask(
     const std::string& alias, const std::string& name,
     const std::vector<std::string>& endpoint_vec, uint32_t pid,
     uint64_t op_index, ::rtidb::api::OPType op_type) {
-    auto it = nsc_.find(alias);
-    if (it == nsc_.end()) {
-        return std::shared_ptr<Task>();
-    }
-    if (it->second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
-        PDLOG(WARNING, "replica[%s] not health op_index[%lu]", alias.c_str(),
+    std::shared_ptr<rtidb::nameserver::ClusterInfo> cluster =
+        GetHealthCluster(alias);
+    if (!cluster) {
+        PDLOG(WARNING, "replica[%s] not avaiable op_index[%lu]", alias.c_str(),
               op_index);
         return std::shared_ptr<Task>();
     }
-    std::shared_ptr<Task> task =
-        std::make_shared<Task>(it->second->client_->GetEndpoint(),
-                               std::make_shared<::rtidb::api::TaskInfo>());
+    std::string cluster_endpoint =
+        std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed)
+            ->GetEndpoint();
+    std::shared_ptr<Task> task = std::make_shared<Task>(
+        cluster_endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(
         ::rtidb::api::TaskType::kAddReplicaNSRemote);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(it->second->client_->GetEndpoint());
-    boost::function<bool()> fun =
-        boost::bind(&NsClient::AddReplicaNS,
-                    std::atomic_load_explicit(&it->second->client_,
-                                              std::memory_order_relaxed),
-                    name, endpoint_vec, pid, zone_info_, *(task->task_info_));
+    task->task_info_->set_endpoint(cluster_endpoint);
+    boost::function<bool()> fun = boost::bind(
+        &NsClient::AddReplicaNS,
+        std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed),
+        name, endpoint_vec, pid, zone_info_, *(task->task_info_));
     task->fun_ =
         boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
