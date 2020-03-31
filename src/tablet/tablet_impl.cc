@@ -666,7 +666,12 @@ void TabletImpl::Put(RpcController* controller,
         if (start_time + FLAGS_put_slow_log_threshold < end_time) {
             std::string key;
             if (request->dimensions_size() > 0) {
-                key = request->dimensions(0).key();
+                for (int idx = 0; idx < request->dimensions_size(); idx++) {
+                    if (!key.empty()) {
+                        key.append(", ");
+                    }
+                    key.append(request->dimensions(idx).key());
+                }
             } else {
                 key = request->pk();
             }
