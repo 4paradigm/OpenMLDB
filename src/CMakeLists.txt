@@ -115,6 +115,9 @@ target_link_libraries(nameserver_test  gtest pthread tablet nameserver gflags st
 add_executable(nameserver_create_remote_test nameserver/name_server_create_remote_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
 target_link_libraries(nameserver_create_remote_test  gtest pthread tablet nameserver gflags storage replica log common brpc ssl crypto dl leveldb protobuf z snappy rt zk_client zookeeper_mt tcmalloc_minimal)
 
+add_executable(memcomparable_format_test base/memcomparable_format_test.cc)
+target_link_libraries(memcomparable_format_test gtest pthread)
+
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
 
 target_link_libraries(rtidb gflags common client  tablet storage replica log nameserver brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal)
