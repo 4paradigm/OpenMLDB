@@ -4329,7 +4329,7 @@ void TabletImpl::SendIndexData(RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDumpIndexData, task_ptr) < 0) {
+        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kSendIndexData, task_ptr) < 0) {
             response->set_code(-1);
             response->set_msg("add task failed");
             return;
@@ -4442,6 +4442,7 @@ void TabletImpl::DumpIndexData(RpcController* controller,
         const ::rtidb::api::DumpIndexDataRequest* request,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
+    brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
         if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDumpIndexData, task_ptr) < 0) {

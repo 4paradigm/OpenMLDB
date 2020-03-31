@@ -98,6 +98,7 @@ enum TaskType {
     kDropTableRemote = 20; 
     kAddReplicaNSRemote = 21; 
     kDumpIndexData = 22;
+    kSendIndexData = 23;
 }
 
 enum TaskStatus {
