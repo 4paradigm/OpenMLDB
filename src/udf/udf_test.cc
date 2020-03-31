@@ -63,7 +63,7 @@ class UDFTest : public ::testing::Test {
 
 TEST_F(UDFTest, UDF_mem_handler_sum_test) {
     vm::MemTableHandler window;
-    for(auto row: rows) {
+    for (auto row : rows) {
         window.AddRow(row);
     }
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
@@ -98,8 +98,8 @@ TEST_F(UDFTest, UDF_mem_handler_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
-            reinterpret_cast<int8_t*>(&window), 2 + 4 + 2,
-            fesql::type::kFloat, buf));
+                         reinterpret_cast<int8_t*>(&window), 2 + 4 + 2,
+                         fesql::type::kFloat, buf));
         ASSERT_EQ(3.1f + 33.1f + 333.1f, fesql::udf::v1::sum_list<float>(col));
     }
 
@@ -110,8 +110,8 @@ TEST_F(UDFTest, UDF_mem_handler_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
-            reinterpret_cast<int8_t*>(&window), 2 + 4 + 2 + 4,
-            fesql::type::kDouble, buf));
+                         reinterpret_cast<int8_t*>(&window), 2 + 4 + 2 + 4,
+                         fesql::type::kDouble, buf));
         ASSERT_EQ(4.1 + 44.1 + 444.1, fesql::udf::v1::sum_list<double>(col));
     }
 
@@ -122,12 +122,11 @@ TEST_F(UDFTest, UDF_mem_handler_sum_test) {
         int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
 
         ASSERT_EQ(0, ::fesql::storage::v1::GetCol(
-            reinterpret_cast<int8_t*>(&window), 2 + 4 + 2 + 4 + 8,
-            fesql::type::kInt64, buf));
+                         reinterpret_cast<int8_t*>(&window), 2 + 4 + 2 + 4 + 8,
+                         fesql::type::kInt64, buf));
         ASSERT_EQ(5L + 55L + 555L, fesql::udf::v1::sum_list<int64_t>(col));
     }
 }
-
 
 TEST_F(UDFTest, UDF_sum_test) {
     ArrayListV<base::Slice> window(&rows);
@@ -347,6 +346,32 @@ TEST_F(UDFTest, GetColTest) {
     }
 }
 
+TEST_F(UDFTest, GetMemColTest) {
+    vm::MemTableHandler table;
+    for (auto row : rows) {
+        table.AddRow(row);
+    }
+    const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int32_t>);
+    for (int i = 0; i < 10; ++i) {
+        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+        ASSERT_EQ(
+            0, ::fesql::storage::v1::GetCol(reinterpret_cast<int8_t*>(&table),
+                                            2, fesql::type::kInt32, buf));
+        ::fesql::storage::ColumnImpl<int32_t>* col =
+            reinterpret_cast<::fesql::storage::ColumnImpl<int32_t>*>(buf);
+        auto col_iterator = col->GetIterator();
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(1, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(11, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_TRUE(col_iterator->Valid());
+        ASSERT_EQ(111, col_iterator->GetValue());
+        col_iterator->Next();
+        ASSERT_FALSE(col_iterator->Valid());
+    }
+}
 TEST_F(UDFTest, GetColHeapTest) {
     ArrayListV<fesql::base::Slice> impl(&rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);

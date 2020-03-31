@@ -174,23 +174,23 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
     vm::ListV<base::Slice> *w = reinterpret_cast<vm::ListV<base::Slice>*>(input);
     switch (type) {
         case fesql::type::kInt32: {
-            new (data) ColumnImpl<int>(w, offset);
+            new (data) storage::ColumnImpl<int>(w, offset);
             break;
         }
         case fesql::type::kInt16: {
-            new (data) ColumnImpl<int16_t>(w, offset);
+            new (data) storage::ColumnImpl<int16_t>(w, offset);
             break;
         }
         case fesql::type::kInt64: {
-            new (data) ColumnImpl<int64_t>(w, offset);
+            new (data) storage::ColumnImpl<int64_t>(w, offset);
             break;
         }
         case fesql::type::kFloat: {
-            new (data) ColumnImpl<float>(w, offset);
+            new (data) storage::ColumnImpl<float>(w, offset);
             break;
         }
         case fesql::type::kDouble: {
-            new (data) ColumnImpl<double>(w, offset);
+            new (data) storage::ColumnImpl<double>(w, offset);
             break;
         }
         default: {

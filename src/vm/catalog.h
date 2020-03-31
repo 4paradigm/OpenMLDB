@@ -79,15 +79,15 @@ template <class V>
 class ListV {
  public:
     ListV() {}
-    ~ListV() {}
+    virtual ~ListV() {}
     // TODO(chenjing): at 数组越界处理
     virtual std::unique_ptr<IteratorV<uint64_t, V>> GetIterator() const = 0;
     virtual IteratorV<uint64_t, V>* GetIterator(int8_t* addr) const = 0;
-    virtual const uint64_t GetCount()  = 0;
+    virtual const uint64_t GetCount() = 0;
     virtual V At(uint64_t pos) = 0;
 };
 
-class DataHandler {
+class DataHandler : public ListV<base::Slice> {
  public:
     DataHandler() {}
     virtual ~DataHandler() {}
@@ -107,11 +107,19 @@ class RowHandler : public DataHandler {
     RowHandler() {}
 
     virtual ~RowHandler() {}
+    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator() const override {
+        return std::unique_ptr<IteratorV<uint64_t, base::Slice>>();
+    }
+    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const override {
+        return nullptr;
+    }
+    const uint64_t GetCount() override { return 0; }
+    base::Slice At(uint64_t pos) override { return base::Slice(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
     virtual const base::Slice GetValue() const = 0;
 };
 
-class TableHandler : public DataHandler, public ListV<base::Slice> {
+class TableHandler : public DataHandler {
  public:
     TableHandler() : DataHandler() {}
 

@@ -19,8 +19,8 @@
 #include "vm/catalog.h"
 namespace fesql {
 namespace storage {
-using vm::ListV;
 using base::Slice;
+using vm::ListV;
 
 template <class V>
 class ArrayListIterator;
@@ -45,6 +45,7 @@ class ColumnImpl : public WrapListImpl<V, Slice> {
     ColumnImpl(vm::ListV<Slice> *impl, uint32_t offset)
         : WrapListImpl<V, Slice>(), root_(impl), offset_(offset) {}
 
+    ~ColumnImpl() {}
     const V GetField(Slice row) const override {
         V value;
         const int8_t *ptr = row.buf() + offset_;
@@ -60,7 +61,8 @@ class ColumnImpl : public WrapListImpl<V, Slice> {
         if (nullptr == addr) {
             return new ColumnIterator<V>(root_->GetIterator(nullptr), this);
         } else {
-            return new (addr) ColumnIterator<V>(root_->GetIterator(nullptr), this);
+            return new (addr)
+                ColumnIterator<V>(root_->GetIterator(nullptr), this);
         }
     }
     const uint64_t GetCount() override { return root_->GetCount(); }
@@ -80,6 +82,7 @@ class StringColumnImpl : public ColumnImpl<fesql::storage::StringRef> {
           next_str_field_offset_(next_str_field_offset),
           str_start_offset_(str_start_offset) {}
 
+    ~StringColumnImpl() {}
     const StringRef GetField(Slice row) const override {
         int32_t addr_space = fesql::storage::v1::GetAddrSpace(row.size());
         fesql::storage::StringRef value;
@@ -199,7 +202,7 @@ class ColumnIterator : public vm::IteratorV<uint64_t, V> {
     const uint64_t GetKey() override { return row_iter_->GetKey(); }
 
  private:
-    vm::IteratorV<uint64_t, Slice>* row_iter_;
+    vm::IteratorV<uint64_t, Slice> *row_iter_;
     const ColumnImpl<V> *column_impl_;
 };
 

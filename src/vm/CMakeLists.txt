@@ -24,6 +24,11 @@ target_link_libraries(mem_catalog_test ${vm_deps_libs} protobuf ${llvm_libs} ${C
 add_test(mem_catalog_test mem_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/mem_catalog_test.xml)
 list(APPEND test_list mem_catalog_test)
 
+add_executable(window_test window_test.cc)
+target_link_libraries(window_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+add_test(window_test mem_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/window_test.xml)
+list(APPEND test_list window_test)
+
 add_executable(transform_test transform_test.cc)
 target_link_libraries(transform_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} ${Boost_LIBRARIES} gtest pthread)
 add_test(transform_test transform_test --gtest_output=xml:${CMAKE_BINARY_DIR}/transform_test.xml)
