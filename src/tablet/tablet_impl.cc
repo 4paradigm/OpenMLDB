@@ -670,6 +670,8 @@ void TabletImpl::Put(RpcController* controller,
                     if (!key.empty()) {
                         key.append(", ");
                     }
+                    key.append(std::to_string(request->dimensions(idx).idx()));
+                    key.append(":");
                     key.append(request->dimensions(idx).key());
                 }
             } else {
