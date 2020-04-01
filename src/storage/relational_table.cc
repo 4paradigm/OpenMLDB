@@ -622,7 +622,7 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint
         sc = std::make_shared<SnapshotCounter>();
         sc->snapshot = snapshot;
         sc->atime = baidu::common::timer::get_micros() / 1000;
-        PDLOG(INFO, "table[%s] pid_, create new snapshot[%lu]", name_.c_str(), pid_, snapshot_id);
+        PDLOG(INFO, "table[%s] pid_[%u], create new snapshot[%lu]", name_.c_str(), pid_, snapshot_id);
         snapshots_.insert(std::make_pair(snapshot_id, sc));
     }
     ro.snapshot = sc->snapshot;
