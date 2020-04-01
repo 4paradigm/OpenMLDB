@@ -59,7 +59,6 @@ public:
     RelationalTable(const std::string& name,
                 uint32_t id,
                 uint32_t pid,
-                const std::map<std::string, uint32_t>& mapping,
                 ::rtidb::common::StorageMode storage_mode,
                 const std::string& db_root_path);
 
@@ -67,29 +66,15 @@ public:
               const std::string& db_root_path);
     RelationalTable(const RelationalTable&) = delete;
     RelationalTable& operator=(const RelationalTable&) = delete;
-
     ~RelationalTable();
-
-    bool InitColumnFamilyDescriptor();
-
-    int InitColumnDesc();
-    
-    bool InitFromMeta();
-
     bool Init();
 
-    static void initOptionTemplate();
-
     bool Put(const std::string& value); 
-
-    bool PutDB(const std::string& pk,
-             const char* data,
-             uint32_t size);
 
     bool Put(const std::string& value,
              const Dimensions& dimensions);
 
-    bool Get(uint32_t idx, const std::string& pk, rtidb::base::Slice& slice);
+    bool Get(const std::string& col_name, const std::string& key, rtidb::base::Slice& slice); 
 
     bool Delete(const std::string& pk, uint32_t idx);
 
@@ -97,13 +82,6 @@ public:
 
     bool Update(const ::rtidb::api::Columns& cd_columns, 
             const ::rtidb::api::Columns& col_columns);
-
-    void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
-            std::map<std::string, int>& cd_idx_map, 
-            Schema& condition_schema);
-        
-    bool UpdateDB(const std::map<std::string, int>& cd_idx_map, const std::map<std::string, int>& col_idx_map, const Schema& condition_schema, const Schema& value_schema, 
-            const std::string& cd_value, const std::string& col_value); 
 
     inline ::rtidb::common::StorageMode GetStorageMode() const {
         return storage_mode_;
@@ -139,15 +117,73 @@ public:
         offset_.store(offset, std::memory_order_relaxed);
     }
 
-    inline std::map<std::string, uint32_t>& GetMapping() {
-        return mapping_;
+    std::vector<std::shared_ptr<IndexDef>> GetAllIndex() {
+        return table_index_.GetAllIndex();
+    }
+
+    std::shared_ptr<IndexDef> GetIndex(const std::string& name) {
+        return table_index_.GetIndex(name);
+    }
+
+    std::shared_ptr<IndexDef> GetIndex(uint32_t idx) {
+        return table_index_.GetIndex(idx);
     }
 
     inline ::rtidb::api::TableMeta& GetTableMeta() {
         return table_meta_;
     }
-    
+
 private:
+    static inline rocksdb::Slice CombineNoUniqueAndPk(const std::string& no_unique, 
+            const std::string& pk) {
+        std::string result;
+        result.resize(no_unique.size() + pk.size());
+        char* buf = const_cast<char*>(&(result[0]));
+        memcpy(buf, no_unique.c_str(), no_unique.size());
+        memcpy(buf + no_unique.size(), pk.c_str(), pk.size());
+        return rocksdb::Slice(result);
+    }
+    static inline int ParsePk(const rocksdb::Slice& value, const std::string& key, std::string* pk) {
+        if (value.size() < key.size()) {
+            return -1;
+        }
+        std::string real_key;
+        real_key.resize(key.size());
+        char* rk = const_cast<char*>(real_key.c_str());
+        memcpy(rk, value.data(), key.size());
+        if (real_key != key) {
+            return -2;
+        }
+
+        pk->resize(value.size() - key.size());
+        char* buf = const_cast<char*>(pk->c_str());
+        memcpy(buf, value.data() + key.size(), value.size() - key.size());
+        return 0;
+    }
+    bool InitColumnFamilyDescriptor();
+    int InitColumnDesc();
+    bool InitFromMeta();
+    static void initOptionTemplate();
+    rocksdb::Iterator* Seek(uint32_t idx, const std::string& key); 
+    bool PutDB(uint32_t pk_index_idx, 
+            const std::string& pk,
+            const std::map<std::string, uint32_t>& unique_map,
+            const std::map<std::string, uint32_t>& no_unique_map,
+            const char* data,
+            uint32_t size);
+    void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
+            std::map<std::string, int>& cd_idx_map, 
+            Schema& condition_schema);
+    bool UpdateDB(const std::map<std::string, int>& cd_idx_map, 
+            const std::map<std::string, int>& col_idx_map, 
+            const Schema& condition_schema, const Schema& value_schema, 
+            const std::string& cd_value, const std::string& col_value); 
+    bool GetStr(::rtidb::base::RowView& view, uint32_t idx, 
+            const ::rtidb::type::DataType& data_type, std::string* key); 
+    bool GetMap(::rtidb::base::RowView& view, 
+            std::map<std::string, uint32_t> *unique_map, 
+            std::map<std::string, uint32_t> *no_unique_map); 
+
     std::mutex mu_;
     ::rtidb::common::StorageMode storage_mode_;
     std::string name_;
@@ -157,8 +193,7 @@ private:
     std::atomic<uint64_t> diskused_;
     bool is_leader_;
     std::atomic<uint32_t> table_status_;
-    std::string schema_;
-    std::map<std::string, uint32_t> mapping_;
+    TableIndex table_index_;
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;
     int64_t last_make_snapshot_time_;
@@ -172,6 +207,14 @@ private:
     std::string db_root_path_;
 
     ::rtidb::base::IdGenerator id_generator_;
+    bool has_auto_gen_;
+    std::string pk_col_name_;
+    int pk_idx_;
+    ::rtidb::type::DataType pk_data_type_;
+    std::map<std::string, std::map<uint32_t, ::rtidb::type::DataType>> unique_val_map_;
+    std::map<std::string, std::map<uint32_t, ::rtidb::type::DataType>> no_unique_val_map_;
+    std::map<std::string, std::map<uint32_t, ::rtidb::type::IndexType>> index_name_map_;
+
 };
 
 }

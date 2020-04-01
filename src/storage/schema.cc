@@ -18,6 +18,11 @@ IndexDef::IndexDef(const std::string& name, uint32_t id, IndexStatus status) :
     name_(name), index_id_(id), status_(status) {
 }
 
+IndexDef::IndexDef(const std::string& name, uint32_t id, 
+        const ::rtidb::type::IndexType& type, const IndexStatus& status) :
+    name_(name), index_id_(id), type_(type), status_(status) {
+}
+
 IndexDef::~IndexDef() {
 }
 

@@ -53,7 +53,7 @@ static const std::unordered_map<std::string, ::rtidb::type::DataType>  DATA_TYPE
 
 static const std::unordered_map<std::string, ::rtidb::type::IndexType> INDEX_TYPE_MAP = {
     {"unique", ::rtidb::type::kUnique},
-    {"nounique", ::rtidb::type::kNoUinque},
+    {"nounique", ::rtidb::type::kNoUnique},
     {"primarykey", ::rtidb::type::kPrimaryKey},
     {"autogen", ::rtidb::type::kAutoGen},
     {"increment", ::rtidb::type::kIncrement}

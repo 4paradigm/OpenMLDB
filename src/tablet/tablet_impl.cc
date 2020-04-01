@@ -497,7 +497,6 @@ void TabletImpl::Get(RpcController* controller,
     } else {
         std::string * value = response->mutable_value(); 
         bool ok = false;
-        uint32_t index = 0;
         /**
         if (request->has_idx_name() && request->idx_name().size() > 0) {
             std::map<std::string, uint32_t>::iterator iit = r_table->GetMapping().find(request->idx_name());
@@ -512,7 +511,7 @@ void TabletImpl::Get(RpcController* controller,
         }
         */
         rtidb::base::Slice slice;
-        ok = r_table->Get(index, request->key(), slice);
+        ok = r_table->Get(request->idx_name(), request->key(), slice);
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
             response->set_msg("key not found");
@@ -4453,7 +4452,7 @@ void TabletImpl::DumpIndexData(RpcController* controller,
     }
     std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
     std::vector<::rtidb::log::WriteHandle*> whs;
-    for (int i=0;i<request->partition_num();++i) {
+    for (int i = 0; i < (int)(request->partition_num()); ++i) {
         std::string index_file_name = std::to_string(request->pid()) + "_" + std::to_string(i) + "_index.data";
         std::string index_data_path = index_path + index_file_name;
         FILE* fd = fopen(index_data_path.c_str(), "wb+");

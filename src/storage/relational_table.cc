@@ -22,12 +22,11 @@ static rocksdb::Options hdd_option_template;
 static bool options_template_initialized = false;
 
 RelationalTable::RelationalTable(const std::string &name, uint32_t id, uint32_t pid,
-        const std::map<std::string, uint32_t> &mapping, 
         ::rtidb::common::StorageMode storage_mode,
         const std::string& db_root_path) :
-    storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
-    mapping_(mapping), last_make_snapshot_time_(0),  
-    write_opts_(), offset_(0), db_root_path_(db_root_path){
+    storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(0),
+    last_make_snapshot_time_(0),  
+    write_opts_(), offset_(0), db_root_path_(db_root_path), has_auto_gen_(false), pk_idx_(0){
         if (!options_template_initialized) {
             initOptionTemplate();
         }
@@ -38,9 +37,9 @@ RelationalTable::RelationalTable(const std::string &name, uint32_t id, uint32_t 
 RelationalTable::RelationalTable(const ::rtidb::api::TableMeta& table_meta,
         const std::string& db_root_path) :
     storage_mode_(table_meta.storage_mode()), name_(table_meta.name()), id_(table_meta.tid()), pid_(table_meta.pid()),
-    is_leader_(false), mapping_(std::map<std::string, uint32_t>()), 
+    is_leader_(false), 
     compress_type_(table_meta.compress_type()), last_make_snapshot_time_(0),   
-    write_opts_(), offset_(0), db_root_path_(db_root_path){
+    write_opts_(), offset_(0), db_root_path_(db_root_path), has_auto_gen_(false), pk_idx_(0){
     table_meta_.CopyFrom(table_meta);
     if (!options_template_initialized) {
         initOptionTemplate();
@@ -111,7 +110,8 @@ bool RelationalTable::InitColumnFamilyDescriptor() {
     cf_ds_.clear();
     cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, 
             rocksdb::ColumnFamilyOptions()));
-    for (auto iter = mapping_.begin(); iter != mapping_.end(); ++iter) {
+    const std::vector<std::shared_ptr<IndexDef>> indexs = GetAllIndex();
+    for (const auto& index_def : indexs) {
         rocksdb::ColumnFamilyOptions cfo;
         if (storage_mode_ == ::rtidb::common::StorageMode::kSSD) {
             cfo = rocksdb::ColumnFamilyOptions(ssd_option_template);
@@ -120,32 +120,31 @@ bool RelationalTable::InitColumnFamilyDescriptor() {
             cfo = rocksdb::ColumnFamilyOptions(hdd_option_template);
             options_ = hdd_option_template;
         }
-        cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(iter->first, cfo));
-        PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
+        cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
+        PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
     }
     return true;
 }
 
 int RelationalTable::InitColumnDesc() {
-    if (table_meta_.column_desc_size() > 0) {
+    if (table_meta_.column_key_size() > 0) {
         uint32_t key_idx = 0;
-        for (const auto &column_desc : table_meta_.column_desc()) {
-            if (column_desc.add_ts_idx()) {
-                mapping_.insert(std::make_pair(column_desc.name(), key_idx));
-                key_idx++;
-            } 
+        for (const auto &column_key : table_meta_.column_key()) {
+            const std::string& name = column_key.index_name();
+            const ::rtidb::type::IndexType index_type = column_key.index_type(); 
+            if (table_index_.GetIndex(name)) {
+                return -1;
+            }
+            if (column_key.flag()) {
+                table_index_.AddIndex(std::make_shared<IndexDef>(name, key_idx, index_type, ::rtidb::storage::kDeleted));
+            } else {
+                table_index_.AddIndex(std::make_shared<IndexDef>(name, key_idx, index_type, ::rtidb::storage::kReady));
+            }
+            key_idx++;
         }
     } else {
-        for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
-            mapping_.insert(std::make_pair(table_meta_.dimensions(i), (uint32_t) i));
-            PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u",
-                  table_meta_.dimensions(i).c_str(), i, table_meta_.name().c_str(), id_, pid_);
-        }
-    }
-    // add default dimension
-    if (mapping_.empty()) {
-        mapping_.insert(std::make_pair("idx0", 0));
-        PDLOG(INFO, "no index specified with default");
+        PDLOG(WARNING, "column_key_size is 0");
+        return -1;
     }
     return 0;
 }
@@ -158,9 +157,49 @@ bool RelationalTable::InitFromMeta() {
         PDLOG(WARNING, "init column desc failed, tid %u pid %u", id_, pid_);
         return false;
     }
-    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
     if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
-    idx_cnt_ = mapping_.size();
+    idx_cnt_ = table_index_.Size();
+
+    const std::vector<std::shared_ptr<IndexDef>> indexs = GetAllIndex();
+    uint32_t idx = 0;
+    for (const auto& index_def : indexs) {
+        const std::string& col_name = index_def->GetName();
+        const ::rtidb::type::IndexType index_type = index_def->GetType();  
+        if (index_type == ::rtidb::type::kPrimaryKey || 
+                index_type == ::rtidb::type::kAutoGen) {
+            pk_col_name_ = col_name;         
+        } else if (index_type == ::rtidb::type::kAutoGen) {
+            has_auto_gen_ = true;        
+        } else if (index_type == ::rtidb::type::kUnique) { 
+            unique_val_map_.insert(std::make_pair(col_name, 
+                        std::map<uint32_t, ::rtidb::type::DataType>()));
+        } else if (index_type == ::rtidb::type::kNoUnique) { 
+            no_unique_val_map_.insert(std::make_pair(col_name, 
+                        std::map<uint32_t, ::rtidb::type::DataType>()));
+        } 
+        std::map<uint32_t, ::rtidb::type::IndexType> map;
+        map.insert(std::make_pair(idx++, index_type));
+        index_name_map_.insert(std::make_pair(col_name, map));
+    }
+    const Schema& schema = table_meta_.column_desc(); 
+    for (int i = 0; i < schema.size(); i++) {
+        const std::string& col_name = schema.Get(i).name();
+        const ::rtidb::type::DataType& data_type = schema.Get(i).data_type();
+        if (col_name == pk_col_name_) {
+            pk_idx_ = i;
+            pk_data_type_ = data_type;
+        } else if (unique_val_map_.find(col_name) != unique_val_map_.end()) {
+            unique_val_map_[col_name].insert(std::make_pair(i, data_type));
+        } else if (no_unique_val_map_.find(col_name) != no_unique_val_map_.end()) {
+            no_unique_val_map_[col_name].insert(std::make_pair(i, data_type));
+        }
+    }
+    if (has_auto_gen_) {
+        if (pk_data_type_ != ::rtidb::type::kBigInt) {
+            PDLOG(WARNING, "auto_gen_pk date_type must bu bigint");
+            return false;
+        }
+    }
     return true;
 }
 
@@ -188,83 +227,122 @@ bool RelationalTable::Init() {
 }
 
 bool RelationalTable::Put(const std::string& value) {
-    int64_t auto_gen_pk = id_generator_.Next();
-
-    bool has_auto_gen = false;
-    std::string pk_col_name;
-    for (const ::rtidb::common::ColumnKey& column_key : table_meta_.column_key()) {
-        if (column_key.index_type() == ::rtidb::type::kPrimaryKey ||
-                column_key.index_type() == ::rtidb::type::kAutoGen) {
-            pk_col_name = column_key.index_name();
-        }
-        if (column_key.index_type() == ::rtidb::type::kAutoGen) {
-            has_auto_gen = true;
-        }
-        break;
-        //TODO: other index type
-    }
-    const Schema& schema = table_meta_.column_desc(); 
-    int index = 0;
-    ::rtidb::type::DataType data_type = ::rtidb::type::kBool;
     std::string pk = "";
-    for (int i = 0; i < schema.size(); i++) {
-        if (schema.Get(i).name() == pk_col_name) {
-            index = i;
-            data_type = schema.Get(i).data_type();
-            break;
-        }
-    }
-    if (has_auto_gen) {
-        if (data_type != ::rtidb::type::kBigInt) {
-            PDLOG(WARNING, "auto_gen_pk date_type must bu bigint");
-            return false;
-        }
+    uint32_t pk_index_idx = 0;
+    const Schema& schema = table_meta_.column_desc(); 
+    ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), value.length());
+    if (has_auto_gen_) {
         ::rtidb::base::RowBuilder builder(schema);
         builder.SetBuffer(reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), value.size());
+        int64_t auto_gen_pk = id_generator_.Next();
         builder.AppendInt64(auto_gen_pk);
         pk = std::to_string(auto_gen_pk);
     } else {
-        ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(value[0]))), value.length());
-        switch(data_type) {
-            case ::rtidb::type::kSmallInt: {  
-                int16_t si_val = 0;
-                view.GetInt16(index, &si_val);
-                pk = std::to_string(si_val);
-                break;
-            }
-            case ::rtidb::type::kInt: { 
-                int32_t i_val = 0;
-                view.GetInt32(index, &i_val);
-                pk = std::to_string(i_val);
-                break;
-            }
-            case ::rtidb::type::kBigInt: { 
-                int64_t bi_val = 0;
-                view.GetInt64(index, &bi_val);
-                pk = std::to_string(bi_val);
-                break;
-            }
-            case ::rtidb::type::kVarchar: {  
-                char* ch = NULL;
-                uint32_t length = 0;
-                view.GetString(index, &ch, &length);
-                pk.assign(ch, length);
-                break;
-            }
-            default: 
-                PDLOG(WARNING, "unsupported data type %s", 
-                        rtidb::type::DataType_Name(data_type).c_str());
-                return false;
-            //TODO: other data type
+        if (!GetStr(view, pk_idx_, pk_data_type_, &pk)) {
+            return false;
         }
+        auto iter = index_name_map_.find(pk_col_name_);
+        if (iter == index_name_map_.end() || iter->second.empty()) {
+            PDLOG(WARNING, "index_name_map_ has error");
+            return false;
+        }
+        pk_index_idx = iter->second.begin()->first;
     }
-    return PutDB(pk, value.c_str(), value.size());
+    std::map<std::string, uint32_t> unique_map;
+    std::map<std::string, uint32_t> no_unique_map;
+    if (!GetMap(view, &unique_map, &no_unique_map)) {
+        return false;
+    }
+    return PutDB(pk_index_idx, pk, unique_map, no_unique_map, value.c_str(), value.size());
 }
 
-bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t size) {
+bool RelationalTable::GetStr(::rtidb::base::RowView& view, uint32_t idx, 
+        const ::rtidb::type::DataType& data_type, std::string* key) {
+    if (data_type == ::rtidb::type::kSmallInt) {  
+        int16_t si_val = 0;
+        view.GetInt16(idx, &si_val);
+        *key = std::to_string(si_val);
+    } else if (data_type == ::rtidb::type::kInt) { 
+        int32_t i_val = 0;
+        view.GetInt32(idx, &i_val);
+        *key = std::to_string(i_val);
+    } else if (data_type == ::rtidb::type::kBigInt) { 
+        int64_t bi_val = 0;
+        view.GetInt64(idx, &bi_val);
+        *key = std::to_string(bi_val);
+    } else if (data_type == ::rtidb::type::kVarchar) {  
+        char* ch = NULL;
+        uint32_t length = 0;
+        view.GetString(idx, &ch, &length);
+        key->assign(ch, length);
+    } else {
+        //TODO: other data type 
+        PDLOG(WARNING, "unsupported data type %s", 
+                rtidb::type::DataType_Name(data_type).c_str());
+        return false;
+    }
+    return true;
+}
+
+bool RelationalTable::GetMap(::rtidb::base::RowView& view, 
+        std::map<std::string, uint32_t> *unique_map, 
+        std::map<std::string, uint32_t> *no_unique_map) {
+    for (const auto& kv : unique_val_map_) {
+        if (kv.second.empty()) {
+            PDLOG(WARNING, "unique_val_map_ has error");
+            return false;
+        }
+        uint32_t idx = kv.second.begin()->first;
+        const ::rtidb::type::DataType& data_type = kv.second.begin()->second;
+        std::string key = "";
+        if (!GetStr(view, idx, data_type, &key)) {
+            return false;
+        }
+        auto iter = index_name_map_.find(kv.first);
+        if (iter == index_name_map_.end() || iter->second.empty()) {
+            PDLOG(WARNING, "index_name_map_ has error");
+            return false;
+        }
+        unique_map->insert(std::make_pair(key, iter->second.begin()->first));
+    }
+    for (const auto& kv : no_unique_val_map_) {
+        if (kv.second.empty()) {
+            PDLOG(WARNING, "unique_val_map_ has error");
+            return false;
+        }
+        uint32_t idx = kv.second.begin()->first;
+        const ::rtidb::type::DataType& data_type = kv.second.begin()->second;
+        std::string key = "";
+        if (!GetStr(view, idx, data_type, &key)) {
+            return false;
+        }
+        auto iter = index_name_map_.find(kv.first);
+        if (iter == index_name_map_.end() || iter->second.empty()) {
+            PDLOG(WARNING, "index_name_map_ has error");
+            return false;
+        }
+        no_unique_map->insert(std::make_pair(key, iter->second.begin()->first));
+    }
+    return true;
+}
+
+bool RelationalTable::PutDB(uint32_t pk_index_idx, const std::string &pk, 
+        const std::map<std::string, uint32_t>& unique_map, 
+        const std::map<std::string, uint32_t>& no_unique_map,
+        const char *data, uint32_t size) {
+    rocksdb::WriteBatch batch;
     rocksdb::Status s;
     rocksdb::Slice spk = rocksdb::Slice(pk);
-    s = db_->Put(write_opts_, cf_hs_[1], spk, rocksdb::Slice(data, size));
+    batch.Put(cf_hs_[pk_index_idx + 1], spk, rocksdb::Slice(data, size));
+    for (auto& kv : unique_map) {
+        rocksdb::Slice unique = rocksdb::Slice(kv.first);
+        batch.Put(cf_hs_[kv.second + 1], unique, spk);
+    }
+    for (auto& kv : no_unique_map) {
+        rocksdb::Slice no_unique = CombineNoUniqueAndPk(kv.first, pk);
+        batch.Put(cf_hs_[kv.second + 1], no_unique, rocksdb::Slice());
+    }
+    s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
@@ -309,44 +387,87 @@ bool RelationalTable::Delete(const std::string& pk, uint32_t idx) {
         return false;
     }
 }
-/**
-bool RelationalTable::Get(uint32_t idx, const std::string& pk, 
-        std::string& value) {
-    if (idx >= idx_cnt_) {
-        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
-        return false;
-    }
-    rocksdb::Slice spk ;
-    spk = rocksdb::Slice(pk);
-    rocksdb::Status s;
-    s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
-    if (s.ok()) {
-        return true;
-    } else {
-        return false;
-    }
-}
-*/
-bool RelationalTable::Get(uint32_t idx, const std::string& pk, rtidb::base::Slice& slice) {
-    if (idx >= idx_cnt_) {
-        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
-        return false;
-    }
+
+rocksdb::Iterator* RelationalTable::Seek(uint32_t idx, const std::string& key) {
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
+
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
     if (it == NULL) {
-        return false;
+        return NULL;
     }
-    it->Seek(rocksdb::Slice(pk));
+    it->Seek(rocksdb::Slice(key));
     if (!it->Valid()) {
+        return NULL;
+    }
+    return it;
+}
+
+bool RelationalTable::Get(const std::string& col_name, const std::string& key, rtidb::base::Slice& slice) {
+    auto iter = index_name_map_.find(col_name);
+    if (iter == index_name_map_.end() || iter->second.empty()) {
+        PDLOG(WARNING, "col_name not exist");
         return false;
     }
-    rocksdb::Slice value = it->value();
-    slice = rtidb::base::Slice(value.data(), value.size());
+    uint32_t idx = iter->second.begin()->first;
+    if (idx >= idx_cnt_) {
+        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+        return false;
+    }
+    ::rtidb::type::IndexType index_type = iter->second.begin()->second; 
+
+    if (index_type == ::rtidb::type::kPrimaryKey ||
+            index_type == ::rtidb::type::kAutoGen) {
+        rocksdb::Iterator* it = Seek(idx, key);
+        if (it == NULL) {
+            delete it;
+            return false;
+        }
+        if (it->key() != key) {
+            delete it;
+            return false;
+        }
+        slice = rtidb::base::Slice(it->value().data(), it->value().size());
+        delete it;
+    } else if (index_type == ::rtidb::type::kUnique) {
+        rocksdb::Iterator* it = Seek(idx, key);
+        if (it == NULL) {
+            delete it;
+            return false;
+        }
+        if (it->key() != key) {
+            delete it;
+            return false;
+        }
+        const std::string& pk = std::string(it->value().data(), it->value().size());
+        
+        rtidb::base::Slice value; 
+        Get(pk_col_name_, pk, value); 
+        slice = rtidb::base::Slice(value.data(), value.size());
+        delete it;
+    } else if (index_type == ::rtidb::type::kNoUnique) {
+        //TODO multi records
+        rocksdb::Iterator* it = Seek(idx, key);
+        if (it == NULL) {
+            delete it;
+            return false;
+        }
+        std::string pk = "";
+        int ret = ParsePk(it->key(), key, &pk);
+        if (ret < 0) {
+            PDLOG(WARNING,"ParsePk failed, tid %u pid %u, return %d", id_, pid_, ret);
+            delete it;
+            return false;
+        }
+
+        rtidb::base::Slice value; 
+        Get(pk_col_name_, pk, value); 
+        slice = rtidb::base::Slice(value.data(), value.size());
+        delete it;
+    }
     return true;
 }
 
@@ -441,7 +562,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
 
     std::lock_guard<std::mutex> lock(mu_);
     rtidb::base::Slice slice;
-    bool ok = Get(0, pk, slice);
+    bool ok = Get(pk_col_name_, pk, slice);
     if (!ok) {
         PDLOG(WARNING, "get failed, update table tid %u pid %u failed", id_, pid_);
         return false;
@@ -552,8 +673,10 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
                     rtidb::type::DataType_Name(schema.Get(i).data_type()).c_str());
             return false;
         }
-    }
-    ok = PutDB(pk, row.c_str(), row.length());
+    } 
+    std::map<std::string, uint32_t> unique_map; 
+    std::map<std::string, uint32_t> no_unique_map; 
+    ok = PutDB(0, pk, unique_map, no_unique_map, row.c_str(), row.length());
     if (!ok) {
         PDLOG(WARNING, "put failed, update table tid %u pid %u failed", id_, pid_);
         return false;
