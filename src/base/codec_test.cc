@@ -30,7 +30,6 @@ TEST_F(CodecTest, EncodeRows_empty) {
     ASSERT_EQ(size, 0);
 }
 
-
 TEST_F(CodecTest, EncodeRows_invalid) {
     std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> data;
     int32_t size = ::rtidb::base::EncodeRows(data, 0, NULL);

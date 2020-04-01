@@ -181,10 +181,40 @@ static inline void DecodeFull(const std::string* str, std::map<std::string, std:
 }
 
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using ProjectList = ::google::protobuf::RepeatedPtrField<uint32_t>;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
+
+
+struct RowContext;
+class RowBuilder;
+class RowView;
+class RowProject;
+
+
+//TODO(wangtaize) share the row codec context
+struct RowContext {};
+
+class RowProject {
+ public:
+    RowProject(const Schema& schema, const ProjectList& plist);
+
+    ~RowProject();
+
+    bool Init();
+
+    bool Project(const int8_t* row_ptr, uint32_t row_size, int8_t** out_ptr, uint32_t* out_size);
+
+ private:
+    const Schema& schema_;
+    const ProjectList& plist_;
+    Schema output_schema_;
+    // TODO(wangtaize) share the init overhead
+    RowBuilder* row_builder_;
+    RowView* row_view_;
+};
 
 class RowBuilder {
  public:
@@ -246,6 +276,7 @@ class RowView {
 
     int32_t GetInteger(const int8_t* row, uint32_t idx,
                        ::rtidb::type::DataType type, int64_t* val);
+
     int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
                      uint32_t* length);
 

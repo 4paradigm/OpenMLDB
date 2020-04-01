@@ -498,19 +498,6 @@ void TabletImpl::Get(RpcController* controller,
         std::string * value = response->mutable_value(); 
         bool ok = false;
         uint32_t index = 0;
-        /**
-        if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = r_table->GetMapping().find(request->idx_name());
-            if (iit == r_table->GetMapping().end()) {
-                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                        request->tid(), request->pid());
-                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
-                response->set_msg("idx name not found");
-                return;
-            }
-            index = iit->second;
-        }
-        */
         rtidb::base::Slice slice;
         ok = r_table->Get(index, request->key(), slice);
         if (!ok) {

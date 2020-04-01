@@ -639,5 +639,116 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
 
 }  // namespace v1
 
+RowProject::RowProject(const Schema& schema, const ProjectList& plist):schema_(schema),
+    plist_(plist), output_schema_(), row_builder_(NULL), row_view_(NULL){
+}
+
+RowProject::~RowProject() {
+    delete row_builder_;
+    delete row_view_;
+}
+
+bool RowProject::Init() {
+    if (plist_.size() <= 0) return false;
+    for (int32_t i = 0 ; i < plist_.size(); i++) {
+        uint32_t idx = plist_.Get(i);
+        if (idx >= (uint32_t)schema_.size()) {
+            PDLOG(WARNING, "index %u out of schema size %d", idx, schema_.size());
+            return false;
+        }
+        const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+        output_schema_.Add()->CopyFrom(column);
+    }
+    row_builder_ = new RowBuilder(output_schema_);
+    row_view_ = new RowView(schema_);
+    return true;
+}
+
+bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
+        int8_t** output_ptr, uint32_t* out_size) {
+    if (row_ptr == NULL || output_ptr == NULL || out_size == NULL) return false;
+    bool ok = row_view_->Reset(row_ptr, size);
+    if (!ok) return false;
+    uint32_t str_size = 0;
+    for (int32_t i = 0 ; i < plist_.size(); i++) { 
+        uint32_t idx = plist_.Get(i);
+        const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+        if (column.data_type() == ::rtidb::type::kVarchar) {
+            uint32_t length = 0;
+            char* content = nullptr;
+            int32_t ret = row_view_->GetString(idx, &content, &length);
+            if (ret != 0) {
+                return false;
+            }
+            str_size += length;
+        }
+    }
+    uint32_t total_size = row_builder_->CalTotalLength(str_size);
+    void* ptr = ::malloc(total_size);
+    row_builder_->SetBuffer(reinterpret_cast<int8_t*>(ptr), total_size);
+    for (int32_t i = 0 ; i < plist_.size(); i++) { 
+        uint32_t idx = plist_.Get(i);
+        const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+        int32_t ret = 0;
+        switch(column.data_type()) {
+            case ::rtidb::type::kBool: {
+                bool val = false;
+                ret = row_view_->GetBool(idx, &val);
+                if (ret == 0) row_builder_->AppendBool(val);
+                break;
+            }
+            case ::rtidb::type::kSmallInt:{
+                int16_t val = 0;
+                ret = row_view_->GetInt16(idx, &val);
+                if (ret == 0) row_builder_->AppendInt16(val);
+                break;
+            }
+            case ::rtidb::type::kInt:{
+                int32_t val = 0;
+                ret = row_view_->GetInt32(idx, &val);
+                if (ret == 0) row_builder_->AppendInt32(val);
+                break;
+            }
+            case ::rtidb::type::kTimestamp:
+            case ::rtidb::type::kBigInt:{
+                int64_t val = 0;
+                ret = row_view_->GetInt64(idx, &val);
+                if (ret == 0) row_builder_->AppendInt64(val);
+                break;
+            }
+            case ::rtidb::type::kFloat:{
+                float val = 0;
+                ret = row_view_->GetFloat(idx, &val);
+                if (ret == 0) row_builder_->AppendFloat(val);
+                break;
+            }
+            case ::rtidb::type::kDouble:{
+                double val = 0;
+                ret = row_view_->GetDouble(idx, &val);
+                if (ret == 0) row_builder_->AppendDouble(val);
+                break;
+            }
+            case ::rtidb::type::kVarchar:{
+                char* val = NULL;
+                uint32_t size = 0;
+                ret = row_view_->GetString(idx, &val, &size);
+                if (ret == 0) row_builder_->AppendString(val, size);
+                break;
+            }
+            default: {
+                PDLOG(WARNING, "not supported type");
+            }
+        }
+        if (ret != 0) {
+            ::free(ptr);
+            PDLOG(WARNING, "fail to project column %s with idx %u", column.name().c_str(), idx);
+            return false;
+        }
+    }
+    *output_ptr  = reinterpret_cast<int8_t*>(ptr);
+    *out_size = total_size;
+    return true;
+}
+
 }  // namespace base
 }  // namespace rtidb

@@ -245,6 +245,7 @@ message ScanRequest {
     optional GetType et_type = 12 [default = kSubKeyGt];
     optional bool enable_remove_ts = 13 [default = false];
     optional uint32 atleast = 14 [default = 0];
+    repeated uint32 projection = 15;
 }
 
 message RpcMetric {
@@ -330,6 +331,7 @@ message TableMeta {
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
     optional TTLDesc ttl_desc = 19;
     optional rtidb.type.TableType table_type = 20;
+    optional uint32 format_version = 21 [default = 0];
 }
 
 message CreateTableRequest {
@@ -526,6 +528,7 @@ message GetRequest {
     optional string ts_name = 7;
     optional uint64 et = 8;
     optional GetType et_type = 9 [default = kSubKeyGe];
+    repeated uint32 projection = 10;
 }
 
 message GetResponse {
