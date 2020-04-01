@@ -607,7 +607,7 @@ TEST_F(ListIRBuilderTest, list_int32_iterator_sum_test) {
     std::vector<fesql::storage::Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorCase<int32_t>(1 + 11 + 111 + 1111 + 11111,
-                                 ::fesql::type::kInt16, "col1", ptr);
+                                 ::fesql::type::kInt32, "col1", ptr);
     free(ptr);
 }
 
@@ -616,7 +616,7 @@ TEST_F(ListIRBuilderTest, list_int16_iterator_sum_test) {
     std::vector<fesql::storage::Slice> rows;
     BuildWindow2(rows, &ptr);
     RunListIteratorCase<int16_t>(2 + 22 + 222 + 2222 + 22222,
-                                 ::fesql::type::kInt32, "col2", ptr);
+                                 ::fesql::type::kInt16, "col2", ptr);
     free(ptr);
 }
 
