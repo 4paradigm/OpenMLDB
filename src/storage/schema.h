@@ -82,7 +82,7 @@ public:
     IndexStatus GetStatus() { 
         return status_.load(std::memory_order_relaxed);
     }
-    inline ::rtidb::type::IndexType& GetType() {
+    inline ::rtidb::type::IndexType GetType() {
         return type_;
     }
 

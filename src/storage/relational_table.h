@@ -139,15 +139,24 @@ private:
         std::string result;
         result.resize(no_unique.size() + pk.size());
         char* buf = const_cast<char*>(&(result[0]));
-        memcpy(buf, no_unique.data(), no_unique.size());
-        memcpy(buf + no_unique.size(), pk.data(), pk.size());
-        return rocksdb::Slice(result.data(), result.size());
+        memcpy(buf, no_unique.c_str(), no_unique.size());
+        memcpy(buf + no_unique.size(), pk.c_str(), pk.size());
+        return rocksdb::Slice(result);
     }
     static inline int ParsePk(const rocksdb::Slice& value, const std::string& key, std::string* pk) {
         if (value.size() < key.size()) {
             return -1;
         }
-        char* buf = const_cast<char*>(pk->data());
+        std::string real_key;
+        real_key.resize(key.size());
+        char* rk = const_cast<char*>(real_key.c_str());
+        memcpy(rk, value.data(), key.size());
+        if (real_key != key) {
+            return -2;
+        }
+
+        pk->resize(value.size() - key.size());
+        char* buf = const_cast<char*>(pk->c_str());
         memcpy(buf, value.data() + key.size(), value.size() - key.size());
         return 0;
     }
@@ -155,10 +164,11 @@ private:
     int InitColumnDesc();
     bool InitFromMeta();
     static void initOptionTemplate();
+    rocksdb::Iterator* Seek(uint32_t idx, const std::string& key); 
     bool PutDB(uint32_t pk_index_idx, 
             const std::string& pk,
-            std::map<std::string, uint32_t>& unique_map,
-            std::map<std::string, uint32_t>& no_unique_map,
+            const std::map<std::string, uint32_t>& unique_map,
+            const std::map<std::string, uint32_t>& no_unique_map,
             const char* data,
             uint32_t size);
     void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
