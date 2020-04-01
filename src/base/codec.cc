@@ -690,6 +690,10 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
         uint32_t idx = plist_.Get(i);
         const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
         int32_t ret = 0;
+        if (row_view_->IsNULL(idx)) {
+            row_builder_->AppendNULL();
+            continue;
+        }
         switch(column.data_type()) {
             case ::rtidb::type::kBool: {
                 bool val = false;
