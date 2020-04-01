@@ -4429,6 +4429,11 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> 
                 return;
             }
             std::string des_index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(kv.first) + "/index/";
+            if (!::rtidb::base::IsExists(des_index_path) && !::rtidb::base::MkdirRecur(des_index_path)) {
+                PDLOG(WARNING, "mkdir failed. tid %u pid %u path %s", tid, pid, des_index_path.c_str());
+                SetTaskStatus(task_ptr, ::rtidb::api::TaskStatus::kFailed);
+                return; 
+            }
             if (db_root_path == des_db_root_path) {
                 if (!::rtidb::base::Rename(src_file, des_index_path + index_file_name)) {
                     PDLOG(WARNING, "rename dir failed. tid %u pid %u file %s", tid, pid, index_file_name.c_str());

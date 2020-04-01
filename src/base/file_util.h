@@ -258,6 +258,7 @@ static bool CopyFile(const std::string& src_file, const std::string& desc_file) 
     }
     FILE* f_desc = fopen(desc_file.c_str(), "w+");
     if (!f_desc) {
+        fclose(f_src);
         return false;
     }
     char buf[BOLCK_SIZE];
