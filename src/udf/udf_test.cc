@@ -323,6 +323,7 @@ TEST_F(UDFTest, GetColTest) {
     ArrayListV<fesql::base::Slice> impl(&rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     for (int i = 0; i < 10; ++i) {
+        DLOG(INFO) << "process " << i ;
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
         ::fesql::storage::ListRef list_ref;
         list_ref.list = buf;
@@ -361,9 +362,6 @@ TEST_F(UDFTest, GetWindowColTest) {
         ::fesql::storage::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::storage::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
-//        ASSERT_TRUE(col_iterator->Valid());
-//        ASSERT_EQ(1, col_iterator->GetValue());
-//        col_iterator->Next();
         ASSERT_TRUE(col_iterator->Valid());
         ASSERT_EQ(11, col_iterator->GetValue());
         col_iterator->Next();

@@ -269,6 +269,27 @@ TEST_F(FnIRBuilderTest, test_for_in_sum) {
         test, 1 + 3 + 5 + 7 + 9, &list_ref, 0);
 }
 
+TEST_F(FnIRBuilderTest, test_for_in_sum_ret) {
+    const std::string test =
+        "%%fun\n"
+        "def test(l:list<i32>, a:i32):i32\n"
+        "    sum=0\n"
+        "    for x in l\n"
+        "        if sum > 10\n"
+        "            return sum\n"
+        "        else\n"
+        "            sum = sum + x\n"
+        "    return sum\n"
+        "end";
+
+    std::vector<int32_t> vec = {1, 3, 5, 7, 9};
+    fesql::storage::ArrayListV<int32_t> list(&vec);
+    fesql::storage::ListRef list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckResult<int32_t, fesql::storage::ListRef *, int32_t>(
+        test, 1 + 3 + 5 + 7, &list_ref, 0);
+}
+
 TEST_F(FnIRBuilderTest, test_for_in_condition_sum) {
     const std::string test =
         "%%fun\n"

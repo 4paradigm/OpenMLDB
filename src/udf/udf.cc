@@ -45,7 +45,7 @@ V sum_list(int8_t *input) {
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
     ::fesql::vm::ListV<V> *col =
         (::fesql::vm::ListV<V> *)(list_ref->list);
-    auto iter = col->GetIterator(nullptr);
+    auto iter = col->GetIterator();
     while (iter->Valid()) {
         result += iter->GetValue();
         iter->Next();

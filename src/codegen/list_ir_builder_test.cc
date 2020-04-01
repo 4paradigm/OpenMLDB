@@ -57,6 +57,7 @@ void AssertStrEq(std::string exp, int8_t* ptr) {
 namespace fesql {
 namespace codegen {
 
+using fesql::vm::ListV;
 class ListIRBuilderTest : public ::testing::Test {
  public:
     ListIRBuilderTest() {}
@@ -73,8 +74,8 @@ V IteratorSum(int8_t* input) {
     V result = 0;
     ::fesql::storage::IteratorRef* iter_ref =
         (::fesql::storage::IteratorRef*)(input);
-    ::fesql::storage::ArrayListIterator<V>* iter =
-        (::fesql::storage::ArrayListIterator<V>*)(iter_ref->iterator);
+    ::fesql::vm::IteratorV<uint64_t ,V>* iter =
+        (::fesql::vm::IteratorV<uint64_t ,V>*)(iter_ref->iterator);
     while (iter->Valid()) {
         result += iter->GetValue();
         iter->Next();
@@ -281,11 +282,11 @@ void GetListIterator(T expected, const ::fesql::type::Type& type,
     bool ok = buf_builder.BuildGetCol(col, arg0, &column);
     ASSERT_TRUE(ok);
 
-    ::llvm::Value* val = nullptr;
+    ::llvm::Value* iterator = nullptr;
     base::Status status;
-    ASSERT_TRUE(list_builder.BuildIterator(column, &val, status));
+    ASSERT_TRUE(list_builder.BuildIterator(column, &iterator, status));
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* i8_ptr = builder.CreatePointerCast(val, i8_ptr_ty);
+    ::llvm::Value* i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
     llvm::FunctionCallee callee;
     switch (type) {
         case fesql::type::kInt16:
@@ -318,6 +319,9 @@ void GetListIterator(T expected, const ::fesql::type::Type& type,
     }
     ::llvm::Value* ret_val =
         builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
+
+    ::llvm::Value* ret_delete = nullptr;
+    list_builder.BuildIteratorDelete(iterator, &ret_delete, status);
     builder.CreateRet(ret_val);
 
     m->print(::llvm::errs(), NULL);
@@ -492,6 +496,8 @@ void GetListIteratorNext(T expected, const ::fesql::type::Type& type,
     ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next5, status));
     ASSERT_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next5, &res, status));
 
+    ::llvm::Value* ret_delete = nullptr;
+    list_builder.BuildIteratorDelete(iter, &ret_delete, status);
     builder.CreateRet(res);
 
     m->print(::llvm::errs(), NULL);

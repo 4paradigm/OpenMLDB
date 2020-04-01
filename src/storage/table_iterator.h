@@ -24,6 +24,7 @@
 #include "storage/segment.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
+#include "glog/logging.h"
 
 namespace fesql {
 namespace storage {
@@ -113,7 +114,9 @@ class FullTableIterator : public vm::SliceIterator {
     explicit FullTableIterator(Segment*** segments, uint32_t seg_cnt,
                                std::shared_ptr<Table> table);
 
-    ~FullTableIterator() {}
+    ~FullTableIterator() {
+        DLOG(INFO) << "~FullTableIterator()";
+    }
 
     inline void Seek(uint64_t ts) {}
 

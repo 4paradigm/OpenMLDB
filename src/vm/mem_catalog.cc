@@ -26,7 +26,9 @@ MemTableIterator::MemTableIterator(const MemSegment* table,
       start_iter_(table_->begin() + start),
       end_iter_(table_->begin() + end),
       iter_(start_iter_) {}
-MemTableIterator::~MemTableIterator() {}
+MemTableIterator::~MemTableIterator() {
+    DLOG(INFO) << "~MemTableIterator()";
+}
 
 // TODO(chenjing): speed up seek for memory iterator
 void MemTableIterator::Seek(uint64_t ts) {
@@ -54,7 +56,9 @@ MemWindowIterator::MemWindowIterator(const MemSegmentMap* partitions,
       schema_(schema),
       iter_(partitions->cbegin()) {}
 
-MemWindowIterator::~MemWindowIterator() {}
+MemWindowIterator::~MemWindowIterator() {
+    DLOG(INFO) << "~MemWindowIterator()";
+}
 
 void MemWindowIterator::Seek(const std::string& key) {
     iter_ = partitions_->find(key);
