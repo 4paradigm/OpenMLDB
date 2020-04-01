@@ -2357,6 +2357,7 @@ void TabletImpl::RelationalTableSnapshotTTL() {
     for (auto iter : table_set) {
         iter->TTLSnapshot();
     }
+    snapshot_pool_.DelayTask(FLAGS_snapshot_ttl_time * 60 * 1000, boost::bind(&TabletImpl::RelationalTableSnapshotTTL, this));
 }
 
 void TabletImpl::SendData(RpcController* controller,
