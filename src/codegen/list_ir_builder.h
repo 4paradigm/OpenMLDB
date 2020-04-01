@@ -31,8 +31,8 @@ class ListIRBuilder {
                               base::Status& status);  // NOLINT
     bool BuildIteratorNext(::llvm::Value* iterator, ::llvm::Value** output,
                            base::Status& status);  // NOLINT
-    bool BuildIteratorDelete (::llvm::Value* iterator, ::llvm::Value** output,
-                           base::Status& status);  // NOLINT
+    bool BuildIteratorDelete(::llvm::Value* iterator, ::llvm::Value** output,
+                             base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;

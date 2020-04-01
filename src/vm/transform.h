@@ -198,8 +198,8 @@ class BatchModeTransformer {
                                         base::Status& status);  // NOLINT
     virtual bool TransformWindowOp(PhysicalOpNode* depend,
                                    const node::WindowPlanNode* w_ptr,
-                                         PhysicalOpNode** output,
-                                         base::Status& status);  // NOLINT
+                                   PhysicalOpNode** output,
+                                   base::Status& status);  // NOLINT
 
     virtual bool TransformJoinOp(const node::JoinPlanNode* node,
                                  PhysicalOpNode** output,
@@ -242,7 +242,7 @@ class BatchModeTransformer {
                          std::string& fn_name, Schema* output_schema,  // NOLINT
                          base::Status& status);                        // NOLINT
     bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
-    
+
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
@@ -258,7 +258,6 @@ class BatchModeTransformer {
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
-    
 };
 
 class RequestModeransformer : public BatchModeTransformer {

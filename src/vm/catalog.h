@@ -107,7 +107,8 @@ class RowHandler : public DataHandler {
     RowHandler() {}
 
     virtual ~RowHandler() {}
-    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator() const override {
+    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator()
+        const override {
         return std::unique_ptr<IteratorV<uint64_t, base::Slice>>();
     }
     IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const override {

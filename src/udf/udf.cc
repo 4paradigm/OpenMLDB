@@ -17,11 +17,8 @@ namespace fesql {
 namespace udf {
 namespace v1 {
 using fesql::storage::ColumnImpl;
-using fesql::storage::ColumnImpl;
 using fesql::storage::IteratorRef;
 using fesql::storage::ListRef;
-using fesql::storage::ListRef;
-using fesql::storage::StringRef;
 using fesql::storage::StringColumnImpl;
 using fesql::storage::StringRef;
 
@@ -43,8 +40,7 @@ V sum_list(int8_t *input) {
         return result;
     }
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::vm::ListV<V> *col =
-        (::fesql::vm::ListV<V> *)(list_ref->list);
+    ::fesql::vm::ListV<V> *col = (::fesql::vm::ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
     while (iter->Valid()) {
         result += iter->GetValue();
@@ -116,7 +112,7 @@ V min_list(int8_t *input) {
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
     ::fesql::storage::ListV<V> *col =
         (::fesql::storage::ListV<V> *)(list_ref->list);
-   auto iter = col->GetIterator();
+    auto iter = col->GetIterator();
 
     if (iter->Valid()) {
         result = iter->GetValue();
@@ -148,9 +144,9 @@ bool iterator_list(int8_t *input, int8_t *output) {
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
     ::fesql::storage::IteratorRef *iterator_ref =
         (::fesql::storage::IteratorRef *)(output);
-    ::fesql::vm::ListV<V> *col =
-        (::fesql::vm::ListV<V> *)(list_ref->list);
-    iterator_ref->iterator = reinterpret_cast<int8_t *>(col->GetIterator(nullptr));
+    ::fesql::vm::ListV<V> *col = (::fesql::vm::ListV<V> *)(list_ref->list);
+    iterator_ref->iterator =
+        reinterpret_cast<int8_t *>(col->GetIterator(nullptr));
     return true;
 }
 
@@ -162,7 +158,7 @@ bool has_next_iterator(int8_t *input) {
     ::fesql::storage::IteratorRef *iter_ref =
         (::fesql::storage::IteratorRef *)(input);
     ::fesql::vm::IteratorV<uint64_t, V> *iter =
-        (::fesql::vm::IteratorV<uint64_t ,V> *)(iter_ref->iterator);
+        (::fesql::vm::IteratorV<uint64_t, V> *)(iter_ref->iterator);
     return iter == nullptr ? false : iter->Valid();
 }
 
@@ -170,8 +166,8 @@ template <class V>
 V next_iterator(int8_t *input) {
     ::fesql::storage::IteratorRef *iter_ref =
         (::fesql::storage::IteratorRef *)(input);
-    ::fesql::vm::IteratorV<uint64_t ,V> *iter =
-        (::fesql::vm::IteratorV<uint64_t ,V> *)(iter_ref->iterator);
+    ::fesql::vm::IteratorV<uint64_t, V> *iter =
+        (::fesql::vm::IteratorV<uint64_t, V> *)(iter_ref->iterator);
     V v = iter->GetValue();
     iter->Next();
     return v;
@@ -180,8 +176,8 @@ template <class V>
 void delete_iterator(int8_t *input) {
     ::fesql::storage::IteratorRef *iter_ref =
         (::fesql::storage::IteratorRef *)(input);
-    ::fesql::vm::IteratorV<uint64_t ,V> *iter =
-        (::fesql::vm::IteratorV<uint64_t ,V> *)(iter_ref->iterator);
+    ::fesql::vm::IteratorV<uint64_t, V> *iter =
+        (::fesql::vm::IteratorV<uint64_t, V> *)(iter_ref->iterator);
     if (iter) {
         delete iter;
     }

@@ -81,22 +81,24 @@ class RunSession {
         const std::shared_ptr<DataHandler> partitions, const Schema& schema,
         const int8_t* fn, const std::vector<int>& idxs);
     std::shared_ptr<DataHandler> TableSortGroup(
-        std::shared_ptr<DataHandler> table, const PhysicalGroupAndSortNode *grouo_sort_op);
+        std::shared_ptr<DataHandler> table,
+        const PhysicalGroupAndSortNode* grouo_sort_op);
     std::shared_ptr<DataHandler> PartitionSort(
         std::shared_ptr<DataHandler> table, const Schema& schema,
         const int8_t* fn, std::vector<int> idxs, const bool is_asc);
     std::shared_ptr<DataHandler> TableSort(std::shared_ptr<DataHandler> table,
-                                            const Schema& schema,
-                                            const int8_t* fn,
-                                            std::vector<int> idxs,
-                                            const bool is_asc);
+                                           const Schema& schema,
+                                           const int8_t* fn,
+                                           std::vector<int> idxs,
+                                           const bool is_asc);
     std::shared_ptr<DataHandler> TableProject(
         const int8_t* fn, std::shared_ptr<DataHandler> table,
         Schema output_schema);
     std::shared_ptr<DataHandler> WindowAggProject(
-        const PhysicalWindowAggrerationNode* op, std::shared_ptr<DataHandler> input);
-    std::string GenerateKeys(storage::RowView* row_view,
-                             const Schema& schema, const std::vector<int>& idxs);
+        const PhysicalWindowAggrerationNode* op,
+        std::shared_ptr<DataHandler> input);
+    std::string GenerateKeys(storage::RowView* row_view, const Schema& schema,
+                             const std::vector<int>& idxs);
     std::shared_ptr<DataHandler> IndexSeek(
         std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
         const PhysicalSeekIndexNode* seek_op);

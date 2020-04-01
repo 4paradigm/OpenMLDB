@@ -12,6 +12,7 @@
 #include <vm/mem_catalog.h>
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <utility>
 #include <vector>
 #include "base/slice.h"
@@ -35,7 +36,7 @@ class ColumnIterator;
 template <class V, class R>
 class WrapListImpl : public ListV<V> {
  public:
-    explicit WrapListImpl() : ListV<V>() {}
+    WrapListImpl() : ListV<V>() {}
     ~WrapListImpl() {}
     virtual const V GetField(R row) const = 0;
 };
@@ -190,14 +191,11 @@ class ArrayListIterator : public vm::IteratorV<uint64_t, V> {
 template <class V>
 class ColumnIterator : public vm::IteratorV<uint64_t, V> {
  public:
-    ColumnIterator(vm::ListV<Slice> *list,
-                   const ColumnImpl<V> *column_impl)
+    ColumnIterator(vm::ListV<Slice> *list, const ColumnImpl<V> *column_impl)
         : vm::IteratorV<uint64_t, V>(), column_impl_(column_impl) {
         row_iter_ = list->GetIterator();
     }
-    ~ColumnIterator() {
-        DLOG(INFO) << "~ColumnIterator()";
-    }
+    ~ColumnIterator() { DLOG(INFO) << "~ColumnIterator()"; }
     void Seek(uint64_t key) override { row_iter_->Seek(key); }
     void SeekToFirst() override { row_iter_->SeekToFirst(); }
     bool Valid() override { return row_iter_->Valid(); }

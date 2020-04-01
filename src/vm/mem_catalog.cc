@@ -26,9 +26,7 @@ MemTableIterator::MemTableIterator(const MemSegment* table,
       start_iter_(table_->begin() + start),
       end_iter_(table_->begin() + end),
       iter_(start_iter_) {}
-MemTableIterator::~MemTableIterator() {
-    DLOG(INFO) << "~MemTableIterator()";
-}
+MemTableIterator::~MemTableIterator() { DLOG(INFO) << "~MemTableIterator()"; }
 
 // TODO(chenjing): speed up seek for memory iterator
 void MemTableIterator::Seek(uint64_t ts) {
@@ -163,10 +161,11 @@ bool MemPartitionHandler::AddRow(const std::string& key, uint64_t ts,
                                  const Slice& row) {
     auto iter = partitions_.find(key);
     if (iter == partitions_.cend()) {
-        partitions_.insert(
-            std::pair<std::string, MemSegment>(key, {std::make_pair(ts, base::Slice(row.data(), row.size()))}));
+        partitions_.insert(std::pair<std::string, MemSegment>(
+            key, {std::make_pair(ts, base::Slice(row.data(), row.size()))}));
     } else {
-        iter->second.push_back(std::make_pair(ts, base::Slice(row.data(), row.size())));
+        iter->second.push_back(
+            std::make_pair(ts, base::Slice(row.data(), row.size())));
     }
     return false;
 }

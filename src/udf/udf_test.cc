@@ -323,7 +323,7 @@ TEST_F(UDFTest, GetColTest) {
     ArrayListV<fesql::base::Slice> impl(&rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
     for (int i = 0; i < 10; ++i) {
-        DLOG(INFO) << "process " << i ;
+        DLOG(INFO) << "process " << i;
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
         ::fesql::storage::ListRef list_ref;
         list_ref.list = buf;
@@ -350,7 +350,7 @@ TEST_F(UDFTest, GetWindowColTest) {
     vm::CurrentHistoryWindow table(-2);
     uint64_t ts = 1000;
     for (auto row : rows) {
-        table.BufferData(ts++,row);
+        table.BufferData(ts++, row);
     }
 
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int32_t>);

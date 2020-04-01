@@ -124,8 +124,9 @@ const uint64_t TabletTableHandler::GetCount() {
     }
     return cnt;
 }
-base::Slice TabletTableHandler::At(uint64_t pos) { auto iter = GetIterator();
-    while (pos-- >0 && iter->Valid()) {
+base::Slice TabletTableHandler::At(uint64_t pos) {
+    auto iter = GetIterator();
+    while (pos-- > 0 && iter->Valid()) {
         iter->Next();
     }
     return iter->Valid() ? iter->GetValue() : base::Slice();
@@ -195,7 +196,8 @@ std::unique_ptr<vm::SliceIterator> TabletSegmentHandler::GetIterator() const {
     auto iter = partition_hander_->GetWindowIterator();
     if (iter) {
         iter->Seek(key_);
-        return iter->Valid() ? std::move(iter->GetValue()) : std::unique_ptr<vm::SliceIterator>();
+        return iter->Valid() ? std::move(iter->GetValue())
+                             : std::unique_ptr<vm::SliceIterator>();
     }
     return std::unique_ptr<vm::SliceIterator>();
 }
@@ -220,7 +222,7 @@ const uint64_t TabletSegmentHandler::GetCount() {
 base::Slice TabletSegmentHandler::At(uint64_t pos) {
     auto iter = GetIterator();
     uint64_t cnt = 0;
-    while (pos -- > 0 && iter->Valid()) {
+    while (pos-- > 0 && iter->Valid()) {
         iter->Next();
     }
     return iter->Valid() ? iter->GetValue() : base::Slice();

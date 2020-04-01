@@ -171,7 +171,8 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
     if (nullptr == input || nullptr == data) {
         return -2;
     }
-    vm::ListV<base::Slice> *w = reinterpret_cast<vm::ListV<base::Slice>*>(input);
+    vm::ListV<base::Slice>* w =
+        reinterpret_cast<vm::ListV<base::Slice>*>(input);
     switch (type) {
         case fesql::type::kInt32: {
             new (data) storage::ColumnImpl<int>(w, offset);
@@ -195,8 +196,8 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data) {
         }
         default: {
             LOG(WARNING) << "cannot get col for type "
-                         << ::fesql::type::Type_Name(type)
-                         << " type id " << type_id;
+                         << ::fesql::type::Type_Name(type) << " type id "
+                         << type_id;
             return -2;
         }
     }

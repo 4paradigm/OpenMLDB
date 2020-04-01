@@ -108,7 +108,7 @@ class MemRowHandler : public RowHandler {
 
 class MemTableHandler : public TableHandler {
  public:
-    explicit MemTableHandler();
+    MemTableHandler();
     explicit MemTableHandler(const Schema* schema);
     MemTableHandler(const std::string& table_name, const std::string& db,
                     const Schema* schema);
@@ -169,7 +169,8 @@ class Window : public MemTableHandler {
         if (nullptr == addr) {
             return new vm::MemTableIterator(&table_, schema_, start_, end_);
         } else {
-            return new (addr) vm::MemTableIterator(&table_, schema_, start_, end_);
+            return new (addr)
+                vm::MemTableIterator(&table_, schema_, start_, end_);
         }
     }
     virtual void BufferData(uint64_t key, const Slice& row) = 0;
@@ -276,7 +277,6 @@ class MemCatalog : public Catalog {
     MemTables tables_;
     Databases dbs_;
 };
-
 
 }  // namespace vm
 }  // namespace fesql

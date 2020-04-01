@@ -74,8 +74,8 @@ V IteratorSum(int8_t* input) {
     V result = 0;
     ::fesql::storage::IteratorRef* iter_ref =
         (::fesql::storage::IteratorRef*)(input);
-    ::fesql::vm::IteratorV<uint64_t ,V>* iter =
-        (::fesql::vm::IteratorV<uint64_t ,V>*)(iter_ref->iterator);
+    ::fesql::vm::IteratorV<uint64_t, V>* iter =
+        (::fesql::vm::IteratorV<uint64_t, V>*)(iter_ref->iterator);
     while (iter->Valid()) {
         result += iter->GetValue();
         iter->Next();

@@ -110,7 +110,7 @@ std::vector<const std::vector<::llvm::Value*>*> ScopeVar::GetIteratorValues() {
         LOG(WARNING) << "no scope exists ";
         return values;
     }
-    for(auto iter = scopes_.cbegin(); iter != scopes_.cend(); iter++) {
+    for (auto iter = scopes_.cbegin(); iter != scopes_.cend(); iter++) {
         values.push_back(&(iter->scope_iterators));
     }
     return values;

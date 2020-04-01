@@ -154,8 +154,8 @@ bool BlockIRBuilder::BuildIfElseBlock(
 
     builder.CreateCondBr(cond, cond_true, cond_false);
     builder.SetInsertPoint(cond_true);
-    if (!BuildBlock(if_else_block->if_block_->block_, cond_true,
-                            if_else_end, status)) {
+    if (!BuildBlock(if_else_block->if_block_->block_, cond_true, if_else_end,
+                    status)) {
         LOG(WARNING) << "fail to build block " << status.msg;
         return false;
     }
@@ -172,17 +172,16 @@ bool BlockIRBuilder::BuildIfElseBlock(
             llvm::Value *cond = nullptr;
 
             ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
-            if (!expr_builder.Build(elif_block->elif_node_->expression_,
-                                            &cond, status)) {
+            if (!expr_builder.Build(elif_block->elif_node_->expression_, &cond,
+                                    status)) {
                 LOG(WARNING)
                     << "fail to codegen condition expression" << status.msg;
                 return false;
             }
             builder.CreateCondBr(cond, cond_true, cond_false);
             builder.SetInsertPoint(cond_true);
-            if (!BuildBlock(elif_block->block_,
-                                    builder.GetInsertBlock(), if_else_end,
-                                    status)) {
+            if (!BuildBlock(elif_block->block_, builder.GetInsertBlock(),
+                            if_else_end, status)) {
                 LOG(WARNING) << "fail to codegen block: " << status.msg;
                 return false;
             }
@@ -194,8 +193,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
         builder.CreateBr(if_else_end);
     } else {
         if (!BuildBlock(if_else_block->else_block_->block_,
-                                builder.GetInsertBlock(), if_else_end,
-                                status)) {
+                        builder.GetInsertBlock(), if_else_end, status)) {
             LOG(WARNING) << "fail to codegen block: " << status.msg;
             return false;
         }
@@ -225,7 +223,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
     // loop start
     llvm::Value *container_value;
     if (!expr_builder.Build(node->for_in_node_->in_expression_,
-                                    &container_value, status)) {
+                            &container_value, status)) {
         LOG(WARNING) << "fail to build for condition expression: "
                      << status.msg;
         return false;
@@ -249,7 +247,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         // loop condition
         llvm::Value *condition;
         if (!list_ir_builder.BuildIteratorHasNext(iterator, &condition,
-                                                          status)) {
+                                                  status)) {
             LOG(WARNING) << "fail to build iterator has next expression: "
                          << status.msg;
             return false;
@@ -270,8 +268,8 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
                          << status.msg;
             return false;
         }
-        if (!var_ir_builder.StoreValue(node->for_in_node_->var_name_,
-                                               next, false, status)) {
+        if (!var_ir_builder.StoreValue(node->for_in_node_->var_name_, next,
+                                       false, status)) {
             return false;
         }
         // loop body
@@ -338,8 +336,8 @@ bool BlockIRBuilder::ClearScopeValue(llvm::BasicBlock *block,
     if (nullptr != delete_values) {
         for (auto iter = delete_values->cbegin(); iter != delete_values->cend();
              iter++) {
-            if (!list_ir_builder_delete.BuildIteratorDelete(
-                             *iter, &ret_delete, status)) {
+            if (!list_ir_builder_delete.BuildIteratorDelete(*iter, &ret_delete,
+                                                            status)) {
                 LOG(WARNING) << "fail to build iterator delete expression: "
                              << status.msg;
                 return false;
@@ -349,17 +347,17 @@ bool BlockIRBuilder::ClearScopeValue(llvm::BasicBlock *block,
     return true;
 }
 bool BlockIRBuilder::ClearAllScopeValues(llvm::BasicBlock *block,
-    base::Status &status) {
+                                         base::Status &status) {
     auto values_vec = sv_->GetIteratorValues();
     llvm::Value *ret_delete = nullptr;
     ListIRBuilder list_ir_builder_delete(block, sv_);
     for (auto iter = values_vec.cbegin(); iter != values_vec.cend(); iter++) {
         auto delete_values = *iter;
         if (nullptr != delete_values) {
-            for (auto iter = delete_values->cbegin(); iter != delete_values->cend();
-                 iter++) {
+            for (auto iter = delete_values->cbegin();
+                 iter != delete_values->cend(); iter++) {
                 if (!list_ir_builder_delete.BuildIteratorDelete(
-                    *iter, &ret_delete, status)) {
+                        *iter, &ret_delete, status)) {
                     LOG(WARNING) << "fail to build iterator delete expression: "
                                  << status.msg;
                     return false;

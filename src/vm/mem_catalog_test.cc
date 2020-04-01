@@ -59,7 +59,7 @@ void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     }
 }
 
-void BuildRows(::fesql::type::TableDef& table,            // NOLINT
+void BuildRows(::fesql::type::TableDef& table,              // NOLINT
                std::vector<fesql::storage::Slice>& rows) {  // NOLINT
     BuildTableDef(table);
     {
@@ -159,32 +159,32 @@ TEST_F(MemCataLogTest, mem_table_handler_test) {
     auto iter = table_handler.GetIterator();
 
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[0].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[0].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[0].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[1].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[1].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[1].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[2].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[2].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[2].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[3].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[3].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[3].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[4].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[4].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[4].size());
 
     iter->Next();
@@ -206,32 +206,32 @@ TEST_F(MemCataLogTest, mem_table_iterator_test) {
     auto iter = table_handler.GetIterator();
 
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[4].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[4].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[4].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[3].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[3].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[3].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[2].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[2].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[2].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[1].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[1].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[1].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[0].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[0].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[0].size());
 
     iter->Next();
@@ -239,14 +239,14 @@ TEST_F(MemCataLogTest, mem_table_iterator_test) {
 
     iter->SeekToFirst();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[4].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[4].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[4].size());
 
     iter->Seek(3);
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[2].buf());
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[2].buf());
     ASSERT_EQ(iter->GetValue().size(), rows[2].size());
 }
 
