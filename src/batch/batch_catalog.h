@@ -62,8 +62,10 @@ class BatchTableHandler : public vm::TableHandler {
         int8_t* addr) const {
         return nullptr;
     }
-    virtual const uint64_t GetCount() { return 0; }
-    virtual base::Slice At(uint64_t pos) { return base::Slice(); }
+    std::unique_ptr<vm::WindowIterator> GetWindowIterator(
+        const std::string& idx_name) override {
+        return std::unique_ptr<vm::WindowIterator>();
+    }
 
  private:
     vm::Schema schema_;
