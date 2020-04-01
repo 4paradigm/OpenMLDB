@@ -346,8 +346,8 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
             query.sql = select_sql;
             query.is_batch_mode = is_batch_mode;
             int i = 0;
-            HeapProfilerStart("/debug/profile_WINDOW_CASE0_QUERY_BATCH_TEST.log");
-            while(i++ < 1000) {
+//            HeapProfilerStart("/debug/profile_WINDOW_CASE0_QUERY_BATCH_TEST.log");
+//            while(i++ < 1000) {
                 std::cout << "process " << i << std::endl;
                 std::unique_ptr<::fesql::sdk::ResultSet> rs =
                     sdk->SyncQuery(query, query_status);
@@ -356,8 +356,8 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
                 ASSERT_EQ(record_size, rs->GetRowCnt());
 
 
-            }
-            HeapProfilerStop();
+//            }
+//            HeapProfilerStop();
 
         }
     }
