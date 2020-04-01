@@ -5881,6 +5881,17 @@ std::shared_ptr<::rtidb::api::TaskInfo> NameServerImpl::FindTask(
     return std::shared_ptr<::rtidb::api::TaskInfo>();
 }
 
+std::shared_ptr<rtidb::nameserver::ClusterInfo>
+NameServerImpl::GetHealthCluster(const std::string& alias) {
+    auto iter = nsc_.find(alias);
+    if (iter == nsc_.end() ||
+        iter->second->state_.load(std::memory_order_relaxed) !=
+            kClusterHealthy) {
+        return std::shared_ptr<rtidb::nameserver::ClusterInfo>();
+    }
+    return iter->second;
+}
+
 int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type,
                                  const std::string& value,
                                  std::shared_ptr<OPData>& op_data,
