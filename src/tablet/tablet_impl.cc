@@ -2339,14 +2339,6 @@ void TabletImpl::SendData(RpcController* controller,
     }
     std::string combine_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + request->file_name();
     std::shared_ptr<FileReceiver> receiver;
-    std::string path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
-    std::string dir_name;
-    if (request->has_dir_name() && request->dir_name().size() > 0) {
-        dir_name = request->dir_name();
-        path.append(request->dir_name() + "/");
-    } else if (request->file_name() != "table_meta.txt") {
-        path.append("snapshot/");
-    }
     std::shared_ptr<Table> table;
     if (request->block_id() == 0) {
         table = GetTable(tid, pid);
@@ -2362,6 +2354,17 @@ void TabletImpl::SendData(RpcController* controller,
                 return;
             }
             if (iter == file_receiver_map_.end()) {
+                std::string path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+                std::string dir_name;
+                if (request->has_dir_name() && request->dir_name().size() > 0) {
+                    dir_name = request->dir_name();
+                    if (dir_name != "index") {
+                        path.append("snapshot/");
+                    }
+                    path.append(request->dir_name() + "/");
+                } else if (request->file_name() != "table_meta.txt") {
+                    path.append("snapshot/");
+                }
                 file_receiver_map_.insert(std::make_pair(combine_key, 
                             std::make_shared<FileReceiver>(request->file_name(), dir_name, path)));
                 iter = file_receiver_map_.find(combine_key);
@@ -3407,11 +3410,13 @@ void TabletImpl::CheckFile(RpcController* controller,
     }
     std::string file_name = request->file();
     std::string full_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
-    if (file_name != "table_meta.txt") {
-        full_path += "snapshot/";
-    }
     if (request->has_dir_name() && request->dir_name().size() > 0) {
+        if (request->dir_name() != "index") {
+            full_path.append("snapshot/");
+        }
         full_path.append(request->dir_name() + "/");
+    } else if (file_name != "table_meta.txt") {
+        full_path.append("snapshot/");
     }
     full_path += file_name;
     uint64_t size = 0;
