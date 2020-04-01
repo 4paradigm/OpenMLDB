@@ -565,7 +565,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
 }
 
 void RelationalTable::ReleaseSnpashot(uint64_t snapshot_id, bool finish) {
-    std::shared_ptr<SnapshotCounter> sc = std::make_shared<SnapshotCounter>();
+    std::shared_ptr<SnapshotInfo> sc = std::make_shared<SnapshotInfo>();
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = snapshots_.find(snapshot_id);
@@ -587,13 +587,15 @@ void RelationalTable::ReleaseSnpashot(uint64_t snapshot_id, bool finish) {
 void RelationalTable::TTLSnapshot() {
     uint64_t cur_time = baidu::common::timer::get_micros() / 1000;
     std::lock_guard<std::mutex> lock(mu_);
-    for (auto iter = snapshots_.begin(); iter != snapshots_.end(); iter++)  {
-        if (cur_time - iter->second->atime.load(std::memory_order_relaxed) >= FLAGS_snapshot_ttl_time) {
-            std::shared_ptr<SnapshotCounter> sc = iter->second;
+    for (auto iter = snapshots_.begin(); iter != snapshots_.end();) {
+        if (iter->second->atime + FLAGS_snapshot_ttl_time <= cur_time ) {
+            std::shared_ptr<SnapshotInfo> sc = iter->second;
             PDLOG(INFO, "table[%s] pid[%u] release snapshot[%lu]", name_.c_str(), pid_, iter->first);
             iter = snapshots_.erase(iter);
             db_->ReleaseSnapshot(sc->snapshot);
+            continue;
         }
+        iter++;
     }
 }
 
@@ -604,24 +606,23 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint
     }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     ro.pin_data = true;
-    std::shared_ptr<SnapshotCounter> sc;
+    std::shared_ptr<SnapshotInfo> sc;
     if (snapshot_id > 0) {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = snapshots_.find(snapshot_id);
         if (iter != snapshots_.end()) {
             sc = iter->second;
-            uint64_t atime = baidu::common::timer::get_micros() / 1000;
-            sc->atime.store(atime, std::memory_order_relaxed);
+            sc->atime = baidu::common::timer::get_micros() / 1000;
         } else {
             return NULL;
         }
     } else {
         const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
-        std::lock_guard<std::mutex> lock(mu_);
-        snapshot_id = snapshot_index_++;
-        sc = std::make_shared<SnapshotCounter>();
+        sc = std::make_shared<SnapshotInfo>();
         sc->snapshot = snapshot;
         sc->atime = baidu::common::timer::get_micros() / 1000;
+        std::lock_guard<std::mutex> lock(mu_);
+        snapshot_id = snapshot_index_++;
         PDLOG(INFO, "table[%s] pid_[%u], create new snapshot[%lu]", name_.c_str(), pid_, snapshot_id);
         snapshots_.insert(std::make_pair(snapshot_id, sc));
     }
@@ -630,8 +631,8 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint
     return new RelationalTableTraverseIterator(this, it, snapshot_id);
 }
 
-RelationalTableTraverseIterator::RelationalTableTraverseIterator(RelationalTable* db, rocksdb::Iterator* it,
-        uint64_t id):db_(db), it_(it), traverse_cnt_(0),
+RelationalTableTraverseIterator::RelationalTableTraverseIterator(RelationalTable* table, rocksdb::Iterator* it,
+        uint64_t id):table_(table), it_(it), traverse_cnt_(0),
         finish_(false), id_(id) {
 }
 
@@ -640,7 +641,7 @@ RelationalTableTraverseIterator::~RelationalTableTraverseIterator() {
         finish_ = true;
     }
     delete it_;
-    db_->ReleaseSnpashot(id_, finish_);
+    table_->ReleaseSnpashot(id_, finish_);
 }
 
 bool RelationalTableTraverseIterator::Valid() {
@@ -674,7 +675,7 @@ uint64_t RelationalTableTraverseIterator::GetSeq() {
     return id_;
 }
 
-void RelationalTableTraverseIterator::Finish(bool finish) {
+void RelationalTableTraverseIterator::SetFinish(bool finish) {
     finish_ = finish;
 }
 

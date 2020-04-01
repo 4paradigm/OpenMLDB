@@ -75,6 +75,7 @@ DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(max_traverse_cnt);
 DECLARE_uint32(snapshot_ttl_time);
+DECLARE_uint32(snapshot_ttl_check_interval);
 
 namespace rtidb {
 namespace tablet {
@@ -162,7 +163,7 @@ bool TabletImpl::Init() {
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
-    snapshot_pool_.DelayTask(FLAGS_snapshot_ttl_time * 60 * 1000, boost::bind(&TabletImpl::RelationalTableSnapshotTTL, this));
+    snapshot_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::RelationalTableSnapshotTTL, this));
     task_pool_.AddTask(boost::bind(&TabletImpl::GetDiskused, this));
     if (FLAGS_recycle_ttl != 0) {
         task_pool_.DelayTask(FLAGS_recycle_ttl*60*1000, boost::bind(&TabletImpl::SchedDelRecycle, this));
@@ -1662,7 +1663,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
         offset += (4 + value.size());
     }
     PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(), request->pid(), scount);
-    it->Finish(true);
+    it->SetFinish(true);
     delete it;
     response->set_code(rtidb::base::ReturnCode::kOk);
     response->set_is_finish(is_finish);
@@ -2357,7 +2358,7 @@ void TabletImpl::RelationalTableSnapshotTTL() {
     for (auto iter : table_set) {
         iter->TTLSnapshot();
     }
-    snapshot_pool_.DelayTask(FLAGS_snapshot_ttl_time * 60 * 1000, boost::bind(&TabletImpl::RelationalTableSnapshotTTL, this));
+    snapshot_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::RelationalTableSnapshotTTL, this));
 }
 
 void TabletImpl::SendData(RpcController* controller,
