@@ -110,7 +110,8 @@ int32_t RequestRunSession::Run(const Slice& in_row, Slice* out_row) {
             return 0;
         }
         case kRowHandler: {
-            Slice row(std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
+            Slice row(
+                std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
             *out_row = row;
             return 0;
         }
@@ -139,8 +140,10 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
             return 0;
         }
         case kRowHandler: {
-            buf.push_back(reinterpret_cast<int8_t*>(const_cast<char*>(
-                std::dynamic_pointer_cast<RowHandler>(output)->GetValue().data())));
+            buf.push_back(reinterpret_cast<int8_t*>(
+                const_cast<char*>(std::dynamic_pointer_cast<RowHandler>(output)
+                                      ->GetValue()
+                                      .data())));
             return 0;
         }
         case kPartitionHandler: {
@@ -314,8 +317,8 @@ base::Slice RunSession::AggProject(const int8_t* fn,
         (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
     int8_t* buf = nullptr;
 
-    uint32_t ret =
-        udf(row.buf(), reinterpret_cast<int8_t*>(table.get()), row.size(), &buf);
+    uint32_t ret = udf(row.buf(), reinterpret_cast<int8_t*>(table.get()),
+                       row.size(), &buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return base::Slice();
@@ -713,8 +716,9 @@ std::shared_ptr<DataHandler> RunSession::IndexSeek(
     std::unique_ptr<storage::RowView> row_view =
         std::move(std::unique_ptr<storage::RowView>(
             new storage::RowView(seek_op->GetFnSchema())));
-    auto keys_row = Slice(RowProject(
-        seek_op->GetFn(), std::dynamic_pointer_cast<RowHandler>(left)->GetValue()));
+    auto keys_row = Slice(
+        RowProject(seek_op->GetFn(),
+                   std::dynamic_pointer_cast<RowHandler>(left)->GetValue()));
     row_view->Reset(keys_row.buf(), keys_row.size());
     std::vector<int> idxs;
     for (int j = 0; j < static_cast<int>(seek_op->keys_->children_.size());
@@ -865,7 +869,8 @@ std::shared_ptr<DataHandler> RunSession::Limit(
     }
     switch (input->GetHanlderType()) {
         case kTableHandler: {
-            auto iter = std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
+            auto iter =
+                std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
             auto output_table = std::shared_ptr<MemTableHandler>(
                 new MemTableHandler(&(op->output_schema)));
             int32_t cnt = 0;

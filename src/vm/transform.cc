@@ -184,7 +184,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
             int32_t idx = 0;
             if (!node::ExprListNullOrEmpty(seek_op->keys_)) {
                 int32_t size =
-                    static_cast<int32_t >(seek_op->keys_->children_.size());
+                    static_cast<int32_t>(seek_op->keys_->children_.size());
                 while (idx < size) {
                     keys_idxs.push_back(idx++);
                 }
@@ -215,8 +215,8 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 std::vector<int32_t> idxs;
                 int32_t idx = 0;
                 if (!node::ExprListNullOrEmpty(order_op->order_->order_by_)) {
-                    int32_t size =
-                        static_cast<int32_t >(order_op->order_->order_by_->children_.size());
+                    int32_t size = static_cast<int32_t>(
+                        order_op->order_->order_by_->children_.size());
                     while (idx < size) {
                         idxs.push_back(idx++);
                     }

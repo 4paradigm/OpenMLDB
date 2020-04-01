@@ -12,8 +12,8 @@
 #include <string>
 #include <vector>
 #include "glog/logging.h"
-#include "gtest/gtest.h"
 #include "gperftools/heap-profiler.h"
+#include "gtest/gtest.h"
 namespace fesql {
 namespace bm {
 
@@ -33,9 +33,9 @@ static bool FeqlDbmsSdkInit(::fesql::sdk::DBMSSdk **dbms_sdk) {
 }
 
 static bool FesqlServerInit(brpc::Server &tablet_server,  // NOLINT
-                              brpc::Server &dbms_server,    // NOLINT
-                              ::fesql::tablet::TabletServerImpl *tablet,
-                              ::fesql::dbms::DBMSServerImpl *dbms) {
+                            brpc::Server &dbms_server,    // NOLINT
+                            ::fesql::tablet::TabletServerImpl *tablet,
+                            ::fesql::dbms::DBMSServerImpl *dbms) {
     DLOG(INFO) << ("Start FeSQL tablet server...");
     if (!tablet->Init()) {
         LOG(WARNING) << "Fail to start FeSQL server";
@@ -75,9 +75,8 @@ static bool InitDB(::fesql::sdk::DBMSSdk *dbms_sdk, std::string db_name) {
     return true;
 }
 
-static bool InitTBL(::fesql::sdk::DBMSSdk *dbms_sdk,
-                     const std::string &db_name,
-                     const std::string &schema_sql) {
+static bool InitTBL(::fesql::sdk::DBMSSdk *dbms_sdk, const std::string &db_name,
+                    const std::string &schema_sql) {
     DLOG(INFO) << ("Creating table 'tbl' in database 'test'...\n");
     // create table db1
     ::fesql::sdk::DatabaseDef db;
@@ -346,19 +345,17 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
             query.sql = select_sql;
             query.is_batch_mode = is_batch_mode;
             int i = 0;
-//            HeapProfilerStart("/debug/profile_WINDOW_CASE0_QUERY_BATCH_TEST.log");
-//            while(i++ < 1000) {
-                std::cout << "process " << i << std::endl;
-                std::unique_ptr<::fesql::sdk::ResultSet> rs =
-                    sdk->SyncQuery(query, query_status);
-                ASSERT_TRUE(0 != rs);  // NOLINT
-                ASSERT_EQ(0, query_status.code);
-                ASSERT_EQ(record_size, rs->GetRowCnt());
+            //            HeapProfilerStart("/debug/profile_WINDOW_CASE0_QUERY_BATCH_TEST.log");
+            //            while(i++ < 1000) {
+            std::cout << "process " << i << std::endl;
+            std::unique_ptr<::fesql::sdk::ResultSet> rs =
+                sdk->SyncQuery(query, query_status);
+            ASSERT_TRUE(0 != rs);  // NOLINT
+            ASSERT_EQ(0, query_status.code);
+            ASSERT_EQ(record_size, rs->GetRowCnt());
 
-
-//            }
-//            HeapProfilerStop();
-
+            //            }
+            //            HeapProfilerStop();
         }
     }
 
@@ -437,7 +434,6 @@ void WINDOW_CASE1_QUERY(benchmark::State *state_ptr, MODE mode,
     WINDOW_CASE_QUERY(state_ptr, mode, is_batch_mode, select_sql, group_size,
                       window_max_size);
 }
-
 
 void WINDOW_CASE2_QUERY(benchmark::State *state_ptr, MODE mode,
                         bool is_batch_mode, int64_t group_size,
