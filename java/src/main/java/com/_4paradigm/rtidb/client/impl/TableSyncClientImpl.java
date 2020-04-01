@@ -375,7 +375,6 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     private RelationalIterator queryRelationTable(int tid, int pid, String key, String idxName, Tablet.GetType type,
                                                   TableHandler th, Set<String> colSet) throws TabletException {
-        key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
         if (ts == null) {
@@ -387,9 +386,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setPid(pid);
         builder.setKey(key);
         if (type != null) builder.setType(type);
-        if (idxName != null && !idxName.isEmpty()) {
-            builder.setIdxName(idxName);
-        }
+        builder.setIdxName(idxName);
         Tablet.GetRequest request = builder.build();
         Tablet.GetResponse response = ts.get(request);
         ByteString bs = null;
