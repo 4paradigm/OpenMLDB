@@ -57,10 +57,6 @@ RelationalTable::~RelationalTable() {
     for (auto handle : cf_hs_) {
         delete handle;
     }
-    for (auto iter = snapshots_.begin(); iter != snapshots_.end(); iter++) {
-        std::shared_ptr<SnapshotCounter> sc = iter->second;
-        iter = snapshots_.erase(iter);
-    }
     if (db_ != nullptr) {
         db_->Close();
         delete db_;
@@ -569,7 +565,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
 }
 
 void RelationalTable::ReleaseSnpashot(uint64_t snapshot_id, bool finish) {
-    std::shared_ptr<SnapshotCounter> sc;
+    std::shared_ptr<SnapshotCounter> sc = std::make_shared<SnapshotCounter>();
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = snapshots_.find(snapshot_id);
