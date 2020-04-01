@@ -21,6 +21,7 @@ using fesql::storage::IteratorRef;
 using fesql::storage::ListRef;
 using fesql::storage::StringColumnImpl;
 using fesql::storage::StringRef;
+using fesql::vm::ListV;
 
 template <class V>
 int32_t current_time() {
@@ -56,8 +57,8 @@ double avg_list(int8_t *input) {
         return result;
     }
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::storage::ListV<V> *col =
-        (::fesql::storage::ListV<V> *)(list_ref->list);
+    ::fesql::vm::ListV<V> *col =
+        (::fesql::vm::ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
     int32_t cnt = 0;
     while (iter->Valid()) {
@@ -74,8 +75,8 @@ int64_t count_list(int8_t *input) {
     }
 
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::storage::ListV<V> *col =
-        (::fesql::storage::ListV<V> *)(list_ref->list);
+    ::fesql::vm::ListV<V> *col =
+        (::fesql::vm::ListV<V> *)(list_ref->list);
     return int64_t(col->GetCount());
 }
 template <class V>
@@ -85,8 +86,8 @@ V max_list(int8_t *input) {
         return result;
     }
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::storage::ArrayListV<V> *col =
-        (::fesql::storage::ArrayListV<V> *)(list_ref->list);
+    ::fesql::vm::ListV<V> *col =
+        (::fesql::vm::ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
 
     if (iter->Valid()) {
@@ -110,8 +111,8 @@ V min_list(int8_t *input) {
         return result;
     }
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::storage::ListV<V> *col =
-        (::fesql::storage::ListV<V> *)(list_ref->list);
+    ::fesql::vm::ListV<V> *col =
+        (::fesql::vm::ListV<V> *)(list_ref->list);
     auto iter = col->GetIterator();
 
     if (iter->Valid()) {
@@ -131,8 +132,8 @@ V min_list(int8_t *input) {
 template <class V>
 V at_list(int8_t *input, int32_t pos) {
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
-    ::fesql::storage::ListV<V> *list =
-        (::fesql::storage::ListV<V> *)(list_ref->list);
+    ::fesql::vm::ListV<V> *list =
+        (::fesql::vm::ListV<V> *)(list_ref->list);
     return list->At(pos);
 }
 
@@ -214,7 +215,7 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     AddSymbol(jd, mi, "count_list_float",
               reinterpret_cast<void *>(&v1::count_list<float>));
     AddSymbol(jd, mi, "count_list_row",
-              reinterpret_cast<void *>(&v1::count_list<fesql::storage::Slice>));
+              reinterpret_cast<void *>(&v1::count_list<fesql::base::Slice>));
 
     AddSymbol(jd, mi, "avg_list_int16",
               reinterpret_cast<void *>(&v1::avg_list<int16_t>));
