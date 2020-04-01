@@ -43,7 +43,7 @@ class BatchTableHandler : public vm::TableHandler {
 
     ~BatchTableHandler() {}
 
-    inline vm::Schema& GetSchema() { return schema_; }
+    inline vm::Schema* GetSchema() { return &schema_; }
 
     inline const std::string& GetName() { return name_; }
 
@@ -54,11 +54,16 @@ class BatchTableHandler : public vm::TableHandler {
     inline const vm::Types& GetTypes() { return types_; }
 
     inline const vm::IndexHint& GetIndex() { return index_hint_; }
-
-    std::unique_ptr<vm::SliceIterator> GetIterator() {}
-
-    std::unique_ptr<vm::WindowIterator> GetWindowIterator(
-        const std::string& index_name) {}
+    virtual std::unique_ptr<vm::IteratorV<uint64_t, base::Slice>> GetIterator()
+        const {
+        return std::unique_ptr<vm::IteratorV<uint64_t, base::Slice>>();
+    }
+    virtual vm::IteratorV<uint64_t, base::Slice>* GetIterator(
+        int8_t* addr) const {
+        return nullptr;
+    }
+    virtual const uint64_t GetCount() { return 0; }
+    virtual base::Slice At(uint64_t pos) { return base::Slice(); }
 
  private:
     vm::Schema schema_;
