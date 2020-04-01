@@ -211,7 +211,7 @@ std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
                     if (!input) {
                         return fail_ptr;
                     }
-                    auto row = dynamic_cast<RowHandler*>(input.get());
+                    auto row = std::dynamic_pointer_cast<RowHandler>(input);
                     return std::shared_ptr<MemRowHandler>(new MemRowHandler(
                         RowProject(op->GetFn(), row->GetValue()),
                         &(op->output_schema)));
