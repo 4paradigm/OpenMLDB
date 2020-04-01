@@ -117,7 +117,11 @@ class ArrayListV : public ListV<V> {
             new ArrayListIterator<V>(buffer_, start_, end_));
     }
     vm::IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const override {
-        return new ArrayListIterator<V>(buffer_, start_, end_);
+        if (nullptr == addr) {
+            return new ArrayListIterator<V>(buffer_, start_, end_);
+        } else {
+            return new (addr) ArrayListIterator<V>(buffer_, start_, end_);
+        }
     }
     virtual const uint64_t GetCount() { return end_ - start_; }
     virtual V At(uint64_t pos) { return buffer_->at(start_ + pos); }

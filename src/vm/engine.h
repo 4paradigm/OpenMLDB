@@ -52,7 +52,7 @@ class RunSession {
         return compile_info_->sql_ctx.plan;
     }
 
-    virtual inline const bool IsBatchRun() const = 0;
+    virtual const bool IsBatchRun() const = 0;
 
  protected:
     inline void SetCompileInfo(

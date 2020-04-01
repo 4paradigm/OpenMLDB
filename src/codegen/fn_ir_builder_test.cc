@@ -83,7 +83,6 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     ::llvm::legacy::FunctionPassManager fpm(m.get());
     fpm.add(::llvm::createPromoteMemoryToRegisterPass());
     fpm.doInitialization();
-    fpm.doInitialization();
     ::llvm::Module::iterator it;
     ::llvm::Module::iterator end = m->end();
     for (it = m->begin(); it != end; ++it) {

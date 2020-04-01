@@ -148,9 +148,9 @@ bool iterator_list(int8_t *input, int8_t *output) {
     ::fesql::storage::ListRef *list_ref = (::fesql::storage::ListRef *)(input);
     ::fesql::storage::IteratorRef *iterator_ref =
         (::fesql::storage::IteratorRef *)(output);
-    ::fesql::storage::ListV<V> *col =
-        (::fesql::storage::ListV<V> *)(list_ref->list);
-    col->GetIterator(iterator_ref->iterator);
+    ::fesql::vm::ListV<V> *col =
+        (::fesql::vm::ListV<V> *)(list_ref->list);
+    iterator_ref->iterator = reinterpret_cast<int8_t *>(col->GetIterator(nullptr));
     return true;
 }
 
@@ -161,8 +161,8 @@ bool has_next_iterator(int8_t *input) {
     }
     ::fesql::storage::IteratorRef *iter_ref =
         (::fesql::storage::IteratorRef *)(input);
-    ::fesql::storage::ArrayListIterator<V> *iter =
-        (::fesql::storage::ArrayListIterator<V> *)(iter_ref->iterator);
+    ::fesql::vm::IteratorV<uint64_t, V> *iter =
+        (::fesql::vm::IteratorV<uint64_t ,V> *)(iter_ref->iterator);
     return iter == nullptr ? false : iter->Valid();
 }
 
@@ -170,11 +170,21 @@ template <class V>
 V next_iterator(int8_t *input) {
     ::fesql::storage::IteratorRef *iter_ref =
         (::fesql::storage::IteratorRef *)(input);
-    ::fesql::storage::ArrayListIterator<V> *iter =
-        (::fesql::storage::ArrayListIterator<V> *)(iter_ref->iterator);
+    ::fesql::vm::IteratorV<uint64_t ,V> *iter =
+        (::fesql::vm::IteratorV<uint64_t ,V> *)(iter_ref->iterator);
     V v = iter->GetValue();
     iter->Next();
     return v;
+}
+template <class V>
+void delete_iterator(int8_t *input) {
+    ::fesql::storage::IteratorRef *iter_ref =
+        (::fesql::storage::IteratorRef *)(input);
+    ::fesql::vm::IteratorV<uint64_t ,V> *iter =
+        (::fesql::vm::IteratorV<uint64_t ,V> *)(iter_ref->iterator);
+    if (iter) {
+        delete iter;
+    }
 }
 
 }  // namespace v1
@@ -286,6 +296,17 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
               reinterpret_cast<void *>(&v1::next_iterator<float>));
     AddSymbol(jd, mi, "next_iterator_double",
               reinterpret_cast<void *>(&v1::next_iterator<double>));
+
+    AddSymbol(jd, mi, "delete_iterator_int16",
+              reinterpret_cast<void *>(&v1::delete_iterator<int16_t>));
+    AddSymbol(jd, mi, "delete_iterator_int32",
+              reinterpret_cast<void *>(&v1::delete_iterator<int32_t>));
+    AddSymbol(jd, mi, "delete_iterator_int64",
+              reinterpret_cast<void *>(&v1::delete_iterator<int64_t>));
+    AddSymbol(jd, mi, "delete_iterator_float",
+              reinterpret_cast<void *>(&v1::delete_iterator<float>));
+    AddSymbol(jd, mi, "delete_iterator_double",
+              reinterpret_cast<void *>(&v1::delete_iterator<double>));
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT
@@ -294,6 +315,7 @@ bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
 }
 
 void RegisterUDFToModule(::llvm::Module *m) {
+    ::llvm::Type *v_ty = ::llvm::Type::getVoidTy(m->getContext());
     ::llvm::Type *i1_ty = ::llvm::Type::getInt1Ty(m->getContext());
     ::llvm::Type *i16_ty = ::llvm::Type::getInt16Ty(m->getContext());
     ::llvm::Type *i32_ty = ::llvm::Type::getInt32Ty(m->getContext());
@@ -398,6 +420,17 @@ void RegisterUDFToModule(::llvm::Module *m) {
             ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
             m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
                                    type.second, llvm_type->getPointerTo());
+        }
+    }
+
+    {
+        std::string prefix =
+            "delete_" + node::DataTypeName(fesql::node::kIterator) + "_";
+        for (auto type : number_types) {
+            ::llvm::Type *llvm_type;
+            ::fesql::codegen::GetLLVMIteratorType(m, type.first, &llvm_type);
+            m->getOrInsertFunction(prefix + (node::DataTypeName(type.first)),
+                                   v_ty, llvm_type->getPointerTo());
         }
     }
     {
