@@ -102,7 +102,7 @@ int32_t RequestRunSession::Run(const Slice& in_row, Slice* out_row) {
     switch (output->GetHanlderType()) {
         case kTableHandler: {
             auto iter =
-                dynamic_cast<TableHandler*>(output.get())->GetIterator();
+                std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
             if (iter->Valid()) {
                 Slice row(iter->GetValue());
                 *out_row = row;
@@ -110,7 +110,7 @@ int32_t RequestRunSession::Run(const Slice& in_row, Slice* out_row) {
             return 0;
         }
         case kRowHandler: {
-            Slice row(dynamic_cast<RowHandler*>(output.get())->GetValue());
+            Slice row(std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
             *out_row = row;
             return 0;
         }
@@ -130,7 +130,7 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     switch (output->GetHanlderType()) {
         case kTableHandler: {
             auto iter =
-                dynamic_cast<TableHandler*>(output.get())->GetIterator();
+                std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
             while (iter->Valid()) {
                 buf.push_back(reinterpret_cast<int8_t*>(
                     const_cast<char*>(iter->GetValue().data())));
@@ -140,7 +140,7 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
         }
         case kRowHandler: {
             buf.push_back(reinterpret_cast<int8_t*>(const_cast<char*>(
-                dynamic_cast<RowHandler*>(output.get())->GetValue().data())));
+                std::dynamic_pointer_cast<RowHandler>(output)->GetValue().data())));
             return 0;
         }
         case kPartitionHandler: {
@@ -301,7 +301,7 @@ base::Slice RunSession::AggProject(const int8_t* fn,
     if (kTableHandler != input->GetHanlderType()) {
         return base::Slice();
     }
-    auto table = dynamic_cast<TableHandler*>(input.get());
+    auto table = std::dynamic_pointer_cast<TableHandler>(input);
     auto iter = table->GetIterator();
     iter->SeekToFirst();
     if (!iter->Valid()) {
@@ -315,7 +315,7 @@ base::Slice RunSession::AggProject(const int8_t* fn,
     int8_t* buf = nullptr;
 
     uint32_t ret =
-        udf(row.buf(), reinterpret_cast<int8_t*>(table), row.size(), &buf);
+        udf(row.buf(), reinterpret_cast<int8_t*>(table.get()), row.size(), &buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return base::Slice();
@@ -441,7 +441,7 @@ std::shared_ptr<DataHandler> RunSession::TableGroup(
     auto output_partitions = std::shared_ptr<MemPartitionHandler>(
         new MemPartitionHandler(table->GetSchema()));
 
-    auto iter = dynamic_cast<TableHandler*>(table.get())->GetIterator();
+    auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     std::unique_ptr<storage::RowView> row_view = std::move(
         std::unique_ptr<storage::RowView>(new storage::RowView(schema)));
     while (iter->Valid()) {
@@ -472,7 +472,7 @@ std::shared_ptr<DataHandler> RunSession::PartitionGroup(
 
     auto output_partitions = std::shared_ptr<MemPartitionHandler>(
         new MemPartitionHandler(table->GetSchema()));
-    auto partitions = dynamic_cast<PartitionHandler*>(table.get());
+    auto partitions = std::dynamic_pointer_cast<PartitionHandler>(table);
     auto iter = partitions->GetWindowIterator();
     iter->SeekToFirst();
     std::unique_ptr<storage::RowView> row_view = std::move(
@@ -564,7 +564,7 @@ std::shared_ptr<DataHandler> RunSession::PartitionSort(
         return std::shared_ptr<DataHandler>();
     }
 
-    auto partitions = dynamic_cast<PartitionHandler*>(table.get());
+    auto partitions = std::dynamic_pointer_cast<PartitionHandler>(table);
 
     // skip sort, when partition has same order direction
     if (idxs.empty() && partitions->IsAsc() == is_asc) {
@@ -619,7 +619,7 @@ std::shared_ptr<DataHandler> RunSession::TableSort(
 
     std::unique_ptr<storage::RowView> row_view = std::move(
         std::unique_ptr<storage::RowView>(new storage::RowView(schema)));
-    auto iter = dynamic_cast<TableHandler*>(table.get())->GetIterator();
+    auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     while (iter->Valid()) {
         const Slice order_row(RowProject(fn, iter->GetValue()));
 
@@ -644,7 +644,7 @@ std::shared_ptr<DataHandler> RunSession::TableProject(
     }
     auto output_table =
         std::shared_ptr<MemTableHandler>(new MemTableHandler(&output_schema));
-    auto iter = dynamic_cast<TableHandler*>(table.get())->GetIterator();
+    auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     while (iter->Valid()) {
         const Slice row(RowProject(fn, iter->GetValue()));
         output_table->AddRow(row);
@@ -668,7 +668,7 @@ std::shared_ptr<DataHandler> RunSession::WindowAggProject(
     auto output_table = std::shared_ptr<MemTableHandler>(
         new MemTableHandler(&(op->output_schema)));
 
-    auto partitions = dynamic_cast<PartitionHandler*>(input.get());
+    auto partitions = std::dynamic_pointer_cast<PartitionHandler>(input);
     auto iter = partitions->GetWindowIterator();
     while (iter->Valid()) {
         auto segment = iter->GetValue();
@@ -714,7 +714,7 @@ std::shared_ptr<DataHandler> RunSession::IndexSeek(
         std::move(std::unique_ptr<storage::RowView>(
             new storage::RowView(seek_op->GetFnSchema())));
     auto keys_row = Slice(RowProject(
-        seek_op->GetFn(), dynamic_cast<RowHandler*>(left.get())->GetValue()));
+        seek_op->GetFn(), std::dynamic_pointer_cast<RowHandler>(left)->GetValue()));
     row_view->Reset(keys_row.buf(), keys_row.size());
     std::vector<int> idxs;
     for (int j = 0; j < static_cast<int>(seek_op->keys_->children_.size());
@@ -739,11 +739,11 @@ std::shared_ptr<DataHandler> RunSession::RequestUnion(
         return std::shared_ptr<DataHandler>();
     }
 
-    auto request = dynamic_cast<RowHandler*>(left.get())->GetValue();
+    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
 
     auto groups = request_union_op->groups_;
 
-    TableHandler* table = dynamic_cast<TableHandler*>(right.get());
+    auto table = std::dynamic_pointer_cast<TableHandler>(right);
     std::shared_ptr<DataHandler> output = right;
     std::unique_ptr<storage::RowView> row_view =
         std::move(std::unique_ptr<storage::RowView>(
@@ -865,7 +865,7 @@ std::shared_ptr<DataHandler> RunSession::Limit(
     }
     switch (input->GetHanlderType()) {
         case kTableHandler: {
-            auto iter = dynamic_cast<TableHandler*>(input.get())->GetIterator();
+            auto iter = std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
             auto output_table = std::shared_ptr<MemTableHandler>(
                 new MemTableHandler(&(op->output_schema)));
             int32_t cnt = 0;

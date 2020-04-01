@@ -400,7 +400,7 @@ TEST_F(UDFTest, GetMemColTest) {
 TEST_F(UDFTest, GetColHeapTest) {
     ArrayListV<fesql::base::Slice> impl(&rows);
     const uint32_t size = sizeof(::fesql::storage::ColumnImpl<int16_t>);
-    for (int i = 0; i < 10000; ++i) {
+    for (int i = 0; i < 1000000; ++i) {
         int8_t buf[size];  // NOLINT
         ::fesql::storage::ListRef list_ref;
         list_ref.list = buf;

@@ -13,6 +13,7 @@
 #include <vector>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "gperftools/heap-profiler.h"
 namespace fesql {
 namespace bm {
 
@@ -344,11 +345,20 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
             query.db = "test";
             query.sql = select_sql;
             query.is_batch_mode = is_batch_mode;
-            std::unique_ptr<::fesql::sdk::ResultSet> rs =
-                sdk->SyncQuery(query, query_status);
-            ASSERT_TRUE(0 != rs);  // NOLINT
-            ASSERT_EQ(0, query_status.code);
-            ASSERT_EQ(record_size, rs->GetRowCnt());
+            int i = 0;
+            HeapProfilerStart("/debug/profile_WINDOW_CASE0_QUERY_BATCH_TEST.log");
+            while(i++ < 1000) {
+                std::cout << "process " << i << std::endl;
+                std::unique_ptr<::fesql::sdk::ResultSet> rs =
+                    sdk->SyncQuery(query, query_status);
+                ASSERT_TRUE(0 != rs);  // NOLINT
+                ASSERT_EQ(0, query_status.code);
+                ASSERT_EQ(record_size, rs->GetRowCnt());
+
+
+            }
+            HeapProfilerStop();
+
         }
     }
 
