@@ -64,6 +64,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
 
     if (ctx.is_batch_mode) {
         vm::BatchModeTransformer transformer(nm_, ctx.db, cl_, m.get());
+        transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
                          << status.msg << " for sql: \n"

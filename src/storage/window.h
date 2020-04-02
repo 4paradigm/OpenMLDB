@@ -195,7 +195,9 @@ class ColumnIterator : public vm::IteratorV<uint64_t, V> {
         : vm::IteratorV<uint64_t, V>(), column_impl_(column_impl) {
         row_iter_ = list->GetIterator();
     }
-    ~ColumnIterator() { DLOG(INFO) << "~ColumnIterator()"; }
+    ~ColumnIterator() {
+//        DLOG(INFO) << "~ColumnIterator()";
+    }
     void Seek(uint64_t key) override { row_iter_->Seek(key); }
     void SeekToFirst() override { row_iter_->SeekToFirst(); }
     bool Valid() override { return row_iter_->Valid(); }

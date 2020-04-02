@@ -26,7 +26,9 @@ MemTableIterator::MemTableIterator(const MemSegment* table,
       start_iter_(table_->begin() + start),
       end_iter_(table_->begin() + end),
       iter_(start_iter_) {}
-MemTableIterator::~MemTableIterator() { DLOG(INFO) << "~MemTableIterator()"; }
+MemTableIterator::~MemTableIterator() {
+//    DLOG(INFO) << "~MemTableIterator()";
+}
 
 // TODO(chenjing): speed up seek for memory iterator
 void MemTableIterator::Seek(uint64_t ts) {
@@ -55,7 +57,7 @@ MemWindowIterator::MemWindowIterator(const MemSegmentMap* partitions,
       iter_(partitions->cbegin()) {}
 
 MemWindowIterator::~MemWindowIterator() {
-    DLOG(INFO) << "~MemWindowIterator()";
+//    DLOG(INFO) << "~MemWindowIterator()";
 }
 
 void MemWindowIterator::Seek(const std::string& key) {
@@ -167,7 +169,7 @@ bool MemPartitionHandler::AddRow(const std::string& key, uint64_t ts,
         iter->second.push_back(
             std::make_pair(ts, base::Slice(row.data(), row.size())));
     }
-    return false;
+    return true;
 }
 std::unique_ptr<WindowIterator> MemPartitionHandler::GetWindowIterator() {
     std::unique_ptr<WindowIterator> it = std::unique_ptr<WindowIterator>(
@@ -187,13 +189,6 @@ void MemPartitionHandler::Sort(const bool is_asc) {
         }
     }
 
-    for (auto iter = partitions_.cbegin(); iter != partitions_.cend(); iter++) {
-        for (auto segment_iter = iter->second.cbegin();
-             segment_iter != iter->second.cend(); segment_iter++) {
-            std::cout << segment_iter->first << ",";
-        }
-        std::cout << std::endl;
-    }
 }
 const bool MemPartitionHandler::IsAsc() { return is_asc_; }
 void MemPartitionHandler::Print() {

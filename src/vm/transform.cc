@@ -188,10 +188,11 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 while (idx < size) {
                     keys_idxs.push_back(idx++);
                 }
+                CodeGenExprList((node->output_schema), seek_op->keys_, true,
+                                fn_name, &fn_schema, status);
+                seek_op->SetKeysIdxs(keys_idxs);
             }
-            CodeGenExprList((node->output_schema), seek_op->keys_, true,
-                            fn_name, &fn_schema, status);
-            seek_op->SetKeysIdxs(keys_idxs);
+
             break;
         }
         case kPhysicalOpGroupBy: {
@@ -202,11 +203,12 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 while (idx < group_op->groups_->children_.size()) {
                     idxs.push_back(idx++);
                 }
-            }
-            CodeGenExprList((node->output_schema), group_op->groups_, true,
-                            fn_name, &fn_schema, status);
+                CodeGenExprList((node->output_schema), group_op->groups_, true,
+                                fn_name, &fn_schema, status);
 
-            group_op->SetGroupsIdxs(idxs);
+                group_op->SetGroupsIdxs(idxs);
+            }
+
             break;
         }
         case kPhysicalOpSortBy: {
@@ -220,12 +222,13 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     while (idx < size) {
                         idxs.push_back(idx++);
                     }
+                    CodeGenExprList((node->output_schema),
+                                    order_op->order_->order_by_, true, fn_name,
+                                    &fn_schema, status);
+                    order_op->SetOrdersIdxs(idxs);
                 }
 
-                CodeGenExprList((node->output_schema),
-                                order_op->order_->order_by_, true, fn_name,
-                                &fn_schema, status);
-                order_op->SetOrdersIdxs(idxs);
+
             }
             break;
         }
@@ -248,10 +251,13 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     orders_idxs.push_back(idx++);
                 }
             }
-            CodeGenExprList((node->output_schema), &expr_list, true, fn_name,
-                            &fn_schema, status);
-            group_sort_op->SetGroupsIdxs(groups_idxs);
-            group_sort_op->SetOrdersIdxs(orders_idxs);
+            if (!expr_list.children_.empty()) {
+                CodeGenExprList((node->output_schema), &expr_list, true, fn_name,
+                                &fn_schema, status);
+                group_sort_op->SetGroupsIdxs(groups_idxs);
+                group_sort_op->SetOrdersIdxs(orders_idxs);
+            }
+
             break;
         }
         case kPhysicalOpFilter: {
@@ -306,11 +312,13 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                     }
                 }
             }
-            CodeGenExprList((node->output_schema), &expr_list, true, fn_name,
-                            &fn_schema, status);
-            request_union->SetGroupsIdxs(groups_idxs);
-            request_union->SetOrdersIdxs(orders_idxs);
-            request_union->SetKeysIdxs(keys_idxs);
+            if (!expr_list.children_.empty()) {
+                CodeGenExprList((node->output_schema), &expr_list, true,
+                                fn_name, &fn_schema, status);
+                request_union->SetGroupsIdxs(groups_idxs);
+                request_union->SetOrdersIdxs(orders_idxs);
+                request_union->SetKeysIdxs(keys_idxs);
+            }
             break;
         }
         default: {

@@ -313,7 +313,7 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
                 fail += 1;
             }
         }
-        DLOG(INFO) << "Insert cnt: " << record_size << ", fail cnt: " << fail;
+        LOG(INFO) << "Insert cnt: " << record_size << ", fail cnt: " << fail;
     }
 
     switch (mode) {
@@ -335,7 +335,7 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
                     fail++;
                 }
             }
-            DLOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
+            LOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
             break;
         }
         case TEST: {
@@ -344,18 +344,11 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
             query.db = "test";
             query.sql = select_sql;
             query.is_batch_mode = is_batch_mode;
-            int i = 0;
-            //            HeapProfilerStart("/debug/profile_WINDOW_CASE0_QUERY_BATCH_TEST.log");
-            //            while(i++ < 1000) {
-            std::cout << "process " << i << std::endl;
             std::unique_ptr<::fesql::sdk::ResultSet> rs =
                 sdk->SyncQuery(query, query_status);
             ASSERT_TRUE(0 != rs);  // NOLINT
             ASSERT_EQ(0, query_status.code);
             ASSERT_EQ(record_size, rs->GetRowCnt());
-
-            //            }
-            //            HeapProfilerStop();
         }
     }
 

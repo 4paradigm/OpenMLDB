@@ -130,16 +130,17 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     }
     switch (output->GetHanlderType()) {
         case kTableHandler: {
+            DLOG(INFO) << "Run buffer table result";
             auto iter =
                 std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
             while (iter->Valid()) {
-                buf.push_back(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())));
+                buf.push_back(iter->GetValue().buf());
                 iter->Next();
             }
             return 0;
         }
         case kRowHandler: {
+            DLOG(INFO) << "Run buffer row result";
             buf.push_back(reinterpret_cast<int8_t*>(
                 const_cast<char*>(std::dynamic_pointer_cast<RowHandler>(output)
                                       ->GetValue()
@@ -157,6 +158,7 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
 
 std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
     const PhysicalOpNode* node, const Slice* row) {
+    DLOG(INFO) << "Physical Op " << PhysicalOpTypeName(node->type_)  << ">> ";
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (nullptr == node) {
         LOG(WARNING) << "run fail: null node";
@@ -209,6 +211,7 @@ std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
                 }
                 case kRowProject: {
                     if (!input) {
+                        LOG(WARNING) << "input is empty";
                         return fail_ptr;
                     }
                     auto row = std::dynamic_pointer_cast<RowHandler>(input);
@@ -252,7 +255,7 @@ std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
             return Limit(input, op);
         }
         default: {
-            LOG(WARNING) << "can't handle node "
+            LOG(WARNING) << "can't handle node " << node->type_ << " "
                          << vm::PhysicalOpTypeName(node->type_);
             return fail_ptr;
         }
@@ -298,6 +301,7 @@ base::Slice RunSession::RowProject(const int8_t* fn, const base::Slice slice) {
 base::Slice RunSession::AggProject(const int8_t* fn,
                                    const std::shared_ptr<DataHandler> input) {
     if (!input) {
+        LOG(WARNING) << "input is empty";
         return base::Slice();
     }
 
@@ -489,6 +493,7 @@ std::shared_ptr<DataHandler> RunSession::PartitionGroup(
             std::string keys = GenerateKeys(row_view.get(), schema, idxs);
             output_partitions->AddRow(keys, segment_iter->GetKey(),
                                       Slice(segment_iter->GetValue()));
+            segment_iter->Next();
         }
         iter->Next();
     }
@@ -504,8 +509,7 @@ std::shared_ptr<DataHandler> RunSession::TableSortGroup(
     const node::ExprListNode* groups = group_sort_op->groups_;
     const node::OrderByNode* orders = group_sort_op->orders_;
 
-    if (node::ExprListNullOrEmpty(groups) &&
-        (nullptr == orders || node::ExprListNullOrEmpty(orders->order_by_))) {
+    if (node::ExprListNullOrEmpty(groups) && nullptr == orders) {
         return table;
     }
 
@@ -586,11 +590,11 @@ std::shared_ptr<DataHandler> RunSession::PartitionSort(
         auto segment_iter = iter->GetValue();
         segment_iter->SeekToFirst();
         while (segment_iter->Valid()) {
-            const Slice order_row(RowProject(fn, segment_iter->GetValue()));
             int64_t key = -1;
             if (idxs.empty()) {
                 key = segment_iter->GetKey();
             } else {
+                const Slice order_row(RowProject(fn, segment_iter->GetValue()));
                 row_view->Reset(order_row.buf(), order_row.size());
                 key = GetColumnInt64(row_view.get(), idxs[0],
                                      schema.Get(idxs[0]).type());
@@ -598,6 +602,7 @@ std::shared_ptr<DataHandler> RunSession::PartitionSort(
             output_partitions->AddRow(
                 std::string(iter->GetKey().data(), iter->GetKey().size()), key,
                 Slice(segment_iter->GetValue()));
+            segment_iter->Next();
         }
         iter->Next();
     }
@@ -836,6 +841,7 @@ std::shared_ptr<DataHandler> RunSession::Group(
     std::shared_ptr<DataHandler> input, const PhysicalGroupNode* op) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
+        LOG(WARNING) << "input is empty";
         return fail_ptr;
     }
     if (node::ExprListNullOrEmpty(op->groups_)) {
@@ -865,6 +871,7 @@ std::shared_ptr<DataHandler> RunSession::Limit(
     std::shared_ptr<DataHandler> input, const PhysicalLimitNode* op) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
+        LOG(WARNING) << "input is empty";
         return fail_ptr;
     }
     switch (input->GetHanlderType()) {
@@ -881,6 +888,7 @@ std::shared_ptr<DataHandler> RunSession::Limit(
             return output_table;
         }
         case kRowProject: {
+            DLOG(INFO) << "limit row handler";
             return input;
         }
         case kPartitionHandler: {
