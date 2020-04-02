@@ -174,7 +174,7 @@ void PhysicalSortNode::Print(std::ostream& output,
 void PhysicalLimitNode::Print(std::ostream& output,
                               const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(limit=" << std::to_string(limit_cnt) << ")";
+    output << "(limit=" << std::to_string(limit_cnt_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
