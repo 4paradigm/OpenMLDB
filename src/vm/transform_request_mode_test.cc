@@ -471,8 +471,8 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "sum(col2) OVER w1 as w1_col2_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col15 ROWS BETWEEN 3 "
         "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10)\n"
-        "  PROJECT(type=Aggregation)\n"
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
         "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col15) ASC, "
         "start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
@@ -486,8 +486,8 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "sum(col2) OVER w1 as w1_col2_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col2, col1 ORDER BY col15 ROWS "
         "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10)\n"
-        "  PROJECT(type=Aggregation)\n"
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
         "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col15) ASC, "
         "start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
@@ -502,8 +502,8 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "sum(col2) OVER w1 as w1_col2_sum "
         "FROM t1 WINDOW w1 AS (PARTITION BY col3 ORDER BY col15 ROWS BETWEEN 3"
         "PRECEDING AND CURRENT ROW) limit 10;",
-        "LIMIT(limit=10)\n"
-        "  PROJECT(type=Aggregation)\n"
+        "LIMIT(limit=10, optimized)\n"
+        "  PROJECT(type=Aggregation, limit=10)\n"
         "    REQUEST_UNION(groups=(col3), orders=(col15) ASC, keys=(col15) "
         "ASC, start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"

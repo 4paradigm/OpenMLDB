@@ -85,7 +85,8 @@ class PhysicalOpNode {
           is_lazy_(is_lazy),
           output_type(kSchemaTypeTable),
           fn_name_(""),
-          fn_(nullptr) {}
+          fn_(nullptr),
+          limit_cnt_(0) {}
     virtual ~PhysicalOpNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
@@ -114,6 +115,7 @@ class PhysicalOpNode {
 
     void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
 
+    const int32_t GetLimitCnt() const { return limit_cnt_; }
     const PhysicalOpType type_;
     const bool is_block_;
     const bool is_lazy_;
@@ -181,7 +183,7 @@ class PhysicalDataProviderNode : public PhysicalOpNode {
  public:
     PhysicalDataProviderNode(const std::shared_ptr<TableHandler> &table_handler,
                              DataProviderType provider_type)
-        : PhysicalOpNode(kPhysicalOpDataProvider, false, false),
+        : PhysicalOpNode(kPhysicalOpDataProvider, true, false),
           provider_type_(provider_type),
           table_handler_(table_handler) {
         InitSchema();
@@ -300,8 +302,9 @@ inline const std::string ProjectTypeName(const ProjectType &type) {
 class PhysicalProjectNode : public PhysicalUnaryNode {
  public:
     PhysicalProjectNode(PhysicalOpNode *node, const std::string &fn_name,
-                        const Schema &schema, ProjectType project_type)
-        : PhysicalUnaryNode(node, kPhysicalOpProject, false, false),
+                        const Schema &schema, ProjectType project_type,
+                        const bool is_block, const bool is_lazy)
+        : PhysicalUnaryNode(node, kPhysicalOpProject, is_block, is_lazy),
           project_type_(project_type) {
         output_schema.CopyFrom(schema);
         SetFnName(fn_name);
@@ -317,7 +320,8 @@ class PhysicalRowProjectNode : public PhysicalProjectNode {
  public:
     PhysicalRowProjectNode(PhysicalOpNode *node, const std::string fn_name,
                            const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kRowProject) {
+        : PhysicalProjectNode(node, fn_name, schema, kRowProject, false,
+                              false) {
         output_type = kSchemaTypeRow;
     }
     virtual ~PhysicalRowProjectNode() {}
@@ -327,7 +331,8 @@ class PhysicalTableProjectNode : public PhysicalProjectNode {
  public:
     PhysicalTableProjectNode(PhysicalOpNode *node, const std::string fn_name,
                              const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kTableProject) {
+        : PhysicalProjectNode(node, fn_name, schema, kTableProject, false,
+                              false) {
         output_type = kSchemaTypeTable;
     }
     virtual ~PhysicalTableProjectNode() {}
@@ -336,7 +341,8 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalAggrerationNode(PhysicalOpNode *node, const std::string &fn_name,
                             const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kAggregation) {
+        : PhysicalProjectNode(node, fn_name, schema, kAggregation, true,
+                              false) {
         output_type = kSchemaTypeRow;
     }
     virtual ~PhysicalAggrerationNode() {}
@@ -348,7 +354,8 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
                                  const node::ExprListNode *groups,
                                  const std::string &fn_name,
                                  const Schema &schema)
-        : PhysicalProjectNode(node, fn_name, schema, kGroupAggregation),
+        : PhysicalProjectNode(node, fn_name, schema, kGroupAggregation, true,
+                              false),
           groups_(groups) {
         output_type = kSchemaTypeTable;
     }
@@ -373,7 +380,8 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
                                   const Schema &schema,
                                   const int64_t start_offset,
                                   const int64_t end_offset)
-        : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation),
+        : PhysicalProjectNode(node, fn_name, schema, kWindowAggregation, true,
+                              false),
           groups_(groups),
           orders_(orders),
           start_offset_(start_offset),
@@ -438,7 +446,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
 class PhysicalUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalUnionNode(PhysicalOpNode *left, PhysicalOpNode *right, bool is_all)
-        : PhysicalBinaryNode(left, right, kPhysicalOpUnoin, false, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpUnoin, true, true),
           is_all_(is_all) {
         output_type = kSchemaTypeTable;
     }
@@ -452,7 +460,7 @@ class PhysicalSeekIndexNode : public PhysicalBinaryNode {
  public:
     PhysicalSeekIndexNode(PhysicalOpNode *left, PhysicalOpNode *right,
                           const node::ExprListNode *keys)
-        : PhysicalBinaryNode(left, right, kPhysicalOpIndexSeek, false, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpIndexSeek, true, true),
           keys_(keys) {
         output_type = kSchemaTypeGroup;
     }
@@ -533,7 +541,7 @@ class PhysicalSortNode : public PhysicalUnaryNode {
 class PhysicalFliterNode : public PhysicalUnaryNode {
  public:
     PhysicalFliterNode(PhysicalOpNode *node, const node::ExprNode *condition)
-        : PhysicalUnaryNode(node, kPhysicalOpFilter, false, false),
+        : PhysicalUnaryNode(node, kPhysicalOpFilter, true, false),
           condition_(condition) {}
     virtual ~PhysicalFliterNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -552,10 +560,17 @@ class PhysicalFliterNode : public PhysicalUnaryNode {
 class PhysicalLimitNode : public PhysicalUnaryNode {
  public:
     PhysicalLimitNode(PhysicalOpNode *node, int32_t limit_cnt)
-        : PhysicalUnaryNode(node, kPhysicalOpLimit, false, false),
-          limit_cnt_(limit_cnt) {}
+        : PhysicalUnaryNode(node, kPhysicalOpLimit, true, false) {
+        limit_cnt_ = limit_cnt;
+        limit_optimized_ = false;
+    }
     virtual ~PhysicalLimitNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    void SetLimitOptimized(bool optimized) { limit_optimized_ = optimized; }
+    const bool GetLimitOptimized() const { return limit_optimized_; }
+
+ private:
+    bool limit_optimized_;
 };
 
 class PhysicalRenameNode : public PhysicalUnaryNode {
@@ -571,7 +586,7 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
 class PhysicalDistinctNode : public PhysicalUnaryNode {
  public:
     explicit PhysicalDistinctNode(PhysicalOpNode *node)
-        : PhysicalUnaryNode(node, kPhysicalOpDistinct, false, false) {}
+        : PhysicalUnaryNode(node, kPhysicalOpDistinct, true, false) {}
     virtual ~PhysicalDistinctNode() {}
 };
 

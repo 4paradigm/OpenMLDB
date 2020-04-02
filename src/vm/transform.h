@@ -145,6 +145,12 @@ class LimitOptimized : public TransformUpPysicalPass {
     LimitOptimized(node::NodeManager* node_manager, const std::string& db,
                    const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
+    ~LimitOptimized() {}
+
+ private:
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+
+    static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
 };
 class LeftJoinOptimized : public TransformUpPysicalPass {
  public:
@@ -163,7 +169,8 @@ typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
 
 enum PhysicalPlanPassType {
     kPassGroupAndSortOptimized,
-    kPassLeftJoinOptimized
+    kPassLeftJoinOptimized,
+    kPassLimitOptimized
 };
 
 inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
@@ -172,6 +179,8 @@ inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
             return "PassGroupByOptimized";
         case kPassLeftJoinOptimized:
             return "PassLeftJoinOptimized";
+        case kPassLimitOptimized:
+            return "PassLimitOptimized";
         default:
             return "unknowPass";
     }
