@@ -27,7 +27,7 @@ MemTableIterator::MemTableIterator(const MemSegment* table,
       end_iter_(table_->begin() + end),
       iter_(start_iter_) {}
 MemTableIterator::~MemTableIterator() {
-//    DLOG(INFO) << "~MemTableIterator()";
+    //    DLOG(INFO) << "~MemTableIterator()";
 }
 
 // TODO(chenjing): speed up seek for memory iterator
@@ -57,7 +57,7 @@ MemWindowIterator::MemWindowIterator(const MemSegmentMap* partitions,
       iter_(partitions->cbegin()) {}
 
 MemWindowIterator::~MemWindowIterator() {
-//    DLOG(INFO) << "~MemWindowIterator()";
+    //    DLOG(INFO) << "~MemWindowIterator()";
 }
 
 void MemWindowIterator::Seek(const std::string& key) {
@@ -188,7 +188,6 @@ void MemPartitionHandler::Sort(const bool is_asc) {
             std::sort(segment.second.begin(), segment.second.end(), comparor);
         }
     }
-
 }
 const bool MemPartitionHandler::IsAsc() { return is_asc_; }
 void MemPartitionHandler::Print() {

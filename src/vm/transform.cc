@@ -227,8 +227,6 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                                     &fn_schema, status);
                     order_op->SetOrdersIdxs(idxs);
                 }
-
-
             }
             break;
         }
@@ -252,8 +250,8 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
                 }
             }
             if (!expr_list.children_.empty()) {
-                CodeGenExprList((node->output_schema), &expr_list, true, fn_name,
-                                &fn_schema, status);
+                CodeGenExprList((node->output_schema), &expr_list, true,
+                                fn_name, &fn_schema, status);
                 group_sort_op->SetGroupsIdxs(groups_idxs);
                 group_sort_op->SetOrdersIdxs(orders_idxs);
             }
