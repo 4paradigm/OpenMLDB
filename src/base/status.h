@@ -174,6 +174,7 @@ enum ReturnCode {
     kDeleteIndexFailed = 142,
     kAddIndexFailed = 143,
     kFailToCreateFile = 144,
+    kSnapshotRecycled = 145,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,

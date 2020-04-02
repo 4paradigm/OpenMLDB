@@ -1426,8 +1426,8 @@ void TabletImpl::Traverse(RpcController* controller,
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             if (request->has_snapshot_id()) {
-                response->set_code(rtidb::base::ReturnCode::kIdxNameNotFound); // TODO(kongquan): add new message and code, snapshot has benn recycle
-                response->set_msg("snapshot hsa benn recycle");
+                response->set_code(rtidb::base::ReturnCode::kSnapshotRecycled);
+                response->set_msg("snapshot has been recycled");
             }
             return;
         }
