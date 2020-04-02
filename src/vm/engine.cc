@@ -123,37 +123,40 @@ int32_t RequestRunSession::Run(const Slice& in_row, Slice* out_row) {
     return 0;
 }
 int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
-    auto output = RunPhysicalPlan(compile_info_->sql_ctx.plan);
+    auto output = Run();
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return -1;
     }
+
+    auto iter = std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
+    while (iter->Valid()) {
+        buf.push_back(iter->GetValue().buf());
+        iter->Next();
+    }
+    return 0;
+}
+
+std::shared_ptr<TableHandler> BatchRunSession::Run() {
+    auto output = RunPhysicalPlan(compile_info_->sql_ctx.plan);
     switch (output->GetHanlderType()) {
         case kTableHandler: {
-            DLOG(INFO) << "Run buffer table result";
-            auto iter =
-                std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
-            while (iter->Valid()) {
-                buf.push_back(iter->GetValue().buf());
-                iter->Next();
-            }
-            return 0;
+            return std::dynamic_pointer_cast<TableHandler>(output);
         }
         case kRowHandler: {
-            DLOG(INFO) << "Run buffer row result";
-            buf.push_back(reinterpret_cast<int8_t*>(
-                const_cast<char*>(std::dynamic_pointer_cast<RowHandler>(output)
-                                      ->GetValue()
-                                      .data())));
-            return 0;
+            Slice row(
+                std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
+
+            auto output_table =
+                std::shared_ptr<MemTableHandler>(new MemTableHandler());
+            output_table->AddRow(row);
+            return output_table;
         }
         case kPartitionHandler: {
             LOG(WARNING) << "partition output is invalid";
-            return -1;
+            return std::shared_ptr<TableHandler>();
         }
     }
-
-    return 0;
 }
 
 std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
@@ -208,7 +211,8 @@ std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
                     auto window_op =
                         dynamic_cast<const PhysicalWindowAggrerationNode*>(
                             node);
-                    return WindowAggProject(window_op, input, op->GetLimitCnt());
+                    return WindowAggProject(window_op, input,
+                                            op->GetLimitCnt());
                 }
                 case kRowProject: {
                     if (!input) {
@@ -657,7 +661,7 @@ std::shared_ptr<DataHandler> RunSession::TableProject(
 
     uint32_t cnt = 0;
     while (iter->Valid()) {
-        if (limit_cnt > 0 && cnt ++ >= limit_cnt) {
+        if (limit_cnt > 0 && cnt++ >= limit_cnt) {
             break;
         }
         const Slice row(RowProject(fn, iter->GetValue()));
@@ -667,8 +671,7 @@ std::shared_ptr<DataHandler> RunSession::TableProject(
     return output_table;
 }
 std::shared_ptr<DataHandler> RunSession::WindowAggProject(
-    const PhysicalWindowAggrerationNode* op,
-    std::shared_ptr<DataHandler> input,
+    const PhysicalWindowAggrerationNode* op, std::shared_ptr<DataHandler> input,
     const uint32_t limit_cnt) {
     if (!input) {
         LOG(WARNING) << "window aggregation fail: input is null";
@@ -690,7 +693,7 @@ std::shared_ptr<DataHandler> RunSession::WindowAggProject(
         auto segment = iter->GetValue();
         vm::CurrentHistoryWindow window(op->start_offset_);
         while (segment->Valid()) {
-            if (limit_cnt > 0 && cnt ++ >= limit_cnt) {
+            if (limit_cnt > 0 && cnt++ >= limit_cnt) {
                 break;
             }
             const Slice row(WindowProject(op->GetFn(), segment->GetKey(),
