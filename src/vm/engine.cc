@@ -881,7 +881,7 @@ std::shared_ptr<DataHandler> RunSession::Limit(
             auto output_table = std::shared_ptr<MemTableHandler>(
                 new MemTableHandler(&(op->output_schema)));
             int32_t cnt = 0;
-            while (cnt++ < op->limit_cnt && iter->Valid()) {
+            while (cnt++ < op->limit_cnt_ && iter->Valid()) {
                 output_table->AddRow(iter->GetKey(), Slice(iter->GetValue()));
                 iter->Next();
             }

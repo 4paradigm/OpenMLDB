@@ -111,6 +111,9 @@ class PhysicalOpNode {
     void SetFnSchema(const Schema schema) { fn_schema_ = schema; }
 
     const vm::Schema &GetFnSchema() const { return fn_schema_; }
+
+    void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
+
     const PhysicalOpType type_;
     const bool is_block_;
     const bool is_lazy_;
@@ -121,6 +124,7 @@ class PhysicalOpNode {
     std::string fn_name_;
     int8_t *fn_;
     vm::Schema fn_schema_;
+    int32_t limit_cnt_;
     std::vector<PhysicalOpNode *> producers_;
 };
 
@@ -232,14 +236,13 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
-    void SetGroupsIdxs(const std::vector<int32_t>& idxs) {
+    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
         groups_idxs_ = idxs;
     }
-    const std::vector<int32_t > &GetGroupsIdxs() const {
-        return groups_idxs_;
-    }
- private :
-    std::vector<int32_t > groups_idxs_;
+    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
+
+ private:
+    std::vector<int32_t> groups_idxs_;
 };
 
 class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
@@ -256,21 +259,18 @@ class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
     const node::OrderByNode *orders_;
-    void SetGroupsIdxs(const std::vector<int32_t>& idxs) {
+    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
         groups_idxs_ = idxs;
     }
-    void SetOrdersIdxs(const std::vector<int32_t>& idxs) {
+    void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
         orders_idxs_ = idxs;
     }
-    const std::vector<int32_t > &GetOrdersIdxs() const {
-        return orders_idxs_;
-    }
-    const std::vector<int32_t > &GetGroupsIdxs() const {
-        return groups_idxs_;
-    }
- private :
-    std::vector<int32_t > groups_idxs_;
-    std::vector<int32_t > orders_idxs_;
+    const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
+    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
+
+ private:
+    std::vector<int32_t> groups_idxs_;
+    std::vector<int32_t> orders_idxs_;
 };
 
 enum ProjectType {
@@ -355,14 +355,13 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
     virtual ~PhysicalGroupAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
-    void SetGroupsIdxs(const std::vector<int32_t>& idxs) {
+    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
         groups_idxs_ = idxs;
     }
-    const std::vector<int32_t > &GetGroupsIdxs() const {
-        return groups_idxs_;
-    }
- private :
-    std::vector<int32_t > groups_idxs_;
+    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
+
+ private:
+    std::vector<int32_t> groups_idxs_;
 };
 
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
@@ -388,21 +387,18 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     const int64_t start_offset_;
     const int64_t end_offset_;
 
-    void SetGroupsIdxs(const std::vector<int32_t>& idxs) {
+    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
         groups_idxs_ = idxs;
     }
-    void SetOrdersIdxs(const std::vector<int32_t>& idxs) {
+    void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
         orders_idxs_ = idxs;
     }
-    const std::vector<int32_t > &GetOrdersIdxs() const {
-        return orders_idxs_;
-    }
-    const std::vector<int32_t > &GetGroupsIdxs() const {
-        return groups_idxs_;
-    }
- private :
-    std::vector<int32_t > groups_idxs_;
-    std::vector<int32_t > orders_idxs_;
+    const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
+    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
+
+ private:
+    std::vector<int32_t> groups_idxs_;
+    std::vector<int32_t> orders_idxs_;
 };
 
 class PhysicalLoopsNode : public PhysicalUnaryNode {
@@ -428,14 +424,15 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::JoinType join_type_;
     const node::ExprNode *condition_;
-    void SetConditionIdxs(const std::vector<int32_t>& idxs) {
+    void SetConditionIdxs(const std::vector<int32_t> &idxs) {
         condition_idxs_ = idxs;
     }
-    const std::vector<int32_t > &GetConditionIdxs() const {
+    const std::vector<int32_t> &GetConditionIdxs() const {
         return condition_idxs_;
     }
- private :
-    std::vector<int32_t > condition_idxs_;
+
+ private:
+    std::vector<int32_t> condition_idxs_;
 };
 
 class PhysicalUnionNode : public PhysicalBinaryNode {
@@ -462,16 +459,13 @@ class PhysicalSeekIndexNode : public PhysicalBinaryNode {
     virtual ~PhysicalSeekIndexNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    void SetKeysIdxs(const std::vector<int32_t>& idxs) {
-        keys_idxs_ = idxs;
-    }
+    void SetKeysIdxs(const std::vector<int32_t> &idxs) { keys_idxs_ = idxs; }
 
-    const std::vector<int32_t > &GetKeysIdxs() const {
-        return keys_idxs_;
-    }
+    const std::vector<int32_t> &GetKeysIdxs() const { return keys_idxs_; }
     const node::ExprListNode *keys_;
- private :
-    std::vector<int32_t > keys_idxs_;
+
+ private:
+    std::vector<int32_t> keys_idxs_;
 };
 
 class PhysicalRequestUnionNode : public PhysicalBinaryNode {
@@ -544,24 +538,24 @@ class PhysicalFliterNode : public PhysicalUnaryNode {
     virtual ~PhysicalFliterNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprNode *condition_;
-    void SetConditionIdxs(const std::vector<int32_t>& idxs) {
+    void SetConditionIdxs(const std::vector<int32_t> &idxs) {
         condition_idxs_ = idxs;
     }
-    const std::vector<int32_t > &GetConditionIdxs() const {
+    const std::vector<int32_t> &GetConditionIdxs() const {
         return condition_idxs_;
     }
- private :
-    std::vector<int32_t > condition_idxs_;
+
+ private:
+    std::vector<int32_t> condition_idxs_;
 };
 
 class PhysicalLimitNode : public PhysicalUnaryNode {
  public:
     PhysicalLimitNode(PhysicalOpNode *node, int32_t limit_cnt)
         : PhysicalUnaryNode(node, kPhysicalOpLimit, false, false),
-          limit_cnt(limit_cnt) {}
+          limit_cnt_(limit_cnt) {}
     virtual ~PhysicalLimitNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    const int32_t limit_cnt;
 };
 
 class PhysicalRenameNode : public PhysicalUnaryNode {
