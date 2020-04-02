@@ -566,7 +566,6 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
 
 void RelationalTable::ReleaseSnpashot(uint64_t snapshot_id, bool finish) {
     if (finish) {
-        PDLOG(INFO, "table[%s] pid[%u] release snapshot[%lu]", name_.c_str(), pid_, snapshot_id);
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = snapshots_.find(snapshot_id);
         if (iter == snapshots_.end()) {
