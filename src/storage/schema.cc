@@ -71,6 +71,12 @@ void TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
     auto new_indexs = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>(*old_indexs);
     new_indexs->push_back(index_def);
     std::atomic_store_explicit(&indexs_, new_indexs, std::memory_order_relaxed);
+    if (index_def->GetType() == ::rtidb::type::kPrimaryKey || 
+            index_def->GetType() == ::rtidb::type::kAutoGen) {
+        pk_name_ = index_def->GetName();
+    } else if (index_def->GetType() == ::rtidb::type::kAutoGen) {
+        has_auto_gen_ = true;
+    }
 }
 
 }

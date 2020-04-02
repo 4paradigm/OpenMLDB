@@ -135,6 +135,9 @@ int RelationalTable::InitColumnDesc() {
     uint32_t key_idx = 0;
     for (const auto &column_key : table_meta_.column_key()) {
         const std::string& index_name = column_key.index_name();
+        if (GetIndex(index_name)) {
+            return -1;
+        }
         const ::rtidb::type::IndexType index_type = column_key.index_type(); 
         std::map<uint32_t, ::rtidb::common::ColumnDesc> column_idx_map;
         for (int i = 0; i < column_key.col_name_size(); i++) {
@@ -144,9 +147,6 @@ int RelationalTable::InitColumnDesc() {
                 }
             }
         }
-        if (table_index_.GetIndex(index_name)) {
-            return -1;
-        }
         if (column_key.flag()) {
             table_index_.AddIndex(std::make_shared<IndexDef>(index_name, key_idx, 
                         ::rtidb::storage::kDeleted, index_type, column_idx_map));
@@ -155,12 +155,6 @@ int RelationalTable::InitColumnDesc() {
                         ::rtidb::storage::kReady, index_type, column_idx_map));
         }
         key_idx++;
-        if (index_type == ::rtidb::type::kPrimaryKey || 
-                index_type == ::rtidb::type::kAutoGen) {
-            SetGetPkName(index_name);
-        } else if (index_type == ::rtidb::type::kAutoGen) {
-            SetHasAutoGen(true);
-        }
     }
     return 0;
 }
@@ -246,7 +240,7 @@ bool RelationalTable::GetStr(::rtidb::base::RowView& view, uint32_t idx,
 bool RelationalTable::PutDB(const std::string &pk, const char *data, uint32_t size) {
     const Schema& schema = table_meta_.column_desc(); 
     ::rtidb::base::RowView view(schema, reinterpret_cast<int8_t*>(const_cast<char*>(data)), size);
-    auto indexs = table_index_.GetAllIndex();
+    auto indexs = GetAllIndex();
     uint32_t pk_index_idx = 0;
     std::string* primary_key = const_cast<std::string*>(&pk);
     std::map<std::string, uint32_t> unique_map;
@@ -357,17 +351,9 @@ rocksdb::Iterator* RelationalTable::Seek(uint32_t idx, const std::string& key) {
 }
 
 bool RelationalTable::Get(const std::string& col_name, const std::string& key, rtidb::base::Slice& slice) {
-    auto indexs = table_index_.GetAllIndex();
-    uint32_t idx = 0;
-    ::rtidb::type::IndexType index_type = ::rtidb::type::kPrimaryKey; 
-    for (int i = 0; i < (int)(indexs.size()); i++) {
-        std::shared_ptr<IndexDef> index_def = indexs.at(i);
-        if (index_def->GetName() == col_name) {
-            idx = index_def->GetId();
-            index_type = index_def->GetType();
-            break;
-        }
-    }
+    std::shared_ptr<IndexDef> index_def = GetIndex(col_name);
+    uint32_t idx = index_def->GetId();
+    ::rtidb::type::IndexType index_type = index_def->GetType(); 
     if (idx >= idx_cnt_) {
         PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return false;
@@ -671,7 +657,7 @@ void RelationalTableTraverseIterator::SeekToFirst() {
     return it_->SeekToFirst();
 }
 
-void RelationalTableTraverseIterator::Seek(const std::string &pk) {
+void RelationalTableTraverseIterator::Seek(const std::string& pk) {
     rocksdb::Slice spk(pk);
     it_->Seek(spk);
 }

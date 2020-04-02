@@ -132,14 +132,8 @@ public:
     inline bool HasAutoGen() {
         return table_index_.HasAutoGen(); 
     }
-    void SetHasAutoGen(bool flag) {
-        table_index_.SetHasAutoGen(flag);
-    }
     inline std::string& GetPkName() {
         return table_index_.GetPkName(); 
-    }
-    void SetGetPkName(const std::string& name) {
-        table_index_.SetGetPkName(name);
     }
     
     inline ::rtidb::api::TableMeta& GetTableMeta() {

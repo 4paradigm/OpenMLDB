@@ -4452,7 +4452,7 @@ void TabletImpl::DumpIndexData(RpcController* controller,
     }
     std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
     std::vector<::rtidb::log::WriteHandle*> whs;
-    for (int i = 0; i < (int)(request->partition_num()); ++i) {
+    for (int i = 0; i < request->partition_num(); ++i) {
         std::string index_file_name = std::to_string(request->pid()) + "_" + std::to_string(i) + "_index.data";
         std::string index_data_path = index_path + index_file_name;
         FILE* fd = fopen(index_data_path.c_str(), "wb+");
