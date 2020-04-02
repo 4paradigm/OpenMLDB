@@ -565,21 +565,15 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
 }
 
 void RelationalTable::ReleaseSnpashot(uint64_t snapshot_id, bool finish) {
-    std::shared_ptr<SnapshotInfo> sc = std::make_shared<SnapshotInfo>();
-    {
+    if (finish) {
+        PDLOG(INFO, "table[%s] pid[%u] release snapshot[%lu]", name_.c_str(), pid_, snapshot_id);
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = snapshots_.find(snapshot_id);
         if (iter == snapshots_.end()) {
             return;
         }
-        sc = iter->second;
-    }
-    if (finish) {
-        PDLOG(INFO, "table[%s] pid[%u] release snapshot[%lu]", name_.c_str(), pid_, snapshot_id);
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            snapshots_.erase(snapshot_id);
-        }
+        std::shared_ptr<SnapshotInfo> sc = iter->second;
+        snapshots_.erase(iter);
         db_->ReleaseSnapshot(sc->snapshot);
     }
 }
@@ -590,7 +584,6 @@ void RelationalTable::TTLSnapshot() {
     for (auto iter = snapshots_.begin(); iter != snapshots_.end();) {
         if (iter->second->atime + FLAGS_snapshot_ttl_time <= cur_time ) {
             std::shared_ptr<SnapshotInfo> sc = iter->second;
-            PDLOG(INFO, "table[%s] pid[%u] release snapshot[%lu]", name_.c_str(), pid_, iter->first);
             iter = snapshots_.erase(iter);
             db_->ReleaseSnapshot(sc->snapshot);
             continue;
@@ -623,7 +616,6 @@ RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint
         sc->atime = baidu::common::timer::get_micros() / 1000;
         std::lock_guard<std::mutex> lock(mu_);
         snapshot_id = snapshot_index_++;
-        PDLOG(INFO, "table[%s] pid_[%u], create new snapshot[%lu]", name_.c_str(), pid_, snapshot_id);
         snapshots_.insert(std::make_pair(snapshot_id, sc));
     }
     ro.snapshot = sc->snapshot;

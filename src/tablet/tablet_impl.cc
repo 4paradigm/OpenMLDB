@@ -163,7 +163,6 @@ bool TabletImpl::Init() {
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
-    snapshot_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::RelationalTableSnapshotTTL, this));
     task_pool_.AddTask(boost::bind(&TabletImpl::GetDiskused, this));
     if (FLAGS_recycle_ttl != 0) {
         task_pool_.DelayTask(FLAGS_recycle_ttl*60*1000, boost::bind(&TabletImpl::SchedDelRecycle, this));
@@ -2344,23 +2343,6 @@ void TabletImpl::SchedMakeDiskTableSnapshot() {
     snapshot_pool_.DelayTask(FLAGS_make_disktable_snapshot_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeDiskTableSnapshot, this));
 }
 
-void TabletImpl::RelationalTableSnapshotTTL() {
-    std::vector<std::shared_ptr<RelationalTable>> table_set;
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        RelationalTables::iterator table_iter = relational_tables_.begin();
-        for (; table_iter != relational_tables_.end(); table_iter++) {
-            for (auto part_iter = table_iter->second.begin(); part_iter != table_iter->second.end(); part_iter++) {
-                table_set.push_back(part_iter->second);
-            }
-        }
-    }
-    for (auto iter : table_set) {
-        iter->TTLSnapshot();
-    }
-    snapshot_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::RelationalTableSnapshotTTL, this));
-}
-
 void TabletImpl::SendData(RpcController* controller,
         const ::rtidb::api::SendDataRequest* request,
         ::rtidb::api::GeneralResponse* response,
@@ -3165,6 +3147,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             response->set_msg(msg.c_str());
             return;
         }
+        gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid, false));
     } else if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::string msg;
         if (CreateDiskTableInternal(table_meta, false, msg) < 0) {
@@ -4033,6 +4016,16 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
     }
 }
 
+void TabletImpl::GcTableSnapshot(uint32_t tid, uint32_t pid, bool execute_once) {
+    std::shared_ptr<RelationalTable> table = GetRelationalTable(tid, pid);
+    if (table) {
+        table->TTLSnapshot();
+        if (!execute_once) {
+            gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid, false));
+        }
+    }
+}
+
 std::shared_ptr<Snapshot> TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     return GetSnapshotUnLock(tid, pid);
@@ -4090,6 +4083,11 @@ std::shared_ptr<RelationalTable> TabletImpl::GetRelationalTableUnLock(uint32_t t
         }
     }
     return std::shared_ptr<RelationalTable>();
+}
+
+std::shared_ptr<RelationalTable> TabletImpl::GetRelationalTable(uint32_t tid, uint32_t pid) {
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+    return  GetRelationalTableUnLock(tid, pid);
 }
 
 void TabletImpl::ShowMemPool(RpcController* controller,

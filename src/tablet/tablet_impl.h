@@ -312,12 +312,15 @@ private:
     //std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
     //std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t pid);
     std::shared_ptr<RelationalTable> GetRelationalTableUnLock(uint32_t tid, uint32_t pid);
+    std::shared_ptr<RelationalTable> GetRelationalTable(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid, bool execute_once);
+
+    void GcTableSnapshot(uint32_t tid, uint32_t pid, bool execute_once);
 
     int CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::string& msg);
 
@@ -328,8 +331,6 @@ private:
     int CreateRelationalTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset, std::shared_ptr<::rtidb::api::TaskInfo> task);
-
-    void RelationalTableSnapshotTTL();
 
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
                         uint32_t remote_tid, std::shared_ptr<::rtidb::api::TaskInfo> task);
