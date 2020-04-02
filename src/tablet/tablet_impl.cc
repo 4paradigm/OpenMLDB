@@ -2828,18 +2828,6 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
             need_load = true;
         }
         std::string msg;
-        if (table_meta.has_table_type() && table_meta.table_type() == rtidb::type::kRelational) {
-            if (CreateRelationalTableInternal(&table_meta, msg) < 0) {
-                PDLOG(WARNING, "create table failed. tid %u pid %u msg %s", tid, pid, msg.c_str());
-                break;
-            }
-            if (task_ptr) {
-                std::lock_guard<std::mutex> lock(mu_);
-                task_ptr->set_status(rtidb::api::TaskStatus::kDone);
-            }
-            gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid, false));
-            return 0;
-        }
         if (CreateDiskTableInternal(&table_meta, need_load, msg) < 0) {
             PDLOG(WARNING, "create table failed. tid %u pid %u msg %s", tid, pid, msg.c_str());
             break;
@@ -2881,6 +2869,9 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
             gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
             io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
             task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+            if (table_meta.has_table_type() && table_meta.table_type() == rtidb::type::kRelational) {
+                gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid, false));
+            }
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
             MakeSnapshotInternal(tid, pid, 0, std::shared_ptr<::rtidb::api::TaskInfo>());
             if (task_ptr) {
