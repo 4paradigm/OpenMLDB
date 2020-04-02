@@ -659,7 +659,7 @@ std::shared_ptr<DataHandler> RunSession::TableProject(
         std::shared_ptr<MemTableHandler>(new MemTableHandler(&output_schema));
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
 
-    uint32_t cnt = 0;
+    int32_t cnt = 0;
     while (iter->Valid()) {
         if (limit_cnt > 0 && cnt++ >= limit_cnt) {
             break;
@@ -688,7 +688,7 @@ std::shared_ptr<DataHandler> RunSession::WindowAggProject(
 
     auto partitions = std::dynamic_pointer_cast<PartitionHandler>(input);
     auto iter = partitions->GetWindowIterator();
-    uint32_t cnt = 0;
+    int32_t cnt = 0;
     while (iter->Valid()) {
         auto segment = iter->GetValue();
         vm::CurrentHistoryWindow window(op->start_offset_);
