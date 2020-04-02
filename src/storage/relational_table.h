@@ -129,6 +129,19 @@ public:
         return table_index_.GetIndex(idx);
     }
 
+    inline bool HasAutoGen() {
+        return table_index_.HasAutoGen(); 
+    }
+    void SetHasAutoGen(bool flag) {
+        table_index_.SetHasAutoGen(flag);
+    }
+    inline std::string& GetPkName() {
+        return table_index_.GetPkName(); 
+    }
+    void SetGetPkName(const std::string& name) {
+        table_index_.SetGetPkName(name);
+    }
+    
     inline ::rtidb::api::TableMeta& GetTableMeta() {
         return table_meta_;
     }
@@ -165,12 +178,7 @@ private:
     bool InitFromMeta();
     static void initOptionTemplate();
     rocksdb::Iterator* Seek(uint32_t idx, const std::string& key); 
-    bool PutDB(uint32_t pk_index_idx, 
-            const std::string& pk,
-            const std::map<std::string, uint32_t>& unique_map,
-            const std::map<std::string, uint32_t>& no_unique_map,
-            const char* data,
-            uint32_t size);
+    bool PutDB(const std::string& pk, const char* data, uint32_t size);
     void UpdateInternel(const ::rtidb::api::Columns& cd_columns, 
             std::map<std::string, int>& cd_idx_map, 
             Schema& condition_schema);
@@ -180,9 +188,6 @@ private:
             const std::string& cd_value, const std::string& col_value); 
     bool GetStr(::rtidb::base::RowView& view, uint32_t idx, 
             const ::rtidb::type::DataType& data_type, std::string* key); 
-    bool GetMap(::rtidb::base::RowView& view, 
-            std::map<std::string, uint32_t> *unique_map, 
-            std::map<std::string, uint32_t> *no_unique_map); 
 
     std::mutex mu_;
     ::rtidb::common::StorageMode storage_mode_;
@@ -207,13 +212,6 @@ private:
     std::string db_root_path_;
 
     ::rtidb::base::IdGenerator id_generator_;
-    bool has_auto_gen_;
-    std::string pk_col_name_;
-    int pk_idx_;
-    ::rtidb::type::DataType pk_data_type_;
-    std::map<std::string, std::map<uint32_t, ::rtidb::type::DataType>> unique_val_map_;
-    std::map<std::string, std::map<uint32_t, ::rtidb::type::DataType>> no_unique_val_map_;
-    std::map<std::string, std::map<uint32_t, ::rtidb::type::IndexType>> index_name_map_;
 
 };
 

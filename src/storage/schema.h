@@ -65,7 +65,9 @@ public:
     IndexDef(const std::string& name, uint32_t id);
     IndexDef(const std::string& name, uint32_t id, IndexStatus stauts);
     IndexDef(const std::string& name, uint32_t id, 
-            const ::rtidb::type::IndexType& type, const IndexStatus& stauts);
+            const IndexStatus& stauts, 
+            ::rtidb::type::IndexType type, 
+            const std::map<uint32_t, ::rtidb::common::ColumnDesc>& column_idx_map);
     ~IndexDef();
     const std::string& GetName() { return name_; }
     const std::vector<uint32_t>& GetTsColumn() { return ts_column_; }
@@ -85,13 +87,16 @@ public:
     inline ::rtidb::type::IndexType GetType() {
         return type_;
     }
+    inline std::map<uint32_t, ::rtidb::common::ColumnDesc>& GetColumnIdxMap() {
+        return column_idx_map_;
+    }
 
 private:
     std::string name_;
     uint32_t index_id_;
     std::atomic<IndexStatus> status_;
     ::rtidb::type::IndexType type_;
-    std::vector<::rtidb::common::ColumnDesc> column_;
+    std::map<uint32_t, ::rtidb::common::ColumnDesc> column_idx_map_;
     std::vector<uint32_t> ts_column_;
 };
 
@@ -108,9 +113,23 @@ public:
     inline uint32_t Size() {
         return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->size();
     }
+    inline bool HasAutoGen() {
+        return has_auto_gen_; 
+    }
+    void SetHasAutoGen(bool flag) {
+        has_auto_gen_ = flag;
+    }
+    inline std::string& GetPkName() {
+        return pk_name_;
+    }
+    void SetGetPkName(const std::string& name) {
+        pk_name_ = name;
+    }
 
 private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
+    bool has_auto_gen_;
+    std::string pk_name_;
 };
 
 }

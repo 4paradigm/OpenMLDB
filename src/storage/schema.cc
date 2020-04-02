@@ -18,15 +18,16 @@ IndexDef::IndexDef(const std::string& name, uint32_t id, IndexStatus status) :
     name_(name), index_id_(id), status_(status) {
 }
 
-IndexDef::IndexDef(const std::string& name, uint32_t id, 
-        const ::rtidb::type::IndexType& type, const IndexStatus& status) :
-    name_(name), index_id_(id), type_(type), status_(status) {
+IndexDef::IndexDef(const std::string& name, uint32_t id,  
+        const IndexStatus& status, ::rtidb::type::IndexType type, 
+        const std::map<uint32_t, ::rtidb::common::ColumnDesc>& column_idx_map) :
+    name_(name), index_id_(id), status_(status), type_(type), column_idx_map_(column_idx_map) {
 }
 
 IndexDef::~IndexDef() {
 }
 
-TableIndex::TableIndex() {
+TableIndex::TableIndex() : has_auto_gen_(false) {
     indexs_ = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>();
 }
 
