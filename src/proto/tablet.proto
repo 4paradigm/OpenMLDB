@@ -331,6 +331,7 @@ message TableMeta {
     repeated rtidb.common.ColumnDesc added_column_desc = 18;
     optional TTLDesc ttl_desc = 19;
     optional rtidb.type.TableType table_type = 20;
+    // format_version 0 , the legacy format 1 ,the new one
     optional uint32 format_version = 21 [default = 0];
 }
 

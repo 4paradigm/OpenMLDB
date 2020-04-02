@@ -76,7 +76,7 @@ static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
     return total_size;
 }
 
-static inline int32_t EncodeRows(const std::vector<std::pair<uint64_t, ::rtidb::base::Slice>>& rows,
+static inline int32_t EncodeRows(const std::vector<std::pair<uint64_t, std::unique_ptr<::rtidb::base::Slice> >>& rows,
                                  uint32_t total_block_size, std::string* pairs) {
 
     if (pairs == NULL) {
@@ -92,9 +92,8 @@ static inline int32_t EncodeRows(const std::vector<std::pair<uint64_t, ::rtidb::
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
     for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        const std::pair<uint64_t, ::rtidb::base::Slice>& pair = *lit;
-        ::rtidb::base::Encode(pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
-        offset += (4 + 8 + pair.second.size());
+        ::rtidb::base::Encode(lit->first, lit->second->data(), lit->second->size(), rbuffer, offset);
+        offset += (4 + 8 + lit->second->size());
     }
     return total_size;
 }
@@ -181,7 +180,7 @@ static inline void DecodeFull(const std::string* str, std::map<std::string, std:
 }
 
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
-using ProjectList = ::google::protobuf::RepeatedPtrField<uint32_t>;
+using ProjectList = ::google::protobuf::RepeatedField<uint32_t>;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;

@@ -40,6 +40,7 @@ using ::rtidb::zk::ZkClient;
 using ::rtidb::base::SpinMutex;
 using ::rtidb::storage::IndexDef;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using ProjectList = ::google::protobuf::RepeatedPtrField<uint32_t>;
 
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
@@ -294,6 +295,7 @@ public:
                           ::rtidb::api::TTLType ttl_type,
                           ::rtidb::storage::TableIterator* it,
                           const ::rtidb::api::ScanRequest* request,
+                          const ::rtidb::api::TableMeta& meta,
                           std::string* pairs,
                           uint32_t* count);
 

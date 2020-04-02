@@ -791,14 +791,27 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
         ::rtidb::api::TTLType ttl_type,
         ::rtidb::storage::TableIterator* it,
         const ::rtidb::api::ScanRequest* request,
+        const ::rtidb::api::TableMeta& meta,
         std::string* pairs,
         uint32_t* count) {
+
     uint32_t limit = request->limit();
     uint32_t atleast = request->atleast();
     uint64_t st = request->st();
     const rtidb::api::GetType& st_type = request->st_type();
     uint64_t et = request->et();
     const rtidb::api::GetType& et_type = request->et_type();
+    bool enable_project = false;
+    //TODO (wangtaize) support extend columns
+    ::rtidb::base::RowProject row_project(meta.column_desc(), request->projection());
+    if (request->projection().size() > 0 && meta.format_version() == 1) {
+        bool ok = row_project.Init();
+        if (!ok) {
+            PDLOG(WARNING, "invalid project list");
+            return -1;
+        }
+        enable_project = true;
+    }
     bool remove_duplicated_record = request->has_enable_remove_duplicated_record() 
         && request->enable_remove_duplicated_record();
     if (it == NULL || pairs == NULL || count == NULL || (atleast > limit && limit != 0)) {
@@ -851,9 +864,8 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     } else {
         it->SeekToFirst();
     }
-
     uint64_t last_time = 0;
-    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
+    std::vector<std::pair<uint64_t, std::unique_ptr<::rtidb::base::Slice> > > tmp;
     tmp.reserve(FLAGS_scan_reserve_size);
     uint32_t total_block_size = 0;
     while(it->Valid()) {
@@ -909,9 +921,18 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             }
             if (jump_out) break;
         }
-        ::rtidb::base::Slice it_value = it->GetValue();
-        tmp.push_back(std::make_pair(it->GetKey(), it_value));
-        total_block_size += it_value.size();
+        if (enable_project) {
+            int8_t* ptr = nullptr;
+            uint32_t size = 0;
+            bool ok = row_project.Project(reinterpret_cast<const int8_t*>(it->GetValue().data()), it->GetValue().size(), &ptr, &size);
+            std::unique_ptr<::rtidb::base::Slice> value(new ::rtidb::base::Slice(reinterpret_cast<char*>(ptr), size, true));
+            tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
+            total_block_size += size;
+        }else {
+            std::unique_ptr<::rtidb::base::Slice> value(new ::rtidb::base::Slice(it->GetValue()));
+            tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
+            total_block_size += value->size();
+        }
         it->Next();
         if (total_block_size > FLAGS_scan_max_bytes_size) {
             PDLOG(WARNING, "reach the max byte size");
@@ -1115,8 +1136,10 @@ void TabletImpl::Scan(RpcController* controller,
     int32_t code = 0;
     uint64_t expire_time = table->GetExpireTime(ttl.abs_ttl*60*1000);
     uint64_t expire_cnt = ttl.lat_ttl;
-    code = ScanIndex(expire_time, expire_cnt, table->GetTTLType(),
-            it, request, pairs, &count);
+    code = ScanIndex(expire_time, expire_cnt, 
+                    table->GetTTLType(),
+                    it, request, table->GetTableMeta(),
+                    pairs, &count);
     delete it;
     response->set_code(code);
     response->set_count(count);

@@ -13,8 +13,6 @@
 namespace rtidb {
 namespace base {
 
-using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
-using ProjectList = ::google::protobuf::RepeatedPtrField<uint32_t>;
 
 struct TestArgs {
     Schema schema;
@@ -217,6 +215,58 @@ std::vector<TestArgs*> GenCommonCase() {
         output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
         output_rb.AppendString(hello.c_str(), hello.size());
         output_rb.AppendNULL();
+        uint32_t* idx = testargs->plist.Add();
+        *idx = 3;
+        uint32_t* idx2 = testargs->plist.Add();
+        *idx2 = 2;
+        testargs->row_ptr = input_ptr;
+        testargs->row_size = input_row_size;
+        testargs->out_ptr = output_ptr;
+        testargs->out_size = output_row_size;
+        args.push_back(testargs);
+    }
+    // add null str
+    {
+        TestArgs* testargs = new TestArgs();
+        common::ColumnDesc* column1 = testargs->schema.Add();
+        column1->set_name("col1");
+        column1->set_data_type(type::kSmallInt);
+        common::ColumnDesc* column2 = testargs->schema.Add();
+        column2->set_name("col2");
+        column2->set_data_type(type::kInt);
+        common::ColumnDesc* column3 = testargs->schema.Add();
+        column3->set_name("col3");
+        column3->set_data_type(type::kBigInt);
+        common::ColumnDesc* column4 = testargs->schema.Add();
+        column4->set_name("col4");
+        column4->set_data_type(type::kVarchar);
+
+        common::ColumnDesc* column5 = testargs->output_schema.Add();
+        column5->set_name("col4");
+        column5->set_data_type(type::kVarchar);
+
+        common::ColumnDesc* column6 = testargs->output_schema.Add();
+        column6->set_name("col3");
+        column6->set_data_type(type::kBigInt);
+
+        RowBuilder input_rb(testargs->schema);
+        uint32_t input_row_size = input_rb.CalTotalLength(0);
+        void* input_ptr = ::malloc(input_row_size);
+        input_rb.SetBuffer(reinterpret_cast<int8_t*>(input_ptr), input_row_size);
+        int16_t c1 = 1;
+        input_rb.AppendInt16(c1);
+        int32_t c2 = 2;
+        input_rb.AppendInt32(c2);
+        int64_t c3 = 64;
+        input_rb.AppendInt64(c3);
+        input_rb.AppendNULL();
+
+        RowBuilder output_rb(testargs->output_schema);
+        uint32_t output_row_size = output_rb.CalTotalLength(0);
+        void* output_ptr = ::malloc(output_row_size);
+        output_rb.SetBuffer(reinterpret_cast<int8_t*>(output_ptr), output_row_size);
+        output_rb.AppendNULL();
+        output_rb.AppendInt64(c3);
         uint32_t* idx = testargs->plist.Add();
         *idx = 3;
         uint32_t* idx2 = testargs->plist.Add();

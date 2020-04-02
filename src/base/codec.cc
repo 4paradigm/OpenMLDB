@@ -674,6 +674,7 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
         uint32_t idx = plist_.Get(i);
         const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
         if (column.data_type() == ::rtidb::type::kVarchar) {
+            if (row_view_->IsNULL(idx)) continue;
             uint32_t length = 0;
             char* content = nullptr;
             int32_t ret = row_view_->GetString(idx, &content, &length);
@@ -684,7 +685,7 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
         }
     }
     uint32_t total_size = row_builder_->CalTotalLength(str_size);
-    void* ptr = ::malloc(total_size);
+    char *ptr = new char[total_size];
     row_builder_->SetBuffer(reinterpret_cast<int8_t*>(ptr), total_size);
     for (int32_t i = 0 ; i < plist_.size(); i++) { 
         uint32_t idx = plist_.Get(i);
@@ -744,7 +745,7 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
             }
         }
         if (ret != 0) {
-            ::free(ptr);
+            delete[] ptr;
             PDLOG(WARNING, "fail to project column %s with idx %u", column.name().c_str(), idx);
             return false;
         }

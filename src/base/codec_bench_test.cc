@@ -27,11 +27,11 @@ public:
 };
 
 void RunHasTs(::rtidb::storage::DataBlock* db) {
-    std::vector<std::pair<uint64_t, ::rtidb::base::Slice> > datas;
+    std::vector<std::pair<uint64_t, std::unique_ptr<::rtidb::base::Slice>> > datas;
     datas.reserve(1000);
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.push_back(std::make_pair(1000, ::rtidb::base::Slice(db->data, db->size)));
+        datas.push_back(std::make_pair(1000, std::unique_ptr<::rtidb::base::Slice>(new ::rtidb::base::Slice(db->data, db->size))));
         total_block_size += db->size;
     }
     std::string pairs;
@@ -114,7 +114,6 @@ TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
     for (uint32_t i = 0; i < 10000; i++) {
         RunNoneTs(block);
     }
-
     pconsumed = ::baidu::common::timer::get_micros() - pconsumed;
     std::cout << "encode 1000 records has ts avg consumed:" << consumed /10000 << "μs"<< std::endl;
     std::cout << "encode 1000 records has no ts avg consumed " << pconsumed/10000<< "μs" << std::endl;
