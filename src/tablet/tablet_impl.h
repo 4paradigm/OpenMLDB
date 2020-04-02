@@ -320,7 +320,7 @@ private:
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid, bool execute_once);
 
-    void GcTableSnapshot(uint32_t tid, uint32_t pid, bool execute_once);
+    void GcTableSnapshot(uint32_t tid, uint32_t pid);
 
     int CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::string& msg);
 

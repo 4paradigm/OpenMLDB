@@ -2870,7 +2870,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
             io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
             task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
             if (table_meta.has_table_type() && table_meta.table_type() == rtidb::type::kRelational) {
-                gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid, false));
+                gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
             }
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
             MakeSnapshotInternal(tid, pid, 0, std::shared_ptr<::rtidb::api::TaskInfo>());
@@ -3150,7 +3150,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             response->set_msg(msg.c_str());
             return;
         }
-        gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid, false));
+        gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
     } else if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::string msg;
         if (CreateDiskTableInternal(table_meta, false, msg) < 0) {
@@ -4019,13 +4019,11 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
     }
 }
 
-void TabletImpl::GcTableSnapshot(uint32_t tid, uint32_t pid, bool execute_once) {
+void TabletImpl::GcTableSnapshot(uint32_t tid, uint32_t pid) {
     std::shared_ptr<RelationalTable> table = GetRelationalTable(tid, pid);
     if (table) {
         table->TTLSnapshot();
-        if (!execute_once) {
-            gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid, false));
-        }
+        gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
     }
 }
 
