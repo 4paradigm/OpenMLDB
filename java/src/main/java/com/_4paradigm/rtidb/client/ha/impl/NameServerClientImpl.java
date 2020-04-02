@@ -225,7 +225,9 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         String indexName = "";
         for (IndexDef index : tableDesc.getIndexs()) {
             if (index.getIndexType() == IndexType.PrimaryKey ||
-                    index.getIndexType() == IndexType.AutoGen) {
+                    index.getIndexType() == IndexType.AutoGen ||
+                    index.getIndexType() == IndexType.Unique ||
+                    index.getIndexType() == IndexType.NoUnique) {
                 if (index.getIndexType() == IndexType.AutoGen) {
                     indexName = index.getIndexName();
                 }
@@ -242,14 +244,16 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             }
         }
         TableInfo tableInfo = builder.build();
-        for (int i = 0; i < tableInfo.getColumnDescV1List().size(); i++) {
-            Common.ColumnDesc columnDesc = tableInfo.getColumnDescV1List().get(i);
-            if (columnDesc.getName().equals(indexName)) {
-                if (!columnDesc.getDataType().equals(DataType.valueFrom(DataType.BigInt))) {
-                    logger.warn("autoGenPk column dataType must be BigInt");
-                    return false;
+        if (!indexName.equals("")) {
+            for (int i = 0; i < tableInfo.getColumnDescV1List().size(); i++) {
+                Common.ColumnDesc columnDesc = tableInfo.getColumnDescV1List().get(i);
+                if (columnDesc.getName().equals(indexName)) {
+                    if (!columnDesc.getDataType().equals(DataType.valueFrom(DataType.BigInt))) {
+                        logger.warn("autoGenPk column dataType must be BigInt");
+                        return false;
+                    }
+                    break;
                 }
-                break;
             }
         }
         CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();

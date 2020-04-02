@@ -1,7 +1,6 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
 import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
@@ -164,6 +163,86 @@ public class TableSyncClientTest extends TestCaseBase {
         indexDef.setColNameList(colNameList);
         indexs.add(indexDef);
 
+        tableDesc.setIndexs(indexs);
+        boolean ok = nsc.createTable(tableDesc);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+
+        return name;
+    }
+
+    private String createRelationalTableMultiIndex() throws TabletException {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        TableDesc tableDesc = new TableDesc();
+        tableDesc.setName(name);
+        tableDesc.setTableType(TableType.kRelational);
+        List<com._4paradigm.rtidb.client.schema.ColumnDesc> list = new ArrayList<>();
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("id");
+            col.setDataType(DataType.BigInt);
+            col.setNotNull(true);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("attribute");
+            col.setDataType(DataType.Varchar);
+            col.setNotNull(true);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("image");
+            col.setDataType(DataType.Blob);
+            col.setNotNull(false);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("memory");
+            col.setDataType(DataType.Int);
+            col.setNotNull(false);
+            list.add(col);
+        }
+        {
+            com._4paradigm.rtidb.client.schema.ColumnDesc col = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+            col.setName("price");
+            col.setDataType(DataType.Double);
+            col.setNotNull(false);
+            list.add(col);
+        }
+        tableDesc.setColumnDescList(list);
+
+        List<IndexDef> indexs = new ArrayList<>();
+        {
+            IndexDef indexDef = new IndexDef();
+            indexDef.setIndexName("id");
+            indexDef.setIndexType(IndexType.PrimaryKey);
+            List<String> colNameList = new ArrayList<>();
+            colNameList.add("id");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+        }
+        {
+            IndexDef indexDef = new IndexDef();
+            indexDef.setIndexName("attribute");
+            indexDef.setIndexType(IndexType.Unique);
+            List<String> colNameList = new ArrayList<>();
+            colNameList.add("attribute");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+        }
+        {
+            IndexDef indexDef = new IndexDef();
+            indexDef.setIndexName("memory");
+            indexDef.setIndexType(IndexType.NoUnique);
+            List<String> colNameList = new ArrayList<>();
+            colNameList.add("memory");
+            indexDef.setColNameList(colNameList);
+            indexs.add(indexDef);
+        }
         tableDesc.setIndexs(indexs);
         boolean ok = nsc.createTable(tableDesc);
         Assert.assertTrue(ok);
@@ -672,6 +751,135 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(ok);
             it = tableSyncClient.query(name, ro);
             Assert.assertFalse(it.valid());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testRelationalTableWithMultiIndex() {
+        String name = "";
+        try {
+            name = createRelationalTableMultiIndex();
+            List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = tableSyncClient.getSchema(name);
+            Assert.assertEquals(schema.size(), 5);
+
+            //put
+            WriteOption wo = new WriteOption();
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("id", 11l);
+            data.put("attribute", "a1");
+            data.put("image", "i1");
+            data.put("memory", 11);
+            data.put("price", 11.1);
+
+            boolean ok = tableSyncClient.put(name, data, wo);
+            Assert.assertTrue(ok);
+
+            data.clear();
+            data.put("id", 12l);
+            data.put("attribute", "a2");
+            data.put("image", "i2");
+            data.put("memory", 12);
+            data.put("price", 12.2);
+            tableSyncClient.put(name, data, wo);
+
+            //query
+            ReadOption ro;
+            RelationalIterator it;
+            Map<String, Object> queryMap;
+            {
+                Map<String, Object> index = new HashMap<>();
+                index.put("id", 10l);
+                Set<String> colSet = new HashSet<>();
+                colSet.add("id");
+                colSet.add("image");
+                colSet.add("price");
+                ro = new ReadOption(index, null, colSet, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertFalse(it.valid());
+            }
+            {
+                Map<String, Object> index = new HashMap<>();
+                index.put("id", 11l);
+                Set<String> colSet = new HashSet<>();
+                colSet.add("id");
+                colSet.add("image");
+                colSet.add("price");
+                ro = new ReadOption(index, null, colSet, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 3);
+                Assert.assertEquals(queryMap.get("id"), 11l);
+                Assert.assertEquals(queryMap.get("image"), "i1");
+                Assert.assertEquals(queryMap.get("price"), 11.1);
+            }
+            {
+                Map<String, Object> index2 = new HashMap<>();
+                index2.put("id", 12l);
+                ro = new ReadOption(index2, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 12l);
+                Assert.assertEquals(queryMap.get("attribute"), "a2");
+                Assert.assertEquals(queryMap.get("image"), "i2");
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 12.2);
+            }
+            {
+                Map<String, Object> index3 = new HashMap<>();
+                index3.put("attribute", "a2");
+                ro = new ReadOption(index3, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 12l);
+                Assert.assertEquals(queryMap.get("attribute"), "a2");
+                Assert.assertEquals(queryMap.get("image"), "i2");
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 12.2);
+            }
+            {
+                Map<String, Object> index3 = new HashMap<>();
+                index3.put("attribute", "aa");
+                ro = new ReadOption(index3, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertFalse(it.valid());
+            }
+            {
+                Map<String, Object> index3 = new HashMap<>();
+                index3.put("memory", 10);
+                ro = new ReadOption(index3, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertFalse(it.valid());
+            }
+            {
+                Map<String, Object> index3 = new HashMap<>();
+                index3.put("memory", 12);
+                ro = new ReadOption(index3, null, null, 1);
+                it = tableSyncClient.query(name, ro);
+                Assert.assertTrue(it.valid());
+
+                queryMap = it.getDecodedValue();
+                Assert.assertEquals(queryMap.size(), 5);
+                Assert.assertEquals(queryMap.get("id"), 12l);
+                Assert.assertEquals(queryMap.get("attribute"), "a2");
+                Assert.assertEquals(queryMap.get("image"), "i2");
+                Assert.assertEquals(queryMap.get("memory"), 12);
+                Assert.assertEquals(queryMap.get("price"), 12.2);
+            }
+
 
         } catch (Exception e) {
             e.printStackTrace();
