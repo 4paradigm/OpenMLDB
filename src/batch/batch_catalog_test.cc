@@ -79,8 +79,8 @@ TEST_F(BatchCatalogTest, test_init) {
     std::shared_ptr<vm::TableHandler> table_handler = bcl.GetTable("db", "t1");
     ASSERT_FALSE(!table_handler);
     ASSERT_EQ("t1", table_handler->GetName());
-    const vm::Schema& schema = table_handler->GetSchema();
-    ASSERT_EQ(2, schema.size());
+    const vm::Schema* schema = table_handler->GetSchema();
+    ASSERT_EQ(2, schema->size());
 }
 
 }  // namespace batch

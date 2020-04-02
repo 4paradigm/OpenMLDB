@@ -124,6 +124,7 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
 
     bool TransformGroupExpr(const node::ExprListNode* group,
                             const IndexHint& index_hint, std::string* index,
+                            const node::ExprListNode** keys,
                             const node::ExprListNode** output);
     bool TransformOrderExpr(const node::OrderByNode* order,
                             const Schema& schema, const IndexSt& index_st,
@@ -195,11 +196,10 @@ class BatchModeTransformer {
     virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
                                         PhysicalOpNode** output,
                                         base::Status& status);  // NOLINT
-    virtual bool TransformGroupAndSortOp(PhysicalOpNode* depend,
-                                         const node::ExprListNode* groups,
-                                         const node::OrderByNode* orders,
-                                         PhysicalOpNode** output,
-                                         base::Status& status);  // NOLINT
+    virtual bool TransformWindowOp(PhysicalOpNode* depend,
+                                   const node::WindowPlanNode* w_ptr,
+                                   PhysicalOpNode** output,
+                                   base::Status& status);  // NOLINT
 
     virtual bool TransformJoinOp(const node::JoinPlanNode* node,
                                  PhysicalOpNode** output,
@@ -237,6 +237,11 @@ class BatchModeTransformer {
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
     bool GenFnDef(const node::FuncDefPlanNode* fn_plan,
                   base::Status& status);  // NOLINT
+    bool CodeGenExprList(const Schema& input_schema,
+                         const node::ExprListNode* expr_list, bool row_mode,
+                         std::string& fn_name, Schema* output_schema,  // NOLINT
+                         base::Status& status);                        // NOLINT
+    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
 
     node::NodeManager* node_manager_;
     const std::string db_;
@@ -246,18 +251,13 @@ class BatchModeTransformer {
     bool GenProjects(const Schema& input_schema,
                      const node::PlanNodeList& projects, const bool row_mode,
                      std::string& fn_name,   // NOLINT
-                     Schema& output_schema,  // NOLINT
+                     Schema* output_schema,  // NOLINT
                      base::Status& status);  // NOLINT
 
     ::llvm::Module* module_;
     uint32_t id_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
-    bool CodeGenExprList(Schema input_schema,
-                         const node::ExprListNode* expr_list, bool row_mode,
-                         std::string& fn_name, Schema& output_schema,  // NOLINT
-                         base::Status& status);                        // NOLINT
-    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);      // NOLINT
 };
 
 class RequestModeransformer : public BatchModeTransformer {

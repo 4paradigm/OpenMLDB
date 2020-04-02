@@ -366,9 +366,18 @@ int32_t CSVTableHandler::GetColumnIndex(const std::string& name) {
     }
     return -1;
 }
-std::unique_ptr<Iterator> CSVTableHandler::GetIterator() {
+std::unique_ptr<IteratorV<uint64_t, base::Slice>> CSVTableHandler::GetIterator()
+    const {
     std::unique_ptr<CSVTableIterator> it(new CSVTableIterator(table_, schema_));
     return std::move(it);
+}
+IteratorV<uint64_t, base::Slice>* CSVTableHandler::GetIterator(
+    int8_t* addr) const {
+    if (nullptr == addr) {
+        new CSVTableIterator(table_, schema_);
+    } else {
+        new (addr) CSVTableIterator(table_, schema_);
+    }
 }
 
 std::unique_ptr<WindowIterator> CSVTableHandler::GetWindowIterator(
@@ -378,6 +387,10 @@ std::unique_ptr<WindowIterator> CSVTableHandler::GetWindowIterator(
         new CSVWindowIterator(table_, idx_name, index_datas_, schema_));
     return std::move(csv_window_iterator);
 }
+const uint64_t CSVTableHandler::GetCount() { return 0; }
+base::Slice CSVTableHandler::At(uint64_t pos) { return base::Slice(); }
+
+
 CSVCatalog::CSVCatalog(const std::string& root_dir)
     : root_dir_(root_dir),
       tables_(),

@@ -16,9 +16,9 @@
 namespace fesql {
 namespace codegen {
 void BuildBuf(int8_t** buf, uint32_t* size);
-void BuildWindow(std::vector<fesql::storage::Row>& rows,  // NOLINT
+void BuildWindow(std::vector<fesql::storage::Slice>& rows,  // NOLINT
                  int8_t** buf);
-void BuildWindow2(std::vector<fesql::storage::Row>& rows,  // NOLINT
+void BuildWindow2(std::vector<fesql::storage::Slice>& rows,  // NOLINT
                   int8_t** buf);
 }  // namespace codegen
 }  // namespace fesql

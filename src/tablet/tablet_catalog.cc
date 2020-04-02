@@ -16,7 +16,6 @@
  */
 
 #include "tablet/tablet_catalog.h"
-
 #include <map>
 #include <memory>
 #include <string>
@@ -27,7 +26,7 @@
 namespace fesql {
 namespace tablet {
 
-TabletTableHandler::TabletTableHandler(const vm::Schema& schema,
+TabletTableHandler::TabletTableHandler(const vm::Schema schema,
                                        const std::string& name,
                                        const std::string& db,
                                        const vm::IndexList& index_list,
@@ -77,11 +76,11 @@ bool TabletTableHandler::Init() {
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
     DLOG(INFO) << "init table handler for table " << name_ << " in db " << db_
-              << " done";
+               << " done";
     return true;
 }
 
-std::unique_ptr<vm::Iterator> TabletTableHandler::GetIterator() {
+std::unique_ptr<vm::SliceIterator> TabletTableHandler::GetIterator() const {
     std::unique_ptr<storage::FullTableIterator> it(
         new storage::FullTableIterator(table_->GetSegments(),
                                        table_->GetSegCnt(), table_));
@@ -100,6 +99,37 @@ std::unique_ptr<vm::WindowIterator> TabletTableHandler::GetWindowIterator(
                                          table_->GetSegCnt(),
                                          iter->second.index, table_));
     return std::move(it);
+}
+
+// TODP(chenjing): 基于segment 优化Get(int pos) 操作
+const base::Slice TabletTableHandler::Get(int32_t pos) {
+    auto iter = GetIterator();
+
+    while (pos-- > 0 && iter->Valid()) {
+        iter->Next();
+    }
+    return iter->Valid() ? iter->GetValue() : base::Slice();
+}
+vm::IteratorV<uint64_t, base::Slice>* TabletTableHandler::GetIterator(
+    int8_t* addr) const {
+    return new (addr) storage::FullTableIterator(table_->GetSegments(),
+                                                 table_->GetSegCnt(), table_);
+}
+const uint64_t TabletTableHandler::GetCount() {
+    auto iter = GetIterator();
+    uint64_t cnt = 0;
+    while (iter->Valid()) {
+        iter->Next();
+        cnt++;
+    }
+    return cnt;
+}
+base::Slice TabletTableHandler::At(uint64_t pos) {
+    auto iter = GetIterator();
+    while (pos-- > 0 && iter->Valid()) {
+        iter->Next();
+    }
+    return iter->Valid() ? iter->GetValue() : base::Slice();
 }
 
 TabletCatalog::TabletCatalog() : tables_(), db_() {}
@@ -157,5 +187,55 @@ bool TabletCatalog::AddDB(const type::Database& db) {
     return true;
 }
 
+TabletSegmentHandler::TabletSegmentHandler(
+    std::shared_ptr<vm::PartitionHandler> partition_hander,
+    const std::string& key)
+    : TableHandler(), partition_hander_(partition_hander), key_(key) {}
+TabletSegmentHandler::~TabletSegmentHandler() {}
+std::unique_ptr<vm::SliceIterator> TabletSegmentHandler::GetIterator() const {
+    auto iter = partition_hander_->GetWindowIterator();
+    if (iter) {
+        iter->Seek(key_);
+        return iter->Valid() ? std::move(iter->GetValue())
+                             : std::unique_ptr<vm::SliceIterator>();
+    }
+    return std::unique_ptr<vm::SliceIterator>();
+}
+vm::IteratorV<uint64_t, base::Slice>* TabletSegmentHandler::GetIterator(
+    int8_t* addr) const {
+    LOG(WARNING) << "can't get iterator with given address";
+    return nullptr;
+}
+std::unique_ptr<vm::WindowIterator> TabletSegmentHandler::GetWindowIterator(
+    const std::string& idx_name) {
+    return std::unique_ptr<vm::WindowIterator>();
+}
+const uint64_t TabletSegmentHandler::GetCount() {
+    auto iter = GetIterator();
+    uint64_t cnt = 0;
+    while (iter->Valid()) {
+        cnt++;
+        iter->Next();
+    }
+    return cnt;
+}
+base::Slice TabletSegmentHandler::At(uint64_t pos) {
+    auto iter = GetIterator();
+    uint64_t cnt = 0;
+    while (pos-- > 0 && iter->Valid()) {
+        iter->Next();
+    }
+    return iter->Valid() ? iter->GetValue() : base::Slice();
+}
+
+const uint64_t TabletPartitionHandler::GetCount() {
+    auto iter = GetWindowIterator();
+    uint64_t cnt = 0;
+    while (iter->Valid()) {
+        cnt++;
+        iter->Next();
+    }
+    return cnt;
+}
 }  // namespace tablet
 }  // namespace fesql

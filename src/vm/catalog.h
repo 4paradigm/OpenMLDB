@@ -41,30 +41,25 @@ struct IndexSt {
     std::vector<ColInfo> keys;
 };
 
-typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::ColumnDef> Schema;
-typedef ::google::protobuf::RepeatedPtrField< ::fesql::type::IndexDef>
-    IndexList;
+typedef ::google::protobuf::RepeatedPtrField<::fesql::type::ColumnDef> Schema;
+typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
 
-class Iterator {
+template <class K, class V>
+class IteratorV {
  public:
-    Iterator() {}
-
-    virtual ~Iterator() {}
-
-    virtual void Seek(uint64_t ts) = 0;
-
+    IteratorV() {}
+    virtual ~IteratorV() {}
+    virtual void Seek(K key) = 0;
     virtual void SeekToFirst() = 0;
-
     virtual bool Valid() = 0;
-
     virtual void Next() = 0;
-
-    virtual const base::Slice GetValue() = 0;
-
-    virtual const uint64_t GetKey() = 0;
+    virtual const V GetValue() = 0;
+    virtual const K GetKey() = 0;
 };
+
+typedef IteratorV<uint64_t, base::Slice> SliceIterator;
 
 class WindowIterator {
  public:
@@ -74,46 +69,86 @@ class WindowIterator {
     virtual void SeekToFirst() = 0;
     virtual void Next() = 0;
     virtual bool Valid() = 0;
-    virtual std::unique_ptr<Iterator> GetValue() = 0;
+    virtual std::unique_ptr<SliceIterator> GetValue() = 0;
     virtual const base::Slice GetKey() = 0;
 };
 
-class TableHandler {
+enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };
+
+template <class V>
+class ListV {
  public:
-    TableHandler() {}
+    ListV() {}
+    virtual ~ListV() {}
+    // TODO(chenjing): at 数组越界处理
+    virtual std::unique_ptr<IteratorV<uint64_t, V>> GetIterator() const = 0;
+    virtual IteratorV<uint64_t, V>* GetIterator(int8_t* addr) const = 0;
+    virtual const uint64_t GetCount() = 0;
+    virtual V At(uint64_t pos) = 0;
+};
 
-    virtual ~TableHandler() {}
-
+class DataHandler : public ListV<base::Slice> {
+ public:
+    DataHandler() {}
+    virtual ~DataHandler() {}
     // get the schema of table
-    virtual const Schema& GetSchema() = 0;
+    virtual const Schema* GetSchema() = 0;
 
     // get the table name
     virtual const std::string& GetName() = 0;
 
     // get the db name
     virtual const std::string& GetDatabase() = 0;
+    virtual const HandlerType GetHanlderType() = 0;
+};
+
+class RowHandler : public DataHandler {
+ public:
+    RowHandler() {}
+
+    virtual ~RowHandler() {}
+    std::unique_ptr<IteratorV<uint64_t, base::Slice>> GetIterator()
+        const override {
+        return std::unique_ptr<IteratorV<uint64_t, base::Slice>>();
+    }
+    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const override {
+        return nullptr;
+    }
+    const uint64_t GetCount() override { return 0; }
+    base::Slice At(uint64_t pos) override { return base::Slice(); }
+    const HandlerType GetHanlderType() override { return kRowHandler; }
+    virtual const base::Slice GetValue() const = 0;
+};
+
+class TableHandler : public DataHandler {
+ public:
+    TableHandler() : DataHandler() {}
+
+    virtual ~TableHandler() {}
 
     // get the types
     virtual const Types& GetTypes() = 0;
 
     // get the index information
     virtual const IndexHint& GetIndex() = 0;
-
     // get the table iterator
-    virtual std::unique_ptr<Iterator> GetIterator() = 0;
 
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) = 0;
-
-    virtual const bool IsPartitionTable() { return false; }
+    virtual const uint64_t GetCount() { return 0; }
+    virtual base::Slice At(uint64_t pos) { return base::Slice(); }
+    const HandlerType GetHanlderType() override { return kTableHandler; }
 };
 
 class PartitionHandler : public TableHandler {
  public:
     PartitionHandler() : TableHandler() {}
     ~PartitionHandler() {}
-    virtual std::unique_ptr<Iterator> GetIterator() {
-        return std::unique_ptr<Iterator>();
+    virtual std::unique_ptr<SliceIterator> GetIterator() const {
+        return std::unique_ptr<SliceIterator>();
+    }
+    IteratorV<uint64_t, base::Slice>* GetIterator(int8_t* addr) const override {
+        return nullptr;
     }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) {
@@ -121,7 +156,8 @@ class PartitionHandler : public TableHandler {
     }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator() = 0;
     virtual const bool IsAsc() = 0;
-    const bool IsPartitionTable() override { return true; }
+    const HandlerType GetHanlderType() override { return kPartitionHandler; }
+    virtual base::Slice At(uint64_t pos) { return base::Slice(); }
 };
 
 // database/table/schema/type management

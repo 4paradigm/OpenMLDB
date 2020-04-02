@@ -59,8 +59,8 @@ void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     }
 }
 
-void BuildRows(::fesql::type::TableDef& table,            // NOLINT
-               std::vector<fesql::storage::Row>& rows) {  // NOLINT
+void BuildRows(::fesql::type::TableDef& table,              // NOLINT
+               std::vector<fesql::storage::Slice>& rows) {  // NOLINT
     BuildTableDef(table);
     {
         storage::RowBuilder builder(table.columns());
@@ -77,7 +77,7 @@ void BuildRows(::fesql::type::TableDef& table,            // NOLINT
         builder.AppendDouble(11.1);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), 1);
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -93,7 +93,7 @@ void BuildRows(::fesql::type::TableDef& table,            // NOLINT
         builder.AppendDouble(22.2);
         builder.AppendInt64(2);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -109,7 +109,7 @@ void BuildRows(::fesql::type::TableDef& table,            // NOLINT
         builder.AppendDouble(33.3);
         builder.AppendInt64(1);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -125,7 +125,7 @@ void BuildRows(::fesql::type::TableDef& table,            // NOLINT
         builder.AppendDouble(44.4);
         builder.AppendInt64(2);
         builder.AppendString("4444", str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
     {
         storage::RowBuilder builder(table.columns());
@@ -143,15 +143,15 @@ void BuildRows(::fesql::type::TableDef& table,            // NOLINT
         builder.AppendDouble(55.5);
         builder.AppendInt64(3);
         builder.AppendString(str.c_str(), str.size());
-        rows.push_back(fesql::storage::Row(ptr, total_size));
+        rows.push_back(fesql::storage::Slice(ptr, total_size));
     }
 }
 
 TEST_F(MemCataLogTest, mem_table_handler_test) {
-    std::vector<storage::Row> rows;
+    std::vector<storage::Slice> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
-    vm::MemTableHandler table_handler("t1", "temp", table.columns());
+    vm::MemTableHandler table_handler("t1", "temp", &(table.columns()));
     for (auto row : rows) {
         table_handler.AddRow(row);
     }
@@ -159,43 +159,43 @@ TEST_F(MemCataLogTest, mem_table_handler_test) {
     auto iter = table_handler.GetIterator();
 
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[0].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[0].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[0].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[0].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[1].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[1].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[1].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[1].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[2].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[2].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[2].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[2].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[3].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[3].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[3].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[3].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[4].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[4].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[4].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[4].size());
 
     iter->Next();
     ASSERT_FALSE(iter->Valid());
 }
 
 TEST_F(MemCataLogTest, mem_table_iterator_test) {
-    std::vector<storage::Row> rows;
+    std::vector<storage::Slice> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
-    vm::MemTableHandler table_handler("t1", "temp", table.columns());
+    vm::MemTableHandler table_handler("t1", "temp", &(table.columns()));
     uint64_t ts = 1;
     for (auto row : rows) {
         table_handler.AddRow(ts++, row);
@@ -206,55 +206,55 @@ TEST_F(MemCataLogTest, mem_table_iterator_test) {
     auto iter = table_handler.GetIterator();
 
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[4].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[4].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[4].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[4].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[3].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[3].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[3].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[3].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[2].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[2].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[2].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[2].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[1].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[1].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[1].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[1].size());
 
     iter->Next();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[0].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[0].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[0].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[0].size());
 
     iter->Next();
     ASSERT_FALSE(iter->Valid());
 
     iter->SeekToFirst();
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[4].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[4].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[4].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[4].size());
 
     iter->Seek(3);
     ASSERT_TRUE(iter->Valid());
-    ASSERT_TRUE(reinterpret_cast<int8_t*>(
-                    const_cast<char*>(iter->GetValue().data())) == rows[2].buf);
-    ASSERT_EQ(iter->GetValue().size(), rows[2].size);
+    ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
+                    iter->GetValue().data())) == rows[2].buf());
+    ASSERT_EQ(iter->GetValue().size(), rows[2].size());
 }
 
 TEST_F(MemCataLogTest, mem_partition_test) {
-    std::vector<storage::Row> rows;
+    std::vector<storage::Slice> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
-    vm::MemPartitionHandler partition_handler("t1", "temp", table.columns());
+    vm::MemPartitionHandler partition_handler("t1", "temp", &(table.columns()));
 
     uint64_t ts = 1;
     for (auto row : rows) {
@@ -281,33 +281,33 @@ TEST_F(MemCataLogTest, mem_partition_test) {
 
         iter->SeekToFirst();
         ASSERT_TRUE(iter->Valid());
-        ASSERT_EQ(iter->GetValue().size(), rows[4].size);
+        ASSERT_EQ(iter->GetValue().size(), rows[4].size());
         ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
-                        iter->GetValue().data())) == rows[4].buf);
+                        iter->GetValue().data())) == rows[4].buf());
 
         iter->Next();
         ASSERT_TRUE(iter->Valid());
         ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
-                        iter->GetValue().data())) == rows[3].buf);
-        ASSERT_EQ(iter->GetValue().size(), rows[3].size);
+                        iter->GetValue().data())) == rows[3].buf());
+        ASSERT_EQ(iter->GetValue().size(), rows[3].size());
 
         iter->Next();
         ASSERT_TRUE(iter->Valid());
         ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
-                        iter->GetValue().data())) == rows[2].buf);
-        ASSERT_EQ(iter->GetValue().size(), rows[2].size);
+                        iter->GetValue().data())) == rows[2].buf());
+        ASSERT_EQ(iter->GetValue().size(), rows[2].size());
 
         iter->Next();
         ASSERT_TRUE(iter->Valid());
         ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
-                        iter->GetValue().data())) == rows[1].buf);
-        ASSERT_EQ(iter->GetValue().size(), rows[1].size);
+                        iter->GetValue().data())) == rows[1].buf());
+        ASSERT_EQ(iter->GetValue().size(), rows[1].size());
 
         iter->Next();
         ASSERT_TRUE(iter->Valid());
         ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
-                        iter->GetValue().data())) == rows[0].buf);
-        ASSERT_EQ(iter->GetValue().size(), rows[0].size);
+                        iter->GetValue().data())) == rows[0].buf());
+        ASSERT_EQ(iter->GetValue().size(), rows[0].size());
 
         iter->Next();
         ASSERT_FALSE(iter->Valid());
@@ -315,14 +315,14 @@ TEST_F(MemCataLogTest, mem_partition_test) {
         iter->SeekToFirst();
         ASSERT_TRUE(iter->Valid());
         ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
-                        iter->GetValue().data())) == rows[4].buf);
-        ASSERT_EQ(iter->GetValue().size(), rows[4].size);
+                        iter->GetValue().data())) == rows[4].buf());
+        ASSERT_EQ(iter->GetValue().size(), rows[4].size());
 
         iter->Seek(3);
         ASSERT_TRUE(iter->Valid());
         ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
-                        iter->GetValue().data())) == rows[2].buf);
-        ASSERT_EQ(iter->GetValue().size(), rows[2].size);
+                        iter->GetValue().data())) == rows[2].buf());
+        ASSERT_EQ(iter->GetValue().size(), rows[2].size());
     }
     window_iter->Next();
     ASSERT_TRUE(window_iter->Valid());
@@ -337,8 +337,8 @@ TEST_F(MemCataLogTest, mem_partition_test) {
         iter->Seek(8);
         ASSERT_TRUE(iter->Valid());
         ASSERT_TRUE(reinterpret_cast<int8_t*>(const_cast<char*>(
-                        iter->GetValue().data())) == rows[2].buf);
-        ASSERT_EQ(iter->GetValue().size(), rows[2].size);
+                        iter->GetValue().data())) == rows[2].buf());
+        ASSERT_EQ(iter->GetValue().size(), rows[2].size());
     }
 }
 

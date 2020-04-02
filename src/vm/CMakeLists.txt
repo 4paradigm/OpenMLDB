@@ -10,8 +10,6 @@ add_library(fesql_csv_catalog STATIC csv_catalog.cc csv_table_iterator.cc
 set(vm_deps_libs fesql_tablet fesql_storage fesql_vm fesql_parser fesql_planner fesql_udf fesql_codegen fesql_proto
         fesql_node fesql_base)
 
-add_executable(csv_db csv_db.cc)
-target_link_libraries(csv_db fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
 
 
 add_executable(physical_op_test physical_op_test.cc)
@@ -23,6 +21,11 @@ add_executable(mem_catalog_test mem_catalog_test.cc)
 target_link_libraries(mem_catalog_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
 add_test(mem_catalog_test mem_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/mem_catalog_test.xml)
 list(APPEND test_list mem_catalog_test)
+
+add_executable(window_test window_test.cc)
+target_link_libraries(window_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} gtest pthread)
+add_test(window_test mem_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/window_test.xml)
+list(APPEND test_list window_test)
 
 add_executable(transform_test transform_test.cc)
 target_link_libraries(transform_test ${vm_deps_libs} protobuf ${llvm_libs} ${COMMON_LIBS} ${Boost_LIBRARIES} gtest pthread)
@@ -77,3 +80,5 @@ add_executable(engine_bm engine_bm.cc)
 target_link_libraries(engine_bm ${vm_deps_libs}
         benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
 
+#add_executable(csv_db csv_db.cc)
+#target_link_libraries(csv_db fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)

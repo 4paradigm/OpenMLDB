@@ -26,7 +26,7 @@ using ::fesql::type::TableDef;
 
 static constexpr uint32_t SEG_CNT = 8;
 
-class TableIterator : public vm::Iterator {
+class TableIterator : public vm::SliceIterator {
  public:
     TableIterator() = default;
     explicit TableIterator(base::Iterator<uint64_t, DataBlock*>* ts_it);

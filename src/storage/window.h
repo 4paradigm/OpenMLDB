@@ -9,97 +9,86 @@
 
 #ifndef SRC_STORAGE_WINDOW_H_
 #define SRC_STORAGE_WINDOW_H_
+#include <vm/mem_catalog.h>
 #include <cstdint>
 #include <iostream>
+#include <memory>
+#include <utility>
 #include <vector>
-#include "storage/type_native_fn.h"
 #include "base/slice.h"
+#include "glog/logging.h"
+#include "storage/type_native_fn.h"
+#include "vm/catalog.h"
 namespace fesql {
 namespace storage {
-template <class V>
-class IteratorImpl;
-
-struct Row {
-    Row() : buf(nullptr), size(0) {}
-    Row(int8_t *buf, size_t size) : buf(buf), size(size) {}
-    explicit Row(const base::Slice slice)
-        : buf(reinterpret_cast<int8_t *>(const_cast<char *>(slice.data()))),
-          size(slice.size()) {}
-    int8_t *buf;
-    size_t size;
-};
-enum BOUND { UNBOUND, CURRENT, NORMAL };
+using base::Slice;
+using vm::ListV;
 
 template <class V>
-class ListV {
- public:
-    ListV() : start_(0), end_(0), buffer_(nullptr) {}
-    explicit ListV(std::vector<V> *buffer)
-        : start_(0), end_(buffer->size()), buffer_(buffer) {}
-    ListV(std::vector<V> *buffer, uint32_t start, uint32_t end)
-        : start_(start), end_(end), buffer_(buffer) {}
+class ArrayListIterator;
 
-    ListV(const ListV<V> &list)
-        : start_(list.start_), end_(list.end_), buffer_(list.buffer_) {}
-    ~ListV() {}
-    // TODO(chenjing): at 数组越界处理
-    virtual const V At(int32_t pos) const { return buffer_->at(pos); }
-    virtual const int64_t Count() const { return int64_t(end_ - start_); }
-    virtual const uint32_t GetStart() const { return start_; }
-    virtual const uint32_t GetEnd() const { return end_; }
-    friend IteratorImpl<V>;
+template <class V>
+class ColumnImpl;
 
- protected:
-    uint32_t start_;
-    uint32_t end_;
-    std::vector<V> *buffer_;
-};
+template <class V>
+class ColumnIterator;
 
 template <class V, class R>
 class WrapListImpl : public ListV<V> {
  public:
-    explicit WrapListImpl(const ListV<R> &root) : ListV<V>(), root_(root) {}
+    WrapListImpl() : ListV<V>() {}
     ~WrapListImpl() {}
     virtual const V GetField(R row) const = 0;
-    virtual const V At(int32_t pos) const { return GetField(root_.At(pos)); }
-    virtual const int64_t Count() const { return root_.Count(); }
-    virtual const uint32_t GetStart() const { return root_.GetStart(); }
-    virtual const uint32_t GetEnd() const { return root_.GetEnd(); }
-
- protected:
-    ListV<R> root_;
 };
 
 template <class V>
-class ColumnImpl : public WrapListImpl<V, Row> {
+class ColumnImpl : public WrapListImpl<V, Slice> {
  public:
-    ColumnImpl(const ListV<Row> &impl, uint32_t offset)
-        : WrapListImpl<V, Row>(impl), offset_(offset) {}
-    const V GetField(const Row row) const {
+    ColumnImpl(vm::ListV<Slice> *impl, uint32_t offset)
+        : WrapListImpl<V, Slice>(), root_(impl), offset_(offset) {}
+
+    ~ColumnImpl() {}
+    const V GetField(Slice row) const override {
         V value;
-        const int8_t *ptr = row.buf + offset_;
+        const int8_t *ptr = row.buf() + offset_;
         value = *((const V *)ptr);
         return value;
     }
-    friend IteratorImpl<V>;
+    std::unique_ptr<vm::IteratorV<uint64_t, V>> GetIterator() const override {
+        auto iter = std::unique_ptr<vm::IteratorV<uint64_t, V>>(
+            new ColumnIterator<V>(root_, this));
+        return std::move(iter);
+    }
+    vm::IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const override {
+        if (nullptr == addr) {
+            return new ColumnIterator<V>(root_, this);
+        } else {
+            return new (addr) ColumnIterator<V>(root_, this);
+        }
+    }
+    const uint64_t GetCount() override { return root_->GetCount(); }
+    V At(uint64_t pos) override { return GetField(root_->At(pos)); }
 
  private:
-    uint32_t offset_;
+    vm::ListV<Slice> *root_;
+    const uint32_t offset_;
 };
 
 class StringColumnImpl : public ColumnImpl<fesql::storage::StringRef> {
  public:
-    StringColumnImpl(const ListV<Row> &impl, int32_t str_field_offset,
+    StringColumnImpl(vm::ListV<Slice> *impl, int32_t str_field_offset,
                      int32_t next_str_field_offset, int32_t str_start_offset)
         : ColumnImpl<::fesql::storage::StringRef>(impl, 0u),
           str_field_offset_(str_field_offset),
           next_str_field_offset_(next_str_field_offset),
           str_start_offset_(str_start_offset) {}
-    const StringRef GetField(Row row) const override {
-        int32_t addr_space = fesql::storage::v1::GetAddrSpace(row.size);
+
+    ~StringColumnImpl() {}
+    const StringRef GetField(Slice row) const override {
+        int32_t addr_space = fesql::storage::v1::GetAddrSpace(row.size());
         fesql::storage::StringRef value;
         fesql::storage::v1::GetStrField(
-            row.buf, str_field_offset_, next_str_field_offset_,
+            row.buf(), str_field_offset_, next_str_field_offset_,
             str_start_offset_, addr_space,
             reinterpret_cast<int8_t **>(&(value.data)), &(value.size));
         return value;
@@ -111,218 +100,119 @@ class StringColumnImpl : public ColumnImpl<fesql::storage::StringRef> {
     uint32_t str_start_offset_;
 };
 
-class Window : public ListV<Row> {
+template <class V>
+class ArrayListV : public ListV<V> {
  public:
-    Window(int64_t start_offset, int64_t end_offset)
-        : ListV<Row>(new std::vector<Row>()),
-          start_offset_(start_offset),
-          end_offset_(end_offset),
-          max_size_(0),
-          keys_(new std::vector<uint64_t>()) {}
-    Window(int64_t start_offset, int64_t end_offset, uint32_t max_size)
-        : ListV<Row>(new std::vector<Row>()),
-          start_offset_(start_offset),
-          end_offset_(end_offset),
-          max_size_(max_size),
-          keys_(new std::vector<uint64_t>()) {}
-    virtual ~Window() {
-        delete buffer_;
-        delete keys_;
+    ArrayListV() : start_(0), end_(0), buffer_(nullptr) {}
+    explicit ArrayListV(std::vector<V> *buffer)
+        : start_(0), end_(buffer->size()), buffer_(buffer) {}
+
+    ArrayListV(std::vector<V> *buffer, uint32_t start, uint32_t end)
+        : start_(start), end_(end), buffer_(buffer) {}
+
+    ~ArrayListV() {}
+    // TODO(chenjing): at 数组越界处理
+
+    std::unique_ptr<vm::IteratorV<uint64_t, V>> GetIterator() const override {
+        return std::unique_ptr<ArrayListIterator<V>>(
+            new ArrayListIterator<V>(buffer_, start_, end_));
     }
-    virtual void BufferData(uint64_t key, const Row &row) = 0;
-    void Reserve(uint64_t size) {
-        buffer_->reserve(size);
-        keys_->reserve(size);
+    vm::IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const override {
+        if (nullptr == addr) {
+            return new ArrayListIterator<V>(buffer_, start_, end_);
+        } else {
+            return new (addr) ArrayListIterator<V>(buffer_, start_, end_);
+        }
     }
+    virtual const uint64_t GetCount() { return end_ - start_; }
+    virtual V At(uint64_t pos) { return buffer_->at(start_ + pos); }
 
  protected:
-    int64_t start_offset_;
-    int32_t end_offset_;
-    uint32_t max_size_;
-    std::vector<uint64_t> *keys_;
-};
-
-class SlideWindow : public ListV<Row> {
- public:
-    SlideWindow(int64_t start_offset, int64_t end_offset,
-                std::vector<Row> *buffer, std::vector<uint64_t> *keys,
-                uint32_t start)
-        : ListV<Row>(buffer, start, start),
-          start_offset_(start_offset),
-          end_offset_(end_offset),
-          max_size_(0),
-          keys_(keys) {
-        window_end_ = buffer->size();
-    }
-    SlideWindow(int64_t start_offset, int64_t end_offset, uint32_t max_size,
-                std::vector<Row> *buffer, std::vector<uint64_t> *keys,
-                uint32_t start)
-        : ListV<Row>(buffer, start, start),
-          start_offset_(start_offset),
-          end_offset_(end_offset),
-          max_size_(max_size),
-          keys_(keys) {
-        window_end_ = buffer->size();
-    }
-    virtual ~SlideWindow() {}
-    virtual bool Slide() = 0;
-
- protected:
-    int64_t start_offset_;
-    int32_t end_offset_;
-    uint32_t max_size_;
-    uint32_t window_end_;
-    std::vector<uint64_t> *keys_;
-};
-
-// TODO(chenjing):
-// 可以用一个vector引用初始化window，然后提供一个slide接口，只是滑动窗口边界。
-// 历史窗口，窗口内数据从历史某个时刻记录到当前记录
-class CurrentHistoryWindow : public Window {
- public:
-    explicit CurrentHistoryWindow(int64_t start_offset)
-        : Window(start_offset, 0) {}
-    CurrentHistoryWindow(int64_t start_offset, uint32_t max_size)
-        : Window(start_offset, 0, max_size) {}
-
-    void BufferData(uint64_t key, const Row &row) {
-        keys_->push_back(key);
-        buffer_->push_back(row);
-        end_++;
-        int64_t sub = (key + start_offset_);
-        uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
-        while (start_ < end_ &&
-               ((0 != max_size_ && (end_ - start_) > max_size_) ||
-                (start_ts > 0 && keys_->at(start_) <= start_ts))) {
-            start_++;
-        }
-    }
-};
-
-// 历史无限窗口，窗口内数据包含所有历史到当前记录
-class CurrentHistoryUnboundWindow : public Window {
- public:
-    CurrentHistoryUnboundWindow() : Window(INT64_MIN, 0) {}
-    explicit CurrentHistoryUnboundWindow(uint32_t max_size)
-        : Window(INT64_MIN, 0, max_size) {}
-    void BufferData(uint64_t key, const Row &row) {
-        keys_->push_back(key);
-        buffer_->push_back(row);
-        end_++;
-        while ((0 != max_size_ && (end_ - start_) > max_size_)) {
-            start_++;
-        }
-    }
-};
-
-// TODO(chenjing):
-// 可以用一个vector引用初始化window，然后提供一个slide接口，只是滑动窗口边界。
-// 历史滑动窗口，窗口内数据从历史某个时刻记录到当前记录
-class CurrentHistorySlideWindow : public SlideWindow {
- public:
-    CurrentHistorySlideWindow(int64_t start_offset, std::vector<Row> *buffer,
-                              std::vector<uint64_t> *keys, uint32_t start)
-        : SlideWindow(start_offset, 0, buffer, keys, start) {}
-    CurrentHistorySlideWindow(int64_t start_offset, uint32_t max_size,
-                              std::vector<Row> *buffer,
-                              std::vector<uint64_t> *keys, uint32_t start)
-        : SlideWindow(start_offset, 0, max_size, buffer, keys, start) {}
-    bool Slide() {
-        if (end_ >= window_end_) {
-            return false;
-        }
-        uint64_t key = keys_->at(end_);
-        end_ += 1;
-        int64_t sub = (key + start_offset_);
-        uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
-        while (start_ < end_ &&
-               ((0 != max_size_ && (end_ - start_) > max_size_) ||
-                keys_->at(start_) <= start_ts)) {
-            start_++;
-        }
-        return true;
-    }
-};
-
-// 历史无限滑动窗口，窗口内数据包含所有历史到当前记录
-class CurrentHistoryUnboundSlideWindow : public SlideWindow {
- public:
-    CurrentHistoryUnboundSlideWindow(std::vector<Row> *buffer,
-                                     std::vector<uint64_t> *keys,
-                                     uint32_t start)
-        : SlideWindow(INT64_MIN, 0, buffer, keys, start) {}
-
-    CurrentHistoryUnboundSlideWindow(uint32_t max_size,
-                                     std::vector<Row> *buffer,
-                                     std::vector<uint64_t> *keys,
-                                     uint32_t start)
-        : SlideWindow(INT64_MIN, 0, max_size, buffer, keys, start) {}
-    bool Slide() {
-        if (end_ >= window_end_) {
-            return false;
-        }
-        end_ += 1;
-        while ((0 != max_size_ && (end_ - start_) > max_size_)) {
-            start_++;
-        }
-        return true;
-    }
+    uint64_t start_;
+    uint64_t end_;
+    std::vector<V> *buffer_;
 };
 
 template <class V>
-class IteratorV {
+class ArrayListIterator : public vm::IteratorV<uint64_t, V> {
  public:
-    IteratorV() {}
-    virtual ~IteratorV() {}
-    virtual const bool Valid() const = 0;
-    virtual V Next() = 0;
-    virtual void reset() = 0;
-};
+    explicit ArrayListIterator(const std::vector<V> *buffer,
+                               const uint64_t start, const uint64_t end)
+        : buffer_(buffer),
+          iter_start_(buffer->cbegin() + start),
+          iter_end_(buffer->cbegin() + end),
+          iter_(iter_start_) {}
 
-template <class V>
-class IteratorImpl : public IteratorV<V> {
- public:
-    explicit IteratorImpl(const ListV<V> &list)
-        : list_(list),
-          iter_start_(list.GetStart()),
-          iter_end_(list.GetEnd()),
-          pos_(list.GetStart()) {}
-
-    explicit IteratorImpl(const IteratorImpl<V> &impl)
-        : list_(impl.list_),
+    explicit ArrayListIterator(const ArrayListIterator<V> &impl)
+        : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_),
           iter_end_(impl.iter_end_),
-          pos_(impl.start_) {}
+          iter_(impl.iter_start_) {}
 
-    IteratorImpl(const ListV<V> &list, int start, int end)
-        : list_(list), iter_start_(start), iter_end_(end), pos_(start) {}
+    explicit ArrayListIterator(const ArrayListIterator<V> &impl, uint64_t start,
+                               uint64_t end)
+        : buffer_(impl.buffer_),
+          iter_start_(impl.iter_start_ + start),
+          iter_end_(impl.iter_start_ + end),
+          iter_(iter_start_) {}
 
-    ~IteratorImpl() {}
-    const bool Valid() const { return pos_ < iter_end_; }
+    ~ArrayListIterator() { DLOG(INFO) << "~ArrayListIterator()"; }
+    void Seek(uint64_t key) override {
+        iter_ =
+            (iter_start_ + key) >= iter_end_ ? iter_end_ : iter_start_ + key;
+    }
 
-    V Next() { return list_.At(pos_++); }
+    bool Valid() override { return iter_end_ != iter_; }
 
-    void reset() { pos_ = iter_start_; }
+    void Next() override { iter_++; }
 
-    IteratorImpl<V> *range(int start, int end) {
+    const V GetValue() override { return *iter_; }
+
+    const uint64_t GetKey() override { return iter_ - iter_start_; }
+
+    void SeekToFirst() { iter_ = iter_start_; }
+
+    ArrayListIterator<V> *range(int start, int end) {
         if (start > end || end < iter_start_ || start > iter_end_) {
-            return new IteratorImpl(list_, iter_start_, iter_start_);
+            return new ArrayListIterator(buffer_, iter_start_, iter_start_);
         }
         start = start < iter_start_ ? iter_start_ : start;
         end = end > iter_end_ ? iter_end_ : end;
-        return new IteratorImpl(list_, start, end);
+        return new ArrayListIterator(buffer_, start, end);
     }
 
  protected:
-    const ListV<V> &list_;
-    const int iter_start_;
-    const int iter_end_;
-    int pos_;
+    const std::vector<V> *buffer_;
+    const typename std::vector<V>::const_iterator iter_start_;
+    const typename std::vector<V>::const_iterator iter_end_;
+    typename std::vector<V>::const_iterator iter_;
 };
 
-typedef IteratorImpl<Row> WindowIteratorImpl;
-typedef ListV<Row> WindowImpl;
+template <class V>
+class ColumnIterator : public vm::IteratorV<uint64_t, V> {
+ public:
+    ColumnIterator(vm::ListV<Slice> *list, const ColumnImpl<V> *column_impl)
+        : vm::IteratorV<uint64_t, V>(), column_impl_(column_impl) {
+        row_iter_ = list->GetIterator();
+    }
+    ~ColumnIterator() {
+//        DLOG(INFO) << "~ColumnIterator()";
+    }
+    void Seek(uint64_t key) override { row_iter_->Seek(key); }
+    void SeekToFirst() override { row_iter_->SeekToFirst(); }
+    bool Valid() override { return row_iter_->Valid(); }
+    void Next() override { row_iter_->Next(); }
+    const V GetValue() override {
+        return column_impl_->GetField(row_iter_->GetValue());
+    }
+    const uint64_t GetKey() override { return row_iter_->GetKey(); }
 
+ private:
+    std::unique_ptr<vm::IteratorV<uint64_t, Slice>> row_iter_;
+    const ColumnImpl<V> *column_impl_;
+};
+
+typedef ArrayListV<Slice> WindowImpl;
 }  // namespace storage
 }  // namespace fesql
 

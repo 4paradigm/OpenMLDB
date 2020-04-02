@@ -98,7 +98,8 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
     }
     return true;
 }
-
+// 可能有MemTableIterator, TabletIterator, ColumnIterator, ArrayListIterator
+// 需要取一块足够大的空间
 bool GetLLVMIteratorSize(const ::fesql::node::DataType& v_type,
                          uint32_t* size) {
     if (nullptr == size) {
@@ -108,28 +109,28 @@ bool GetLLVMIteratorSize(const ::fesql::node::DataType& v_type,
 
     switch (v_type) {
         case ::fesql::node::kInt16: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int16_t>);
+            *size = sizeof(::fesql::storage::ArrayListIterator<int16_t>);
             break;
         }
         case ::fesql::node::kInt32: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int32_t>);
+            *size = sizeof(::fesql::storage::ArrayListIterator<int32_t>);
             break;
         }
         case ::fesql::node::kInt64: {
-            *size = sizeof(::fesql::storage::IteratorImpl<int64_t>);
+            *size = sizeof(::fesql::storage::ArrayListIterator<int64_t>);
             break;
         }
         case ::fesql::node::kDouble: {
-            *size = sizeof(::fesql::storage::IteratorImpl<double>);
+            *size = sizeof(::fesql::storage::ArrayListIterator<double>);
             break;
         }
         case ::fesql::node::kFloat: {
-            *size = sizeof(::fesql::storage::IteratorImpl<float>);
+            *size = sizeof(::fesql::storage::ArrayListIterator<float>);
             break;
         }
         case ::fesql::node::kVarchar: {
             *size = sizeof(
-                ::fesql::storage::IteratorImpl<fesql::storage::StringRef>);
+                ::fesql::storage::ArrayListIterator<fesql::storage::StringRef>);
             break;
         }
         default: {

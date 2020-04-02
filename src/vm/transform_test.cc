@@ -351,6 +351,7 @@ TEST_P(TransformTest, transform_physical_plan) {
     ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
                                                 base_status));
     physical_plan->Print(std::cout, "");
+    m->print(::llvm::errs(), NULL);
 }
 
 void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,

@@ -33,6 +33,7 @@ enum PhysicalOpType {
     kPhysicalOpDistinct,
     kPhysicalOpJoin,
     kPhysicalOpUnoin,
+    kPhysicalOpIndexSeek,
     kPhysicalOpRequestUnoin,
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
@@ -69,6 +70,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "UNION";
         case kPhysicalOpRequestUnoin:
             return "REQUEST_UNION";
+        case kPhysicalOpIndexSeek:
+            return "INDEX_SEEK";
         default:
             return "UNKNOW";
     }
@@ -145,7 +148,7 @@ class PhysicalBinaryNode : public PhysicalOpNode {
         AddProducer(right);
         InitSchema();
     }
-    bool InitSchema() override;
+    virtual bool InitSchema();
     virtual ~PhysicalBinaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
@@ -229,6 +232,14 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
+    void SetGroupsIdxs(const std::vector<int32_t>& idxs) {
+        groups_idxs_ = idxs;
+    }
+    const std::vector<int32_t > &GetGroupsIdxs() const {
+        return groups_idxs_;
+    }
+ private :
+    std::vector<int32_t > groups_idxs_;
 };
 
 class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
@@ -245,6 +256,21 @@ class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
     const node::OrderByNode *orders_;
+    void SetGroupsIdxs(const std::vector<int32_t>& idxs) {
+        groups_idxs_ = idxs;
+    }
+    void SetOrdersIdxs(const std::vector<int32_t>& idxs) {
+        orders_idxs_ = idxs;
+    }
+    const std::vector<int32_t > &GetOrdersIdxs() const {
+        return orders_idxs_;
+    }
+    const std::vector<int32_t > &GetGroupsIdxs() const {
+        return groups_idxs_;
+    }
+ private :
+    std::vector<int32_t > groups_idxs_;
+    std::vector<int32_t > orders_idxs_;
 };
 
 enum ProjectType {
@@ -329,6 +355,14 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
     virtual ~PhysicalGroupAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprListNode *groups_;
+    void SetGroupsIdxs(const std::vector<int32_t>& idxs) {
+        groups_idxs_ = idxs;
+    }
+    const std::vector<int32_t > &GetGroupsIdxs() const {
+        return groups_idxs_;
+    }
+ private :
+    std::vector<int32_t > groups_idxs_;
 };
 
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
@@ -353,6 +387,22 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     const node::OrderByNode *orders_;
     const int64_t start_offset_;
     const int64_t end_offset_;
+
+    void SetGroupsIdxs(const std::vector<int32_t>& idxs) {
+        groups_idxs_ = idxs;
+    }
+    void SetOrdersIdxs(const std::vector<int32_t>& idxs) {
+        orders_idxs_ = idxs;
+    }
+    const std::vector<int32_t > &GetOrdersIdxs() const {
+        return orders_idxs_;
+    }
+    const std::vector<int32_t > &GetGroupsIdxs() const {
+        return groups_idxs_;
+    }
+ private :
+    std::vector<int32_t > groups_idxs_;
+    std::vector<int32_t > orders_idxs_;
 };
 
 class PhysicalLoopsNode : public PhysicalUnaryNode {
@@ -374,9 +424,18 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
         output_type = kSchemaTypeTable;
     }
     virtual ~PhysicalJoinNode() {}
+    bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::JoinType join_type_;
     const node::ExprNode *condition_;
+    void SetConditionIdxs(const std::vector<int32_t>& idxs) {
+        condition_idxs_ = idxs;
+    }
+    const std::vector<int32_t > &GetConditionIdxs() const {
+        return condition_idxs_;
+    }
+ private :
+    std::vector<int32_t > condition_idxs_;
 };
 
 class PhysicalUnionNode : public PhysicalBinaryNode {
@@ -392,20 +451,72 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
     const bool is_all_;
 };
 
+class PhysicalSeekIndexNode : public PhysicalBinaryNode {
+ public:
+    PhysicalSeekIndexNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                          const node::ExprListNode *keys)
+        : PhysicalBinaryNode(left, right, kPhysicalOpIndexSeek, false, true),
+          keys_(keys) {
+        output_type = kSchemaTypeGroup;
+    }
+    virtual ~PhysicalSeekIndexNode() {}
+    bool InitSchema() override;
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void SetKeysIdxs(const std::vector<int32_t>& idxs) {
+        keys_idxs_ = idxs;
+    }
+
+    const std::vector<int32_t > &GetKeysIdxs() const {
+        return keys_idxs_;
+    }
+    const node::ExprListNode *keys_;
+ private :
+    std::vector<int32_t > keys_idxs_;
+};
+
 class PhysicalRequestUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const node::ExprListNode *groups,
-                             const node::OrderByNode *orders)
+                             const node::OrderByNode *orders,
+                             const node::OrderByNode *keys,
+                             const int64_t start_offset,
+                             const int64_t end_offset)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
           groups_(groups),
-          orders_(orders) {
+          orders_(orders),
+          keys_(keys),
+          start_offset_(start_offset),
+          end_offset_(end_offset) {
         output_type = kSchemaTypeTable;
     }
     virtual ~PhysicalRequestUnionNode() {}
+    bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    void SetGroupsIdxs(const std::vector<int32_t> &idxs) {
+        groups_idxs_ = idxs;
+    }
+    void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
+        orders_idxs_ = idxs;
+    }
+    void SetKeysIdxs(const std::vector<int32_t> &idxs) { keys_idxs_ = idxs; }
+
+    const std::vector<int32_t> &GetKeysIdxs() const { return keys_idxs_; }
+    const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
+    const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
+
+ private:
+    std::vector<int32_t> groups_idxs_;
+    std::vector<int32_t> orders_idxs_;
+    std::vector<int32_t> keys_idxs_;
+
+ public:
     const node::ExprListNode *groups_;
     const node::OrderByNode *orders_;
+    const node::OrderByNode *keys_;
+
+    const int64_t start_offset_;
+    const int64_t end_offset_;
 };
 
 class PhysicalSortNode : public PhysicalUnaryNode {
@@ -415,7 +526,14 @@ class PhysicalSortNode : public PhysicalUnaryNode {
           order_(order) {}
     virtual ~PhysicalSortNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
+    void SetOrdersIdxs(const std::vector<int32_t> &idxs) {
+        orders_idxs_ = idxs;
+    }
+    const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
     const node::OrderByNode *order_;
+
+ private:
+    std::vector<int32_t> orders_idxs_;
 };
 
 class PhysicalFliterNode : public PhysicalUnaryNode {
@@ -426,6 +544,14 @@ class PhysicalFliterNode : public PhysicalUnaryNode {
     virtual ~PhysicalFliterNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const node::ExprNode *condition_;
+    void SetConditionIdxs(const std::vector<int32_t>& idxs) {
+        condition_idxs_ = idxs;
+    }
+    const std::vector<int32_t > &GetConditionIdxs() const {
+        return condition_idxs_;
+    }
+ private :
+    std::vector<int32_t > condition_idxs_;
 };
 
 class PhysicalLimitNode : public PhysicalUnaryNode {

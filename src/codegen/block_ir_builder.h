@@ -48,6 +48,10 @@ class BlockIRBuilder {
                          llvm::BasicBlock* start_block,
                          llvm::BasicBlock* end_block,
                          base::Status& status);  // NOLINT
+    bool ClearScopeValue(llvm::BasicBlock* block,
+                         base::Status& status);  // NOLINT
+    bool ClearAllScopeValues(llvm::BasicBlock* block,
+                             base::Status& status);  // NOLINT
     ScopeVar* sv_;
 };
 

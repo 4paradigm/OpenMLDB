@@ -42,6 +42,15 @@ bool PhysicalUnaryNode::InitSchema() {
     PrintSchema();
     return true;
 }
+bool PhysicalBinaryNode::InitSchema() {
+    if (producers_.empty() || nullptr == producers_[0]) {
+        LOG(WARNING) << "InitSchema fail: producers is empty or null";
+        return false;
+    }
+    output_schema.CopyFrom(producers_[0]->output_schema);
+    PrintSchema();
+    return true;
+}
 void PhysicalBinaryNode::PrintChildren(std::ostream& output,
                                        const std::string& tab) const {
     if (2 != producers_.size() || nullptr == producers_[0] ||
@@ -58,18 +67,6 @@ void PhysicalBinaryNode::Print(std::ostream& output,
     PhysicalOpNode::Print(output, tab);
     output << "\n";
     PrintChildren(output, tab);
-}
-bool PhysicalBinaryNode::InitSchema() {
-    if (2 != producers_.size() || nullptr == producers_[0] ||
-        nullptr == producers_[1]) {
-        LOG(WARNING) << "InitSchema fail: producers size isn't 2 or left/right "
-                        "producer is null";
-        return false;
-    }
-    output_schema.CopyFrom(producers_[0]->output_schema);
-    output_schema.MergeFrom(producers_[1]->output_schema);
-    PrintSchema();
-    return false;
 }
 void PhysicalTableProviderNode::Print(std::ostream& output,
                                       const std::string& tab) const {
@@ -154,6 +151,18 @@ void PhysicalJoinNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+bool PhysicalJoinNode::InitSchema() {
+    if (2 != producers_.size() || nullptr == producers_[0] ||
+        nullptr == producers_[1]) {
+        LOG(WARNING) << "InitSchema fail: producers size isn't 2 or left/right "
+                        "producer is null";
+        return false;
+    }
+    output_schema.CopyFrom(producers_[0]->output_schema);
+    output_schema.MergeFrom(producers_[1]->output_schema);
+    PrintSchema();
+    return false;
+}
 
 void PhysicalSortNode::Print(std::ostream& output,
                              const std::string& tab) const {
@@ -186,7 +195,7 @@ void PhysicalFliterNode::Print(std::ostream& output,
 
 bool PhysicalDataProviderNode::InitSchema() {
     if (table_handler_) {
-        output_schema.CopyFrom(table_handler_->GetSchema());
+        output_schema.CopyFrom(*(table_handler_->GetSchema()));
         PrintSchema();
         return true;
     } else {
@@ -203,7 +212,7 @@ void PhysicalOpNode::PrintSchema() {
         const type::ColumnDef& column = output_schema.Get(i);
         ss << column.name() << " " << type::Type_Name(column.type());
     }
-    //    DLOG(INFO) << "\n" << ss.str();
+    DLOG(INFO) << "\n" << ss.str();
 }
 bool PhysicalUnionNode::InitSchema() {
     output_schema.CopyFrom(producers_[0]->output_schema);
@@ -221,12 +230,30 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(groups=" << node::ExprString(groups_)
-    << " ,orders=" << node::ExprString(orders_)
-    << ")";
+           << ", orders=" << node::ExprString(orders_)
+           << ", keys=" << node::ExprString(keys_)
+           << ", start=" << std::to_string(start_offset_)
+           << ", end=" << std::to_string(end_offset_) << ")";
     output << "\n";
     PrintChildren(output, tab);
 }
+bool PhysicalRequestUnionNode::InitSchema() {
+    output_schema.CopyFrom(producers_[0]->output_schema);
+    PrintSchema();
+    return true;
+}
 
-
+void PhysicalSeekIndexNode::Print(std::ostream& output,
+                                  const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(keys=" << node::ExprString(keys_) << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+bool PhysicalSeekIndexNode::InitSchema() {
+    output_schema.CopyFrom(producers_[0]->output_schema);
+    PrintSchema();
+    return true;
+}
 }  // namespace vm
 }  // namespace fesql

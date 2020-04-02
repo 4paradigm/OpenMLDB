@@ -64,6 +64,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
 
     if (ctx.is_batch_mode) {
         vm::BatchModeTransformer transformer(nm_, ctx.db, cl_, m.get());
+        transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
                          << status.msg << " for sql: \n"
@@ -72,6 +73,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         }
     } else {
         vm::RequestModeransformer transformer(nm_, ctx.db, cl_, m.get());
+        transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (request mode) "
                             "for sql: \n"
@@ -105,6 +107,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
+
+    m->print(::llvm::errs(), NULL);
     if (keep_ir_) {
         KeepIR(ctx, m.get());
     }
@@ -132,7 +136,7 @@ bool SQLCompiler::Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,
                         ::fesql::base::Status& status) {          // NOLINT
     ::fesql::node::NodePointVector parser_trees;
     ::fesql::parser::FeSQLParser parser;
-    ::fesql::plan::SimplePlanner planer(&node_mgr);
+    ::fesql::plan::SimplePlanner planer(&node_mgr, ctx.is_batch_mode);
 
     int ret = parser.parse(ctx.sql, parser_trees, &node_mgr, status);
     if (ret != 0) {

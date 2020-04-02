@@ -37,7 +37,7 @@ RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 bool RowFnLetIRBuilder::Build(
     const std::string& name, const node::PlanNodeList& projects,
     const bool row_mode,
-    vm::Schema& output_schema) {  // NOLINT (runtime/references)
+    vm::Schema* output_schema) {  // NOLINT (runtime/references)
     ::llvm::Function* fn = NULL;
     std::string row_ptr_name = "row_ptr_name";
     std::string window_ptr_name = "window_ptr_name";
@@ -120,7 +120,7 @@ bool RowFnLetIRBuilder::Build(
         }
     }
 
-    ok = EncodeBuf(&outputs, output_schema, variable_ir_builder, block,
+    ok = EncodeBuf(&outputs, *output_schema, variable_ir_builder, block,
                    output_ptr_name);
     if (!ok) {
         return false;
@@ -134,7 +134,7 @@ bool RowFnLetIRBuilder::Build(
 
 bool RowFnLetIRBuilder::Build(const std::string& name,
                               const node::ProjectListNode* projects,
-                              vm::Schema& output_schema) {
+                              vm::Schema* output_schema) {
     return Build(name, projects->GetProjects(), !projects->is_window_agg_,
                  output_schema);
 }
@@ -211,7 +211,7 @@ bool RowFnLetIRBuilder::FillArgs(const std::vector<std::string>& args,
 bool RowFnLetIRBuilder::BuildProject(
     const uint32_t index, const node::ExprNode* expr,
     const std::string& col_name, std::map<uint32_t, ::llvm::Value*>* outputs,
-    ExprIRBuilder& expr_ir_builder, vm::Schema& output_schema,  // NOLINT
+    ExprIRBuilder& expr_ir_builder, vm::Schema* output_schema,  // NOLINT
     base::Status& status) {                                     // NOLINT
     ::llvm::Value* expr_out_val = NULL;
     bool ok = expr_ir_builder.Build(expr, &expr_out_val, status);
@@ -229,7 +229,7 @@ bool RowFnLetIRBuilder::BuildProject(
         return false;
     }
     outputs->insert(std::make_pair(index, expr_out_val));
-    ::fesql::type::ColumnDef* cdef = output_schema.Add();
+    ::fesql::type::ColumnDef* cdef = output_schema->Add();
     cdef->set_name(col_name);
     cdef->set_type(ctype);
     return true;

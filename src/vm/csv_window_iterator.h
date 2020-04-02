@@ -39,7 +39,7 @@ class CSVWindowIterator : public WindowIterator {
     void SeekToFirst();
     void Next();
     bool Valid();
-    std::unique_ptr<Iterator> GetValue();
+    std::unique_ptr<SliceIterator> GetValue();
     const base::Slice GetKey();
 
  private:

@@ -12,6 +12,7 @@
 #include "glog/logging.h"
 #include "llvm/Support/TargetSelect.h"
 
+
 using namespace ::llvm;  // NOLINT
 namespace fesql {
 namespace bm {

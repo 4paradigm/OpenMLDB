@@ -133,8 +133,12 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         if (!ok) {
             status->set_msg(base_status.msg);
             status->set_code(base_status.code);
+            LOG(WARNING) << base_status.msg;
             return;
         }
+//        std::ostringstream oss;
+//        session.GetPhysicalPlan()->Print(oss, "");
+//        std::cout << "physical plan:\n" << oss.str() << std::endl;
     }
 
     std::vector<int8_t*> buf;

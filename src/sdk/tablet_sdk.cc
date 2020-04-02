@@ -278,20 +278,25 @@ std::unique_ptr<ResultSet> TabletSdkImpl::SyncQuery(
     request.set_db(query.db);
     request.set_is_batch(query.is_batch_mode);
     brpc::Controller cntl;
+    cntl.set_timeout_ms(10000);
     ResultSetImpl* rs = new ResultSetImpl();
+    DLOG(INFO) << "SyncQuery >> timeout_ms: " << cntl.timeout_ms();
     stub.Query(&cntl, &request, &(rs->response_), NULL);
     if (cntl.Failed()) {
         status.code = common::kConnError;
         status.msg = "Rpc control error";
+        LOG(WARNING) << "SyncQuery fail: " << status.msg;
         delete rs;
         return std::unique_ptr<ResultSet>();
     }
     if (rs->response_.status().code() != common::kOk) {
         status.code = rs->response_.status().code();
         status.msg = rs->response_.status().msg();
+        LOG(WARNING) << "SyncQuery fail: " << status.msg;
         delete rs;
         return std::unique_ptr<ResultSet>();
     }
+    DLOG(INFO) << "SyncQuery result set done!";
     return std::move(std::unique_ptr<ResultSet>(rs));
 }
 

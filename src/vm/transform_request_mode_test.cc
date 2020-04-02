@@ -119,6 +119,7 @@ void Physical_Plan_Check(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
                                                 base_status));
+    //    m->print(::llvm::errs(), NULL);
     std::ostringstream oss;
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
@@ -390,6 +391,7 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     std::ostringstream ss;
     PrintSchema(ss, physical_plan->output_schema);
     std::cout << "schema:\n" << ss.str() << std::endl;
+    //    m->print(::llvm::errs(), NULL);
 }
 
 TEST_F(TransformRequestModeTest, pass_group_optimized_test) {
@@ -397,27 +399,35 @@ TEST_F(TransformRequestModeTest, pass_group_optimized_test) {
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col1;",
         "PROJECT(type=Aggregation)\n"
-        "  REQUEST_UNION(groups=() ,orders=)\n"
+        "  REQUEST_UNION(groups=(), orders=, keys=, start=-1, end=-1)\n"
         "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
+        "    INDEX_SEEK(keys=(col1))\n"
+        "      DATA_PROVIDER(request=t1)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col1, col2;",
         "PROJECT(type=Aggregation)\n"
-        "  REQUEST_UNION(groups=() ,orders=)\n"
+        "  REQUEST_UNION(groups=(), orders=, keys=, start=-1, end=-1)\n"
         "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
+        "    INDEX_SEEK(keys=(col1,col2))\n"
+        "      DATA_PROVIDER(request=t1)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col1, col2, col3;",
         "PROJECT(type=Aggregation)\n"
-        "  REQUEST_UNION(groups=(col3) ,orders=)\n"
+        "  REQUEST_UNION(groups=(col3), orders=, keys=, start=-1, end=-1)\n"
         "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
+        "    INDEX_SEEK(keys=(col1,col2))\n"
+        "      DATA_PROVIDER(request=t1)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
         "PROJECT(type=Aggregation)\n"
-        "  REQUEST_UNION(groups=(col3) ,orders=)\n"
+        "  REQUEST_UNION(groups=(col3), orders=, keys=, start=-1, end=-1)\n"
         "    DATA_PROVIDER(request=t1)\n"
-        "    DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
+        "    INDEX_SEEK(keys=(col1,col2))\n"
+        "      DATA_PROVIDER(request=t1)\n"
+        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
     fesql::type::TableDef table_def;
     BuildTableDef(table_def);
     table_def.set_name("t1");
@@ -463,9 +473,12 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
         "  PROJECT(type=Aggregation)\n"
-        "    REQUEST_UNION(groups=() ,orders=() ASC)\n"
+        "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col15) ASC, "
+        "start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
-        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
+        "      INDEX_SEEK(keys=(col1))\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        DATA_PROVIDER(type=IndexScan, table=t1, index=index1)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1, "
@@ -475,9 +488,12 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
         "  PROJECT(type=Aggregation)\n"
-        "    REQUEST_UNION(groups=() ,orders=() ASC)\n"
+        "    REQUEST_UNION(groups=(), orders=() ASC, keys=(col15) ASC, "
+        "start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
-        "      DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
+        "      INDEX_SEEK(keys=(col1,col2))\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        DATA_PROVIDER(type=IndexScan, table=t1, index=index12)"));
     in_outs.push_back(std::make_pair(
         "SELECT "
         "col1+col2 as col12, "
@@ -488,7 +504,8 @@ TEST_F(TransformRequestModeTest, pass_sort_optimized_test) {
         "PRECEDING AND CURRENT ROW) limit 10;",
         "LIMIT(limit=10)\n"
         "  PROJECT(type=Aggregation)\n"
-        "    REQUEST_UNION(groups=(col3) ,orders=(col15) ASC)\n"
+        "    REQUEST_UNION(groups=(col3), orders=(col15) ASC, keys=(col15) "
+        "ASC, start=-3, end=0)\n"
         "      DATA_PROVIDER(request=t1)\n"
         "      DATA_PROVIDER(table=t1)"));
 
