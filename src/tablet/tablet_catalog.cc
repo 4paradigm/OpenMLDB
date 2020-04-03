@@ -20,12 +20,16 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 #include "storage/table_iterator.h"
 
 namespace fesql {
 namespace tablet {
-using vm::IteratorV;
+using fesql::codec::IteratorV;
+using fesql::codec::WindowIterator;
+using fesql::codec::SliceIterator;
+
 TabletTableHandler::TabletTableHandler(const vm::Schema schema,
                                        const std::string& name,
                                        const std::string& db,
@@ -80,14 +84,14 @@ bool TabletTableHandler::Init() {
     return true;
 }
 
-std::unique_ptr<vm::SliceIterator> TabletTableHandler::GetIterator() const {
+std::unique_ptr<SliceIterator> TabletTableHandler::GetIterator() const {
     std::unique_ptr<storage::FullTableIterator> it(
         new storage::FullTableIterator(table_->GetSegments(),
                                        table_->GetSegCnt(), table_));
     return std::move(it);
 }
 
-std::unique_ptr<vm::WindowIterator> TabletTableHandler::GetWindowIterator(
+std::unique_ptr<WindowIterator> TabletTableHandler::GetWindowIterator(
     const std::string& idx_name) {
     auto iter = index_hint_.find(idx_name);
     if (iter == index_hint_.end()) {
@@ -196,23 +200,23 @@ TabletSegmentHandler::TabletSegmentHandler(
     const std::string& key)
     : TableHandler(), partition_hander_(partition_hander), key_(key) {}
 TabletSegmentHandler::~TabletSegmentHandler() {}
-std::unique_ptr<vm::SliceIterator> TabletSegmentHandler::GetIterator() const {
+std::unique_ptr<SliceIterator> TabletSegmentHandler::GetIterator() const {
     auto iter = partition_hander_->GetWindowIterator();
     if (iter) {
         iter->Seek(key_);
         return iter->Valid() ? std::move(iter->GetValue())
-                             : std::unique_ptr<vm::SliceIterator>();
+                             : std::unique_ptr<SliceIterator>();
     }
-    return std::unique_ptr<vm::SliceIterator>();
+    return std::unique_ptr<SliceIterator>();
 }
 IteratorV<uint64_t, base::Slice>* TabletSegmentHandler::GetIterator(
     int8_t* addr) const {
     LOG(WARNING) << "can't get iterator with given address";
     return nullptr;
 }
-std::unique_ptr<vm::WindowIterator> TabletSegmentHandler::GetWindowIterator(
+std::unique_ptr<WindowIterator> TabletSegmentHandler::GetWindowIterator(
     const std::string& idx_name) {
-    return std::unique_ptr<vm::WindowIterator>();
+    return std::unique_ptr<WindowIterator>();
 }
 const uint64_t TabletSegmentHandler::GetCount() {
     auto iter = GetIterator();

@@ -12,7 +12,7 @@
 
 #include <cstdint>
 #include <vector>
-#include "codec/window.h"
+#include "codec/list_iterator_codec.h"
 
 namespace fesql {
 namespace codegen {

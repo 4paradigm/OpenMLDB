@@ -18,6 +18,8 @@
 #include "vm/engine.h"
 #include <utility>
 #include <vector>
+#include "codec/list_iterator_codec.h"
+#include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -34,8 +36,6 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "codec/row_codec.h"
-#include "codec/window.h"
 #include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
@@ -194,7 +194,7 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         rows.push_back(Slice(ptr, total_size));
     }
 
-    ::fesql::codec::WindowImpl* w = new ::fesql::codec::WindowImpl(&rows);
+    ::fesql::codec::ArrayListV<Slice>* w = new ::fesql::codec::ArrayListV<Slice>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void BuildWindowUnique(std::vector<Slice>& rows,  // NOLINT
@@ -286,7 +286,7 @@ void BuildWindowUnique(std::vector<Slice>& rows,  // NOLINT
         rows.push_back(Slice(ptr, total_size));
     }
 
-    ::fesql::codec::WindowImpl* w = new ::fesql::codec::WindowImpl(&rows);
+    ::fesql::codec::ArrayListV<Slice>* w = new ::fesql::codec::ArrayListV<Slice>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void StoreData(::fesql::storage::Table* table, int8_t* rows) {

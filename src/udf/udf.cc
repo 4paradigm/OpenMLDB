@@ -10,11 +10,11 @@
 #include <stdint.h>
 #include <utility>
 #include <vector>
+#include "base/slice.h"
+#include "codec/list_iterator_codec.h"
+#include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "proto/type.pb.h"
-#include "codec/window.h"
-#include "codec/type_codec.h"
-#include "base/slice.h"
 
 namespace fesql {
 namespace udf {
@@ -23,8 +23,8 @@ using fesql::base::Slice;
 using fesql::codec::ColumnImpl;
 using fesql::codec::IteratorRef;
 using fesql::codec::ListRef;
-using fesql::vm::ListV;
-using fesql::vm::IteratorV;
+using fesql::codec::ListV;
+using fesql::codec::IteratorV;
 using fesql::codec::StringColumnImpl;
 using fesql::codec::StringRef;
 

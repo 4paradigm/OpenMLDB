@@ -17,14 +17,17 @@
 #include <utility>
 #include <vector>
 #include "base/slice.h"
-#include "glog/logging.h"
-#include "codec/window.h"
+#include "codec/list_iterator_codec.h"
 #include "vm/catalog.h"
+#include "glog/logging.h"
 
 namespace fesql {
 namespace vm {
 
 using fesql::base::Slice;
+using fesql::codec::IteratorV;
+using fesql::codec::SliceIterator;
+using fesql::codec::WindowIterator;
 
 struct AscComparor {
     bool operator()(std::pair<uint64_t, Slice> i,
@@ -129,7 +132,6 @@ class MemTableHandler : public TableHandler {
         return pos >= 0 && pos < table_.size() ? table_.at(pos).second
                                                : base::Slice();
     }
-
  protected:
     const std::string table_name_;
     const std::string db_;

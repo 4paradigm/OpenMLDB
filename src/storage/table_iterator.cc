@@ -25,6 +25,8 @@
 namespace fesql {
 namespace storage {
 
+using fesql::vm::SliceIterator;
+
 static constexpr uint32_t SEED = 0xe17a1465;
 
 WindowInternalIterator::WindowInternalIterator(
@@ -78,7 +80,7 @@ void WindowTableIterator::Seek(const std::string& key) {
 
 void WindowTableIterator::SeekToFirst() {}
 
-std::unique_ptr<vm::SliceIterator> WindowTableIterator::GetValue() {
+std::unique_ptr<SliceIterator> WindowTableIterator::GetValue() {
     if (!pk_it_)
         return std::move(
             std::unique_ptr<EmptyWindowIterator>(new EmptyWindowIterator()));

@@ -7,9 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 
-#ifndef SRC_CODEC_WINDOW_H_
-#define SRC_CODEC_WINDOW_H_
-#include <vm/mem_catalog.h>
+#ifndef SRC_CODEC_LIST_ITERATOR_CODEC_H_
+#define SRC_CODEC_LIST_ITERATOR_CODEC_H_
 #include <cstdint>
 #include <iostream>
 #include <memory>
@@ -18,11 +17,9 @@
 #include "base/slice.h"
 #include "codec/type_codec.h"
 #include "glog/logging.h"
-#include "vm/catalog.h"
 namespace fesql {
 namespace codec {
 using base::Slice;
-using vm::ListV;
 
 template <class V>
 class ArrayListIterator;
@@ -32,6 +29,45 @@ class ColumnImpl;
 
 template <class V>
 class ColumnIterator;
+
+template <class K, class V>
+class IteratorV {
+ public:
+    IteratorV() {}
+    virtual ~IteratorV() {}
+    virtual void Seek(K key) = 0;
+    virtual void SeekToFirst() = 0;
+    virtual bool Valid() = 0;
+    virtual void Next() = 0;
+    virtual const V GetValue() = 0;
+    virtual const K GetKey() = 0;
+};
+
+typedef IteratorV<uint64_t, base::Slice> SliceIterator;
+
+class WindowIterator {
+ public:
+    WindowIterator() {}
+    virtual ~WindowIterator() {}
+    virtual void Seek(const std::string &key) = 0;
+    virtual void SeekToFirst() = 0;
+    virtual void Next() = 0;
+    virtual bool Valid() = 0;
+    virtual std::unique_ptr<SliceIterator> GetValue() = 0;
+    virtual const base::Slice GetKey() = 0;
+};
+
+template <class V>
+class ListV {
+ public:
+    ListV() {}
+    virtual ~ListV() {}
+    // TODO(chenjing): at 数组越界处理
+    virtual std::unique_ptr<IteratorV<uint64_t, V>> GetIterator() const = 0;
+    virtual IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const = 0;
+    virtual const uint64_t GetCount() = 0;
+    virtual V At(uint64_t pos) = 0;
+};
 
 template <class V, class R>
 class WrapListImpl : public ListV<V> {
@@ -44,7 +80,7 @@ class WrapListImpl : public ListV<V> {
 template <class V>
 class ColumnImpl : public WrapListImpl<V, Slice> {
  public:
-    ColumnImpl(vm::ListV<Slice> *impl, uint32_t offset)
+    ColumnImpl(ListV<Slice> *impl, uint32_t offset)
         : WrapListImpl<V, Slice>(), root_(impl), offset_(offset) {}
 
     ~ColumnImpl() {}
@@ -54,12 +90,12 @@ class ColumnImpl : public WrapListImpl<V, Slice> {
         value = *((const V *)ptr);
         return value;
     }
-    std::unique_ptr<vm::IteratorV<uint64_t, V>> GetIterator() const override {
-        auto iter = std::unique_ptr<vm::IteratorV<uint64_t, V>>(
+    std::unique_ptr<IteratorV<uint64_t, V>> GetIterator() const override {
+        auto iter = std::unique_ptr<IteratorV<uint64_t, V>>(
             new ColumnIterator<V>(root_, this));
         return std::move(iter);
     }
-    vm::IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const override {
+    IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const override {
         if (nullptr == addr) {
             return new ColumnIterator<V>(root_, this);
         } else {
@@ -70,7 +106,7 @@ class ColumnImpl : public WrapListImpl<V, Slice> {
     V At(uint64_t pos) override { return GetField(root_->At(pos)); }
 
  private:
-    vm::ListV<Slice> *root_;
+    ListV<Slice> *root_;
     const uint32_t offset_;
 };
 
@@ -113,11 +149,11 @@ class ArrayListV : public ListV<V> {
     ~ArrayListV() {}
     // TODO(chenjing): at 数组越界处理
 
-    std::unique_ptr<vm::IteratorV<uint64_t, V>> GetIterator() const override {
+    std::unique_ptr<IteratorV<uint64_t, V>> GetIterator() const override {
         return std::unique_ptr<ArrayListIterator<V>>(
             new ArrayListIterator<V>(buffer_, start_, end_));
     }
-    vm::IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const override {
+    IteratorV<uint64_t, V> *GetIterator(int8_t *addr) const override {
         if (nullptr == addr) {
             return new ArrayListIterator<V>(buffer_, start_, end_);
         } else {
@@ -134,7 +170,7 @@ class ArrayListV : public ListV<V> {
 };
 
 template <class V>
-class ArrayListIterator : public vm::IteratorV<uint64_t, V> {
+class ArrayListIterator : public IteratorV<uint64_t, V> {
  public:
     explicit ArrayListIterator(const std::vector<V> *buffer,
                                const uint64_t start, const uint64_t end)
@@ -189,10 +225,10 @@ class ArrayListIterator : public vm::IteratorV<uint64_t, V> {
 };
 
 template <class V>
-class ColumnIterator : public vm::IteratorV<uint64_t, V> {
+class ColumnIterator : public IteratorV<uint64_t, V> {
  public:
-    ColumnIterator(vm::ListV<Slice> *list, const ColumnImpl<V> *column_impl)
-        : vm::IteratorV<uint64_t, V>(), column_impl_(column_impl) {
+    ColumnIterator(ListV<Slice> *list, const ColumnImpl<V> *column_impl)
+        : IteratorV<uint64_t, V>(), column_impl_(column_impl) {
         row_iter_ = list->GetIterator();
     }
     ~ColumnIterator() {
@@ -208,12 +244,11 @@ class ColumnIterator : public vm::IteratorV<uint64_t, V> {
     const uint64_t GetKey() override { return row_iter_->GetKey(); }
 
  private:
-    std::unique_ptr<vm::IteratorV<uint64_t, Slice>> row_iter_;
+    std::unique_ptr<IteratorV<uint64_t, Slice>> row_iter_;
     const ColumnImpl<V> *column_impl_;
 };
 
-typedef ArrayListV<Slice> WindowImpl;
 }  // namespace codec
 }  // namespace fesql
 
-#endif  // SRC_CODEC_WINDOW_H_
+#endif  // SRC_CODEC_LIST_ITERATOR_CODEC_H_

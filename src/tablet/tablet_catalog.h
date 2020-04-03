@@ -28,90 +28,12 @@
 namespace fesql {
 namespace tablet {
 
-class TabletTableHandler : public vm::TableHandler {
- public:
-    TabletTableHandler(const vm::Schema schema, const std::string& name,
-                       const std::string& db, const vm::IndexList& index_list,
-                       std::shared_ptr<storage::Table> table);
+using vm::PartitionHandler;
+using vm::SliceIterator;
+using vm::TableHandler;
+using vm::WindowIterator;
 
-    ~TabletTableHandler();
-
-    bool Init();
-
-    inline const vm::Schema* GetSchema() { return &schema_; }
-
-    inline const std::string& GetName() { return name_; }
-
-    inline const std::string& GetDatabase() { return db_; }
-
-    inline const vm::Types& GetTypes() { return types_; }
-
-    inline const vm::IndexHint& GetIndex() { return index_hint_; }
-
-    const base::Slice Get(int32_t pos);
-
-    inline std::shared_ptr<storage::Table> GetTable() { return table_; }
-
-    std::unique_ptr<vm::SliceIterator> GetIterator() const;
-    vm::IteratorV<uint64_t, base::Slice>* GetIterator(
-        int8_t* addr) const override;
-    std::unique_ptr<vm::WindowIterator> GetWindowIterator(
-        const std::string& idx_name);
-    virtual const uint64_t GetCount();
-    base::Slice At(uint64_t pos) override;
-
- private:
-    inline int32_t GetColumnIndex(const std::string& column) {
-        auto it = types_.find(column);
-        if (it != types_.end()) {
-            return it->second.pos;
-        }
-        return -1;
-    }
-
- private:
-    vm::Schema schema_;
-    std::string name_;
-    std::string db_;
-    std::shared_ptr<storage::Table> table_;
-    vm::Types types_;
-    vm::IndexList index_list_;
-    vm::IndexHint index_hint_;
-};
-
-class TabletPartitionHandler : public vm::PartitionHandler {
- public:
-    TabletPartitionHandler(std::shared_ptr<TableHandler> table_hander,
-                           const std::string& index_name)
-        : vm::PartitionHandler(),
-          table_handler_(table_hander),
-          index_name_(index_name) {}
-
-    ~TabletPartitionHandler() {}
-
-    const bool IsAsc() override { return false; };
-
-    inline const vm::Schema* GetSchema() { return table_handler_->GetSchema(); }
-
-    inline const std::string& GetName() { return table_handler_->GetName(); }
-
-    inline const std::string& GetDatabase() {
-        return table_handler_->GetDatabase();
-    }
-
-    inline const vm::Types& GetTypes() { return table_handler_->GetTypes(); }
-
-    inline const vm::IndexHint& GetIndex() { return index_hint_; }
-    std::unique_ptr<vm::WindowIterator> GetWindowIterator() override {
-        return table_handler_->GetWindowIterator(index_name_);
-    }
-    const uint64_t GetCount() override;
-
- private:
-    std::shared_ptr<TableHandler> table_handler_;
-    std::string index_name_;
-    vm::IndexHint index_hint_;
-};
+class TabletPartitionHandler;
 
 class TabletSegmentHandler : public vm::TableHandler {
  public:
@@ -147,6 +69,109 @@ class TabletSegmentHandler : public vm::TableHandler {
  private:
     std::shared_ptr<vm::PartitionHandler> partition_hander_;
     std::string key_;
+};
+
+class TabletPartitionHandler : public PartitionHandler {
+ public:
+    TabletPartitionHandler(std::shared_ptr<TableHandler> table_hander,
+                           const std::string& index_name)
+        : vm::PartitionHandler(),
+          table_handler_(table_hander),
+          index_name_(index_name) {}
+
+    ~TabletPartitionHandler() {}
+
+    const bool IsAsc() override { return false; };
+
+    inline const vm::Schema* GetSchema() { return table_handler_->GetSchema(); }
+
+    inline const std::string& GetName() { return table_handler_->GetName(); }
+
+    inline const std::string& GetDatabase() {
+        return table_handler_->GetDatabase();
+    }
+
+    inline const vm::Types& GetTypes() { return table_handler_->GetTypes(); }
+
+    inline const vm::IndexHint& GetIndex() { return index_hint_; }
+    std::unique_ptr<vm::WindowIterator> GetWindowIterator() override {
+        return table_handler_->GetWindowIterator(index_name_);
+    }
+    const uint64_t GetCount() override;
+
+    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
+        return std::shared_ptr<TableHandler>(new TabletSegmentHandler(
+            static_cast<std::shared_ptr<PartitionHandler>>(this), key));
+    }
+
+ private:
+    std::shared_ptr<TableHandler> table_handler_;
+    std::string index_name_;
+    vm::IndexHint index_hint_;
+};
+
+class TabletTableHandler : public vm::TableHandler {
+ public:
+    TabletTableHandler(const vm::Schema schema, const std::string& name,
+                       const std::string& db, const vm::IndexList& index_list,
+                       std::shared_ptr<storage::Table> table);
+
+    ~TabletTableHandler();
+
+    bool Init();
+
+    inline const vm::Schema* GetSchema() { return &schema_; }
+
+    inline const std::string& GetName() { return name_; }
+
+    inline const std::string& GetDatabase() { return db_; }
+
+    inline const vm::Types& GetTypes() { return types_; }
+
+    inline const vm::IndexHint& GetIndex() { return index_hint_; }
+
+    const base::Slice Get(int32_t pos);
+
+    inline std::shared_ptr<storage::Table> GetTable() { return table_; }
+
+    std::unique_ptr<SliceIterator> GetIterator() const;
+    vm::IteratorV<uint64_t, base::Slice>* GetIterator(
+        int8_t* addr) const override;
+    std::unique_ptr<WindowIterator> GetWindowIterator(
+        const std::string& idx_name);
+    virtual const uint64_t GetCount();
+    base::Slice At(uint64_t pos) override;
+
+    virtual std::shared_ptr<PartitionHandler> GetPartition(
+        const std::string& index_name) {
+        if (index_hint_.find(index_name) == index_hint_.cend()) {
+            LOG(WARNING)
+                << "fail to get partition for tablet table handler, index name "
+                << index_name;
+            return std::shared_ptr<PartitionHandler>();
+        }
+        return std::shared_ptr<TabletPartitionHandler>(
+            new TabletPartitionHandler(
+                static_cast<std::shared_ptr<TableHandler>>(this), index_name));
+    }
+
+ private:
+    inline int32_t GetColumnIndex(const std::string& column) {
+        auto it = types_.find(column);
+        if (it != types_.end()) {
+            return it->second.pos;
+        }
+        return -1;
+    }
+
+ private:
+    vm::Schema schema_;
+    std::string name_;
+    std::string db_;
+    std::shared_ptr<storage::Table> table_;
+    vm::Types types_;
+    vm::IndexList index_list_;
+    vm::IndexHint index_hint_;
 };
 
 typedef std::map<std::string,

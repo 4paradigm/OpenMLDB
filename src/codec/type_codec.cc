@@ -19,16 +19,16 @@
 
 #include <string>
 #include <utility>
+#include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 #include "proto/type.pb.h"
-#include "codec/window.h"
 
 namespace fesql {
 namespace codec {
 namespace v1 {
 
 using fesql::base::Slice;
-using fesql::vm::ListV;
+using fesql::codec::ListV;
 int32_t GetStrField(const int8_t* row, uint32_t field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
                     uint32_t addr_space, int8_t** data, uint32_t* size) {

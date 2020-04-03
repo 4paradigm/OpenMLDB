@@ -13,7 +13,8 @@
 #include <algorithm>
 #include <vector>
 #include "base/slice.h"
-#include "codec/window.h"
+#include "vm/mem_catalog.h"
+#include "codec/list_iterator_codec.h"
 namespace fesql {
 namespace udf {
 using fesql::base::Slice;

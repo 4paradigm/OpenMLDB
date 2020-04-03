@@ -978,8 +978,9 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                     }
 
                     PhysicalScanIndexNode* scan_index_op =
-                        new PhysicalScanIndexNode(scan_op->table_handler_,
-                                                  index_name);
+                        new PhysicalScanIndexNode(
+                            scan_op->table_handler_,
+                            index_name);
                     node_manager_->RegisterNode(scan_index_op);
 
                     if (nullptr == new_groups || new_groups->IsEmpty()) {

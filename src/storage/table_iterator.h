@@ -21,15 +21,16 @@
 #include <memory>
 #include <string>
 #include "base/iterator.h"
+#include "codec/list_iterator_codec.h"
+#include "glog/logging.h"
 #include "storage/segment.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
-#include "glog/logging.h"
 
 namespace fesql {
 namespace storage {
-using fesql::vm::IteratorV;
-using fesql::vm::WindowIterator;
+using fesql::codec::IteratorV;
+using fesql::codec::WindowIterator;
 class WindowTableIterator;
 class FullTableIterator;
 class WindowInternalIterator;

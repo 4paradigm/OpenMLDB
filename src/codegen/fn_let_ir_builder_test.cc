@@ -19,6 +19,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "codec/list_iterator_codec.h"
+#include "codec/row_codec.h"
 #include "codegen/fn_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -36,11 +38,9 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
-#include "codec/row_codec.h"
-#include "codec/window.h"
-#include "vm/sql_compiler.h"
 #include "udf/udf.h"
 #include "vm/jit.h"
+#include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT

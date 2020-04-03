@@ -18,8 +18,8 @@
 #include "codegen/ir_base_builder.h"
 #include <string>
 #include <vector>
+#include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-#include "codec/window.h"
 
 namespace fesql {
 namespace codegen {

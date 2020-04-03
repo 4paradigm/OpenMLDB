@@ -72,5 +72,5 @@ add_executable(engine_bm engine_bm.cc)
 target_link_libraries(engine_bm ${vm_deps_libs}
         benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
 
-#add_executable(csv_db csv_db.cc)
-#target_link_libraries(csv_db fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
+add_executable(csv_db csv_db.cc)
+target_link_libraries(csv_db fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)

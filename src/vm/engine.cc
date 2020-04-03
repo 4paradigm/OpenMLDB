@@ -20,10 +20,9 @@
 #include <utility>
 #include <vector>
 #include "base/strings.h"
+#include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
-#include "codec/window.h"
 #include "codegen/buf_ir_builder.h"
-#include "tablet/tablet_catalog.h"
 #include "vm/mem_catalog.h"
 
 namespace fesql {
@@ -157,6 +156,7 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
             return std::shared_ptr<TableHandler>();
         }
     }
+    return std::shared_ptr<TableHandler>();
 }
 
 std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
@@ -179,18 +179,15 @@ std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
                 case kProviderTypeIndexScan: {
                     auto provider =
                         dynamic_cast<const PhysicalScanIndexNode*>(node);
-                    return std::shared_ptr<PartitionHandler>(
-                        new tablet::TabletPartitionHandler(
-                            provider->table_handler_, provider->index_name_));
+                    return provider->table_handler_;
                 }
                 case kProviderTypeRequest: {
                     return std::shared_ptr<MemRowHandler>(
                         new MemRowHandler(*row, &(op->output_schema)));
                 }
                 default: {
-                    LOG(WARNING)
-                        << "fail to support data provider type "
-                        << DataProviderTypeName(op->provider_type_);
+                    LOG(WARNING) << "fail to support data provider type "
+                                 << DataProviderTypeName(op->provider_type_);
                     return fail_ptr;
                 }
             }
@@ -269,7 +266,7 @@ std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
 }  // namespace vm
 
 Slice RunSession::WindowProject(const int8_t* fn, uint64_t key,
-                                      const Slice slice, Window* window) {
+                                const Slice slice, Window* window) {
     if (slice.empty()) {
         return slice;
     }
@@ -283,8 +280,7 @@ Slice RunSession::WindowProject(const int8_t* fn, uint64_t key,
         LOG(WARNING) << "fail to run udf " << ret;
         return Slice();
     }
-    return Slice(reinterpret_cast<char*>(out_buf),
-                       RowView::GetSize(out_buf));
+    return Slice(reinterpret_cast<char*>(out_buf), RowView::GetSize(out_buf));
 }
 Slice RunSession::RowProject(const int8_t* fn, const Slice slice) {
     if (slice.empty()) {
@@ -300,11 +296,10 @@ Slice RunSession::RowProject(const int8_t* fn, const Slice slice) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Slice();
     }
-    return Slice(reinterpret_cast<char*>(buf),
-                       RowView::GetSize(buf));
+    return Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf));
 }
 Slice RunSession::AggProject(const int8_t* fn,
-                                   const std::shared_ptr<DataHandler> input) {
+                             const std::shared_ptr<DataHandler> input) {
     if (!input) {
         LOG(WARNING) << "input is empty";
         return Slice();
@@ -334,8 +329,8 @@ Slice RunSession::AggProject(const int8_t* fn,
     }
     return Slice(reinterpret_cast<char*>(buf));
 }
-std::string RunSession::GetColumnString(RowView* row_view,
-                                        int key_idx, type::Type key_type) {
+std::string RunSession::GetColumnString(RowView* row_view, int key_idx,
+                                        type::Type key_type) {
     std::string key = "";
     switch (key_type) {
         case fesql::type::kInt32: {
@@ -389,9 +384,8 @@ std::string RunSession::GetColumnString(RowView* row_view,
     }
     return key;
 }
-
-int64_t RunSession::GetColumnInt64(RowView* row_view,
-                                   int key_idx, type::Type key_type) {
+int64_t RunSession::GetColumnInt64(RowView* row_view, int key_idx,
+                                   type::Type key_type) {
     int64_t key = -1;
     switch (key_type) {
         case fesql::type::kInt32: {
@@ -454,8 +448,8 @@ std::shared_ptr<DataHandler> RunSession::TableGroup(
         new MemPartitionHandler(table->GetSchema()));
 
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
-    std::unique_ptr<RowView> row_view = std::move(
-        std::unique_ptr<RowView>(new RowView(schema)));
+    std::unique_ptr<RowView> row_view =
+        std::move(std::unique_ptr<RowView>(new RowView(schema)));
     while (iter->Valid()) {
         Slice value_row(iter->GetValue());
         const Slice key_row(RowProject(fn, iter->GetValue()));
@@ -466,7 +460,6 @@ std::shared_ptr<DataHandler> RunSession::TableGroup(
     }
     return output_partitions;
 }
-
 std::shared_ptr<DataHandler> RunSession::PartitionGroup(
     const std::shared_ptr<DataHandler> table, const Schema& schema,
     const int8_t* fn, const std::vector<int>& idxs) {
@@ -487,8 +480,8 @@ std::shared_ptr<DataHandler> RunSession::PartitionGroup(
     auto partitions = std::dynamic_pointer_cast<PartitionHandler>(table);
     auto iter = partitions->GetWindowIterator();
     iter->SeekToFirst();
-    std::unique_ptr<RowView> row_view = std::move(
-        std::unique_ptr<RowView>(new RowView(schema)));
+    std::unique_ptr<RowView> row_view =
+        std::move(std::unique_ptr<RowView>(new RowView(schema)));
     while (iter->Valid()) {
         auto segment_iter = iter->GetValue();
         segment_iter->SeekToFirst();
@@ -583,8 +576,8 @@ std::shared_ptr<DataHandler> RunSession::PartitionSort(
         return table;
     }
 
-    std::unique_ptr<RowView> row_view = std::move(
-        std::unique_ptr<RowView>(new RowView(schema)));
+    std::unique_ptr<RowView> row_view =
+        std::move(std::unique_ptr<RowView>(new RowView(schema)));
     auto output_partitions = std::shared_ptr<MemPartitionHandler>(
         new MemPartitionHandler(table->GetSchema()));
 
@@ -630,8 +623,8 @@ std::shared_ptr<DataHandler> RunSession::TableSort(
     auto output_table = std::shared_ptr<MemTableHandler>(
         new MemTableHandler(table->GetSchema()));
 
-    std::unique_ptr<RowView> row_view = std::move(
-        std::unique_ptr<RowView>(new RowView(schema)));
+    std::unique_ptr<RowView> row_view =
+        std::move(std::unique_ptr<RowView>(new RowView(schema)));
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     while (iter->Valid()) {
         const Slice order_row(RowProject(fn, iter->GetValue()));
@@ -705,9 +698,7 @@ std::shared_ptr<DataHandler> RunSession::WindowAggProject(
     }
     return output_table;
 }
-
-std::string RunSession::GenerateKeys(RowView* row_view,
-                                     const Schema& schema,
+std::string RunSession::GenerateKeys(RowView* row_view, const Schema& schema,
                                      const std::vector<int>& idxs) {
     std::string keys = "";
     for (auto pos : idxs) {
@@ -732,9 +723,8 @@ std::shared_ptr<DataHandler> RunSession::IndexSeek(
     std::shared_ptr<PartitionHandler> partition =
         std::dynamic_pointer_cast<PartitionHandler>(right);
 
-    std::unique_ptr<RowView> row_view =
-        std::move(std::unique_ptr<RowView>(
-            new RowView(seek_op->GetFnSchema())));
+    std::unique_ptr<RowView> row_view = std::move(
+        std::unique_ptr<RowView>(new RowView(seek_op->GetFnSchema())));
     auto keys_row = Slice(
         RowProject(seek_op->GetFn(),
                    std::dynamic_pointer_cast<RowHandler>(left)->GetValue()));
@@ -746,8 +736,7 @@ std::shared_ptr<DataHandler> RunSession::IndexSeek(
     }
     std::string key =
         GenerateKeys(row_view.get(), seek_op->GetFnSchema(), idxs);
-    return std::shared_ptr<TableHandler>(
-        new tablet::TabletSegmentHandler(partition, key));
+    return partition->GetSegment(key);
 }
 std::shared_ptr<DataHandler> RunSession::RequestUnion(
     std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
@@ -768,9 +757,8 @@ std::shared_ptr<DataHandler> RunSession::RequestUnion(
 
     auto table = std::dynamic_pointer_cast<TableHandler>(right);
     std::shared_ptr<DataHandler> output = right;
-    std::unique_ptr<RowView> row_view =
-        std::move(std::unique_ptr<RowView>(
-            new RowView(request_union_op->GetFnSchema())));
+    std::unique_ptr<RowView> row_view = std::move(
+        std::unique_ptr<RowView>(new RowView(request_union_op->GetFnSchema())));
     auto request_fn_row = Slice(RowProject(request_union_op->GetFn(), request));
     // filter by keys if need
     if (!node::ExprListNullOrEmpty(groups)) {

@@ -20,13 +20,13 @@
 #include <cstdlib>
 #include <memory>
 #include <vector>
+#include "codec/list_iterator_codec.h"
+#include "codec/row_codec.h"
+#include "codec/type_codec.h"
 #include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
-#include "codec/row_codec.h"
-#include "codec/type_codec.h"
-#include "codec/window.h"
 #include "vm/sql_compiler.h"
 
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"

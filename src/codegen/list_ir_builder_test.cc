@@ -13,11 +13,12 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include "codec/list_iterator_codec.h"
+#include "codec/row_codec.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
-#include "vm/sql_compiler.h"
 #include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -33,9 +34,8 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-#include "codec/row_codec.h"
-#include "codec/window.h"
 #include "udf/udf.h"
+#include "vm/sql_compiler.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -58,8 +58,8 @@ void AssertStrEq(std::string exp, int8_t* ptr) {
 namespace fesql {
 namespace codegen {
 
-using fesql::vm::ListV;
-using fesql::vm::IteratorV;
+using fesql::codec::ListV;
+using fesql::codec::IteratorV;
 class ListIRBuilderTest : public ::testing::Test {
  public:
     ListIRBuilderTest() {}

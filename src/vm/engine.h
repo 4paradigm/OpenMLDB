@@ -24,11 +24,12 @@
 #include <string>
 #include <vector>
 #include "base/spin_lock.h"
+#include "codec/list_iterator_codec.h"
+#include "codec/row_codec.h"
+#include "vm/mem_catalog.h"
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
 #include "vm/sql_compiler.h"
-#include "codec/window.h"
-#include "codec/row_codec.h"
 
 namespace fesql {
 namespace vm {
@@ -68,15 +69,13 @@ class RunSession {
     friend Engine;
     std::shared_ptr<DataHandler> RunPhysicalPlan(const PhysicalOpNode* node,
                                                  const Slice* in_row = nullptr);
-    Slice WindowProject(const int8_t* fn, const uint64_t key,
-                              const Slice slice, Window* window);
+    Slice WindowProject(const int8_t* fn, const uint64_t key, const Slice slice,
+                        Window* window);
     Slice RowProject(const int8_t* fn, const Slice slice);
     Slice AggProject(const int8_t* fn,
-                           const std::shared_ptr<DataHandler> table);
-    std::string GetColumnString(RowView* view, int pos,
-                                type::Type type);
-    int64_t GetColumnInt64(RowView* view, int pos,
-                           type::Type type);
+                     const std::shared_ptr<DataHandler> table);
+    std::string GetColumnString(RowView* view, int pos, type::Type type);
+    int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
     std::shared_ptr<DataHandler> TableGroup(
         const std::shared_ptr<DataHandler> table, const Schema& schema,
         const int8_t* fn, const std::vector<int>& idxs);

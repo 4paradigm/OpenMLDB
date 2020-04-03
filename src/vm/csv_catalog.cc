@@ -374,9 +374,9 @@ std::unique_ptr<IteratorV<uint64_t, base::Slice>> CSVTableHandler::GetIterator()
 IteratorV<uint64_t, base::Slice>* CSVTableHandler::GetIterator(
     int8_t* addr) const {
     if (nullptr == addr) {
-        new CSVTableIterator(table_, schema_);
+        return new CSVTableIterator(table_, schema_);
     } else {
-        new (addr) CSVTableIterator(table_, schema_);
+        return new (addr) CSVTableIterator(table_, schema_);
     }
 }
 
@@ -447,6 +447,7 @@ std::shared_ptr<TableHandler> CSVCatalog::GetTable(const std::string& db,
 }
 
 std::shared_ptr<type::Database> CSVCatalog::GetDatabase(const std::string& db) {
+    return dbs_[db];
 }
 
 }  // namespace vm
