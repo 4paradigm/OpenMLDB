@@ -159,6 +159,7 @@ bool CSVSegmentIterator::Valid() {
         GetRow(schema_, table_, it_->second.chunk_offset,
                it_->second.array_offset, &rb_);
     }
+    return valid;
 }
 
 void CSVSegmentIterator::Next() { ++it_; }

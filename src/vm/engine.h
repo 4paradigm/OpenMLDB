@@ -26,9 +26,9 @@
 #include "base/spin_lock.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row_codec.h"
-#include "vm/mem_catalog.h"
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
+#include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
 
 namespace fesql {
@@ -69,6 +69,7 @@ class RunSession {
     friend Engine;
     std::shared_ptr<DataHandler> RunPhysicalPlan(const PhysicalOpNode* node,
                                                  const Slice* in_row = nullptr);
+
     Slice WindowProject(const int8_t* fn, const uint64_t key, const Slice slice,
                         Window* window);
     Slice RowProject(const int8_t* fn, const Slice slice);
@@ -82,9 +83,7 @@ class RunSession {
     std::shared_ptr<DataHandler> PartitionGroup(
         const std::shared_ptr<DataHandler> partitions, const Schema& schema,
         const int8_t* fn, const std::vector<int>& idxs);
-    std::shared_ptr<DataHandler> TableSortGroup(
-        std::shared_ptr<DataHandler> table,
-        const PhysicalGroupAndSortNode* grouo_sort_op);
+
     std::shared_ptr<DataHandler> PartitionSort(
         std::shared_ptr<DataHandler> table, const Schema& schema,
         const int8_t* fn, std::vector<int> idxs, const bool is_asc);
@@ -96,11 +95,38 @@ class RunSession {
     std::shared_ptr<DataHandler> TableProject(
         const int8_t* fn, std::shared_ptr<DataHandler> table,
         const int32_t limit_cnt, Schema output_schema);
+
+    std::string GenerateKeys(RowView* row_view, const Schema& schema,
+                             const std::vector<int>& idxs);
+
+    std::shared_ptr<DataHandler> IndexSeek(std::shared_ptr<DataHandler> left,
+                                           std::shared_ptr<DataHandler> right,
+                                           const int8_t* fn,
+                                           const Schema& fn_schema,
+                                           const std::vector<int>& idxs);
+    std::shared_ptr<DataHandler> RequestUnion(
+        std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
+        const int8_t* fn, const Schema& fn_schema,
+        const std::vector<int>& groups_idxs,
+        const std::vector<int>& orders_idxs, const std::vector<int>& keys_idxs,
+        const int64_t start_offset, const int64_t end_offset);
+
+    std::shared_ptr<DataHandler> WindowAggProject(
+        std::shared_ptr<DataHandler> input, const int32_t limit_cnt,
+        const int8_t* fn, const Schema& fn_schema, const int64_t start_offset,
+        const int64_t end_offset);
+
+    std::shared_ptr<DataHandler> TableSortGroup(
+        std::shared_ptr<DataHandler> table, const int8_t* fn,
+        const Schema& schema, const std::vector<int>& groups_idxs,
+        const std::vector<int>& orders_idxs, const bool is_asc);
+    std::shared_ptr<DataHandler> TableSortGroup(
+        std::shared_ptr<DataHandler> table,
+        const PhysicalGroupAndSortNode* grouo_sort_op);
     std::shared_ptr<DataHandler> WindowAggProject(
         const PhysicalWindowAggrerationNode* op,
         std::shared_ptr<DataHandler> input, const int32_t limit_cnt);
-    std::string GenerateKeys(RowView* row_view, const Schema& schema,
-                             const std::vector<int>& idxs);
+
     std::shared_ptr<DataHandler> IndexSeek(
         std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
         const PhysicalSeekIndexNode* seek_op);

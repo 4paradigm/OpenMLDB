@@ -500,48 +500,41 @@ std::shared_ptr<DataHandler> RunSession::PartitionGroup(
     }
     return output_partitions;
 }
+
 std::shared_ptr<DataHandler> RunSession::TableSortGroup(
     std::shared_ptr<DataHandler> table,
     const PhysicalGroupAndSortNode* group_sort_op) {
     if (!table) {
         return std::shared_ptr<DataHandler>();
     }
-
-    const node::ExprListNode* groups = group_sort_op->groups_;
-    const node::OrderByNode* orders = group_sort_op->orders_;
-
-    if (node::ExprListNullOrEmpty(groups) && nullptr == orders) {
+    if (node::ExprListNullOrEmpty(group_sort_op->groups_) &&
+        nullptr == group_sort_op->orders_) {
         return table;
     }
-
     const Schema& schema = group_sort_op->GetFnSchema();
     const int8_t* fn = group_sort_op->GetFn();
+    return TableSortGroup(table, fn, schema, group_sort_op->GetGroupsIdxs(),
+                          group_sort_op->GetOrdersIdxs(),
+                          nullptr == group_sort_op->orders_
+                              ? true
+                              : group_sort_op->orders_->is_asc_);
+}
 
-    std::vector<int> groups_idxs;
-    std::vector<int> orders_idxs;
-
-    int idx = 0;
-
-    if (!node::ExprListNullOrEmpty(groups)) {
-        for (size_t j = 0; j < groups->children_.size(); ++j) {
-            groups_idxs.push_back(idx++);
-        }
-    }
-
-    if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_by_)) {
-        for (size_t j = 0; j < orders->order_by_->children_.size(); j++) {
-            orders_idxs.push_back(idx++);
-        }
+std::shared_ptr<DataHandler> RunSession::TableSortGroup(
+    std::shared_ptr<DataHandler> table, const int8_t* fn, const Schema& schema,
+    const std::vector<int>& groups_idxs, const std::vector<int>& orders_idxs,
+    const bool is_asc) {
+    if (!table) {
+        return std::shared_ptr<DataHandler>();
     }
 
     std::shared_ptr<DataHandler> output;
     switch (table->GetHanlderType()) {
         case kPartitionHandler:
-            output =
-                PartitionSort(table, schema, fn, orders_idxs, orders->is_asc_);
+            output = PartitionSort(table, schema, fn, orders_idxs, is_asc);
             break;
         case kTableHandler:
-            output = TableSort(table, schema, fn, orders_idxs, orders->is_asc_);
+            output = TableSort(table, schema, fn, orders_idxs, is_asc);
             break;
         default: {
             LOG(WARNING) << "fail to sort and group table: input isn't table "
@@ -666,9 +659,18 @@ std::shared_ptr<DataHandler> RunSession::TableProject(
     }
     return output_table;
 }
+
 std::shared_ptr<DataHandler> RunSession::WindowAggProject(
     const PhysicalWindowAggrerationNode* op, std::shared_ptr<DataHandler> input,
     const int32_t limit_cnt) {
+    return WindowAggProject(input, limit_cnt, op->GetFn(), op->GetFnSchema(),
+                            op->start_offset_, op->end_offset_);
+}
+
+std::shared_ptr<DataHandler> RunSession::WindowAggProject(
+    std::shared_ptr<DataHandler> input, const int32_t limit_cnt,
+    const int8_t* fn, const Schema& fn_schema, const int64_t start_offset,
+    const int64_t end_offset) {
     if (!input) {
         LOG(WARNING) << "window aggregation fail: input is null";
         return std::shared_ptr<DataHandler>();
@@ -679,20 +681,20 @@ std::shared_ptr<DataHandler> RunSession::WindowAggProject(
         return std::shared_ptr<DataHandler>();
     }
 
-    auto output_table = std::shared_ptr<MemTableHandler>(
-        new MemTableHandler(&(op->output_schema)));
+    auto output_table =
+        std::shared_ptr<MemTableHandler>(new MemTableHandler(&fn_schema));
 
     auto partitions = std::dynamic_pointer_cast<PartitionHandler>(input);
     auto iter = partitions->GetWindowIterator();
     int32_t cnt = 0;
     while (iter->Valid()) {
         auto segment = iter->GetValue();
-        CurrentHistoryWindow window(op->start_offset_);
+        CurrentHistoryWindow window(start_offset);
         while (segment->Valid()) {
             if (limit_cnt > 0 && cnt++ >= limit_cnt) {
                 break;
             }
-            const Slice row(WindowProject(op->GetFn(), segment->GetKey(),
+            const Slice row(WindowProject(fn, segment->GetKey(),
                                           segment->GetValue(), &window));
             output_table->AddRow(row);
             segment->Next();
@@ -717,6 +719,18 @@ std::string RunSession::GenerateKeys(RowView* row_view, const Schema& schema,
 std::shared_ptr<DataHandler> RunSession::IndexSeek(
     std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
     const PhysicalSeekIndexNode* seek_op) {
+    std::vector<int> idxs;
+    for (int j = 0; j < static_cast<int>(seek_op->keys_->children_.size());
+         ++j) {
+        idxs.push_back(j++);
+    }
+    return IndexSeek(left, right, seek_op->GetFn(), seek_op->GetFnSchema(),
+                     idxs);
+}
+
+std::shared_ptr<DataHandler> RunSession::IndexSeek(
+    std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
+    const int8_t* fn, const Schema& fn_schema, const std::vector<int>& idxs) {
     if (kRowHandler != left->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
@@ -726,24 +740,33 @@ std::shared_ptr<DataHandler> RunSession::IndexSeek(
     std::shared_ptr<PartitionHandler> partition =
         std::dynamic_pointer_cast<PartitionHandler>(right);
 
-    std::unique_ptr<RowView> row_view = std::move(
-        std::unique_ptr<RowView>(new RowView(seek_op->GetFnSchema())));
-    auto keys_row = Slice(
-        RowProject(seek_op->GetFn(),
-                   std::dynamic_pointer_cast<RowHandler>(left)->GetValue()));
+    std::unique_ptr<RowView> row_view =
+        std::move(std::unique_ptr<RowView>(new RowView(fn_schema)));
+    auto keys_row = Slice(RowProject(
+        fn, std::dynamic_pointer_cast<RowHandler>(left)->GetValue()));
     row_view->Reset(keys_row.buf(), keys_row.size());
-    std::vector<int> idxs;
-    for (int j = 0; j < static_cast<int>(seek_op->keys_->children_.size());
-         ++j) {
-        idxs.push_back(j++);
-    }
-    std::string key =
-        GenerateKeys(row_view.get(), seek_op->GetFnSchema(), idxs);
+
+    std::string key = GenerateKeys(row_view.get(), fn_schema, idxs);
     return partition->GetSegment(partition, key);
 }
+
 std::shared_ptr<DataHandler> RunSession::RequestUnion(
     std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
     const PhysicalRequestUnionNode* request_union_op) {
+    auto groups = request_union_op->groups_;
+    return RequestUnion(
+        left, right, request_union_op->GetFn(), request_union_op->GetFnSchema(),
+        request_union_op->GetGroupsIdxs(), request_union_op->GetOrdersIdxs(),
+        request_union_op->GetKeysIdxs(), request_union_op->start_offset_,
+        request_union_op->end_offset_);
+}
+
+std::shared_ptr<DataHandler> RunSession::RequestUnion(
+    std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
+    const int8_t* fn, const Schema& fn_schema,
+    const std::vector<int>& groups_idxs, const std::vector<int>& orders_idxs,
+    const std::vector<int>& keys_idxs, const int64_t start_offset,
+    const int64_t end_offset) {
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
@@ -754,32 +777,27 @@ std::shared_ptr<DataHandler> RunSession::RequestUnion(
         return std::shared_ptr<DataHandler>();
     }
 
+    auto output_schema = left->GetSchema();
     auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-
-    auto groups = request_union_op->groups_;
 
     auto table = std::dynamic_pointer_cast<TableHandler>(right);
     std::shared_ptr<DataHandler> output = right;
-    std::unique_ptr<RowView> row_view = std::move(
-        std::unique_ptr<RowView>(new RowView(request_union_op->GetFnSchema())));
-    auto request_fn_row = Slice(RowProject(request_union_op->GetFn(), request));
+    std::unique_ptr<RowView> row_view =
+        std::move(std::unique_ptr<RowView>(new RowView(fn_schema)));
+    auto request_fn_row = Slice(RowProject(fn, request));
     // filter by keys if need
-    if (!node::ExprListNullOrEmpty(groups)) {
+    if (!groups_idxs.empty()) {
         row_view->Reset(request_fn_row.buf(), request_fn_row.size());
         std::string request_keys =
-            GenerateKeys(row_view.get(), request_union_op->GetFnSchema(),
-                         request_union_op->GetGroupsIdxs());
+            GenerateKeys(row_view.get(), fn_schema, groups_idxs);
 
-        auto mem_table =
-            new MemTableHandler(&(request_union_op->output_schema));
+        auto mem_table = new MemTableHandler(output_schema);
         auto iter = table->GetIterator();
         while (iter->Valid()) {
-            auto row =
-                Slice(RowProject(request_union_op->GetFn(), iter->GetValue()));
+            auto row = Slice(RowProject(fn, iter->GetValue()));
             row_view->Reset(row.buf(), row.size());
             std::string keys =
-                GenerateKeys(row_view.get(), request_union_op->GetFnSchema(),
-                             request_union_op->GetGroupsIdxs());
+                GenerateKeys(row_view.get(), fn_schema, groups_idxs);
             if (request_keys == keys) {
                 mem_table->AddRow(Slice(iter->GetValue()));
             }
@@ -789,34 +807,27 @@ std::shared_ptr<DataHandler> RunSession::RequestUnion(
     }
 
     // sort by orders if need
-    if (!request_union_op->GetOrdersIdxs().empty()) {
-        output = TableSort(std::shared_ptr<DataHandler>(output),
-                           request_union_op->GetFnSchema(),
-                           request_union_op->GetFn(),
-                           request_union_op->GetOrdersIdxs(), false);
+    if (!orders_idxs.empty()) {
+        output = TableSort(std::shared_ptr<DataHandler>(output), fn_schema, fn,
+                           orders_idxs, false);
     }
 
     // build window with start and end offset
     auto window_table = std::shared_ptr<MemTableHandler>(
-        new MemTableHandler(&(request_union_op->output_schema)));
+        new MemTableHandler(output_schema));
     row_view->Reset(request_fn_row.buf(), request_fn_row.size());
 
     uint64_t start = 0;
     uint64_t end = UINT64_MAX;
 
-    if (!request_union_op->GetKeysIdxs().empty()) {
-        auto ts_idx = request_union_op->GetKeysIdxs()[0];
-        int64_t key =
-            GetColumnInt64(row_view.get(), ts_idx,
-                           request_union_op->GetFnSchema().Get(ts_idx).type());
+    if (!keys_idxs.empty()) {
+        auto ts_idx = keys_idxs[0];
+        int64_t key = GetColumnInt64(row_view.get(), ts_idx,
+                                     fn_schema.Get(ts_idx).type());
 
-        start = (key + request_union_op->start_offset_) < 0
-                    ? 0
-                    : (key + request_union_op->start_offset_);
+        start = (key + start_offset) < 0 ? 0 : (key + start_offset);
 
-        end = (key + request_union_op->end_offset_) < 0
-                  ? 0
-                  : (key + request_union_op->end_offset_);
+        end = (key + end_offset) < 0 ? 0 : (key + end_offset);
         DLOG(INFO) << "request key: " << key;
     }
 
