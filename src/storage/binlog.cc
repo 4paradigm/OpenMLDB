@@ -146,7 +146,6 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
     uint64_t failed_cnt = 0;
     uint64_t consumed = ::baidu::common::timer::now_time();
     int last_log_index = log_reader.GetLogIndex();
-    bool reach_end_log = true;
     uint32_t partition_num = whs.size();
     std::string schema = table->GetSchema();
     std::vector<::rtidb::base::ColumnDesc> columns;
@@ -192,7 +191,6 @@ bool Binlog::DumpBinlogIndexData(std::shared_ptr<Table>& table, const ::rtidb::c
             consumed = ::baidu::common::timer::now_time() - consumed;
             PDLOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
                        tid, pid, succ_cnt, failed_cnt, consumed);
-            reach_end_log = false;
             break;
         }
         if (status.IsEof()) {

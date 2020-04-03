@@ -107,7 +107,7 @@ int FileSender::SendFile(const std::string& file_name, const std::string& dir_na
         return -1;
     }
     uint64_t file_size = 0;
-    if (::rtidb::base::GetSize(full_path, file_size) < 0) {
+    if (!::rtidb::base::GetFileSize(full_path, file_size)) {
         PDLOG(WARNING, "get size failed. file[%s]", full_path.c_str());
         return -1;
     }
