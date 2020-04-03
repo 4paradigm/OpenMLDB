@@ -72,7 +72,7 @@ public:
     bool Put(const std::string& value); 
 
     bool Get(const std::string& idx_name, const std::string& key, rtidb::base::Slice& slice); 
-    bool Get(uint32_t idx, const std::string& key, rtidb::base::Slice& slice); 
+    bool Get(const std::shared_ptr<IndexDef> index_def, const std::string& key, rtidb::base::Slice& slice); 
 
     bool Delete(const std::string& pk, uint32_t idx);
 
@@ -113,28 +113,6 @@ public:
 
     void SetOffset(uint64_t offset) {
         offset_.store(offset, std::memory_order_relaxed);
-    }
-
-    std::vector<std::shared_ptr<IndexDef>> GetAllIndex() {
-        return table_index_.GetAllIndex();
-    }
-
-    std::shared_ptr<IndexDef> GetIndex(const std::string& name) {
-        return table_index_.GetIndex(name);
-    }
-
-    std::shared_ptr<IndexDef> GetIndex(uint32_t idx) {
-        return table_index_.GetIndex(idx);
-    }
-
-    bool HasAutoGen() {
-        return table_index_.HasAutoGen(); 
-    }
-    inline uint32_t GetPkId() {
-        return table_index_.GetPkId();   
-    }
-    inline ::rtidb::api::TableMeta& GetTableMeta() {
-        return table_meta_;
     }
 
 private:

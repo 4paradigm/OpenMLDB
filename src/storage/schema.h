@@ -114,14 +114,11 @@ public:
         return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->size();
     }
     bool HasAutoGen(); 
-    inline uint32_t GetPkId() {
-        return pk_idx_id_;   
-    }
-    
+    std::shared_ptr<IndexDef> GetPkIndex(); 
 
 private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
-    uint32_t pk_idx_id_;
+    std::shared_ptr<IndexDef> pk_index_;
 };
 
 }

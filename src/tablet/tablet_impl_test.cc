@@ -600,6 +600,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
+        request.set_idx_name("card");
         request.set_key("test");
         ::rtidb::api::GetResponse response;
         MockClosure closure;
@@ -631,6 +632,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     ::rtidb::api::GetRequest request;
     request.set_tid(id);
     request.set_pid(1);
+    request.set_idx_name("card");
     request.set_key("10");
     ::rtidb::api::GetResponse response;
     tablet.Get(NULL, &request, &response, &closure);
