@@ -5,6 +5,7 @@ import com._4paradigm.rtidb.client.type.DataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.xml.crypto.Data;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ public class RowBuilder {
         this.schema = schema;
         for (int idx = 0; idx < schema.size(); idx++) {
             ColumnDesc column = schema.get(idx);
-            if (column.getDataType() == DataType.Varchar) {
+            if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
                 offset_vec.add(str_field_cnt);
                 str_field_cnt++;
             } else {
@@ -91,7 +92,7 @@ public class RowBuilder {
         if (column.getDataType() != type) {
             return false;
         }
-        if (column.getDataType() != DataType.Varchar) {
+        if (column.getDataType() != DataType.Varchar || column.getDataType() != DataType.String) {
             if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                 return false;
             }
@@ -104,7 +105,7 @@ public class RowBuilder {
         byte bt = buf.get(index);
         buf.put(index, (byte) (bt | (1 << (cnt & 0x07))));
         ColumnDesc column = schema.get(cnt);
-        if (column.getDataType() == DataType.Varchar) {
+        if (column.getDataType() == DataType.Varchar || column.getDataType() == DataType.String) {
             index = str_field_start_offset + str_addr_length * offset_vec.get(cnt);
             buf.position(index);
             if (str_addr_length == 1) {
@@ -199,7 +200,7 @@ public class RowBuilder {
 
     public boolean appendString(String val) {
         int length = val.length();
-        if (val == null || !check(DataType.Varchar)) {
+        if (val == null || !check(DataType.Varchar) || !check(DataType.String)) {
             return false;
         }
         if (str_offset + length > size) {
@@ -248,6 +249,7 @@ public class RowBuilder {
             }
             boolean ok = false;
             switch (columnDesc.getDataType()) {
+                case String:
                 case Varchar:
                     ok = builder.appendString((String) row.get(columnDesc.getName()));
                     break;

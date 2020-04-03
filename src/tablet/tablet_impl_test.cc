@@ -579,6 +579,9 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         col->set_name("mcc");
         col->set_data_type(::rtidb::type::kVarchar);
         col = schema->Add();
+        col->set_name("mcc2");
+        col->set_data_type(::rtidb::type::kString);
+        col = schema->Add();
         col->set_name("image");
         col->set_data_type(::rtidb::type::kVarchar);
         ::google::protobuf::RepeatedPtrField< ::rtidb::common::ColumnKey >* ck_list =
@@ -608,7 +611,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     }
     // put some key
     ::rtidb::base::RowBuilder builder(schema_t);
-    uint32_t size = builder.CalTotalLength(10);
+    uint32_t size = builder.CalTotalLength(15);
     std::string row;
     row.resize(size);
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
@@ -616,6 +619,8 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     std::string str1 = "12345";
     ASSERT_TRUE(builder.AppendString(str1.c_str(), str1.length()));
     std::string str2 = "67890";
+    ASSERT_TRUE(builder.AppendString(str2.c_str(), str2.length()));
+    std::string str3 = "mcc12";
     ASSERT_TRUE(builder.AppendString(str2.c_str(), str2.length()));
 
     ::rtidb::api::PutRequest prequest;
@@ -643,11 +648,14 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     char* ch = NULL;
     uint32_t length = 0;
     ASSERT_EQ(view.GetString(1, &ch, &length), 0);
-    std::string str3(ch, length);
-    ASSERT_STREQ(str3.c_str(), std::string("12345").c_str());
+    std::string stra(ch, length);
+    ASSERT_STREQ(stra.c_str(), str1.c_str());
     ASSERT_EQ(view.GetString(2, &ch, &length), 0);
-    std::string str4(ch, length);
-    ASSERT_STREQ(str4.c_str(), std::string("67890").c_str());
+    std::string strb(ch, length);
+    ASSERT_STREQ(strb.c_str(), str1.c_str());
+    ASSERT_EQ(view.GetString(3, &ch, &length), 0);
+    std::string strc(ch, length);
+    ASSERT_STREQ(strc.c_str(), str3.c_str());
     //traverse interface
     rtidb::api::TraverseRequest traverse_request;
     rtidb::api::TraverseResponse traverse_response;
@@ -669,11 +677,14 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         ASSERT_EQ(view.GetInt64(0, &val), 0);
         ASSERT_EQ(val, 10l);
         ASSERT_EQ(view.GetString(1, &ch, &length), 0);
-        str3.assign(ch, length);
-        ASSERT_STREQ(str3.c_str(), str1.c_str());
+        strt.assign(ch, length);
+        ASSERT_STREQ(strt.c_str(), str1.c_str());
         ASSERT_EQ(view.GetString(2, &ch, &length), 0);
-        str3.assign(ch, length);
-        ASSERT_STREQ(str3.c_str(), str2.c_str());
+        strt.assign(ch, length);
+        ASSERT_STREQ(strt.c_str(), str2.c_str());
+        ASSERT_EQ(view.GetString(3, &ch, &length), 0);
+        strt.assign(ch, length);
+        ASSERT_STREQ(strt.c_str(), str3.c_str());
         buffer += size;
     }
     {
@@ -695,11 +706,14 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         ASSERT_EQ(view.GetInt64(0, &val), 0);
         ASSERT_EQ(val, 10l);
         ASSERT_EQ(view.GetString(1, &ch, &length), 0);
-        str3.assign(ch, length);
+        stra.assign(ch, length);
         ASSERT_STREQ(str3.c_str(), str1.c_str());
         ASSERT_EQ(view.GetString(2, &ch, &length), 0);
-        str3.assign(ch, length);
+        stra.assign(ch, length);
         ASSERT_STREQ(str3.c_str(), str2.c_str());
+        ASSERT_EQ(view.GetString(3, &ch, &length), 0);
+        stra.assign(ch, length);
+        ASSERT_STREQ(str3.c_str(), str3.c_str());
     }
     //drop table
     {

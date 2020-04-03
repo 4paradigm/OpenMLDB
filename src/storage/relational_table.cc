@@ -244,8 +244,9 @@ bool RelationalTable::Put(const std::string& value) {
                 pk = std::to_string(bi_val);
                 break;
             }
-            case ::rtidb::type::kVarchar: {  
-                char* ch = NULL;
+            case ::rtidb::type::kString:
+            case ::rtidb::type::kVarchar: {
+                    char* ch = NULL;
                 uint32_t length = 0;
                 view.GetString(index, &ch, &length);
                 pk.assign(ch, length);
@@ -399,37 +400,33 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     for (int i = 0; i < condition_schema.size(); i++) {
         pk_data_type = condition_schema.Get(i).data_type();
         switch(pk_data_type) {
-            case ::rtidb::type::kSmallInt:
-            { 
+            case ::rtidb::type::kSmallInt: {
                 int16_t val1 = 0;
                 cd_view.GetInt16(i, &val1);
                 pk = std::to_string(val1);
                 break;
             }
-            case ::rtidb::type::kInt:
-            { 
+            case ::rtidb::type::kInt: {
                 int32_t val2 = 0;
                 cd_view.GetInt32(i, &val2);
                 pk = std::to_string(val2);
                 break;
             }
-            case ::rtidb::type::kBigInt:
-            {  
+            case ::rtidb::type::kBigInt: {
                 int64_t val3 = 0;
                 cd_view.GetInt64(i, &val3);
                 pk = std::to_string(val3);
                 break;
             }
-            case ::rtidb::type::kVarchar:
-            {
+            case ::rtidb::type::kString:
+            case ::rtidb::type::kVarchar: {
                 char* ch = NULL;
                 uint32_t length = 0;
                 cd_view.GetString(i, &ch, &length);
                 pk.assign(ch, length);
                 break;
             }
-            default:
-            {
+            default: {
                 PDLOG(WARNING, "unsupported data type %s", 
                     rtidb::type::DataType_Name(pk_data_type).c_str());
                 return false;
@@ -451,7 +448,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     ::rtidb::base::RowView value_view(value_schema, reinterpret_cast<int8_t*>(const_cast<char*>(&(col_value[0]))), col_value_size);
     uint32_t string_length = 0; 
     for (int i = 0; i < schema.size(); i++) {
-        if (schema.Get(i).data_type() == rtidb::type::kVarchar) {
+        if (schema.Get(i).data_type() == rtidb::type::kVarchar || schema.Get(i).data_type() == rtidb::type::kString) {
             auto col_iter = col_idx_map.find(schema.Get(i).name());
             if (col_iter != col_idx_map.end()) {
                 char* ch = NULL;
@@ -482,7 +479,8 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
                 continue;
             }
         }
-        if (schema.Get(i).data_type() == rtidb::type::kBool) {
+        rtidb::type::DataType cur_type = schema.Get(i).data_type();
+        if (cur_type == rtidb::type::kBool) {
             bool val = true;
             if (col_iter != col_idx_map.end()) {
                 value_view.GetBool(col_iter->second, &val);
@@ -490,7 +488,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
                 row_view.GetBool(i, &val);
             }
             builder.AppendBool(val);
-        } else if (schema.Get(i).data_type() == rtidb::type::kSmallInt) {
+        } else if (cur_type == rtidb::type::kSmallInt) {
             int16_t val = 0;
             if (col_iter != col_idx_map.end()) {
                 value_view.GetInt16(col_iter->second, &val);
@@ -498,7 +496,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
                 row_view.GetInt16(i, &val);
             }
             builder.AppendInt16(val);
-        } else if (schema.Get(i).data_type() == rtidb::type::kInt) {
+        } else if (cur_type == rtidb::type::kInt) {
             int32_t val = 0;
             if (col_iter != col_idx_map.end()) {
                 value_view.GetInt32(col_iter->second, &val);
@@ -506,7 +504,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
                 row_view.GetInt32(i, &val);
             }
             builder.AppendInt32(val);
-        } else if (schema.Get(i).data_type() == rtidb::type::kBigInt) {
+        } else if (cur_type == rtidb::type::kBigInt) {
             int64_t val = 0;
             if (col_iter != col_idx_map.end()) {
                 value_view.GetInt64(col_iter->second, &val);
@@ -514,7 +512,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
                 row_view.GetInt64(i, &val);
             }
             builder.AppendInt64(val);
-        } else if (schema.Get(i).data_type() == rtidb::type::kTimestamp) {
+        } else if (cur_type == rtidb::type::kTimestamp) {
             int64_t val = 0;
             if (col_iter != col_idx_map.end()) {
                 value_view.GetTimestamp(col_iter->second, &val);
@@ -522,7 +520,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
                 row_view.GetTimestamp(i, &val);
             }
             builder.AppendTimestamp(val);
-        } else if (schema.Get(i).data_type() == rtidb::type::kFloat) {
+        } else if (cur_type == rtidb::type::kFloat) {
             float val = 0.0;
             if (col_iter != col_idx_map.end()) {
                 value_view.GetFloat(col_iter->second, &val);
@@ -530,7 +528,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
                 row_view.GetFloat(i, &val);
             }
             builder.AppendFloat(val);
-        } else if (schema.Get(i).data_type() == rtidb::type::kDouble) {
+        } else if (cur_type == rtidb::type::kDouble) {
             double val = 0.0;
             if (col_iter != col_idx_map.end()) {
                 value_view.GetDouble(col_iter->second, &val);
@@ -538,7 +536,7 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
                 row_view.GetDouble(i, &val);
             }
             builder.AppendDouble(val);
-        } else if (schema.Get(i).data_type() == rtidb::type::kVarchar) {
+        } else if (cur_type == rtidb::type::kVarchar || cur_type == rtidb::type::kString) {
             char* ch = NULL;
             uint32_t length = 0;
             if (col_iter != col_idx_map.end()) {
