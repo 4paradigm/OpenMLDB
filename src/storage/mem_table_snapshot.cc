@@ -678,7 +678,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     if (making_snapshot_.load(std::memory_order_acquire)) {
-        PDLOG(INFO, "snapshot is doing now!");
+        PDLOG(INFO, "snapshot is making now. tid %u, pid %u", tid, pid);
         return 0;
     }
     making_snapshot_.store(true, std::memory_order_release);
@@ -689,7 +689,8 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
     std::string tmp_file_path = snapshot_path_ + snapshot_name_tmp;
     FILE* fd = fopen(tmp_file_path.c_str(), "ab+");
     if (fd == NULL) {
-        PDLOG(WARNING, "fail to create file %s", tmp_file_path.c_str());
+        PDLOG(WARNING, "fail to create file %s. tid %u, pid %u", 
+                tmp_file_path.c_str(), tid, pid);
         making_snapshot_.store(false, std::memory_order_release);
         return -1;
     }
@@ -709,7 +710,8 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
         ::rtidb::base::SchemaCodec codec;
         codec.Decode(schema, columns);
     } else {
-        PDLOG(INFO, "schema of table tid[%u] pid[%u]is empty", tid, pid);
+        PDLOG(INFO, "schema is empty. tid %u, pid %u", tid, pid);
+        making_snapshot_.store(false, std::memory_order_release);
         return true;
     }
 
@@ -736,7 +738,9 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
                 max_idx = idx;
             }
         } else {
-            PDLOG(WARNING, "fail to find column_desc %s", name.c_str());
+            PDLOG(WARNING, "fail to find column_desc %s. tid %u, pid %u", 
+                    name.c_str(), tid, pid);
+            making_snapshot_.store(false, std::memory_order_release);
             return false;
         }
     }
@@ -766,8 +770,8 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
         if (status.ok()) {
             ::rtidb::api::LogEntry entry;
             if (!entry.ParseFromString(record.ToString())) {
-                PDLOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]",
-                        ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+                PDLOG(WARNING, "fail to parse LogEntry. record %s size %ld tid %u pid %u",
+                        ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size(), tid, pid);
                 has_error = true;
                 break;
             }
@@ -775,7 +779,8 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, ::rtidb::co
                 continue;
             }
             if (cur_offset + 1 != entry.log_index()) {
-                PDLOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
+                PDLOG(WARNING, "log missing expect offset %lu but %ld. tid %u pid %u", 
+                        cur_offset + 1, entry.log_index(), tid, pid);
                 continue;
             }
             cur_offset = entry.log_index();
