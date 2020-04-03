@@ -58,6 +58,9 @@ DEFINE_int32(binlog_name_length, 8, "binlog name length");
 DEFINE_uint32(check_binlog_sync_progress_delta, 100000, "config the delta of check binlog sync progress");
 DEFINE_uint32(go_back_max_try_cnt, 10, "config max try time of go back");
 
+DEFINE_uint32(put_slow_log_threshold, 50000, "config the threshold of put slow log");
+DEFINE_uint32(query_slow_log_threshold, 50000, "config the threshold of query slow log");
+
 // local db config
 DEFINE_string(db_root_path, "/tmp/", "the root path of db");
 DEFINE_string(ssd_root_path, "", "the root ssd path of db");
