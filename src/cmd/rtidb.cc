@@ -2083,7 +2083,8 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
             uint32_t count = 0;
             bool is_finish = false;
             std::string err_msg;
-            bool ok = tablet_client->Traverse(tid, pid, last_pk, limit, &count, &err_msg, &data, &is_finish);
+            uint64_t snapshot_id = 0;
+            bool ok = tablet_client->Traverse(tid, pid, last_pk, limit, &count, &err_msg, &data, &is_finish, &snapshot_id);
             if (!ok) {
                 std::cerr << "Fail to preview table" << std::endl;
             }
