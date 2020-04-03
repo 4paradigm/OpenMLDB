@@ -225,7 +225,6 @@ const uint64_t TabletSegmentHandler::GetCount() {
 }
 base::Slice TabletSegmentHandler::At(uint64_t pos) {
     auto iter = GetIterator();
-    uint64_t cnt = 0;
     while (pos-- > 0 && iter->Valid()) {
         iter->Next();
     }
