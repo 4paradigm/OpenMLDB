@@ -194,7 +194,8 @@ void BuildWindow(std::vector<Slice>& rows,  // NOLINT
         rows.push_back(Slice(ptr, total_size));
     }
 
-    ::fesql::codec::ArrayListV<Slice>* w = new ::fesql::codec::ArrayListV<Slice>(&rows);
+    ::fesql::codec::ArrayListV<Slice>* w =
+        new ::fesql::codec::ArrayListV<Slice>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void BuildWindowUnique(std::vector<Slice>& rows,  // NOLINT
@@ -286,12 +287,12 @@ void BuildWindowUnique(std::vector<Slice>& rows,  // NOLINT
         rows.push_back(Slice(ptr, total_size));
     }
 
-    ::fesql::codec::ArrayListV<Slice>* w = new ::fesql::codec::ArrayListV<Slice>(&rows);
+    ::fesql::codec::ArrayListV<Slice>* w =
+        new ::fesql::codec::ArrayListV<Slice>(&rows);
     *buf = reinterpret_cast<int8_t*>(w);
 }
 void StoreData(::fesql::storage::Table* table, int8_t* rows) {
-    ArrayListV<Slice>* window =
-        reinterpret_cast<ArrayListV<Slice>*>(rows);
+    ArrayListV<Slice>* window = reinterpret_cast<ArrayListV<Slice>*>(rows);
     auto w = window->GetIterator();
     ASSERT_TRUE(w->Valid());
     Slice row = w->GetValue();
@@ -877,6 +878,7 @@ TEST_F(EngineTest, test_multi_windows_agg) {
     ASSERT_TRUE(ok);
     std::vector<int8_t*> output;
     int32_t ret = session.Run(output, 10);
+    ASSERT_EQ(0, ret);
     int8_t* output_1 = output[3];
     int8_t* output_22 = output[4];
     int8_t* output_333 = output[0];

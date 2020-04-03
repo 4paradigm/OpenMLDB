@@ -14,6 +14,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <string>
 #include "base/slice.h"
 #include "codec/type_codec.h"
 #include "glog/logging.h"

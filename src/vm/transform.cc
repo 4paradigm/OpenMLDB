@@ -979,7 +979,8 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
 
                     PhysicalScanIndexNode* scan_index_op =
                         new PhysicalScanIndexNode(
-                            scan_op->table_handler_,
+                            scan_op->table_handler_->GetPartition(
+                                scan_op->table_handler_, index_name),
                             index_name);
                     node_manager_->RegisterNode(scan_index_op);
 
@@ -1018,8 +1019,10 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                        index_st, &new_orders);
 
                     PhysicalScanIndexNode* scan_index_op =
-                        new PhysicalScanIndexNode(scan_op->table_handler_,
-                                                  index_name);
+                        new PhysicalScanIndexNode(
+                            scan_op->table_handler_->GetPartition(
+                                scan_op->table_handler_, index_name),
+                            index_name);
                     node_manager_->RegisterNode(scan_index_op);
 
                     PhysicalGroupAndSortNode* new_group_sort_op =
@@ -1054,8 +1057,10 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                        index_st, &new_orders);
 
                     PhysicalScanIndexNode* scan_index_op =
-                        new PhysicalScanIndexNode(scan_op->table_handler_,
-                                                  index_name);
+                        new PhysicalScanIndexNode(
+                            scan_op->table_handler_->GetPartition(
+                                scan_op->table_handler_, index_name),
+                            index_name);
                     PhysicalSeekIndexNode* seek_index_op =
                         new PhysicalSeekIndexNode(union_op->GetProducers()[0],
                                                   scan_index_op, keys);

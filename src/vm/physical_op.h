@@ -218,7 +218,7 @@ class PhysicalScanIndexNode : public PhysicalDataProviderNode {
  public:
     PhysicalScanIndexNode(const std::shared_ptr<TableHandler> table_handler,
                           const std::string &index_name)
-        : PhysicalDataProviderNode(table_handler->GetPartition(index_name),
+        : PhysicalDataProviderNode(table_handler,
                                    kProviderTypeIndexScan),
           index_name_(index_name) {
         output_type = kSchemaTypeGroup;

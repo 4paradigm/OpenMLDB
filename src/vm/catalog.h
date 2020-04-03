@@ -18,7 +18,6 @@
 #ifndef SRC_VM_CATALOG_H_
 #define SRC_VM_CATALOG_H_
 
-#include <codec/list_iterator_codec.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -108,7 +107,8 @@ class TableHandler : public DataHandler {
     virtual base::Slice At(uint64_t pos) { return base::Slice(); }
     const HandlerType GetHanlderType() override { return kTableHandler; }
     virtual std::shared_ptr<PartitionHandler> GetPartition(
-        const std::string& index_name) {
+        std::shared_ptr<TableHandler> table_hander,
+        const std::string& index_name) const {
         return std::shared_ptr<PartitionHandler>();
     }
 };
@@ -131,7 +131,9 @@ class PartitionHandler : public TableHandler {
     virtual const bool IsAsc() = 0;
     const HandlerType GetHanlderType() override { return kPartitionHandler; }
     virtual base::Slice At(uint64_t pos) { return base::Slice(); }
-    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
+    virtual std::shared_ptr<TableHandler> GetSegment(
+        std::shared_ptr<PartitionHandler> partition_hander,
+        const std::string& key) {
         return std::shared_ptr<TableHandler>();
     }
 };

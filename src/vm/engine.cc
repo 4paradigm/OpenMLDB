@@ -138,6 +138,9 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
     auto output = RunPhysicalPlan(compile_info_->sql_ctx.plan);
+    if (!output) {
+        return std::shared_ptr<TableHandler>();
+    }
     switch (output->GetHanlderType()) {
         case kTableHandler: {
             return std::dynamic_pointer_cast<TableHandler>(output);
@@ -736,7 +739,7 @@ std::shared_ptr<DataHandler> RunSession::IndexSeek(
     }
     std::string key =
         GenerateKeys(row_view.get(), seek_op->GetFnSchema(), idxs);
-    return partition->GetSegment(key);
+    return partition->GetSegment(partition, key);
 }
 std::shared_ptr<DataHandler> RunSession::RequestUnion(
     std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,

@@ -34,10 +34,12 @@ using vm::TableHandler;
 using vm::WindowIterator;
 
 class TabletPartitionHandler;
+class TabletTableHandler;
+class TabletSegmentHandler;
 
-class TabletSegmentHandler : public vm::TableHandler {
+class TabletSegmentHandler : public TableHandler {
  public:
-    TabletSegmentHandler(std::shared_ptr<vm::PartitionHandler> partition_hander,
+    TabletSegmentHandler(std::shared_ptr<PartitionHandler> partition_hander,
                          const std::string& key);
 
     ~TabletSegmentHandler();
@@ -75,7 +77,7 @@ class TabletPartitionHandler : public PartitionHandler {
  public:
     TabletPartitionHandler(std::shared_ptr<TableHandler> table_hander,
                            const std::string& index_name)
-        : vm::PartitionHandler(),
+        : PartitionHandler(),
           table_handler_(table_hander),
           index_name_(index_name) {}
 
@@ -99,9 +101,11 @@ class TabletPartitionHandler : public PartitionHandler {
     }
     const uint64_t GetCount() override;
 
-    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
-        return std::shared_ptr<TableHandler>(new TabletSegmentHandler(
-            static_cast<std::shared_ptr<PartitionHandler>>(this), key));
+    virtual std::shared_ptr<TableHandler> GetSegment(
+        std::shared_ptr<PartitionHandler> partition_hander,
+        const std::string& key) {
+        return std::shared_ptr<TabletSegmentHandler>(
+            new TabletSegmentHandler(partition_hander, key));
     }
 
  private:
@@ -143,16 +147,22 @@ class TabletTableHandler : public vm::TableHandler {
     base::Slice At(uint64_t pos) override;
 
     virtual std::shared_ptr<PartitionHandler> GetPartition(
-        const std::string& index_name) {
-        if (index_hint_.find(index_name) == index_hint_.cend()) {
+        std::shared_ptr<TableHandler> table_hander,
+        const std::string& index_name) const {
+        if (!table_hander) {
+            LOG(WARNING) << "fail to get partition for tablet table handler: "
+                            "table handler is null";
+            return std::shared_ptr<PartitionHandler>();
+        }
+        if (table_hander->GetIndex().find(index_name) ==
+            table_hander->GetIndex().cend()) {
             LOG(WARNING)
                 << "fail to get partition for tablet table handler, index name "
                 << index_name;
             return std::shared_ptr<PartitionHandler>();
         }
         return std::shared_ptr<TabletPartitionHandler>(
-            new TabletPartitionHandler(
-                static_cast<std::shared_ptr<TableHandler>>(this), index_name));
+            new TabletPartitionHandler(table_hander, index_name));
     }
 
  private:

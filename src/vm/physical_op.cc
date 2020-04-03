@@ -223,9 +223,15 @@ void PhysicalFliterNode::Print(std::ostream& output,
 
 bool PhysicalDataProviderNode::InitSchema() {
     if (table_handler_) {
-        output_schema.CopyFrom(*(table_handler_->GetSchema()));
-        PrintSchema();
-        return true;
+        auto schema = table_handler_->GetSchema();
+        if (schema) {
+            output_schema.CopyFrom(*schema);
+            PrintSchema();
+            return true;
+        } else {
+            LOG(WARNING) << "InitSchema fail: table shcme ais null";
+            return false;
+        }
     } else {
         LOG(WARNING) << "InitSchema fail: table handler is null";
         return false;

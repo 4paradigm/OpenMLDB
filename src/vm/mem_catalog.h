@@ -18,8 +18,8 @@
 #include <vector>
 #include "base/slice.h"
 #include "codec/list_iterator_codec.h"
-#include "vm/catalog.h"
 #include "glog/logging.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace vm {
@@ -132,6 +132,7 @@ class MemTableHandler : public TableHandler {
         return pos >= 0 && pos < table_.size() ? table_.at(pos).second
                                                : base::Slice();
     }
+
  protected:
     const std::string table_name_;
     const std::string db_;
