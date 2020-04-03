@@ -39,6 +39,7 @@ DECLARE_uint32(max_traverse_cnt);
 DECLARE_bool(recycle_bin_enabled);
 DECLARE_string(db_root_path);
 DECLARE_string(recycle_bin_root_path);
+DECLARE_string(endpoint);
 DECLARE_uint32(recycle_ttl);
 
 namespace rtidb {
@@ -6021,6 +6022,71 @@ TEST_F(TabletImplTest, DumpIndex) {
         ASSERT_EQ(0, dump_response.code());
     }
     FLAGS_make_snapshot_threshold_offset = old_offset;
+}
+
+TEST_F(TabletImplTest, SendIndexData) {
+    TabletImpl tablet;
+    tablet.Init();
+    MockClosure closure;
+    uint32_t id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_ttl(0);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    std::string index_file_path = FLAGS_db_root_path + "/" + std::to_string(id) + "_0/index/";
+    ::rtidb::base::MkdirRecur(index_file_path);
+    std::string index_file = index_file_path + "0_1_index.data";
+	FILE* f = fopen(index_file.c_str(), "w+");
+    ASSERT_TRUE(f != NULL);
+    for (int i = 0; i < 1000; ++i) {
+        fputc('6', f);
+    }
+    fclose(f);
+    uint64_t src_size = 0;
+    ::rtidb::base::GetFileSize(index_file, src_size);
+	::rtidb::api::SendIndexDataRequest request;
+	request.set_tid(id);
+	request.set_pid(0);
+    ::rtidb::api::SendIndexDataRequest_EndpointPair* pair = request.add_pairs();
+    pair->set_pid(1);
+    pair->set_endpoint(FLAGS_endpoint);
+    ::rtidb::api::GeneralResponse response;
+    tablet.SendIndexData(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+    sleep(2);
+    std::string des_index_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/index/0_1_index.data";
+    uint64_t des_size = 0;
+    ::rtidb::base::GetFileSize(des_index_file, des_size);
+    ASSERT_TRUE(::rtidb::base::IsExists(des_index_file));
+    ASSERT_EQ(src_size, des_size);
+    ::rtidb::base::RemoveDirRecursive(FLAGS_db_root_path);
 }
 
 }
