@@ -179,11 +179,7 @@ static void BM_EngineSimpleSelectDouble(benchmark::State& state) {  // NOLINT
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
-        std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.Run(output, 2));
-        for (int8_t* row : output) {
-            free(row);
-        }
+        benchmark::DoNotOptimize(session.Run());
     }
 }
 
@@ -207,11 +203,7 @@ static void BM_EngineSimpleSelectVarchar(benchmark::State& state) {  // NOLINT
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
-        std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.Run(output, 2));
-        for (int8_t* row : output) {
-            free(row);
-        }
+        benchmark::DoNotOptimize(session.Run());
     }
 }
 
@@ -235,11 +227,7 @@ static void BM_EngineSimpleSelectInt32(benchmark::State& state) {  // NOLINT
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
-        std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.Run(output, 2));
-        for (int8_t* row : output) {
-            free(row);
-        }
+        benchmark::DoNotOptimize(session.Run());
     }
 }
 
@@ -265,11 +253,7 @@ static void BM_EngineSimpleUDF(benchmark::State& state) {  // NOLINT
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
-        std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.Run(output, 2));
-        for (int8_t* row : output) {
-            free(row);
-        }
+        benchmark::DoNotOptimize(session.Run());
     }
 }
 
@@ -295,11 +279,7 @@ static void BM_EngineWindowSumFeature1(benchmark::State& state) {  // NOLINT
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
-        std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.Run(output, limit_cnt));
-        for (int8_t* row : output) {
-            free(row);
-        }
+        benchmark::DoNotOptimize(session.Run());
     }
 }
 
@@ -326,11 +306,7 @@ static void BM_EngineRunBatchWindowSumFeature1(
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
-        std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.Run(output, limit_cnt));
-        for (int8_t* row : output) {
-            free(row);
-        }
+        benchmark::DoNotOptimize(session.Run());
     }
 }
 static void BM_EngineRunBatchWindowSumFeature5(
@@ -358,11 +334,7 @@ static void BM_EngineRunBatchWindowSumFeature5(
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
-        std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.Run(output, limit_cnt));
-        for (int8_t* row : output) {
-            free(row);
-        }
+        benchmark::DoNotOptimize(session.Run());
     }
 }
 
@@ -391,11 +363,7 @@ static void BM_EngineWindowSumFeature5(benchmark::State& state) {  // NOLINT
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     for (auto _ : state) {
-        std::vector<int8_t*> output(2);
-        benchmark::DoNotOptimize(session.Run(output, limit_cnt));
-        for (int8_t* row : output) {
-            free(row);
-        }
+        benchmark::DoNotOptimize(session.Run());
     }
 }
 

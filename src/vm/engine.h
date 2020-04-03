@@ -93,10 +93,10 @@ class RunSession {
                                            const bool is_asc);
     std::shared_ptr<DataHandler> TableProject(
         const int8_t* fn, std::shared_ptr<DataHandler> table,
-        Schema output_schema);
+        const int32_t limit_cnt, Schema output_schema);
     std::shared_ptr<DataHandler> WindowAggProject(
         const PhysicalWindowAggrerationNode* op,
-        std::shared_ptr<DataHandler> input);
+        std::shared_ptr<DataHandler> input, const uint32_t limit_cnt);
     std::string GenerateKeys(storage::RowView* row_view, const Schema& schema,
                              const std::vector<int>& idxs);
     std::shared_ptr<DataHandler> IndexSeek(
@@ -117,6 +117,7 @@ class BatchRunSession : public RunSession {
         : RunSession(), mini_batch_(mini_batch) {}
     ~BatchRunSession() {}
     virtual int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
+    std::shared_ptr<TableHandler> Run();
     const bool IsBatchRun() const override { return true; }
 
  private:

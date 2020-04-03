@@ -79,6 +79,7 @@ class TransformPass {
     TransformPass(node::NodeManager* node_manager, const std::string& db,
                   const std::shared_ptr<Catalog>& catalog)
         : db_(db), catalog_(catalog), node_manager_(node_manager) {}
+    virtual ~TransformPass() {}
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
 
@@ -93,6 +94,7 @@ class TransformUpPysicalPass : public TransformPass<PhysicalOpNode*> {
                            const std::string& db,
                            const std::shared_ptr<Catalog>& catalog)
         : TransformPass<PhysicalOpNode*>(node_manager, db, catalog) {}
+    ~TransformUpPysicalPass() {}
     virtual bool Apply(PhysicalOpNode* in, PhysicalOpNode** out);
 };
 
@@ -101,6 +103,7 @@ class ExprTransformPass : public TransformPass<node::ExprNode*> {
     ExprTransformPass(node::NodeManager* node_manager, const std::string& db,
                       const std::shared_ptr<Catalog>& catalog)
         : TransformPass<node::ExprNode*>(node_manager, db, catalog) {}
+    ~ExprTransformPass() {}
 };
 
 class CanonicalizeExprTransformPass : public ExprTransformPass {
@@ -109,6 +112,7 @@ class CanonicalizeExprTransformPass : public ExprTransformPass {
                                   const std::string& db,
                                   const std::shared_ptr<Catalog>& catalog)
         : ExprTransformPass(node_manager, db, catalog) {}
+    ~CanonicalizeExprTransformPass() {}
     virtual bool Transform(node::ExprNode* in, node::ExprNode** output);
 };
 
@@ -118,6 +122,8 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                           const std::string& db,
                           const std::shared_ptr<Catalog>& catalog)
         : TransformUpPysicalPass(node_manager, db, catalog) {}
+
+    ~GroupAndSortOptimized() {}
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
@@ -134,6 +140,18 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         std::string* index_name);  // NOLINT
 };
 
+class LimitOptimized : public TransformUpPysicalPass {
+ public:
+    LimitOptimized(node::NodeManager* node_manager, const std::string& db,
+                   const std::shared_ptr<Catalog>& catalog)
+        : TransformUpPysicalPass(node_manager, db, catalog) {}
+    ~LimitOptimized() {}
+
+ private:
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+
+    static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
+};
 class LeftJoinOptimized : public TransformUpPysicalPass {
  public:
     LeftJoinOptimized(node::NodeManager* node_manager, const std::string& db,
@@ -151,7 +169,8 @@ typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
 
 enum PhysicalPlanPassType {
     kPassGroupAndSortOptimized,
-    kPassLeftJoinOptimized
+    kPassLeftJoinOptimized,
+    kPassLimitOptimized
 };
 
 inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
@@ -160,6 +179,8 @@ inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
             return "PassGroupByOptimized";
         case kPassLeftJoinOptimized:
             return "PassLeftJoinOptimized";
+        case kPassLimitOptimized:
+            return "PassLimitOptimized";
         default:
             return "unknowPass";
     }

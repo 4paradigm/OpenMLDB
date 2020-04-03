@@ -695,6 +695,7 @@ bool BatchModeTransformer::GenProjects(const Schema& input_schema,
 bool BatchModeTransformer::AddDefaultPasses() {
     AddPass(kPassLeftJoinOptimized);
     AddPass(kPassGroupAndSortOptimized);
+    AddPass(kPassLimitOptimized);
     return false;
 }
 
@@ -848,6 +849,14 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
             }
             case kPassLeftJoinOptimized: {
                 LeftJoinOptimized pass(node_manager_, db_, catalog_);
+                PhysicalOpNode* new_op = nullptr;
+                if (pass.Apply(physical_plan, &new_op)) {
+                    physical_plan = new_op;
+                }
+                break;
+            }
+            case kPassLimitOptimized: {
+                LimitOptimized pass(node_manager_, db_, catalog_);
                 PhysicalOpNode* new_op = nullptr;
                 if (pass.Apply(physical_plan, &new_op)) {
                     physical_plan = new_op;
@@ -1209,6 +1218,52 @@ bool GroupAndSortOptimized::MatchBestIndex(
     return succ;
 }
 
+bool LimitOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
+    *output = in;
+    if (kPhysicalOpLimit != in->type_) {
+        return false;
+    }
+
+    auto limit_op = dynamic_cast<PhysicalLimitNode*>(in);
+
+    if (ApplyLimitCnt(in->GetProducers()[0], limit_op->GetLimitCnt())) {
+        limit_op->SetLimitOptimized(true);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
+    if (kPhysicalOpLimit == node->type_) {
+        auto limit_op = dynamic_cast<PhysicalLimitNode*>(node);
+        if (0 == node->GetLimitCnt() || limit_op->GetLimitCnt() > limit_cnt) {
+            if (limit_op->GetLimitOptimized()) {
+                return ApplyLimitCnt(node->GetProducers()[0], limit_cnt);
+            } else {
+                limit_op->SetLimitCnt(limit_cnt);
+            }
+        }
+        return true;
+    }
+    if (node->GetProducers().empty()) {
+        return false;
+    }
+    if (node->is_block_) {
+        if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
+            node->SetLimitCnt(limit_cnt);
+        }
+        return true;
+    } else {
+        if (false == ApplyLimitCnt(node->GetProducers()[0], limit_cnt)) {
+            if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
+                node->SetLimitCnt(limit_cnt);
+            }
+        } else {
+            return true;
+        }
+    }
+}
 // This is primarily intended to be used on top-level WHERE (or JOIN/ON)
 // clauses.  It can also be used on top-level CHECK constraints, for which
 // pass is_check = true.  DO NOT call it on any expression that is not known
@@ -1555,5 +1610,6 @@ bool RequestModeransformer::TransformProjecPlantOp(
                                          output, status);
     }
 }
+
 }  // namespace vm
 }  // namespace fesql
