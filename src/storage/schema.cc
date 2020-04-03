@@ -27,7 +27,7 @@ IndexDef::IndexDef(const std::string& name, uint32_t id,
 IndexDef::~IndexDef() {
 }
 
-TableIndex::TableIndex() : has_auto_gen_(false) {
+TableIndex::TableIndex() : pk_idx_id_(0) {
     indexs_ = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>();
 }
 
@@ -42,6 +42,13 @@ void TableIndex::ReSet() {
 void TableIndex::SetAllIndex(const std::vector<std::shared_ptr<IndexDef>>& index_vec) {
     auto new_indexs = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>(index_vec);
     std::atomic_store_explicit(&indexs_, new_indexs, std::memory_order_relaxed);
+    for (auto index_def : index_vec) {
+        if (index_def->GetType() == ::rtidb::type::kPrimaryKey || 
+                index_def->GetType() == ::rtidb::type::kAutoGen) {
+            pk_idx_id_ = index_def->GetId();
+            break;
+        } 
+    }
 }
 
 std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx) {
@@ -66,6 +73,14 @@ std::vector<std::shared_ptr<IndexDef>> TableIndex::GetAllIndex() {
     return *std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
 }
 
+bool TableIndex::HasAutoGen() {
+    std::shared_ptr<IndexDef> index_def = GetIndex(pk_idx_id_);
+    if (index_def && index_def->GetType() == ::rtidb::type::kAutoGen) {
+        return true;
+    }
+    return false;
+}
+
 void TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
     auto old_indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
     auto new_indexs = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>(*old_indexs);
@@ -73,10 +88,8 @@ void TableIndex::AddIndex(std::shared_ptr<IndexDef> index_def) {
     std::atomic_store_explicit(&indexs_, new_indexs, std::memory_order_relaxed);
     if (index_def->GetType() == ::rtidb::type::kPrimaryKey || 
             index_def->GetType() == ::rtidb::type::kAutoGen) {
-        pk_name_ = index_def->GetName();
-    } else if (index_def->GetType() == ::rtidb::type::kAutoGen) {
-        has_auto_gen_ = true;
-    }
+        pk_idx_id_ = index_def->GetId();
+    } 
 }
 
 }

@@ -71,10 +71,8 @@ public:
 
     bool Put(const std::string& value); 
 
-    bool Put(const std::string& value,
-             const Dimensions& dimensions);
-
-    bool Get(const std::string& col_name, const std::string& key, rtidb::base::Slice& slice); 
+    bool Get(const std::string& idx_name, const std::string& key, rtidb::base::Slice& slice); 
+    bool Get(uint32_t idx, const std::string& key, rtidb::base::Slice& slice); 
 
     bool Delete(const std::string& pk, uint32_t idx);
 
@@ -129,26 +127,25 @@ public:
         return table_index_.GetIndex(idx);
     }
 
-    inline bool HasAutoGen() {
+    bool HasAutoGen() {
         return table_index_.HasAutoGen(); 
     }
-    inline std::string& GetPkName() {
-        return table_index_.GetPkName(); 
+    inline uint32_t GetPkId() {
+        return table_index_.GetPkId();   
     }
-    
     inline ::rtidb::api::TableMeta& GetTableMeta() {
         return table_meta_;
     }
 
 private:
-    static inline rocksdb::Slice CombineNoUniqueAndPk(const std::string& no_unique, 
+    static inline std::string CombineNoUniqueAndPk(const std::string& no_unique, 
             const std::string& pk) {
         std::string result;
         result.resize(no_unique.size() + pk.size());
         char* buf = const_cast<char*>(&(result[0]));
         memcpy(buf, no_unique.c_str(), no_unique.size());
         memcpy(buf + no_unique.size(), pk.c_str(), pk.size());
-        return rocksdb::Slice(result);
+        return result;
     }
     static inline int ParsePk(const rocksdb::Slice& value, const std::string& key, std::string* pk) {
         if (value.size() < key.size()) {
