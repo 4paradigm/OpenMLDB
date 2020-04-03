@@ -597,6 +597,10 @@ NameServerImpl::~NameServerImpl() {
     running_.store(false, std::memory_order_release);
     thread_pool_.Stop(true);
     task_thread_pool_.Stop(true);
+    if (dist_lock_ != NULL) {
+        dist_lock_->Stop();
+        delete dist_lock_;
+    }
     delete zk_client_;
 }
 
