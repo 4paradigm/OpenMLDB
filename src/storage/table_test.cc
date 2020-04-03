@@ -92,7 +92,7 @@ TEST_F(TableTest, SingleIndexIterator) {
     iter->SeekToFirst();
     ASSERT_TRUE(iter->Valid());
     while (iter->Valid()) {
-        char* ch;
+        char* ch = nullptr;
         uint32_t length = 0;
         view.GetValue(reinterpret_cast<const int8_t*>(iter->GetValue().data()),
                       2, &ch, &length);
@@ -108,7 +108,7 @@ TEST_F(TableTest, SingleIndexIterator) {
     iter->SeekToFirst();
     ASSERT_TRUE(iter->Valid());
     while (iter->Valid()) {
-        char* ch;
+        char* ch = nullptr;
         uint32_t length = 0;
         view.GetValue(reinterpret_cast<const int8_t*>(iter->GetValue().data()),
                       2, &ch, &length);
@@ -258,7 +258,7 @@ TEST_F(TableTest, MultiIndexIterator) {
     iter->SeekToFirst();
     ASSERT_TRUE(iter->Valid());
     while (iter->Valid()) {
-        char* ch;
+        char* ch = nullptr;
         uint32_t length = 0;
         view.GetValue(reinterpret_cast<const int8_t*>(iter->GetValue().data()),
                       0, &ch, &length);
@@ -271,7 +271,7 @@ TEST_F(TableTest, MultiIndexIterator) {
     count = 0;
     iter->SeekToFirst();
     while (iter->Valid()) {
-        char* ch;
+        char* ch = nullptr;
         uint32_t length = 0;
         view.GetValue(reinterpret_cast<const int8_t*>(iter->GetValue().data()),
                       2, &ch, &length);
@@ -286,7 +286,7 @@ TEST_F(TableTest, MultiIndexIterator) {
     count = 0;
     iter->SeekToFirst();
     while (iter->Valid()) {
-        char* ch;
+        char* ch = nullptr;
         uint32_t length = 0;
         view.GetValue(reinterpret_cast<const int8_t*>(iter->GetValue().data()),
                       2, &ch, &length);

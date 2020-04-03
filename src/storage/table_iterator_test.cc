@@ -91,7 +91,7 @@ TEST_F(TableIteratorTest, it_full_table) {
     FullTableIterator it(table->GetSegments(), table->GetSegCnt(), table);
     RowView view(table_def.columns());
     ASSERT_TRUE(it.Valid());
-    char* ch;
+    char* ch = nullptr;
     uint32_t length = 0;
     view.GetValue(reinterpret_cast<const int8_t*>(it.GetValue().data()), 2, &ch,
                   &length);

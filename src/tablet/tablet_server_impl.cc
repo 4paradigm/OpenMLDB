@@ -150,7 +150,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
     common::Status* status = response->mutable_status();
     status->set_code(common::kOk);
     status->set_msg("ok");
-    vm::RunSession session;
+    vm::BatchRunSession session;
 
     {
         base::Status base_status;
@@ -159,28 +159,27 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         if (!ok) {
             status->set_msg(base_status.msg);
             status->set_code(base_status.code);
+            LOG(WARNING) << base_status.msg;
             return;
         }
+        //        std::ostringstream oss;
+        //        session.GetPhysicalPlan()->Print(oss, "");
+        //        std::cout << "physical plan:\n" << oss.str() << std::endl;
     }
 
-    std::vector<int8_t*> buf;
-    int32_t code;
-    if (request->is_batch()) {
-        code = session.RunBatch(buf, UINT32_MAX);
-    } else {
-        code = session.Run(buf, UINT32_MAX);
-    }
+    auto table = session.Run();
 
-    if (code != 0) {
+    if (!table) {
         LOG(WARNING) << "fail to run sql " << request->sql();
         status->set_code(common::kSQLError);
         status->set_msg("fail to run sql");
         return;
     }
     // TODO(wangtaize) opt the result buf
-    std::vector<int8_t*>::iterator it = buf.begin();
-    for (; it != buf.end(); ++it) {
-        int8_t* ptr = *it;
+    auto iter = table->GetIterator();
+    while (iter->Valid()) {
+        int8_t* ptr = iter->GetValue().buf();
+        iter->Next();
         response->add_result_set(ptr, *reinterpret_cast<uint32_t*>(ptr + 2));
         free(ptr);
     }

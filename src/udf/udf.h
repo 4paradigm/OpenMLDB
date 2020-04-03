@@ -46,6 +46,9 @@ bool has_next_iterator(int8_t *input);
 template <class V>
 V next_iterator(int8_t *input);
 
+
+template <class V>
+void delete_iterator(int8_t *input);
 }  // namespace v1
 
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT

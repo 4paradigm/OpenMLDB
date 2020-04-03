@@ -116,7 +116,6 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         need_agg = true;
     }
 
-
     // select target_list
     if (nullptr == root->GetSelectList() ||
         root->GetSelectList()->GetList().empty()) {
@@ -208,8 +207,8 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         auto first_window_project =
             dynamic_cast<node::ProjectListNode *>(project_list_vec[1]);
         node::ProjectListNode *merged_project =
-            node_manager_->MakeProjectListPlanNode(
-                first_window_project->GetW(), true);
+            node_manager_->MakeProjectListPlanNode(first_window_project->GetW(),
+                                                   true);
 
         if (MergeProjectList(simple_project, first_window_project,
                              merged_project)) {
@@ -318,7 +317,7 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
                 "only "
                 "support CURRENT|PRECEDING|FOLLOWING";
             status.code = common::kUnSupport;
-            return -1;
+            return INT64_MAX;
         }
     }
     if (nullptr == bound->GetOffset()) {
@@ -329,7 +328,7 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
             "cannot create window frame, only support "
             "primary frame";
         status.code = common::kTypeError;
-        return 0;
+        return INT64_MAX;
     }
 
     int64_t offset = 0;
@@ -356,7 +355,7 @@ int64_t Planner::CreateFrameOffset(const node::FrameBound *bound,
                 "cannot create window frame, only support "
                 "smallint|int|bigint offset of frame";
             status.code = common::kTypeError;
-            return 0;
+            return INT64_MAX;
         }
     }
     return negtive ? -1 * offset : offset;
@@ -421,6 +420,78 @@ bool Planner::CreateCreateTablePlan(
     return true;
 }
 
+bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
+                                  base::Status &status) {
+    if (nullptr == node) {
+        status.msg = "primary path validate fail: node or output is null";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    switch (node->type_) {
+        case node::kPlanTypeJoin:
+        case node::kPlanTypeUnion: {
+            auto binary_op = dynamic_cast<node::BinaryPlanNode *>(node);
+            node::PlanNode *left_primary_table = nullptr;
+            if (!ValidatePrimaryPath(binary_op->GetLeft(), &left_primary_table,
+                                     status)) {
+                status.msg =
+                    "primary path validate fail: left path isn't valid";
+                status.code = common::kPlanError;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+
+            if (node::kPlanTypeTable == binary_op->GetRight()->type_) {
+                *output = left_primary_table;
+                return true;
+            }
+            node::PlanNode *right_primary_table = nullptr;
+            if (!ValidatePrimaryPath(binary_op->GetRight(),
+                                     &right_primary_table, status)) {
+                status.msg =
+                    "primary path validate fail: right path isn't valid";
+                status.code = common::kPlanError;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+
+            if (node::PlanEquals(left_primary_table, right_primary_table)) {
+                *output = left_primary_table;
+                return true;
+            } else {
+                status.msg =
+                    "primary path validate fail: left path and right path has "
+                    "different source";
+                status.code = common::kPlanError;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+        }
+        case node::kPlanTypeTable: {
+            *output = node;
+            return true;
+        }
+        case node::kPlanTypeCreate:
+        case node::kPlanTypeInsert:
+        case node::kPlanTypeCmd:
+        case node::kPlanTypeWindow:
+        case node::kProjectList:
+        case node::kProjectNode: {
+            status.msg =
+                "primary path validate fail: invalid node of primary path";
+            status.code = common::kPlanError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        default: {
+            auto unary_op = dynamic_cast<const node::UnaryPlanNode *>(node);
+            return ValidatePrimaryPath(unary_op->GetDepend(), output, status);
+        }
+    }
+}
+
 int SimplePlanner::CreatePlanTree(
     const NodePointVector &parser_trees, PlanNodeList &plan_trees,
     Status &status) {  // NOLINT (runtime/references)
@@ -434,21 +505,34 @@ int SimplePlanner::CreatePlanTree(
     for (auto parser_tree : parser_trees) {
         switch (parser_tree->GetType()) {
             case node::kQuery: {
-                PlanNode *select_plan = nullptr;
+                PlanNode *query_plan = nullptr;
                 if (!CreateQueryPlan(
                         dynamic_cast<node::QueryNode *>(parser_tree),
-                        &select_plan, status)) {
+                        &query_plan, status)) {
                     return status.code;
                 }
-                plan_trees.push_back(select_plan);
+
+                if (!is_batch_mode_) {
+                    // return false if Primary path check fail
+                    ::fesql::node::PlanNode *primary_node;
+                    if (!ValidatePrimaryPath(query_plan, &primary_node,
+                                             status)) {
+                        return status.code;
+                    }
+                    dynamic_cast<node::TablePlanNode *>(primary_node)
+                        ->SetIsPrimary(true);
+                    DLOG(INFO) << "plan after primary check:\n" << *query_plan;
+                }
+
+                plan_trees.push_back(query_plan);
                 break;
             }
             case node::kCreateStmt: {
-                PlanNode *plan = nullptr;
-                if (!CreateCreateTablePlan(parser_tree, &plan, status)) {
+                PlanNode *create_plan = nullptr;
+                if (!CreateCreateTablePlan(parser_tree, &create_plan, status)) {
                     return status.code;
                 }
-                plan_trees.push_back(plan);
+                plan_trees.push_back(create_plan);
                 break;
             }
             case node::kCmdStmt: {
@@ -462,7 +546,7 @@ int SimplePlanner::CreatePlanTree(
             case node::kInsertStmt: {
                 node::PlanNode *insert_plan = nullptr;
                 if (!CreateInsertPlan(parser_tree, &insert_plan, status)) {
-                    return false;
+                    return status.code;
                 }
                 plan_trees.push_back(insert_plan);
                 break;

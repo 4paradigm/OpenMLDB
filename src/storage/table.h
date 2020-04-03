@@ -23,10 +23,10 @@ namespace storage {
 
 using ::fesql::type::IndexDef;
 using ::fesql::type::TableDef;
-
+using ::fesql::vm::IteratorV;
 static constexpr uint32_t SEG_CNT = 8;
 
-class TableIterator : public vm::Iterator {
+class TableIterator : public IteratorV<uint64_t, base::Slice> {
  public:
     TableIterator() = default;
     explicit TableIterator(base::Iterator<uint64_t, DataBlock*>* ts_it);

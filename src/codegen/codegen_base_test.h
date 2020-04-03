@@ -16,11 +16,12 @@
 
 namespace fesql {
 namespace codegen {
+using fesql::base::Slice;
 void BuildBuf(int8_t** buf, uint32_t* size);
-void BuildWindow(std::vector<fesql::codec::Row>& rows,  // NOLINT
+void BuildWindow(std::vector<Slice>& rows,  // NOLINT
                  int8_t** buf);
-void BuildWindow2(std::vector<fesql::codec::Row>& rows,  // NOLINT
-                 int8_t** buf);
+void BuildWindow2(std::vector<Slice>& rows,  // NOLINT
+                  int8_t** buf);
 }  // namespace codegen
 }  // namespace fesql
 

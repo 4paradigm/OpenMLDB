@@ -7,6 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "bm/fesql_client_bm_case.h"
+#include "gperftools/heap-profiler.h"
 #include "gtest/gtest.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
@@ -53,6 +54,7 @@ TEST_F(FeSQL_CASE_Test, WINDOW_CASE1_QUERY_BATCH_TEST) {
 TEST_F(FeSQL_CASE_Test, WINDOW_CASE2_QUERY_BATCH_TEST) {
     WINDOW_CASE2_QUERY(nullptr, TEST, true, 10, 10);
     WINDOW_CASE2_QUERY(nullptr, TEST, true, 2, 1000);
+    WINDOW_CASE2_QUERY(nullptr, TEST, true, 1, 10000);
 }
 }  // namespace bm
 }  // namespace fesql

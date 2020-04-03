@@ -33,7 +33,7 @@ bool ListDir(const std::string& path, std::vector<std::string>& files) {  // NOL
         LOG(WARNING) << "opendir " << path << " failed err " << strerror(errno);
         return false;
     }
-    struct dirent* entry;
+    struct dirent* entry = nullptr;
     while ((entry = ::readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
             continue;

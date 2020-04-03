@@ -38,7 +38,7 @@ bool GetRow(const Schema& schema, const std::shared_ptr<arrow::Table>& table,
             uint64_t chunk_offset, uint64_t array_offset,
             codec::RowBuilder* rb);
 
-class CSVSegmentIterator : public Iterator {
+class CSVSegmentIterator : public SliceIterator {
  public:
     CSVSegmentIterator(const std::shared_ptr<arrow::Table>& table,
                        const IndexDatas* index_datas,
@@ -71,7 +71,7 @@ class CSVSegmentIterator : public Iterator {
     std::map<uint64_t, RowLocation>::const_reverse_iterator rend_;
 };
 
-class CSVTableIterator : public Iterator {
+class CSVTableIterator : public SliceIterator {
  public:
     CSVTableIterator(const std::shared_ptr<arrow::Table>& table,
                      const Schema& schema);

@@ -18,6 +18,7 @@
 #ifndef SRC_BATCH_BATCH_PLANNER_H_
 #define SRC_BATCH_BATCH_PLANNER_H_
 
+#include <node/node_manager.h>
 #include <memory>
 #include <string>
 #include "batch/batch_catalog.h"
@@ -40,6 +41,7 @@ class BatchPlanner {
     std::shared_ptr<BatchCatalog> catalog_;
     std::string db_;
     std::string sql_;
+    node::NodeManager nm_;
 };
 
 }  // namespace batch

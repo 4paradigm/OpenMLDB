@@ -14,7 +14,3 @@ target_link_libraries(row_codec_test fesql_codec fesql_proto protobuf glog gflag
 add_test(row_codec_test row_codec_test --gtest_output=xml:${CMAKE_BINARY_DIR}/row_codec_test.xml)
 list(APPEND test_list row_codec_test)
 
-add_executable(window_test window_test.cc)
-target_link_libraries(window_test fesql_codec fesql_proto protobuf glog gflags unwind lzma gtest pthread)
-add_test(window_test window_test --gtest_output=xml:${CMAKE_BINARY_DIR}/window_test.xml)
-list(APPEND test_list window_test)

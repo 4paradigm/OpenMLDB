@@ -77,6 +77,7 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
                 break;
             }
             case node::kFnForInBlock: {
+                sv_->Enter("for_in_block");
                 llvm::BasicBlock *loop_start = llvm::BasicBlock::Create(
                     block->getContext(), "loop_start", fn);
                 llvm::BasicBlock *loop_end =
@@ -95,6 +96,13 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
                 }
                 fn->getBasicBlockList().push_back(loop_end);
                 builder.SetInsertPoint(loop_end);
+                if (!ClearScopeValue(loop_end, status)) {
+                    status.code = common::kCodegenError;
+                    status.msg = "fail to clear scope value";
+                    LOG(WARNING) << status.msg;
+                    return false;
+                }
+                sv_->Exit();
                 break;
             }
             default: {
@@ -146,8 +154,8 @@ bool BlockIRBuilder::BuildIfElseBlock(
 
     builder.CreateCondBr(cond, cond_true, cond_false);
     builder.SetInsertPoint(cond_true);
-    if (false == BuildBlock(if_else_block->if_block_->block_, cond_true,
-                            if_else_end, status)) {
+    if (!BuildBlock(if_else_block->if_block_->block_, cond_true, if_else_end,
+                    status)) {
         LOG(WARNING) << "fail to build block " << status.msg;
         return false;
     }
@@ -164,17 +172,16 @@ bool BlockIRBuilder::BuildIfElseBlock(
             llvm::Value *cond = nullptr;
 
             ExprIRBuilder expr_builder(builder.GetInsertBlock(), sv_);
-            if (false == expr_builder.Build(elif_block->elif_node_->expression_,
-                                            &cond, status)) {
+            if (!expr_builder.Build(elif_block->elif_node_->expression_, &cond,
+                                    status)) {
                 LOG(WARNING)
                     << "fail to codegen condition expression" << status.msg;
                 return false;
             }
             builder.CreateCondBr(cond, cond_true, cond_false);
             builder.SetInsertPoint(cond_true);
-            if (false == BuildBlock(elif_block->block_,
-                                    builder.GetInsertBlock(), if_else_end,
-                                    status)) {
+            if (!BuildBlock(elif_block->block_, builder.GetInsertBlock(),
+                            if_else_end, status)) {
                 LOG(WARNING) << "fail to codegen block: " << status.msg;
                 return false;
             }
@@ -185,9 +192,8 @@ bool BlockIRBuilder::BuildIfElseBlock(
     if (nullptr == if_else_block->else_block_) {
         builder.CreateBr(if_else_end);
     } else {
-        if (false == BuildBlock(if_else_block->else_block_->block_,
-                                builder.GetInsertBlock(), if_else_end,
-                                status)) {
+        if (!BuildBlock(if_else_block->else_block_->block_,
+                        builder.GetInsertBlock(), if_else_end, status)) {
             LOG(WARNING) << "fail to codegen block: " << status.msg;
             return false;
         }
@@ -216,8 +222,8 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
 
     // loop start
     llvm::Value *container_value;
-    if (false == expr_builder.Build(node->for_in_node_->in_expression_,
-                                    &container_value, status)) {
+    if (!expr_builder.Build(node->for_in_node_->in_expression_,
+                            &container_value, status)) {
         LOG(WARNING) << "fail to build for condition expression: "
                      << status.msg;
         return false;
@@ -229,6 +235,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         LOG(WARNING) << "fail to build iterator expression: " << status.msg;
         return false;
     }
+    sv_->AddIteratorValue(iterator);
 
     llvm::BasicBlock *loop_cond =
         llvm::BasicBlock::Create(ctx, "loop_cond", fn);
@@ -239,8 +246,8 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         ListIRBuilder list_ir_builder(builder.GetInsertBlock(), sv_);
         // loop condition
         llvm::Value *condition;
-        if (false == list_ir_builder.BuildIteratorHasNext(iterator, &condition,
-                                                          status)) {
+        if (!list_ir_builder.BuildIteratorHasNext(iterator, &condition,
+                                                  status)) {
             LOG(WARNING) << "fail to build iterator has next expression: "
                          << status.msg;
             return false;
@@ -261,12 +268,12 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
                          << status.msg;
             return false;
         }
-        if (false == var_ir_builder.StoreValue(node->for_in_node_->var_name_,
-                                               next, false, status)) {
+        if (!var_ir_builder.StoreValue(node->for_in_node_->var_name_, next,
+                                       false, status)) {
             return false;
         }
         // loop body
-        if (false == BuildBlock(node->block_, loop, loop_cond, status)) {
+        if (!BuildBlock(node->block_, loop, loop_cond, status)) {
             LOG(WARNING) << "fail to codegen block: " << status.msg;
             return false;
         }
@@ -292,6 +299,11 @@ bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
         LOG(WARNING) << "fail to codegen return expression: " << status.msg;
         return false;
     }
+
+    if (!ClearAllScopeValues(block, status)) {
+        LOG(WARNING) << "fail to clear all scopes values : " << status.msg;
+        return false;
+    }
     builder.CreateRet(value);
     return true;
 }
@@ -314,6 +326,46 @@ bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
         return false;
     }
     return variable_ir_builder.StoreValue(node->name_, value, false, status);
+}
+
+bool BlockIRBuilder::ClearScopeValue(llvm::BasicBlock *block,
+                                     base::Status &status) {
+    llvm::Value *ret_delete = nullptr;
+    ListIRBuilder list_ir_builder_delete(block, sv_);
+    auto delete_values = sv_->GetScopeIteratorValues();
+    if (nullptr != delete_values) {
+        for (auto iter = delete_values->cbegin(); iter != delete_values->cend();
+             iter++) {
+            if (!list_ir_builder_delete.BuildIteratorDelete(*iter, &ret_delete,
+                                                            status)) {
+                LOG(WARNING) << "fail to build iterator delete expression: "
+                             << status.msg;
+                return false;
+            }
+        }
+    }
+    return true;
+}
+bool BlockIRBuilder::ClearAllScopeValues(llvm::BasicBlock *block,
+                                         base::Status &status) {
+    auto values_vec = sv_->GetIteratorValues();
+    llvm::Value *ret_delete = nullptr;
+    ListIRBuilder list_ir_builder_delete(block, sv_);
+    for (auto iter = values_vec.cbegin(); iter != values_vec.cend(); iter++) {
+        auto delete_values = *iter;
+        if (nullptr != delete_values) {
+            for (auto iter = delete_values->cbegin();
+                 iter != delete_values->cend(); iter++) {
+                if (!list_ir_builder_delete.BuildIteratorDelete(
+                        *iter, &ret_delete, status)) {
+                    LOG(WARNING) << "fail to build iterator delete expression: "
+                                 << status.msg;
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 }
 
 }  // namespace codegen

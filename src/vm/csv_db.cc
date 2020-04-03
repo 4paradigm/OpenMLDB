@@ -116,7 +116,7 @@ void Run() {
         return;
     }
     Engine engine(catalog);
-    RunSession session;
+    BatchRunSession session;
     base::Status status;
     ok = engine.Get(FLAGS_query, FLAGS_db, session, status);
     if (!ok) {

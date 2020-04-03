@@ -16,7 +16,6 @@
  */
 
 #include "storage/table_iterator.h"
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -79,7 +78,7 @@ void WindowTableIterator::Seek(const std::string& key) {
 
 void WindowTableIterator::SeekToFirst() {}
 
-std::unique_ptr<vm::Iterator> WindowTableIterator::GetValue() {
+std::unique_ptr<vm::SliceIterator> WindowTableIterator::GetValue() {
     if (!pk_it_)
         return std::move(
             std::unique_ptr<EmptyWindowIterator>(new EmptyWindowIterator()));

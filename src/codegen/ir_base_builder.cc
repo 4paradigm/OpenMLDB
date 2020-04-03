@@ -108,28 +108,28 @@ bool GetLLVMIteratorSize(const ::fesql::node::DataType& v_type,
 
     switch (v_type) {
         case ::fesql::node::kInt16: {
-            *size = sizeof(::fesql::codec::IteratorImpl<int16_t>);
+            *size = sizeof(::fesql::codec::ColumnIterator<int16_t>);
             break;
         }
         case ::fesql::node::kInt32: {
-            *size = sizeof(::fesql::codec::IteratorImpl<int32_t>);
+            *size = sizeof(::fesql::codec::ColumnIterator<int32_t>);
             break;
         }
         case ::fesql::node::kInt64: {
-            *size = sizeof(::fesql::codec::IteratorImpl<int64_t>);
+            *size = sizeof(::fesql::codec::ColumnIterator<int64_t>);
             break;
         }
         case ::fesql::node::kDouble: {
-            *size = sizeof(::fesql::codec::IteratorImpl<double>);
+            *size = sizeof(::fesql::codec::ColumnIterator<double>);
             break;
         }
         case ::fesql::node::kFloat: {
-            *size = sizeof(::fesql::codec::IteratorImpl<float>);
+            *size = sizeof(::fesql::codec::ColumnIterator<float>);
             break;
         }
         case ::fesql::node::kVarchar: {
             *size = sizeof(
-                ::fesql::codec::IteratorImpl<fesql::codec::StringRef>);
+                ::fesql::codec::ColumnIterator<fesql::codec::StringRef>);
             break;
         }
         default: {
@@ -305,7 +305,7 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
                                     data_type->generics_.size();
                 return false;
             }
-            ::llvm::Type* list_type;
+            ::llvm::Type* list_type = nullptr;
             if (false ==
                 GetLLVMListType(m, data_type->generics_[0], &list_type)) {
                 return false;
@@ -321,7 +321,7 @@ bool GetLLVMType(::llvm::Module* m, const fesql::node::TypeNode* data_type,
                            data_type->generics_.size();
                 return false;
             }
-            ::llvm::Type* list_type;
+            ::llvm::Type* list_type = nullptr;
             if (false ==
                 GetLLVMIteratorType(m, data_type->generics_[0], &list_type)) {
                 return false;

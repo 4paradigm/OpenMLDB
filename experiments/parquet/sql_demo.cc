@@ -31,7 +31,6 @@
 #include "plan/planner.h"
 #include "storage/type_ir_builder.h"
 #include "udf/udf.h"
-#include "vm/op_generator.h"
 
 std::shared_ptr<arrow::Table> GenTable() {
     arrow::Int64Builder i64builder;

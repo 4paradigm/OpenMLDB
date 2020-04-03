@@ -33,7 +33,7 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
         LOG(WARNING) << status.msg;
         return false;
     }
-    ::llvm::Value* casted_pos;
+    ::llvm::Value* casted_pos = nullptr;
     if (false == castExprIrBuilder.UnSafeCast(
                      pos, ::llvm::Type::getInt32Ty(block_->getContext()),
                      &casted_pos, status)) {
@@ -232,6 +232,55 @@ bool ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
         return false;
     }
     *output = next_value;
+    return true;
+}
+bool ListIRBuilder::BuildIteratorDelete(::llvm::Value* iterator,
+                                        ::llvm::Value** output,
+                                        base::Status& status) {
+    if (nullptr == iterator) {
+        status.msg = "fail to codegen iter.delete(): iterator is null";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    fesql::node::TypeNode type_node;
+    if (false == GetFullType(iterator->getType(), &type_node) ||
+        fesql::node::kIterator != type_node.base_) {
+        status.msg = "fail to codegen iterator.delete(): invalid iterator type";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::llvm::Type* v1_type = nullptr;
+    if (false == GetLLVMType(block_, type_node.generics_[0], &v1_type)) {
+        status.msg =
+            "fail to codegen iterator.delete(): invalid value type of iterator";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+
+    ::std::string fn_name = "delete_" + type_node.GetName();
+    ::llvm::Function* fn =
+        block_->getModule()->getFunction(::llvm::StringRef(fn_name));
+    if (nullptr == fn) {
+        status.msg =
+            "faili to codegen iterator.next(): can't find function " + fn_name;
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Value* ret = builder.CreateCall(
+        fn->getFunctionType(), fn, ::llvm::ArrayRef<::llvm::Value*>{iterator});
+    if (nullptr == ret) {
+        status.msg = "fail to codegen iterator.delete(): call function error";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    *output = ret;
     return true;
 }
 }  // namespace codegen
