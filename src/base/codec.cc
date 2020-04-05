@@ -35,6 +35,7 @@ static const std::unordered_map<::rtidb::type::DataType, uint8_t> TYPE_SIZE_MAP 
     {::rtidb::type::kFloat, sizeof(float)},
     {::rtidb::type::kBigInt, sizeof(int64_t)},
     {::rtidb::type::kTimestamp, sizeof(int64_t)},
+    {::rtidb::type::kDate, sizeof(int32_t)},
     {::rtidb::type::kDouble, sizeof(double)}};
 
 static inline uint8_t GetAddrLength(uint32_t size) {
@@ -126,6 +127,26 @@ bool RowBuilder::Check(::rtidb::type::DataType type) {
             return false;
         }
     }
+    return true;
+}
+
+bool RowBuilder::AppendDate(uint32_t date) {
+    if (!Check(::rtidb::type::kDate)) return false;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
+    *(reinterpret_cast<uint32_t*>(ptr)) = date;
+    cnt_++;
+    return true;
+}
+
+
+bool RowBuilder::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
+    if (!Check(::rtidb::type::kDate)) return false;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
+    uint32_t data = year << 16;
+    data = data | (month << 8);
+    data = data | day;
+    *(reinterpret_cast<uint32_t*>(ptr)) = data;
+    cnt_++;
     return true;
 }
 
@@ -343,6 +364,40 @@ int32_t RowView::GetBool(uint32_t idx, bool* val) {
     } else {
         *val = false;
     }
+    return 0;
+}
+
+int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month, uint32_t* day) {
+    if (year == NULL || month == NULL || day == NULL) {
+        return -1;
+    }
+    if (!CheckValid(idx, ::rtidb::type::kDate)) {
+        return -1;
+    }
+    if (IsNULL(row_, idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    uint32_t date = reinterpret_cast<uint32_t>(v1::GetInt32Field(row_, offset));
+    *day = date & 0x0000000FF;
+    date = date >> 8;
+    *month = date & 0x0000FF;
+    *year = date >> 8;
+    return 0;
+}
+
+int32_t RowView::GetDate(uint32_t idx, uint32_t* val) {
+    if (val == NULL) {
+        return -1;
+    }
+    if (!CheckValid(idx, ::rtidb::type::kDate)) {
+        return -1;
+    }
+    if (IsNULL(row_, idx)) {
+        return 1;
+    }
+    uint32_t offset = offset_vec_.at(idx);
+    *val = reinterpret_cast<uint32_t>(v1::GetInt32Field(row_, offset));
     return 0;
 }
 

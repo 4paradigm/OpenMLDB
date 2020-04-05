@@ -40,7 +40,6 @@ using ::rtidb::zk::ZkClient;
 using ::rtidb::base::SpinMutex;
 using ::rtidb::storage::IndexDef;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
-using ProjectList = ::google::protobuf::RepeatedPtrField<uint32_t>;
 
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
