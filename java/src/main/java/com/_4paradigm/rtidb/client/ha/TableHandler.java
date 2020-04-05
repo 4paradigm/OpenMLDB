@@ -16,6 +16,7 @@ public class TableHandler {
     private Map<Integer, List<Integer>> indexes = new TreeMap<Integer, List<Integer>>();
     private Map<Integer, List<Integer>> indexTsMap = new TreeMap<Integer, List<Integer>>();
     private Map<String, List<String>> keyMap = new TreeMap<String, List<String>>();
+    private Map<String, Integer> schemaPos = new TreeMap<>();
     private List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     private Map<Integer, List<ColumnDesc>> schemaMap = new TreeMap<>();
     private ReadStrategy readStrategy = ReadStrategy.kReadLeader;
@@ -27,7 +28,6 @@ public class TableHandler {
         int index = 0;
         if (tableInfo.getColumnDescV1Count() > 0) {
             schemaSize = tableInfo.getColumnDescV1Count();
-            Map<String, Integer> schemaPos = new HashMap<String, Integer>();
             Map<String, Integer> tsPos = new HashMap<String, Integer>();
             for (int i = 0; i< tableInfo.getColumnDescV1Count(); i++) {
                 com._4paradigm.rtidb.common.Common.ColumnDesc cd = tableInfo.getColumnDescV1(i);
@@ -224,6 +224,10 @@ public class TableHandler {
         kReadFollower,
         kReadLocal,
         kReadRandom
+    }
+
+    public Map<String, Integer> getSchemaPos() {
+        return schemaPos;
     }
 
     public boolean hasTsCol() {
