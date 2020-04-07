@@ -16,6 +16,8 @@
 namespace rtidb {
 namespace storage {
 
+static constexpr uint32_t MAX_INDEX_NUM = 200;
+
 struct TTLDesc {
     TTLDesc() = default;
     
@@ -97,15 +99,16 @@ public:
     void ReSet();
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx);
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
-    void AddIndex(std::shared_ptr<IndexDef> index_def);
-    void SetAllIndex(const std::vector<std::shared_ptr<IndexDef>>& index_vec);
+    int AddIndex(std::shared_ptr<IndexDef> index_def);
+    int SetAllIndex(const std::vector<std::shared_ptr<IndexDef>>& index_vec);
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex();
     inline uint32_t Size() {
-        return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->size();
+        return size_;
     }
 
 private:
-    std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
+    std::vector<std::shared_ptr<IndexDef>> indexs_;
+    uint32_t size_;
 };
 
 }

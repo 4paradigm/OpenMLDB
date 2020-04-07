@@ -43,6 +43,7 @@ MemTable::MemTable(const std::string& name,
         pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
         ttl_type, ::rtidb::api::CompressType::kNoCompress),
         seg_cnt_(seg_cnt),
+        segments_(MAX_INDEX_NUM, NULL),
         enable_gc_(false), 
         record_cnt_(0), time_offset_(0),
         segment_released_(false), record_byte_size_(0) {}
@@ -51,7 +52,8 @@ MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) :
         Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(),
                 0, true, 60 * 1000, std::map<std::string, uint32_t>(),
                 ::rtidb::api::TTLType::kAbsoluteTime, 
-                ::rtidb::api::CompressType::kNoCompress) {
+                ::rtidb::api::CompressType::kNoCompress),
+        segments_(MAX_INDEX_NUM, NULL) {
     seg_cnt_ = 8;
     enable_gc_ = false;
     record_cnt_ = 0;
@@ -68,10 +70,12 @@ MemTable::~MemTable() {
     }
     Release();
     for (uint32_t i = 0; i < segments_.size(); i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            delete segments_[i][j];
+        if (segments_[i] != NULL) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                delete segments_[i][j];
+            }
+            delete[] segments_[i];
         }
-        delete[] segments_[i];
     }
     segments_.clear();
 }
@@ -101,7 +105,6 @@ bool MemTable::Init() {
         if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "init failed, index %u is not exist. tid %u pid %u",
                         i, id_, pid_);
-            segments_.push_back(NULL);
             continue;
         }
         const std::vector<uint32_t> ts_vec =  index_def->GetTsColumn();
@@ -115,10 +118,11 @@ bool MemTable::Init() {
         } else {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 seg_arr[j] = new Segment(key_entry_max_height_);
-                PDLOG(INFO, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
+                PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u", 
+                        i, j, key_entry_max_height_, id_, pid_);
             }
         }
-        segments_.push_back(seg_arr);
+        segments_[i] = seg_arr;
     }
     if (abs_ttl_ > 0 || lat_ttl_ > 0) {
         enable_gc_ = true;
@@ -685,26 +689,49 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
             return false;
         }
         index_def->SetStatus(IndexStatus::kReady);
-        return true;
-    }
-    index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.Size());
-    std::vector<uint32_t> ts_vec;
-    for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
-        auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
-        if (ts_iter == ts_mapping_.end()) {
-            PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", 
-                    column_key.ts_name(idx).c_str(), id_, pid_);
+    } else {
+        index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.Size());
+        std::vector<uint32_t> ts_vec;
+        for (int idx = 0; idx < column_key.ts_name_size(); idx++) {
+            auto ts_iter = ts_mapping_.find(column_key.ts_name(idx));
+            if (ts_iter == ts_mapping_.end()) {
+                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", 
+                        column_key.ts_name(idx).c_str(), id_, pid_);
+                return false;
+            }
+            if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
+                PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", 
+                        column_key.ts_name(idx).c_str(), id_, pid_);
+                return false;
+            }
+            ts_vec.push_back(ts_iter->second);
+        }
+        index_def->SetTsColumn(ts_vec);
+        if (table_index_.AddIndex(index_def) < 0) {
+            PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
             return false;
         }
-        if (std::find(ts_vec.begin(), ts_vec.end(), ts_iter->second) != ts_vec.end()) {
-            PDLOG(WARNING, "has repeated ts_name[%s]. tid %u pid %u", 
-                    column_key.ts_name(idx).c_str(), id_, pid_);
-            return false;
-        }
-        ts_vec.push_back(ts_iter->second);
     }
-    index_def->SetTsColumn(ts_vec);
-    table_index_.AddIndex(index_def);
+    uint32_t index_id = index_def->GetId();
+    const std::vector<uint32_t> ts_vec =  index_def->GetTsColumn();
+    Segment** seg_arr = new Segment*[seg_cnt_];
+    if (!ts_vec.empty()) {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            seg_arr[j] = new Segment(key_entry_max_height_, ts_vec);
+            PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", 
+                index_id, j, key_entry_max_height_, ts_vec.size(), id_, pid_);
+        }
+    } else {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            seg_arr[j] = new Segment(key_entry_max_height_);
+            PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u", 
+                    index_id, j, key_entry_max_height_, id_, pid_);
+        }
+    }
+    if (segments_[index_id] != NULL) {
+        delete segments_[index_id];
+    }
+    segments_[index_id] = seg_arr;
     return true;
 }
 
