@@ -127,6 +127,7 @@ class MemTableHandler : public TableHandler {
     void AddRow(const base::Slice& v);
     void AddRow(const uint64_t key, const base::Slice& v);
     void Sort(const bool is_asc);
+    void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
     virtual Slice At(uint64_t pos) {
         return pos >= 0 && pos < table_.size() ? table_.at(pos).second
@@ -246,6 +247,7 @@ class MemPartitionHandler : public PartitionHandler {
     virtual std::unique_ptr<WindowIterator> GetWindowIterator();
     bool AddRow(const std::string& key, uint64_t ts, const Slice& row);
     void Sort(const bool is_asc);
+    void Reverse();
     void Print();
     virtual const uint64_t GetCount() { return partitions_.size(); }
 

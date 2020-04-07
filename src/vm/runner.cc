@@ -557,7 +557,11 @@ std::shared_ptr<DataHandler> Runner::PartitionSort(
         }
         iter->Next();
     }
-    output_partitions->Sort(is_asc);
+    if (idxs.empty()) {
+        output_partitions->Reverse();
+    } else {
+        output_partitions->Sort(is_asc);
+    }
     return output_partitions;
 }
 std::shared_ptr<DataHandler> Runner::TableSort(

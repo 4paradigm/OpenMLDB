@@ -130,6 +130,7 @@ void MemTableHandler::Sort(const bool is_asc) {
         std::sort(table_.begin(), table_.end(), comparor);
     }
 }
+void MemTableHandler::Reverse() { std::reverse(table_.begin(), table_.end()); }
 IteratorV<uint64_t, base::Slice>* MemTableHandler::GetIterator(
     int8_t* addr) const {
     if (nullptr == addr) {
@@ -189,6 +190,12 @@ void MemPartitionHandler::Sort(const bool is_asc) {
         }
     }
 }
+void MemPartitionHandler::Reverse() {
+    is_asc_ = !is_asc_;
+    for (auto& segment : partitions_) {
+        std::reverse(segment.second.begin(), segment.second.end());
+    }
+}
 const bool MemPartitionHandler::IsAsc() { return is_asc_; }
 void MemPartitionHandler::Print() {
     for (auto iter = partitions_.cbegin(); iter != partitions_.cend(); iter++) {
@@ -200,5 +207,6 @@ void MemPartitionHandler::Print() {
         std::cout << std::endl;
     }
 }
+
 }  // namespace vm
 }  // namespace fesql
