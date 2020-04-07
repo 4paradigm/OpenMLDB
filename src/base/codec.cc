@@ -121,7 +121,7 @@ bool RowBuilder::Check(::rtidb::type::DataType type) {
     if (column.data_type() != type) {
         return false;
     }
-    if (column.data_type() != ::rtidb::type::kVarchar || column.data_type() != ::rtidb::type::kString) {
+    if (column.data_type() != ::rtidb::type::kVarchar && column.data_type() != ::rtidb::type::kString) {
         auto iter = TYPE_SIZE_MAP.find(column.data_type());
         if (iter == TYPE_SIZE_MAP.end()) {
             return false;
@@ -211,7 +211,7 @@ bool RowBuilder::AppendDouble(double val) {
 }
 
 bool RowBuilder::AppendString(const char* val, uint32_t length) {
-    if (val == NULL || !Check(::rtidb::type::kVarchar) || !Check(rtidb::type::kString)) return false;
+    if (val == NULL || (!Check(::rtidb::type::kVarchar) && !Check(rtidb::type::kString))) return false;
     if (str_offset_ + length > size_) return false;
     int8_t* ptr =
         buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
@@ -552,7 +552,7 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
         return -1;
     }
 
-    if (!CheckValid(idx, ::rtidb::type::kVarchar) || !CheckValid(idx, ::rtidb::type::kString)) {
+    if (!CheckValid(idx, ::rtidb::type::kVarchar) && !CheckValid(idx, ::rtidb::type::kString)) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
