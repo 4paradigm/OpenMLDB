@@ -132,6 +132,16 @@ int RelationalTable::InitColumnDesc() {
         return -1;
     }
     const Schema& schema = table_meta_.column_desc(); 
+    if (schema.size() == 0) {
+        PDLOG(WARNING, "column_desc_size is 0, tid %u pid %u", id_, pid_);
+        return -1;
+    }
+    uint32_t col_idx = 0;
+    for (auto& col_desc : schema) {
+        table_column_.AddColumn(std::make_shared<ColumnDef>(col_desc.name(), 
+                    col_idx, col_desc.data_type())); 
+        col_idx++;
+    }
     uint32_t key_idx = 0;
     for (const auto &column_key : table_meta_.column_key()) {
         const std::string& index_name = column_key.index_name();

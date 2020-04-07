@@ -168,6 +168,7 @@ private:
     bool is_leader_;
     std::atomic<uint32_t> table_status_;
     TableIndex table_index_;
+    TableColumn table_column_;
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;
     int64_t last_make_snapshot_time_;
