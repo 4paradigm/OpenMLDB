@@ -415,7 +415,7 @@ int64_t Runner::GetColumnInt64(RowView* row_view, int key_idx,
 }
 std::shared_ptr<DataHandler> Runner::TableGroup(
     const std::shared_ptr<DataHandler> table, const Schema& schema,
-    const int8_t* fn, const std::vector<int>& idxs) {
+    const int8_t* fn, const std::vector<int>& idxs, RowView* row_view) {
     if (idxs.empty()) {
         return table;
     }
@@ -430,13 +430,11 @@ std::shared_ptr<DataHandler> Runner::TableGroup(
         new MemPartitionHandler(table->GetSchema()));
 
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
-    std::unique_ptr<RowView> row_view =
-        std::move(std::unique_ptr<RowView>(new RowView(schema)));
     while (iter->Valid()) {
         Slice value_row(iter->GetValue());
         const Slice key_row(RowProject(fn, iter->GetValue()));
         row_view->Reset(key_row.buf(), key_row.size());
-        std::string keys = GenerateKeys(row_view.get(), schema, idxs);
+        std::string keys = GenerateKeys(row_view, schema, idxs);
         output_partitions->AddRow(keys, iter->GetKey(), value_row);
         iter->Next();
     }
@@ -444,7 +442,7 @@ std::shared_ptr<DataHandler> Runner::TableGroup(
 }
 std::shared_ptr<DataHandler> Runner::PartitionGroup(
     const std::shared_ptr<DataHandler> table, const Schema& schema,
-    const int8_t* fn, const std::vector<int>& idxs) {
+    const int8_t* fn, const std::vector<int>& idxs, RowView* row_view) {
     if (idxs.empty()) {
         return table;
     }
@@ -462,15 +460,13 @@ std::shared_ptr<DataHandler> Runner::PartitionGroup(
     auto partitions = std::dynamic_pointer_cast<PartitionHandler>(table);
     auto iter = partitions->GetWindowIterator();
     iter->SeekToFirst();
-    std::unique_ptr<RowView> row_view =
-        std::move(std::unique_ptr<RowView>(new RowView(schema)));
     while (iter->Valid()) {
         auto segment_iter = iter->GetValue();
         segment_iter->SeekToFirst();
         while (segment_iter->Valid()) {
             const Slice key_row(RowProject(fn, segment_iter->GetValue()));
             row_view->Reset(key_row.buf(), key_row.size());
-            std::string keys = GenerateKeys(row_view.get(), schema, idxs);
+            std::string keys = GenerateKeys(row_view, schema, idxs);
             output_partitions->AddRow(keys, segment_iter->GetKey(),
                                       Slice(segment_iter->GetValue()));
             segment_iter->Next();
@@ -483,7 +479,7 @@ std::shared_ptr<DataHandler> Runner::PartitionGroup(
 std::shared_ptr<DataHandler> Runner::TableSortGroup(
     std::shared_ptr<DataHandler> table, const int8_t* fn, const Schema& schema,
     const std::vector<int>& groups_idxs, const std::vector<int>& orders_idxs,
-    const bool is_asc) {
+    const bool is_asc, RowView* row_view) {
     if (!table) {
         return std::shared_ptr<DataHandler>();
     }
@@ -491,10 +487,12 @@ std::shared_ptr<DataHandler> Runner::TableSortGroup(
     std::shared_ptr<DataHandler> output;
     switch (table->GetHanlderType()) {
         case kPartitionHandler:
-            output = PartitionSort(table, schema, fn, orders_idxs, is_asc);
+            output =
+                PartitionSort(table, schema, fn, orders_idxs, is_asc, row_view);
             break;
         case kTableHandler:
-            output = TableSort(table, schema, fn, orders_idxs, is_asc);
+            output =
+                TableSort(table, schema, fn, orders_idxs, is_asc, row_view);
             break;
         default: {
             LOG(WARNING) << "fail to sort and group table: input isn't table "
@@ -505,9 +503,9 @@ std::shared_ptr<DataHandler> Runner::TableSortGroup(
 
     switch (output->GetHanlderType()) {
         case kPartitionHandler:
-            return PartitionGroup(output, schema, fn, groups_idxs);
+            return PartitionGroup(output, schema, fn, groups_idxs, row_view);
         case kTableHandler:
-            return TableGroup(output, schema, fn, groups_idxs);
+            return TableGroup(output, schema, fn, groups_idxs, row_view);
         default: {
             LOG(WARNING) << "fail to sort and group table: input isn't table "
                             "or partition";
@@ -518,7 +516,7 @@ std::shared_ptr<DataHandler> Runner::TableSortGroup(
 
 std::shared_ptr<DataHandler> Runner::PartitionSort(
     std::shared_ptr<DataHandler> table, const Schema& schema, const int8_t* fn,
-    std::vector<int> idxs, const bool is_asc) {
+    std::vector<int> idxs, const bool is_asc, RowView* row_view) {
     if (!table) {
         return std::shared_ptr<DataHandler>();
     }
@@ -533,8 +531,6 @@ std::shared_ptr<DataHandler> Runner::PartitionSort(
         return table;
     }
 
-    std::unique_ptr<RowView> row_view =
-        std::move(std::unique_ptr<RowView>(new RowView(schema)));
     auto output_partitions = std::shared_ptr<MemPartitionHandler>(
         new MemPartitionHandler(table->GetSchema()));
 
@@ -551,7 +547,7 @@ std::shared_ptr<DataHandler> Runner::PartitionSort(
             } else {
                 const Slice order_row(RowProject(fn, segment_iter->GetValue()));
                 row_view->Reset(order_row.buf(), order_row.size());
-                key = GetColumnInt64(row_view.get(), idxs[0],
+                key = GetColumnInt64(row_view, idxs[0],
                                      schema.Get(idxs[0]).type());
             }
             output_partitions->AddRow(
@@ -566,7 +562,7 @@ std::shared_ptr<DataHandler> Runner::PartitionSort(
 }
 std::shared_ptr<DataHandler> Runner::TableSort(
     std::shared_ptr<DataHandler> table, const Schema& schema, const int8_t* fn,
-    std::vector<int> idxs, const bool is_asc) {
+    std::vector<int> idxs, const bool is_asc, RowView* row_view) {
     if (!table) {
         return std::shared_ptr<DataHandler>();
     }
@@ -580,8 +576,6 @@ std::shared_ptr<DataHandler> Runner::TableSort(
     auto output_table = std::shared_ptr<MemTableHandler>(
         new MemTableHandler(table->GetSchema()));
 
-    std::unique_ptr<RowView> row_view =
-        std::move(std::unique_ptr<RowView>(new RowView(schema)));
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     while (iter->Valid()) {
         const Slice order_row(RowProject(fn, iter->GetValue()));
@@ -589,7 +583,7 @@ std::shared_ptr<DataHandler> Runner::TableSort(
         row_view->Reset(order_row.buf(), order_row.size());
 
         int64_t key =
-            GetColumnInt64(row_view.get(), idxs[0], schema.Get(idxs[0]).type());
+            GetColumnInt64(row_view, idxs[0], schema.Get(idxs[0]).type());
         output_table->AddRow(key, Slice(iter->GetValue()));
         iter->Next();
     }
@@ -673,7 +667,8 @@ std::string Runner::GenerateKeys(RowView* row_view, const Schema& schema,
 
 std::shared_ptr<DataHandler> Runner::IndexSeek(
     std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
-    const int8_t* fn, const Schema& fn_schema, const std::vector<int>& idxs) {
+    const int8_t* fn, const Schema& fn_schema, const std::vector<int>& idxs,
+    RowView* row_view) {
     if (kRowHandler != left->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
@@ -683,13 +678,11 @@ std::shared_ptr<DataHandler> Runner::IndexSeek(
     std::shared_ptr<PartitionHandler> partition =
         std::dynamic_pointer_cast<PartitionHandler>(right);
 
-    std::unique_ptr<RowView> row_view =
-        std::move(std::unique_ptr<RowView>(new RowView(fn_schema)));
     auto keys_row = Slice(RowProject(
         fn, std::dynamic_pointer_cast<RowHandler>(left)->GetValue()));
     row_view->Reset(keys_row.buf(), keys_row.size());
 
-    std::string key = GenerateKeys(row_view.get(), fn_schema, idxs);
+    std::string key = GenerateKeys(row_view, fn_schema, idxs);
     return partition->GetSegment(partition, key);
 }
 
@@ -698,7 +691,7 @@ std::shared_ptr<DataHandler> Runner::RequestUnion(
     const int8_t* fn, const Schema& fn_schema,
     const std::vector<int>& groups_idxs, const std::vector<int>& orders_idxs,
     const std::vector<int>& keys_idxs, const int64_t start_offset,
-    const int64_t end_offset) {
+    const int64_t end_offset, RowView* row_view) {
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
@@ -714,22 +707,19 @@ std::shared_ptr<DataHandler> Runner::RequestUnion(
 
     auto table = std::dynamic_pointer_cast<TableHandler>(right);
     std::shared_ptr<DataHandler> output = right;
-    std::unique_ptr<RowView> row_view =
-        std::move(std::unique_ptr<RowView>(new RowView(fn_schema)));
     auto request_fn_row = Slice(RowProject(fn, request));
     // filter by keys if need
     if (!groups_idxs.empty()) {
         row_view->Reset(request_fn_row.buf(), request_fn_row.size());
         std::string request_keys =
-            GenerateKeys(row_view.get(), fn_schema, groups_idxs);
+            GenerateKeys(row_view, fn_schema, groups_idxs);
 
         auto mem_table = new MemTableHandler(output_schema);
         auto iter = table->GetIterator();
         while (iter->Valid()) {
             auto row = Slice(RowProject(fn, iter->GetValue()));
             row_view->Reset(row.buf(), row.size());
-            std::string keys =
-                GenerateKeys(row_view.get(), fn_schema, groups_idxs);
+            std::string keys = GenerateKeys(row_view, fn_schema, groups_idxs);
             if (request_keys == keys) {
                 mem_table->AddRow(Slice(iter->GetValue()));
             }
@@ -741,7 +731,7 @@ std::shared_ptr<DataHandler> Runner::RequestUnion(
     // sort by orders if need
     if (!orders_idxs.empty()) {
         output = TableSort(std::shared_ptr<DataHandler>(output), fn_schema, fn,
-                           orders_idxs, false);
+                           orders_idxs, false, row_view);
     }
 
     // build window with start and end offset
@@ -754,8 +744,8 @@ std::shared_ptr<DataHandler> Runner::RequestUnion(
 
     if (!keys_idxs.empty()) {
         auto ts_idx = keys_idxs[0];
-        int64_t key = GetColumnInt64(row_view.get(), ts_idx,
-                                     fn_schema.Get(ts_idx).type());
+        int64_t key =
+            GetColumnInt64(row_view, ts_idx, fn_schema.Get(ts_idx).type());
 
         start = (key + start_offset) < 0 ? 0 : (key + start_offset);
 
@@ -789,7 +779,8 @@ std::shared_ptr<DataHandler> Runner::RequestUnion(
 std::shared_ptr<DataHandler> Runner::Group(std::shared_ptr<DataHandler> input,
                                            const int8_t* fn,
                                            const Schema& fn_schema,
-                                           const std::vector<int>& idxs) {
+                                           const std::vector<int>& idxs,
+                                           RowView* row_view) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
         LOG(WARNING) << "input is empty";
@@ -801,10 +792,10 @@ std::shared_ptr<DataHandler> Runner::Group(std::shared_ptr<DataHandler> input,
 
     switch (input->GetHanlderType()) {
         case kPartitionHandler: {
-            return PartitionGroup(input, fn_schema, fn, idxs);
+            return PartitionGroup(input, fn_schema, fn, idxs, row_view);
         }
         case kTableHandler: {
-            return TableGroup(input, fn_schema, fn, idxs);
+            return TableGroup(input, fn_schema, fn, idxs, row_view);
         }
         default: {
             LOG(WARNING) << "fail group when input type isn't "
@@ -866,15 +857,16 @@ std::shared_ptr<DataHandler> RequestRunner::Run(RunnerContext& ctx) {
         new MemRowHandler(ctx.request_, &request_schema));
 }
 std::shared_ptr<DataHandler> GroupRunner::Run(RunnerContext& ctx) {
-    return Group(producers_[0]->RunWithCache(ctx), fn_, fn_schema_, idxs_);
+    return Group(producers_[0]->RunWithCache(ctx), fn_, fn_schema_, idxs_,
+                 &row_view_);
 }
 std::shared_ptr<DataHandler> OrderRunner::Run(RunnerContext& ctx) {
     return TableSort(producers_[0]->RunWithCache(ctx), fn_schema_, fn_, idxs_,
-                     is_asc_);
+                     is_asc_, &row_view_);
 }
 std::shared_ptr<DataHandler> GroupAndSortRunner::Run(RunnerContext& ctx) {
     return TableSortGroup(producers_[0]->RunWithCache(ctx), fn_, fn_schema_,
-                          groups_idxs_, order_idxs_, is_asc_);
+                          groups_idxs_, order_idxs_, is_asc_, &row_view_);
 }
 std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
     return TableProject(fn_, producers_[0]->RunWithCache(ctx), limit_cnt_,
@@ -893,7 +885,7 @@ std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
 std::shared_ptr<DataHandler> IndexSeekRunner::Run(RunnerContext& ctx) {
     return IndexSeek(producers_[0]->RunWithCache(ctx),
                      producers_[1]->RunWithCache(ctx), fn_, fn_schema_,
-                     keys_idxs_);
+                     keys_idxs_, &row_view_);
 }
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     return Limit(producers_[0]->RunWithCache(ctx), limit_cnt_);
@@ -911,7 +903,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     return RequestUnion(producers_[0]->RunWithCache(ctx),
                         producers_[1]->RunWithCache(ctx), fn_, fn_schema_,
                         groups_idxs_, orders_idxs_, keys_idxs_, start_offset_,
-                        end_offset_);
+                        end_offset_, &row_view_);
 }
 std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
     auto slice = AggProject(fn_, producers_[0]->RunWithCache(ctx));

@@ -44,6 +44,7 @@ class Runner {
         : id_(id),
           fn_(nullptr),
           fn_schema_(),
+          row_view_(fn_schema_),
           limit_cnt_(0),
           need_cache_(false),
           producers_() {}
@@ -51,6 +52,7 @@ class Runner {
         : id_(id),
           fn_(nullptr),
           fn_schema_(),
+          row_view_(fn_schema_),
           limit_cnt_(limit_cnt),
           need_cache_(false),
           producers_() {}
@@ -59,6 +61,7 @@ class Runner {
         : id_(id),
           fn_(fn),
           fn_schema_(fn_schema),
+          row_view_(fn_schema_),
           limit_cnt_(limit_cnt),
           need_cache_(false),
           producers_() {}
@@ -76,6 +79,7 @@ class Runner {
     const int32_t id_;
     const int8_t* fn_;
     const Schema fn_schema_;
+    RowView row_view_;
     const int32_t limit_cnt_;
     virtual std::shared_ptr<DataHandler> Run(RunnerContext& ctx) = 0;  // NOLINT
     virtual std::shared_ptr<DataHandler> RunWithCache(
@@ -93,19 +97,21 @@ class Runner {
 
     std::shared_ptr<DataHandler> TableGroup(
         const std::shared_ptr<DataHandler> table, const Schema& schema,
-        const int8_t* fn, const std::vector<int>& idxs);
+        const int8_t* fn, const std::vector<int>& idxs, RowView* row_view);
     std::shared_ptr<DataHandler> PartitionGroup(
         const std::shared_ptr<DataHandler> partitions, const Schema& schema,
-        const int8_t* fn, const std::vector<int>& idxs);
+        const int8_t* fn, const std::vector<int>& idxs, RowView* row_view);
 
     std::shared_ptr<DataHandler> PartitionSort(
         std::shared_ptr<DataHandler> table, const Schema& schema,
-        const int8_t* fn, std::vector<int> idxs, const bool is_asc);
+        const int8_t* fn, std::vector<int> idxs, const bool is_asc,
+        RowView* row_view);
     std::shared_ptr<DataHandler> TableSort(std::shared_ptr<DataHandler> table,
                                            const Schema& schema,
                                            const int8_t* fn,
                                            std::vector<int> idxs,
-                                           const bool is_asc);
+                                           const bool is_asc,
+                                           RowView* row_view);
     std::shared_ptr<DataHandler> GroupAggProject(
         std::shared_ptr<DataHandler> input, const int32_t limit_cnt,
         const int8_t* fn, const Schema fn_schema);
@@ -120,13 +126,15 @@ class Runner {
                                            std::shared_ptr<DataHandler> right,
                                            const int8_t* fn,
                                            const Schema& fn_schema,
-                                           const std::vector<int>& idxs);
+                                           const std::vector<int>& idxs,
+                                           RowView* row_view);
     std::shared_ptr<DataHandler> RequestUnion(
         std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
         const int8_t* fn, const Schema& fn_schema,
         const std::vector<int>& groups_idxs,
         const std::vector<int>& orders_idxs, const std::vector<int>& keys_idxs,
-        const int64_t start_offset, const int64_t end_offset);
+        const int64_t start_offset, const int64_t end_offset,
+        RowView* row_view);
 
     std::shared_ptr<DataHandler> WindowAggProject(
         std::shared_ptr<DataHandler> input, const int32_t limit_cnt,
@@ -136,12 +144,14 @@ class Runner {
     std::shared_ptr<DataHandler> TableSortGroup(
         std::shared_ptr<DataHandler> table, const int8_t* fn,
         const Schema& schema, const std::vector<int>& groups_idxs,
-        const std::vector<int>& orders_idxs, const bool is_asc);
+        const std::vector<int>& orders_idxs, const bool is_asc,
+        RowView* row_view);
 
     std::shared_ptr<DataHandler> Group(std::shared_ptr<DataHandler> input,
                                        const int8_t* fn,
                                        const Schema& fn_schema,
-                                       const std::vector<int>& idxs);
+                                       const std::vector<int>& idxs,
+                                       RowView* row_view);
 
     std::shared_ptr<DataHandler> Limit(std::shared_ptr<DataHandler> input,
                                        const int32_t limit_cnt);
