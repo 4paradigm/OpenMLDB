@@ -154,7 +154,6 @@ class BatchRunSession : public RunSession {
         : RunSession(), mini_batch_(mini_batch) {}
     ~BatchRunSession() {}
     virtual int32_t Run(std::vector<int8_t*>& buf, uint64_t limit);  // NOLINT
-    std::shared_ptr<TableHandler> Run();
     const bool IsBatchRun() const override { return true; }
 
  private:

@@ -9,9 +9,12 @@
 
 #ifndef SRC_VM_RUNNER_H_
 #define SRC_VM_RUNNER_H_
-#include <codec/row_codec.h>
 #include <stdint-gcc.h>
+#include <map>
+#include <string>
+#include <vector>
 #include "base/status.h"
+#include "codec/row_codec.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 #include "vm/physical_op.h"
@@ -30,13 +33,14 @@ using vm::Window;
 class RunnerContext {
  public:
     RunnerContext() : request_(), cache_() {}
-    explicit RunnerContext(const Slice& request) : request_(request), cache_() {}
+    explicit RunnerContext(const Slice& request)
+        : request_(request), cache_() {}
     const Slice request_;
     std::map<int32_t, std::shared_ptr<DataHandler>> cache_;
 };
 class Runner {
  public:
-    Runner(const int32_t id)
+    explicit Runner(const int32_t id)
         : id_(id),
           fn_(nullptr),
           fn_schema_(),
@@ -73,8 +77,9 @@ class Runner {
     const int8_t* fn_;
     const Schema fn_schema_;
     const int32_t limit_cnt_;
-    virtual std::shared_ptr<DataHandler> Run(RunnerContext& ctx) = 0;
-    virtual std::shared_ptr<DataHandler> RunWithCache(RunnerContext& ctx);
+    virtual std::shared_ptr<DataHandler> Run(RunnerContext& ctx) = 0;  // NOLINT
+    virtual std::shared_ptr<DataHandler> RunWithCache(
+        RunnerContext& ctx);  // NOLINT
 
  protected:
     Slice WindowProject(const int8_t* fn, const uint64_t key, const Slice slice,
@@ -153,7 +158,7 @@ class DataRunner : public Runner {
         output << tab << "DATA";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::shared_ptr<DataHandler> data_handler_;
 };
 
@@ -166,7 +171,7 @@ class RequestRunner : public Runner {
         output << tab << "REQUEST";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const Schema request_schema;
 };
 class GroupRunner : public Runner {
@@ -179,7 +184,7 @@ class GroupRunner : public Runner {
         output << tab << "GROUP";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::vector<int32_t> idxs_;
 };
 
@@ -193,7 +198,7 @@ class FilterRunner : public Runner {
         output << tab << "FILTER";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::vector<int32_t> idxs_;
 };
 class OrderRunner : public Runner {
@@ -209,7 +214,7 @@ class OrderRunner : public Runner {
         Runner::Print(output, tab);
     }
 
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const bool is_asc_;
     const std::vector<int32_t> idxs_;
 };
@@ -221,7 +226,7 @@ class GroupAndSortRunner : public Runner {
                        const std::vector<int32_t>& groups_idxs,
                        const std::vector<int32_t>& orders_idxs,
                        const bool is_asc)
-        : Runner(id, fn, fn_schema, limit_cnt_),
+        : Runner(id, fn, fn_schema, limit_cnt),
           groups_idxs_(groups_idxs),
           order_idxs_(orders_idxs),
           is_asc_(is_asc) {}
@@ -230,7 +235,7 @@ class GroupAndSortRunner : public Runner {
         output << tab << "GROUP_AND_SORT";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::vector<int32_t> groups_idxs_;
     const std::vector<int32_t> order_idxs_;
     const bool is_asc_;
@@ -246,7 +251,7 @@ class TableProjectRunner : public Runner {
         output << tab << "TABLE_PROJECT";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };
 
 class RowProjectRunner : public Runner {
@@ -259,7 +264,7 @@ class RowProjectRunner : public Runner {
         output << tab << "ROW_PROJECT";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };
 
 class GroupAggRunner : public Runner {
@@ -272,20 +277,20 @@ class GroupAggRunner : public Runner {
         output << tab << "GROUP_AGG_PROJECT";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };
 
 class AggRunner : public Runner {
  public:
     AggRunner(const int32_t id, const int8_t* fn, const Schema& fn_schema,
-                   const int32_t limit_cnt)
+              const int32_t limit_cnt)
         : Runner(id, fn, fn_schema, limit_cnt) {}
     ~AggRunner() {}
     virtual void Print(std::ostream& output, const std::string& tab) const {
         output << tab << "AGG_PROJECT";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };
 class WindowAggRunner : public Runner {
  public:
@@ -304,7 +309,7 @@ class WindowAggRunner : public Runner {
         output << tab << "WINDOW_AGG_PROJECT";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::vector<int32_t> groups_idxs_;
     const std::vector<int32_t> order_idxs_;
     const int64_t start_offset_;
@@ -331,7 +336,7 @@ class RequestUnionRunner : public Runner {
         output << tab << "REQUEST_UNION";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const bool is_asc_;
     const std::vector<int32_t> groups_idxs_;
     const std::vector<int32_t> orders_idxs_;
@@ -348,7 +353,7 @@ class LimitRunner : public Runner {
         output << tab << "LIMIT";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };
 class IndexSeekRunner : public Runner {
  public:
@@ -362,7 +367,7 @@ class IndexSeekRunner : public Runner {
         output << tab << "INDEX_SEEK";
         Runner::Print(output, tab);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::vector<int32_t> keys_idxs_;
 };
 class RunnerBuilder {

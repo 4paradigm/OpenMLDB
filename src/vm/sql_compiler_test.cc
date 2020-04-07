@@ -16,9 +16,9 @@
  */
 
 #include "vm/sql_compiler.h"
-#include <boost/algorithm/string.hpp>
 #include <memory>
 #include <utility>
+#include "boost/algorithm/string.hpp"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"

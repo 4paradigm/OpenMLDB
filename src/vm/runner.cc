@@ -7,6 +7,10 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/runner.h"
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace vm {
@@ -61,9 +65,9 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     return runner;
                 }
                 case kAggregation: {
-                    auto runner = new AggRunner(id_++, op->GetFn(),
-                                                       op->GetFnSchema(),
-                                                       op->GetLimitCnt());
+                    auto runner =
+                        new AggRunner(id_++, op->GetFn(), op->GetFnSchema(),
+                                      op->GetLimitCnt());
                     runner->AddProducer(input);
                     return runner;
                 }
@@ -862,20 +866,23 @@ std::shared_ptr<DataHandler> RequestRunner::Run(RunnerContext& ctx) {
         new MemRowHandler(ctx.request_, &request_schema));
 }
 std::shared_ptr<DataHandler> GroupRunner::Run(RunnerContext& ctx) {
-    return  Group(producers_[0]->RunWithCache(ctx), fn_, fn_schema_, idxs_);
+    return Group(producers_[0]->RunWithCache(ctx), fn_, fn_schema_, idxs_);
 }
 std::shared_ptr<DataHandler> OrderRunner::Run(RunnerContext& ctx) {
-    return TableSort(producers_[0]->RunWithCache(ctx), fn_schema_, fn_, idxs_, is_asc_);
+    return TableSort(producers_[0]->RunWithCache(ctx), fn_schema_, fn_, idxs_,
+                     is_asc_);
 }
 std::shared_ptr<DataHandler> GroupAndSortRunner::Run(RunnerContext& ctx) {
     return TableSortGroup(producers_[0]->RunWithCache(ctx), fn_, fn_schema_,
                           groups_idxs_, order_idxs_, is_asc_);
 }
 std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
-    return TableProject(fn_, producers_[0]->RunWithCache(ctx), limit_cnt_, fn_schema_);
+    return TableProject(fn_, producers_[0]->RunWithCache(ctx), limit_cnt_,
+                        fn_schema_);
 }
 std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
-    auto row = std::dynamic_pointer_cast<RowHandler>(producers_[0]->RunWithCache(ctx));
+    auto row =
+        std::dynamic_pointer_cast<RowHandler>(producers_[0]->RunWithCache(ctx));
     return std::shared_ptr<DataHandler>(
         new MemRowHandler(RowProject(fn_, row->GetValue()), &fn_schema_));
 }
@@ -884,8 +891,9 @@ std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
                             fn_schema_, start_offset_, end_offset_);
 }
 std::shared_ptr<DataHandler> IndexSeekRunner::Run(RunnerContext& ctx) {
-    return IndexSeek(producers_[0]->RunWithCache(ctx), producers_[1]->RunWithCache(ctx), fn_,
-                     fn_schema_, keys_idxs_);
+    return IndexSeek(producers_[0]->RunWithCache(ctx),
+                     producers_[1]->RunWithCache(ctx), fn_, fn_schema_,
+                     keys_idxs_);
 }
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     return Limit(producers_[0]->RunWithCache(ctx), limit_cnt_);
@@ -900,12 +908,13 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
 }
 
 std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
-    return RequestUnion(producers_[0]->RunWithCache(ctx), producers_[1]->RunWithCache(ctx), fn_,
-                        fn_schema_, groups_idxs_, orders_idxs_, keys_idxs_,
-                        start_offset_, end_offset_);
+    return RequestUnion(producers_[0]->RunWithCache(ctx),
+                        producers_[1]->RunWithCache(ctx), fn_, fn_schema_,
+                        groups_idxs_, orders_idxs_, keys_idxs_, start_offset_,
+                        end_offset_);
 }
 std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
-    auto slice = AggProject(fn_,producers_[0]->RunWithCache(ctx));
+    auto slice = AggProject(fn_, producers_[0]->RunWithCache(ctx));
     return std::shared_ptr<RowHandler>(new MemRowHandler(slice, &fn_schema_));
 }
 }  // namespace vm

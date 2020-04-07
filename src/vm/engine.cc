@@ -132,7 +132,8 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     }
     switch (output->GetHanlderType()) {
         case kTableHandler: {
-            auto iter = std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
+            auto iter =
+                std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
             while (iter->Valid()) {
                 buf.push_back(iter->GetValue().buf());
                 iter->Next();
@@ -142,7 +143,9 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
         case kRowHandler: {
             Slice row(
                 std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
-            buf.push_back(std::dynamic_pointer_cast<RowHandler>(output)->GetValue().buf());
+            buf.push_back(std::dynamic_pointer_cast<RowHandler>(output)
+                              ->GetValue()
+                              .buf());
             return 0;
         }
         case kPartitionHandler: {

@@ -15,10 +15,9 @@
  * limitations under the License.
  */
 
-#include "vm/sql_compiler.h"
-#include <boost/algorithm/string.hpp>
 #include <memory>
 #include <utility>
+#include "boost/algorithm/string.hpp"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -36,6 +35,7 @@
 #include "parser/parser.h"
 #include "plan/planner.h"
 #include "tablet/tablet_catalog.h"
+#include "vm/sql_compiler.h"
 #include "vm/test_base.h"
 
 using namespace llvm;       // NOLINT
@@ -79,7 +79,6 @@ void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
 }
 class RunnerTest : public ::testing::TestWithParam<std::string> {};
 
-
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleProject, RunnerTest,
     testing::Values(
@@ -87,8 +86,6 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 as c1, col2  FROM t1;",
         "SELECT col1-col2 as col1_2, *, col1+col2 as col12 FROM t1 limit 10;",
         "SELECT *, col1+col2 as col12 FROM t1 limit 10;"));
-
-
 
 INSTANTIATE_TEST_CASE_P(
     SqlWindowProjectPlanner, RunnerTest,
@@ -115,7 +112,6 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20;",
         "SELECT COL1 FROM t1 where COL1 > 10;"));
 
-
 INSTANTIATE_TEST_CASE_P(
     SqlGroupPlan, RunnerTest,
     testing::Values(
@@ -128,8 +124,8 @@ INSTANTIATE_TEST_CASE_P(
         "SELECT sum(COL1) FROM t1 group by COL1, COL2;",
         "SELECT sum(COL1) FROM t1 group by COL1;"));
 
-void Runner_Check(std::shared_ptr<Catalog> catalog,
-                           const std::string sql, const bool is_batch) {
+void Runner_Check(std::shared_ptr<Catalog> catalog, const std::string sql,
+                  const bool is_batch) {
     node::NodeManager nm;
     SQLCompiler sql_compiler(catalog, &nm);
     SQLContext sql_context;
