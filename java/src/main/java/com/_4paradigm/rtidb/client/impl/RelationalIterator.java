@@ -237,7 +237,7 @@ public class RelationalIterator {
             Tablet.BatchQueryRequest.Builder builder = Tablet.BatchQueryRequest.newBuilder();
             builder.setTid(th.getTableInfo().getTid());
             if (keys == null || keys.isEmpty()) {
-                throw new TabletException("batch query keys is not provides");
+                throw new TabletException("batch query keys are not provided");
             }
             for (int i = 0; i < keys.size(); i++) {
                 String key = keys.get(i);

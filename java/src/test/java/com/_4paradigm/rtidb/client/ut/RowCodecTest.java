@@ -3,6 +3,7 @@ package com._4paradigm.rtidb.client.ut;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.schema.*;
 import com._4paradigm.rtidb.client.type.DataType;
+import com.google.protobuf.ByteBufferNoCopy;
 import org.joda.time.DateTime;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -731,6 +732,40 @@ public class RowCodecTest {
             }
         } catch (TabletException e) {
             Assert.assertTrue(false);
+        }
+    }
+
+    @Test
+    public void testSingleColumnCodec() {
+        List<ByteBuffer> list = new ArrayList<>();
+        {
+            /**
+             * encode part
+             */
+            list.add(SingleColumnCodec.Append(false));
+            list.add(SingleColumnCodec.Append(true));
+            short int16Val = 33;
+            list.add(SingleColumnCodec.Append(int16Val));
+            int int32Val = 44;
+            list.add(SingleColumnCodec.Append(int32Val));
+            long int64Val = 55;
+            list.add(SingleColumnCodec.Append(int64Val));
+            float fVal = 3.3f;
+            list.add(SingleColumnCodec.Append(fVal));
+            double dVal = 4.4;
+            list.add(SingleColumnCodec.Append(dVal));
+        }
+        {
+            /**
+             * decode part
+             */
+            Assert.assertEquals(SingleColumnCodec.GetBool(ByteBufferNoCopy.wrap(list.get(0))), false);
+            Assert.assertEquals(SingleColumnCodec.GetBool(ByteBufferNoCopy.wrap(list.get(1))), true);
+            Assert.assertEquals(SingleColumnCodec.GetShort(ByteBufferNoCopy.wrap(list.get(2))), 33);
+            Assert.assertEquals(SingleColumnCodec.GetInt(ByteBufferNoCopy.wrap(list.get(3))), 44);
+            Assert.assertEquals(SingleColumnCodec.GetLong(ByteBufferNoCopy.wrap(list.get(4))), 55);
+            Assert.assertEquals(SingleColumnCodec.GetFloat(ByteBufferNoCopy.wrap(list.get(5))), 3.3f);
+            Assert.assertEquals(SingleColumnCodec.GetDouble(ByteBufferNoCopy.wrap(list.get(6))), 4.4);
         }
     }
 }
