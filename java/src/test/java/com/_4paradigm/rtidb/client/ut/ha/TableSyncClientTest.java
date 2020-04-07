@@ -47,6 +47,7 @@ public class TableSyncClientTest extends TestCaseBase {
     public void tearDown() {
         super.tearDown();
     }
+
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
@@ -297,6 +298,7 @@ public class TableSyncClientTest extends TestCaseBase {
 
         return name;
     }
+
     @Test
     public void testPut() {
         String name = createKvTable();
@@ -1072,19 +1074,15 @@ public class TableSyncClientTest extends TestCaseBase {
             boolean ok = tableSyncClient.put(name, data, wo);
             Assert.assertTrue(ok);
 
-
-//            //query
-//            Map<String, Object> index = new HashMap<>();
-//            index.put("id", 11l);
-//            ReadOption ro = new ReadOption(index, null, null, 1);
-//            RelationalIterator it = tableSyncClient.query(name, ro);
-//            Assert.assertTrue(it.valid());
-//
-//            Map<String, Object> queryMap = it.getDecodedValue();
-//            Assert.assertEquals(queryMap.size(), 3);
-//            Assert.assertEquals(queryMap.get("id"), 11l);
-//            Assert.assertEquals(queryMap.get("attribute"), "a1");
-//            Assert.assertEquals(queryMap.get("image"), "i1");
+            //traverse
+            ReadOption ro = new ReadOption(null, null, null, 1);
+            RelationalIterator it = tableSyncClient.traverse(name, ro);
+            it.next();
+            Assert.assertTrue(it.valid());
+            Map<String, Object> map = it.getDecodedValue();
+            Assert.assertEquals(map.size(), 3);
+            Assert.assertEquals(map.get("attribute"), "a1");
+            Assert.assertEquals(map.get("image"), "i1");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -1847,6 +1845,7 @@ public class TableSyncClientTest extends TestCaseBase {
             nsc.dropTable(name);
         }
     }
+
     @Test
     public void testNoTsPut() throws TabletException, ExecutionException, InterruptedException, TimeoutException {
         String name = createSchemaTable();
@@ -1856,7 +1855,7 @@ public class TableSyncClientTest extends TestCaseBase {
         row.put("amt", 1.0d);
         boolean ok = tableSyncClient.put(name, row);
         Assert.assertTrue(ok);
-        ok = tableSyncClient.put(name, new Object[] {"card2", "cc2", 2.0d});
+        ok = tableSyncClient.put(name, new Object[]{"card2", "cc2", 2.0d});
         Assert.assertTrue(ok);
     }
 
