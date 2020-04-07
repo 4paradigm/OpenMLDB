@@ -99,6 +99,8 @@ enum TaskType {
     kAddReplicaNSRemote = 21; 
     kDumpIndexData = 22;
     kSendIndexData = 23;
+    kLoadIndexData = 24;
+    kExtractIndexData = 25;
 }
 
 enum TaskStatus {
@@ -647,6 +649,22 @@ message DeleteIndexRequest {
 }
 
 message DumpIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    optional uint32 idx = 4;
+    optional rtidb.common.ColumnKey column_key = 5;
+    optional TaskInfo task_info = 6;
+}
+
+message LoadIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    optional TaskInfo task_info = 4;
+}
+
+message ExtractIndexDataRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional uint32 partition_num = 3;

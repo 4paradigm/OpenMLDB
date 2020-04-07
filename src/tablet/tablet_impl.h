@@ -267,6 +267,16 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void LoadIndexData(RpcController* controller,
+            const ::rtidb::api::LoadIndexDataRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void ExtractIndexData(RpcController* controller,
+            const ::rtidb::api::ExtractIndexDataRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void AddIndex(RpcController* controller,
             const ::rtidb::api::AddIndexRequest* request,
             ::rtidb::api::GeneralResponse* response,
@@ -349,6 +359,15 @@ private:
     void SendIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
         const std::map<uint32_t, std::string>& pid_endpoint_map,
         std::shared_ptr<::rtidb::api::TaskInfo> task);
+
+    void LoadIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table, 
+        std::shared_ptr<::rtidb::replica::LogReplicator> replicator, 
+        uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task);
+
+    void ExtractIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> table,
+        std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,
+        ::rtidb::common::ColumnKey& column_key, uint32_t idx,
+        uint32_t partition_num, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();
 

@@ -2210,7 +2210,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         ::rtidb::base::SchemaCodec codec;
         bool codec_ok = codec.Encode(columns, schema);
         if (!codec_ok) {
-            return false;
+            return -1;
         }
     }
     table_meta.set_name(table_info->name());
