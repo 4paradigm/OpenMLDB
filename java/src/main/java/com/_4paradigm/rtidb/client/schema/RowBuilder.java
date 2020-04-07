@@ -92,7 +92,7 @@ public class RowBuilder {
         if (column.getDataType() != type) {
             return false;
         }
-        if (column.getDataType() != DataType.Varchar || column.getDataType() != DataType.String) {
+        if (column.getDataType() != DataType.Varchar && column.getDataType() != DataType.String) {
             if (RowCodecCommon.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                 return false;
             }
@@ -200,7 +200,7 @@ public class RowBuilder {
 
     public boolean appendString(String val) {
         int length = val.length();
-        if (val == null || !check(DataType.Varchar) || !check(DataType.String)) {
+        if (val == null || (!check(DataType.Varchar) && !check(DataType.String))) {
             return false;
         }
         if (str_offset + length > size) {
