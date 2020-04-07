@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -185,6 +186,71 @@ public class RowView {
         return getValue(this.row, idx, type);
     }
 
+    public Object getValue(ByteBuffer row, int idx) throws TabletException {
+        if (schema.size() == 0 || row == null || idx >= schema.size()) {
+            throw new TabletException("input mistake");
+        }
+        if (row.order() == ByteOrder.BIG_ENDIAN) {
+            row = row.order(ByteOrder.LITTLE_ENDIAN);
+        }
+        ColumnDesc column = schema.get(idx);
+        int size = getSize(row);
+        if (size <= RowCodecCommon.HEADER_LENGTH) {
+            throw new TabletException("row size is not bigger than header length");
+        }
+        if (isNull(row, idx)) {
+            return null;
+        }
+        Object val = null;
+        int offset = offset_vec.get(idx);
+        switch (column.getDataType()) {
+            case Bool: {
+                int v = row.get(offset);
+                if (v == 1) {
+                    val = true;
+                } else {
+                    val = false;
+                }
+                break;
+            }
+            case SmallInt:
+                val = row.getShort(offset);
+                break;
+            case Int:
+                val = row.getInt(offset);
+                break;
+            case Timestamp:
+            case BigInt:
+                val = row.getLong(offset);
+                break;
+            case Float:
+                val = row.getFloat(offset);
+                break;
+            case Double:
+                val = row.getDouble(offset);
+                break;
+            case Date:
+                int date = row.getInt(offset);
+                int day = date & 0x0000000FF;
+                date = date >> 8;
+                int month = date & 0x0000FF;
+                int year = date >> 8;
+                val = new Date(year, month, day);
+                break;
+            case Varchar:
+                int field_offset = offset;
+                int next_str_field_offset = 0;
+                if (field_offset < string_field_cnt - 1) {
+                    next_str_field_offset = field_offset + 1;
+                }
+                return getStrField(row, field_offset, next_str_field_offset,
+                        str_field_start_offset, RowCodecCommon.getAddrLength(size));
+            default:
+                throw new TabletException("unsupported data type");
+        }
+        return val;
+    }
+
     public Object getValue(ByteBuffer row, int idx, DataType type) throws TabletException {
         if (schema.size() == 0 || row == null || idx >= schema.size()) {
             throw new TabletException("input mistake");
@@ -230,6 +296,14 @@ public class RowView {
                 break;
             case Double:
                 val = row.getDouble(offset);
+                break;
+            case Date:
+                int date = row.getInt(offset);
+                int day = date & 0x0000000FF;
+                date = date >> 8;
+                int month = date & 0x0000FF;
+                int year = date >> 8;
+                val = new Date(year, month, day);
                 break;
             case Varchar:
                 int field_offset = offset;

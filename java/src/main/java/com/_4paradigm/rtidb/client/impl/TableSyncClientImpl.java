@@ -884,7 +884,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
         List<ColumnDesc> schema = th.getSchema();
-        if (option.getProjection().size() > 0) {
+        boolean isNewFormat = false;
+        // the new format version
+        if (th.getFormatVersion() == 1 && option.getProjection().size() > 0) {
             schema = new ArrayList<>();
             for (String name : option.getProjection()) {
                 Integer idx = th.getSchemaPos().get(name);
@@ -894,6 +896,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                 builder.addProjection(idx);
                 schema.add(th.getSchema().get(idx));
             }
+            isNewFormat = true;
         }
         builder.setTid(tid);
         builder.setEt(et);
@@ -907,6 +910,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.ScanRequest request = builder.build();
         Tablet.ScanResponse response = ts.scan(request);
         if (response != null && response.getCode() == 0) {
+            if (isNewFormat) {
+                RowKvIterator rit = new RowKvIterator(response.getPairs(), schema, response.getCount());
+                return rit;
+            }
             DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), schema);
             it.setCount(response.getCount());
             if (th.getTableInfo().hasCompressType()) {

@@ -22,10 +22,17 @@ public class TableHandler {
     private ReadStrategy readStrategy = ReadStrategy.kReadLeader;
     private boolean hasTsCol = false;
     private String autoGenPkName = "";
+    private int formatVersion = 0;
+
+    public int getFormatVersion() {
+        return formatVersion;
+    }
+
     public TableHandler(TableInfo tableInfo) {
         this.tableInfo = tableInfo;
         int schemaSize = 0;
         int index = 0;
+        formatVersion = tableInfo.getFormatVersion();
         if (tableInfo.getColumnDescV1Count() > 0) {
             schemaSize = tableInfo.getColumnDescV1Count();
             Map<String, Integer> tsPos = new HashMap<String, Integer>();

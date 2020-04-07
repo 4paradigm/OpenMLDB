@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -193,6 +194,19 @@ public class RowBuilder {
         }
         buf.position(offset_vec.get(cnt));
         buf.putDouble(val);
+        cnt++;
+        return true;
+    }
+
+    public boolean appendDate(Date date) {
+        int year = date.getYear();
+        int month = date.getMonth();
+        int day = date.getDay();
+        int data = year << 16;
+        data = data | (month << 8);
+        data = data | day;
+        buf.position(offset_vec.get(cnt));
+        buf.putInt(data);
         cnt++;
         return true;
     }
