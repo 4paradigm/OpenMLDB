@@ -218,8 +218,7 @@ class PhysicalScanIndexNode : public PhysicalDataProviderNode {
  public:
     PhysicalScanIndexNode(const std::shared_ptr<TableHandler> table_handler,
                           const std::string &index_name)
-        : PhysicalDataProviderNode(table_handler,
-                                   kProviderTypeIndexScan),
+        : PhysicalDataProviderNode(table_handler, kProviderTypeIndexScan),
           index_name_(index_name) {
         output_type = kSchemaTypeGroup;
     }
@@ -270,6 +269,9 @@ class PhysicalGroupAndSortNode : public PhysicalUnaryNode {
     }
     const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
     const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
+    const bool GetIsAsc() const {
+        return nullptr == orders_ ? true : orders_->is_asc_;
+    }
 
  private:
     std::vector<int32_t> groups_idxs_;
@@ -507,6 +509,9 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     const std::vector<int32_t> &GetKeysIdxs() const { return keys_idxs_; }
     const std::vector<int32_t> &GetOrdersIdxs() const { return orders_idxs_; }
     const std::vector<int32_t> &GetGroupsIdxs() const { return groups_idxs_; }
+    const bool GetIsAsc() const {
+        return nullptr == orders_ ? true : orders_->is_asc_;
+    }
 
  private:
     std::vector<int32_t> groups_idxs_;

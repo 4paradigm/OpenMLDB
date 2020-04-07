@@ -55,6 +55,10 @@ class RunSession {
     virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
         return compile_info_->sql_ctx.plan;
     }
+    virtual inline vm::Runner* GetRunner() {
+        return compile_info_->sql_ctx.runner;
+    }
+
 
     virtual const bool IsBatchRun() const = 0;
 
@@ -120,6 +124,11 @@ class RunSession {
         std::shared_ptr<DataHandler> table, const int8_t* fn,
         const Schema& schema, const std::vector<int>& groups_idxs,
         const std::vector<int>& orders_idxs, const bool is_asc);
+
+    std::shared_ptr<DataHandler> Group(
+        std::shared_ptr<DataHandler> input, const int8_t* fn,
+        const Schema& fn_schema, const std::vector<int>& idxs);
+
     std::shared_ptr<DataHandler> TableSortGroup(
         std::shared_ptr<DataHandler> table,
         const PhysicalGroupAndSortNode* grouo_sort_op);

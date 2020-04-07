@@ -27,6 +27,7 @@
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
 #include "vm/jit.h"
+#include "vm/runner.h"
 
 namespace fesql {
 namespace vm {
@@ -42,18 +43,17 @@ struct SQLContext {
     std::string db;
     // the physical plan
     PhysicalOpNode* plan;
-    int8_t* runner;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
     Schema schema;
+    Runner *runner;
     uint32_t row_size;
     std::string ir;
 };
 
-void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
+void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
                      ::llvm::orc::MangleAndInterner& mi);  // NOLINT
-
 
 class SQLCompiler {
  public:

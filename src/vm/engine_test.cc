@@ -509,10 +509,14 @@ TEST_F(EngineTest, test_window_agg) {
     ASSERT_TRUE(ok);
     PrintSchema(session.GetSchema());
     std::vector<int8_t*> output;
+
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
     std::cout << "physical plan:\n" << oss.str() << std::endl;
 
+    std::ostringstream runner_oss;
+    session.GetRunner()->Print(runner_oss, "");
+    std::cout << "runner plan:\n" << runner_oss.str() << std::endl;
     int32_t limit = 10;
     auto iter = windows.cbegin();
     while (limit-- > 0 && iter != windows.cend()) {

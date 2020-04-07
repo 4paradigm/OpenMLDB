@@ -28,6 +28,7 @@
 #include "plan/planner.h"
 #include "udf/udf.h"
 #include "vm/transform.h"
+#include "vm/runner.h"
 
 namespace fesql {
 namespace vm {
@@ -194,7 +195,15 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
+    RunnerBuilder runner_builder;
+    Runner* runner = runner_builder.Build(ctx.plan, status);
+    if (nullptr == runner) {
+        status.msg = "fail to build runner: " + status.msg;
+        status.code = common::kOpGenError;
+        return false;
+    }
     ctx.schema = ctx.plan->output_schema;
+    ctx.runner = runner;
     return true;
 }
 
@@ -247,6 +256,7 @@ bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
     }
     return true;
 }
+
 
 }  // namespace vm
 }  // namespace fesql
