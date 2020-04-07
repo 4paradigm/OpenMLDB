@@ -4634,9 +4634,6 @@ void TabletImpl::LoadIndexData(RpcController* controller,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<Table> table;
-    std::shared_ptr<LogReplicator> replicator;
-    std::string db_root_path;
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
         if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kLoadIndexData, task_ptr) < 0) {
@@ -4646,6 +4643,8 @@ void TabletImpl::LoadIndexData(RpcController* controller,
         }
     }
     do {
+        std::shared_ptr<Table> table;
+        std::shared_ptr<LogReplicator> replicator;
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table = GetTableUnLock(request->tid(), request->pid());
@@ -4708,31 +4707,28 @@ void TabletImpl::LoadIndexDataInternal(std::shared_ptr<::rtidb::storage::Table> 
         ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(index_file_path, fd);
         ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
         std::string buffer;
-        std::atomic<uint64_t> succ_cnt, failed_cnt;
-        succ_cnt = failed_cnt = 0;
+        uint64_t succ_cnt = 0;
+        uint64_t failed_cnt = 0;
         while (true) {
             buffer.clear();
             ::rtidb::base::Slice record;
             ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
             if (status.IsWaitRecord() || status.IsEof()) {
                 PDLOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu",
-                      index_file_path.c_str(), tid, pid, succ_cnt.load(std::memory_order_relaxed), failed_cnt.load(std::memory_order_relaxed));
+                      index_file_path.c_str(), tid, pid, succ_cnt, failed_cnt);
                 break;
             }
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid, pid, status.ToString().c_str());
-                failed_cnt.fetch_add(1, std::memory_order_relaxed);
+                break;
+                failed_cnt++;
                 continue;
             }
             ::rtidb::api::LogEntry entry;
             entry.ParseFromString(std::string(record.data(), record.size()));
             table->Put(entry);
             replicator->AppendEntry(entry);
-        }
-        if (failed_cnt.load(std::memory_order_release)) {
-            PDLOG(WARNING, "fail to load index. tid %u pid %u", tid, pid);
-            SetTaskStatus(task, ::rtidb::api::TaskStatus::kFailed);
-            return;
+            succ_cnt++;
         }
     }
     PDLOG(INFO, "load index success. tid %u pid %u", tid, pid);
