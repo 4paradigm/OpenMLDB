@@ -123,6 +123,29 @@ int32_t RequestRunSession::Run(const Slice& in_row, Slice* out_row) {
     return 0;
 }
 
+std::shared_ptr<TableHandler> BatchRunSession::Run() {
+    RunnerContext ctx;
+    auto output = compile_info_->sql_ctx.runner->RunWithCache(ctx);
+    if (!output) {
+        LOG(WARNING) << "run batch plan output is null";
+        return std::shared_ptr<TableHandler>();
+    }
+    switch (output->GetHanlderType()) {
+        case kTableHandler: {
+            return std::dynamic_pointer_cast<TableHandler>(output);
+        }
+        case kRowHandler: {
+            auto table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
+            table->AddRow(std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
+            return table;
+        }
+        case kPartitionHandler: {
+            LOG(WARNING) << "partition output is invalid";
+            return std::shared_ptr<TableHandler>();;
+        }
+    }
+    return std::shared_ptr<TableHandler>();
+}
 int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     RunnerContext ctx;
     auto output = compile_info_->sql_ctx.runner->RunWithCache(ctx);
@@ -155,6 +178,7 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     }
     return 0;
 }
+
 
 std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
     const PhysicalOpNode* node, const Slice* row) {
