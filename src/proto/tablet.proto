@@ -98,6 +98,7 @@ enum TaskType {
     kDropTableRemote = 20; 
     kAddReplicaNSRemote = 21; 
     kDumpIndexData = 22;
+    kSendIndexData = 23;
 }
 
 enum TaskStatus {
@@ -458,6 +459,19 @@ message SendSnapshotRequest {
     optional uint32 remote_tid = 5;
 }
 
+message SendIndexDataRequest {
+
+    message EndpointPair {
+        optional uint32 pid = 1;
+        optional string endpoint = 2;
+    }
+
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    repeated EndpointPair pairs = 3;
+    optional TaskInfo task_info = 4;
+}
+
 message SendDataRequest {
     required uint32 tid = 1;
     required uint32 pid = 2;
@@ -721,6 +735,7 @@ service TabletServer {
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
     rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
     rpc AddIndex(AddIndexRequest) returns(GeneralResponse);
+    rpc SendIndexData(SendIndexDataRequest) returns(GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
     rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
 }
