@@ -263,7 +263,7 @@ Slice Runner::AggProject(const int8_t* fn,
         LOG(WARNING) << "fail to run udf " << ret;
         return Slice();
     }
-    return Slice(reinterpret_cast<char*>(buf));
+    return Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf));
 }
 
 std::shared_ptr<DataHandler> Runner::GroupAggProject(

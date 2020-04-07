@@ -334,6 +334,7 @@ static void WINDOW_CASE_QUERY(benchmark::State *state_ptr, MODE mode,
                 }
             }
             DLOG(INFO) << "Total cnt: " << total_cnt << ", fail cnt: " << fail;
+
             break;
         }
         case TEST: {
