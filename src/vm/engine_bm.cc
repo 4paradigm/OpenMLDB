@@ -71,7 +71,19 @@ static void BM_EngineRunBatchWindowSumFeature5(
     EngineRunBatchWindowSumFeature5(&state, BENCHMARK, state.range(0),
                                     state.range(1));
 }
+// request engine simple bm
+BENCHMARK(BM_EngineRequestSimpleSelectVarchar);
+BENCHMARK(BM_EngineRequestSimpleSelectDouble);
+BENCHMARK(BM_EngineRequestSimpleSelectInt32);
+BENCHMARK(BM_EngineRequestSimpleUDF);
 
+// batch engine simple bm
+BENCHMARK(BM_EngineSimpleSelectVarchar);
+BENCHMARK(BM_EngineSimpleSelectDouble);
+BENCHMARK(BM_EngineSimpleSelectInt32);
+BENCHMARK(BM_EngineSimpleUDF);
+
+// request engine window bm
 BENCHMARK(BM_EngineWindowSumFeature1)
     ->Args({1, 2})
     ->Args({1, 10})
@@ -92,10 +104,7 @@ BENCHMARK(BM_EngineWindowSumFeature5)
     ->Args({1000, 1000})
     ->Args({10000, 10000});
 
-BENCHMARK(BM_EngineSimpleSelectVarchar);
-BENCHMARK(BM_EngineSimpleSelectDouble);
-BENCHMARK(BM_EngineSimpleSelectInt32);
-BENCHMARK(BM_EngineSimpleUDF);
+// batch engine window bm
 BENCHMARK(BM_EngineRunBatchWindowSumFeature1)
     ->Args({1, 2})
     ->Args({1, 2})
@@ -116,10 +125,7 @@ BENCHMARK(BM_EngineRunBatchWindowSumFeature5)
     ->Args({100, 100})
     ->Args({1000, 1000})
     ->Args({10000, 10000});
-BENCHMARK(BM_EngineRequestSimpleSelectVarchar);
-BENCHMARK(BM_EngineRequestSimpleSelectDouble);
-BENCHMARK(BM_EngineRequestSimpleSelectInt32);
-BENCHMARK(BM_EngineRequestSimpleUDF);
+
 }  // namespace vm
 }  // namespace fesql
 

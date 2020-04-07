@@ -202,6 +202,9 @@ static void EngineRequestMode(const std::string sql, MODE mode,
         return;
     }
 
+    std::ostringstream plan_oss;
+    session.GetPhysicalPlan()->Print(plan_oss, "");
+    LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
