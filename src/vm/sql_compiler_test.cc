@@ -80,11 +80,22 @@ void BuildTableDef(::fesql::type::TableDef& table_def) {  // NOLINT
 class SQLCompilerTest : public ::testing::TestWithParam<std::string> {};
 
 INSTANTIATE_TEST_CASE_P(
-    UDFRunnerTest, SQLCompilerTest,
+    WindowSqlTest, SQLCompilerTest,
     testing::Values(
         "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
         "d\nend\n%%sql\nSELECT test(col1,col1) FROM t1 limit 10;",
-        ""));
+        "SELECT COL1, COL2, `COL15`, AVG(COL3) OVER w, SUM(COL3) OVER w FROM "
+        "t1 \n"
+        "WINDOW w AS (PARTITION BY COL2\n"
+        "              ORDER BY `COL15` ROWS BETWEEN UNBOUNDED PRECEDING AND "
+        "CURRENT ROW);",
+        "SELECT COL1, SUM(col4) OVER w as w_amt_sum FROM t1 \n"
+        "WINDOW w AS (PARTITION BY COL2\n"
+        "              ORDER BY `col15` ROWS BETWEEN 3 PRECEDING AND 3 "
+        "FOLLOWING);",
+        "SELECT sum(col1) OVER w1 as w1_col1_sum FROM t1 "
+        "WINDOW w1 AS (PARTITION BY col15 ORDER BY `col15` RANGE BETWEEN 3 "
+        "PRECEDING AND CURRENT ROW) limit 10;"));
 
 void Compiler_Runner_Check(std::shared_ptr<Catalog> catalog,
                            const std::string sql, const bool is_batch) {
@@ -113,7 +124,6 @@ void Compiler_Runner_Check(std::shared_ptr<Catalog> catalog,
 }
 
 TEST_P(SQLCompilerTest, compile_request_mode_test) {
-    const std::string sql = GetParam();
     std::string sqlstr = GetParam();
     LOG(INFO) << sqlstr;
 
@@ -167,64 +177,7 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
     AddTable(catalog, table_def4, table4);
     AddTable(catalog, table_def5, table5);
     AddTable(catalog, table_def6, table6);
-    Compiler_Runner_Check(catalog, sql, false);
-}
 
-TEST_P(SQLCompilerTest, compile_batch_mode_test) {
-    const std::string sql = GetParam();
-    std::string sqlstr = GetParam();
-    LOG(INFO) << sqlstr;
-
-    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
-    boost::to_lower(sqlstr);
-    LOG(INFO) << sqlstr;
-    std::cout << sqlstr << std::endl;
-
-    fesql::type::TableDef table_def;
-    fesql::type::TableDef table_def2;
-    fesql::type::TableDef table_def3;
-    fesql::type::TableDef table_def4;
-    fesql::type::TableDef table_def5;
-    fesql::type::TableDef table_def6;
-
-    BuildTableDef(table_def);
-    BuildTableDef(table_def2);
-    BuildTableDef(table_def3);
-    BuildTableDef(table_def4);
-    BuildTableDef(table_def5);
-    BuildTableDef(table_def6);
-
-    table_def.set_name("t1");
-    table_def2.set_name("t2");
-    table_def3.set_name("t3");
-    table_def4.set_name("t4");
-    table_def5.set_name("t5");
-    table_def6.set_name("t6");
-
-    std::shared_ptr<::fesql::storage::Table> table(
-        new ::fesql::storage::Table(1, 1, table_def));
-    std::shared_ptr<::fesql::storage::Table> table2(
-        new ::fesql::storage::Table(2, 1, table_def2));
-    std::shared_ptr<::fesql::storage::Table> table3(
-        new ::fesql::storage::Table(3, 1, table_def3));
-    std::shared_ptr<::fesql::storage::Table> table4(
-        new ::fesql::storage::Table(4, 1, table_def4));
-    std::shared_ptr<::fesql::storage::Table> table5(
-        new ::fesql::storage::Table(5, 1, table_def5));
-    std::shared_ptr<::fesql::storage::Table> table6(
-        new ::fesql::storage::Table(6, 1, table_def6));
-
-    ::fesql::type::IndexDef* index = table_def.add_indexes();
-    index->set_name("index12");
-    index->add_first_keys("col1");
-    index->add_first_keys("col2");
-    index->set_second_key("col15");
-    auto catalog = BuildCommonCatalog(table_def, table);
-    AddTable(catalog, table_def2, table2);
-    AddTable(catalog, table_def3, table3);
-    AddTable(catalog, table_def4, table4);
-    AddTable(catalog, table_def5, table5);
-    AddTable(catalog, table_def6, table6);
 
     fesql::type::TableDef request_def;
     BuildTableDef(request_def);
@@ -234,7 +187,66 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
         new ::fesql::storage::Table(1, 1, request_def));
     AddTable(catalog, request_def, request);
 
-    Compiler_Runner_Check(catalog, sql, true);
+    Compiler_Runner_Check(catalog, sqlstr, false);
+}
+
+TEST_P(SQLCompilerTest, compile_batch_mode_test) {
+    std::string sqlstr = GetParam();
+    LOG(INFO) << sqlstr;
+
+    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    boost::to_lower(sqlstr);
+    LOG(INFO) << sqlstr;
+    std::cout << sqlstr << std::endl;
+
+    fesql::type::TableDef table_def;
+    fesql::type::TableDef table_def2;
+    fesql::type::TableDef table_def3;
+    fesql::type::TableDef table_def4;
+    fesql::type::TableDef table_def5;
+    fesql::type::TableDef table_def6;
+
+    BuildTableDef(table_def);
+    BuildTableDef(table_def2);
+    BuildTableDef(table_def3);
+    BuildTableDef(table_def4);
+    BuildTableDef(table_def5);
+    BuildTableDef(table_def6);
+
+    table_def.set_name("t1");
+    table_def2.set_name("t2");
+    table_def3.set_name("t3");
+    table_def4.set_name("t4");
+    table_def5.set_name("t5");
+    table_def6.set_name("t6");
+
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    std::shared_ptr<::fesql::storage::Table> table2(
+        new ::fesql::storage::Table(2, 1, table_def2));
+    std::shared_ptr<::fesql::storage::Table> table3(
+        new ::fesql::storage::Table(3, 1, table_def3));
+    std::shared_ptr<::fesql::storage::Table> table4(
+        new ::fesql::storage::Table(4, 1, table_def4));
+    std::shared_ptr<::fesql::storage::Table> table5(
+        new ::fesql::storage::Table(5, 1, table_def5));
+    std::shared_ptr<::fesql::storage::Table> table6(
+        new ::fesql::storage::Table(6, 1, table_def6));
+
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col1");
+    index->add_first_keys("col2");
+    index->set_second_key("col15");
+    auto catalog = BuildCommonCatalog(table_def, table);
+    AddTable(catalog, table_def2, table2);
+    AddTable(catalog, table_def3, table3);
+    AddTable(catalog, table_def4, table4);
+    AddTable(catalog, table_def5, table5);
+    AddTable(catalog, table_def6, table6);
+
+
+    Compiler_Runner_Check(catalog, sqlstr, true);
 }
 
 }  // namespace vm

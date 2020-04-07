@@ -135,13 +135,15 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
             return std::dynamic_pointer_cast<TableHandler>(output);
         }
         case kRowHandler: {
-            auto table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
-            table->AddRow(std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
+            auto table =
+                std::shared_ptr<MemTableHandler>(new MemTableHandler());
+            table->AddRow(
+                std::dynamic_pointer_cast<RowHandler>(output)->GetValue());
             return table;
         }
         case kPartitionHandler: {
             LOG(WARNING) << "partition output is invalid";
-            return std::shared_ptr<TableHandler>();;
+            return std::shared_ptr<TableHandler>();
         }
     }
     return std::shared_ptr<TableHandler>();
@@ -178,7 +180,6 @@ int32_t BatchRunSession::Run(std::vector<int8_t*>& buf, uint64_t limit) {
     }
     return 0;
 }
-
 
 std::shared_ptr<DataHandler> RunSession::RunPhysicalPlan(
     const PhysicalOpNode* node, const Slice* row) {
