@@ -16,7 +16,7 @@
 
 const std::set<rtidb::type::DataType> pk_type_set = {
     rtidb::type::kSmallInt, rtidb::type::kInt, rtidb::type::kBigInt,
-    rtidb::type::kVarchar};
+    rtidb::type::kVarchar, rtidb::type::kString};
 
 struct WriteOption {
     WriteOption() {
@@ -183,17 +183,27 @@ public:
 
     std::string GetKey() {
         std::string key = "";
-        if (data_type_ == rtidb::type::kSmallInt) {
-            int16_t val = GetInt16(pk_idx_);
-            key = std::to_string(val);
-        } else if (data_type_ == rtidb::type::kInt) {
-            int32_t val = GetInt32(pk_idx_);
-            key = std::to_string(val);
-        } else if (data_type_ == rtidb::type::kBigInt) {
-            int64_t val = GetInt64(pk_idx_);
-            key = std::to_string(val);
-        } else if (data_type_ == rtidb::type::kVarchar) {
-            key = GetString(pk_idx_);
+        switch (data_type_) {
+            case rtidb::type::kSmallInt: {
+                int16_t val = GetInt16(pk_idx_);
+                key = std::to_string(val);
+                break;
+            }
+            case  rtidb::type::kInt: {
+                int32_t val = GetInt32(pk_idx_);
+                key = std::to_string(val);
+                break;
+            }
+            case rtidb::type::kBigInt: {
+                int64_t val = GetInt64(pk_idx_);
+                key = std::to_string(val);
+                break;
+            }
+            case rtidb::type::kVarchar:
+            case rtidb::type::kString: {
+                key = GetString(pk_idx_);
+                break;
+            }
         }
         return key;
     }

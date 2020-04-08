@@ -27,17 +27,6 @@ const uint32_t HEADER_BYTE_SIZE = 3;
 const std::string NONETOKEN = "None#*@!";
 const std::string DEFAULT_LONG = "1";
 
-const std::map<std::string, rtidb::type::DataType> NameToDataType = {
-    {"string", rtidb::type::DataType::kVarchar},
-    {"int16", rtidb::type::DataType::kSmallInt},
-    {"int32", rtidb::type::DataType::kInt},
-    {"int64", rtidb::type::DataType::kBigInt},
-    {"float", rtidb::type::DataType::kFloat},
-    {"double", rtidb::type::DataType::kDouble},
-    {"date", rtidb::type::DataType::kDate},
-    {"timestamp", rtidb::type::DataType::kTimestamp}
-};
-
 static const std::unordered_map<std::string, ::rtidb::type::DataType>  DATA_TYPE_MAP = {
     {"bool", ::rtidb::type::kBool}, 
     {"smallint", ::rtidb::type::kSmallInt},
@@ -46,6 +35,7 @@ static const std::unordered_map<std::string, ::rtidb::type::DataType>  DATA_TYPE
     {"float", ::rtidb::type::kFloat},
     {"double", ::rtidb::type::kDouble},
     {"varchar", ::rtidb::type::kVarchar},
+    {"string", rtidb::type::DataType::kString},
     {"date", ::rtidb::type::kDate},
     {"timestamp", ::rtidb::type::kTimestamp},
     {"blob", ::rtidb::type::kBlob}
@@ -69,6 +59,7 @@ static const std::unordered_map<::rtidb::type::DataType, std::string> DATA_TYPE_
     {::rtidb::type::kTimestamp, "timestamp"},
     {::rtidb::type::kDate, "date"},
     {::rtidb::type::kVarchar, "varchar"},
+    {::rtidb::type::kString, "string"},
     {::rtidb::type::kBlob, "blob"}
 };
 
@@ -318,8 +309,8 @@ public:
             rtidb::common::ColumnDesc* column_desc = columns.Add();
             column_desc->CopyFrom(cur_column_desc);
             if (!cur_column_desc.has_data_type()) {
-                auto iter = NameToDataType.find(cur_column_desc.type());
-                if (iter == NameToDataType.end()) {
+                auto iter = DATA_TYPE_MAP.find(cur_column_desc.type());
+                if (iter == DATA_TYPE_MAP.end()) {
                     return -1;
                 } else {
                     column_desc->set_data_type(iter->second);
@@ -330,8 +321,8 @@ public:
             rtidb::common::ColumnDesc* column_desc = columns.Add();
             column_desc->CopyFrom(cur_column_desc);
             if (!cur_column_desc.has_data_type()) {
-                auto iter = NameToDataType.find(cur_column_desc.type());
-                if (iter == NameToDataType.end()) {
+                auto iter = DATA_TYPE_MAP.find(cur_column_desc.type());
+                if (iter == DATA_TYPE_MAP.end()) {
                     return -1;
                 } else {
                     column_desc->set_data_type(iter->second);
@@ -359,7 +350,7 @@ public:
         int32_t str_len = 0;
         for (int i = 0; i < schema.size(); i++) {
             const ::rtidb::common::ColumnDesc& col = schema.Get(i);
-            if (col.data_type() == ::rtidb::type::kVarchar) {
+            if (col.data_type() == ::rtidb::type::kVarchar || col.data_type() == ::rtidb::type::kString) {
                 auto iter = str_map.find(col.name());
                 if (iter == str_map.end()) {
                     rm.code = -1;
@@ -413,6 +404,7 @@ public:
             bool ok = false;
            try {
                 switch (col.data_type()) {
+                    case rtidb::type::kString:
                     case rtidb::type::kVarchar:
                         ok = builder.AppendString(iter->second.c_str(), iter->second.length());
                         break;
@@ -515,7 +507,7 @@ public:
                 if (ret == 0) {
                     col = std::to_string(val);
                 }
-            } else if (type == rtidb::type::kVarchar) {
+            } else if (type == rtidb::type::kVarchar || type == rtidb::type::kString) {
                 char *ch = NULL;
                 uint32_t length = 0;
                 int ret = rv.GetString(i, &ch, &length);
