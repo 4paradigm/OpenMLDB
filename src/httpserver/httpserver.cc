@@ -6,6 +6,8 @@
 #include "httpserver/httpserver.h"
 #include <gflags/gflags.h>
 #include <string>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -55,14 +57,27 @@ void HttpImpl::Get(RpcController* controller,
                 ::rtidb::httpserver::HttpResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-    std::string table_name = cntl->http_request().unresolved_path();
-    const std::string* pic_id = cntl->http_request().uri().GetQuery("pic_id");
-    if (pic_id == NULL) {
+    std::string table;
+    const std::string* pic_id;
+    std::string unresolve_path = cntl->http_request().unresolved_path();
+    std::vector<std::string> vec;
+    boost::split(vec, unresolve_path, boost::is_any_of("/"));
+    if (vec.size() == 1) {
+        table = unresolve_path;
+        pic_id = cntl->http_request().uri().GetQuery("pic_id");
+        if (pic_id == NULL) {
+            cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
+            return;
+        }
+    } else if (vec.size() == 2) {
+        table = vec[0];
+        pic_id = &vec[2];
+    } else {
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
         return;
     }
     cntl->response_attachment().append("Getting file: ");
-    cntl->response_attachment().append(table_name);
+    cntl->response_attachment().append(table);
     cntl->response_attachment().append(" " + *pic_id);
 }
 

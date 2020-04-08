@@ -19,7 +19,7 @@ add_library(log STATIC log/crc32c.cc
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
 
-add_library(httpserver STATIC proto/http_server.pb.cc httpserver/httpserver.cc flags.cc)
+add_library(httpserver STATIC proto/http_server.pb.cc httpserver/httpserver.cc flags.cc client/client.cc)
 
 add_library(base STATIC base/status.cc base/ringqueue.h)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)

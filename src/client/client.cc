@@ -51,7 +51,6 @@ TraverseResult::~TraverseResult() {
 }
 
 BatchQueryResult::~BatchQueryResult() {
-
 }
 
 bool TraverseResult::TraverseNext() {
@@ -133,20 +132,28 @@ bool BatchQueryResult::BatchQueryNext(const std::vector<std::string>& get_key) {
     return client_->BatchQuery(*table_name_, get_key, value_.get(), &is_finish_, &count_);
 }
 
-RtidbClient::RtidbClient()
-    : zk_client_(),
-      client_(),
-      tablets_(),
-      mu_(),
-      zk_cluster_(),
-      zk_path_(),
-      tables_(),
-      task_thread_pool_(1),
-      zk_keep_alive_check_(15000) {}
+bool BaseClient::Init(std::string *msg) {
+    zk_client_ = new rtidb::zk::ZkClient(zk_cluster_, zk_session_timeout_, endpoint_, zk_root_path_);
+    if (!zk_client_->Init()) {
+        if (!zk_client_->Init()) {
+            *msg = "zk client init failed";
+            return false;
+        }
+    }
+    zk_table_data_path_ = zk_root_path_ + "/table/table_data";
+    RefreshNodeList();
+    RefreshTable();
+    bool ok = zk_client_->WatchChildren(zk_root_path_ + "/table/notify", boost::bind(&BaseClient::DoFresh, this, _1));
+    if (!ok) {
+        zk_client_->CloseZK();
+        *msg = "zk watch table notify failed";
+        return false;
+    }
+    task_thread_pool_.DelayTask(zk_keep_alive_check_, boost::bind(&BaseClient::CheckZkClient, this));
+    return true;
+}
 
-RtidbClient::~RtidbClient() { task_thread_pool_.Stop(true); }
-
-void RtidbClient::CheckZkClient() {
+void BaseClient::CheckZkClient() {
     if (!zk_client_->IsConnected()) {
         std::cout << "reconnect zk" << std::endl;
         if (zk_client_->Reconnect()) {
@@ -154,17 +161,23 @@ void RtidbClient::CheckZkClient() {
         }
     }
     task_thread_pool_.DelayTask(zk_keep_alive_check_,
-                                boost::bind(&RtidbClient::CheckZkClient, this));
+                                boost::bind(&BaseClient::CheckZkClient, this));
 }
 
-void RtidbClient::SetZkCheckInterval(int32_t interval) {
-    if (interval <= 1000) {
-        return;
+bool BaseClient::RefreshNodeList() {
+    std::vector<std::string> endpoints;
+    if (!zk_client_->GetNodes(endpoints)) {
+        return false;
     }
-    zk_keep_alive_check_ = interval;
+    std::set<std::string> endpoint_set;
+    for (const auto& endpoint : endpoints) {
+        endpoint_set.insert(endpoint);
+    }
+    UpdateEndpoint(endpoint_set);
+    return true;
 }
 
-void RtidbClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
+void BaseClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
     decltype(tablets_) old_tablets;
     decltype(tablets_) new_tablets;
     {
@@ -175,7 +188,7 @@ void RtidbClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
         auto iter = old_tablets.find(endpoint);
         if (iter == old_tablets.end()) {
             std::shared_ptr<rtidb::client::TabletClient> tablet =
-                std::make_shared<rtidb::client::TabletClient>(endpoint);
+                    std::make_shared<rtidb::client::TabletClient>(endpoint);
             if (tablet->Init() != 0) {
                 std::cerr << endpoint << " initial failed!" << std::endl;
                 continue;
@@ -190,23 +203,10 @@ void RtidbClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
     tablets_ = new_tablets;
 }
 
-bool RtidbClient::RefreshNodeList() {
-    std::vector<std::string> endpoints;
-    if (!zk_client_->GetNodes(endpoints)) {
-        return false;
-    }
-    std::set<std::string> endpoint_set;
-    for (const auto& endpoint : endpoints) {
-        endpoint_set.insert(endpoint);
-    }
-    UpdateEndpoint(endpoint_set);
-    return true;
-}
-
-void RtidbClient::RefreshTable() {
+void BaseClient::RefreshTable() {
     std::vector<std::string> table_vec;
     if (!zk_client_->GetChildren(zk_table_data_path_, table_vec)) {
-        if (zk_client_->IsExistNode(zk_path_)) {
+        if (zk_client_->IsExistNode(zk_root_path_)) {
             return;
         }
     }
@@ -228,7 +228,7 @@ void RtidbClient::RefreshTable() {
             continue;
         }
         std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
-        columns = std::make_shared<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>();
+                columns = std::make_shared<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>();
         int code = rtidb::base::RowSchemaCodec::ConvertColumnDesc(table_info->column_desc_v1(), *columns, table_info->added_column_desc());
         if (code != 0) {
             continue;
@@ -282,47 +282,106 @@ void RtidbClient::RefreshTable() {
     tables_ = new_tables;
 }
 
+void BaseClient::SetZkCheckInterval(int32_t interval) {
+    if (interval <= 1000) {
+        return;
+    }
+    zk_keep_alive_check_ = interval;
+}
+
+void BaseClient::DoFresh(const std::vector<std::string>& events) {
+    RefreshNodeList();
+    RefreshTable();
+}
+
+bool BaseClient::RegisterZK(std::string* msg) {
+    if (zk_cluster_.empty()) {
+        *msg = "zk cluster is empty";
+        return false;
+    }
+    if (!zk_client_->Register(true)) {
+        *msg = "fail to register client with endpoint " + endpoint_;
+        return false;
+    }
+    return true;
+}
+
+BaseClient::~BaseClient() {
+    task_thread_pool_.Stop(true);
+    if (zk_client_ != NULL) {
+        delete zk_client_;
+    }
+}
+
+std::shared_ptr<rtidb::client::TabletClient> BaseClient::GetTabletClient(
+        const std::string& endpoint, std::string* msg) {
+    {
+        std::lock_guard<std::mutex> mx(mu_);
+        auto iter = tablets_.find(endpoint);
+        if (iter != tablets_.end()) {
+            return iter->second;
+        }
+    }
+    std::shared_ptr<rtidb::client::TabletClient> tablet = std::make_shared<rtidb::client::TabletClient>(endpoint);
+    int code = tablet->Init();
+    if (code < 0) {
+        *msg = "failed init table client";
+        return NULL;
+    }
+    {
+        std::lock_guard<std::mutex> mx(mu_);
+        tablets_.insert(std::make_pair(endpoint, tablet));
+    }
+    return tablet;
+}
+
+std::shared_ptr<TableHandler> BaseClient::GetTableHandler(const std::string& name) {
+    std::lock_guard<std::mutex> lock(mu_);
+    auto iter = tables_.find(name);
+    if (iter == tables_.end()) {
+        return NULL;
+    }
+    return iter->second;
+}
+
+RtidbClient::RtidbClient(): client_(NULL), mu_() {
+}
+
+RtidbClient::~RtidbClient() { delete client_; }
+
+
+void RtidbClient::SetZkCheckInterval(int32_t interval) {
+    client_->SetZkCheckInterval(interval);
+}
+
+
 GeneralResult RtidbClient::Init(const std::string& zk_cluster, const std::string& zk_path) {
     GeneralResult result;
     std::string value;
     std::shared_ptr<rtidb::zk::ZkClient> zk_client;
-    if (!zk_cluster.empty()) {
-        zk_client = std::make_shared<rtidb::zk::ZkClient>(zk_cluster, 1000, "", zk_path);
-        if (!zk_client->Init()) {
-            result.SetError(-1, "zk client init failed");
-            return result;
-        }
-    } else {
+    if (zk_cluster.empty()) {
         result.SetError(-1, "initial failed! not set zk_cluster");
         return result;
     }
+    client_ = new BaseClient(zk_cluster, zk_path, "", 1000, 1000);
 
-    zk_client_ = zk_client;
-    zk_cluster_ = zk_cluster;
-    zk_path_ = zk_path;
-    zk_table_data_path_ = zk_path + "/table/table_data";
-    RefreshNodeList();
-    RefreshTable();
-    bool ok = zk_client_->WatchChildren(zk_path + "/table/notify", boost::bind(&RtidbClient::DoFresh, this, _1));
+    std::string msg;
+    bool ok = client_->Init(&msg);
     if (!ok) {
-        zk_client_->CloseZK();
-        zk_client_.reset();
-        result.SetError(-1, "zk watch table notify failed");
-        return result;
+        result.SetError(-1, msg);
     }
-    task_thread_pool_.DelayTask(zk_keep_alive_check_, boost::bind(&RtidbClient::CheckZkClient, this));
-    return result;
+    return  result;
 }
 
 
 QueryResult RtidbClient::Query(const std::string& name, const struct ReadOption& ro) {
     QueryResult result;
-    std::shared_ptr<TableHandler> th = GetTableHandler(name);
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == NULL) {
         result.SetError(-1, "table not found");
         return result;
     }
-    auto tablet = GetTabletClient(th->partition[0].leader, &result.msg_);
+    auto tablet = client_->GetTabletClient(th->partition[0].leader, &result.msg_);
     if (tablet == NULL) {
         result.code_ = -1;
         return result;
@@ -339,18 +398,9 @@ QueryResult RtidbClient::Query(const std::string& name, const struct ReadOption&
     return result;
 }
 
-std::shared_ptr<TableHandler> RtidbClient::GetTableHandler(const std::string& name) {
-    std::lock_guard<std::mutex> lock(mu_);
-    auto iter = tables_.find(name);
-    if (iter == tables_.end()) {
-        return NULL;
-    }
-    return iter->second;
-}
-
 TraverseResult RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro) {
     TraverseResult result;
-    std::shared_ptr<TableHandler> th = GetTableHandler(name);
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == NULL) {
         result.SetError(-1, "table not found");
         return result;
@@ -381,12 +431,12 @@ TraverseResult RtidbClient::Traverse(const std::string& name, const struct ReadO
 bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
                            std::string* data, uint32_t* count,
                            const std::string& last_key, bool* is_finish) {
-    std::shared_ptr<TableHandler> th = GetTableHandler(name);
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == NULL) {
         return false;
     }
     std::string err_msg;
-    auto tablet = GetTabletClient(th->partition[0].leader, &err_msg);
+    auto tablet = client_->GetTabletClient(th->partition[0].leader, &err_msg);
     if (tablet == NULL) {
         return false;
     }
@@ -394,34 +444,12 @@ bool RtidbClient::Traverse(const std::string& name, const struct ReadOption& ro,
     return ok;
 }
 
-std::shared_ptr<rtidb::client::TabletClient> RtidbClient::GetTabletClient(
-    const std::string& endpoint, std::string* msg) {
-    {
-        std::lock_guard<std::mutex> mx(mu_);
-        auto iter = tablets_.find(endpoint);
-        if (iter != tablets_.end()) {
-            return iter->second;
-        }
-    }
-    std::shared_ptr<rtidb::client::TabletClient> tablet = std::make_shared<rtidb::client::TabletClient>(endpoint);
-    int code = tablet->Init();
-    if (code < 0) {
-        *msg = "failed init table client";
-        return NULL;
-    }
-    {
-        std::lock_guard<std::mutex> mx(mu_);
-        tablets_.insert(std::make_pair(endpoint, tablet));
-    }
-    return tablet;
-}
-
-GeneralResult RtidbClient::Update(const std::string& table_name, 
+GeneralResult RtidbClient::Update(const std::string& table_name,
         const std::map<std::string, std::string>& condition_columns_map,
         const std::map<std::string, std::string>& value_columns_map,
         const WriteOption& wo) {
     GeneralResult result;
-    std::shared_ptr<TableHandler> th = GetTableHandler(table_name);
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(table_name);
     if (th == NULL) {
         result.SetError(-1, "table not found");
         return result;
@@ -462,7 +490,7 @@ GeneralResult RtidbClient::Update(const std::string& table_name,
         value = compressed;
     }
     std::string msg;
-    auto tablet_client = GetTabletClient(th->partition[0].leader, &msg);
+    auto tablet_client = client_->GetTabletClient(th->partition[0].leader, &msg);
     if (tablet_client == NULL) {
         result.SetError(-1, msg);
         return result;
@@ -477,7 +505,7 @@ GeneralResult RtidbClient::Update(const std::string& table_name,
 GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::string, std::string>& value, const WriteOption& wo) {
     GeneralResult result;
 
-    std::shared_ptr<TableHandler> th = GetTableHandler(name);
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == NULL) {
         result.SetError(-1, "table not found");
         return result;
@@ -526,7 +554,7 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
         return result;
     }
     std::string err_msg;
-    auto tablet = GetTabletClient(th->partition[0].leader, &err_msg);
+    auto tablet = client_->GetTabletClient(th->partition[0].leader, &err_msg);
     if (tablet == NULL) {
         result.SetError(-1, err_msg);
         return result;
@@ -542,12 +570,12 @@ GeneralResult RtidbClient::Put(const std::string& name, const std::map<std::stri
 
 GeneralResult RtidbClient::Delete(const std::string& name, const std::map<std::string, std::string>& values) {
     GeneralResult result;
-    std::shared_ptr<TableHandler> th = GetTableHandler(name);
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == NULL) {
         result.SetError(-1, "table not found");
         return result;
     }
-    auto tablet = GetTabletClient(th->partition[0].leader, &result.msg);
+    auto tablet = client_->GetTabletClient(th->partition[0].leader, &result.msg);
     if (tablet == NULL) {
         result.code = -1;
         return result;
@@ -569,7 +597,7 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string &name, const std::vec
         }
         keys.push_back(it.index.begin()->second);
     }
-    std::shared_ptr<TableHandler> th = GetTableHandler(name);
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     BatchQueryResult result;
     if (th == NULL) {
         result.SetError(-1, "table not found");
@@ -593,12 +621,12 @@ BatchQueryResult RtidbClient::BatchQuery(const std::string &name, const std::vec
 }
 
 bool RtidbClient::BatchQuery(const std::string& name, const std::vector<std::string>& keys, std::string* data, bool* is_finish, uint32_t* count) {
-    std::shared_ptr<TableHandler> th = GetTableHandler(name);
+    std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == NULL) {
         return false;
     }
     std::string err_msg;
-    auto tablet = GetTabletClient(th->partition[0].leader, &err_msg);
+    auto tablet = client_->GetTabletClient(th->partition[0].leader, &err_msg);
     if (tablet == NULL) {
         return false;
     }
