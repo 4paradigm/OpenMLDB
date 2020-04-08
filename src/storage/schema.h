@@ -145,6 +145,7 @@ class TableColumn {
     void AddColumn(std::shared_ptr<ColumnDef> column_def);
     void SetAllColumn(const std::vector<std::shared_ptr<ColumnDef>>& column_def);
     std::vector<std::shared_ptr<ColumnDef>> GetAllColumn();
+    std::map<std::string, std::shared_ptr<ColumnDef>> GetColumnMap();
     inline uint32_t Size() {
         return std::atomic_load_explicit(&columns_, std::memory_order_relaxed)->size();
     }

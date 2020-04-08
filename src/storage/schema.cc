@@ -160,5 +160,9 @@ void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
     }
 }
 
+std::map<std::string, std::shared_ptr<ColumnDef>> TableColumn::GetColumnMap() {
+    return *std::atomic_load_explicit(&column_map_, std::memory_order_relaxed);
+}
+
 }
 }

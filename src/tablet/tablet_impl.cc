@@ -1577,10 +1577,6 @@ void TabletImpl::BatchQuery(RpcController* controller,
                 rtidb::api::BatchQueryResponse* response,
                 Closure*done) {
     brpc::ClosureGuard done_guard(done);
-    if (request->query_key_size() < 1) {
-        response->set_code(::rtidb::base::ReturnCode::kOk);
-        return;
-    }
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     std::shared_ptr<RelationalTable> r_table;
@@ -1594,64 +1590,84 @@ void TabletImpl::BatchQuery(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
-    uint32_t index = 0;
-    rtidb::storage::RelationalTableTraverseIterator* it =
+    if (request->query_key_size() > 0) {
+        uint32_t index = 0;
+        rtidb::storage::RelationalTableTraverseIterator* it =
             r_table->NewTraverse(index);
-    if (it == NULL) {
-        response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
-        response->set_msg("idx name not found");
-        return;
-    }
-    std::vector<rtidb::base::Slice> value_vec;
-    uint32_t total_block_size = 0;
-
-    uint32_t scount = 0;
-    uint32_t not_found_count = 0;
-    for (auto& key : request->query_key()) {
-        it->Seek(key);
-        scount++;
-        if (!it->Valid()) {
-            not_found_count++;
-            continue;
+        if (it == NULL) {
+            response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
+            response->set_msg("idx name not found");
+            return;
         }
-        rtidb::base::Slice value = it->GetValue();
+        std::vector<rtidb::base::Slice> value_vec;
+        uint32_t total_block_size = 0;
 
-        total_block_size += value.size();
-        value_vec.push_back(value);
-        if (scount >= FLAGS_max_traverse_cnt) {
-            PDLOG(DEBUG, "batchquery cnt %lu max %lu",
-                  scount, FLAGS_max_traverse_cnt);
-            break;
+        uint32_t scount = 0;
+        uint32_t not_found_count = 0;
+        for (auto& key : request->query_key()) {
+            it->Seek(key);
+            scount++;
+            if (!it->Valid()) {
+                not_found_count++;
+                continue;
+            }
+            rtidb::base::Slice value = it->GetValue();
+
+            total_block_size += value.size();
+            value_vec.push_back(value);
+            if (scount >= FLAGS_max_traverse_cnt) {
+                PDLOG(DEBUG, "batchquery cnt %lu max %lu",
+                        scount, FLAGS_max_traverse_cnt);
+                break;
+            }
         }
-    }
 
-    delete it;
-    if (total_block_size == 0) {
-        PDLOG(DEBUG, "tid %u pid %u, batchQuery not key found.", request->tid(), request->pid());
+        delete it;
+        if (total_block_size == 0) {
+            PDLOG(DEBUG, "tid %u pid %u, batchQuery not key found.", request->tid(), request->pid());
+            response->set_code(rtidb::base::ReturnCode::kOk);
+            response->set_is_finish(true);
+        }
+        bool is_finish = false;
+        if (static_cast<uint64_t>(scount) == static_cast<uint64_t>(request->query_key_size())) {
+            is_finish = true;
+        }
+        uint32_t total_size = (scount - not_found_count) * 4 + total_block_size;
+        std::string* pairs = response->mutable_pairs();
+        if (scount <= 0) {
+            pairs->resize(0);
+        } else {
+            pairs->resize(total_size);
+        }
+        char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
+        uint32_t offset = 0;
+        for (const auto& value : value_vec) {
+            rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
+            offset += (4 + value.size());
+        }
+        PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(), request->pid(), scount);
         response->set_code(rtidb::base::ReturnCode::kOk);
-        response->set_is_finish(true);
-    }
-    bool is_finish = false;
-    if (static_cast<uint64_t>(scount) == static_cast<uint64_t>(request->query_key_size())) {
-        is_finish = true;
-    }
-    uint32_t total_size = (scount - not_found_count) * 4 + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (scount <= 0) {
-        pairs->resize(0);
+        response->set_is_finish(is_finish);
+        response->set_count(scount);
     } else {
-        pairs->resize(total_size);
+        const ::rtidb::api::ReadOption& ro = request->read_option(0);
+        const std::string& idx_name = ro.index(0).name(0);
+        const std::string& idx_value = ro.index(0).value();
+
+        rtidb::base::Slice slice;
+        bool ok = r_table->Get(idx_name, idx_value, slice);
+        if (!ok) {
+            response->set_code(::rtidb::base::ReturnCode::kKeyNotFound);
+            response->set_msg("key not found");
+            return;
+        }
+        std::string * value = response->mutable_pairs(); 
+        value->assign(slice.data(), slice.size());
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        response->set_is_finish(true);
+        response->set_count(1);
     }
-    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
-    uint32_t offset = 0;
-    for (const auto& value : value_vec) {
-        rtidb::base::Encode(value.data(), value.size(), rbuffer, offset);
-        offset += (4 + value.size());
-    }
-    PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(), request->pid(), scount);
-    response->set_code(rtidb::base::ReturnCode::kOk);
-    response->set_is_finish(is_finish);
-    response->set_count(scount);
 }
 
 void TabletImpl::ChangeRole(RpcController* controller,

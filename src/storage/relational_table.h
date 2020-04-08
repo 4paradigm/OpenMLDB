@@ -28,6 +28,9 @@
 #include "base/codec.h"
 #include <mutex>
 #include "base/id_generator.h"
+#include "base/memcomparable_format.h"
+#include <snappy.h>
+#include "base/single_column_codec.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
@@ -71,7 +74,7 @@ public:
 
     bool Put(const std::string& value); 
 
-    bool Get(const std::string& idx_name, const std::string& key, rtidb::base::Slice& slice); 
+    bool Get(const std::string& idx_name, const std::string& idx_val, rtidb::base::Slice& slice); 
     bool Get(const std::shared_ptr<IndexDef> index_def, const std::string& key, rtidb::base::Slice& slice); 
 
     bool Delete(const std::string& pk, uint32_t idx);
@@ -157,6 +160,8 @@ private:
             const std::string& cd_value, const std::string& col_value); 
     bool GetStr(::rtidb::base::RowView& view, uint32_t idx, 
             const ::rtidb::type::DataType& data_type, std::string* key); 
+    bool ConvertIndex(const std::string& name, const std::string& value, 
+            std::string* out_val); 
 
     std::mutex mu_;
     ::rtidb::common::StorageMode storage_mode_;
