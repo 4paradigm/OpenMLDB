@@ -520,7 +520,7 @@ public:
             *msg = "zk cluster is empty";
             return false;
         }
-        if (zk_client_->Register(true)) {
+        if (!zk_client_->Register(true)) {
             *msg = "fail to register client with endpoint " + endpoint_;
             return false;
         }
