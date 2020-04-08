@@ -357,8 +357,8 @@ TEST_F(UDFTest, GetWindowColTest) {
     }
 
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
-    for (int i = 0; i < 10; ++i) {
-        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+    int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+    for (int i = 0; i < 100000; ++i) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table), 2,
                                           fesql::type::kInt32, buf));
@@ -380,8 +380,8 @@ TEST_F(UDFTest, GetMemColTest) {
         table.AddRow(row);
     }
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
-    for (int i = 0; i < 10; ++i) {
-        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+    int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+    for (int i = 0; i < 1000000; ++i) {
         ASSERT_EQ(
             0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table),
                                             2, fesql::type::kInt32, buf));

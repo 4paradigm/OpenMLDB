@@ -99,6 +99,32 @@ def analyse_benchmark_trend(dir_path, file_list):
     return benchmarks_map
 
 
+def generate_trend(benchmarks_map, cate):
+    lines = {}
+
+    for (group,benchmarks) in benchmarks_map.items():
+        print(benchmarks)
+        
+        print(benchmarks.keys())
+        for (name,benchmark) in benchmarks.items():
+            print(name)
+            #is_label_show是设置上方数据是否显示
+            print( benchmark[cate])
+            html_name = group + "_" + name.split("/")[0]
+            if not html_name in lines:
+                line = Line("性能"+cate+"趋势","性能"+cate+"趋势", width=1600, height=1000)
+                lines[html_name] = line
+            
+            line = lines[html_name]    
+            line.add(name, columns, benchmark[cate][0:max_cnt], is_label_show=True)
+    #             line.add("CPU", columns, benchmark["CPU"], is_label_show=True)
+    #             line.add("Iterations", columns, benchmark["Iterations"], is_label_show=True)
+        
+        for (name, line) in lines.items():
+            render_name = "./render/"+cate+"Trend_"+name+".html"
+            print(render_name)
+            line.render(render_name)
+
 ts_columns = []
 for file_name in os.listdir("./data"):
     ts = file_name.split("_")[-1]
@@ -110,29 +136,9 @@ columns = [x[1] for x in ts_columns]
 print(columns)
 max_cnt = len(columns)
 benchmarks_map = analyse_benchmark_trend("./data", columns)
-lines = {}
 
-for (group,benchmarks) in benchmarks_map.items():
-    print(benchmarks)
-    
-    print(benchmarks.keys())
-    for (name,benchmark) in benchmarks.items():
-        print(name)
-        #is_label_show是设置上方数据是否显示
-        print( benchmark["Time"])
-        html_name = group + "_" + name.split("/")[0]
-        if not html_name in lines:
-            line = Line("性能Time趋势","性能Time趋势", width=1600, height=1000)
-            lines[html_name] = line
-        
-        line = lines[html_name]    
-        line.add(name, columns, benchmark["Time"][0:max_cnt], is_label_show=True)
-#             line.add("CPU", columns, benchmark["CPU"], is_label_show=True)
-#             line.add("Iterations", columns, benchmark["Iterations"], is_label_show=True)
-    
-    for (name, line) in lines.items():
-        render_name = "./render/TimeTrend_"+name+".html"
-        print(render_name)
-        line.render(render_name)
+generate_trend(benchmarks_map, "Time")
+generate_trend(benchmarks_map, "CPU")
+generate_trend(benchmarks_map, "Iterations")
 
     
