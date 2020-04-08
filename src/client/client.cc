@@ -307,6 +307,8 @@ GeneralResult RtidbClient::Init(const std::string& zk_cluster, const std::string
     if (!ok) {
         zk_client_->CloseZK();
         zk_client_.reset();
+        result.SetError(-1, "zk watch table notify failed");
+        return result;
     }
     task_thread_pool_.DelayTask(zk_keep_alive_check_, boost::bind(&RtidbClient::CheckZkClient, this));
     return result;

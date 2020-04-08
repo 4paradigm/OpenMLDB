@@ -348,6 +348,205 @@ private:
     uint32_t count_;
 };
 
+class BaseClient {
+public:
+    BaseClient();
+    BaseClient(std::string& zk_cluster, std::string& zk_root_path, std::string& endpoint, int32_t zk_session_timeout, int32_t zk_keep_alive_check):
+        mu_(), tablets_(), tables_(), zk_client_(NULL), zk_cluster_(zk_cluster), zk_root_path_(zk_root_path), endpoint_(endpoint), zk_session_timeout_(zk_session_timeout), zk_keep_alive_check_(zk_keep_alive_check),
+        zk_table_data_path_() {
+    }
+
+    bool Init(std::string* msg) {
+        zk_client_ = new rtidb::zk::ZkClient(zk_cluster_, zk_session_timeout_, endpoint_, zk_root_path_);
+        if (!zk_client_->Init()) {
+            if (!zk_client_->Init()) {
+                *msg = "zk client init failed";
+                return false;
+            }
+        }
+        zk_table_data_path_ = zk_root_path_ + "/table/table_data";
+        RefreshNodeList();
+        RefreshTable();
+        bool ok = zk_client_->WatchChildren(zk_root_path_ + "/table/notify", boost::bind(&BaseClient::DoFresh, this, _1));
+        if (!ok) {
+            zk_client_->CloseZK();
+            *msg = "zk watch table notify failed";
+            return false;
+        }
+        task_thread_pool_.DelayTask(zk_keep_alive_check_, boost::bind(&BaseClient::CheckZkClient, this));
+        return true;
+    }
+
+    void CheckZkClient() {
+        if (!zk_client_->IsConnected()) {
+            std::cout << "reconnect zk" << std::endl;
+            if (zk_client_->Reconnect()) {
+                std::cout << "reconnect zk ok" << std::endl;
+            }
+        }
+        task_thread_pool_.DelayTask(zk_keep_alive_check_,
+                                    boost::bind(&BaseClient::CheckZkClient, this));
+    }
+    bool RefreshNodeList() {
+        std::vector<std::string> endpoints;
+        if (!zk_client_->GetNodes(endpoints)) {
+            return false;
+        }
+        std::set<std::string> endpoint_set;
+        for (const auto& endpoint : endpoints) {
+            endpoint_set.insert(endpoint);
+        }
+        UpdateEndpoint(endpoint_set);
+        return true;
+    }
+
+    void UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
+        decltype(tablets_) old_tablets;
+        decltype(tablets_) new_tablets;
+        {
+            std::lock_guard<std::mutex> mx(mu_);
+            old_tablets = tablets_;
+        }
+        for (const auto& endpoint : alive_endpoints) {
+            auto iter = old_tablets.find(endpoint);
+            if (iter == old_tablets.end()) {
+                std::shared_ptr<rtidb::client::TabletClient> tablet =
+                        std::make_shared<rtidb::client::TabletClient>(endpoint);
+                if (tablet->Init() != 0) {
+                    std::cerr << endpoint << " initial failed!" << std::endl;
+                    continue;
+                }
+                new_tablets.insert(std::make_pair(endpoint, tablet));
+            } else {
+                new_tablets.insert(std::make_pair(endpoint, iter->second));
+            }
+        }
+        std::lock_guard<std::mutex> mx(mu_);
+        tablets_.clear();
+        tablets_ = new_tablets;
+    }
+    void RefreshTable() {
+        std::vector<std::string> table_vec;
+        if (!zk_client_->GetChildren(zk_table_data_path_, table_vec)) {
+            if (zk_client_->IsExistNode(zk_root_path_)) {
+                return;
+            }
+        }
+
+        decltype(tables_) new_tables;
+        for (const auto& table_name : table_vec) {
+            std::string value;
+            std::string table_node = zk_table_data_path_ + "/" + table_name;
+            if (!zk_client_->GetNodeValue(table_node, value)) {
+                std::cerr << "get table info failed! name " << table_name <<  " table node " << table_node << std::endl;
+                continue;
+            }
+            std::shared_ptr<rtidb::nameserver::TableInfo> table_info = std::make_shared<rtidb::nameserver::TableInfo>();
+            if (!table_info->ParseFromString(value)) {
+                std::cerr << "parse table info failed! name " << table_name << std::endl;
+                continue;
+            }
+            if (table_info->table_type() != rtidb::type::TableType::kRelational) {
+                continue;
+            }
+            std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
+                    columns = std::make_shared<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>();
+            int code = rtidb::base::RowSchemaCodec::ConvertColumnDesc(table_info->column_desc_v1(), *columns, table_info->added_column_desc());
+            if (code != 0) {
+                continue;
+            }
+            std::shared_ptr<TableHandler> handler = std::make_shared<TableHandler>();
+            handler->partition.resize(table_info->partition_num());
+            int id = 0;
+            for (const auto& part : table_info->table_partition()) {
+                for (const auto& meta : part.partition_meta()) {
+                    if (meta.is_leader() && meta.is_alive()) {
+                        handler->partition[id].leader = meta.endpoint();
+                    } else {
+                        handler->partition[id].follower.push_back(meta.endpoint());
+                    }
+                }
+                id++;
+            }
+            std::string pk_col_name;
+            for (const auto& column_key : table_info->column_key()) {
+                if (column_key.index_type() == rtidb::type::kPrimaryKey) {
+                    pk_col_name = column_key.index_name();
+                    break;
+                }
+            }
+            int pk_index = 0;
+            rtidb::type::DataType pk_type = rtidb::type::kVarchar;
+            for (int i = 0; i < table_info->column_desc_size(); i++) {
+                if (table_info->column_desc_v1(i).name() == pk_col_name) {
+                    pk_index = i;
+                    pk_type = table_info->column_desc_v1(i).data_type();
+                    break;
+                }
+            }
+            if (pk_type_set.find(pk_type) == pk_type_set.end()) {
+                continue;
+            }
+            for (int i = 0; i < table_info->column_key_size(); i++) {
+                if (table_info->column_key(i).has_index_type() &&
+                    table_info->column_key(i).index_type() == ::rtidb::type::IndexType::kAutoGen) {
+                    handler->auto_gen_pk_ = table_info->column_key(i).index_name();
+                    break;
+                }
+            }
+            handler->table_info = table_info;
+            handler->columns = columns;
+            handler->pk_index = pk_index;
+            handler->pk_type = pk_type;
+            new_tables.insert(std::make_pair(table_name, handler));
+        }
+        std::lock_guard<std::mutex> mx(mu_);
+        tables_ = new_tables;
+    }
+
+    void SetZkCheckInterval(int32_t interval) {
+        if (interval <= 1000) {
+            return;
+        }
+        zk_keep_alive_check_ = interval;
+    }
+    void DoFresh(const std::vector<std::string>& events) {
+        RefreshNodeList();
+        RefreshTable();
+    }
+
+    bool RegisterZK(std::string* msg) {
+        if (zk_cluster_.empty()) {
+            *msg = "zk cluster is empty";
+            return false;
+        }
+        if (zk_client_->Register(true)) {
+            *msg = "fail to register client with endpoint " + endpoint_;
+            return false;
+        }
+        return true;
+    }
+
+    ~BaseClient() {
+        task_thread_pool_.Stop(true);
+        if (zk_client_ != NULL) {
+            delete zk_client_;
+        }
+    };
+private:
+    std::mutex mu_;
+    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>> tablets_;
+    std::map<std::string, std::shared_ptr<TableHandler>> tables_;
+    rtidb::zk::ZkClient* zk_client_;
+    std::string zk_cluster_;
+    std::string zk_root_path_;
+    std::string endpoint_;
+    int32_t zk_session_timeout_;
+    int32_t zk_keep_alive_check_;
+    std::string zk_table_data_path_;
+    baidu::common::ThreadPool task_thread_pool_;
+};
+
 class RtidbClient {
 public:
     RtidbClient();

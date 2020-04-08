@@ -38,6 +38,7 @@
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <random>
+#include <httpserver/httpserver.h>
 #include "proto/type.pb.h"
 
 using ::baidu::common::INFO;
@@ -217,6 +218,47 @@ void StartTablet() {
                     FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
     if (!tablet->RegisterZK()) {
+        PDLOG(WARNING, "Fail to register zk");
+        exit(1);
+    }
+    std::ostringstream oss;
+    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
+    server.set_version(oss.str());
+    server.RunUntilAskedToQuit();
+}
+
+void StartHttp() {
+    SetupLog();
+    ::rtidb::http::HttpImpl* http = new ::rtidb::http::HttpImpl();
+    bool ok = http->Init();
+    if (!ok) {
+        PDLOG(WARNING, "fail to init http server");
+        exit(1);
+    }
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+    if (server.AddService(http, brpc::SERVER_DOESNT_OWN_SERVICE, "/v1/get/* => Get") != 0) {
+        PDLOG(WARNING, "fail to add service");
+        exit(1);
+    }
+    server.MaxConcurrencyOf(http, "Get") = FLAGS_get_concurrency_limit;
+    if (FLAGS_port > 0) {
+        if (server.Start(FLAGS_port, &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
+              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    } else {
+        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    }
+    if (!http->RegisterZk()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
@@ -5570,6 +5612,8 @@ int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "tablet") {
         StartTablet();
+    } else if (FLAGS_role == "http") {
+        StartHttp();
     } else if (FLAGS_role == "client") {
         StartClient();
     } else if (FLAGS_role == "nameserver") {
@@ -5577,7 +5621,7 @@ int main(int argc, char* argv[]) {
     } else if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else {
-        std::cout << "Start failed! FLAGS_role must be tablet, client, nameserver or ns_client" << std::endl;
+        std::cout << "Start failed! FLAGS_role must be tablet, client, nameserver, http or ns_client" << std::endl;
     }
     return 0;
 }
