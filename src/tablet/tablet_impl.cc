@@ -74,6 +74,8 @@ DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(max_traverse_cnt);
+DECLARE_uint32(snapshot_ttl_time);
+DECLARE_uint32(snapshot_ttl_check_interval);
 DECLARE_uint32(put_slow_log_threshold);
 DECLARE_uint32(query_slow_log_threshold);
 
@@ -1451,11 +1453,21 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_is_finish(is_finish);
     } else {
         uint32_t index = 0;
-        rtidb::storage::RelationalTableTraverseIterator* it =
-            r_table->NewTraverse(index);
+        rtidb::storage::RelationalTableTraverseIterator* it;
+        if (request->has_snapshot_id() && request->snapshot_id() > 0) {
+            it = r_table->NewTraverse(index, request->snapshot_id());
+        } else {
+            it = r_table->NewTraverse(index, 0);
+        }
         if (it == NULL) {
+            delete it;
             response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
+            if (request->has_snapshot_id()) {
+                response->set_code(rtidb::base::ReturnCode::kSnapshotRecycled);
+                response->set_msg("snapshot has been recycled");
+            }
+            return;
         }
         if (request->has_pk()) {
             it->Seek(request->pk());
@@ -1485,8 +1497,9 @@ void TabletImpl::Traverse(RpcController* controller,
         bool is_finish = false;
         if (!it->Valid()) {
             is_finish = true;
+        } else {
+            response->set_snapshot_id(it->GetSeq());
         }
-        delete it;
         uint32_t total_size = scount * 4 + total_block_size;
         std::string* pairs = response->mutable_pairs();
         if (scount <= 0) {
@@ -1501,6 +1514,7 @@ void TabletImpl::Traverse(RpcController* controller,
             offset += (4 + value.size());
         }
         PDLOG(DEBUG, "tid %u pid %u, traverse count %d.", request->tid(), request->pid(), scount);
+        delete it;
         response->set_code(0);
         response->set_count(scount);
         response->set_is_finish(is_finish);
@@ -1635,7 +1649,7 @@ void TabletImpl::BatchQuery(RpcController* controller,
     }
     uint32_t index = 0;
     rtidb::storage::RelationalTableTraverseIterator* it =
-            r_table->NewTraverse(index);
+            r_table->NewTraverse(index, 0);
     if (it == NULL) {
         response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
         response->set_msg("idx name not found");
@@ -1663,8 +1677,6 @@ void TabletImpl::BatchQuery(RpcController* controller,
             break;
         }
     }
-
-    delete it;
     if (total_block_size == 0) {
         PDLOG(DEBUG, "tid %u pid %u, batchQuery not key found.", request->tid(), request->pid());
         response->set_code(rtidb::base::ReturnCode::kOk);
@@ -1688,6 +1700,8 @@ void TabletImpl::BatchQuery(RpcController* controller,
         offset += (4 + value.size());
     }
     PDLOG(DEBUG, "tid %u pid %u, batchQuery count %d.", request->tid(), request->pid(), scount);
+    it->SetFinish(true);
+    delete it;
     response->set_code(rtidb::base::ReturnCode::kOk);
     response->set_is_finish(is_finish);
     response->set_count(scount);
@@ -2867,6 +2881,9 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
             gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
             io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
             task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+            if (table_meta.has_table_type() && table_meta.table_type() == rtidb::type::kRelational) {
+                gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
+            }
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
             MakeSnapshotInternal(tid, pid, 0, std::shared_ptr<::rtidb::api::TaskInfo>());
             if (task_ptr) {
@@ -3136,6 +3153,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             response->set_msg(msg.c_str());
             return;
         }
+        gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
     } else if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::string msg;
         if (CreateDiskTableInternal(table_meta, false, msg) < 0) {
@@ -4011,6 +4029,14 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
     }
 }
 
+void TabletImpl::GcTableSnapshot(uint32_t tid, uint32_t pid) {
+    std::shared_ptr<RelationalTable> table = GetRelationalTable(tid, pid);
+    if (table) {
+        table->TTLSnapshot();
+        gc_pool_.DelayTask(FLAGS_snapshot_ttl_check_interval * 60 * 1000, boost::bind(&TabletImpl::GcTableSnapshot, this, tid, pid));
+    }
+}
+
 std::shared_ptr<Snapshot> TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     return GetSnapshotUnLock(tid, pid);
@@ -4068,6 +4094,11 @@ std::shared_ptr<RelationalTable> TabletImpl::GetRelationalTableUnLock(uint32_t t
         }
     }
     return std::shared_ptr<RelationalTable>();
+}
+
+std::shared_ptr<RelationalTable> TabletImpl::GetRelationalTable(uint32_t tid, uint32_t pid) {
+    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+    return  GetRelationalTableUnLock(tid, pid);
 }
 
 void TabletImpl::ShowMemPool(RpcController* controller,

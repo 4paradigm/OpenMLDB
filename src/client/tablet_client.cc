@@ -1160,12 +1160,15 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, ::rtidb::common::Sto
     count = response->count();
     return kv_it;
 }
-bool TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& pk, uint32_t limit, uint32_t* count, std::string* msg, std::string* data, bool* is_finish) {
+bool TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& pk, uint32_t limit, uint32_t* count, std::string* msg, std::string* data, bool* is_finish, uint64_t* snapshot_id) {
     rtidb::api::TraverseRequest request;
     rtidb::api::TraverseResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_limit(limit);
+    if (*snapshot_id > 0) {
+        request.set_snapshot_id(*snapshot_id);
+    }
 
     response.set_allocated_pairs(data);
     response.set_allocated_msg(msg);
@@ -1180,6 +1183,7 @@ bool TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& pk, u
     }
     *count = response.count();
     *is_finish = response.is_finish();
+    *snapshot_id = response.snapshot_id();
     return true;
 }
 

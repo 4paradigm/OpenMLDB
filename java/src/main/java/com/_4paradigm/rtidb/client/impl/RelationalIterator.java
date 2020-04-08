@@ -44,6 +44,7 @@ public class RelationalIterator {
     private boolean continue_update = false;
     private boolean batch_query = false;
     private List<String> keys = null;
+    private long snapshot_id = 0;
 
     public RelationalIterator() {
     }
@@ -274,6 +275,9 @@ public class RelationalIterator {
                 last_pk = val.toString();
                 builder.setPk(last_pk);
             }
+            if (snapshot_id > 0) {
+                builder.setSnapshotId(snapshot_id);
+            }
             builder.setLimit(client.getConfig().getTraverseLimit());
             Tablet.TraverseRequest request = builder.build();
             Tablet.TraverseResponse response = ts.traverse(request);
@@ -281,6 +285,9 @@ public class RelationalIterator {
                 bs = response.getPairs();
                 bb = bs.asReadOnlyByteBuffer();
                 totalSize = this.bs.size();
+                if (response.hasSnapshotId()) {
+                    snapshot_id = response.getSnapshotId();
+                }
                 offset = 0;
                 if (totalSize == 0) {
                     if (response.hasIsFinish() && response.getIsFinish()) {

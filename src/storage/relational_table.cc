@@ -13,6 +13,7 @@ using ::baidu::common::DEBUG;
 
 DECLARE_bool(disable_wal);
 DECLARE_uint32(max_traverse_cnt);
+DECLARE_uint32(snapshot_ttl_time);
 
 namespace rtidb {
 namespace storage {
@@ -27,7 +28,8 @@ RelationalTable::RelationalTable(const std::string &name, uint32_t id, uint32_t 
         const std::string& db_root_path) :
     storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
     mapping_(mapping), last_make_snapshot_time_(0),  
-    write_opts_(), offset_(0), db_root_path_(db_root_path){
+    write_opts_(), offset_(0), db_root_path_(db_root_path),
+    snapshot_index_(1) {
         if (!options_template_initialized) {
             initOptionTemplate();
         }
@@ -40,7 +42,8 @@ RelationalTable::RelationalTable(const ::rtidb::api::TableMeta& table_meta,
     storage_mode_(table_meta.storage_mode()), name_(table_meta.name()), id_(table_meta.tid()), pid_(table_meta.pid()),
     is_leader_(false), mapping_(std::map<std::string, uint32_t>()), 
     compress_type_(table_meta.compress_type()), last_make_snapshot_time_(0),   
-    write_opts_(), offset_(0), db_root_path_(db_root_path){
+    write_opts_(), offset_(0), db_root_path_(db_root_path),
+    snapshots_(), snapshot_index_(1) {
     table_meta_.CopyFrom(table_meta);
     if (!options_template_initialized) {
         initOptionTemplate();
@@ -561,26 +564,75 @@ bool RelationalTable::UpdateDB(const std::map<std::string, int>& cd_idx_map, con
     return true;
 }
 
-RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx) {
+void RelationalTable::ReleaseSnpashot(uint64_t snapshot_id, bool finish) {
+    if (finish) {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = snapshots_.find(snapshot_id);
+        if (iter == snapshots_.end()) {
+            return;
+        }
+        std::shared_ptr<SnapshotInfo> sc = iter->second;
+        snapshots_.erase(iter);
+        db_->ReleaseSnapshot(sc->snapshot);
+    }
+}
+
+void RelationalTable::TTLSnapshot() {
+    uint64_t cur_time = baidu::common::timer::get_micros() / 1000;
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto iter = snapshots_.begin(); iter != snapshots_.end();) {
+        if (iter->second->atime + FLAGS_snapshot_ttl_time <= cur_time ) {
+            std::shared_ptr<SnapshotInfo> sc = iter->second;
+            iter = snapshots_.erase(iter);
+            db_->ReleaseSnapshot(sc->snapshot);
+            continue;
+        }
+        iter++;
+    }
+}
+
+RelationalTableTraverseIterator* RelationalTable::NewTraverse(uint32_t idx, uint64_t snapshot_id) {
     if (idx >= idx_cnt_) {
         PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return NULL;
     }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
-    ro.snapshot = snapshot;
     ro.pin_data = true;
+    std::shared_ptr<SnapshotInfo> sc;
+    if (snapshot_id > 0) {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = snapshots_.find(snapshot_id);
+        if (iter != snapshots_.end()) {
+            sc = iter->second;
+            sc->atime = baidu::common::timer::get_micros() / 1000;
+        } else {
+            return NULL;
+        }
+    } else {
+        const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+        sc = std::make_shared<SnapshotInfo>();
+        sc->snapshot = snapshot;
+        sc->atime = baidu::common::timer::get_micros() / 1000;
+        std::lock_guard<std::mutex> lock(mu_);
+        snapshot_id = snapshot_index_++;
+        snapshots_.insert(std::make_pair(snapshot_id, sc));
+    }
+    ro.snapshot = sc->snapshot;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
-    return new RelationalTableTraverseIterator(db_, it, snapshot);
+    return new RelationalTableTraverseIterator(this, it, snapshot_id);
 }
 
-RelationalTableTraverseIterator::RelationalTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
-        const rocksdb::Snapshot* snapshot):db_(db), it_(it), snapshot_(snapshot), traverse_cnt_(0) {
+RelationalTableTraverseIterator::RelationalTableTraverseIterator(RelationalTable* table, rocksdb::Iterator* it,
+        uint64_t id):table_(table), it_(it), traverse_cnt_(0),
+        finish_(false), id_(id) {
 }
 
 RelationalTableTraverseIterator::~RelationalTableTraverseIterator() {
+    if (!it_->Valid()) {
+        finish_ = true;
+    }
     delete it_;
-    db_->ReleaseSnapshot(snapshot_);
+    table_->ReleaseSnpashot(id_, finish_);
 }
 
 bool RelationalTableTraverseIterator::Valid() {
@@ -608,6 +660,14 @@ uint64_t RelationalTableTraverseIterator::GetCount() {
 rtidb::base::Slice RelationalTableTraverseIterator::GetValue() {
     rocksdb::Slice spk = it_->value();
     return rtidb::base::Slice(spk.data(), spk.size());
+}
+
+uint64_t RelationalTableTraverseIterator::GetSeq() {
+    return id_;
+}
+
+void RelationalTableTraverseIterator::SetFinish(bool finish) {
+    finish_ = finish;
 }
 
 }

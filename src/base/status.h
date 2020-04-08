@@ -176,6 +176,7 @@ enum ReturnCode {
     kFailToCreateFile = 144,
     kTableTypeMismatch = 145,
     kDumpIndexDataFailed = 146,
+    kSnapshotRecycled = 147,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,

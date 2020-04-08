@@ -736,7 +736,7 @@ public class TableSyncClientTest extends TestCaseBase {
             //put
             WriteOption wo = new WriteOption();
             Map<String, Object> data = new HashMap<String, Object>();
-            for (long i = 0; i < 1000; i++) {
+            for (long i = 1; i < 1000; i++) {
                 data.put("id", String.format("%04d", i));
                 data.put("attribute", "a" + i);
                 data.put("image", "i" + i);
@@ -752,13 +752,33 @@ public class TableSyncClientTest extends TestCaseBase {
 
             //traverse
             RelationalIterator trit = tableSyncClient.traverse(name, ro);
-            for (long i = 0; i < 1000; i++) {
-                trit.next();
+            trit.next();
+            //update key
+            {
+                data.clear();
+                Map<String, Object> conditionColumns = new HashMap<>();
+                conditionColumns.put("id", "0110");
+                data.put("attribute", "aup1110");
+                data.put("image", "iup1110");
+                boolean ok = tableSyncClient.update(name, conditionColumns, data, wo);
+                Assert.assertTrue(ok);
+
+                ro = new ReadOption(conditionColumns, null,  null, 1);
+                RelationalIterator it = tableSyncClient.query(name, ro);
+                Map<String, Object> valueMap = new HashMap<>();
+                valueMap = it.getDecodedValue();
+                Assert.assertEquals(valueMap.size(), 3);
+                Assert.assertEquals(valueMap.get("id"), "0110");
+                Assert.assertEquals(valueMap.get("attribute"), "aup1110");
+                Assert.assertEquals(valueMap.get("image"), "iup1110");
+            }
+            for (long i = 1; i < 1000; i++) {
                 Assert.assertTrue(trit.valid());
                 Map<String, Object> TraverseMap = trit.getDecodedValue();
                 Assert.assertEquals(TraverseMap.size(), 2);
                 Assert.assertEquals(TraverseMap.get("id"), String.format("%04d", i));
                 Assert.assertEquals(TraverseMap.get("image"), "i" + i);
+                trit.next();
             }
             trit.next();
             Assert.assertFalse(trit.valid());
