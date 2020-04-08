@@ -94,6 +94,9 @@ target_link_libraries(tablet_impl_mem_test   gtest pthread tablet gflags storage
 add_executable(tablet_impl_multi_path_test  tablet/tablet_impl_multi_path_test.cc base/status.cc)
 target_link_libraries(tablet_impl_multi_path_test   gtest pthread tablet gflags storage replica log common brpc rt ssl crypto dl leveldb protobuf z snappy zk_client zookeeper_mt unwind tcmalloc)
 
+add_executable(tablet_impl_projection_test  tablet/tablet_impl_projection_test.cc base/status.cc)
+target_link_libraries(tablet_impl_projection_test   gtest pthread tablet gflags storage replica log common brpc rt ssl crypto dl leveldb protobuf z snappy zk_client zookeeper_mt unwind tcmalloc)
+
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/common.pb.cc proto/type.pb.cc)
 target_link_libraries(codec_bench_test gtest pthread storage tablet gflags common rt protobuf tcmalloc_minimal)
 

@@ -378,7 +378,7 @@ int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month, uint32_t
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    uint32_t date = reinterpret_cast<uint32_t>(v1::GetInt32Field(row_, offset));
+    uint32_t date = static_cast<uint32_t>(v1::GetInt32Field(row_, offset));
     *day = date & 0x0000000FF;
     date = date >> 8;
     *month = date & 0x0000FF;
@@ -397,7 +397,7 @@ int32_t RowView::GetDate(uint32_t idx, uint32_t* val) {
         return 1;
     }
     uint32_t offset = offset_vec_.at(idx);
-    *val = reinterpret_cast<uint32_t>(v1::GetInt32Field(row_, offset));
+    *val = static_cast<uint32_t>(v1::GetInt32Field(row_, offset));
     return 0;
 }
 

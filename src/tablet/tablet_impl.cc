@@ -428,7 +428,6 @@ void TabletImpl::Get(RpcController* controller,
             response->set_msg("table is loading");
             return;
         }
-
         uint32_t index = 0;
         int ts_index = -1;
         if (request->has_idx_name() && request->idx_name().size() > 0) {
@@ -805,6 +804,10 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
     //TODO (wangtaize) support extend columns
     ::rtidb::base::RowProject row_project(meta.column_desc(), request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
+        if (meta.compress_type() == api::kSnappy) {
+            PDLOG(WARNING, "project on compress row data do not being supported");
+            return -1;
+        }
         bool ok = row_project.Init();
         if (!ok) {
             PDLOG(WARNING, "invalid project list");
@@ -925,6 +928,10 @@ int32_t TabletImpl::ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
             int8_t* ptr = nullptr;
             uint32_t size = 0;
             bool ok = row_project.Project(reinterpret_cast<const int8_t*>(it->GetValue().data()), it->GetValue().size(), &ptr, &size);
+            if (!ok) {
+                PDLOG(WARNING, "fail to make a projection");
+                return -4;
+            }
             std::unique_ptr<::rtidb::base::Slice> value(new ::rtidb::base::Slice(reinterpret_cast<char*>(ptr), size, true));
             tmp.push_back(std::make_pair(it->GetKey(), std::move(value)));
             total_block_size += size;
@@ -4463,7 +4470,7 @@ void TabletImpl::DumpIndexData(RpcController* controller,
     }
     std::string binlog_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + std::to_string(request->pid()) + "/binlog/";
     std::vector<::rtidb::log::WriteHandle*> whs;
-    for (int i=0;i<request->partition_num();++i) {
+    for (uint32_t i=0;i<request->partition_num();++i) {
         std::string index_file_name = std::to_string(request->pid()) + "_" + std::to_string(i) + "_index.data";
         std::string index_data_path = index_path + index_file_name;
         FILE* fd = fopen(index_data_path.c_str(), "wb+");
