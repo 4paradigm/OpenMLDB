@@ -16,11 +16,11 @@
  */
 
 #include "benchmark/benchmark.h"
+#include "bm/engine_bm_case.h"
 #include "llvm/Transforms/Scalar.h"
-#include "vm/engine_bm_case.h"
 
 namespace fesql {
-namespace vm {
+namespace bm {
 using namespace ::llvm;  // NOLINT
 
 static void BM_EngineRequestSimpleSelectVarchar(
@@ -126,7 +126,7 @@ BENCHMARK(BM_EngineRunBatchWindowSumFeature5)
     ->Args({1000, 1000})
     ->Args({10000, 10000});
 
-}  // namespace vm
+}  // namespace bm
 }  // namespace fesql
 
 BENCHMARK_MAIN();

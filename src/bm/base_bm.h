@@ -67,6 +67,7 @@ class RealRepeater : public NumberRepeater<T> {
         }
     }
 };
+
 }  // namespace bm
 }  // namespace fesql
 

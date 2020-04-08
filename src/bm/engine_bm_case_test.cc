@@ -6,12 +6,12 @@
  * Date: 2019/12/25
  *--------------------------------------------------------------------------
  **/
-#include "vm/engine_bm_case.h"
+#include "bm/engine_bm_case.h"
 #include "gtest/gtest.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 namespace fesql {
-namespace vm {
+namespace bm {
 class EngineBMCaseTest : public ::testing::Test {
  public:
     EngineBMCaseTest() {}
@@ -83,7 +83,7 @@ TEST_F(EngineBMCaseTest, EngineSimpleSelectVarchar_TEST) {
 TEST_F(EngineBMCaseTest, EngineSimpleUDF_TEST) {
     EngineSimpleUDF(nullptr, TEST);
 }
-}  // namespace vm
+}  // namespace bm
 }  // namespace fesql
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

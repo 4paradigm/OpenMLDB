@@ -74,19 +74,7 @@ add_test(engine_test engine_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/engine_test.xml)
 list(APPEND test_list engine_test)
 
-add_library(engine_bm_case STATIC engine_bm_case.cc)
 
-
-add_executable(engine_bm_case_test engine_bm_case_test.cc)
-target_link_libraries(engine_bm_case_test engine_bm_case ${vm_deps_libs}
-        benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
-
-add_test(engine_bm_case_test engine_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/engine_bm_case_test.xml)
-list(APPEND test_list engine_bm_case_test)
-
-add_executable(engine_bm engine_bm.cc)
-target_link_libraries(engine_bm engine_bm_case ${vm_deps_libs}
-        benchmark protobuf ${llvm_libs} ${COMMON_LIBS} tcmalloc profiler gtest pthread rt)
 
 add_executable(csv_db csv_db.cc)
 target_link_libraries(csv_db fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)

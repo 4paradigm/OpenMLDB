@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "vm/engine_bm_case.h"
+#include "bm/engine_bm_case.h"
 #include <memory>
 #include <string>
 #include <utility>
@@ -42,7 +42,14 @@
 #include "vm/test_base.h"
 
 namespace fesql {
-namespace vm {
+namespace bm {
+using vm::Engine;
+using vm::BatchRunSession;
+using vm::RequestRunSession;
+using vm::Slice;
+using vm::AddTable;
+using vm::BuildCommonCatalog;
+
 using namespace ::llvm;                                      // NOLINT
 static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
@@ -692,5 +699,5 @@ void EngineRequestSimpleUDF(benchmark::State* state, MODE mode) {  // NOLINT
     }
 }
 
-}  // namespace vm
+}  // namespace bm
 }  // namespace fesql

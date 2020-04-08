@@ -16,12 +16,12 @@
  */
 
 #include "codegen/window_ir_builder.h"
-
 #include <string>
 #include <utility>
+#include <vector>
+#include "codec/row_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
-#include "codec/row_codec.h"
 
 namespace fesql {
 namespace codegen {
@@ -224,6 +224,15 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
                                    val_type_id, col_iter});
     *output = list_ref;
     return true;
+}
+uint32_t MemoryWindowDecodeIRBuilder::GetColOffset(const std::string& name) {
+    auto it = types_.find(name);
+    if (it == types_.end()) {
+        LOG(WARNING) << "no column " << name << " in schema";
+        return false;
+    }
+    uint32_t offset = it->second.second;
+    return offset;
 }
 
 }  // namespace codegen

@@ -7,11 +7,11 @@
  *--------------------------------------------------------------------------
  **/
 
-#ifndef SRC_VM_ENGINE_BM_CASE_H_
-#define SRC_VM_ENGINE_BM_CASE_H_
+#ifndef SRC_BM_ENGINE_BM_CASE_H_
+#define SRC_BM_ENGINE_BM_CASE_H_
 #include "benchmark/benchmark.h"
 namespace fesql {
-namespace vm {
+namespace bm {
 enum MODE { BENCHMARK, TEST };
 void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
                              int64_t limit_cnt,
@@ -43,6 +43,6 @@ void EngineRequestSimpleSelectVarchar(benchmark::State* state, MODE mode);
 void EngineRequestSimpleSelectInt32(benchmark::State* state, MODE mode);
 
 void EngineRequestSimpleUDF(benchmark::State* state, MODE mode);
-}  // namespace vm
+}  // namespace bm
 }  // namespace fesql
-#endif  // SRC_VM_ENGINE_BM_CASE_H_
+#endif  // SRC_BM_ENGINE_BM_CASE_H_
