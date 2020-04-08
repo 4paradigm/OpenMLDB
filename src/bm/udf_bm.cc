@@ -53,7 +53,7 @@ BENCHMARK(BM_MemSumColInt)
     ->Args({10000});
 
 BENCHMARK(BM_MemSumColDouble)
-->Args({1})
+    ->Args({1})
     ->Args({2})
     ->Args({10})
     ->Args({100})
@@ -61,7 +61,7 @@ BENCHMARK(BM_MemSumColDouble)
     ->Args({10000});
 
 BENCHMARK(BM_CopyMemTable)
-->Args({1})
+    ->Args({1})
     ->Args({2})
     ->Args({10})
     ->Args({100})
@@ -69,7 +69,7 @@ BENCHMARK(BM_CopyMemTable)
     ->Args({10000});
 
 BENCHMARK(BM_ArraySumColInt)
-->Args({1})
+    ->Args({1})
     ->Args({2})
     ->Args({10})
     ->Args({100})
@@ -77,7 +77,7 @@ BENCHMARK(BM_ArraySumColInt)
     ->Args({10000});
 
 BENCHMARK(BM_ArraySumColDouble)
-->Args({1})
+    ->Args({1})
     ->Args({2})
     ->Args({10})
     ->Args({100})
@@ -85,7 +85,7 @@ BENCHMARK(BM_ArraySumColDouble)
     ->Args({10000});
 
 BENCHMARK(BM_CopyArrayList)
-->Args({1})
+    ->Args({1})
     ->Args({2})
     ->Args({10})
     ->Args({100})

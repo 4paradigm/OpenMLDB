@@ -185,7 +185,7 @@ int32_t RunCopyTable(MemTableHandler window, type::TableDef table_def) {
 }
 
 void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
-            const std::string& col_name) {
+                     const std::string& col_name) {
     vm::MemTableHandler window;
     type::TableDef table_def;
     BuildData(table_def, window, data_size);
@@ -211,8 +211,9 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
-    ASSERT_EQ(0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&list_table),
-                                            offset, storage_type, buf));
+    ASSERT_EQ(0,
+              ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&list_table),
+                                         offset, storage_type, buf));
     {
         switch (mode) {
             case BENCHMARK: {
@@ -291,7 +292,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
 }
 
 void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
-            const std::string& col_name) {
+                    const std::string& col_name) {
     vm::MemTableHandler window;
     type::TableDef table_def;
     BuildData(table_def, window, data_size);
