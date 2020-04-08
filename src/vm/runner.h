@@ -89,12 +89,11 @@ class Runner {
     Slice WindowProject(const int8_t* fn, const uint64_t key, const Slice slice,
                         Window* window);
     Slice RowProject(const int8_t* fn, const Slice slice);
-    Slice AggProject(const int8_t* fn,
-                     const std::shared_ptr<DataHandler> table);
 
     std::string GetColumnString(RowView* view, int pos, type::Type type);
     int64_t GetColumnInt64(RowView* view, int pos, type::Type type);
-
+    std::string GenerateKeys(RowView* row_view, const Schema& schema,
+                             const std::vector<int>& idxs);
     std::shared_ptr<DataHandler> TableGroup(
         const std::shared_ptr<DataHandler> table, const Schema& schema,
         const int8_t* fn, const std::vector<int>& idxs, RowView* row_view);
@@ -112,49 +111,6 @@ class Runner {
                                            std::vector<int> idxs,
                                            const bool is_asc,
                                            RowView* row_view);
-    std::shared_ptr<DataHandler> GroupAggProject(
-        std::shared_ptr<DataHandler> input, const int32_t limit_cnt,
-        const int8_t* fn, const Schema fn_schema);
-    std::shared_ptr<DataHandler> TableProject(
-        const int8_t* fn, std::shared_ptr<DataHandler> table,
-        const int32_t limit_cnt, Schema output_schema);
-
-    std::string GenerateKeys(RowView* row_view, const Schema& schema,
-                             const std::vector<int>& idxs);
-
-    std::shared_ptr<DataHandler> IndexSeek(std::shared_ptr<DataHandler> left,
-                                           std::shared_ptr<DataHandler> right,
-                                           const int8_t* fn,
-                                           const Schema& fn_schema,
-                                           const std::vector<int>& idxs,
-                                           RowView* row_view);
-    std::shared_ptr<DataHandler> RequestUnion(
-        std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
-        const int8_t* fn, const Schema& fn_schema,
-        const std::vector<int>& groups_idxs,
-        const std::vector<int>& orders_idxs, const std::vector<int>& keys_idxs,
-        const int64_t start_offset, const int64_t end_offset,
-        RowView* row_view);
-
-    std::shared_ptr<DataHandler> WindowAggProject(
-        std::shared_ptr<DataHandler> input, const int32_t limit_cnt,
-        const int8_t* fn, const Schema& fn_schema, const int64_t start_offset,
-        const int64_t end_offset);
-
-    std::shared_ptr<DataHandler> TableSortGroup(
-        std::shared_ptr<DataHandler> table, const int8_t* fn,
-        const Schema& schema, const std::vector<int>& groups_idxs,
-        const std::vector<int>& orders_idxs, const bool is_asc,
-        RowView* row_view);
-
-    std::shared_ptr<DataHandler> Group(std::shared_ptr<DataHandler> input,
-                                       const int8_t* fn,
-                                       const Schema& fn_schema,
-                                       const std::vector<int>& idxs,
-                                       RowView* row_view);
-
-    std::shared_ptr<DataHandler> Limit(std::shared_ptr<DataHandler> input,
-                                       const int32_t limit_cnt);
     bool need_cache_;
     std::vector<Runner*> producers_;
 };
@@ -245,6 +201,7 @@ class GroupAndSortRunner : public Runner {
         output << tab << "GROUP_AND_SORT";
         Runner::Print(output, tab);
     }
+
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::vector<int32_t> groups_idxs_;
     const std::vector<int32_t> order_idxs_;
@@ -261,6 +218,7 @@ class TableProjectRunner : public Runner {
         output << tab << "TABLE_PROJECT";
         Runner::Print(output, tab);
     }
+
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };
 

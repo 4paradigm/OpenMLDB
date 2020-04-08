@@ -206,7 +206,7 @@ Slice Runner::WindowProject(const int8_t* fn, uint64_t key, const Slice slice,
     if (slice.empty()) {
         return slice;
     }
-    window->BufferData(key, Slice(slice));
+    window->BufferData(key, slice);
     int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
         (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
     int8_t* out_buf = nullptr;
@@ -234,83 +234,7 @@ Slice Runner::RowProject(const int8_t* fn, const Slice slice) {
     }
     return Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf));
 }
-Slice Runner::AggProject(const int8_t* fn,
-                         const std::shared_ptr<DataHandler> input) {
-    if (!input) {
-        LOG(WARNING) << "input is empty";
-        return Slice();
-    }
 
-    if (kTableHandler != input->GetHanlderType()) {
-        return Slice();
-    }
-    auto table = std::dynamic_pointer_cast<TableHandler>(input);
-    auto iter = table->GetIterator();
-    iter->SeekToFirst();
-    if (!iter->Valid()) {
-        return Slice();
-    }
-
-    auto row = Slice(iter->GetValue());
-
-    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
-    int8_t* buf = nullptr;
-
-    uint32_t ret = udf(row.buf(), reinterpret_cast<int8_t*>(table.get()),
-                       row.size(), &buf);
-    if (ret != 0) {
-        LOG(WARNING) << "fail to run udf " << ret;
-        return Slice();
-    }
-    return Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf));
-}
-
-std::shared_ptr<DataHandler> Runner::GroupAggProject(
-    std::shared_ptr<DataHandler> input, const int32_t limit_cnt,
-    const int8_t* fn, const Schema fn_schema) {
-    if (!input) {
-        LOG(WARNING) << "group aggregation fail: input is null";
-        return std::shared_ptr<DataHandler>();
-    }
-
-    if (kPartitionHandler != input->GetHanlderType()) {
-        LOG(WARNING) << "group aggregation fail: input isn't partition ";
-        return std::shared_ptr<DataHandler>();
-    }
-    auto partition = std::dynamic_pointer_cast<PartitionHandler>(input);
-    auto output_table =
-        std::shared_ptr<MemTableHandler>(new MemTableHandler(&fn_schema));
-    auto iter = partition->GetWindowIterator();
-    iter->SeekToFirst();
-
-    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
-        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn);
-
-    while (iter->Valid()) {
-        auto segment_iter = iter->GetValue();
-        if (!segment_iter) {
-            LOG(WARNING) << "group aggregation fail: segment iterator is null";
-            return std::shared_ptr<DataHandler>();
-        }
-        auto first_row = segment_iter->GetValue();
-        auto key = std::string(iter->GetKey().data(), iter->GetKey().size());
-        auto segment = partition->GetSegment(partition, key);
-        int8_t* buf = nullptr;
-        uint32_t ret =
-            udf(first_row.buf(), reinterpret_cast<int8_t*>(segment.get()),
-                first_row.size(), &buf);
-        if (ret != 0) {
-            LOG(WARNING) << "fail to run udf " << ret;
-            return std::shared_ptr<DataHandler>();
-        }
-        iter->Next();
-        output_table->AddRow(
-            Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf)));
-    }
-
-    return output_table;
-}
 std::string Runner::GetColumnString(RowView* row_view, int key_idx,
                                     type::Type key_type) {
     std::string key = "";
@@ -431,11 +355,11 @@ std::shared_ptr<DataHandler> Runner::TableGroup(
 
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     while (iter->Valid()) {
-        Slice value_row(iter->GetValue());
-        const Slice key_row(RowProject(fn, iter->GetValue()));
+        const Slice key_row(RowProject(fn, iter->GetValue()), true);
         row_view->Reset(key_row.buf(), key_row.size());
         std::string keys = GenerateKeys(row_view, schema, idxs);
-        output_partitions->AddRow(keys, iter->GetKey(), value_row);
+        output_partitions->AddRow(keys, iter->GetKey(), iter->GetValue());
+
         iter->Next();
     }
     return output_partitions;
@@ -464,54 +388,16 @@ std::shared_ptr<DataHandler> Runner::PartitionGroup(
         auto segment_iter = iter->GetValue();
         segment_iter->SeekToFirst();
         while (segment_iter->Valid()) {
-            const Slice key_row(RowProject(fn, segment_iter->GetValue()));
+            const Slice key_row(RowProject(fn, segment_iter->GetValue()), true);
             row_view->Reset(key_row.buf(), key_row.size());
             std::string keys = GenerateKeys(row_view, schema, idxs);
             output_partitions->AddRow(keys, segment_iter->GetKey(),
-                                      Slice(segment_iter->GetValue()));
+                                      segment_iter->GetValue());
             segment_iter->Next();
         }
         iter->Next();
     }
     return output_partitions;
-}
-
-std::shared_ptr<DataHandler> Runner::TableSortGroup(
-    std::shared_ptr<DataHandler> table, const int8_t* fn, const Schema& schema,
-    const std::vector<int>& groups_idxs, const std::vector<int>& orders_idxs,
-    const bool is_asc, RowView* row_view) {
-    if (!table) {
-        return std::shared_ptr<DataHandler>();
-    }
-
-    std::shared_ptr<DataHandler> output;
-    switch (table->GetHanlderType()) {
-        case kPartitionHandler:
-            output =
-                PartitionSort(table, schema, fn, orders_idxs, is_asc, row_view);
-            break;
-        case kTableHandler:
-            output =
-                TableSort(table, schema, fn, orders_idxs, is_asc, row_view);
-            break;
-        default: {
-            LOG(WARNING) << "fail to sort and group table: input isn't table "
-                            "or partition";
-            return std::shared_ptr<DataHandler>();
-        }
-    }
-
-    switch (output->GetHanlderType()) {
-        case kPartitionHandler:
-            return PartitionGroup(output, schema, fn, groups_idxs, row_view);
-        case kTableHandler:
-            return TableGroup(output, schema, fn, groups_idxs, row_view);
-        default: {
-            LOG(WARNING) << "fail to sort and group table: input isn't table "
-                            "or partition";
-            return std::shared_ptr<DataHandler>();
-        }
-    }
 }
 
 std::shared_ptr<DataHandler> Runner::PartitionSort(
@@ -545,14 +431,15 @@ std::shared_ptr<DataHandler> Runner::PartitionSort(
             if (idxs.empty()) {
                 key = segment_iter->GetKey();
             } else {
-                const Slice order_row(RowProject(fn, segment_iter->GetValue()));
+                const Slice order_row(RowProject(fn, segment_iter->GetValue()),
+                                      true);
                 row_view->Reset(order_row.buf(), order_row.size());
                 key = GetColumnInt64(row_view, idxs[0],
                                      schema.Get(idxs[0]).type());
             }
             output_partitions->AddRow(
                 std::string(iter->GetKey().data(), iter->GetKey().size()), key,
-                Slice(segment_iter->GetValue()));
+                segment_iter->GetValue());
             segment_iter->Next();
         }
         iter->Next();
@@ -579,82 +466,21 @@ std::shared_ptr<DataHandler> Runner::TableSort(
     }
     auto output_table = std::shared_ptr<MemTableHandler>(
         new MemTableHandler(table->GetSchema()));
-
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     while (iter->Valid()) {
-        const Slice order_row(RowProject(fn, iter->GetValue()));
+        const Slice order_row(RowProject(fn, iter->GetValue()), true);
 
         row_view->Reset(order_row.buf(), order_row.size());
 
         int64_t key =
             GetColumnInt64(row_view, idxs[0], schema.Get(idxs[0]).type());
-        output_table->AddRow(key, Slice(iter->GetValue()));
+        output_table->AddRow(key, iter->GetValue());
         iter->Next();
     }
     output_table->Sort(is_asc);
     return output_table;
 }
-std::shared_ptr<DataHandler> Runner::TableProject(
-    const int8_t* fn, std::shared_ptr<DataHandler> table,
-    const int32_t limit_cnt, Schema output_schema) {
-    if (!table) {
-        return std::shared_ptr<DataHandler>();
-    }
-    if (kTableHandler != table->GetHanlderType()) {
-        return std::shared_ptr<DataHandler>();
-    }
-    auto output_table =
-        std::shared_ptr<MemTableHandler>(new MemTableHandler(&output_schema));
-    auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
 
-    int32_t cnt = 0;
-    while (iter->Valid()) {
-        if (limit_cnt > 0 && cnt++ >= limit_cnt) {
-            break;
-        }
-        const Slice row(RowProject(fn, iter->GetValue()));
-        output_table->AddRow(row);
-        iter->Next();
-    }
-    return output_table;
-}
-
-std::shared_ptr<DataHandler> Runner::WindowAggProject(
-    std::shared_ptr<DataHandler> input, const int32_t limit_cnt,
-    const int8_t* fn, const Schema& fn_schema, const int64_t start_offset,
-    const int64_t end_offset) {
-    if (!input) {
-        LOG(WARNING) << "window aggregation fail: input is null";
-        return std::shared_ptr<DataHandler>();
-    }
-
-    if (kPartitionHandler != input->GetHanlderType()) {
-        LOG(WARNING) << "window aggregation requires partition input";
-        return std::shared_ptr<DataHandler>();
-    }
-
-    auto output_table =
-        std::shared_ptr<MemTableHandler>(new MemTableHandler(&fn_schema));
-
-    auto partitions = std::dynamic_pointer_cast<PartitionHandler>(input);
-    auto iter = partitions->GetWindowIterator();
-    int32_t cnt = 0;
-    while (iter->Valid()) {
-        auto segment = iter->GetValue();
-        CurrentHistoryWindow window(start_offset);
-        while (segment->Valid()) {
-            if (limit_cnt > 0 && cnt++ >= limit_cnt) {
-                break;
-            }
-            const Slice row(WindowProject(fn, segment->GetKey(),
-                                          segment->GetValue(), &window));
-            output_table->AddRow(row);
-            segment->Next();
-        }
-        iter->Next();
-    }
-    return output_table;
-}
 std::string Runner::GenerateKeys(RowView* row_view, const Schema& schema,
                                  const std::vector<int>& idxs) {
     std::string keys = "";
@@ -669,177 +495,6 @@ std::string Runner::GenerateKeys(RowView* row_view, const Schema& schema,
     return keys;
 }
 
-std::shared_ptr<DataHandler> Runner::IndexSeek(
-    std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
-    const int8_t* fn, const Schema& fn_schema, const std::vector<int>& idxs,
-    RowView* row_view) {
-    if (kRowHandler != left->GetHanlderType()) {
-        return std::shared_ptr<DataHandler>();
-    }
-    if (kPartitionHandler != right->GetHanlderType()) {
-        return std::shared_ptr<DataHandler>();
-    }
-    std::shared_ptr<PartitionHandler> partition =
-        std::dynamic_pointer_cast<PartitionHandler>(right);
-
-    auto keys_row = Slice(RowProject(
-        fn, std::dynamic_pointer_cast<RowHandler>(left)->GetValue()));
-    row_view->Reset(keys_row.buf(), keys_row.size());
-
-    std::string key = GenerateKeys(row_view, fn_schema, idxs);
-    return partition->GetSegment(partition, key);
-}
-
-std::shared_ptr<DataHandler> Runner::RequestUnion(
-    std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
-    const int8_t* fn, const Schema& fn_schema,
-    const std::vector<int>& groups_idxs, const std::vector<int>& orders_idxs,
-    const std::vector<int>& keys_idxs, const int64_t start_offset,
-    const int64_t end_offset, RowView* row_view) {
-    if (!left || !right) {
-        return std::shared_ptr<DataHandler>();
-    }
-    if (kRowHandler != left->GetHanlderType()) {
-        return std::shared_ptr<DataHandler>();
-    }
-    if (kPartitionHandler == right->GetHanlderType()) {
-        return std::shared_ptr<DataHandler>();
-    }
-
-    auto output_schema = left->GetSchema();
-    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-
-    auto table = std::dynamic_pointer_cast<TableHandler>(right);
-    std::shared_ptr<DataHandler> output = right;
-    auto request_fn_row = Slice(RowProject(fn, request));
-    // filter by keys if need
-    if (!groups_idxs.empty()) {
-        row_view->Reset(request_fn_row.buf(), request_fn_row.size());
-        std::string request_keys =
-            GenerateKeys(row_view, fn_schema, groups_idxs);
-
-        auto mem_table = new MemTableHandler(output_schema);
-        auto iter = table->GetIterator();
-        while (iter->Valid()) {
-            auto row = Slice(RowProject(fn, iter->GetValue()));
-            row_view->Reset(row.buf(), row.size());
-            std::string keys = GenerateKeys(row_view, fn_schema, groups_idxs);
-            if (request_keys == keys) {
-                mem_table->AddRow(Slice(iter->GetValue()));
-            }
-            iter->Next();
-        }
-        output = std::shared_ptr<TableHandler>(mem_table);
-    }
-
-    // sort by orders if need
-    if (!orders_idxs.empty()) {
-        output = TableSort(std::shared_ptr<DataHandler>(output), fn_schema, fn,
-                           orders_idxs, false, row_view);
-    }
-
-    // build window with start and end offset
-    auto window_table =
-        std::shared_ptr<MemTableHandler>(new MemTableHandler(output_schema));
-    row_view->Reset(request_fn_row.buf(), request_fn_row.size());
-
-    uint64_t start = 0;
-    uint64_t end = UINT64_MAX;
-
-    if (!keys_idxs.empty()) {
-        auto ts_idx = keys_idxs[0];
-        int64_t key =
-            GetColumnInt64(row_view, ts_idx, fn_schema.Get(ts_idx).type());
-
-        start = (key + start_offset) < 0 ? 0 : (key + start_offset);
-
-        end = (key + end_offset) < 0 ? 0 : (key + end_offset);
-        DLOG(INFO) << "request key: " << key;
-    }
-
-    window_table->AddRow(Slice(request));
-
-    DLOG(INFO) << "start make window ";
-    if (output) {
-        auto table_output = std::dynamic_pointer_cast<TableHandler>(output);
-        auto table_iter = table_output->GetIterator();
-        if (table_iter) {
-            table_iter->Seek(end);
-            while (table_iter->Valid()) {
-                DLOG(INFO) << table_iter->GetKey() << " should >= " << start;
-                if (table_iter->GetKey() <= start) {
-                    break;
-                }
-                DLOG(INFO) << table_iter->GetKey() << " add row ";
-                window_table->AddRow(table_iter->GetKey(),
-                                     Slice(table_iter->GetValue()));
-                table_iter->Next();
-            }
-        }
-    }
-    return window_table;
-}
-
-std::shared_ptr<DataHandler> Runner::Group(std::shared_ptr<DataHandler> input,
-                                           const int8_t* fn,
-                                           const Schema& fn_schema,
-                                           const std::vector<int>& idxs,
-                                           RowView* row_view) {
-    auto fail_ptr = std::shared_ptr<DataHandler>();
-    if (!input) {
-        LOG(WARNING) << "input is empty";
-        return fail_ptr;
-    }
-    if (idxs.empty()) {
-        return input;
-    }
-
-    switch (input->GetHanlderType()) {
-        case kPartitionHandler: {
-            return PartitionGroup(input, fn_schema, fn, idxs, row_view);
-        }
-        case kTableHandler: {
-            return TableGroup(input, fn_schema, fn, idxs, row_view);
-        }
-        default: {
-            LOG(WARNING) << "fail group when input type isn't "
-                            "partition or table";
-            return fail_ptr;
-        }
-    }
-}
-
-std::shared_ptr<DataHandler> Runner::Limit(std::shared_ptr<DataHandler> input,
-                                           const int32_t limit_cnt) {
-    auto fail_ptr = std::shared_ptr<DataHandler>();
-    if (!input) {
-        LOG(WARNING) << "input is empty";
-        return fail_ptr;
-    }
-    switch (input->GetHanlderType()) {
-        case kTableHandler: {
-            auto iter =
-                std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
-            auto output_table = std::shared_ptr<MemTableHandler>(
-                new MemTableHandler(input->GetSchema()));
-            int32_t cnt = 0;
-            while (cnt++ < limit_cnt && iter->Valid()) {
-                output_table->AddRow(iter->GetKey(), Slice(iter->GetValue()));
-                iter->Next();
-            }
-            return output_table;
-        }
-        case kRowProject: {
-            DLOG(INFO) << "limit row handler";
-            return input;
-        }
-        case kPartitionHandler: {
-            LOG(WARNING) << "fail limit when input type isn't row or table";
-            return fail_ptr;
-        }
-    }
-    return fail_ptr;
-}
 std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     if (need_cache_) {
         auto iter = ctx.cache_.find(id_);
@@ -861,20 +516,93 @@ std::shared_ptr<DataHandler> RequestRunner::Run(RunnerContext& ctx) {
         new MemRowHandler(ctx.request_, &request_schema));
 }
 std::shared_ptr<DataHandler> GroupRunner::Run(RunnerContext& ctx) {
-    return Group(producers_[0]->RunWithCache(ctx), fn_, fn_schema_, idxs_,
-                 &row_view_);
+    auto input = producers_[0]->RunWithCache(ctx);
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (!input) {
+        LOG(WARNING) << "input is empty";
+        return fail_ptr;
+    }
+    if (idxs_.empty()) {
+        return input;
+    }
+
+    switch (input->GetHanlderType()) {
+        case kPartitionHandler: {
+            return PartitionGroup(input, fn_schema_, fn_, idxs_, &row_view_);
+        }
+        case kTableHandler: {
+            return TableGroup(input, fn_schema_, fn_, idxs_, &row_view_);
+        }
+        default: {
+            LOG(WARNING) << "fail group when input type isn't "
+                            "partition or table";
+            return fail_ptr;
+        }
+    }
 }
 std::shared_ptr<DataHandler> OrderRunner::Run(RunnerContext& ctx) {
     return TableSort(producers_[0]->RunWithCache(ctx), fn_schema_, fn_, idxs_,
                      is_asc_, &row_view_);
 }
 std::shared_ptr<DataHandler> GroupAndSortRunner::Run(RunnerContext& ctx) {
-    return TableSortGroup(producers_[0]->RunWithCache(ctx), fn_, fn_schema_,
-                          groups_idxs_, order_idxs_, is_asc_, &row_view_);
+    auto input = producers_[0]->RunWithCache(ctx);
+    if (!input) {
+        return std::shared_ptr<DataHandler>();
+    }
+
+    std::shared_ptr<DataHandler> output;
+    switch (input->GetHanlderType()) {
+        case kPartitionHandler:
+            output = PartitionSort(input, fn_schema_, fn_, order_idxs_, is_asc_,
+                                   &row_view_);
+            break;
+        case kTableHandler:
+            output = TableSort(input, fn_schema_, fn_, order_idxs_, is_asc_,
+                               &row_view_);
+
+            break;
+        default: {
+            LOG(WARNING) << "fail to sort and group table: input isn't table "
+                            "or partition";
+            return std::shared_ptr<DataHandler>();
+        }
+    }
+
+    switch (output->GetHanlderType()) {
+        case kPartitionHandler:
+            return PartitionGroup(output, fn_schema_, fn_, groups_idxs_,
+                                  &row_view_);
+        case kTableHandler:
+            return TableGroup(output, fn_schema_, fn_, groups_idxs_,
+                              &row_view_);
+        default: {
+            LOG(WARNING) << "fail to sort and group table: input isn't table "
+                            "or partition";
+            return std::shared_ptr<DataHandler>();
+        }
+    }
 }
 std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
-    return TableProject(fn_, producers_[0]->RunWithCache(ctx), limit_cnt_,
-                        fn_schema_);
+    auto input = producers_[0]->RunWithCache(ctx);
+    if (!input) {
+        return std::shared_ptr<DataHandler>();
+    }
+    if (kTableHandler != input->GetHanlderType()) {
+        return std::shared_ptr<DataHandler>();
+    }
+    auto output_table =
+        std::shared_ptr<MemTableHandler>(new MemTableHandler(&fn_schema_));
+    auto iter = std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
+
+    int32_t cnt = 0;
+    while (iter->Valid()) {
+        if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
+            break;
+        }
+        output_table->AddRow(RowProject(fn_, iter->GetValue()));
+        iter->Next();
+    }
+    return output_table;
 }
 std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
     auto row =
@@ -883,35 +611,258 @@ std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
         new MemRowHandler(RowProject(fn_, row->GetValue()), &fn_schema_));
 }
 std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
-    return WindowAggProject(producers_[0]->RunWithCache(ctx), limit_cnt_, fn_,
-                            fn_schema_, start_offset_, end_offset_);
+    auto input = producers_[0]->RunWithCache(ctx);
+    if (!input) {
+        LOG(WARNING) << "window aggregation fail: input is null";
+        return std::shared_ptr<DataHandler>();
+    }
+
+    if (kPartitionHandler != input->GetHanlderType()) {
+        LOG(WARNING) << "window aggregation requires partition input";
+        return std::shared_ptr<DataHandler>();
+    }
+
+    auto output_table =
+        std::shared_ptr<MemTableHandler>(new MemTableHandler(&fn_schema_));
+
+    auto partitions = std::dynamic_pointer_cast<PartitionHandler>(input);
+    auto iter = partitions->GetWindowIterator();
+    int32_t cnt = 0;
+    while (iter->Valid()) {
+        auto segment = iter->GetValue();
+        CurrentHistoryWindow window(start_offset_);
+        while (segment->Valid()) {
+            if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
+                break;
+            }
+            const Slice row(WindowProject(fn_, segment->GetKey(),
+                                          segment->GetValue(), &window));
+            output_table->AddRow(row);
+            segment->Next();
+        }
+        iter->Next();
+    }
+    return output_table;
 }
 std::shared_ptr<DataHandler> IndexSeekRunner::Run(RunnerContext& ctx) {
-    return IndexSeek(producers_[0]->RunWithCache(ctx),
-                     producers_[1]->RunWithCache(ctx), fn_, fn_schema_,
-                     keys_idxs_, &row_view_);
+    auto left = producers_[0]->RunWithCache(ctx);
+    auto right = producers_[1]->RunWithCache(ctx);
+    if (kRowHandler != left->GetHanlderType()) {
+        return std::shared_ptr<DataHandler>();
+    }
+    if (kPartitionHandler != right->GetHanlderType()) {
+        return std::shared_ptr<DataHandler>();
+    }
+    std::shared_ptr<PartitionHandler> partition =
+        std::dynamic_pointer_cast<PartitionHandler>(right);
+
+    auto keys_row =
+        Slice(RowProject(
+                  fn_, std::dynamic_pointer_cast<RowHandler>(left)->GetValue()),
+              true);
+    row_view_.Reset(keys_row.buf(), keys_row.size());
+
+    std::string key = GenerateKeys(&row_view_, fn_schema_, keys_idxs_);
+    return partition->GetSegment(partition, key);
 }
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
-    return Limit(producers_[0]->RunWithCache(ctx), limit_cnt_);
+    auto input = producers_[0]->RunWithCache(ctx);
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (!input) {
+        LOG(WARNING) << "input is empty";
+        return fail_ptr;
+    }
+    switch (input->GetHanlderType()) {
+        case kTableHandler: {
+            auto iter =
+                std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
+            auto output_table = std::shared_ptr<MemTableHandler>(
+                new MemTableHandler(input->GetSchema()));
+            int32_t cnt = 0;
+            while (cnt++ < limit_cnt_ && iter->Valid()) {
+                output_table->AddRow(iter->GetKey(), iter->GetValue());
+                iter->Next();
+            }
+            return output_table;
+        }
+        case kRowProject: {
+            DLOG(INFO) << "limit row handler";
+            return input;
+        }
+        case kPartitionHandler: {
+            LOG(WARNING) << "fail limit when input type isn't row or table";
+            return fail_ptr;
+        }
+    }
+    return fail_ptr;
 }
 std::shared_ptr<DataHandler> FilterRunner::Run(RunnerContext& ctx) {
     LOG(WARNING) << "can't handler filter op";
     return std::shared_ptr<DataHandler>();
 }
 std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
-    return GroupAggProject(producers_[0]->RunWithCache(ctx), limit_cnt_, fn_,
-                           fn_schema_);
+    auto input = producers_[0]->RunWithCache(ctx);
+    if (!input) {
+        LOG(WARNING) << "group aggregation fail: input is null";
+        return std::shared_ptr<DataHandler>();
+    }
+
+    if (kPartitionHandler != input->GetHanlderType()) {
+        LOG(WARNING) << "group aggregation fail: input isn't partition ";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto partition = std::dynamic_pointer_cast<PartitionHandler>(input);
+    auto output_table =
+        std::shared_ptr<MemTableHandler>(new MemTableHandler(&fn_schema_));
+    auto iter = partition->GetWindowIterator();
+    iter->SeekToFirst();
+
+    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn_);
+
+    while (iter->Valid()) {
+        auto segment_iter = iter->GetValue();
+        if (!segment_iter) {
+            LOG(WARNING) << "group aggregation fail: segment iterator is null";
+            return std::shared_ptr<DataHandler>();
+        }
+        auto& first_row = segment_iter->GetValue();
+        auto key = std::string(iter->GetKey().data(), iter->GetKey().size());
+        auto segment = partition->GetSegment(partition, key);
+        int8_t* buf = nullptr;
+        uint32_t ret =
+            udf(first_row.buf(), reinterpret_cast<int8_t*>(segment.get()),
+                first_row.size(), &buf);
+        if (ret != 0) {
+            LOG(WARNING) << "fail to run udf " << ret;
+            return std::shared_ptr<DataHandler>();
+        }
+        iter->Next();
+        output_table->AddRow(
+            Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf)));
+    }
+    return output_table;
 }
 
 std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
-    return RequestUnion(producers_[0]->RunWithCache(ctx),
-                        producers_[1]->RunWithCache(ctx), fn_, fn_schema_,
-                        groups_idxs_, orders_idxs_, keys_idxs_, start_offset_,
-                        end_offset_, &row_view_);
+    auto left = producers_[0]->RunWithCache(ctx);
+    auto right = producers_[1]->RunWithCache(ctx);
+    if (!left || !right) {
+        return std::shared_ptr<DataHandler>();
+    }
+    if (kRowHandler != left->GetHanlderType()) {
+        return std::shared_ptr<DataHandler>();
+    }
+    if (kPartitionHandler == right->GetHanlderType()) {
+        return std::shared_ptr<DataHandler>();
+    }
+
+    auto output_schema = left->GetSchema();
+    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+
+    auto table = std::dynamic_pointer_cast<TableHandler>(right);
+    std::shared_ptr<DataHandler> output = right;
+    auto request_fn_row = Slice(RowProject(fn_, request), true);
+    // filter by keys if need
+    if (!groups_idxs_.empty()) {
+        row_view_.Reset(request_fn_row.buf(), request_fn_row.size());
+        std::string request_keys =
+            GenerateKeys(&row_view_, fn_schema_, groups_idxs_);
+
+        auto mem_table = new MemTableHandler(output_schema);
+        auto iter = table->GetIterator();
+        while (iter->Valid()) {
+            auto row = Slice(RowProject(fn_, iter->GetValue()), true);
+            row_view_.Reset(row.buf(), row.size());
+            std::string keys =
+                GenerateKeys(&row_view_, fn_schema_, groups_idxs_);
+            if (request_keys == keys) {
+                mem_table->AddRow(iter->GetValue());
+            }
+            iter->Next();
+        }
+        output = std::shared_ptr<TableHandler>(mem_table);
+    }
+
+    // sort by orders if need
+    if (!orders_idxs_.empty()) {
+        output = TableSort(std::shared_ptr<DataHandler>(output), fn_schema_,
+                           fn_, orders_idxs_, false, &row_view_);
+    }
+
+    // build window with start and end offset
+    auto window_table =
+        std::shared_ptr<MemTableHandler>(new MemTableHandler(output_schema));
+    row_view_.Reset(request_fn_row.buf(), request_fn_row.size());
+
+    uint64_t start = 0;
+    uint64_t end = UINT64_MAX;
+
+    if (!keys_idxs_.empty()) {
+        auto ts_idx = keys_idxs_[0];
+        int64_t key =
+            GetColumnInt64(&row_view_, ts_idx, fn_schema_.Get(ts_idx).type());
+
+        start = (key + start_offset_) < 0 ? 0 : (key + start_offset_);
+
+        end = (key + end_offset_) < 0 ? 0 : (key + end_offset_);
+        DLOG(INFO) << "request key: " << key;
+    }
+
+    window_table->AddRow(request);
+
+    DLOG(INFO) << "start make window ";
+    if (output) {
+        auto table_output = std::dynamic_pointer_cast<TableHandler>(output);
+        auto table_iter = table_output->GetIterator();
+        if (table_iter) {
+            table_iter->Seek(end);
+            while (table_iter->Valid()) {
+                DLOG(INFO) << table_iter->GetKey() << " should >= " << start;
+                if (table_iter->GetKey() <= start) {
+                    break;
+                }
+                DLOG(INFO) << table_iter->GetKey() << " add row ";
+                window_table->AddRow(table_iter->GetKey(),
+                                     table_iter->GetValue());
+                table_iter->Next();
+            }
+        }
+    }
+    return window_table;
 }
 std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
-    auto slice = AggProject(fn_, producers_[0]->RunWithCache(ctx));
-    return std::shared_ptr<RowHandler>(new MemRowHandler(slice, &fn_schema_));
+    auto input = producers_[0]->RunWithCache(ctx);
+    if (!input) {
+        LOG(WARNING) << "input is empty";
+        return std::shared_ptr<DataHandler>();
+    }
+
+    if (kTableHandler != input->GetHanlderType()) {
+        return std::shared_ptr<DataHandler>();
+    }
+    auto table = std::dynamic_pointer_cast<TableHandler>(input);
+    auto iter = table->GetIterator();
+    iter->SeekToFirst();
+    if (!iter->Valid()) {
+        return std::shared_ptr<DataHandler>();
+    }
+
+    auto& row = iter->GetValue();
+
+    int32_t (*udf)(int8_t*, int8_t*, int32_t, int8_t**) =
+        (int32_t(*)(int8_t*, int8_t*, int32_t, int8_t**))(fn_);
+    int8_t* buf = nullptr;
+
+    uint32_t ret = udf(row.buf(), reinterpret_cast<int8_t*>(table.get()),
+                       row.size(), &buf);
+    if (ret != 0) {
+        LOG(WARNING) << "fail to run udf " << ret;
+        return std::shared_ptr<DataHandler>();
+    }
+    return std::shared_ptr<RowHandler>(new MemRowHandler(
+        Slice(reinterpret_cast<char*>(buf), RowView::GetSize(buf)),
+        &fn_schema_));
 }
 }  // namespace vm
 }  // namespace fesql

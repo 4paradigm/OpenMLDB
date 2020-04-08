@@ -181,6 +181,7 @@ static int64_t RunTableRequest(RequestRunSession& session,  // NOLINT
         Slice row;
         session.Run(iter->GetValue(), &row);
         iter->Next();
+        delete row.buf();
     }
     return cnt;
 }
