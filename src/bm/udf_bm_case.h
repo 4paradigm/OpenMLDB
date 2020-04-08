@@ -14,9 +14,12 @@
 namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
-void SumCol(benchmark::State* state, MODE mode, int64_t data_size,
+void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
             const std::string& col_name);
+void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
+                    const std::string& col_name);
 void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size);
+void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size);
 }  // namespace bm
 }  // namespace fesql
 #endif  // SRC_BM_UDF_BM_CASE_H_
