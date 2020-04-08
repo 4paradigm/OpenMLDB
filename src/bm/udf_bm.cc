@@ -48,56 +48,42 @@ static void BM_CopyArrayList(benchmark::State& state) {  // NOLINT
     CopyArrayList(&state, BENCHMARK, state.range(0));
 }
 BENCHMARK(BM_MemSumColInt)
-    ->Args({1})
-    ->Args({2})
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
 BENCHMARK(BM_MemSumColDouble)
-    ->Args({1})
-    ->Args({2})
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
 BENCHMARK(BM_ArraySumColInt)
-    ->Args({1})
-    ->Args({2})
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
 BENCHMARK(BM_CopyMemSegment)
-    ->Args({1})
-    ->Args({2})
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
 BENCHMARK(BM_CopyMemTable)
-    ->Args({1})
-    ->Args({2})
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
 BENCHMARK(BM_ArraySumColDouble)
-    ->Args({1})
-    ->Args({2})
     ->Args({10})
     ->Args({100})
     ->Args({1000})
     ->Args({10000});
 
 BENCHMARK(BM_CopyArrayList)
-    ->Args({1})
-    ->Args({2})
     ->Args({10})
     ->Args({100})
     ->Args({1000})
