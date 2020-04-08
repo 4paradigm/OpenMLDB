@@ -874,7 +874,58 @@ public class TableSyncClientImpl implements TableSyncClient {
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         return scan(tid, pid, combinedKey, idxName, st, et, tsName, limit, atLeast, th);
     }
-
+    private KvIterator scan(int tid, int pid, String key, long st, long et,TableHandler th, ScanOption option) throws TimeoutException, TabletException{
+        key = validateKey(key);
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
+        builder.setPk(key);
+        List<ColumnDesc> schema = th.getSchema();
+        boolean isNewFormat = false;
+        // the new format version
+        if (th.getFormatVersion() == 1 && option.getProjection().size() > 0) {
+            schema = new ArrayList<>();
+            for (String name : option.getProjection()) {
+                Integer idx = th.getSchemaPos().get(name);
+                if (idx == null) {
+                    throw new TabletException("Cannot find column " + name);
+                }
+                builder.addProjection(idx);
+                schema.add(th.getSchema().get(idx));
+            }
+            isNewFormat = true;
+        }
+        builder.setTid(tid);
+        builder.setEt(et);
+        builder.setSt(st);
+        builder.setPid(pid);
+        builder.setLimit(option.getLimit());
+        builder.setAtleast(option.getAtLeast());
+        builder.setIdxName(option.getIdxName());
+        builder.setTsName(option.getTsName());
+        builder.setEnableRemoveDuplicatedRecord(option.isRemoveDuplicateRecordByTime());
+        Tablet.ScanRequest request = builder.build();
+        Tablet.ScanResponse response = ts.scan(request);
+        if (response != null && response.getCode() == 0) {
+            if (isNewFormat) {
+                RowKvIterator rit = new RowKvIterator(response.getPairs(), schema, response.getCount());
+                return rit;
+            }
+            DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), schema);
+            it.setCount(response.getCount());
+            if (th.getTableInfo().hasCompressType()) {
+                it.setCompressType(th.getTableInfo().getCompressType());
+            }
+            return it;
+        }
+        if (response != null) {
+            throw new TabletException(response.getCode(), response.getMsg());
+        }
+        throw new TabletException("rtidb internal server error");
+    }
 
     private KvIterator scan(int tid, int pid, String key, String idxName,
                             long st, long et, String tsName, int limit, int atLeast, TableHandler th) throws TimeoutException, TabletException {

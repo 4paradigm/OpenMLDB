@@ -33,6 +33,7 @@ public class RowCodecCommon {
         TYPE_SIZE_MAP.put(DataType.BigInt, 8);
         TYPE_SIZE_MAP.put(DataType.Timestamp, 8);
         TYPE_SIZE_MAP.put(DataType.Double, 8);
+        TYPE_SIZE_MAP.put(DataType.Date, 4);
     }
 
     public static int getBitMapSize(int size) {

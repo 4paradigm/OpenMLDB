@@ -1,11 +1,15 @@
 package com._4paradigm.rtidb.client;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ScanOption {
     private int limit = 0;
     private boolean removeDuplicateRecordByTime = false;
     private int atLeast = 0;
     private String tsName;
     private String idxName;
+    private List<String> projection = new ArrayList<>();
 
     public String getIdxName() {
         return idxName;
@@ -13,6 +17,14 @@ public class ScanOption {
 
     public void setIdxName(String idxName) {
         this.idxName = idxName;
+    }
+
+    public List<String> getProjection() {
+        return projection;
+    }
+
+    public void setProjection(List<String> projection) {
+        this.projection = projection;
     }
 
     public int getLimit() {
