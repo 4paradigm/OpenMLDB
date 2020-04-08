@@ -55,8 +55,15 @@ void HttpImpl::Get(RpcController* controller,
                 ::rtidb::httpserver::HttpResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    std::string table_name = cntl->http_request().unresolved_path();
+    const std::string* pic_id = cntl->http_request().uri().GetQuery("pic_id");
+    if (pic_id == NULL) {
+        cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
+        return;
+    }
     cntl->response_attachment().append("Getting file: ");
-    cntl->response_attachment().append(cntl->http_request().unresolved_path());
+    cntl->response_attachment().append(table_name);
+    cntl->response_attachment().append(" " + *pic_id);
 }
 
 }  // namespace http
