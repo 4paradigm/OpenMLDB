@@ -89,9 +89,9 @@ def analyse_benchmark_trend(dir_path, file_list):
                         "Iterations":[0]*list_size,
 
                     }
-                benchmarks[Benchmark]["Time"].insert(pos,int(each["Time"]))
-                benchmarks[Benchmark]["CPU"].insert(pos,int(each["CPU"]))
-                benchmarks[Benchmark]["Iterations"].insert(pos,int(each["Iterations"]))
+                benchmarks[Benchmark]["Time"].insert(pos,float(each["Time"]))
+                benchmarks[Benchmark]["CPU"].insert(pos,float(each["CPU"]))
+                benchmarks[Benchmark]["Iterations"].insert(pos,float(each["Iterations"]))
         pos+=1
             
     # print(benchmarks_map)

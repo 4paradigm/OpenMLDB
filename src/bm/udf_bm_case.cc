@@ -7,11 +7,12 @@
  *--------------------------------------------------------------------------
  **/
 #include "bm/udf_bm_case.h"
+#include <memory>
 #include <string>
 #include <vector>
 #include "bm/base_bm.h"
 #include "codec/row_codec.h"
-#include "codegen/buf_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
 #include "udf/udf.h"
@@ -20,6 +21,7 @@ namespace fesql {
 namespace bm {
 using base::Slice;
 using codec::ColumnImpl;
+using vm::MemTableHandler;
 static void BuildData(type::TableDef& table_def,    // NOLINT
                       vm::MemTableHandler& window,  // NOLINT
                       int64_t data_size);
@@ -112,36 +114,132 @@ static void BuildData(type::TableDef& table_def,    // NOLINT
     }
 }
 
-void SumCol1(benchmark::State* state, MODE mode, int64_t data_size) {
+int32_t RunCopyTable(MemTableHandler window, type::TableDef table_def);
+void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size) {
+    vm::MemTableHandler window;
+    type::TableDef table_def;
+    BuildData(table_def, window, data_size);
+
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(RunCopyTable(window, table_def));
+            }
+            DeleteData(window);
+            break;
+        }
+        case TEST: {
+            if (data_size == RunCopyTable(window, table_def)) {
+                DeleteData(window);
+            } else {
+                DeleteData(window);
+                FAIL();
+            }
+        }
+    }
+}
+int32_t RunCopyTable(MemTableHandler window, type::TableDef table_def) {
+    auto window_table = std::shared_ptr<vm::MemTableHandler>(
+        new MemTableHandler(&table_def.columns()));
+    auto from_iter = window.GetIterator();
+    while (from_iter->Valid()) {
+        window_table->AddRow(from_iter->GetKey(), from_iter->GetValue());
+        from_iter->Next();
+    }
+    return window_table->GetCount();
+}
+
+void SumCol(benchmark::State* state, MODE mode, int64_t data_size,
+            const std::string& col_name) {
     vm::MemTableHandler window;
     type::TableDef table_def;
     BuildData(table_def, window, data_size);
 
     codegen::MemoryWindowDecodeIRBuilder builder(table_def.columns(), nullptr);
-    uint32_t offset = builder.GetColOffset("col1");
-    const uint32_t size = sizeof(ColumnImpl<int32_t>);
+    uint32_t offset;
+    node::DataType type;
+    uint32_t col_size;
+    ASSERT_TRUE(builder.GetColOffsetType(col_name, &offset, &type));
+    ASSERT_TRUE(codegen::GetLLVMColumnSize(type, &col_size));
+    int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
+    ::fesql::codec::ListRef list_ref;
+
+    list_ref.list = buf;
+    int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
+    type::Type storage_type;
+    ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
+    ASSERT_EQ(0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
+                                            offset, storage_type, buf));
     {
-        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
-        ::fesql::codec::ListRef list_ref;
-
-        list_ref.list = buf;
-        int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
-
-        ASSERT_EQ(0,
-                  ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
-                                             offset, fesql::type::kInt32, buf));
         switch (mode) {
             case BENCHMARK: {
-                for (auto _ : *state) {
-                    benchmark::DoNotOptimize(
-                        fesql::udf::v1::sum_list<int32_t>(col));
+                switch (type) {
+                    case node::kInt32: {
+                        for (auto _ : *state) {
+                            benchmark::DoNotOptimize(
+                                fesql::udf::v1::sum_list<int32_t>(col));
+                        }
+                        break;
+                    }
+                    case node::kInt64: {
+                        for (auto _ : *state) {
+                            benchmark::DoNotOptimize(
+                                fesql::udf::v1::sum_list<int64_t>(col));
+                        }
+                        break;
+                    }
+                    case node::kDouble: {
+                        for (auto _ : *state) {
+                            benchmark::DoNotOptimize(
+                                fesql::udf::v1::sum_list<double>(col));
+                        }
+                        break;
+                    }
+                    case node::kFloat: {
+                        for (auto _ : *state) {
+                            benchmark::DoNotOptimize(
+                                fesql::udf::v1::sum_list<float>(col));
+                        }
+                        break;
+                    }
+                    default: {
+                        FAIL();
+                    }
                 }
-                break;
             }
             case TEST: {
-                if (fesql::udf::v1::sum_list<int32_t>(col) <= 0) {
-                    DeleteData(window);
-                    FAIL();
+                switch (type) {
+                    case node::kInt32: {
+                        if (fesql::udf::v1::sum_list<int32_t>(col) <= 0) {
+                            DeleteData(window);
+                            FAIL();
+                        }
+                        break;
+                    }
+                    case node::kInt64: {
+                        if (fesql::udf::v1::sum_list<int64_t>(col) <= 0) {
+                            DeleteData(window);
+                            FAIL();
+                        }
+                        break;
+                    }
+                    case node::kDouble: {
+                        if (fesql::udf::v1::sum_list<double>(col) <= 0) {
+                            DeleteData(window);
+                            FAIL();
+                        }
+                        break;
+                    }
+                    case node::kFloat: {
+                        if (fesql::udf::v1::sum_list<float>(col) <= 0) {
+                            DeleteData(window);
+                            FAIL();
+                        }
+                        break;
+                    }
+                    default: {
+                        FAIL();
+                    }
                 }
             }
         }

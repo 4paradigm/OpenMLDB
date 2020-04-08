@@ -9,11 +9,14 @@
 
 #ifndef SRC_BM_UDF_BM_CASE_H_
 #define SRC_BM_UDF_BM_CASE_H_
+#include <string>
 #include "benchmark/benchmark.h"
 namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
-void SumCol1(benchmark::State* state, MODE mode,int64_t data_size);  // NOLINT
-}
+void SumCol(benchmark::State* state, MODE mode, int64_t data_size,
+            const std::string& col_name);
+void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size);
+}  // namespace bm
 }  // namespace fesql
 #endif  // SRC_BM_UDF_BM_CASE_H_

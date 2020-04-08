@@ -225,14 +225,22 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
     *output = list_ref;
     return true;
 }
-uint32_t MemoryWindowDecodeIRBuilder::GetColOffset(const std::string& name) {
+bool MemoryWindowDecodeIRBuilder::GetColOffsetType(
+    const std::string& name, uint32_t* offset_ptr,
+    node::DataType* type_ptr) {
+    if (nullptr == offset_ptr || nullptr == type_ptr) {
+        LOG(WARNING) << "fail to get col offset and type: offset or type "
+                        "pointer is null";
+        return false;
+    }
     auto it = types_.find(name);
     if (it == types_.end()) {
         LOG(WARNING) << "no column " << name << " in schema";
         return false;
     }
-    uint32_t offset = it->second.second;
-    return offset;
+    *offset_ptr = it->second.second;
+    *type_ptr = it->second.first;
+    return true;
 }
 
 }  // namespace codegen

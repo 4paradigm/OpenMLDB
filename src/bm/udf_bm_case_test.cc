@@ -17,11 +17,19 @@ class UDFBMCaseTest : public ::testing::Test {
 };
 
 TEST_F(UDFBMCaseTest, SumCol1_TEST) {
-    SumCol1(nullptr, TEST, 2L);
-    SumCol1(nullptr, TEST, 10L);
-    SumCol1(nullptr, TEST, 100L);
-    SumCol1(nullptr, TEST, 1000L);
-    SumCol1(nullptr, TEST, 10000L);
+    SumCol(nullptr, TEST, 2L, "col1");
+    SumCol(nullptr, TEST, 10L, "col1");
+    SumCol(nullptr, TEST, 100L, "col1");
+    SumCol(nullptr, TEST, 1000L, "col1");
+    SumCol(nullptr, TEST, 10000L, "col1");
+}
+
+
+TEST_F(UDFBMCaseTest, CopyMemTable_TEST) {
+    CopyMemTable(nullptr, TEST, 2L);
+    CopyMemTable(nullptr, TEST, 10L);
+    CopyMemTable(nullptr, TEST, 100L);
+    CopyMemTable(nullptr, TEST, 1000L);
 }
 }  // namespace bm
 }  // namespace fesql

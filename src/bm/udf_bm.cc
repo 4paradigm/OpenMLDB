@@ -23,7 +23,15 @@ namespace fesql {
 namespace bm {
 using namespace ::llvm;                                 // NOLINT
 static void BM_UDFSumColInt(benchmark::State& state) {  // NOLINT
-    SumCol1(&state, BENCHMARK, state.range(0));
+    SumCol(&state, BENCHMARK, state.range(0), "col1");
+}
+
+static void BM_UDFSumColDouble(benchmark::State& state) {  // NOLINT
+    SumCol(&state, BENCHMARK, state.range(0), "col4");
+}
+
+static void BM_CopyMemTable(benchmark::State& state) {  // NOLINT
+    CopyMemTable(&state, BENCHMARK, state.range(0));
 }
 BENCHMARK(BM_UDFSumColInt)
     ->Args({1})
@@ -33,6 +41,21 @@ BENCHMARK(BM_UDFSumColInt)
     ->Args({1000})
     ->Args({10000});
 
+BENCHMARK(BM_UDFSumColDouble)
+->Args({1})
+    ->Args({2})
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+
+BENCHMARK(BM_CopyMemTable)
+->Args({1})
+    ->Args({2})
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
 }  // namespace bm
 }  // namespace fesql
 
