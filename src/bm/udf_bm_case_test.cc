@@ -31,6 +31,14 @@ TEST_F(UDFBMCaseTest, SumMemTableCol1_TEST) {
     SumMemTableCol(nullptr, TEST, 1000L, "col1");
     SumMemTableCol(nullptr, TEST, 10000L, "col1");
 }
+
+TEST_F(UDFBMCaseTest, CopyMemSegment_TEST) {
+    CopyMemSegment(nullptr, TEST, 2L);
+    CopyMemSegment(nullptr, TEST, 10L);
+    CopyMemSegment(nullptr, TEST, 100L);
+    CopyMemSegment(nullptr, TEST, 1000L);
+}
+
 TEST_F(UDFBMCaseTest, CopyMemTable_TEST) {
     CopyMemTable(nullptr, TEST, 2L);
     CopyMemTable(nullptr, TEST, 10L);

@@ -48,23 +48,7 @@ TEST_F(WindowIteratorTest, ArrayListIteratorImplTest) {
     ASSERT_TRUE(impl->Valid());
     ASSERT_EQ(5, impl->GetValue());
     impl->Next();
-    //
-    //    ArrayListIterator<int>* subImpl = list.range();
-    //    ASSERT_TRUE(subImpl->Valid());
-    //    ASSERT_EQ(3, subImpl->Next());
-    //
-    //    ASSERT_TRUE(subImpl->Valid());
-    //    ASSERT_EQ(4, subImpl->Next());
-    //
-    //    ArrayListIterator<int>* subImpl2 = impl.range(0, 2);
-    //    ASSERT_TRUE(subImpl2->Valid());
-    //    ASSERT_EQ(1, subImpl2->Next());
-    //
-    //    ASSERT_TRUE(subImpl2->Valid());
-    //    ASSERT_EQ(2, subImpl2->Next());
-    //
-    //    ArrayListIterator<int>* subImpl3 = impl.range(3, 2);
-    //    ASSERT_FALSE(subImpl3->Valid());
+    ASSERT_FALSE(impl->Valid());
 }
 
 TEST_F(WindowIteratorTest, MemTableIteratorImplTest) {
@@ -111,9 +95,54 @@ TEST_F(WindowIteratorTest, MemTableIteratorImplTest) {
     ASSERT_FALSE(impl->Valid());
 }
 
+
+TEST_F(WindowIteratorTest, MemSegmentIteratorImplTest) {
+    // prepare row buf
+    std::vector<Slice> rows;
+    MemSegmentHandler table;
+    {
+        int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+        *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+        *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 2;
+        *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
+        *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
+        *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
+        table.AddRow(1, Slice(ptr, 28));
+    }
+
+    {
+        int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+        *(reinterpret_cast<int32_t*>(ptr + 2)) = 11;
+        *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 22;
+        *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
+        *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
+        *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
+        table.AddRow(2, Slice(ptr, 28));
+    }
+
+    {
+        int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+        *(reinterpret_cast<int32_t*>(ptr + 2)) = 111;
+        *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 222;
+        *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
+        *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
+        *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
+        table.AddRow(3, Slice(ptr, 28));
+    }
+
+    auto impl = table.GetIterator();
+    ASSERT_TRUE(impl->Valid());
+    impl->Next();
+    ASSERT_TRUE(impl->Valid());
+    impl->Next();
+    ASSERT_TRUE(impl->Valid());
+    impl->Next();
+    ASSERT_FALSE(impl->Valid());
+}
+
 TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
     // prepare row buf
-    MemTableHandler table;
+    MemSegmentHandler table;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
         *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
@@ -161,7 +190,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
 
 TEST_F(WindowIteratorTest, MemGetColTest) {
     // prepare row buf
-    MemTableHandler table;
+    MemSegmentHandler table;
     {
         int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
         *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;

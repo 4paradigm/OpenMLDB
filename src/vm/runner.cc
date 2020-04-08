@@ -464,8 +464,8 @@ std::shared_ptr<DataHandler> Runner::TableSort(
     if (idxs.empty()) {
         return table;
     }
-    auto output_table = std::shared_ptr<MemTableHandler>(
-        new MemTableHandler(table->GetSchema()));
+    auto output_table = std::shared_ptr<MemSegmentHandler>(
+        new MemSegmentHandler(table->GetSchema()));
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     while (iter->Valid()) {
         const Slice order_row(RowProject(fn, iter->GetValue()), true);
@@ -680,7 +680,7 @@ std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
                 new MemTableHandler(input->GetSchema()));
             int32_t cnt = 0;
             while (cnt++ < limit_cnt_ && iter->Valid()) {
-                output_table->AddRow(iter->GetKey(), iter->GetValue());
+                output_table->AddRow(iter->GetValue());
                 iter->Next();
             }
             return output_table;
@@ -769,7 +769,8 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
         std::string request_keys =
             GenerateKeys(&row_view_, fn_schema_, groups_idxs_);
 
-        auto mem_table = new MemTableHandler(output_schema);
+        auto mem_table = std::shared_ptr<MemTableHandler>(
+            new MemTableHandler(output_schema));
         auto iter = table->GetIterator();
         while (iter->Valid()) {
             auto row = Slice(RowProject(fn_, iter->GetValue()), true);
@@ -823,8 +824,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
                     break;
                 }
                 DLOG(INFO) << table_iter->GetKey() << " add row ";
-                window_table->AddRow(table_iter->GetKey(),
-                                     table_iter->GetValue());
+                window_table->AddRow(table_iter->GetValue());
                 table_iter->Next();
             }
         }

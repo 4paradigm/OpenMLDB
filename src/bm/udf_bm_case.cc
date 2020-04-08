@@ -21,10 +21,20 @@ namespace fesql {
 namespace bm {
 using base::Slice;
 using codec::ColumnImpl;
+using vm::MemSegmentHandler;
 using vm::MemTableHandler;
-static void BuildData(type::TableDef& table_def,    // NOLINT
-                      vm::MemTableHandler& window,  // NOLINT
+static void BuildData(type::TableDef& table_def,      // NOLINT
+                      vm::MemSegmentHandler& window,  // NOLINT
                       int64_t data_size);
+
+static void DeleteData(vm::MemSegmentHandler& window);       // NOLINT
+static void DeleteData(vm::MemTableHandler& window);         // NOLINT
+int64_t RunCopyArrayList(MemSegmentHandler& window,          // NOLINT
+                         type::TableDef& table_def);         // NOLINT
+int32_t RunCopyTable(MemTableHandler& table,                 // NOLINT
+                     type::TableDef& table_def);             // NOLINT
+int32_t RunCopySegment(MemSegmentHandler& segment,           // NOLINT
+                       type::TableDef& table_def);           // NOLINT
 static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     table.set_catalog("db");
@@ -67,8 +77,13 @@ static void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
     }
 }
 
-static void DeleteData(vm::MemTableHandler& window);  // NOLINT
-
+static void DeleteData(vm::MemSegmentHandler& window) {  // NOLINT
+    auto iter = window.GetIterator();
+    while (iter->Valid()) {
+        delete iter->GetValue().buf();
+        iter->Next();
+    }
+}
 static void DeleteData(vm::MemTableHandler& window) {  // NOLINT
     auto iter = window.GetIterator();
     while (iter->Valid()) {
@@ -76,8 +91,9 @@ static void DeleteData(vm::MemTableHandler& window) {  // NOLINT
         iter->Next();
     }
 }
-static void BuildData(type::TableDef& table_def,    // NOLINT
-                      vm::MemTableHandler& window,  // NOLINT
+
+static void BuildData(type::TableDef& table_def,   // NOLINT
+                      std::vector<Slice>& buffer,  // NOLINT
                       int64_t data_size) {
     ::fesql::bm::Repeater<std::string> col0(
         std::vector<std::string>({"hello"}));
@@ -110,38 +126,31 @@ static void BuildData(type::TableDef& table_def,    // NOLINT
         builder.AppendDouble(col4.GetValue());
         builder.AppendInt64(col5.GetValue());
         builder.AppendString(str2.c_str(), str2.size());
-        window.AddRow(Slice(ptr, total_size));
+        buffer.push_back(Slice(ptr, total_size));
+    }
+}
+static void BuildData(type::TableDef& table_def,       // NOLINT
+                      vm::MemSegmentHandler& segment,  // NOLINT
+                      int64_t data_size) {
+    std::vector<Slice> buffer;
+    BuildData(table_def, buffer, data_size);
+    uint64_t ts = 1;
+    for (auto row : buffer) {
+        segment.AddRow(ts, row);
+    }
+}
+static void BuildData(type::TableDef& table_def,   // NOLINT
+                      vm::MemTableHandler& table,  // NOLINT
+                      int64_t data_size) {
+    std::vector<Slice> buffer;
+    BuildData(table_def, buffer, data_size);
+    for (auto row : buffer) {
+        table.AddRow(row);
     }
 }
 
-int32_t RunCopyTable(MemTableHandler window, type::TableDef table_def);
-void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size) {
-    vm::MemTableHandler window;
-    type::TableDef table_def;
-    BuildData(table_def, window, data_size);
-
-    switch (mode) {
-        case BENCHMARK: {
-            for (auto _ : *state) {
-                benchmark::DoNotOptimize(RunCopyTable(window, table_def));
-            }
-            DeleteData(window);
-            break;
-        }
-        case TEST: {
-            if (data_size == RunCopyTable(window, table_def)) {
-                DeleteData(window);
-            } else {
-                DeleteData(window);
-                FAIL();
-            }
-        }
-    }
-}
-
-int64_t RunCopyArrayList(MemTableHandler window, type::TableDef table_def);
 void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size) {
-    vm::MemTableHandler window;
+    vm::MemSegmentHandler window;
     type::TableDef table_def;
     BuildData(table_def, window, data_size);
 
@@ -163,7 +172,53 @@ void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size) {
         }
     }
 }
-int64_t RunCopyArrayList(MemTableHandler window, type::TableDef table_def) {
+void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size) {
+    vm::MemTableHandler table;
+    type::TableDef table_def;
+    BuildData(table_def, table, data_size);
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(RunCopyTable(table, table_def));
+            }
+            DeleteData(table);
+            break;
+        }
+        case TEST: {
+            if (data_size == RunCopyTable(table, table_def)) {
+                DeleteData(table);
+            } else {
+                DeleteData(table);
+                FAIL();
+            }
+        }
+    }
+}
+void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size) {
+    vm::MemSegmentHandler table;
+    type::TableDef table_def;
+    BuildData(table_def, table, data_size);
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(RunCopySegment(table, table_def));
+            }
+            DeleteData(table);
+            break;
+        }
+        case TEST: {
+            if (data_size == RunCopySegment(table, table_def)) {
+                DeleteData(table);
+            } else {
+                DeleteData(table);
+                FAIL();
+            }
+        }
+    }
+}
+
+int64_t RunCopyArrayList(MemSegmentHandler& window,    // NOLINT
+                         type::TableDef& table_def) {  // NOLINT
     std::vector<Slice> window_table;
     auto from_iter = window.GetIterator();
     while (from_iter->Valid()) {
@@ -172,10 +227,21 @@ int64_t RunCopyArrayList(MemTableHandler window, type::TableDef table_def) {
     }
     return window_table.size();
 }
-
-int32_t RunCopyTable(MemTableHandler window, type::TableDef table_def) {
+int32_t RunCopyTable(MemTableHandler& window,      // NOLINT
+                     type::TableDef& table_def) {  // NOLINT
     auto window_table = std::shared_ptr<vm::MemTableHandler>(
         new MemTableHandler(&table_def.columns()));
+    auto from_iter = window.GetIterator();
+    while (from_iter->Valid()) {
+        window_table->AddRow(from_iter->GetValue());
+        from_iter->Next();
+    }
+    return window_table->GetCount();
+}
+int32_t RunCopySegment(MemSegmentHandler& window,    // NOLINT
+                       type::TableDef& table_def) {  // NOLINT
+    auto window_table = std::shared_ptr<vm::MemSegmentHandler>(
+        new MemSegmentHandler(&table_def.columns()));
     auto from_iter = window.GetIterator();
     while (from_iter->Valid()) {
         window_table->AddRow(from_iter->GetKey(), from_iter->GetValue());
@@ -186,7 +252,7 @@ int32_t RunCopyTable(MemTableHandler window, type::TableDef table_def) {
 
 void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
                      const std::string& col_name) {
-    vm::MemTableHandler window;
+    vm::MemSegmentHandler window;
     type::TableDef table_def;
     BuildData(table_def, window, data_size);
 
@@ -290,7 +356,6 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     }
     DeleteData(window);
 }
-
 void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
                     const std::string& col_name) {
     vm::MemTableHandler window;

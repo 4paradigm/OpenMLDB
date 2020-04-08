@@ -38,6 +38,9 @@ static void BM_ArraySumColDouble(benchmark::State& state) {  // NOLINT
     SumArrayListCol(&state, BENCHMARK, state.range(0), "col4");
 }
 
+static void BM_CopyMemSegment(benchmark::State& state) {  // NOLINT
+    CopyMemSegment(&state, BENCHMARK, state.range(0));
+}
 static void BM_CopyMemTable(benchmark::State& state) {  // NOLINT
     CopyMemTable(&state, BENCHMARK, state.range(0));
 }
@@ -60,7 +63,7 @@ BENCHMARK(BM_MemSumColDouble)
     ->Args({1000})
     ->Args({10000});
 
-BENCHMARK(BM_CopyMemTable)
+BENCHMARK(BM_ArraySumColInt)
     ->Args({1})
     ->Args({2})
     ->Args({10})
@@ -68,7 +71,15 @@ BENCHMARK(BM_CopyMemTable)
     ->Args({1000})
     ->Args({10000});
 
-BENCHMARK(BM_ArraySumColInt)
+BENCHMARK(BM_CopyMemSegment)
+    ->Args({1})
+    ->Args({2})
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+
+BENCHMARK(BM_CopyMemTable)
     ->Args({1})
     ->Args({2})
     ->Args({10})

@@ -64,10 +64,79 @@ class UDFTest : public ::testing::Test {
     std::vector<base::Slice> rows;
 };
 
-TEST_F(UDFTest, UDF_mem_handler_sum_test) {
+TEST_F(UDFTest, UDF_mem_table_handler_sum_test) {
     vm::MemTableHandler window;
     for (auto row : rows) {
         window.AddRow(row);
+    }
+    const uint32_t size = sizeof(ColumnImpl<int16_t>);
+    {
+        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+        ::fesql::codec::ListRef list_ref;
+
+        list_ref.list = buf;
+        int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
+
+        ASSERT_EQ(
+            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
+                                          2, fesql::type::kInt32, buf));
+        ASSERT_EQ(1 + 11 + 111, fesql::udf::v1::sum_list<int32_t>(col));
+    }
+
+    {
+        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+        ::fesql::codec::ListRef list_ref;
+        list_ref.list = buf;
+        int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
+
+        ASSERT_EQ(
+            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
+                                          2 + 4, fesql::type::kInt16, buf));
+        ASSERT_EQ(2 + 22 + 222, fesql::udf::v1::sum_list<int16_t>(col));
+    }
+
+    {
+        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+        ::fesql::codec::ListRef list_ref;
+        list_ref.list = buf;
+        int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
+
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+            reinterpret_cast<int8_t*>(&window), 2 + 4 + 2,
+            fesql::type::kFloat, buf));
+        ASSERT_EQ(3.1f + 33.1f + 333.1f, fesql::udf::v1::sum_list<float>(col));
+    }
+
+    {
+        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+        ::fesql::codec::ListRef list_ref;
+        list_ref.list = buf;
+        int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
+
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+            reinterpret_cast<int8_t*>(&window), 2 + 4 + 2 + 4,
+            fesql::type::kDouble, buf));
+        ASSERT_EQ(4.1 + 44.1 + 444.1, fesql::udf::v1::sum_list<double>(col));
+    }
+
+    {
+        int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+        ::fesql::codec::ListRef list_ref;
+        list_ref.list = buf;
+        int8_t* col = reinterpret_cast<int8_t*>(&list_ref);
+
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+            reinterpret_cast<int8_t*>(&window), 2 + 4 + 2 + 4 + 8,
+            fesql::type::kInt64, buf));
+        ASSERT_EQ(5L + 55L + 555L, fesql::udf::v1::sum_list<int64_t>(col));
+    }
+}
+
+TEST_F(UDFTest, UDF_mem_segment_handler_sum_test) {
+    vm::MemSegmentHandler window;
+    uint64_t ts = 1000;
+    for (auto row : rows) {
+        window.AddRow(ts++, row);
     }
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     {
@@ -375,9 +444,10 @@ TEST_F(UDFTest, GetWindowColTest) {
     }
 }
 TEST_F(UDFTest, GetMemColTest) {
-    vm::MemTableHandler table;
+    vm::MemSegmentHandler table;
+    uint64_t ts = 1000;
     for (auto row : rows) {
-        table.AddRow(row);
+        table.AddRow(ts++, row);
     }
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));

@@ -19,6 +19,7 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
 void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
                     const std::string& col_name);
 void CopyMemTable(benchmark::State* state, MODE mode, int64_t data_size);
+void CopyMemSegment(benchmark::State* state, MODE mode, int64_t data_size);
 void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size);
 }  // namespace bm
 }  // namespace fesql
